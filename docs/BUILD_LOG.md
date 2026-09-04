@@ -347,3 +347,29 @@ Started: 2026-09-04 · Sessions: 1
     cost money or consume a cap.
   - `@All('*path')` is not a valid Fastify 5 route; the wildcard must be bare `*`.
 - UNSURE: —
+
+### Task 0.7 — `apps/worker`
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/worker test
+   Test Files  1 passed (1)
+        Tests  4 passed (4)
+   ✓ retries three times with exponential backoff
+   ✓ keeps failed jobs, so the failure-rate alert in §14 has something to count
+   ✓ is retried three times and then lands in the failed set
+   ✓ a job that succeeds completes on the first attempt
+
+  $ pnpm --filter @tc/worker run start:local
+  {"level":30,"msg":"worker ready","queues":["noop"],"concurrency":4}
+  ```
+- Notes / deviations from PRD:
+  - One queue only, named `noop`, as PHASES 0.7 specifies. The real queue names are taken from
+    PRD §9 when the work lands: `extract-paper`, `index-source`, `search-literature` and
+    `draft-section`. No other queue name is invented here.
+  - Retry policy is 3 attempts with exponential backoff from 1s. `removeOnFail` keeps failed jobs
+    for 7 days: PRD §14 alerts on a job failure rate above 5% over 15 minutes, which is impossible
+    to compute if failures are discarded.
+  - The worker holds no state the API also needs, so PRD §7.5 step 2 (move it to a second VPS) needs
+    no code change.
+- UNSURE: —

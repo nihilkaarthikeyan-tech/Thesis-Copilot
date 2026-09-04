@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "dotenv -e ../../.env -- node --watch dist/main.js",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "start:local": "dotenv -e ../../.env -- node dist/main.js"
   },
   "dependencies": {
     "@nestjs/common": "11.2.3",
@@ -24,12 +25,13 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
+    "@swc/core": "1.16.1",
     "@testcontainers/redis": "12.1.0",
     "@types/node": "22.20.1",
+    "dotenv-cli": "11.0.0",
     "tsx": "4.23.13",
     "typescript": "5.9.3",
     "unplugin-swc": "1.5.11",
-    "@swc/core": "1.16.1",
     "vitest": "4.1.11"
   }
 }
