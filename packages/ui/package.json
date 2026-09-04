@@ -14,15 +14,47 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.build.json",
     "clean": "rimraf dist"
   },
   "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/katex": "0.16.8",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "27.4.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
   },
   "files": [
     "dist"
-  ]
+  ],
+  "dependencies": {
+    "@tiptap/core": "2.27.3",
+    "@tiptap/extension-heading": "2.27.3",
+    "@tiptap/extension-image": "2.27.3",
+    "@tiptap/extension-link": "2.27.3",
+    "@tiptap/extension-placeholder": "2.27.3",
+    "@tiptap/extension-subscript": "2.27.3",
+    "@tiptap/extension-superscript": "2.27.3",
+    "@tiptap/extension-table": "2.27.3",
+    "@tiptap/extension-table-cell": "2.27.3",
+    "@tiptap/extension-table-header": "2.27.3",
+    "@tiptap/extension-table-row": "2.27.3",
+    "@tiptap/extension-underline": "2.27.3",
+    "@tiptap/pm": "2.27.3",
+    "@tiptap/react": "2.27.3",
+    "@tiptap/starter-kit": "2.27.3",
+    "katex": "0.18.5",
+    "nanoid": "6.0.1"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
 }

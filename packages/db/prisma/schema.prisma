@@ -191,6 +191,11 @@ model Chapter {
   wordCount     Int      @default(0)
   scopeNote     String?
   lastCheckedAt DateTime?
+  // --- ADR-0003 additions (Appendix B.7 optimistic concurrency, B.4 word counts) ---
+  version       Int      @default(1)
+  wordCounts    Json?    // { HUMAN, ASSIST, DRAFT, COMMAND, HUMAN_EDITED } word counts, computed on save
+  snapshotAt    DateTime? // last DocumentVersion snapshot for this chapter (B.7: >= 10 min rule)
+  // --- end ADR-0003 ---
   pins          ChapterSourcePin[]
   chunks        ChapterChunk[]
   citations     Citation[]
