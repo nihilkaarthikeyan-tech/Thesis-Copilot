@@ -8,7 +8,7 @@
 
 import { Controller, Get } from '@nestjs/common';
 import { computeMonthlyBudget } from '@tc/config';
-import type { FlagsService } from '../flags/flags.service.js';
+import { FlagsService } from '../flags/flags.service.js';
 
 @Controller('admin')
 export class AdminController {

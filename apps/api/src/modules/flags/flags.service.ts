@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import type { PrismaService } from '../../common/prisma.service.js';
+import { PrismaService } from '../../common/prisma.service.js';
 
 const CACHE_TTL_MS = 60_000;
 

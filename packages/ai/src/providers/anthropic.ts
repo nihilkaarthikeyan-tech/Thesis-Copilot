@@ -102,13 +102,13 @@ export class AnthropicLlmProvider implements LlmProvider {
     try {
       result = streamText({
         model: this.model(req.tier),
-        // biome-ignore lint/suspicious/noExplicitAny: the SDK's message union does not model
-        // per-part providerOptions on system messages; the shape is validated at runtime instead.
-        messages: this.messages(req) as any,
+        messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
         ...(req.signal ? { abortSignal: req.signal } : {}),
-      });
+        // Same boundary as complete(): the SDK option type is an overloaded intersection that our
+        // per-part providerOptions on system messages do not satisfy; validated at runtime.
+      } as unknown as Parameters<typeof streamText>[0]);
 
       for await (const delta of result.textStream) {
         yield { type: 'text', text: delta };
@@ -196,7 +196,7 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
     const response = await fetch(this.endpoint, {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer ' + this.apiKey,
+        Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ input: texts, model: this.modelId }),
@@ -205,7 +205,7 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
     if (!response.ok) {
       throw new LlmProviderError(
         'EMBED',
-        'Voyage embeddings failed: ' + response.status + ' ' + (await response.text()),
+        `Voyage embeddings failed: ${response.status} ${await response.text()}`,
       );
     }
 

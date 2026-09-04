@@ -21,7 +21,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { capFor, type MeteredAction, type Plan } from '@tc/config';
-import type { PrismaService } from '../../common/prisma.service.js';
+import { PrismaService } from '../../common/prisma.service.js';
 
 export type ConsumeResult =
   | { readonly ok: true; readonly count: number; readonly cap: number; readonly remaining: number }
@@ -32,7 +32,7 @@ export type ConsumeResult =
  * PRD §0.2: caps reset at 00:00 UTC on the 1st of each month.
  */
 export function periodFor(now: Date = new Date()): string {
-  return now.getUTCFullYear() + '-' + String(now.getUTCMonth() + 1).padStart(2, '0');
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 /** Start of the next UTC month — what a capped response reports as `resetsAt`. */

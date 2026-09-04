@@ -11,8 +11,8 @@ import type { Env } from '@tc/config';
 import type { FastifyReply } from 'fastify';
 import { Client as MinioClient } from 'minio';
 import { ENV } from '../../common/env.token.js';
-import type { PrismaService } from '../../common/prisma.service.js';
-import type { RedisService } from '../../common/redis.service.js';
+import { PrismaService } from '../../common/prisma.service.js';
+import { RedisService } from '../../common/redis.service.js';
 
 type CheckState = 'up' | 'down';
 

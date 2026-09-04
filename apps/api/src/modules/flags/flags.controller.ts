@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { FlagsService } from './flags.service.js';
+import { FlagsService } from './flags.service.js';
 
 @Controller('flags')
 export class FlagsController {
