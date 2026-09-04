@@ -53,6 +53,18 @@ describe('loadEnv', () => {
     expect(loadEnv(withEnv({ SENTRY_DSN: '' })).SENTRY_DSN).toBeUndefined();
   });
 
+  it('treats a blank numeric variable as absent, not zero', () => {
+    // A .env file that declares SMTP_PORT= with no value hands over '', which z.coerce.number()
+    // would otherwise turn into 0 and reject. Caught by `pnpm ai:verify` refusing to start.
+    expect(loadEnv(withEnv({ SMTP_PORT: '' })).SMTP_PORT).toBeUndefined();
+    expect(loadEnv(withEnv({ SMTP_PORT: '587' })).SMTP_PORT).toBe(587);
+  });
+
+  it('still rejects a nonsensical port', () => {
+    expect(() => loadEnv(withEnv({ SMTP_PORT: '0' }))).toThrow(EnvValidationError);
+    expect(() => loadEnv(withEnv({ SMTP_PORT: 'abc' }))).toThrow(EnvValidationError);
+  });
+
   describe('refuses to start when a required variable is missing', () => {
     const required = [
       'APP_URL',

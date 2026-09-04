@@ -209,3 +209,71 @@ Started: 2026-09-04 · Sessions: 1
     value are kept verbatim by some parsers, which would have put "# Postgres 16 + pgvector..."
     inside `DATABASE_URL`.
 - UNSURE: —
+
+### Task 0.5 — `packages/ai`
+- Status: DONE, except the live half of `pnpm ai:verify` — see BLOCKED below.
+- Evidence:
+  ```
+  $ ls packages/ai/prompts | wc -l
+  21
+
+  $ pnpm --filter @tc/ai test
+   Test Files  2 passed (2)
+        Tests  48 passed (48)
+  # includes one test per prompt file asserting it still matches the PRD byte for byte
+
+  $ pnpm --filter @tc/ai typecheck
+  (no output — clean)
+
+  $ pnpm ai:verify          # AI_PROVIDER=mock, EMBED_PROVIDER=mock
+  ==============================================================================================
+  pnpm ai:verify — PRD Appendix E.1
+  ==============================================================================================
+  !! A provider is set to `mock`. This run proves nothing about real model ids or
+  !! prices, and Appendix E.3 must NOT be filled from it.
+  ...
+  | TOTAL                                          |                  |    99.67 |
+  Ceiling: INR 100/user/month (PRD 11). WITHIN by INR 0.33.
+  OK: STUDENT budget INR 99.67 <= INR 100.
+  ```
+- BLOCKED: no provider API keys. PHASES PHASE-0 "Preconditions (human)" requires keys for the LLM
+  provider, the embeddings provider and Resend/SMTP. None were supplied, so `pnpm ai:verify` has
+  never made a real call. Steps 2 and 3 of Appendix E.1 (probe each model, check the embedding
+  length against `EMBED_DIMS`) are therefore unproven, and **PRD Appendix E.3 must stay empty**.
+  The script refuses to pretend: when either provider is `mock` it prints a banner saying the run
+  proves nothing and that E.3 must not be filled from it.
+  To unblock: put real `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `AI_FAST_MODEL`, `AI_STRONG_MODEL`
+  and `AI_EMBED_MODEL` in `.env`, set `AI_PROVIDER=anthropic` and `EMBED_PROVIDER=voyage`, and run
+  `pnpm ai:verify` again. Gate G0 cannot be ticked until then.
+- Notes / deviations from PRD:
+  - **Appendix A is not uniformly machine-readable, and the Phase 1 week 3 prompt builder must know
+    it.** Only A.1 (`assist`) and A.2 (`draft`) put their user message in a second fenced block.
+    The other 19 fence the system block only and describe the user message in prose — A.3 for
+    example says: User message: `<sentence>{{sentence}}</sentence>` followed by the `<passages>`
+    block. So 19 user templates have to be written as code against the prose spec rather than
+    loaded from the file. That is a judgement call the PRD does not make explicit; task 3.2 should
+    treat it as a decision to confirm. The shape is pinned by a test so it cannot drift silently.
+  - Prompt files are produced by `scripts/extract-prompts.ts` and never by hand. Each file is the
+    Appendix A subsection verbatim under a do-not-edit header. `test/prompts.spec.ts` re-runs the
+    extraction against the current PRD and asserts every file still matches, which enforces
+    §0.3 rule 11 mechanically instead of by good intentions.
+  - `LlmChunk` and `LlmResult<T>` are named in §10.2 but never defined there. Defined in
+    `src/types.ts`: `LlmChunk` is a text delta or a single terminal `finish` carrying usage;
+    `LlmResult<T>` is the parsed value plus usage. The finish chunk is the only source of token
+    counts, which is what §11.5 requires (cost from real usage, never estimates).
+  - AI SDK v7 API checked in `node_modules` before use (§0.3 rule 1): `streamText`, `generateObject`,
+    and `LanguageModelUsage.inputTokenDetails.{noCacheTokens,cacheReadTokens,cacheWriteTokens}`,
+    which map one-to-one onto the four numbers `packages/config` prices.
+  - `generateObject`'s return type is conditional on the inferred schema output and cannot resolve
+    through a generic `z.ZodType<T>`. The options are cast at that one call site, and the result is
+    then validated with `req.schema.safeParse`, so nothing downstream trusts the cast and a schema
+    mismatch becomes a typed `LlmValidationError` the caller can retry on (A.5 retries once).
+  - Voyage has no first-party AI SDK provider, so `VoyageEmbeddingProvider` calls the REST API
+    directly. It stays inside `packages/ai`, so §0.2's no-vendor-SDK-in-product-code rule holds. It
+    throws rather than truncating if the returned dimension differs from `EMBED_DIMS`, because the
+    column is `vector(1024)`.
+  - Bug found and fixed in `packages/config`: a blank `SMTP_PORT=` in a .env file arrives as `''`,
+    which `z.coerce.number()` turned into `0` and then rejected, so the app refused to start on a
+    valid file. Now blanked to `undefined` first. Caught by running `pnpm ai:verify`, not by the
+    original tests; a regression test was added.
+- UNSURE: —

@@ -19,6 +19,15 @@ const optionalString = z
   .optional()
   .transform((v) => (v === '' ? undefined : v));
 
+/**
+ * A variable left blank in a .env file arrives as '' rather than undefined. Numeric fields must
+ * treat that as absent, otherwise `z.coerce.number()` turns '' into 0.
+ */
+const optionalNumber = z.preprocess(
+  (v) => (v === '' || v === undefined ? undefined : v),
+  z.coerce.number().int().positive().optional(),
+);
+
 const requiredString = (label: string) =>
   z
     .string()
@@ -94,7 +103,9 @@ export const envSchema = z
     // ---- Email: Resend or SMTP (§13.3 "RESEND_API_KEY or SMTP_*") ----
     RESEND_API_KEY: optionalString,
     SMTP_HOST: optionalString,
-    SMTP_PORT: z.coerce.number().int().positive().optional(),
+    // An unset variable in a .env file arrives as '', which `z.coerce.number()` turns into 0 and
+    // then rejects as not positive. Blank it back to undefined first.
+    SMTP_PORT: optionalNumber,
     SMTP_USER: optionalString,
     SMTP_PASS: optionalString,
     SMTP_FROM: optionalString,
