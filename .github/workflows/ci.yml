@@ -1,0 +1,127 @@
+# CI — PRD §13.5 step 1: install, biome check, tsc --noEmit, vitest (Testcontainers), Playwright
+# smoke, prisma migrate diff check, and the dependency audit from PRD §12.1.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Matches the runtime image (node:22-alpine) rather than whatever a laptop runs.
+  NODE_VERSION: 22
+  PNPM_VERSION: 9.15.9
+
+jobs:
+  checks:
+    name: lint · typecheck · unit+integration · migrate-diff · audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: tc, POSTGRES_PASSWORD: tc, POSTGRES_DB: tc }
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U tc -d tc" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: biome check
+        run: pnpm biome check .
+
+      - name: prisma generate
+        run: pnpm --filter @tc/db exec prisma generate
+
+      - name: build packages (apps import their dist)
+        run: pnpm turbo run build --filter='./packages/*'
+
+      - name: typecheck
+        run: pnpm turbo run typecheck
+
+      - name: migrations match the schema (prisma migrate diff)
+        # Applies every migration to the service Postgres, then asserts the schema file adds nothing
+        # beyond the two HNSW indexes Prisma cannot declare (PRD §8) — see the check script.
+        env:
+          DATABASE_URL: postgresql://tc:tc@localhost:5434/tc
+        run: |
+          pnpm --filter @tc/db exec prisma migrate deploy
+          node packages/db/scripts/migrate-diff-check.mjs
+
+      - name: vitest (unit + integration via Testcontainers)
+        # Testcontainers uses the runner's Docker daemon for Postgres and Redis.
+        run: pnpm turbo run test
+
+      - name: dependency audit (PRD §12.1)
+        run: pnpm audit --audit-level=high
+
+  e2e-smoke:
+    name: playwright smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: checks
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: tc, POSTGRES_PASSWORD: tc, POSTGRES_DB: tc }
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U tc -d tc" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6381:6379']
+      minio:
+        image: minio/minio:latest
+        env: { MINIO_ROOT_USER: tcadmin, MINIO_ROOT_PASSWORD: tc-secret-key }
+        ports: ['9002:9000']
+        options: >-
+          --health-cmd "mc ready local" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - name: env for the mock provider
+        # Real keys never enter CI. AI_PROVIDER=mock streams a canned suggestion (PRD §16 week 1).
+        run: |
+          cp .env.example .env
+          sed -i -E 's/^AUTH_SECRET=.*/AUTH_SECRET=ci-only-secret-0123456789abcdef0123456789/' .env
+          sed -i -E 's/^AI_PROVIDER=.*/AI_PROVIDER=mock/; s/^EMBED_PROVIDER=.*/EMBED_PROVIDER=mock/' .env
+          sed -i -E 's/^AI_FAST_MODEL=.*/AI_FAST_MODEL=mock-fast/; s/^AI_STRONG_MODEL=.*/AI_STRONG_MODEL=mock-strong/; s/^AI_EMBED_MODEL=.*/AI_EMBED_MODEL=mock-embed/' .env
+
+      - name: build
+        run: |
+          pnpm --filter @tc/db exec prisma generate
+          pnpm turbo run build --filter=@tc/api --filter=@tc/web
+
+      - name: migrate + seed
+        run: pnpm db:migrate && pnpm db:seed
+
+      - name: start api and web
+        run: |
+          (pnpm --filter @tc/api run start:local > api.log 2>&1 &)
+          (pnpm --filter @tc/web start > web.log 2>&1 &)
+          for i in $(seq 1 30); do curl -fsS http://localhost:3001/api/v1/health && break; sleep 2; done
+          for i in $(seq 1 30); do curl -fsS http://localhost:3000/ >/dev/null && break; sleep 2; done
+
+      - name: playwright
+        run: |
+          pnpm --filter @tc/web exec playwright install --with-deps chromium
+          pnpm --filter @tc/web e2e
+
+      - name: logs on failure
+        if: failure()
+        run: tail -n 100 api.log web.log || true

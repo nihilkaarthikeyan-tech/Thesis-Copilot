@@ -11,6 +11,9 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  // "native" for local dev; linux-musl for the node:22-alpine runtime image (PRD §13.4).
+  // Generator config only — the data model below is PRD §8 verbatim.
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
 datasource db {
   provider   = "postgresql"
@@ -472,6 +475,7 @@ model Verification {
   value      String
   expiresAt  DateTime
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  // DB default too, matching migration 0002 and `User.updatedAt`; caught by `prisma migrate diff`.
+  updatedAt  DateTime @default(now()) @updatedAt
   @@index([identifier])
 }

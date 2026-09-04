@@ -1,0 +1,14 @@
+# Backup sidecar — PRD §12.1 / §13.2: nightly pg_dump + mc mirror, weekly restore test.
+#
+# crond runs infra/scripts/backup.sh at 02:30 UTC daily and restore.sh --test on Sundays at 03:30.
+
+FROM alpine:3.20
+RUN apk add --no-cache postgresql16-client bash curl tzdata
+COPY --from=minio/mc:latest /usr/bin/mc /usr/local/bin/mc
+WORKDIR /opt/backup
+COPY infra/scripts/backup.sh infra/scripts/restore.sh ./
+RUN chmod +x backup.sh restore.sh \
+ && mkdir -p /backups \
+ && printf '30 2 * * * /opt/backup/backup.sh >> /proc/1/fd/1 2>&1\n30 3 * * 0 /opt/backup/restore.sh --test >> /proc/1/fd/1 2>&1\n' > /etc/crontabs/root
+ENV BACKUP_DIR=/backups
+CMD ["crond", "-f", "-l", "2"]

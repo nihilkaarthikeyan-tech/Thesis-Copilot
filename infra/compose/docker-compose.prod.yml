@@ -1,0 +1,142 @@
+# Production stack — PRD §13.2, on one VPS behind Caddy (PRD §7.5 step 1).
+#
+#   TAG=v0.1.0 GHCR_ORG=<github-org> docker compose -f docker-compose.prod.yml up -d
+#
+# Every service except caddy sits on the internal network; only 80/443 are published (PRD §13.1).
+# `api` and `worker` are the same image with a different command (PRD §13.4).
+# GROBID is behind the `grobid` profile and off until the Phase 2 quality review (PRD §17 #8):
+#   docker compose --profile grobid up -d
+
+name: thesis-copilot
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN, e.g. app.example.com}
+    depends_on:
+      - web
+      - api
+
+  web:
+    image: ghcr.io/${GHCR_ORG:?set GHCR_ORG}/tc-web:${TAG:?set TAG}
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - api
+
+  api:
+    image: ghcr.io/${GHCR_ORG}/tc-api:${TAG}
+    restart: unless-stopped
+    env_file: .env
+    command: ['node', 'apps/api/dist/main.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    deploy:
+      replicas: 2
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/api/v1/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    image: ghcr.io/${GHCR_ORG}/tc-api:${TAG}
+    restart: unless-stopped
+    env_file: .env
+    command: ['node', 'apps/worker/dist/main.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    deploy:
+      replicas: 2
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-tc}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-tc} -d ${POSTGRES_DB:-tc}']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+
+  grobid:
+    image: lfoppiano/grobid:0.8.1
+    restart: unless-stopped
+    profiles: ['grobid']
+
+  backup:
+    # Nightly pg_dump + mc mirror to off-site storage (PRD §12.1), plus the weekly restore test.
+    image: ghcr.io/${GHCR_ORG}/tc-backup:${TAG}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - backups:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  uptime-kuma:
+    # PRD §14: pings /health. Reachable only through Caddy at /status if you choose to expose it.
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma_data:/app/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:
+  redis_data:
+  minio_data:
+  backups:
+  kuma_data:

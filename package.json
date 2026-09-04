@@ -15,7 +15,8 @@
     "lint:fix": "biome check --write .",
     "db:migrate": "pnpm --filter @tc/db migrate",
     "db:seed": "pnpm --filter @tc/db seed",
-    "ai:verify": "pnpm --filter @tc/ai verify"
+    "ai:verify": "pnpm --filter @tc/ai verify",
+    "db:check": "pnpm --filter @tc/db check"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
@@ -24,7 +25,9 @@
   },
   "pnpm": {
     "overrides": {
-      "fastify": "5.11.3"
+      "fastify": "5.11.3",
+      "postcss": ">=8.5.18",
+      "deepmerge-ts": ">=8.0.0"
     }
   }
 }

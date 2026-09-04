@@ -1,0 +1,53 @@
+import { expect, test } from '@playwright/test';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+/**
+ * Phase 0 smoke — see playwright.config.ts for why this stops short of the editor.
+ */
+
+test('home page renders and states the integrity position', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Thesis Copilot' })).toBeVisible();
+  // PRD §12.3: the marketing surface states the position plainly.
+  await expect(page.getByText('No detector evasion')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+});
+
+test('sign-in screen offers email OTP and asks for an address', async ({ page }) => {
+  await page.goto('/sign-in');
+  await expect(page.getByRole('heading', { name: 'Sign in to Thesis Copilot' })).toBeVisible();
+  const email = page.getByLabel('University or personal email');
+  await expect(email).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Email me a code' })).toBeDisabled();
+  await email.fill('smoke@example.com');
+  await expect(page.getByRole('button', { name: 'Email me a code' })).toBeEnabled();
+});
+
+test('unauthenticated /app redirects to sign-in', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page).toHaveURL(/\/sign-in$/);
+});
+
+test('API health reports every dependency up', async ({ request }) => {
+  const response = await request.get(`${API_URL}/api/v1/health`);
+  expect(response.status()).toBe(200);
+  const body = (await response.json()) as {
+    status: string;
+    checks: Record<string, { status: string }>;
+  };
+  expect(body.status).toBe('ok');
+  for (const name of ['database', 'redis', 'objectStorage', 'aiProvider']) {
+    expect(body.checks[name]?.status, name).toBe('up');
+  }
+});
+
+test('API answers errors as RFC 9457 problem details', async ({ request }) => {
+  const response = await request.get(`${API_URL}/api/v1/documents`);
+  expect(response.status()).toBe(401);
+  expect(response.headers()['content-type']).toContain('application/problem+json');
+  const problem = (await response.json()) as { type: string; status: number; requestId?: string };
+  expect(problem.type).toBe('UNAUTHORIZED');
+  expect(problem.status).toBe(401);
+  expect(problem.requestId).toBeTruthy();
+});

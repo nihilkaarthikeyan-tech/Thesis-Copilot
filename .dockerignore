@@ -1,0 +1,16 @@
+# Keep the build context small and secret-free. The builder stage installs and builds from source.
+.git
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/playwright-report
+**/test-results
+.env
+.env.*
+!.env.example
+*.log
+.claude
+docs
+fixtures

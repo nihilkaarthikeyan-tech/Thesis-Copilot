@@ -1,0 +1,41 @@
+# Web image — Next.js standalone output (PRD §13.4 shape: multi-stage, node:22-alpine, non-root, tini).
+#
+#   docker build -f infra/docker/Dockerfile.web --build-arg NEXT_PUBLIC_API_URL=https://app.example.com -t tc-web .
+#
+# NEXT_PUBLIC_* values are baked into the browser bundle at build time, so the API origin is a
+# build argument, not a runtime variable.
+
+ARG NODE_IMAGE=node:22-alpine
+
+FROM ${NODE_IMAGE} AS deps
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+RUN pnpm fetch
+
+FROM deps AS build
+ARG NEXT_PUBLIC_API_URL
+# NODE_ENV is deliberately NOT set here: pnpm install skips devDependencies under
+# NODE_ENV=production, and turbo, typescript, tailwind and next's own build tooling are devDeps.
+# It is applied to the `next build` line only. CI=true keeps pnpm non-interactive.
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} CI=true
+COPY . .
+RUN pnpm install --offline --frozen-lockfile
+# Build the workspace packages the web app imports, then call next directly: the package's `build`
+# script wraps next in dotenv-cli expecting a root .env, which is (correctly) absent in the image.
+# `@tc/web^...` = only the packages the web app depends on (config, types, ui). Building every
+# package would drag in @tc/db, which needs a generated Prisma client this image never creates.
+RUN pnpm turbo run build --filter='@tc/web^...'  && NODE_ENV=production pnpm --filter @tc/web exec next build
+
+FROM ${NODE_IMAGE} AS runtime
+RUN apk add --no-cache tini wget \
+ && addgroup -S app && adduser -S -G app -u 1001 app
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
+COPY --from=build --chown=app:app /app/apps/web/.next/standalone ./
+COPY --from=build --chown=app:app /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=app:app /app/apps/web/public ./apps/web/public
+USER app
+EXPOSE 3000
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "apps/web/server.js"]
