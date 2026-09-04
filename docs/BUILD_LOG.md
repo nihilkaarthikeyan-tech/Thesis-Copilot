@@ -49,3 +49,30 @@ Started: 2026-09-04 · Sessions: 1
   - `pnpm install` prints a node-gyp warning for `ssh2` (an optional native crypto binding pulled in by
     testcontainers). It is optional, the install completes, and testcontainers falls back to pure JS.
 - UNSURE: —
+
+### Task 0.2 — `CLAUDE.md` and docs
+- Status: DONE
+- Evidence:
+  ```
+  $ wc -l CLAUDE.md
+  101 CLAUDE.md                      # limit is 150 (PRD §0 rule 7)
+
+  $ diff <(sed -n '1831,1936p' docs/PRD.md) <(tail -n +11 docs/ADR/0001-editor.md) \
+      && echo "VERBATIM MATCH OK"
+  VERBATIM MATCH OK — Appendix B copied byte-for-byte
+
+  $ ls docs docs/ADR fixtures/papers
+  docs:     ADR  BUILD_LOG.md  CONSISTENCY_REVIEW.md  PHASES.md  PRD.md
+  docs/ADR: 0001-editor.md
+  fixtures/papers: README.md
+  ```
+- Notes / deviations from PRD:
+  - The two spec files were delivered as `PRD_1.md` and `PHASES.md` at the repo root; moved to
+    `docs/PRD.md` and `docs/PHASES.md` so the paths in PHASES.md's own start prompts resolve.
+  - `docs/CONSISTENCY_REVIEW.md` is the discrepancy log required by PHASES.md's preamble
+    ("the PRD wins and the discrepancy is logged"). It lists 11 places where the PRD contradicts
+    itself and PHASES had to pick a side. These need human decisions; none block Phase 0.
+  - Added `.gitattributes` with `* text=auto eol=lf`. Reason: this is a Windows checkout and the
+    Appendix A prompt files must stay byte-identical to the PRD (§0.3 rule 11); CRLF churn would
+    break that.
+- UNSURE: —
