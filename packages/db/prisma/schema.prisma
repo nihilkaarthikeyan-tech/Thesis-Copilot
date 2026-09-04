@@ -107,6 +107,13 @@ model User {
   institution   Institution? @relation(fields: [institutionId], references: [id])
   timezone      String   @default("Asia/Kolkata")
   createdAt     DateTime @default(now())
+  // --- Better Auth additions (ADR-0002); everything above this line is PRD §8 verbatim ---
+  emailVerified Boolean  @default(false)
+  image         String?
+  updatedAt     DateTime @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  // --- end Better Auth additions ---
   documents     Document[]
   usage         UsageLedger[]
   aiCalls       AiCallLog[]
@@ -415,4 +422,56 @@ model FeatureFlag {
   enabled   Boolean @default(false)
   rules     Json?   // { userIds?: [], institutionIds?: [], plans?: [] }
   updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------------------------
+// Better Auth tables — NOT in PRD §8. See docs/ADR/0002-better-auth-tables.md.
+//
+// PRD §7.2 fixes Better Auth (email OTP + Google) as the auth layer, and Better Auth requires the
+// three tables below plus `emailVerified`, `image` and `updatedAt` on `User`. §8 omits all of
+// them. The shapes were taken from `getAuthTables()` in better-auth@1.7.2 for this exact config,
+// not guessed (PRD §0.3 rule 1). The `User` columns §8 does define are unchanged.
+// ---------------------------------------------------------------------------------------------
+
+model Session {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issuer                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  @@index([userId])
+  @@index([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@index([identifier])
 }

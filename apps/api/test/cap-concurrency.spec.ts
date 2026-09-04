@@ -11,6 +11,8 @@
  * mocked database would prove nothing.
  */
 
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PLAN_LIMITS } from '@tc/config';
 import { PrismaClient } from '@tc/db';
@@ -23,36 +25,54 @@ let prisma: PrismaClient;
 let usage: UsageService;
 let userId: string;
 
-const MIGRATION_SQL = fileURLToPath(
-  new URL('../../../packages/db/prisma/migrations/0001_init/migration.sql', import.meta.url),
+/**
+ * Every migration, in order — the same set `prisma migrate deploy` applies in production. Applying
+ * only the first one silently diverges from the real schema the moment a second migration lands
+ * (it did: 0002 added Better Auth columns to `User`, and the generated client started sending them).
+ */
+const MIGRATIONS_DIR = fileURLToPath(
+  new URL('../../../packages/db/prisma/migrations/', import.meta.url),
 );
+const MIGRATION_FILES = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort()
+  .map((dir) => ({ name: dir, source: join(MIGRATIONS_DIR, dir, 'migration.sql') }));
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('pgvector/pgvector:pg16')
     .withDatabase('tc_test')
     .withUsername('tc')
     .withPassword('tc')
-    // Apply the real migration file, so the test runs against the DDL production runs — including
+    // Apply the real migration files, so the test runs against the DDL production runs — including
     // uuid_generate_v7() and the UsageLedger unique index the ON CONFLICT depends on. Copied in and
-    // run with psql rather than split in JavaScript: the file contains a plpgsql body delimited by
-    // $$, which naive statement splitting would break.
-    .withCopyFilesToContainer([{ source: MIGRATION_SQL, target: '/tmp/migration.sql' }])
+    // run with psql rather than split in JavaScript: 0001 contains a plpgsql body delimited by $$,
+    // which naive statement splitting would break.
+    .withCopyFilesToContainer(
+      MIGRATION_FILES.map((m) => ({
+        source: m.source,
+        target: `/tmp/migrations/${m.name}.sql`,
+      })),
+    )
     .start();
 
-  const applied = await container.exec([
-    'psql',
-    '-U',
-    'tc',
-    '-d',
-    'tc_test',
-    '-v',
-    'ON_ERROR_STOP=1',
-    '-f',
-    '/tmp/migration.sql',
-  ]);
-
-  if (applied.exitCode !== 0) {
-    throw new Error('Migration failed inside the container:\n' + applied.output);
+  for (const migration of MIGRATION_FILES) {
+    const applied = await container.exec([
+      'psql',
+      '-U',
+      'tc',
+      '-d',
+      'tc_test',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-f',
+      `/tmp/migrations/${migration.name}.sql`,
+    ]);
+    if (applied.exitCode !== 0) {
+      throw new Error(
+        `Migration ${migration.name} failed inside the container:\n${applied.output}`,
+      );
+    }
   }
 
   prisma = new PrismaClient({ datasources: { db: { url: container.getConnectionUri() } } });

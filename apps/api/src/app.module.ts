@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule } from './config.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
@@ -39,6 +40,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     MetricsModule,
     FlagsModule,
     UsageModule,
+    DocumentsModule,
     AdminModule,
   ],
 })

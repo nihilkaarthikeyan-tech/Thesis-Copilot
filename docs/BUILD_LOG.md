@@ -373,3 +373,89 @@ Started: 2026-09-04 · Sessions: 1
   - The worker holds no state the API also needs, so PRD §7.5 step 2 (move it to a second VPS) needs
     no code change.
 - UNSURE: —
+
+### Task 0.8 — `apps/web`
+- Status: DONE
+- Evidence (browser, driven end to end against the running API — not curl):
+  ```
+  # Next.js dev server log while the flow ran
+  ✓ Compiled /sign-in in 1448ms (839 modules)          GET /sign-in 200
+  ✓ Compiled /app in 840ms (820 modules)               GET /app 200
+  ✓ Compiled /app/d/[id]/write/[chapterId] in 949ms    GET /app/d/01a06d13-…/write/first 200
+
+  # 1. /sign-in: typed student2@example.com, clicked "Email me a code"
+  page text → "We sent a code to student2@example.com. Six-digit code  Sign in"
+  # API log (dev prints the OTP instead of emailing it)
+  [auth] one-time code for student2@example.com (sign-in): 858168
+  # API request log, origin http://localhost:3000
+  OPTIONS /api/v1/auth/email-otp/send-verification-otp 204
+  POST    /api/v1/auth/email-otp/send-verification-otp 200
+
+  # 2. typed 858168, clicked "Sign in" → landed on /app
+  page text → "Your theses … No theses yet. Create one above."
+  GET /api/v1/documents 200  (session cookie sent by the browser)
+
+  # 3. typed a title, clicked "Create thesis"
+  POST /api/v1/documents 201 → GET /api/v1/documents 200
+  page text → "Low-cost solar dryers for smallholder farms  From a paper · updated 9/4/2026, 9:09:21 PM"
+  link href → /app/d/01a06d13-1088-765f-a575-0341b9c75575/write/first
+
+  # 4. clicked the thesis
+  title → "Editor — coming in week 1 · Thesis Copilot"
+  page text → "Document 01a06d13-1088-765f-a575-0341b9c75575, chapter first. The TipTap editor …"
+
+  # browser console: no errors during the whole flow
+
+  $ psql … SELECT u.email, substring(u.id::text,15,1) user_v7, d.id, substring(d.id::text,15,1) doc_v7, …
+   student2@example.com | 7 | 01a06d13-1088-765f-a575-0341b9c75575 | 7 | … | B_PAPER | has_memory=t
+  $ psql … sessions per user
+   student2@example.com sessions=1
+
+  # session cookie as stored by curl in the API-level run of the same flow:
+  #HttpOnly_localhost  FALSE  /  FALSE  1791127958  better-auth.session_token  u9Xd3fr0c4Uv...
+  #   → HttpOnly, as PRD §12.1 requires
+
+  $ pnpm --filter @tc/web build
+  Route (app)                              Size  First Load JS
+  ┌ ○ /                                   165 B        106 kB
+  ├ ○ /app                              2.29 kB        129 kB
+  ├ ƒ /app/d/[id]/write/[chapterId]       165 B        106 kB
+  └ ○ /sign-in                          2.16 kB        125 kB
+
+  $ pnpm --filter @tc/web typecheck      # clean
+  ```
+- Notes / deviations from PRD:
+  - **PRD §8 cannot run Better Auth; ADR-0002 adds what it needs.** §7.2 fixes Better Auth as the
+    auth layer, but the "verbatim" §8 schema has no `Session`/`Account`/`Verification` tables and
+    `User` lacks `emailVerified`/`image`/`updatedAt`. Migration `0002_better_auth` adds exactly those,
+    with shapes read from `getAuthTables()` in better-auth@1.7.2 for this config rather than from
+    memory. Every §8 column is untouched. Written up in `docs/ADR/0002-better-auth-tables.md` and
+    logged as item 12 in docs/CONSISTENCY_REVIEW.md. **Needs the owner's acknowledgement (§0.3 rule 4).**
+  - Better Auth generates its own random-string ids by default; on a UUID column Postgres refused
+    them ("Error creating UUID, invalid character … found `r`"). Set `advanced.database.generateId:
+    false` so the adapter omits `id` and `uuid_generate_v7()` applies — verified in the adapter
+    source (`unsafeData.id = void 0`) and by the new user's id having a `7` version nibble (§0.2).
+  - Model naming needed no mapping: the adapter's `prisma.verification.create()` in the error trace
+    is Prisma's own camelCase delegate for the PascalCase `Verification` model.
+  - `GET /documents` (list) is not in PRD §9.1, which has no list route; the document list screen in
+    §6.1 needs one. Added, scoped by `ownerId` (§12.1). Every document is created together with its
+    `DocumentMemory` row so nothing downstream handles its absence.
+  - `next build` must run with `NODE_ENV=production`. The shared root `.env` says `development` for
+    the API and worker, and that leaked in through dotenv and broke Next's `/_error` prerender
+    ("<Html> should not be imported"). The web `build`/`start` scripts now pass `-v NODE_ENV=production`.
+  - **Biome nearly broke the API twice.** (a) `biome check --write` rewrote `import { PrismaService }`
+    into `import type { … }` in the Nest services (rule `style/useImportType`); a type-only import
+    emits no runtime reference, Nest's decorator metadata sees `Function`, and boot fails with
+    "can't resolve dependencies … appears to be undefined". Found only by booting the app. Rule now
+    off for `apps/api/**` and `apps/worker/**`. (b) Biome could not parse constructor-parameter
+    decorators at all, so two API files were never linted; `unsafeParameterDecoratorsEnabled` is
+    now on. Tailwind's `@theme` also needed `css.parser.tailwindDirectives`.
+  - The cap-concurrency test applied only migration 0001 to its container; after 0002 the generated
+    client sent `emailVerified` and every test failed in `beforeEach`. It now applies every migration
+    in order, so it can never diverge from what `prisma migrate deploy` runs.
+  - Driving the form with a programmatic value set bypassed React's change handler, so the submit
+    stayed disabled; real keystrokes were required. Not a product bug — noted so the week-1 Playwright
+    E2E types rather than sets values.
+  - shadcn/ui "base" is `components.json`, `cn()` and one Button in the new-york style; the rest
+    arrives with the screens that need it.
+- UNSURE: —

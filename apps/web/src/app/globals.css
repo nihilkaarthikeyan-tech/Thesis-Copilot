@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens, kept deliberately small for Phase 0. PRD §6.4: the editor is a 72ch centred
+ * column, calm, high-contrast, no distractions. Real visual design lands with the editor in week 1.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --color-ink: #1b1b1f;
+  --color-muted: #6b6f76;
+  --color-line: #e3e5e8;
+  --color-paper: #fbfbfa;
+  --color-accent: #2f5bea;
+  --color-accent-ink: #ffffff;
+  --color-warn: #b45309;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-paper text-ink font-sans antialiased;
+}

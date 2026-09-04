@@ -17,6 +17,7 @@ PHASES.md states that the PRD is the source of truth and that any discrepancy is
 | 9 | Guided input `Shift+→` | §16 week 1: "implement Appendix B fully" and B.3 lists `Shift+→` | §16 week 3 "If late: defer guided input" implies week 3 | week 3 (task 3.7) |
 | 10 | Cap completeness (E.2) | E.2: every `AiAction` must have a cap in every plan | §11.3 lists no cap for `EXTRACT`, `OUTLINE`, `STYLE_PROFILE`, … | adds an `unmetered` list so the test can pass |
 | 11 | Required env vars in Phase 0 | §13.3: `GOOGLE_*` and `RAZORPAY_*` are not marked optional; §0.2: refuse to start if missing | Razorpay is Phase 2 (week 11); Google keys may not exist in Phase 0 | stubs Google, defers Razorpay |
+| 12 | Auth tables | §7.2: Better Auth is the auth layer | §8 (canonical schema, "copy verbatim") has no `Session`/`Account`/`Verification` tables and `User` lacks `emailVerified`/`image`/`updatedAt`, all of which Better Auth requires | adds them in migration 0002 — see `docs/ADR/0002-better-auth-tables.md` |
 
 Recommended: fix the PRD in each row (pick A or B) so the two files agree by construction.
 
