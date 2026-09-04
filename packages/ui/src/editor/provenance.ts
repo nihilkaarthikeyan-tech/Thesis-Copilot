@@ -86,7 +86,7 @@ export const Provenance = Mark.create({
     return [
       new Plugin({
         key: provenancePluginKey,
-        appendTransaction(transactions, oldState, newState) {
+        appendTransaction(transactions, _oldState, newState) {
           const docChanged = transactions.some((t) => t.docChanged && !t.getMeta(SKIP_META));
           if (!docChanged) return null;
 

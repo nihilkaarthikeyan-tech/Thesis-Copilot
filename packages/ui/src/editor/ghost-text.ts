@@ -231,7 +231,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
   addOptions() {
     return {
       chapterId: '',
-      request: async function* () {
+      request: () => {
         throw new Error('ghostText: options.request is not configured');
       },
       fadeMs: 400,
@@ -422,7 +422,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
         (instruction) =>
         ({ state, tr, dispatch, editor }) => {
           const ghost = ghostTextKey.getState(state);
-          if (!ghost || ghost.status !== 'idle') return false;
+          if (ghost?.status !== 'idle') return false;
           if (!cursorEligible(state)) return false;
 
           const abort = new AbortController();
@@ -462,12 +462,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
         () =>
         ({ state, tr, dispatch, editor }) => {
           const ghost = ghostTextKey.getState(state);
-          if (
-            !ghost ||
-            ghost.status !== 'shown' ||
-            ghost.anchorPos === null ||
-            !ghost.suggestionId
-          ) {
+          if (ghost?.status !== 'shown' || ghost.anchorPos === null || !ghost.suggestionId) {
             return false;
           }
           const fragment = suggestionToFragment(
@@ -500,12 +495,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
         () =>
         ({ state, tr, dispatch, editor }) => {
           const ghost = ghostTextKey.getState(state);
-          if (
-            !ghost ||
-            ghost.status !== 'shown' ||
-            ghost.anchorPos === null ||
-            !ghost.suggestionId
-          ) {
+          if (ghost?.status !== 'shown' || ghost.anchorPos === null || !ghost.suggestionId) {
             return false;
           }
           const match = /^\S+\s*/.exec(ghost.text);
