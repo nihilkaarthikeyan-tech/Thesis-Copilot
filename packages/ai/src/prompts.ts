@@ -14,14 +14,29 @@
  * file from the PRD and fails if any byte differs.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Absolute path of the prompts directory. Overridable for tests. */
-export const PROMPTS_DIR = join(here, '..', 'prompts');
+/**
+ * Absolute path of the prompts directory.
+ *
+ * Resolved by walking up until a `prompts` folder is found, because this file runs from `src/`
+ * during tests and from `dist/` in the built image, and the prompts sit beside both.
+ */
+function findPromptsDir(from: string): string {
+  let dir = from;
+  for (let i = 0; i < 5; i++) {
+    const candidate = join(dir, 'prompts');
+    if (existsSync(candidate)) return candidate;
+    dir = join(dir, '..');
+  }
+  throw new Error('Could not locate packages/ai/prompts starting from ' + from);
+}
+
+export const PROMPTS_DIR = findPromptsDir(here);
 
 /** The 21 prompt files of Appendix A (PRD §10.5). */
 export const PROMPT_NAMES = [

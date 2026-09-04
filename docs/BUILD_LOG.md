@@ -277,3 +277,73 @@ Started: 2026-09-04 · Sessions: 1
     valid file. Now blanked to `undefined` first. Caught by running `pnpm ai:verify`, not by the
     original tests; a regression test was added.
 - UNSURE: —
+
+### Task 0.6 — `apps/api`
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/api test
+   Test Files  2 passed (2)
+        Tests  20 passed (20)
+
+  # the test PRD §15 names, run against a real Postgres in Testcontainers:
+   ✓ 20 parallel calls at cap−1 let exactly 1 through (PRD §15)          81ms
+   ✓ 20 parallel calls from empty never exceed the cap                    46ms
+   ✓ a refusal reports the cap and when it resets                         17ms
+   ✓ refuses a zero cap without creating a ledger row                      9ms
+   ✓ keeps separate counters per action / per month
+   ✓ refunds a unit when the provider failed / never refunds below zero
+   ✓ holds under concurrency: 50 parallel requests let exactly `max` through
+
+  $ curl -s http://localhost:3001/api/v1/health          # HTTP 200
+  {"status":"ok","uptimeSeconds":11,"checks":{
+    "database":{"status":"up","latencyMs":4},
+    "redis":{"status":"up","latencyMs":1},
+    "objectStorage":{"status":"up","latencyMs":12},
+    "aiProvider":{"status":"up","latencyMs":0}}}
+
+  $ curl -s http://localhost:3001/api/v1/flags
+  {"automaticSuggest":false,"grobid":false,"draftModeStrongTier":true,"livingGapMap":false}
+
+  $ curl -s http://localhost:3001/api/v1/admin/cost-model
+  {"verified":false,"banner":"Cost model: UNVERIFIED — run `pnpm ai:verify` with real provider keys
+   and fill PRD Appendix E.3.","projectedMonthlyInr":99.67,"ceilingInr":100,"withinCeiling":true}
+
+  $ curl -s http://localhost:3001/api/v1/nope            # RFC 9457 problem details
+  {"type":"HTTP_ERROR","title":"NOT_FOUND","status":404,"detail":"Cannot GET /api/v1/nope",
+   "instance":"/api/v1/nope","requestId":"0fa383b2-8a9f-4600-b2df-5f6d0086710b"}
+
+  # rate limit: 25 requests to /api/v1/auth/* in one minute
+  $ for i in $(seq 1 25); do curl -s -o /dev/null -w "%{http_code} " .../auth/methods; done
+  200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
+
+  $ curl -s http://localhost:3001/metrics | head
+  hallucinated_cite_total 0        # plus the rest of §14's metric names
+  ```
+- Notes / deviations from PRD:
+  - **`tsx` cannot run a NestJS app.** It strips types with esbuild, which does not implement
+    `emitDecoratorMetadata`, so every constructor parameter arrives as `undefined` and Nest reports
+    "Nest can't resolve dependencies ... appears to be undefined". Found by running the app, not by
+    typechecking. The API is therefore compiled with `tsc` and run as `node dist/main.js`, and every
+    workspace package now emits `dist/` JavaScript with `main`/`types` pointing at it. That is the
+    shape §13.4's multi-stage Dockerfile needs anyway, so it is not extra work, but it is a change
+    to how the repo builds and is worth knowing before task 0.9.
+  - **Injection tokens must not live in module files.** `ENV` in `config.module.ts` and `AUTH` in
+    `auth.module.ts` created ESM import cycles that resolve to `undefined` at runtime rather than
+    failing at build time. Both moved to their own files (`common/env.token.ts`,
+    `modules/auth/auth.tokens.ts`).
+  - **`@fastify/rate-limit` was removed.** Its `createRateLimit` decorator ignored the per-call
+    `max`/`timeWindow`: the Redis key came out as `fastify-rate-limit-undefinedundefined-127.0.0.1`
+    and every request was refused with 429, including the first. Replaced with ~40 lines in
+    `common/rate-limit.ts` — a fixed-window `INCR` + `EXPIRE NX` pipeline, keyed per user or IP,
+    failing open when Redis is down. §0.3 rule 6: prefer boring. It is covered by tests including a
+    50-way concurrency case, which the plugin never was.
+  - PRD §12.1 asks for rate limiting on "auth and AI endpoints". Only auth exists in Phase 0; the
+    same helper is applied to the AI endpoints when they land in week 3.
+  - `fastify` is pinned to 5.11.3 to match what `@nestjs/platform-fastify@11.2.3` depends on. Two
+    copies in the tree meant plugin type augmentations landed on a different `FastifyInstance` than
+    the app used, and the errors were unreadable. A `pnpm.overrides` entry keeps it single.
+  - Health checks the AI provider by reachability only, never a completion: a health check must not
+    cost money or consume a cap.
+  - `@All('*path')` is not a valid Fastify 5 route; the wildcard must be bare `*`.
+- UNSURE: —

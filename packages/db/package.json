@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -17,7 +21,9 @@
     "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "studio": "dotenv -e ../../.env -- prisma studio",
     "migrate:reset": "dotenv -e ../../.env -- prisma migrate reset --force",
-    "prisma": "dotenv -e ../../.env -- prisma"
+    "prisma": "dotenv -e ../../.env -- prisma",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
@@ -30,5 +36,9 @@
     "tsx": "4.23.13",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
-  }
+  },
+  "files": [
+    "dist",
+    "prisma"
+  ]
 }
