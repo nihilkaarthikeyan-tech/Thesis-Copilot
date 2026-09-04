@@ -586,3 +586,13 @@ Started: 2026-09-04 · Sessions: 1
 Gate G0 cannot be ticked until the human (1) pushes so CI runs, (2) supplies provider keys and runs
 `pnpm ai:verify`, (3) provisions the VPS and secrets for a tag deploy, and (4) reads
 `docs/CONSISTENCY_REVIEW.md` and ADR-0002. Phase 1 week 1 does not start before that.
+
+---
+
+## Owner instruction — 2026-09-04
+
+The owner waived the "never skip a gate" rule: the agent is to build every phase it can without
+pausing for gate sign-off, and to keep `docs/PENDING.md` listing all human-only work so it can be
+done in one batch at the end. Gate checklists remain in `docs/PHASES.md` for the owner to tick
+later against this log. Nothing else in PRD §0.3 changes: no fabricated fixtures, no guessed model
+ids, no filling Appendix E.3.
