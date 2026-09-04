@@ -1,0 +1,49 @@
+{
+  "name": "@tc/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.1.2",
+    "@fastify/multipart": "9.4.0",
+    "@fastify/rate-limit": "10.3.0",
+    "@nestjs/common": "11.2.3",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.2.3",
+    "@nestjs/platform-fastify": "11.2.3",
+    "@prisma/client": "6.19.3",
+    "@tc/ai": "workspace:*",
+    "@tc/config": "workspace:*",
+    "@tc/db": "workspace:*",
+    "better-auth": "1.7.2",
+    "ioredis": "5.11.1",
+    "minio": "8.0.7",
+    "nestjs-pino": "4.6.1",
+    "pino": "9.14.0",
+    "pino-http": "10.5.0",
+    "prom-client": "15.1.3",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "11.2.3",
+    "@testcontainers/postgresql": "12.1.0",
+    "@testcontainers/redis": "12.1.0",
+    "@types/node": "22.20.1",
+    "supertest": "7.2.2",
+    "@types/supertest": "6.0.3",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "unplugin-swc": "1.5.11",
+    "@swc/core": "1.16.1",
+    "vitest": "4.1.11"
+  }
+}
