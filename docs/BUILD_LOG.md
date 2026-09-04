@@ -76,3 +76,64 @@ Started: 2026-09-04 · Sessions: 1
     Appendix A prompt files must stay byte-identical to the PRD (§0.3 rule 11); CRLF churn would
     break that.
 - UNSURE: —
+
+### Task 0.3 — `packages/config`
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/config test
+   Test Files  2 passed (2)
+        Tests  60 passed (60)
+
+  Monthly budget for a fully active STUDENT_MONTHLY user (PRD 11.4)
+  | Item                                           |       Cap x unit |      INR |
+  |------------------------------------------------|------------------|----------|
+  | Assist                                         |     180 x 0.1803 |    32.45 |
+  | Draft                                          |      10 x 2.7144 |    27.14 |
+  | Citation suggestions                           |      30 x 0.3393 |    10.18 |
+  | Chat                                           |      15 x 0.5133 |     7.70 |
+  | Commands                                       |       5 x 1.2789 |     6.39 |
+  | Coherence                                      |       1 x 5.8725 |     5.87 |
+  | One-time ops amortised over 4 months           |                  |     2.94 |
+  | Hosting share (>= 500 users)                   |                  |     7.00 |
+  |------------------------------------------------|------------------|----------|
+  | TOTAL                                          |                  |    99.67 |
+
+  Ceiling: INR 100/user/month (PRD 11). WITHIN by INR 0.33.
+
+  $ pnpm --filter @tc/config typecheck
+  (no output — clean)
+  ```
+- Notes / deviations from PRD:
+  - **The real budget is ₹99.67, not the ₹95.8 printed in §11.4. Headroom is ₹0.33, not ₹4.20.**
+    Appendix E.1 step 5 and E.2 both require the budget to be *derived* from `plans.ts` × `pricing.ts`
+    rather than read off the §11.2 ₹ column, and the derived unit costs come out above the PRD's
+    rounded ones. Per-action, derived vs printed:
+    ASSIST 0.1610/0.15 (+7.3%), CITE 0.3393/0.30 (+13.1%), CHAT 0.5133/0.50 (+2.7%),
+    DRAFT 2.7144/2.50 (+8.6%), COMMAND 1.2789/1.20 (+6.6%), COHERENCE 5.8725/6.00 (-2.1%),
+    EXTRACT 5.742/5.70, OUTLINE 4.176/4.00, STYLE 1.305/1.30, EMBED 0.522/0.50.
+    The check still passes, but any upward price move breaks the ₹100 ceiling immediately.
+    Appendix E.4 lists the levers; turning `draftModeStrongTier` off is the largest.
+    **This needs the owner's attention before the pilot** — it is a real reduction in margin, not a
+    rounding quibble.
+  - §11.2 prices Assist at "0.15 (0.18 avg incl. cache misses)" and §11.4 bills 0.18. A prompt cache
+    is written once per session and read many times, so the write amortises. That is modelled as
+    `pricing.assistCacheMissUplift = 1.12`, applied to Assist only, which is exactly what §11.4 does.
+    Applying the same uplift to every cached action instead would total ₹105.85 and fail the ceiling.
+    `UNSURE:` whether low-frequency cached actions (10 drafts/month) really achieve a cache hit at
+    all, since the provider cache TTL is minutes. If they do not, Draft costs more than modelled here.
+    Resolved by the real `cachedInputTokens` numbers in `AiCallLog` once week 4 telemetry runs.
+  - PRD §11.3 gives cap rows for six actions; Appendix E.2 demands every `AiAction` have a cap in
+    every plan. Both cannot hold (the enum has 14 members). Resolved as PHASES 0.3 directs, with an
+    explicit `UNMETERED_ACTIONS` list, and the E.2 test asserts the two lists partition the enum
+    exactly. Logged as item 10 in docs/CONSISTENCY_REVIEW.md.
+  - §13.3 does not mark `GOOGLE_*`, `RAZORPAY_*` or the email variables optional, but §0.2 says the
+    app must refuse to start without a required variable, and Razorpay does not ship until Phase 2
+    week 11. Resolved by making them conditionally required: the Google pair and the Razorpay triple
+    must be all-set or all-unset, and a mail transport is required only when `NODE_ENV=production`.
+    Needs human sign-off (§0.3 rule 4); logged as item 11 in docs/CONSISTENCY_REVIEW.md.
+  - `AI_FAST_MODEL`, `AI_STRONG_MODEL` and `AI_EMBED_MODEL` are required with no default, so the app
+    cannot start on a guessed model id (§0.3 rule 5). `.env.example` ships them blank on purpose.
+  - zod 4 API confirmed by spike before use (§0.3 rule 1): `error.issues`, `ctx.addIssue({code:'custom'})`,
+    `z.coerce.number()`, `z.email()`.
+- UNSURE: see the cache-hit note above.

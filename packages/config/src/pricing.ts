@@ -1,0 +1,103 @@
+/**
+ * Model prices and cost-model assumptions — PRD §11.1.
+ *
+ * EVERY NUMBER HERE IS UNVERIFIED until a human fills PRD Appendix E.3 (§0.3 rule 5).
+ * `pnpm ai:verify` re-derives the budget from these values and exits non-zero if it exceeds ₹100.
+ * All values are overridable at runtime via `PRICING_OVERRIDE_JSON` so a price change does not
+ * need a deploy.
+ */
+
+import type { Tier } from './actions.js';
+
+/** USD per million tokens, plus the cache multipliers applied to the input price (PRD §11.1). */
+export type ModelPrice = {
+  readonly inputPerM: number;
+  readonly outputPerM: number;
+  /** Cached-block read price as a multiple of `inputPerM` (PRD §11.1: 0.1 × input). */
+  readonly cacheReadMult: number;
+  /** Cached-block write price as a multiple of `inputPerM` (PRD §11.1: 1.25 × input). */
+  readonly cacheWriteMult: number;
+};
+
+export type Pricing = {
+  /** Keyed by the model id in `AI_FAST_MODEL` / `AI_STRONG_MODEL`. Filled after `pnpm ai:verify`. */
+  readonly models: Readonly<Record<string, ModelPrice>>;
+  /** Fallback price per tier, used for the budget before real model ids are verified. */
+  readonly tiers: Readonly<Record<Tier, ModelPrice>>;
+  /** USD per million embedding tokens (PRD §11.1: USD 0.02 / M). */
+  readonly embeddingPerM: number;
+  /** ₹ per USD (PRD §11.1: ₹87 = USD 1). */
+  readonly inrPerUsd: number;
+  /** Whole-VPS monthly cost in ₹, including backups and object storage (PRD §11.1: ₹3,500). */
+  readonly hostingInrPerMonth: number;
+  /** Denominator for the per-user hosting share (PRD §11.1: ₹7 at 500 users). */
+  readonly assumedActiveUsersForHostingShare: number;
+  /**
+   * Multiplier on cached-block reads for Assist that accounts for paying the cache write once per
+   * session rather than once per call. PRD §11.2 states Assist as "0.15 (0.18 avg incl. cache
+   * misses)", a ~12% uplift; this reproduces that line. See `cost.ts` for where it is applied.
+   */
+  readonly assistCacheMissUplift: number;
+  /** Provider docs, printed by `pnpm ai:verify` when a model id cannot be confirmed (Appendix E.1). */
+  readonly providerPricingUrl: string;
+};
+
+/** PRD §11.1: Fast USD 1 / 5 per M in/out; Strong USD 3 / 15; cache read 0.1×, cache write 1.25×. */
+const FAST: ModelPrice = { inputPerM: 1, outputPerM: 5, cacheReadMult: 0.1, cacheWriteMult: 1.25 };
+const STRONG: ModelPrice = {
+  inputPerM: 3,
+  outputPerM: 15,
+  cacheReadMult: 0.1,
+  cacheWriteMult: 1.25,
+};
+
+export const DEFAULT_PRICING: Pricing = {
+  models: {},
+  tiers: { fast: FAST, strong: STRONG },
+  embeddingPerM: 0.02,
+  inrPerUsd: 87,
+  hostingInrPerMonth: 3500,
+  assumedActiveUsersForHostingShare: 500,
+  assistCacheMissUplift: 1.12,
+  providerPricingUrl: 'https://docs.claude.com/en/docs/about-claude/pricing',
+};
+
+/** Shape accepted in `PRICING_OVERRIDE_JSON`. Every field is optional and merges over the default. */
+export type PricingOverride = Partial<Omit<Pricing, 'models' | 'tiers'>> & {
+  models?: Record<string, ModelPrice>;
+  tiers?: Partial<Record<Tier, ModelPrice>>;
+};
+
+export function applyPricingOverride(base: Pricing, override: PricingOverride | null): Pricing {
+  if (!override) return base;
+  return {
+    ...base,
+    ...override,
+    models: { ...base.models, ...(override.models ?? {}) },
+    tiers: { ...base.tiers, ...(override.tiers ?? {}) },
+  };
+}
+
+/** Parses `PRICING_OVERRIDE_JSON`. Throws on malformed JSON so the app refuses to start (§0.2). */
+export function parsePricingOverride(raw: string | undefined): PricingOverride | null {
+  if (!raw || raw.trim() === '') return null;
+  try {
+    return JSON.parse(raw) as PricingOverride;
+  } catch (cause) {
+    throw new Error(
+      `PRICING_OVERRIDE_JSON is not valid JSON. Fix it or unset it. Original error: ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`,
+    );
+  }
+}
+
+/**
+ * Price for a model id, falling back to its tier price when the id is not in the table.
+ * `pnpm ai:verify` asserts an entry exists for each configured id (Appendix E.1 step 4), so the
+ * fallback only applies before verification.
+ */
+export function priceFor(pricing: Pricing, tier: Tier, modelId?: string): ModelPrice {
+  if (modelId && pricing.models[modelId]) return pricing.models[modelId];
+  return pricing.tiers[tier];
+}
