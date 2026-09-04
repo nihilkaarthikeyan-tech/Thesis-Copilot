@@ -38,7 +38,7 @@ describe('queue configuration', () => {
 
 describe('a job that throws', () => {
   it('is retried three times and then lands in the failed set', async () => {
-    const queueName = QUEUE_NOOP + '-failing-' + Date.now();
+    const queueName = `${QUEUE_NOOP}-failing-${Date.now()}`;
     const queue = new Queue(queueName, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
     const events = new QueueEvents(queueName, { connection: connection.duplicate() });
     await events.waitUntilReady();
@@ -82,7 +82,7 @@ describe('a job that throws', () => {
   });
 
   it('a job that succeeds completes on the first attempt', async () => {
-    const queueName = QUEUE_NOOP + '-ok-' + Date.now();
+    const queueName = `${QUEUE_NOOP}-ok-${Date.now()}`;
     const queue = new Queue(queueName, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 
     let runs = 0;

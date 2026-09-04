@@ -42,7 +42,7 @@ export async function checkRateLimit(
 ): Promise<RateLimitVerdict> {
   // The window is part of the key, so a window rolls over by moving to a new key. No cleanup needed.
   const window = Math.floor(Date.now() / (rule.windowSeconds * 1000));
-  const key = 'rl:' + scope + ':' + identity + ':' + window;
+  const key = `rl:${scope}:${identity}:${window}`;
 
   try {
     const results = await redis.multi().incr(key).expire(key, rule.windowSeconds, 'NX').exec();

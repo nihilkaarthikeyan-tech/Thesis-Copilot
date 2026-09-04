@@ -29,7 +29,7 @@ describe('Appendix E.2 — cost self-check', () => {
     const budget = computeMonthlyBudget('STUDENT_MONTHLY');
 
     // Printed so the §11.4 table appears in CI output and can be pasted into the build log.
-    console.log('\n' + formatBudget(budget) + '\n');
+    console.log(`\n${formatBudget(budget)}\n`);
 
     expect(budget.withinCeiling).toBe(true);
     expect(budget.totalInr).toBeLessThanOrEqual(100);
@@ -51,8 +51,8 @@ describe('Appendix E.2 — cost self-check', () => {
     for (const plan of PLANS) {
       for (const action of METERED_ACTIONS) {
         const cap = PLAN_LIMITS[plan].caps[action];
-        expect(cap, plan + '.' + action + ' has no cap').toBeTypeOf('number');
-        expect(cap, plan + '.' + action + ' cap is negative').toBeGreaterThanOrEqual(0);
+        expect(cap, `${plan}.${action} has no cap`).toBeTypeOf('number');
+        expect(cap, `${plan}.${action} cap is negative`).toBeGreaterThanOrEqual(0);
       }
     }
   });
@@ -64,8 +64,8 @@ describe('Appendix E.2 — cost self-check', () => {
     for (const action of AI_ACTIONS) {
       const inMetered = metered.has(action);
       const inUnmetered = unmetered.has(action);
-      expect(inMetered || inUnmetered, action + ' is in neither list').toBe(true);
-      expect(inMetered && inUnmetered, action + ' is in both lists').toBe(false);
+      expect(inMetered || inUnmetered, `${action} is in neither list`).toBe(true);
+      expect(inMetered && inUnmetered, `${action} is in both lists`).toBe(false);
       expect(isMetered(action)).toBe(inMetered);
     }
 
@@ -139,7 +139,7 @@ describe('§11.2 — derived unit costs vs the PRD table', () => {
   ];
 
   for (const { action, derived, prd } of cases) {
-    it(action + ' derives ₹' + derived + ' (PRD prints ₹' + prd + ')', () => {
+    it(`${action} derives ₹${derived} (PRD prints ₹${prd})`, () => {
       const profile = ACTION_PROFILES[action];
       const inr = microToInr(
         computeCallCost({
@@ -152,10 +152,10 @@ describe('§11.2 — derived unit costs vs the PRD table', () => {
         }),
       );
 
-      expect(inr, action + ' derived cost changed').toBeCloseTo(derived, 4);
+      expect(inr, `${action} derived cost changed`).toBeCloseTo(derived, 4);
       expect(
         Math.abs(inr - prd) / prd,
-        action + ' drifted from the PRD table: derived ₹' + inr.toFixed(4),
+        `${action} drifted from the PRD table: derived ₹${inr.toFixed(4)}`,
       ).toBeLessThan(PRD_TOLERANCE);
     });
   }

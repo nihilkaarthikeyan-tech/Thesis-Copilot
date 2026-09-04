@@ -88,7 +88,7 @@ export class LlmValidationError extends Error {
     readonly issues: unknown,
     readonly raw: string,
   ) {
-    super('The model returned output that does not match the schema for action ' + action);
+    super(`The model returned output that does not match the schema for action ${action}`);
     this.name = 'LlmValidationError';
   }
 }

@@ -80,7 +80,7 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
         type: 'RATE_LIMITED',
         title: 'Too many requests',
         status: 429,
-        detail: 'Too many sign-in attempts. Try again in ' + verdict.retryAfter + ' seconds.',
+        detail: `Too many sign-in attempts. Try again in ${verdict.retryAfter} seconds.`,
         instance: request.url,
         requestId: request.id,
       });

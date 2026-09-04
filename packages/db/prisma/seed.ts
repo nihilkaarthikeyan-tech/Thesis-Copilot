@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     update: { role: 'SUPERADMIN' },
     create: { email: adminEmail, name: 'Superadmin', role: 'SUPERADMIN' },
   });
-  console.log('user       SUPERADMIN  ' + admin.email + '  (' + admin.id + ')');
+  console.log(`user       SUPERADMIN  ${admin.email}  (${admin.id})`);
 
   for (const flag of FEATURE_FLAGS) {
     // `update: {}` so a human toggling a flag in the admin UI is not reverted by a re-seed.
@@ -54,9 +54,7 @@ async function main(): Promise<void> {
       update: {},
       create: { key: flag.key, enabled: flag.enabled },
     });
-    console.log(
-      'flag       ' + row.key.padEnd(22) + String(row.enabled).padEnd(6) + '# ' + flag.note,
-    );
+    console.log(`flag       ${row.key.padEnd(22)}${String(row.enabled).padEnd(6)}# ${flag.note}`);
   }
 
   const spec = readTemplateSpec();
@@ -67,7 +65,7 @@ async function main(): Promise<void> {
     ? await prisma.institutionTemplate.update({ where: { id: existing.id }, data: { spec } })
     : await prisma.institutionTemplate.create({ data: { name: 'EXAMPLE_IN_UNIVERSITY', spec } });
 
-  console.log('template   ' + template.name + '  (' + template.id + ')');
+  console.log(`template   ${template.name}  (${template.id})`);
   console.log(
     '           placeholder values for common Indian university conventions. PRD D.3.1 requires\n' +
       '           replacing them with a real university guideline before any real export.',

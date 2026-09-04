@@ -196,14 +196,14 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
   const lines: BudgetLine[] = [
     ...metered,
     {
-      label: 'One-time ops amortised over ' + ONE_TIME_AMORTISATION_MONTHS + ' months',
+      label: `One-time ops amortised over ${ONE_TIME_AMORTISATION_MONTHS} months`,
       kind: 'fixed',
       count: 1,
       unitMicroInr: amortised,
       totalMicroInr: amortised,
     },
     {
-      label: 'Hosting share (>= ' + pricing.assumedActiveUsersForHostingShare + ' users)',
+      label: `Hosting share (>= ${pricing.assumedActiveUsersForHostingShare} users)`,
       kind: 'fixed',
       count: 1,
       unitMicroInr: hostingShare,
@@ -229,15 +229,13 @@ export function formatBudget(budget: MonthlyBudget): string {
   const rows = budget.lines.map((line) => {
     const unit = microToInr(line.unitMicroInr).toFixed(4);
     const total = microToInr(line.totalMicroInr).toFixed(2);
-    const capCol = line.kind === 'fixed' ? '' : line.count + ' x ' + unit;
-    return (
-      '| ' + line.label.padEnd(46) + ' | ' + capCol.padStart(16) + ' | ' + total.padStart(8) + ' |'
-    );
+    const capCol = line.kind === 'fixed' ? '' : `${line.count} x ${unit}`;
+    return `| ${line.label.padEnd(46)} | ${capCol.padStart(16)} | ${total.padStart(8)} |`;
   });
-  const sep = '|' + dash(48) + '|' + dash(18) + '|' + dash(10) + '|';
+  const sep = `|${dash(48)}|${dash(18)}|${dash(10)}|`;
   const head = [
-    'Monthly budget for a fully active ' + budget.plan + ' user (PRD 11.4)',
-    '| ' + 'Item'.padEnd(46) + ' | ' + 'Cap x unit'.padStart(16) + ' | ' + 'INR'.padStart(8) + ' |',
+    `Monthly budget for a fully active ${budget.plan} user (PRD 11.4)`,
+    `| ${'Item'.padEnd(46)} | ${'Cap x unit'.padStart(16)} | ${'INR'.padStart(8)} |`,
     sep,
   ];
   const foot = [

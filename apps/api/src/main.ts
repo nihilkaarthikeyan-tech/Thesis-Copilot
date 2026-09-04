@@ -38,7 +38,7 @@ async function bootstrap(): Promise<void> {
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port, '0.0.0.0');
 
-  app.get(Logger).log('API listening on http://0.0.0.0:' + port + '/api/v1');
+  app.get(Logger).log(`API listening on http://0.0.0.0:${port}/api/v1`);
 }
 
 bootstrap().catch((error: unknown) => {

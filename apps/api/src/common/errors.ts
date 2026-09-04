@@ -40,7 +40,7 @@ export class CapExceededError extends AppError {
       'CAP_EXCEEDED',
       'Monthly limit reached',
       HttpStatus.TOO_MANY_REQUESTS,
-      'You have used all ' + cap + ' ' + action + ' actions for this month.',
+      `You have used all ${cap} ${action} actions for this month.`,
       { action, cap, resetsAt: resetsAt.toISOString() },
     );
   }
@@ -53,7 +53,7 @@ export class CapExceededError extends AppError {
  */
 export class NotFoundError extends AppError {
   constructor(resource: string) {
-    super('NOT_FOUND', 'Not found', HttpStatus.NOT_FOUND, resource + ' was not found.');
+    super('NOT_FOUND', 'Not found', HttpStatus.NOT_FOUND, `${resource} was not found.`);
   }
 }
 

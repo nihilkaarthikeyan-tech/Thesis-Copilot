@@ -28,18 +28,14 @@ const optionalNumber = z.preprocess(
   z.coerce.number().int().positive().optional(),
 );
 
-const requiredString = (label: string) =>
-  z
-    .string()
-    .trim()
-    .min(1, label + ' is required');
+const requiredString = (label: string) => z.string().trim().min(1, `${label} is required`);
 
 const url = (label: string) =>
   z
     .string()
     .trim()
-    .min(1, label + ' is required')
-    .refine((v) => URL.canParse(v), label + ' must be a valid URL');
+    .min(1, `${label} is required`)
+    .refine((v) => URL.canParse(v), `${label} must be a valid URL`);
 
 export const envSchema = z
   .object({
@@ -190,7 +186,7 @@ export class EnvValidationError extends Error {
   constructor(readonly issues: readonly string[]) {
     super(
       'Invalid environment. The app will not start.\n' +
-        issues.map((i) => '  - ' + i).join('\n') +
+        issues.map((i) => `  - ${i}`).join('\n') +
         '\nSee .env.example and PRD §13.3.',
     );
     this.name = 'EnvValidationError';
@@ -206,7 +202,7 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
   if (!result.success) {
     const issues = result.error.issues.map((issue) => {
       const path = issue.path.join('.') || '(root)';
-      return path + ': ' + issue.message;
+      return `${path}: ${issue.message}`;
     });
     throw new EnvValidationError(issues);
   }

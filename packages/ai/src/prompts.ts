@@ -33,7 +33,7 @@ function findPromptsDir(from: string): string {
     if (existsSync(candidate)) return candidate;
     dir = join(dir, '..');
   }
-  throw new Error('Could not locate packages/ai/prompts starting from ' + from);
+  throw new Error(`Could not locate packages/ai/prompts starting from ${from}`);
 }
 
 export const PROMPTS_DIR = findPromptsDir(here);
@@ -109,11 +109,11 @@ export function loadPrompt(name: PromptName, dir: string = PROMPTS_DIR): LoadedP
   const cached = dir === PROMPTS_DIR ? cache.get(name) : undefined;
   if (cached) return cached;
 
-  const raw = readFileSync(join(dir, name + '.md'), 'utf8');
+  const raw = readFileSync(join(dir, `${name}.md`), 'utf8');
   const blocks = extractFencedBlocks(raw);
 
   if (blocks.length === 0) {
-    throw new Error('Prompt file ' + name + '.md contains no fenced block');
+    throw new Error(`Prompt file ${name}.md contains no fenced block`);
   }
 
   const prompt: LoadedPrompt = {

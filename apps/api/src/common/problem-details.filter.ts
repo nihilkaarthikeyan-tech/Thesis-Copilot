@@ -31,7 +31,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     if (problem.status >= 500) {
       this.logger.error(
         { err: exception, requestId, path: request.url },
-        'Unhandled error: ' + problem.title,
+        `Unhandled error: ${problem.title}`,
       );
     }
 

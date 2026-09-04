@@ -100,12 +100,12 @@ async function main(): Promise<void> {
   console.log(line('='));
   console.log('pnpm ai:verify — PRD Appendix E.1');
   console.log(line('='));
-  console.log('AI_PROVIDER    ' + env.AI_PROVIDER);
-  console.log('EMBED_PROVIDER ' + env.EMBED_PROVIDER);
-  console.log('AI_FAST_MODEL  ' + env.AI_FAST_MODEL);
-  console.log('AI_STRONG_MODEL ' + env.AI_STRONG_MODEL);
-  console.log('AI_EMBED_MODEL ' + env.AI_EMBED_MODEL);
-  console.log('EMBED_DIMS     ' + env.EMBED_DIMS);
+  console.log(`AI_PROVIDER    ${env.AI_PROVIDER}`);
+  console.log(`EMBED_PROVIDER ${env.EMBED_PROVIDER}`);
+  console.log(`AI_FAST_MODEL  ${env.AI_FAST_MODEL}`);
+  console.log(`AI_STRONG_MODEL ${env.AI_STRONG_MODEL}`);
+  console.log(`AI_EMBED_MODEL ${env.AI_EMBED_MODEL}`);
+  console.log(`EMBED_DIMS     ${env.EMBED_DIMS}`);
 
   if (env.AI_PROVIDER === 'mock' || env.EMBED_PROVIDER === 'mock') {
     console.log('');
@@ -129,13 +129,13 @@ async function main(): Promise<void> {
       probes.push(await probeTier(llm, tier));
     } catch (cause) {
       console.error('');
-      console.error('FAILED: the provider rejected the ' + tier + ' model id.');
-      console.error('  configured: ' + llm.modelIdFor(tier));
-      console.error('  error:      ' + (cause instanceof Error ? cause.message : String(cause)));
+      console.error(`FAILED: the provider rejected the ${tier} model id.`);
+      console.error(`  configured: ${llm.modelIdFor(tier)}`);
+      console.error(`  error:      ${cause instanceof Error ? cause.message : String(cause)}`);
       console.error('');
       console.error('This script does not guess model ids (PRD §0.3 rule 5).');
       console.error(
-        'Choose one from the provider and set it in .env: ' + pricing.providerPricingUrl,
+        `Choose one from the provider and set it in .env: ${pricing.providerPricingUrl}`,
       );
       process.exit(1);
     }
@@ -146,13 +146,13 @@ async function main(): Promise<void> {
     const [vector] = await embeddings.embed(['three word input']);
     embeddingLength = vector?.length ?? 0;
     console.log(
-      '  embed  ' + embeddings.modelId.padEnd(34) + 'dims=' + String(embeddingLength).padStart(5),
+      `  embed  ${embeddings.modelId.padEnd(34)}dims=${String(embeddingLength).padStart(5)}`,
     );
   } catch (cause) {
     console.error('');
     console.error('FAILED: the embedding call did not succeed.');
-    console.error('  configured: ' + embeddings.modelId);
-    console.error('  error:      ' + (cause instanceof Error ? cause.message : String(cause)));
+    console.error(`  configured: ${embeddings.modelId}`);
+    console.error(`  error:      ${cause instanceof Error ? cause.message : String(cause)}`);
     process.exit(1);
   }
 
@@ -211,8 +211,8 @@ async function main(): Promise<void> {
       );
     }
   }
-  console.log('  embeddings' + ' '.repeat(24) + '$' + pricing.embeddingPerM + '/M');
-  console.log('  exchange rate' + ' '.repeat(21) + 'INR ' + pricing.inrPerUsd + ' = USD 1');
+  console.log(`  embeddings${' '.repeat(24)}$${pricing.embeddingPerM}/M`);
+  console.log(`  exchange rate${' '.repeat(21)}INR ${pricing.inrPerUsd} = USD 1`);
   console.log(
     '  hosting' +
       ' '.repeat(27) +
@@ -225,10 +225,10 @@ async function main(): Promise<void> {
 
   if (missing.length > 0) {
     console.log('');
-    console.log('!! No per-model pricing entry for: ' + missing.join(', '));
+    console.log(`!! No per-model pricing entry for: ${missing.join(', ')}`);
     console.log('!! The budget below uses tier fallback prices. Add real entries to');
     console.log(
-      '!! packages/config/pricing.ts (or PRICING_OVERRIDE_JSON) from ' + pricing.providerPricingUrl,
+      `!! packages/config/pricing.ts (or PRICING_OVERRIDE_JSON) from ${pricing.providerPricingUrl}`,
     );
   }
 
@@ -303,7 +303,7 @@ async function main(): Promise<void> {
   }
 
   console.log('');
-  console.log('OK: STUDENT budget INR ' + budget.totalInr.toFixed(2) + ' <= INR 100.');
+  console.log(`OK: STUDENT budget INR ${budget.totalInr.toFixed(2)} <= INR 100.`);
 }
 
 main().catch((error: unknown) => {

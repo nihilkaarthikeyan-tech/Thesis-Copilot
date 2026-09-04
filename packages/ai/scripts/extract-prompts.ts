@@ -45,7 +45,7 @@ export function extractPrompts(prdText: string): ExtractedPrompt[] {
   const start = lines.findIndex((l) => l.startsWith('## Appendix A'));
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## Appendix B'));
   if (start === -1 || end === -1) {
-    throw new Error('Could not locate Appendix A in ' + PRD_PATH);
+    throw new Error(`Could not locate Appendix A in ${PRD_PATH}`);
   }
 
   // Heading lines inside fenced code blocks must not be treated as headings.
@@ -66,7 +66,7 @@ export function extractPrompts(prdText: string): ExtractedPrompt[] {
     if (!match?.[1]) continue; // container heading such as "### A.12 Coherence checks"
 
     // Trim only trailing blank lines, so the file ends with exactly one newline.
-    const body = lines.slice(from, to).join('\n').replace(/\n+$/, '') + '\n';
+    const body = `${lines.slice(from, to).join('\n').replace(/\n+$/, '')}\n`;
     prompts.push({ filename: match[1], heading, body });
   }
 
@@ -113,5 +113,5 @@ if (invokedDirectly) {
   for (const p of written) {
     console.log(p.filename.padEnd(22) + p.heading.replace(/\*\*/g, '').trim());
   }
-  console.log('\n' + written.length + ' prompt files written to packages/ai/prompts/');
+  console.log(`\n${written.length} prompt files written to packages/ai/prompts/`);
 }
