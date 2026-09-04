@@ -96,6 +96,14 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-Phase 0 (scaffold). Nothing user-facing is built yet. Do not start Phase 1 work — including the
-editor, retrieval, or any Appendix A prompt call other than `pnpm ai:verify` — until Gate G0 is
-ticked by the human in `docs/PHASES.md`.
+Phase 0 (scaffold) is built and committed as of 2026-09-04; `docs/BUILD_LOG.md` has the evidence
+per task and a Gate G0 self-check. Sign-in (email OTP), the thesis list and the `/admin` banner
+work; the editor route is a placeholder. **Gate G0 is not ticked.** It is blocked on things only
+the human can do: push so CI runs, supply provider keys and run `pnpm ai:verify`, provision the
+VPS + secrets for a tag deploy, and review `docs/CONSISTENCY_REVIEW.md` and `docs/ADR/0002-*`.
+Do not start Phase 1 work — the editor, retrieval, or any Appendix A prompt call other than
+`pnpm ai:verify` — until G0 is ticked in `docs/PHASES.md`.
+
+Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
+continue from the next one. Before running `prisma generate` on Windows, stop the API — it holds
+the engine DLL open.
