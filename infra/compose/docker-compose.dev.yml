@@ -1,0 +1,76 @@
+# Local development services — PRD §13.6.
+#
+#   docker compose -f infra/compose/docker-compose.dev.yml up -d
+#
+# Ports are shifted off the defaults so this stack does not collide with other projects running on
+# the same machine (5432 / 6379 / 9000 are commonly already taken). The values here must match
+# .env.example.
+#
+# Production is a different file: docker-compose.prod.yml (PRD §13.2).
+
+name: thesis-copilot-dev
+
+services:
+  postgres:
+    # PRD §7.2: PostgreSQL 16 + pgvector. This image ships the `vector` extension.
+    # It does NOT ship `pg_uuidv7`, so the migration defines uuid_generate_v7() in SQL instead
+    # (checked, not assumed — PRD §0.3 rule 1).
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tc
+      POSTGRES_PASSWORD: tc
+      POSTGRES_DB: tc
+    ports:
+      - '5434:5432'
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tc -d tc']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6381:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: tcadmin
+      MINIO_ROOT_PASSWORD: tc-secret-key
+    ports:
+      - '9002:9000' # S3 API  -> S3_ENDPOINT
+      - '9003:9001' # console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  gotenberg:
+    # PDF export (PRD §7.2). Not used until Phase 3, but part of the dev stack per §13.6.
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    ports:
+      - '3002:3000'
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:

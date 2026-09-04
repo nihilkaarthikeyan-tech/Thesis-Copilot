@@ -137,3 +137,75 @@ Started: 2026-09-04 · Sessions: 1
   - zod 4 API confirmed by spike before use (§0.3 rule 1): `error.issues`, `ctx.addIssue({code:'custom'})`,
     `z.coerce.number()`, `z.email()`.
 - UNSURE: see the cache-hit note above.
+
+### Task 0.4 — `packages/db`
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/db run migrate
+  1 migration found in prisma/migrations
+  Applying migration `0001_init`
+  All migrations have been successfully applied.
+
+  $ docker exec -i thesis-copilot-dev-postgres-1 psql -U tc -d tc -c "\dx"
+     Name   | Version |   Schema   |                     Description
+  ----------+---------+------------+------------------------------------------------------
+   pgcrypto | 1.3     | public     | cryptographic functions
+   plpgsql  | 1.0     | pg_catalog | PL/pgSQL procedural language
+   vector   | 0.8.6   | public     | vector data type and ivfflat and hnsw access methods
+
+  $ psql -c "SELECT uuid_generate_v7();"
+   01a06ce6-a663-77c6-a07e-2a851dd72f55
+
+  $ psql -c "SELECT indexname FROM pg_indexes WHERE indexname LIKE '%hnsw%';"
+   source_chunk_embedding_hnsw    (m='16', ef_construction='64')
+   chapter_chunk_embedding_hnsw
+
+  $ psql -c "SELECT count(*) FROM information_schema.tables
+             WHERE table_schema='public' AND table_type='BASE TABLE';"
+   23
+
+  $ pnpm --filter @tc/db run seed
+  user       SUPERADMIN  admin@example.com  (01a06ce7-6a2b-79b8-af8d-5490357d97f4)
+  flag       automaticSuggest      false # Opt-in, ships Phase 2 week 9 (FR-4.6)
+  flag       grobid                false # Off until the Phase 2 quality review (FR-1.7, §17 #8)
+  flag       draftModeStrongTier   true  # Draft on the Strong tier (§10.1, A.2)
+  flag       livingGapMap          false # Phase 3 (§4)
+  template   EXAMPLE_IN_UNIVERSITY  (01a06ce7-6a49-774e-8410-757d89a38f97)
+  Seed complete.
+
+  # run twice — idempotent
+  $ psql -c "SELECT (SELECT count(*) FROM \"User\") users,
+                    (SELECT count(*) FROM \"FeatureFlag\") flags,
+                    (SELECT count(*) FROM \"InstitutionTemplate\") templates;"
+   users | flags | templates
+   ------+-------+-----------
+       1 |     4 |         1
+
+  $ pnpm --filter @tc/db test
+   Test Files  1 passed (1)   Tests  2 passed (2)      # AiAction parity with packages/config
+  ```
+- Notes / deviations from PRD:
+  - `pg_uuidv7` was **checked, not assumed** (§0.3 rule 1). The `pgvector/pgvector:pg16` image ships
+    `vector` but not `pg_uuidv7`, so §8's alternative was taken and `uuid_generate_v7()` is written
+    in plain SQL. `pgcrypto` is enabled for `gen_random_bytes`.
+    First implementation was wrong — it produced version `0` and a bad variant nibble. Caught by
+    asserting on the output rather than trusting it. Verified after the fix over 5,000 rows:
+    version nibble `7`, variant in `8|9|a|b`, all unique, and ordered across milliseconds.
+  - `schema.prisma` is PRD §8 verbatim except for syntax: the PRD compresses `generator`,
+    `datasource` and every `enum` onto one line with semicolons, which Prisma cannot parse. Field
+    names, types, attributes, defaults, relations, indexes and comments are untouched.
+  - `InstitutionTemplate.spec` for the seed uses the **Appendix D.3.1** shape (`marginsMm`, `sizePt`,
+    object captions), not the §9.4 shape (`margins`, `size`, string captions), as PHASES 0.4
+    directs. The PRD gives two incompatible shapes and the model comment points at §9.4.
+    Item 3 in docs/CONSISTENCY_REVIEW.md — needs a human decision before the export work in Phase 2.
+  - Prisma resolves `.env` next to its own package, not the workspace root, so the `@tc/db` scripts
+    run through `dotenv-cli` with `-e ../../.env`. Added `dotenv-cli@11.0.0`.
+  - `infra/compose/docker-compose.dev.yml` was written here rather than in task 0.9, because 0.4's
+    verification requires a running Postgres. The rest of 0.9 is still outstanding.
+    MinIO rejects a root user shorter than 3 characters, so the dev credentials are
+    `tcadmin` / `tc-secret-key`; `.env.example` matches.
+  - `.env.example` was rewritten to put every comment on its own line. Trailing comments after a
+    value are kept verbatim by some parsers, which would have put "# Postgres 16 + pgvector..."
+    inside `DATABASE_URL`.
+- UNSURE: —

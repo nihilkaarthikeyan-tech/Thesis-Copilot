@@ -1,0 +1,121 @@
+{
+  "name": "EXAMPLE_IN_UNIVERSITY",
+  "page": {
+    "size": "A4",
+    "marginsMm": {
+      "top": 25,
+      "bottom": 25,
+      "left": 38,
+      "right": 25
+    }
+  },
+  "font": {
+    "body": "Times New Roman",
+    "sizePt": 12,
+    "lineSpacing": 1.5,
+    "paragraphSpacingPt": 6,
+    "justify": true
+  },
+  "headings": {
+    "chapter": {
+      "sizePt": 16,
+      "bold": true,
+      "caps": true,
+      "align": "center",
+      "pageBreakBefore": true,
+      "label": "CHAPTER {n}"
+    },
+    "h2": {
+      "sizePt": 14,
+      "bold": true,
+      "numbering": "{chapter}.{n}"
+    },
+    "h3": {
+      "sizePt": 12,
+      "bold": true,
+      "italic": false,
+      "numbering": "{chapter}.{n}.{m}"
+    }
+  },
+  "numbering": {
+    "frontMatter": "lowerRoman",
+    "body": "decimal",
+    "bodyStartsAt": "CHAPTER_1",
+    "position": "bottom-center"
+  },
+  "frontMatter": [
+    {
+      "id": "TITLE_PAGE",
+      "required": true,
+      "fields": [
+        "title",
+        "studentName",
+        "rollNo",
+        "degree",
+        "department",
+        "institution",
+        "guideName",
+        "monthYear"
+      ]
+    },
+    {
+      "id": "CERTIFICATE",
+      "required": true,
+      "fields": ["guideName", "hodName"]
+    },
+    {
+      "id": "DECLARATION",
+      "required": true,
+      "fields": ["studentName", "date"]
+    },
+    {
+      "id": "ACKNOWLEDGEMENTS",
+      "required": false
+    },
+    {
+      "id": "ABSTRACT",
+      "required": true,
+      "maxWords": 300
+    },
+    {
+      "id": "TOC",
+      "required": true
+    },
+    {
+      "id": "LIST_OF_FIGURES",
+      "required": "ifAny"
+    },
+    {
+      "id": "LIST_OF_TABLES",
+      "required": "ifAny"
+    },
+    {
+      "id": "ABBREVIATIONS",
+      "required": "ifAny"
+    }
+  ],
+  "captions": {
+    "figure": {
+      "format": "Figure {chapter}.{n}: {caption}",
+      "position": "below"
+    },
+    "table": {
+      "format": "Table {chapter}.{n}: {caption}",
+      "position": "above"
+    }
+  },
+  "bibliography": {
+    "style": "ieee",
+    "title": "REFERENCES",
+    "placement": "END",
+    "pageBreakBefore": true
+  },
+  "appendices": {
+    "label": "APPENDIX {A}",
+    "after": "REFERENCES"
+  },
+  "headerFooter": {
+    "header": "",
+    "footer": ""
+  }
+}

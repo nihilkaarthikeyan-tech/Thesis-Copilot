@@ -1,0 +1,418 @@
+// Thesis Copilot data model.
+//
+// Copied from PRD §8 ("Data model (Prisma)"), which is canonical. The only edits are syntactic:
+// the PRD compresses `generator`, `datasource` and the `enum` blocks onto single lines with
+// semicolons to save space, which Prisma cannot parse. Field names, types, attributes, defaults,
+// relations, indexes and comments are unchanged. Any real change needs an ADR (PRD §0.3 rule 4).
+//
+// Vector columns use `Unsupported("vector(1024)")`; the HNSW indexes are created in the
+// hand-written migration `migrations/0001_init/migration.sql`.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+enum Role {
+  STUDENT
+  GUIDE
+  INSTITUTION_ADMIN
+  SUPERADMIN
+}
+enum Plan {
+  FREE_TRIAL
+  STUDENT_MONTHLY
+  STUDENT_ANNUAL
+  INSTITUTION_SEAT
+}
+enum EntryPath {
+  A_TOPIC
+  B_PAPER
+}
+enum Template {
+  STEM_EMPIRICAL
+  QUALITATIVE
+  COMPILATION
+}
+enum SourceStatus {
+  PENDING
+  RESOLVED
+  UNRESOLVED
+  FAILED
+}
+enum GroundingLevel {
+  NONE
+  ABSTRACT
+  FULL_TEXT
+}
+enum Provenance {
+  HUMAN
+  ASSIST
+  DRAFT
+  COMMAND
+  HUMAN_EDITED
+}
+enum AiAction {
+  ASSIST
+  DRAFT
+  CITE
+  CHAT
+  COMMAND
+  EXTRACT
+  OUTLINE
+  STYLE_PROFILE
+  SEARCH_QUERIES
+  COHERENCE
+  CLASSIFY_COMMENT
+  SCOPED_REVISION
+  PARSE_CITATION
+  EMBED
+}
+enum FlagType {
+  TERM_DRIFT
+  CLAIM_CONTRADICTION
+  UNSUPPORTED_CLAIM
+  CITATION_INTEGRITY
+  OUTLINE_DRIFT
+}
+enum Severity {
+  INFO
+  WARN
+  ERROR
+}
+enum CommentClass {
+  SUBSTANTIVE
+  CLARIFICATION
+  MECHANICAL
+}
+enum CommentStatus {
+  OPEN
+  ACCEPTED
+  EDITED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  email         String   @unique
+  name          String?
+  role          Role     @default(STUDENT)
+  plan          Plan     @default(FREE_TRIAL)
+  institutionId String?  @db.Uuid
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  timezone      String   @default("Asia/Kolkata")
+  createdAt     DateTime @default(now())
+  documents     Document[]
+  usage         UsageLedger[]
+  aiCalls       AiCallLog[]
+  subscription  Subscription?
+  guideShares   GuideShare[]
+}
+
+model Institution {
+  id        String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name      String
+  seats     Int    @default(0)
+  templateId String? @db.Uuid
+  users     User[]
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  ownerId     String    @db.Uuid
+  owner       User      @relation(fields: [ownerId], references: [id])
+  title       String
+  entryPath   EntryPath
+  template    Template?
+  field       String?
+  language    String    @default("en")
+  citationStyle String  @default("apa")
+  institutionTemplateId String? @db.Uuid
+  memory      DocumentMemory?
+  chapters    Chapter[]
+  sources     Source[]
+  seedPapers  SeedPaper[]
+  flags       CoherenceFlag[]
+  comments    Comment[]
+  shares      GuideShare[]
+  versions    DocumentVersion[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([ownerId])
+}
+
+model DocumentMemory {
+  documentId   String  @id @db.Uuid
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  scope        Json     // { workingTitle, problemStatement, objectives[], whyOpen }
+  outline      Json     // OutlineNode[] (schema §10.7.2)
+  glossary     Json     // { term: { definition, usageNote, sourceChapterId? } }
+  styleProfile Json?    // { avgSentenceLen, register, voice, transitions[], sample[] }
+  gapMap       Json?    // { themes: [{ name, count, thin, sourceIds[] }] }
+  updatedAt    DateTime @updatedAt
+}
+
+model SeedPaper {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId  String   @db.Uuid
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fileKey     String   // MinIO key
+  filename    String
+  extraction  Json?    // PaperExtraction (§10.7.1)
+  status      String   @default("PENDING")
+  error       String?
+  createdAt   DateTime @default(now())
+}
+
+model Chapter {
+  id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId    String   @db.Uuid
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  outlineNodeId String   // matches DocumentMemory.outline node id
+  title         String
+  order         Int
+  content       Json     // ProseMirror doc JSON
+  wordCount     Int      @default(0)
+  scopeNote     String?
+  lastCheckedAt DateTime?
+  pins          ChapterSourcePin[]
+  chunks        ChapterChunk[]
+  citations     Citation[]
+  updatedAt     DateTime @updatedAt
+  @@unique([documentId, outlineNodeId])
+  @@index([documentId, order])
+}
+
+model ChapterSourcePin {
+  chapterId String @db.Uuid
+  sourceId  String @db.Uuid
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  source    Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  @@id([chapterId, sourceId])
+}
+
+model Source {
+  id             String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId     String   @db.Uuid
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  status         SourceStatus @default(PENDING)
+  rawReference   String?
+  doi            String?
+  openalexId     String?
+  title          String?
+  authors        Json?    // [{ family, given }]
+  year           Int?
+  venue          String?
+  type           String?  // journal-article, book, etc. (CSL type)
+  cslJson        Json?    // full CSL-JSON for citeproc
+  oaStatus       String?
+  fileKey        String?  // MinIO key of PDF if available
+  groundingLevel GroundingLevel @default(NONE)
+  subTheme       String?
+  citationCount  Int?
+  isPreprint     Boolean  @default(false)
+  isRetracted    Boolean  @default(false)
+  pins           ChapterSourcePin[]
+  chunks         SourceChunk[]
+  citations      Citation[]
+  createdAt      DateTime @default(now())
+  @@index([documentId])
+  @@index([doi])
+}
+
+model SourceChunk {
+  id        String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  sourceId  String  @db.Uuid
+  source    Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  ordinal   Int
+  page      Int?
+  charStart Int?
+  charEnd   Int?
+  section   String?
+  text      String
+  tokenCount Int
+  embedding Unsupported("vector(1024)")?
+  @@index([sourceId, ordinal])
+}
+
+model ChapterChunk {
+  id        String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chapterId String  @db.Uuid
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  ordinal   Int
+  from      Int     // ProseMirror positions at index time
+  to        Int
+  text      String
+  embedding Unsupported("vector(1024)")?
+  @@index([chapterId, ordinal])
+}
+
+model Citation {
+  id        String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chapterId String  @db.Uuid
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  sourceId  String  @db.Uuid
+  source    Source  @relation(fields: [sourceId], references: [id])
+  chunkId   String? @db.Uuid
+  nodeKey   String  // stable key stored on the ProseMirror citation node
+  role      String  @default("parenthetical")
+  locator   String?
+  createdAt DateTime @default(now())
+  @@unique([chapterId, nodeKey])
+}
+
+model SearchCandidate {
+  id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  runId         String   @db.Uuid
+  documentId    String   @db.Uuid
+  openalexId    String?
+  doi           String?
+  title         String
+  abstract      String?
+  year          Int?
+  venue         String?
+  citationCount Int?
+  isPreprint    Boolean  @default(false)
+  oaStatus      String?
+  theme         String?
+  score         Float?
+  selected      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  @@index([documentId, runId])
+}
+
+model DocumentVersion {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId String   @db.Uuid
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chapterId  String?  @db.Uuid
+  snapshotKey String  // MinIO key (gzipped JSON)
+  reason     String   // AUTOSAVE | MANUAL | PRE_DRAFT_ACCEPT | PRE_REVISION
+  createdAt  DateTime @default(now())
+  @@index([documentId, createdAt])
+}
+
+model SuggestionEvent {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String   @db.Uuid
+  documentId  String   @db.Uuid
+  chapterId   String?  @db.Uuid
+  action      AiAction
+  shownChars  Int
+  keptChars   Int      @default(0)
+  outcome     String   // SHOWN | ACCEPTED | PARTIAL | EDITED | REJECTED | CANCELLED | DISCARDED
+  latencyMs   Int
+  ttfbMs      Int?
+  guided      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([documentId, createdAt])
+}
+
+model AiCallLog {
+  id                String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId            String   @db.Uuid
+  user              User     @relation(fields: [userId], references: [id])
+  documentId        String?  @db.Uuid
+  action            AiAction
+  model             String
+  inputTokens       Int
+  cachedInputTokens Int      @default(0)
+  cacheWriteTokens  Int      @default(0)
+  outputTokens      Int
+  costMicroInr      BigInt
+  latencyMs         Int
+  ok                Boolean  @default(true)
+  error             String?
+  createdAt         DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model UsageLedger {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  period    String   // "2026-09"
+  action    AiAction
+  count     Int      @default(0)
+  @@unique([userId, period, action])
+}
+
+model Subscription {
+  userId            String   @id @db.Uuid
+  user              User     @relation(fields: [userId], references: [id])
+  provider          String   @default("razorpay")
+  providerSubId     String?
+  plan              Plan
+  status            String   // active | past_due | cancelled | trialing
+  currentPeriodEnd  DateTime
+  cancelAtPeriodEnd Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+}
+
+model GuideShare {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId String   @db.Uuid
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  guideEmail String
+  guideUserId String? @db.Uuid
+  guide      User?    @relation(fields: [guideUserId], references: [id])
+  token      String   @unique
+  createdAt  DateTime @default(now())
+}
+
+model Comment {
+  id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId    String   @db.Uuid
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chapterId     String?  @db.Uuid
+  authorEmail   String
+  anchorKey     String?  // commentAnchor mark key in ProseMirror
+  quotedText    String?
+  body          String
+  class         CommentClass?
+  status        CommentStatus @default(OPEN)
+  suggestedRevision String?
+  resolutionNote String?
+  resolvedAt    DateTime?
+  createdAt     DateTime @default(now())
+  @@index([documentId, status])
+}
+
+model CoherenceFlag {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId  String   @db.Uuid
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chapterId   String   @db.Uuid
+  from        Int
+  to          Int
+  type        FlagType
+  severity    Severity
+  description String
+  suggestion  String?
+  relatedChapterId String? @db.Uuid
+  status      String   @default("OPEN") // OPEN | RESOLVED | IGNORED
+  runId       String   @db.Uuid
+  createdAt   DateTime @default(now())
+  @@index([documentId, status])
+}
+
+model InstitutionTemplate {
+  id        String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name      String
+  spec      Json   // §9.4
+  createdAt DateTime @default(now())
+}
+
+model FeatureFlag {
+  key       String  @id
+  enabled   Boolean @default(false)
+  rules     Json?   // { userIds?: [], institutionIds?: [], plans?: [] }
+  updatedAt DateTime @updatedAt
+}
