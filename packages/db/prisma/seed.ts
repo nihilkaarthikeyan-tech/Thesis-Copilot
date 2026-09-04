@@ -27,6 +27,14 @@ const FEATURE_FLAGS: ReadonlyArray<{ key: string; enabled: boolean; note: string
   { key: 'grobid', enabled: false, note: 'Off until the Phase 2 quality review (FR-1.7, §17 #8)' },
   { key: 'draftModeStrongTier', enabled: true, note: 'Draft on the Strong tier (§10.1, A.2)' },
   { key: 'livingGapMap', enabled: false, note: 'Phase 3 (§4)' },
+  // Not one of FR-9.7's four. PHASES task 0.10 adds it: the admin page shows "Cost model:
+  // UNVERIFIED" until the human fills PRD Appendix E.3 and flips this to true. Seeded so the row
+  // exists to flip. Logged in docs/CONSISTENCY_REVIEW.md §3.
+  {
+    key: 'costModelVerified',
+    enabled: false,
+    note: 'Human flips after filling Appendix E.3 (PHASES 0.10)',
+  },
 ];
 
 function readTemplateSpec(): Prisma.InputJsonValue {

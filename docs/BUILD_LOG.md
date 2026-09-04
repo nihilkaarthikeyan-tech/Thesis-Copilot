@@ -459,3 +459,130 @@ Started: 2026-09-04 · Sessions: 1
   - shadcn/ui "base" is `components.json`, `cn()` and one Button in the new-york style; the rest
     arrives with the screens that need it.
 - UNSURE: —
+
+### Task 0.9 — `infra/`
+- Status: DONE locally; three DoD items are BLOCKED on things only the human can supply — see below.
+- Evidence:
+  ```
+  # --- backup + restore drill (PRD §12.1), run inside the dev Postgres container ---
+  $ bash backup.sh
+  [backup] 20260904T161621Z pg_dump -> /tmp/backups/tc-20260904T161621Z.dump
+  [backup] dump complete (60K)
+  [backup] BACKUP_S3_* not set — dump kept locally only (fine for dev, NOT for production)
+  $ bash restore.sh --test
+  [restore] test-restoring /tmp/backups/tc-20260904T161621Z.dump into scratch database tc_restore_test_20260904161622
+  [restore] restored. row counts in the scratch database:
+  [restore]   User=3 Document=2 FeatureFlag=5 InstitutionTemplate=1 UsageLedger=0 migrations=2 uuid_v7=7
+  [restore] scratch database dropped. RESTORE TEST OK
+  $ psql ... live: User=3 Document=2 scratch_dbs_left=0        # live DB untouched
+
+  # --- images (PRD §13.4: multi-stage, node:22-alpine, non-root, tini) ---
+  $ docker images | grep tc-
+  tc-api:latest     2.03GB     tc-web:latest   349MB     tc-backup:latest   72.8MB
+  $ docker run --rm tc-api sh -c 'id; node packages/db/node_modules/prisma/build/index.js --version'
+  uid=1001(app) gid=101(app)      prisma 6.19.3     Computed binaryTarget: linux-musl-openssl-3.0.x
+  $ docker run --rm tc-backup sh -c 'pg_dump --version; mc --version; cat /etc/crontabs/root'
+  pg_dump (PostgreSQL) 16.14 · mc RELEASE.2025-08-13 · 30 2 * * * backup.sh · 30 3 * * 0 restore.sh --test
+
+  # --- the image does what deploy.sh asks of it, against the dev services ---
+  $ docker run --rm ... tc-api node packages/db/node_modules/prisma/build/index.js migrate deploy --schema ...
+  2 migrations found in prisma/migrations
+  No pending migrations to apply.
+  $ docker run -d ... -p 3101:3001 tc-api ; curl http://localhost:3101/api/v1/health
+  {"status":"ok","checks":{"database":"up","redis":"up","objectStorage":"up","aiProvider":"up"}}   HTTP 200
+  $ docker run --rm ... tc-api node apps/worker/dist/main.js
+  {"level":30,"msg":"worker ready","queues":["noop"],"concurrency":4}
+  $ docker run -d -p 3100:3000 tc-web ; curl http://localhost:3100/
+  GET / -> HTTP 200   <h1 ...>Thesis Copilot
+
+  # --- the CI steps, run locally ---
+  $ pnpm --filter @tc/web e2e                                   # Playwright smoke
+  5 passed (10.2s)
+  $ DATABASE_URL=... node packages/db/scripts/migrate-diff-check.mjs
+  migrate-diff-check: 2 allowlisted statement(s) (HNSW indexes, PRD §8)
+  migrate-diff-check: OK — migrations and schema.prisma agree
+  $ pnpm audit --audit-level=high ; echo $?
+  4 vulnerabilities found   Severity: 4 moderate        exit 0
+  $ pnpm biome check .   -> clean      $ typecheck (6 packages) -> 0 errors
+  ```
+- BLOCKED (human preconditions, PHASES PHASE-0 "Preconditions"):
+  - **CI green on `main`** — the workflows are written and every step was run locally, but nothing
+    has been pushed. I do not push without being asked. Push `main` and the `ci` workflow runs.
+  - **A tag deploys to the VPS; `https://<domain>/api/v1/health` 200 over TLS** — there is no VPS,
+    domain or GHCR org yet. `release.yml` + `infra/scripts/deploy.sh` are ready; they need the
+    secrets `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `DOMAIN`, `NEXT_PUBLIC_API_URL` and an
+    `infra/compose/.env` on the box (template: `infra/compose/.env.production.example`).
+  - The restore drill was done locally (above), which satisfies "restored a backup into a scratch
+    database once"; the off-site `mc mirror` half needs `BACKUP_S3_*` credentials.
+- Notes / deviations from PRD:
+  - **The Playwright smoke cannot cover the editor yet.** PRD §13.5 names it "editor loads,
+    suggestion streams against a mocked provider"; the editor is Phase 1 week 1 and must not be
+    started before Gate G0. The Phase 0 smoke covers what exists (home, sign-in, `/app` redirect,
+    health, problem-details) and week 1 extends it (Appendix B.9 test 9). Stated in
+    `apps/web/playwright.config.ts`.
+  - **`prisma migrate diff --exit-code` can never pass on this schema**, because Prisma cannot
+    declare an index on an `Unsupported("vector")` column and PRD §8 puts the two HNSW indexes in
+    a hand-written migration. CI therefore runs `packages/db/scripts/migrate-diff-check.mjs`, which
+    allowlists exactly those two `DROP INDEX` statements and fails on anything else. It caught a
+    real drift on its first run: `Verification.updatedAt` had a DB default in migration 0002 but
+    not in the schema. Fixed in the schema (`@default(now()) @updatedAt`, same as `User`).
+  - **`pnpm audit --audit-level=high` failed** with 3 high advisories: `postcss` (two path
+    traversal / file read CVEs, pulled in by `next` via `better-auth`) and `deepmerge-ts`
+    (stack exhaustion, pulled in by the `prisma` CLI). Both fixed with `pnpm.overrides` to the
+    patched versions (`postcss >=8.5.18`, `deepmerge-ts >=8.0.0`); Prisma generate / migrate /
+    diff and the Next build were re-run afterwards and work. 4 moderate advisories remain, below the
+    PRD's threshold. UNSURE: whether the `deepmerge-ts` 8 override survives a future Prisma 6.x
+    patch that pins 7.x — CI will say so.
+  - Image notes: `Dockerfile.web` must not set `NODE_ENV=production` before `pnpm install` (pnpm
+    then skips devDependencies and the `turbo`/`next` build tooling vanishes) and must build only
+    the web app's own dependencies (`--filter='@tc/web^...'`), since `@tc/db` needs a generated
+    Prisma client the web image never creates. `Dockerfile.api` copies the builder's full
+    `node_modules` so the Prisma CLI, migrations and the linux-musl engine ship in the image for the
+    one-off `migrate deploy` (§13.5); the 2 GB size is a later optimisation. The `schema.prisma`
+    generator gains `binaryTargets = ["native", "linux-musl-openssl-3.0.x"]` for the alpine
+    runtime — generator config only, the data model is unchanged.
+  - `deploy.sh` runs the migration as `node packages/db/node_modules/prisma/build/index.js`
+    because pnpm is not in the runtime image; the path was verified inside the image.
+- UNSURE: see the `deepmerge-ts` note.
+
+### Task 0.10 — Verification ledger
+- Status: DONE for the banner; the live `pnpm ai:verify` half stays BLOCKED (see task 0.5).
+- Evidence:
+  ```
+  $ pnpm db:seed
+  flag       costModelVerified     false # Human flips after filling Appendix E.3 (PHASES 0.10)
+
+  $ curl -s http://localhost:3001/api/v1/admin/cost-model
+  {"verified":false,"banner":"Cost model: UNVERIFIED — run `pnpm ai:verify` with real provider keys
+   and fill PRD Appendix E.3.","projectedMonthlyInr":99.67,"ceilingInr":100,"withinCeiling":true}
+
+  # browser, http://localhost:3000/admin
+  page text -> "Cost model: UNVERIFIED. run `pnpm ai:verify` with real provider keys and fill PRD Appendix E.3.
+                ... Projected cost, fully active STUDENT ₹99.67 / month · Ceiling ₹100 / month · Within ceiling Yes"
+  ```
+- Notes / deviations from PRD:
+  - `costModelVerified` is not one of FR-9.7's four flags; PHASES 0.10 adds it. Seeded `false` so
+    the human has a row to flip after filling E.3. Listed under §3 in docs/CONSISTENCY_REVIEW.md.
+  - The `pnpm ai:verify` block in this log (task 0.5) came from the mock provider and **must not be
+    copied into Appendix E.3**. The banner stays until the real run happens and the flag is flipped.
+- UNSURE: —
+
+#### Gate G0 — agent's self-check (the human ticks the real one in docs/PHASES.md)
+- [ ] CI is green on `main` — **BLOCKED: not pushed.** Every CI step passes locally (above).
+- [ ] `https://<domain>/api/v1/health` returns 200 with all checks OK — **BLOCKED: no VPS/domain.**
+      Local equivalent: the built image answers 200 with all four checks up.
+- [ ] `pnpm ai:verify` output is in the log and Appendix E.3 is filled; budget ≤ ₹100 —
+      **BLOCKED: no provider keys.** Mock run is in the log (₹99.67); E.3 must stay empty.
+- [x] Cap concurrency test output is in the log — 20 parallel calls at cap−1 → exactly 1 succeeds
+      (PRD §15), against real Postgres. (PHASES' checklist text still says "5 succeed / 15 blocked",
+      the design PHASES 0.6 used before it was corrected to the PRD's; the PRD is what was tested.)
+- [x] `packages/ai/prompts/` contains 21 files whose text matches Appendix A — enforced by a test.
+- [x] `docs/ADR/0001-editor.md` exists and matches Appendix B — byte-for-byte diff in the log.
+- [x] Backup restore drill output is in the log.
+- [ ] I have started collecting the five fixture papers (C.1) — human task; `fixtures/papers/README.md`
+      is the checklist.
+
+**Phase 0 verdict from the agent's side:** everything buildable is built, tested and committed.
+Gate G0 cannot be ticked until the human (1) pushes so CI runs, (2) supplies provider keys and runs
+`pnpm ai:verify`, (3) provisions the VPS and secrets for a tag deploy, and (4) reads
+`docs/CONSISTENCY_REVIEW.md` and ADR-0002. Phase 1 week 1 does not start before that.
