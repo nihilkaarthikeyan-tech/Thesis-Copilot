@@ -1091,6 +1091,90 @@ therefore deferred. What follows is the part that is pure logic and provable on 
 - UNSURE: the extraction accuracy thresholds in C.3 cannot be judged until the five fixture papers
   exist. The pipeline is proven to run; how well it reads a real two-column paper is unmeasured.
 
-### Tasks 2.4, 2.6, 2.8 — still to do
-- The proposal screen, the full-text fetch and the library UI. The extraction they depend on now
-  works, so these are next.
+### Task 2.5 — reference resolution (FR-2.1)
+- Files: `packages/retrieval/src/scholarly/resolve.ts`, `apps/worker/src/jobs/resolve-reference.ts`,
+  `apps/worker/src/main.ts`, `apps/api/src/modules/sources/sources.service.ts` (`refixSource`).
+- Evidence, against the live services (no stubs):
+
+  ```
+  $ curl .../documents/<id>/sources
+    RESOLVED   10.1038/nature14539            Deep learning            Nature | 2015 | 84228 cited
+    RESOLVED   10.1016/j.enpol.2010.01.045    Assessment of bottom-up  Energy Policy | 2010 | 23 cited
+
+  # a reference to a paper that does not exist:
+    UNRESOLVED  doi=None  title=None
+
+  # the student then types the DOI on the "Fix this reference" form:
+  {"queued":true,"doi":"10.1038/nature14539"}
+    RESOLVED   10.1038/nature14539   Deep learning   84228 cited
+
+  $ pnpm --filter @tc/retrieval test
+   Tests  121 passed (121)
+  $ pnpm --filter @tc/worker test
+   Tests  29 passed (29)
+  ```
+- Notes / deviations from PRD:
+  - **`subtype` is not a Crossref-selectable field.** Asking for it made `query.bibliographic`
+    return HTTP 400 on every single lookup; the job retried three times and gave up, so every
+    library sat at `PENDING` forever with no error a student could see. The legal field list comes
+    back in Crossref's own 400 body. The select is now pinned by a test that fails if a
+    non-selectable field is ever added, and `relation` was added because the retraction check reads
+    it and was silently always false without it.
+  - **`printedDoi` was in the job payload but nothing used it.** `refixSource` already enqueued the
+    DOI the student typed, and the job then re-ran the bibliographic search that had just failed —
+    so the manual fix was decorative. `resolveByDoi` now takes the DOI as the answer (score 1, no
+    search), falling back to OpenAlex for DOIs Crossref does not mint, and to the search if the DOI
+    turns out to be wrong.
+  - **Grounding level was asserted rather than observed.** The job hardcoded `ABSTRACT` for every
+    resolution. It now stores the real abstract — Crossref's JATS stripped to text, or OpenAlex's
+    inverted index rebuilt — and claims `ABSTRACT` only when there is one, `NONE` otherwise. FR-2.2's
+    badge is a promise about what the AI can quote, so it has to be earned.
+  - **A job that exhausted its retries left the source at `PENDING` for good**, showing "Looking it
+    up…" forever with no route to the manual fix. `markUnresolvedAfterRetries` moves it to
+    `UNRESOLVED` on the final failure, scoped to rows still `PENDING` so it cannot overwrite a fix
+    that landed first.
+  - Unpaywall answers HTTP 422 for the placeholder contact address rather than explaining, which
+    reads as an outage in the logs. The worker now says so at boot. Real addresses are a
+    `docs/PENDING.md` item; until then no source can reach `FULL_TEXT`.
+
+### Tasks 2.4 and 2.8 — proposal screen and library UI (FR-1.3, FR-1.4, FR-2.2)
+- Files: `apps/web/src/app/app/d/[id]/proposal/{page.tsx,ProposalScreen.tsx}`,
+  `apps/web/src/app/app/d/[id]/sources/{page.tsx,SourcesScreen.tsx}`,
+  `apps/api/src/modules/memory/*`, `apps/web/src/lib/api.ts`, `apps/web/e2e/proposal-sources.spec.ts`.
+- Evidence — driven in a real browser against the running API and worker:
+
+  ```
+  $ npx playwright test --workers=1
+    ok  3 FR-1.3/1.4: a paper becomes an editable proposal skeleton with a gap checklist
+    ok  4 FR-2.1/2.2: the library shows resolved sources with a grounding badge
+    ok  5 FR-2.1: an unfindable reference stays unresolved and offers a manual fix
+    10 passed
+
+  $ pnpm test
+    config 62 · types 12 · ui 31 · db 2 · ai 90 · retrieval 121 · web 6 · worker 29 · api 52
+  $ pnpm lint
+    Checked 203 files. No fixes applied.
+  ```
+- Notes / deviations from PRD:
+  - **Every upload made from the browser was rejected**, while every API test passed. `lib/api.ts`
+    stamped `content-type: application/json` onto any request with a body, so a `FormData` upload
+    lost its multipart boundary and the server tried to JSON-parse it. This is the third fault in
+    this project that only a browser could find (after the two week-1 CORS faults), which is why
+    these screens have E2E coverage rather than component tests.
+  - **Re-opening a saved proposal showed the draft again, not the student's edits.** The screen
+    pre-filled from `draftScopeFrom(extraction)` and never read back `DocumentMemory.scope`. FR-1.4
+    says downstream prompts read the edited values and never the generated ones; the screen has to
+    honour the same rule or the edits look lost. A saved scope now wins over the draft.
+  - The E2E fixtures cite two papers that really exist (`10.1038/nature14539`,
+    `10.1016/j.enpol.2010.01.045`), so resolution is exercised against live Crossref rather than a
+    stub, and one reference to a paper that does not, so the "never guess" guarantee is exercised
+    too. Both DOIs are asserted, so a wrong match fails the test.
+  - `PUT /documents/:id/memory/scope` writes `Document.title` and `DocumentMemory.scope` in one
+    transaction, so the list and the proposal can never disagree about the title.
+  - `apps/web` gains a Vitest config; without it Vitest loaded the Playwright specs and failed on
+    Playwright's own `test()`.
+
+### Tasks 2.6, 2.7, 2.9 — still to do
+- Unpaywall full-text fetch and the `index-source` job (chunk + embed), the pgvector retrieval
+  query, and the C.3 scoring run. The scoring run is blocked on the five fixture papers
+  (`docs/PENDING.md`).

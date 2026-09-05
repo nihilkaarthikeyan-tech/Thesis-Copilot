@@ -19,6 +19,11 @@ blocks the agent from continuing to build against mocks.
 - [ ] **Google sign-in** (optional): `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, both or neither.
 - [ ] **Scholarly API contact emails**: set `OPENALEX_MAILTO`, `CROSSREF_MAILTO`, `UNPAYWALL_EMAIL`
       to a real address you monitor (polite-pool rules). Optional: `SEMANTIC_SCHOLAR_API_KEY`, `CORE_API_KEY`.
+      **Now blocking, not cosmetic.** They are all still `you@example.com`, and Unpaywall rejects
+      that exact address with HTTP 422, so no source can reach `FULL_TEXT` grounding and the whole
+      full-text path (task 2.6) cannot be measured. Crossref and OpenAlex do answer a placeholder,
+      but only outside their polite pool. The worker warns about this at boot; verified with
+      `curl "https://api.unpaywall.org/v2/10.1038/nature14539?email=<address>"` returning 200.
 - [ ] **Razorpay** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 - [ ] **Sentry DSN** (optional, week 5).
 
