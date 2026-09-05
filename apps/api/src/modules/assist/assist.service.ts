@@ -53,6 +53,9 @@ export type SuggestEvent =
         /** After A.1 post-processing. Replaces what was streamed. */
         text: string;
         citations: SuggestCitation[];
+        /** §6.2 empty-grounding state: false when no passage was retrieved for this call. */
+        grounded: boolean;
+        pinned: number;
         usage: unknown;
         ttfbMs: number;
         latencyMs: number;
@@ -279,6 +282,8 @@ export class AssistService {
           suggestionId: event.id,
           text: processed.text,
           citations,
+          grounded: retrieved.passages.length > 0,
+          pinned: retrieved.pinned,
           usage,
           ttfbMs: ttfbMs ?? latencyMs,
           latencyMs,

@@ -20,12 +20,22 @@ import {
   type LocalDraft,
   thesisExtensions,
 } from '@tc/ui';
+import type { Editor } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL, ApiError, api } from '@/lib/api';
 import { assistRequest } from '@/lib/sse';
+
+/** §6.2: the cap resets at 00:00 UTC on the 1st; shown in the student's own timezone. */
+function formatResetsAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    date,
+  );
+}
 
 /** `GET /sources/:id/chunks/:chunkId` (PHASES 3.5). */
 type PassageDto = {
@@ -48,11 +58,15 @@ function shortRefOf(source: PassageDto['source']): string {
   return 'Source';
 }
 
+import { FirstRunHint } from '../onboarding/FirstRunHint';
+import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { CitationList } from './CitationList';
 import { CiteSuggestions } from './CiteSuggestions';
 import { DraftMode } from './DraftMode';
 import { useGuidedInput } from './GuidedInput';
 import { SourcePins } from './SourcePins';
+
+type ExportResult = { url: string; filename: string; bytes: number };
 
 type ChapterMeta = {
   id: string;
@@ -154,8 +168,14 @@ function ChapterEditor({
   const [notice, setNotice] = useState<string | null>(null);
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
   const [tab, setTab] = useState<'sources' | 'citations'>('sources');
+  const [howOpen, setHowOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState<ExportResult | null>(null);
   const autosaveRef = useRef<Autosave | null>(null);
   const guided = useGuidedInput();
+  /** The options are built before the editor exists; the retry needs the editor. */
+  const editorRef = useRef<Editor | null>(null);
+  const retriedRef = useRef(false);
 
   const reducedMotion = useMemo(
     () =>
@@ -186,7 +206,43 @@ function ChapterEditor({
             setTiming(t);
             onUsageChange();
           },
-          onError: (e) => setNotice(e.message),
+          onError: (e) => {
+            // §6.2 / PHASES 5.2. Cap: say when it resets, in the student's own timezone.
+            if (e.code === 'CAP_EXCEEDED') {
+              const when = e.resetsAt ? formatResetsAt(e.resetsAt) : null;
+              setNotice(
+                `${e.message}${when ? ` It resets on ${when}.` : ''} Until then, keep writing — nothing you type is affected.`,
+              );
+              return;
+            }
+            // Provider error: retry once before showing anything. A single blip should not cost
+            // the student a keystroke; two in a row is a real outage and they should know.
+            if (e.code === 'PROVIDER_ERROR' || e.code === 'STREAM_FAILED' || e.code === 'NETWORK') {
+              if (!retriedRef.current) {
+                retriedRef.current = true;
+                setTimeout(() => editorRef.current?.commands.requestSuggestion(), 300);
+                return;
+              }
+              retriedRef.current = false;
+              setNotice(
+                'The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute.',
+              );
+              return;
+            }
+            setNotice(e.message);
+          },
+          onDone: (info) => {
+            retriedRef.current = false;
+            // Empty-grounding state: the suggestion had no passage to draw on. Not an error —
+            // a hint about what would make the next one better.
+            if (!info.grounded) {
+              setNotice(
+                info.pinned === 0
+                  ? 'That suggestion had no sources to draw on. Pin some in the Sources panel to get cited text.'
+                  : 'None of the pinned sources matched this passage, so the suggestion cites nothing.',
+              );
+            }
+          },
           // PHASES 3.7: an inline input, not window.prompt, which blocks the page and steals
           // focus from the document.
           promptForInstruction: guided.controller.ask,
@@ -248,6 +304,7 @@ function ChapterEditor({
       },
     },
   });
+  editorRef.current = editor;
 
   // Appendix B.7 autosave.
   useEffect(() => {
@@ -337,17 +394,50 @@ function ChapterEditor({
             Assist {assist ? `${assist.used}/${assist.cap}` : '–'} · Draft{' '}
             {draft ? `${draft.used}/${draft.cap}` : '–'}
           </span>
-          <span className="rounded-md border border-line px-2 py-0.5 text-xs">
-            <strong>Assist</strong> <span className="text-muted">| Draft (week 4)</span>
-          </span>
           <button
             type="button"
-            className="text-xs text-muted"
-            disabled
-            title="Export arrives in week 4"
+            className="text-xs text-muted underline"
+            onClick={() => setHowOpen(true)}
           >
-            Export
+            How suggestions work
           </button>
+          {exported ? (
+            <a
+              href={exported.url}
+              download={exported.filename}
+              data-testid="export-link"
+              className="text-xs underline"
+            >
+              Download {exported.filename}
+            </a>
+          ) : (
+            <button
+              type="button"
+              className="text-xs text-muted underline"
+              disabled={exporting}
+              title="Plain .docx of this chapter (FR-8.1)"
+              onClick={() => {
+                // FR-8.1: the export is a signed link, shown rather than opened, because a tab
+                // opened after an await is what popup blockers exist to stop.
+                setExporting(true);
+                api<ExportResult>(`/documents/${doc.id}/export`, {
+                  method: 'POST',
+                  body: JSON.stringify({ chapterId: chapter.id, format: 'docx' }),
+                })
+                  .then(setExported)
+                  .catch((e: unknown) =>
+                    setNotice(
+                      e instanceof ApiError
+                        ? (e.problem.detail ?? e.problem.title)
+                        : 'The export did not complete. Try again in a minute.',
+                    ),
+                  )
+                  .finally(() => setExporting(false));
+              }}
+            >
+              {exporting ? 'Exporting…' : 'Export .docx'}
+            </button>
+          )}
         </div>
       </header>
 
@@ -409,8 +499,20 @@ function ChapterEditor({
         </aside>
 
         <main className="flex-1 px-6 py-8">
+          <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
+            This is your chapter. Write as you normally would; press <kbd>Ctrl+/</kbd> when you want
+            a suggestion, and <kbd>Tab</kbd> to keep it. Pin the sources it may cite in the panel on
+            the right.{' '}
+            <button type="button" className="underline" onClick={() => setHowOpen(true)}>
+              How suggestions work (90 seconds)
+            </button>
+          </FirstRunHint>
           {notice ? (
-            <p role="status" className="mx-auto mb-4 max-w-[72ch] text-xs text-muted">
+            <p
+              data-testid="notice"
+              role="status"
+              className="mx-auto mb-4 max-w-[72ch] text-xs text-muted"
+            >
               {notice}
             </p>
           ) : null}
@@ -445,6 +547,7 @@ function ChapterEditor({
       </div>
 
       {guided.element}
+      <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} />
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />
 

@@ -1659,3 +1659,132 @@ therefore deferred. What follows is the part that is pure logic and provable on 
     real. A dashboard that let ₹0 stand unexplained would be worse than no dashboard.
   - The harness now exposes the Nest app, so a test can reach a provider the HTTP surface does not
     (the mailer). Nothing else in the harness changed.
+
+## Phase 1 — Week 5 (pilot hardening and deployment)
+
+### Task 5.1 — deferred items
+- The only feature deferred "to week 5" in weeks 1–4 is the **CORE fallback** for full-text fetch
+  (PHASES 2.6: "CORE fallback (deferred to week 5 if late)"). `CORE_API_KEY` is optional in §13.3
+  and does not exist; without it a client cannot be exercised, and Unpaywall already covers the
+  open-access path. BLOCKED on the key; listed in `docs/PENDING.md` under the scholarly keys. The
+  other items PHASES names as typical deferrals (`Alt+→`, the accepted-text fade, the DOCX path,
+  guided input) were all built in their own weeks.
+
+### Task 5.6 (local half) — backup and restore drill
+- Files: `infra/scripts/{backup.sh,restore.sh}` (Phase 0, unchanged).
+- Evidence — run inside the dev Postgres container against the real dev database:
+
+  ```
+  $ backup.sh && restore.sh --test
+  [backup] 20260905T142355Z pg_dump -> …/backups/tc-20260905T142355Z.dump
+  [backup] dump complete (688K)
+  [backup] BACKUP_S3_* not set — dump kept locally only (fine for dev, NOT for production)
+  [restore] test-restoring …/tc-20260905T142355Z.dump into scratch database tc_restore_test_20260905142355
+  [restore]   User=106 Document=143 FeatureFlag=5 InstitutionTemplate=1 UsageLedger=56 migrations=3 uuid_v7=7
+  [restore] scratch database dropped. RESTORE TEST OK
+  ```
+- **The drill caught a real inconsistency: `migrations=3` in a database with four migrations.**
+  Migration 0004 had been applied by hand with `psql` during the 4.5 sign-in fix, so
+  `_prisma_migrations` did not record it and a later `prisma migrate deploy` would have tried it
+  again. `pnpm db:migrate` now records it (`applied=4, max=0004_verification_text_id`). The lesson
+  is in CLAUDE.md: apply migrations through Prisma, even during a debugging session.
+- The nightly cron, the weekly restore cron and the off-site mirror need the VPS and
+  `BACKUP_S3_*` (BLOCKED, `docs/PENDING.md`). The scripts are the same ones that will run there.
+
+### Task 5.4 (part) — dependency audit
+  ```
+  $ pnpm audit --audit-level=high
+  5 vulnerabilities found · Severity: 5 moderate            → passes at the high level
+    decode-uri-component  moderate  DoS via exponential decoding
+    @tiptap/core          moderate  mergeAttributes() __proto__ key
+    fastify               moderate  schema validation bypass via root primitive coercion
+    stream-json           moderate  O(depth²) filters on nested input
+  ```
+- None is high or critical, which is what §12.1's bar is. The Fastify one is the only one in a
+  request path; Fastify is pinned at 5.11.3 by `pnpm.overrides` (week 1, to keep one copy in the
+  tree), so lifting it is a deliberate bump rather than an install. Recorded in `docs/PENDING.md`
+  as a decision for the human: bump the pin and re-run the SSE tests, or accept the moderate.
+
+### Task 5.2 — error and empty states (§6.2, §6.4)
+- Files: `apps/web/src/components/editor/ThesisEditor.tsx` (cap copy with the reset moment through
+  `Intl` in the browser's timezone; provider error retried once, reported on the second failure;
+  empty-grounding hint), `packages/ui/src/editor/ghost-text.ts` (`done` carries `grounded`/
+  `pinned`; the guided input hands focus back to the editor when it closes), `apps/web/src/lib/sse.ts`
+  (`resetsAt`, `action`, `cap` on the error event), `apps/api/src/modules/assist/assist.service.ts`
+  (`grounded`, `pinned` on `done`), `apps/api/src/modules/ai/ai.module.ts` (a `[[mock:error]]`
+  marker only the mock knows, so a browser test can force a provider failure), `apps/web/e2e/states.spec.ts`.
+- Evidence — `npx playwright test states --workers=1`:
+
+  ```
+  ok 1 empty grounding: a suggestion with no sources says so and points at the panel (4.6s)
+  ok 2 provider error: one failure is retried silently, two in a row are reported (9.7s)
+  ok 3 cap exceeded: the fifty-first Assist says when the cap resets, in local time (43.4s)
+  ok 4 autosave conflict: a stale save shows the 409 screen rather than overwriting (9.1s)
+  ok 5 upload failure: a file that is not a PDF is refused with a reason (2.1s)
+  5 passed (1.2m)
+  ```
+- Each state is forced the way it arises — through the real API against the mock — and asserted on
+  the words the student reads, which is what §6.4 specifies. The cap test reads the meter first
+  because the session is shared across the file; the fifty-first call after fifty is what matters,
+  not fifty presses from zero.
+- Two things the spec found:
+  - The guided input kept focus after Enter, so the `Esc`/`Tab` a student presses next went to a
+    form that no longer existed. The plugin now refocuses the editor when the instruction settles.
+  - The AI rate limit (below) counted `/assist/outcome`, so thirty dismissals in a minute would
+    have refused the thirty-first suggestion. Telemetry is no longer in the limited set.
+- `packages/ui` is consumed from `dist` by the web app: a source change there needs `pnpm build`
+  in the package before a browser sees it. Added to CLAUDE.md.
+
+### Task 5.4 — hardening (rate limit, authorisation, audit)
+- Files: `apps/api/src/bootstrap.ts` (an `onRequest` rate limit on `/assist/suggest`,
+  `/citations/suggest`, `/draft/*`, `/chat`: 60 a minute per IP, `AI_RATE_LIMIT` in
+  `common/rate-limit.ts`, answered as `429 RATE_LIMITED` with `retry-after`),
+  `apps/api/test/authz.spec.ts`.
+- Evidence — `vitest run test/authz.spec.ts`:
+
+  ```
+  ✓ GET document / chapter / chapter pins / document versions / sources / seed papers /
+    one seed paper / source file: the owner sees it, the other user gets 404   (8 cases)
+  ✓ cannot save into A’s chapter
+  ✓ cannot pin, snapshot, or delete against A’s ids
+  ✓ cannot export A’s chapter or usage log
+  ✓ cannot use A’s chapter as grounding for a suggestion
+  ✓ answers 429 RATE_LIMITED after 60 AI requests in a minute
+  ✓ does not count outcome telemetry against the AI limit
+  Tests  14 passed (14)   Duration 12.06s
+  ```
+- Every cross-user answer is 404 with a 404 body, the same as an id that never existed; nothing
+  in the response distinguishes "not yours" from "not there" (§12.1's enumeration concern). The
+  owner's control call on each route is what makes the 404 meaningful.
+- The rate limit runs at `onRequest`, before the session is resolved, so it is per IP; the
+  per-user bound is the monthly cap inside each handler. Both are in Redis/Postgres, never process
+  memory (§7 scaling constraint).
+- Cookies (`HttpOnly`, `SameSite=Lax`, `Secure` in production), HSTS through Caddy, and the
+  upload magic-byte check were built in Phase 0 and week 2 and are covered by `week1.spec.ts` and
+  `upload-rules.spec.ts`. The audit is above. Fastify pin: `docs/PENDING.md`.
+
+### Task 5.3 — onboarding
+- Files: `apps/web/src/components/onboarding/{FirstRunHint,HowSuggestionsWork}.tsx`;
+  hints on `/app` (step 1, only while the list is empty), the proposal screen (step 2, only before
+  a paper is uploaded) and the editor (first open, with the link to the panel); the editor header
+  loses two placeholders left from week 1 (`Draft (week 4)`, a disabled `Export`) and gains
+  `How suggestions work` and a working `Export .docx` (FR-8.1, the API from 4.7 — the button was
+  never wired). `apps/web/e2e/onboarding.spec.ts`.
+- Evidence — `npx playwright test onboarding --workers=1`:
+
+  ```
+  ok 1 a fresh account is walked from first sign-in to a first suggestion (9.5s)
+  ok 2 the chapter exports as a .docx from the header (3.2s)
+  2 passed (13.5s)
+  ```
+  The first case is the whole flow from a new account: list hint → create → proposal hint,
+  dismissed, reload, stays dismissed → upload → extraction → Continue → editor hint → the panel
+  (keys, Assist vs Draft, "verify every citation", the whitelist) → first suggestion accepted with
+  `Tab` → hint dismissed and gone after reload. The second downloads the export through the signed
+  link and checks the bytes are a zip (`PK`), which a `.docx` is.
+- Dismissals are `localStorage`, per browser, guarded against blocked storage. A server-side flag
+  for a sentence of guidance would be more machinery than the guidance is worth; showing a hint
+  again on a new device is fine.
+- The panel's copy is the product's own description of itself and repeats what the empty states
+  and provenance marks already say — the same message, once in full. Nothing in it promises
+  something the code does not do.

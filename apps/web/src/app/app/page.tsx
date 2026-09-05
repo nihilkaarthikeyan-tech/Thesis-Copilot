@@ -10,6 +10,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { Button } from '@/components/ui/button';
 import { ApiError, api } from '@/lib/api';
 import { signOut } from '@/lib/auth-client';
@@ -78,6 +79,13 @@ export default function DocumentListPage() {
           Sign out
         </button>
       </header>
+
+      {documents && documents.length === 0 ? (
+        <FirstRunHint id="list" className="mt-6">
+          Step 1 of 3: name the thesis and say whether it grows from a paper you have written. You
+          can change the title later; nothing here is final.
+        </FirstRunHint>
+      ) : null}
 
       <form
         onSubmit={create}

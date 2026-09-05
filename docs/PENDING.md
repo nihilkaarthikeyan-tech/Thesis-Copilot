@@ -29,6 +29,14 @@ blocks the agent from continuing to build against mocks.
       full-text path (task 2.6) cannot be measured. Crossref and OpenAlex do answer a placeholder,
       but only outside their polite pool. The worker warns about this at boot; verified with
       `curl "https://api.unpaywall.org/v2/10.1038/nature14539?email=<address>"` returning 200.
+- [ ] **Fastify pin decision** (PHASES 5.4): `pnpm audit` reports one moderate in `fastify`
+      ("schema validation bypass via root primitive coercion"). Fastify is pinned at 5.11.3 by
+      `pnpm.overrides` (week 1, to keep one copy in the tree); 5.12.3 exists. Either bump the pin
+      and re-run the SSE tests (`apps/api/test/week1.spec.ts`, the E2E), or accept the moderate —
+      §12.1's bar is high/critical, which the audit passes today. Nothing else in the audit is in a
+      request path.
+- [ ] **CORE fallback** (PHASES 2.6 / 5.1): needs `CORE_API_KEY`, optional in §13.3. Without it the
+      client cannot be exercised, and Unpaywall already covers the open-access path. Not built.
 - [ ] **Razorpay** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 - [ ] **Sentry DSN** (optional, week 5).
 

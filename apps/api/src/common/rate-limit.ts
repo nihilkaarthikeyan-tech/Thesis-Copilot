@@ -34,6 +34,13 @@ export type RateLimitVerdict = {
 /** 20 sign-in attempts per minute (PRD §12.1). */
 export const AUTH_RATE_LIMIT: RateLimitRule = { max: 20, windowSeconds: 60 };
 
+/**
+ * PRD §12.1 also limits the AI endpoints. This is a per-user burst guard, not the monthly cap:
+ * the cap (§11.3) says how much a student gets, this says how fast they may ask for it. Sixty a
+ * minute is far above any human typing rate and far below what a runaway client would send.
+ */
+export const AI_RATE_LIMIT: RateLimitRule = { max: 60, windowSeconds: 60 };
+
 export async function checkRateLimit(
   redis: Redis,
   scope: string,

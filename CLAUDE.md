@@ -118,6 +118,9 @@ The owner's standing instructions (2026-09-04/05): build every phase without sto
 and keep `docs/PENDING.md` listing everything that needs a human. The deviation from rule 7 is
 logged in `docs/BUILD_LOG.md`; the PRD itself is unchanged.
 
+`packages/ui` (and the other packages) are consumed from `dist`: after editing one, run `pnpm build`
+in that package or the running web/API keeps the old code. `apps/api` likewise runs `dist/main.js`.
+
 Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
 continue from the next one. Before running `prisma generate` on Windows, stop the API **and the
 worker** — both hold the engine DLL open, and a running worker fails the rename with EPERM.

@@ -69,6 +69,10 @@ export async function* assistRequest(
       type: 'error',
       code: problem?.type ?? `HTTP_${response.status}`,
       message: problem?.detail ?? problem?.title ?? 'The suggestion was refused.',
+      // CAP_EXCEEDED carries when the cap resets (§6.2 cap-exceeded state).
+      ...(typeof problem?.resetsAt === 'string' ? { resetsAt: problem.resetsAt } : {}),
+      ...(typeof problem?.action === 'string' ? { action: problem.action } : {}),
+      ...(typeof problem?.cap === 'number' ? { cap: problem.cap } : {}),
     };
     return;
   }
@@ -91,6 +95,8 @@ export async function* assistRequest(
               ? C
               : never) ?? [],
           ...(typeof parsed.text === 'string' ? { text: parsed.text } : {}),
+          ...(typeof parsed.grounded === 'boolean' ? { grounded: parsed.grounded } : {}),
+          ...(typeof parsed.pinned === 'number' ? { pinned: parsed.pinned } : {}),
           usage: parsed.usage,
           ttfbMs: typeof parsed.ttfbMs === 'number' ? parsed.ttfbMs : undefined,
           latencyMs: typeof parsed.latencyMs === 'number' ? parsed.latencyMs : undefined,

@@ -17,7 +17,7 @@ import type {
   RawServerDefault,
 } from 'fastify';
 import { Redis } from 'ioredis';
-import { AUTH_RATE_LIMIT, checkRateLimit } from './common/rate-limit.js';
+import { AI_RATE_LIMIT, AUTH_RATE_LIMIT, checkRateLimit } from './common/rate-limit.js';
 
 /**
  * The fully instantiated Fastify instance. The cookie plugin augments exactly this instantiation
@@ -47,6 +47,16 @@ export function buildFastify(): FastifyServerOptions {
 
 /** Sign-in is the endpoint worth brute-forcing, so it gets the strict limit. */
 const AUTH_PATH = '/api/v1/auth/';
+/**
+ * Only the routes that reach a provider. `/assist/outcome` is telemetry written after the fact;
+ * counting it would let a student's own dismissals rate-limit their next suggestion.
+ */
+const AI_PATHS = [
+  '/api/v1/assist/suggest',
+  '/api/v1/citations/suggest',
+  '/api/v1/draft/',
+  '/api/v1/chat',
+];
 
 /**
  * PRD §12.1: rate limiting per IP and per user on auth and AI endpoints, HSTS, and the security
@@ -88,6 +98,30 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
         title: 'Too many requests',
         status: 429,
         detail: `Too many sign-in attempts. Try again in ${verdict.retryAfter} seconds.`,
+        instance: request.url,
+        requestId: request.id,
+      });
+  });
+
+  // PRD §12.1 / PHASES 5.4: the AI endpoints get a per-user burst limit too. The session guard has
+  // not run yet at onRequest, so this is per IP; the monthly cap (per user) is enforced inside
+  // each handler, before any provider call.
+  fastify.addHook('onRequest', async (request, reply) => {
+    if (!AI_PATHS.some((prefix) => request.url.startsWith(prefix))) return;
+
+    const identity = (request as { user?: { id?: string } }).user?.id ?? request.ip;
+    const verdict = await checkRateLimit(redis, 'ai', identity, AI_RATE_LIMIT);
+    if (verdict.allowed) return;
+
+    reply
+      .status(429)
+      .header('retry-after', String(verdict.retryAfter))
+      .type('application/problem+json')
+      .send({
+        type: 'RATE_LIMITED',
+        title: 'Too many requests',
+        status: 429,
+        detail: `Too many AI requests. Try again in ${verdict.retryAfter} seconds.`,
         instance: request.url,
         requestId: request.id,
       });

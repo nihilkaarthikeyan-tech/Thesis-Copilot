@@ -16,6 +16,7 @@ import { analyseGap, draftScopeFrom } from '@tc/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { ApiError, api } from '@/lib/api';
 
 type SeedPaper = {
@@ -194,6 +195,12 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
         Everything below is a starting point taken from your paper. Edit any of it. What you write
         here is what the AI reads later, never the version it drafted.
       </p>
+      {papers && papers.length === 0 ? (
+        <FirstRunHint id="proposal" className="mt-4 max-w-2xl">
+          Step 2 of 3: upload the paper. It is read once, and its references become your starting
+          library. This takes a minute or two.
+        </FirstRunHint>
+      ) : null}
 
       {error ? (
         <p

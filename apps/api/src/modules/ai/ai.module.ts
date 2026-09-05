@@ -59,6 +59,13 @@ export function mockSuggestionFor(req: LlmRequest): string {
                   match: (req: LlmRequest) => req.action === 'CITE',
                   respond: mockCiteResponse,
                 },
+                {
+                  // Only the mock knows this string; it lets a browser test force the
+                  // provider-error state (PHASES 5.2) without a real outage.
+                  match: (req: LlmRequest) =>
+                    req.messages.some((m) => m.content.includes('[[mock:error]]')),
+                  error: 'forced provider failure (mock)',
+                },
               ],
               latencyMs: env.AI_MOCK_LATENCY_MS,
               // ~24 chars per chunk at 10 ms apart: the whole suggestion arrives in ~150 ms after TTFB.

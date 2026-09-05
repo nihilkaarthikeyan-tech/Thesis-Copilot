@@ -46,11 +46,22 @@ export type GhostEvent =
        * third sentence cut). Replaces what was streamed; absent means the stream was final.
        */
       text?: string;
+      /** §6.2 empty-grounding state: false when nothing was retrieved for this call. */
+      grounded?: boolean;
+      pinned?: number;
       usage?: unknown;
       ttfbMs?: number;
       latencyMs?: number;
     }
-  | { type: 'error'; code: string; message: string };
+  | {
+      type: 'error';
+      code: string;
+      message: string;
+      /** CAP_EXCEEDED only: when the cap resets, ISO 8601, for the §6.2 cap-exceeded state. */
+      resetsAt?: string;
+      action?: string;
+      cap?: number;
+    };
 
 export type GhostTextOptions = {
   chapterId: string;
@@ -62,7 +73,15 @@ export type GhostTextOptions = {
     keptChars: number;
     shownChars: number;
   }) => void;
-  onError?: (error: { code: string; message: string }) => void;
+  onError?: (error: {
+    code: string;
+    message: string;
+    resetsAt?: string;
+    action?: string;
+    cap?: number;
+  }) => void;
+  /** Fires on `done` with what the server knew about grounding, for the §6.2 hint. */
+  onDone?: (info: { grounded: boolean; pinned: number; empty: boolean }) => void;
   onTiming?: (timing: { ttfbMs: number; latencyMs: number }) => void;
   /** Guided suggestion (Shift+→): asks the student for an instruction. Null cancels. */
   promptForInstruction?: () => Promise<string | null>;
@@ -402,6 +421,11 @@ export const GhostText = Extension.create<GhostTextOptions>({
             };
             storage.lastTiming = timing;
             options.onTiming?.(timing);
+            options.onDone?.({
+              grounded: event.grounded ?? true,
+              pinned: event.pinned ?? 0,
+              empty: (event.text ?? '').length === 0 && event.citations.length === 0,
+            });
             // PHASES 3.5: the label the server rendered for each resolved key ("(Kumar 2021)")
             // goes into the citation store, so the node inserted on Tab shows it rather than the
             // placeholder. The document itself stores only the key and ids (B.2, B.5).
@@ -421,7 +445,13 @@ export const GhostText = Extension.create<GhostTextOptions>({
               }),
             );
           } else if (event.type === 'error') {
-            options.onError?.({ code: event.code, message: event.message });
+            options.onError?.({
+              code: event.code,
+              message: event.message,
+              ...(event.resetsAt ? { resetsAt: event.resetsAt } : {}),
+              ...(event.action ? { action: event.action } : {}),
+              ...(typeof event.cap === 'number' ? { cap: event.cap } : {}),
+            });
             editor.view.dispatch(editor.state.tr.setMeta(ghostTextKey, { type: 'reset' }));
           }
         }
@@ -610,7 +640,10 @@ export const GhostText = Extension.create<GhostTextOptions>({
       'Shift-ArrowRight': ({ editor }) => {
         if (open(editor.state) || !this.options.promptForInstruction) return false;
         void this.options.promptForInstruction().then((instruction) => {
-          if (instruction && !editor.isDestroyed) editor.commands.requestSuggestion(instruction);
+          if (editor.isDestroyed) return;
+          // The input took focus; give it back so Tab/Esc land on the suggestion, not the form.
+          editor.view.focus();
+          if (instruction) editor.commands.requestSuggestion(instruction);
         });
         return true;
       },
