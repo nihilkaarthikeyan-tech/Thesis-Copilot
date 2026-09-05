@@ -17,6 +17,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
+import { type CrossPaper, CrossPaperFlags } from '@/components/proposal/CrossPaperFlags';
+import { PathAChat, type ProposalView } from '@/components/proposal/PathAChat';
 import { ApiError, api } from '@/lib/api';
 
 type SeedPaper = {
@@ -31,7 +33,13 @@ type SeedPaper = {
 type DocumentDetail = {
   id: string;
   title: string;
+  entryPath: 'A_TOPIC' | 'B_PAPER';
   firstChapterId: string | null;
+  /** Path A conversation and the cross-paper flags (PRD §9.1 "(meta)"). */
+  meta: {
+    proposalChat?: { skeleton?: ProposalScope | null } | null;
+    crossPaper?: CrossPaper | null;
+  } | null;
   /** `scope` is `{}` until the student saves the proposal for the first time. */
   memory: { scope: Partial<ProposalScope> | null } | null;
 };
@@ -114,7 +122,14 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
       return;
     }
     if (extraction) setScope(draftScopeFrom(extraction));
+    else if (doc?.meta?.proposalChat?.skeleton) setScope(doc.meta.proposalChat.skeleton);
   }, [doc, extraction, scope]);
+
+  // FR-1.5: the conversation ends in the same skeleton as FR-1.4, shown in the same form.
+  const onSkeleton = useCallback((view: ProposalView) => {
+    if (view.skeleton) setScope((current) => current ?? view.skeleton);
+  }, []);
+  const pathA = doc?.entryPath === 'A_TOPIC';
 
   const gap: GapAnalysis | null = useMemo(
     () => (extraction ? analyseGap(extraction) : null),
@@ -190,12 +205,17 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
         <span>Proposal</span>
       </nav>
 
-      <h1 className="font-serif text-2xl">Turn your paper into a thesis proposal</h1>
+      <h1 className="font-serif text-2xl">
+        {pathA
+          ? 'Turn your topic into a thesis proposal'
+          : 'Turn your paper into a thesis proposal'}
+      </h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Everything below is a starting point taken from your paper. Edit any of it. What you write
-        here is what the AI reads later, never the version it drafted.
+        {pathA
+          ? 'A short conversation narrows the topic; the skeleton it ends in is yours to edit. What you write here is what the AI reads later, never the version it drafted.'
+          : 'Everything below is a starting point taken from your paper. Edit any of it. What you write here is what the AI reads later, never the version it drafted.'}
       </p>
-      {papers && papers.length === 0 ? (
+      {!pathA && papers && papers.length === 0 ? (
         <FirstRunHint id="proposal" className="mt-4 max-w-2xl">
           Step 2 of 3: upload the paper. It is read once, and its references become your starting
           library. This takes a minute or two.
@@ -211,7 +231,14 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
         </p>
       ) : null}
 
-      <PaperStatus papers={papers} uploading={uploading} onUpload={upload} />
+      {pathA ? (
+        <PathAChat documentId={documentId} initialTitle={doc.title} onSkeleton={onSkeleton} />
+      ) : (
+        <PaperStatus papers={papers} uploading={uploading} onUpload={upload} />
+      )}
+      {doc.meta?.crossPaper ? (
+        <CrossPaperFlags documentId={documentId} flags={doc.meta.crossPaper} />
+      ) : null}
 
       {scope ? (
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.4fr_1fr]">

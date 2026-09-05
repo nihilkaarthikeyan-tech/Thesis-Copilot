@@ -1880,3 +1880,41 @@ therefore deferred. What follows is the part that is pure logic and provable on 
   `prisma migrate deploy`, the seed creates the SUPERADMIN, the flags default to
   `automaticSuggest=false` and `draftModeStrongTier=true`, and pilot accounts can be moved to
   `STUDENT_MONTHLY` from `/admin/users/:id` (5.9). Tag `v0.1.0` when the server exists.
+
+## Phase 2 — Week 6 (Path A + multi-paper) — build-first mode
+
+The owner asked (2026-09-05) to build the whole project first and test in a later batch. From
+here each task gets its code, a typecheck, and a line here; the specs it still owes are listed
+under "Tests owed" and run later.
+
+### Task 6.1 — Path A conversation (FR-1.5, A.6)
+- Files: `packages/ai/src/builder/proposal.ts` (A.6 request builder, `<gap_check>` injection from
+  the second model turn, `<skeleton>` parser, three-question limit, data-derived mock),
+  `packages/retrieval` `OpenAlexClient.searchTopic` (top 8 + `meta.count`),
+  `apps/api/src/modules/memory/{proposal.service,proposal.controller}.ts`
+  (`GET/POST /documents/:id/proposal`, state on `Document.meta.proposalChat`, four model turns per
+  document, a fourth question replaced by the skeleton instruction, every call logged under
+  `PROPOSAL`), `apps/web/src/components/proposal/PathAChat.tsx`, the proposal screen switching
+  on `entryPath`. Migration `0006_document_meta` (`Document.meta`), `0007_ai_action_values` and
+  ADR-0005 (`PROPOSAL`, `CROSS_PAPER`).
+- Verified so far: `packages/ai/test/proposal.spec.ts` (9) and `apps/api/test/proposal.spec.ts` (4:
+  three questions → skeleton, gap check after turn 1, fourth question blocked, 409 after done).
+
+### Task 6.2 — multi-paper (FR-1.6, A.16)
+- Files: `packages/ai/src/builder/xpaper.ts` (A.16 builder, schema, `mergeTerminology` — dedupe
+  by term, keep both definitions and flag, data-derived mock), `apps/worker/src/jobs/cross-paper.ts`
+  (runs after each extraction once ≥ 2 papers are read; stores `Document.meta.crossPaper` with the
+  paper map; logs `CROSS_PAPER`), `extract-paper.ts` glossary seeding now merges,
+  `apps/web/src/components/proposal/CrossPaperFlags.tsx` (overlaps, contradictions, terminology,
+  each linking to its papers).
+- Verified so far: `packages/ai/test/xpaper.spec.ts` (5), `apps/worker/test/cross-paper.spec.ts` (4).
+- The human's fixture papers (`docs/PENDING.md`) are still the real proof; the planted overlap in
+  the tests stands in.
+
+### Task 6.3 — chooser `/app/new`
+- File: `apps/web/src/app/app/new/page.tsx`; `/app` links to it.
+
+### Tests owed (week 6)
+- `apps/web/e2e/path-a.spec.ts` is written, not yet run in a browser.
+- A browser pass of the cross-paper section needs a STUDENT-plan account (FREE_TRIAL allows one
+  seed paper); none written.

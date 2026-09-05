@@ -75,6 +75,8 @@ enum AiAction {
   SCOPED_REVISION
   PARSE_CITATION
   EMBED
+  PROPOSAL      // ADR-0005: Path A conversation (A.6)
+  CROSS_PAPER   // ADR-0005: multi-paper consistency pass (A.16)
 }
 enum FlagType {
   TERM_DRIFT
@@ -144,6 +146,7 @@ model Document {
   language    String    @default("en")
   citationStyle String  @default("apa")
   institutionTemplateId String? @db.Uuid
+  meta        Json?     // PRD §9.1/§15: { proposalChat?: Message[], thesisDetails?: {...} }
   memory      DocumentMemory?
   chapters    Chapter[]
   sources     Source[]

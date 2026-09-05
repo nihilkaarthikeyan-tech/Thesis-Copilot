@@ -177,7 +177,16 @@ type OpenAlexWork = {
   /** OpenAlex publishes abstracts only as a word -> positions map, for copyright reasons. */
   abstract_inverted_index?: Record<string, number[]>;
 };
-type OpenAlexResponse = { results?: OpenAlexWork[] };
+type OpenAlexResponse = { results?: OpenAlexWork[]; meta?: { count?: number } };
+
+/** One related work for a gap check (FR-1.5): title, year, one line of abstract. */
+export type RelatedWork = {
+  title: string;
+  year: number | null;
+  abstract: string;
+  doi: string | null;
+};
+export type GapCheck = { count: number; works: RelatedWork[] };
 
 export class OpenAlexClient {
   private readonly http: ScholarlyHttp;
@@ -202,6 +211,31 @@ export class OpenAlexClient {
     return body?.results ?? [];
   }
 
+  /**
+   * FR-1.5's early gap check: how much related work exists on a clarified topic, and the closest
+   * few. Articles, preprints and chapters only, the same filter week 7's discovery uses.
+   */
+  async searchTopic(topic: string, perPage = 8, signal?: AbortSignal): Promise<GapCheck> {
+    const url =
+      'https://api.openalex.org/works?per-page=' +
+      perPage +
+      '&filter=' +
+      encodeURIComponent('type:article|preprint|book-chapter') +
+      '&select=id,doi,title,display_name,publication_year,abstract_inverted_index' +
+      '&mailto=' +
+      encodeURIComponent(this.http.mailto) +
+      '&search=' +
+      encodeURIComponent(topic);
+    const body = await this.http.getJson<OpenAlexResponse>(url, signal);
+    const works = (body?.results ?? []).map((work) => ({
+      title: work.title ?? work.display_name ?? '',
+      year: work.publication_year ?? null,
+      abstract: firstLine(abstractFromInvertedIndex(work.abstract_inverted_index)),
+      doi: work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, '') : null,
+    }));
+    return { count: body?.meta?.count ?? works.length, works };
+  }
+
   async byDoi(doi: string, signal?: AbortSignal): Promise<OpenAlexWork | null> {
     const url = `https://api.openalex.org/works/doi:${encodeURIComponent(doi)}?mailto=${encodeURIComponent(this.http.mailto)}`;
     return this.http.getJson<OpenAlexWork>(url, signal);
@@ -213,6 +247,14 @@ export class OpenAlexClient {
  * positions it occupies, so placing every token at its own positions restores the original order.
  * Gaps (a position no token claims) are dropped rather than filled, so nothing is invented.
  */
+/** The first sentence, capped, for the one-line abstract A.6 asks for. */
+export function firstLine(text: string | null | undefined, max = 220): string {
+  const t = (text ?? '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  const sentence = /^[^.!?]+[.!?]/.exec(t)?.[0] ?? t;
+  return sentence.length > max ? `${sentence.slice(0, max - 1).trimEnd()}…` : sentence;
+}
+
 export function abstractFromInvertedIndex(
   index: Record<string, number[]> | undefined,
 ): string | null {

@@ -9,6 +9,7 @@ import {
   createProviders,
   MockEmbeddingProvider,
   MockLlmProvider,
+  mockCrossPaperResponse,
   mockDraftFor,
   mockExtractionResponse,
   type Providers,
@@ -36,6 +37,7 @@ import {
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
+import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
 import { runIndexSource } from './jobs/index-source.js';
@@ -69,7 +71,7 @@ function providersFor(env: Env): Providers {
         latencyMs: env.AI_MOCK_LATENCY_MS,
         // An EXTRACT request is answered from the paper's own text, so an upload still yields a
         // usable proposal screen and library before real provider keys exist. It invents nothing.
-        responses: [mockExtractionResponse],
+        responses: [mockExtractionResponse, mockCrossPaperResponse],
         modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
       }),
       embeddings: new MockEmbeddingProvider({ dims: env.EMBED_DIMS, modelId: env.AI_EMBED_MODEL }),
@@ -171,6 +173,22 @@ async function main(): Promise<void> {
           log: (event) => log({ jobId: job.id, ...event }),
         });
         log({ msg: 'extract-paper done', jobId: job.id, ...result });
+        // FR-1.6: once two or more papers are read, compare them. Its failure is its own.
+        try {
+          const xpaper = await runCrossPaper(
+            { documentId: job.data.documentId, userId: job.data.userId },
+            {
+              prisma,
+              llm: providers.llm,
+              aiProvider: env.AI_PROVIDER,
+              log: (event) => log({ jobId: job.id, ...event }),
+            },
+          );
+          if (!xpaper.ran) log({ msg: 'cross-paper skipped', jobId: job.id, ...xpaper });
+        } catch (error) {
+          captureException(error, { queue: 'cross-paper', documentId: job.data.documentId });
+          log({ level: 50, msg: 'cross-paper failed', jobId: job.id, error: String(error) });
+        }
         return result;
       },
       // One paper at a time per worker: extraction is a Strong-tier call and holds a whole paper

@@ -14,6 +14,7 @@ import {
   MockEmbeddingProvider,
   MockLlmProvider,
   mockCiteResponse,
+  mockProposalFor,
   type Providers,
 } from '@tc/ai';
 import type { Env } from '@tc/config';
@@ -71,7 +72,10 @@ export function mockSuggestionFor(req: LlmRequest): string {
               // ~24 chars per chunk at 10 ms apart: the whole suggestion arrives in ~150 ms after TTFB.
               chunkSize: 24,
               chunkDelayMs: 10,
-              defaultText: mockSuggestionFor,
+              // A PROPOSAL request (A.6) is answered from the conversation itself: a narrowing
+              // question, then a skeleton in the student's own words (PHASES 6.1).
+              defaultText: (req) =>
+                req.action === 'PROPOSAL' ? mockProposalFor(req) : mockSuggestionFor(req),
               modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
             }),
             embeddings: new MockEmbeddingProvider({

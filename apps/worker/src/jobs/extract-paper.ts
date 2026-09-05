@@ -10,8 +10,7 @@
  * criterion asks the UI to show.
  */
 
-import type { LlmProvider } from '@tc/ai';
-import { extractPaper } from '@tc/ai';
+import { extractPaper, type GlossaryValue, type LlmProvider, mergeTerminology } from '@tc/ai';
 import type { PrismaClient } from '@tc/db';
 import { extractDocument } from '@tc/retrieval';
 import type { ExtractPaperJob, PaperExtraction } from '@tc/types';
@@ -93,7 +92,19 @@ export async function runExtractPaper(
       data: { extraction: extraction as never, status: 'DONE', error: null },
     });
 
-    await seedGlossary(deps.prisma, job.documentId, extraction);
+    const glossaryConflicts = await seedGlossary(
+      deps.prisma,
+      job.documentId,
+      extraction,
+      seedPaper.filename,
+    );
+    if (glossaryConflicts.length > 0) {
+      log({
+        msg: 'glossary terms defined differently',
+        seedPaperId: seedPaper.id,
+        terms: glossaryConflicts,
+      });
+    }
     const queuedResolutions = await createSources(deps, job, extraction);
 
     return {
@@ -125,30 +136,28 @@ async function seedGlossary(
   prisma: PrismaClient,
   documentId: string,
   extraction: PaperExtraction,
-): Promise<void> {
-  if (extraction.terminology.length === 0) return;
+  paper: string,
+): Promise<string[]> {
+  if (extraction.terminology.length === 0) return [];
 
   const memory = await prisma.documentMemory.findUnique({
     where: { documentId },
     select: { glossary: true },
   });
 
-  const glossary: Record<string, { definition: string; usageNote?: string }> = {
-    ...((memory?.glossary as Record<string, { definition: string; usageNote?: string }>) ?? {}),
-  };
-
-  for (const term of extraction.terminology) {
-    if (glossary[term.term]) continue;
-    glossary[term.term] = {
-      definition: term.definition,
-      ...(term.usageNote ? { usageNote: term.usageNote } : {}),
-    };
-  }
+  // PHASES 6.2: dedupe by term; a second paper's differing definition is kept alongside the
+  // first and the entry is flagged, never silently overwritten.
+  const { glossary, conflicts } = mergeTerminology(
+    (memory?.glossary as Record<string, GlossaryValue>) ?? {},
+    paper,
+    extraction.terminology,
+  );
 
   await prisma.documentMemory.update({
     where: { documentId },
     data: { glossary: glossary as never },
   });
+  return conflicts;
 }
 
 /**

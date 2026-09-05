@@ -44,6 +44,8 @@ export type DocumentDetail = DocumentSummary & {
     wordCount: number;
   }>;
   memory: { scope: unknown; outline: unknown; glossary: unknown } | null;
+  /** PRD §9.1 "(meta)": the Path A conversation and cross-paper flags live here. */
+  meta: unknown;
 };
 
 const summarySelect = {
@@ -124,6 +126,7 @@ export class DocumentsController {
       select: {
         ...summarySelect,
         memory: { select: { scope: true, outline: true, glossary: true } },
+        meta: true,
         chapters: {
           orderBy: { order: 'asc' },
           select: { id: true, title: true, order: true, outlineNodeId: true, wordCount: true },
@@ -137,6 +140,7 @@ export class DocumentsController {
       ...toSummary({ ...document, chapters: document.chapters.map((c) => ({ id: c.id })) }),
       chapters: document.chapters,
       memory: document.memory,
+      meta: document.meta,
     };
   }
 }

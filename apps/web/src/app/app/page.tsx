@@ -71,6 +71,9 @@ export default function DocumentListPage() {
     <main className="mx-auto max-w-2xl px-6 py-12">
       <header className="flex items-baseline justify-between">
         <h1 className="font-serif text-2xl">Your theses</h1>
+        <Link href="/app/new" className="text-xs underline">
+          New thesis: from a paper or from a topic
+        </Link>
         <button
           type="button"
           className="text-xs text-muted underline"

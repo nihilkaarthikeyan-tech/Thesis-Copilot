@@ -60,7 +60,37 @@ export {
   removeLeadingOverlap,
   stripUnknownCitations,
 } from './builder/postprocess.js';
+export {
+  buildProposalRequest,
+  clarifiedTopic,
+  type GapCheckInput,
+  type GapCheckWork,
+  MOCK_KEEP_ASKING,
+  mayAskAnotherQuestion,
+  mockProposalFor,
+  PROPOSAL,
+  type ProposalBuildInput,
+  type ProposalReply,
+  type ProposalSkeleton,
+  type ProposalTurn,
+  parseProposalReply,
+  questionsAsked,
+  renderGapCheck,
+  SKELETON_INSTRUCTION,
+  skeletonSchema,
+} from './builder/proposal.js';
 export { approxTokens, CHARS_PER_TOKEN, headByTokens, tailByTokens } from './builder/tokens.js';
+export {
+  buildCrossPaperRequest,
+  type CrossPaperInput,
+  type CrossPaperResult,
+  crossPaperSchema,
+  crossPaperUserMessage,
+  type GlossaryValue,
+  mergeTerminology,
+  mockCrossPaperResponse,
+  XPAPER,
+} from './builder/xpaper.js';
 export {
   buildExtractionRequest,
   buildExtractionUserMessage,

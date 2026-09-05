@@ -21,6 +21,10 @@ export const AI_ACTIONS = [
   'SCOPED_REVISION',
   'PARSE_CITATION',
   'EMBED',
+  // ADR-0005: the Path A conversation (A.6) and the cross-paper pass (A.16) had no value to log
+  // under. Both are once-per-document Strong calls, bounded like EXTRACT (§11.4), not capped.
+  'PROPOSAL',
+  'CROSS_PAPER',
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -60,6 +64,8 @@ export const UNMETERED_ACTIONS = [
   'SCOPED_REVISION',
   'PARSE_CITATION',
   'EMBED',
+  'PROPOSAL',
+  'CROSS_PAPER',
 ] as const satisfies readonly AiAction[];
 
 export type UnmeteredAction = (typeof UNMETERED_ACTIONS)[number];
