@@ -96,26 +96,42 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-Phase 0 (scaffold) and Phase 1 week 1 (editor spike) are complete and pushed. The owner waived the
-gate pauses on 2026-09-04: build every phase you can without stopping at a gate, and keep
-`docs/PENDING.md` listing the human-only work. `docs/BUILD_LOG.md` has per-task evidence.
+**Phase 1 week 2 is built.** Phase 0, week 1 and week 2 all have per-task evidence in
+`docs/BUILD_LOG.md`. Working end to end, driven live rather than only in tests: sign-in, the
+thesis list, the TipTap editor with ghost-text Assist and autosave, seed-paper upload and
+extraction, reference resolution against Crossref and OpenAlex, the Stage 1 proposal screen, the
+Stage 2 library with grounding badges and manual DOI fix, open-access full-text fetch, chunking,
+embedding and the pgvector retrieval query.
 
-Working end to end, proven in a real browser: sign-in by emailed code, the thesis list, and the
-Stage 4 editor — streaming ghost text over SSE, `Tab` to accept with `ASSIST` provenance, citation
-nodes, the draft block, autosave with 409 conflict handling and snapshots to object storage, the
-usage meter and cap refusal, and the `/admin` cost banner. All nine Appendix B.9 tests pass.
-p95 time-to-first-token is 274 ms against the 600 ms ceiling.
+Not done, and why:
+- **Task 2.9 (Appendix C.3 scoring)** — BLOCKED, needs the five fixture papers. Only the human can
+  write `fixtures/papers/pNN.expected.json`.
+- **Gates G0 and G1 are not ticked.** Both are blocked on human-only work: push so CI runs, supply
+  provider keys and run `pnpm ai:verify`, provision the VPS and secrets, review
+  `docs/CONSISTENCY_REVIEW.md` and the ADRs.
+- **Everything AI-facing runs on the mock provider.** No real model has been called. The cost model
+  is therefore unverified, and retrieval quality is unmeasured.
+- **The scholarly contact addresses are still `you@example.com`**, which Unpaywall rejects outright,
+  so no source can reach `FULL_TEXT` yet.
 
-`packages/retrieval` has the chunker, the C.3 scoring rules, the Crossref/OpenAlex/Unpaywall
-clients and the §10.4 reranker, unit-tested with no network. The rest of week 2 (upload,
-extraction, the proposal screen, the library UI) is next.
-
-262 tests pass across eight workspaces; Biome and every typecheck are clean.
-
-Two CORS traps are worth remembering: `enableCors` needs an explicit `methods` list or PUT is
-refused at the preflight, and any handler calling `reply.hijack()` (the SSE endpoints) must write
-its own CORS headers because Fastify's `onSend` hooks are skipped.
+Per the owner's standing instruction (2026-09-04) the agent builds through the gates rather than
+stopping at them, and lists everything needing a human in `docs/PENDING.md`. Read that file before
+reporting status.
 
 Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
 continue from the next one. Before running `prisma generate` on Windows, stop the API — it holds
 the engine DLL open.
+
+## Hard-won rules
+
+These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
+
+- **A job id must key on what the job will read, not what it will write.** Keying on the row id
+  alone made BullMQ swallow every retry and re-index. Job ids also cannot contain `:`.
+- **Prove a screen in a browser.** Four faults so far were invisible to every API and unit test and
+  showed up only under Playwright: two CORS faults in week 1, the JSON content-type on multipart
+  uploads, and a saved proposal that re-rendered as a fresh draft.
+- **Check a third-party API's field list before selecting from it.** `subtype` is not
+  Crossref-selectable and made every reference lookup a 400.
+- **Never assert a fact the code has not observed.** Grounding levels, abstracts and citation counts
+  are only written when something was actually fetched and read.
