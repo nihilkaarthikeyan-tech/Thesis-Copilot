@@ -10,6 +10,23 @@ export {
   type SectionSpan,
 } from './chunker.js';
 export {
+  type DocumentKind,
+  detectGutter,
+  detectSections,
+  type ExtractedDocument,
+  type ExtractedPage,
+  extractDocument,
+  extractDocx,
+  extractPdf,
+  joinPages,
+  looksLikeHeading,
+  PAGE_BREAK,
+  type PdfExtraction,
+  pageText,
+  pdfPageCount,
+  type TextItem,
+} from './extract/index.js';
+export {
   buildQueryText,
   CANDIDATE_LIMIT,
   type Candidate,
