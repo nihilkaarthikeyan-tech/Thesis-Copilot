@@ -27,6 +27,17 @@ export {
   type TextItem,
 } from './extract/index.js';
 export {
+  type CandidateQuery,
+  type ChunkRow,
+  EMBEDDING_DIMENSIONS,
+  EmbeddingShapeError,
+  findCandidates,
+  type RawClient,
+  replaceSourceChunks,
+  shortReference,
+  toVectorLiteral,
+} from './pgvector.js';
+export {
   buildQueryText,
   CANDIDATE_LIMIT,
   type Candidate,
@@ -41,6 +52,15 @@ export {
   TOP_K,
   topK,
 } from './rank.js';
+export {
+  FETCH_TIMEOUT_MS,
+  type FullTextFailure,
+  type FullTextFetchOptions,
+  type FullTextResult,
+  fetchOpenAccessPdf,
+  MAX_PDF_BYTES,
+  readableFullTextReason,
+} from './scholarly/fulltext.js';
 export {
   DEFAULT_ATTEMPTS,
   DEFAULT_REQUESTS_PER_SECOND,

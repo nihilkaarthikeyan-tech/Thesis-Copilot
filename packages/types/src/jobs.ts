@@ -43,6 +43,13 @@ export type IndexSourceJob = {
   sourceId: string;
   documentId: string;
   userId: string;
+  /**
+   * What this run will read: the DOI, or the object-storage key of an uploaded PDF. It is part of
+   * the job id, so re-indexing the same content is deduplicated while a source that now points at
+   * something else — after a manual DOI fix, or a PDF the student uploaded — is indexed again.
+   * Keying on `sourceId` alone silently swallowed every re-index.
+   */
+  contentKey?: string;
 };
 
 export type SearchLiteratureJob = {

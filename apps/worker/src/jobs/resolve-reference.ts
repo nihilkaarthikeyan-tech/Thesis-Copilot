@@ -32,6 +32,7 @@ export type ResolveReferenceDeps = {
     sourceId: string;
     documentId: string;
     userId: string;
+    contentKey?: string;
   }) => Promise<unknown>;
   log?: (event: Record<string, unknown>) => void;
 };
@@ -152,6 +153,8 @@ export async function runResolveReference(
     sourceId: source.id,
     documentId: job.documentId,
     userId: job.userId,
+    // The DOI decides what `index-source` will fetch, so it decides whether this is the same work.
+    ...(resolved.doi ? { contentKey: resolved.doi } : {}),
   });
 
   return {

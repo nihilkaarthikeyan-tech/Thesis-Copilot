@@ -1174,7 +1174,56 @@ therefore deferred. What follows is the part that is pure logic and provable on 
   - `apps/web` gains a Vitest config; without it Vitest loaded the Playwright specs and failed on
     Playwright's own `test()`.
 
-### Tasks 2.6, 2.7, 2.9 — still to do
-- Unpaywall full-text fetch and the `index-source` job (chunk + embed), the pgvector retrieval
-  query, and the C.3 scoring run. The scoring run is blocked on the five fixture papers
-  (`docs/PENDING.md`).
+### Tasks 2.6 and 2.7 — full-text fetch, chunking, embedding, retrieval (FR-2.2, FR-2.4)
+- Files: `packages/retrieval/src/scholarly/fulltext.ts`, `packages/retrieval/src/pgvector.ts`,
+  `apps/worker/src/jobs/index-source.ts`, `apps/worker/src/main.ts`,
+  `apps/api/test/retrieval.spec.ts`.
+- Evidence — driven live, then read straight out of Postgres:
+
+  ```
+  worker: {"msg":"source indexed","from":"abstract","chunks":2,"groundingLevel":"ABSTRACT"}
+
+  tc=# SELECT ordinal, section, "tokenCount", vector_dims(embedding), left(text,55) …
+   ordinal | section  | tokenCount | dims |                    text
+  ---------+----------+------------+------+--------------------------------------
+         0 | Abstract |        285 | 1024 | Proteins are essential to life, and …
+         1 | Abstract |        181 | 1024 |  Here we provide the first computat…
+
+  tc=# SELECT "groundingLevel", doi FROM "Source" WHERE id = …
+   ABSTRACT | 10.1038/s41586-021-03819-2
+
+  $ pnpm --filter @tc/api exec vitest run test/retrieval.spec.ts   # real pgvector, Testcontainers
+   Tests  7 passed (7)
+  $ pnpm test
+   config 62 · types 12 · ui 31 · db 2 · ai 90 · retrieval 149 · web 6 · worker 39 · api 59
+  ```
+- Notes / deviations from PRD:
+  - **A re-index was silently swallowed.** The `index-source` job id keyed on `sourceId` alone, so
+    BullMQ treated the second enqueue as a duplicate of the first: after a manual DOI fix the
+    source kept whatever grounding the failed first attempt had left. The id now includes a
+    `contentKey` — the DOI, or an uploaded PDF's storage key — so re-indexing the same content is
+    still deduplicated but a source that now points at something else is indexed again. This is the
+    third dedup fault of the same shape (after the `:` in job ids and the refix job id), and the
+    rule that came out of it is: **a job id must key on what the job will read, not on what it will
+    write.**
+  - `groundingLevel` is only ever raised on evidence. FULL_TEXT needs a PDF that was fetched *and*
+    yielded text, so a scanned paper with no text layer is not stored and not claimed; ABSTRACT
+    needs an abstract that was actually chunked. A resolution on its own claims nothing.
+  - The open-access URL comes from Unpaywall and points at a host we do not control, so the fetch
+    caps the body as it arrives (a host that understates `content-length` cannot get past it),
+    checks the PDF magic bytes because publishers serve paywall pages with a PDF content-type, and
+    turns every failure into a sentence a student can read rather than an exception.
+  - **All pgvector SQL lives in one file.** Prisma types `embedding` as `Unsupported`, so it cannot
+    be read or written through the client at all. The vector literal has to be interpolated because
+    no driver binds a pgvector value; every element is checked to be a finite number first, so
+    nothing but digits can reach the SQL text, and that check is tested with a hostile value.
+  - `replaceSourceChunks` deletes before inserting. Re-indexing without that would leave two
+    generations of chunks behind and quietly double every retrieval hit.
+- UNSURE: retrieval quality is unmeasured. The integration test proves the SQL, the HNSW index and
+  the ordering are right, using the mock embedder, where identical text gives an identical vector.
+  Whether `voyage-3` puts the *semantically* right passage first cannot be known until the real key
+  exists (`docs/PENDING.md`).
+
+### Task 2.9 — still to do
+- The Appendix C.3 scoring run. **BLOCKED: fixtures missing** — it needs the five corrected
+  `fixtures/papers/pNN.expected.json`, which only the human can write (`docs/PENDING.md`).

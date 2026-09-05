@@ -14,12 +14,19 @@ import {
 } from '@tc/ai';
 import { type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
-import { CrossrefClient, OpenAlexClient, UnpaywallClient } from '@tc/retrieval';
-import { type ExtractPaperJob, jobId, jobKeyDigest, type ResolveReferenceJob } from '@tc/types';
+import { CrossrefClient, extractDocument, OpenAlexClient, UnpaywallClient } from '@tc/retrieval';
+import {
+  type ExtractPaperJob,
+  type IndexSourceJob,
+  jobId,
+  jobKeyDigest,
+  type ResolveReferenceJob,
+} from '@tc/types';
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
 import { runExtractPaper } from './jobs/extract-paper.js';
+import { runIndexSource } from './jobs/index-source.js';
 import {
   isRetryExhausted,
   markUnresolvedAfterRetries,
@@ -28,6 +35,7 @@ import {
 import {
   DEFAULT_JOB_OPTIONS,
   QUEUE_EXTRACT_PAPER,
+  QUEUE_INDEX_SOURCE,
   QUEUE_NOOP,
   QUEUE_RESOLVE_REFERENCE,
 } from './queues.js';
@@ -52,7 +60,10 @@ function providersFor(env: Env): Providers {
   return createProviders(env);
 }
 
-function storageFor(env: Env): { get: (key: string) => Promise<Buffer> } {
+function storageFor(env: Env): {
+  get: (key: string) => Promise<Buffer>;
+  put: (key: string, body: Buffer) => Promise<unknown>;
+} {
   const endpoint = new URL(env.S3_ENDPOINT);
   const client = new MinioClient({
     endPoint: endpoint.hostname,
@@ -69,6 +80,11 @@ function storageFor(env: Env): { get: (key: string) => Promise<Buffer> } {
       const chunks: Buffer[] = [];
       for await (const chunk of stream) chunks.push(chunk as Buffer);
       return Buffer.concat(chunks);
+    },
+    async put(key: string, body: Buffer) {
+      return client.putObject(env.S3_BUCKET, key, body, body.length, {
+        'content-type': 'application/pdf',
+      });
     },
   };
 }
@@ -150,7 +166,13 @@ async function main(): Promise<void> {
           prisma,
           ...scholarly,
           enqueueIndex: (input) =>
-            indexQueue.add('index-source', input, { jobId: jobId('index-source', input.sourceId) }),
+            indexQueue.add('index-source', input, {
+              jobId: jobId(
+                'index-source',
+                input.sourceId,
+                jobKeyDigest(input.contentKey ?? 'none'),
+              ),
+            }),
           log: (event) => log({ jobId: job.id, ...event }),
         });
         return result;
@@ -158,6 +180,25 @@ async function main(): Promise<void> {
       // A handful at a time: the clients rate-limit themselves to the polite 5 req/s, and running
       // more in parallel would only queue behind that limiter.
       { connection: connection.duplicate(), concurrency: 3 },
+    ),
+
+    new Worker(
+      QUEUE_INDEX_SOURCE,
+      async (job: Job<IndexSourceJob>) => {
+        const result = await runIndexSource(job.data, {
+          prisma,
+          embeddings: providers.embeddings,
+          unpaywall: scholarly.unpaywall,
+          getObject: (key) => storage.get(key),
+          putObject: (key, body) => storage.put(key, body),
+          extract: (bytes) => extractDocument(bytes, 'pdf'),
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        return result;
+      },
+      // Downloads a PDF and then embeds it: mostly waiting on the network, but one paper's worth
+      // of text in memory at a time per slot.
+      { connection: connection.duplicate(), concurrency: 2 },
     ),
 
     new Worker(QUEUE_NOOP, async (job) => ({ ok: true, id: job.id }), {
