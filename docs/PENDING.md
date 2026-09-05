@@ -16,6 +16,11 @@ blocks the agent from continuing to build against mocks.
       the admin page shows "Cost model: UNVERIFIED" until then. Budget printed must be ≤ ₹100.
 - [ ] **Email delivery**: `RESEND_API_KEY` (or `SMTP_*`) in the production `.env`. Dev prints the
       one-time code to the API console instead.
+      **Now also carries the §14 alert emails** (user cost > ₹120, platform average > ₹90, job
+      failures > 5 %, TTFB p95 > 900 ms, each over 15 min). The alerts are built and tested through
+      a console mailer that records what it would have sent; a Resend or SMTP implementation of
+      `Mailer` in `apps/api/src/common/mailer.ts` is the one file to add once a key exists. The
+      admin address they go to is `SEED_ADMIN_EMAIL`.
 - [ ] **Google sign-in** (optional): `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, both or neither.
 - [ ] **Scholarly API contact emails**: set `OPENALEX_MAILTO`, `CROSSREF_MAILTO`, `UNPAYWALL_EMAIL`
       to a real address you monitor (polite-pool rules). Optional: `SEMANTIC_SCHOLAR_API_KEY`, `CORE_API_KEY`.

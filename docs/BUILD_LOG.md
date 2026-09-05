@@ -1606,5 +1606,56 @@ therefore deferred. What follows is the part that is pure logic and provable on 
     median. The p95 §16 asks for comes from the Prometheus histogram, not this query.
   - The hallucinated-cite rate is computed from the durable `AiCallLog` rather than the Prometheus
     counter, so a restart does not reset the dashboard's view of it.
-- Still to do in this group: the `/admin` **page** (PHASES 4.5 wants screenshots under
-  `docs/evidence/`), the flags **UI** (4.9), cap tests for CITE and DRAFT (4.1), alerts (4.6).
+
+### Tasks 4.1, 4.5 (page), 4.6, 4.9 (UI) — caps proven end to end, the dashboard, alerts, flags
+- Files: `apps/api/test/caps.spec.ts`, `apps/web/src/app/admin/page.tsx`,
+  `apps/api/src/common/mailer.ts`, `apps/api/src/modules/admin/{alerts.service.ts,alerts.scheduler.ts}`,
+  `apps/api/test/{alerts.spec.ts,_harness.ts}`, `docs/evidence/admin-{dashboard,forbidden}.png`.
+- Evidence:
+
+  ```
+  $ vitest run test/caps.spec.ts        # real containers, through the HTTP paths
+   ✓ CITE: serves and charges one unit under the cap
+   ✓ CITE: 429 CAP_EXCEEDED at the cap, counter does not creep past it
+   ✓ CITE: a sentence the heuristic declines is not charged
+   ✓ DRAFT: 429 CAP_EXCEEDED as problem-details before any stream opens
+   ✓ DRAFT: the unit is taken when the stream opens (the worker's refusal refunds it)
+   Tests  5 passed (5)
+
+  $ vitest run test/alerts.spec.ts      # PHASES 4.6: a forced condition sends through the mock mailer
+   ✓ quiet when nothing has breached
+   ✓ USER_COST > ₹120 emails admin@example.com, text names the threshold
+   ✓ PLATFORM_AVERAGE > ₹90 fires with no user over ₹120
+   ✓ JOB_FAILURES: 1 of 10 in the window (10%) fires; a failure outside the window does not
+   ✓ TTFB_P95 > 900 ms fires on the slowest of twenty
+   ✓ each breach emails once, and again only after it has cleared
+   ✓ SUPERADMIN-only
+   Tests  8 passed (8)
+
+  docs/evidence/admin-dashboard.png   32 users · ASSIST 80 calls · DRAFT 2 · acceptance 24.4% / 21.4%
+                                      · hallucinated-cite 0% · five flags with live toggles
+  docs/evidence/admin-forbidden.png   a STUDENT sees the public cost-model banner and nothing else
+
+  $ pnpm test   632 passing (13 new)    $ pnpm lint   Checked 259 files. No fixes applied.
+  ```
+- Notes / deviations from PRD:
+  - **Two endpoints answered 201 for a POST that creates nothing** (`/citations/suggest`,
+    `/admin/alerts/evaluate`): Nest's default. Both now answer 200. Found by the new tests, not by
+    anyone reading the code.
+  - **Alerts email once per breach and then go quiet until it clears.** §14 says "email on"; it
+    does not say "every 15 minutes while true", and an alert that repeats the same fact every
+    window is one nobody reads by the third hour. A breach that clears and recurs emails again.
+  - Every alert condition is evaluated from `AiCallLog`, not from in-memory metrics, so a restart
+    cannot hide a breach. The 15-minute scheduler is off under `NODE_ENV=test`; the test forces
+    evaluation through the real SUPERADMIN route.
+  - **Real delivery is a human item.** No `RESEND_API_KEY` or `SMTP_*` exists (§13.3), so every
+    environment gets a console mailer that records what it would have sent. The `Mailer` interface
+    is the one seam a real implementation slots into. `docs/PENDING.md` says so.
+  - The draft cap test is titled for what it can observe: the unit is taken when the stream opens.
+    The refund on a worker refusal is proven in `draft-section.spec.ts` and the 4.2 E2E, because
+    no worker runs in the API harness. Naming it "refunds" would have been a claim the test does
+    not make.
+  - The dashboard says, next to a ₹0.00 total, that the provider is the mock and the price is not
+    real. A dashboard that let ₹0 stand unexplained would be worse than no dashboard.
+  - The harness now exposes the Nest app, so a test can reach a provider the HTTP surface does not
+    (the mailer). Nothing else in the harness changed.

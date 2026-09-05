@@ -5,7 +5,7 @@
  * retrieval and memory services.
  */
 
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -27,6 +27,7 @@ export class CitationsController {
    * the library has nothing to offer — a normal, free outcome, not an error.
    */
   @Post('suggest')
+  @HttpCode(200)
   async suggest(@CurrentUser() user: SessionUser, @Body() body: unknown) {
     const parsed = citeBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid request', parsed.error.issues);

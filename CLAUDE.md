@@ -96,31 +96,31 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-**Phase 1 week 2 is built.** Phase 0, week 1 and week 2 all have per-task evidence in
-`docs/BUILD_LOG.md`. Working end to end, driven live rather than only in tests: sign-in, the
-thesis list, the TipTap editor with ghost-text Assist and autosave, seed-paper upload and
-extraction, reference resolution against Crossref and OpenAlex, the Stage 1 proposal screen, the
-Stage 2 library with grounding badges and manual DOI fix, open-access full-text fetch, chunking,
-embedding and the pgvector retrieval query.
+**Phase 1 weeks 0–4 are built** (2026-09-05). `docs/BUILD_LOG.md` has per-task evidence. Working
+end to end and driven in a real browser: sign-in, the thesis list, the proposal screen, the
+library with grounding badges and manual DOI fix, the TipTap editor with Assist through the real
+prompt pipeline (A.0/A.0.1/A.1 rendered from the prompt files, §10.4 retrieval, §10.6 whitelist),
+citations that resolve to real sources with a hover passage, claim-triggered citation suggestion,
+draft mode (grounded or refused, accepted or discarded), `.docx`/PDF export, the AI-usage log,
+the SUPERADMIN dashboards, §14 alerts through a console mailer, and live feature-flag toggles.
 
 Not done, and why:
-- **Task 2.9 (Appendix C.3 scoring)** — BLOCKED, needs the five fixture papers. Only the human can
-  write `fixtures/papers/pNN.expected.json`.
-- **Gates G0 and G1 are not ticked.** Both are blocked on human-only work: push so CI runs, supply
-  provider keys and run `pnpm ai:verify`, provision the VPS and secrets, review
-  `docs/CONSISTENCY_REVIEW.md` and the ADRs.
-- **Everything AI-facing runs on the mock provider.** No real model has been called. The cost model
-  is therefore unverified, and retrieval quality is unmeasured.
-- **The scholarly contact addresses are still `you@example.com`**, which Unpaywall rejects outright,
-  so no source can reach `FULL_TEXT` yet.
+- **Task 2.9 (C.3 scoring)**, the C.4 recall set, the C.5 golden scenarios, the 3.4 thirty-run
+  evidence and 3.9 prompt observations are all BLOCKED on things only the human can do: fixture
+  papers, a provider key, hand-written scenarios. `docs/PENDING.md` lists each.
+- **Every AI call so far went to the mock.** Cost is ₹0 everywhere; token counts and cache ratios
+  are the mock's simulation. `pnpm ai:verify` with a real key settles the cost model.
+- **Week 5 is next**: deferred items, error and empty states, onboarding, the security pass,
+  observability, backups.
 
-Per the owner's standing instruction (2026-09-04) the agent builds through the gates rather than
-stopping at them, and lists everything needing a human in `docs/PENDING.md`. Read that file before
-reporting status.
+The owner's standing instructions (2026-09-04/05): build every phase without stopping at a gate,
+**build first and verify in batches** rather than PRD §0.3 rule 7's one-task-at-a-time cadence,
+and keep `docs/PENDING.md` listing everything that needs a human. The deviation from rule 7 is
+logged in `docs/BUILD_LOG.md`; the PRD itself is unchanged.
 
 Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
-continue from the next one. Before running `prisma generate` on Windows, stop the API — it holds
-the engine DLL open.
+continue from the next one. Before running `prisma generate` on Windows, stop the API **and the
+worker** — both hold the engine DLL open, and a running worker fails the rename with EPERM.
 
 ## Hard-won rules
 

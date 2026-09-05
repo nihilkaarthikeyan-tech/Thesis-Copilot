@@ -6,13 +6,14 @@
  * SUPERADMIN-only.
  */
 
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { computeMonthlyBudget } from '@tc/config';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { AdminService } from './admin.service.js';
+import { AlertsService } from './alerts.service.js';
 import { SuperadminGuard } from './superadmin.guard.js';
 
 const flagBody = z.object({ enabled: z.boolean() });
@@ -22,6 +23,7 @@ export class AdminController {
   constructor(
     private readonly flags: FlagsService,
     private readonly admin: AdminService,
+    private readonly alerts: AlertsService,
   ) {}
 
   /**
@@ -69,6 +71,14 @@ export class AdminController {
   @UseGuards(SessionGuard, SuperadminGuard)
   plans() {
     return this.admin.plans();
+  }
+
+  /** §14 alerts, evaluated now rather than on the 15-minute timer (PHASES 4.6). */
+  @Post('alerts/evaluate')
+  @HttpCode(200)
+  @UseGuards(SessionGuard, SuperadminGuard)
+  evaluateAlerts() {
+    return this.alerts.evaluate();
   }
 
   @Get('flags')

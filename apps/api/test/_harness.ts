@@ -23,6 +23,8 @@ const MIGRATIONS_DIR = fileURLToPath(
 );
 
 export type Harness = {
+  /** The running Nest application, for reaching a provider the HTTP surface does not expose. */
+  app: NestFastifyApplication;
   baseUrl: string;
   prisma: PrismaClient;
   cookie: string;
@@ -158,6 +160,7 @@ export async function startHarness(email: string): Promise<Harness> {
   const userId = ((await signedIn.json()) as { user: { id: string } }).user.id;
 
   return {
+    app,
     baseUrl,
     prisma,
     get cookie() {
