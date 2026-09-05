@@ -1,25 +1,25 @@
 # Thesis Copilot — agent brief
 
-`docs/PRD.md` is the single source of truth. `docs/PHASES.md` splits it into execution units.
-If they ever disagree, **the PRD wins** and the difference goes in `docs/BUILD_LOG.md`.
-This file is a summary for speed, not an authority — when in doubt, open the PRD section named.
+`docs/PRD-version-2.md` is the build spec and the single source of truth (v1.1, `docs/PRD.md`, is
+kept for reference; v2 is the same product with the build-process gates removed). `docs/PHASES.md`
+is the running order. If they ever disagree, **the PRD wins** and the difference goes in
+`docs/BUILD_LOG.md`. This file is a summary for speed, not an authority.
 
-## Agent protocol (PRD §0.3 — read it in full before building)
+## Agent rules (PRD v2 §0.3)
 
 1. Never invent an API — check `node_modules/<pkg>` types first.
-2. Never claim a DoD is met without pasted command output.
-3. Never fabricate fixture data. The agent may write `*.expected.draft.json`, never `*.expected.json`.
-4. Never silently change a decision — write `docs/ADR/NNNN-<slug>.md` and ask.
-5. Never guess model IDs, prices or limits — `pnpm ai:verify` (Appendix E) settles them.
-6. Prefer boring over clever.
-7. One task at a time: implement → verify → log → commit → next.
-8. Build only the phase requested.
-9. Stop when stuck; write what was tried and ask a specific question.
-10. Never delete or skip a test to make CI pass.
-11. Prompts are content, not code — `packages/ai/prompts/*.md` are verbatim from Appendix A.
-12. Report uncertainty as `UNSURE:` in the log.
+2. Never fabricate fixture data. The agent may write `*.expected.draft.json`, never `*.expected.json`.
+3. Never silently change a decision — write `docs/ADR/NNNN-<slug>.md`, then continue.
+4. Never guess model IDs, prices or limits — `pnpm ai:verify` (Appendix E) settles them.
+5. Prefer boring over clever.
+6. Prompts are content, not code — `packages/ai/prompts/*.md` are verbatim from Appendix A.
+7. Never delete or skip a test to make CI pass.
 
-## Conventions (PRD §0.2)
+How to work: build a whole week of `docs/PHASES.md` at a time (code + typecheck + lint), commit
+and push per week, keep `docs/PENDING.md` current for anything only a human can do, and one short
+`docs/BUILD_LOG.md` note per week. Verification runs come as a separate batch, not per task.
+
+## Conventions (PRD v2 §0.2)
 
 - TypeScript everywhere, `strict: true`. No `any` without a comment.
 - pnpm workspaces + Turborepo. Biome for lint+format; CI fails on lint errors.
