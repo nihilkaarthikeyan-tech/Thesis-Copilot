@@ -318,9 +318,18 @@ export const GhostText = Extension.create<GhostTextOptions>({
                   next = { ...prev, fade: null };
                   break;
               }
-            } else if (prev.status !== 'idle' && (tr.docChanged || tr.selectionSet)) {
+            } else if (
+              prev.status !== 'idle' &&
+              (tr.docChanged ||
+                (tr.selectionSet && !(tr.selection.empty && tr.selection.from === prev.anchorPos)))
+            ) {
               // B.3 cancel: any transaction that changes the doc or moves the selection while a
               // request is open aborts it. Typing is the common case.
+              //
+              // "Moves" means the cursor left the anchor. Real browsers dispatch selection-only
+              // transactions at the SAME position after the widget is drawn (Chrome fires
+              // selectionchange when the DOM changes under the caret); those must not count, or
+              // every suggestion is rejected the moment it appears.
               prev.abort?.abort();
               report(prev, prev.text ? 'REJECTED' : 'CANCELLED', prev.keptChars);
               next = { ...IDLE, fade: prev.fade };

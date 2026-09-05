@@ -4,7 +4,10 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule } from './config.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { AiModule } from './modules/ai/ai.module.js';
+import { AssistModule } from './modules/assist/assist.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -41,6 +44,9 @@ import { UsageModule } from './modules/usage/usage.module.js';
     FlagsModule,
     UsageModule,
     DocumentsModule,
+    AiModule,
+    ChaptersModule,
+    AssistModule,
     AdminModule,
   ],
 })

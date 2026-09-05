@@ -4,6 +4,16 @@ The agent builds every phase it can (owner's instruction, 2026-09-04) and lists 
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
 
+## Blocking right now
+
+- [ ] **Start Docker Desktop with Administrator rights.** Its engine service `com.docker.service`
+      is stopped and this session cannot start it ("Cannot open com.docker.service service").
+      Postgres, Redis and MinIO are down, so the API will not boot, the integration tests
+      (Testcontainers) cannot run, and the browser end-to-end test cannot run. Right-click Docker
+      Desktop, choose Run as administrator, wait for it to settle, then:
+      `docker compose -f infra/compose/docker-compose.dev.yml up -d`
+      This is what unblocks PHASES tasks 1.8 and 1.9.
+
 ## Accounts, keys and services
 
 - [ ] **Anthropic API key + model ids.** Put `ANTHROPIC_API_KEY`, `AI_FAST_MODEL`, `AI_STRONG_MODEL`

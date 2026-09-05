@@ -77,6 +77,13 @@ export const envSchema = z
     AI_FAST_MODEL: requiredString('AI_FAST_MODEL'),
     AI_STRONG_MODEL: requiredString('AI_STRONG_MODEL'),
 
+    // Simulated time-to-first-token for the mock provider. PRD §16 week 1 runs the editor spike
+    // at 250 ms; the k6 load test (§15) uses the same figure.
+    AI_MOCK_LATENCY_MS: z.preprocess(
+      (v) => (v === '' || v === undefined ? undefined : v),
+      z.coerce.number().int().min(0).default(250),
+    ),
+
     // ---- Embeddings ----
     EMBED_PROVIDER: z.enum(['voyage', 'mock']).default('voyage'),
     VOYAGE_API_KEY: optionalString,

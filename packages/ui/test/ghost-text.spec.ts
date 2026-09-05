@@ -3,6 +3,7 @@
  */
 
 import type { Editor } from '@tiptap/core';
+import { TextSelection } from '@tiptap/pm/state';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getGhostState, jsonContainsText } from '../src/editor/ghost-text.js';
 import { createTestEditor, fakeRequest, pressKey, provenanceRuns, tick } from './helpers.js';
@@ -114,6 +115,26 @@ describe('ghost text (Appendix B.3)', () => {
     ]);
     expect(editor.state.doc.textContent).toBe('xy');
     expect(editor.view.dom.querySelector('span.ghost')).toBeNull();
+  });
+
+  it('a selection transaction at the same cursor position does not cancel (browsers emit these)', async () => {
+    const outcomes: Array<{ suggestionId: string; outcome: string; keptChars: number }> = [];
+    const fake = streamOf('kept text');
+    editor = createTestEditor('<p>x</p>', { request: fake.request }, outcomes);
+    editor.commands.setTextSelection(2);
+    editor.commands.requestSuggestion();
+    await tick(20);
+    expect(getGhostState(editor)?.status).toBe('shown');
+
+    // Chrome-style: the DOM changed under the caret, ProseMirror re-reads the selection, same pos.
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 2)));
+    expect(getGhostState(editor)?.status).toBe('shown');
+    expect(outcomes).toHaveLength(0);
+
+    // Actually moving the cursor still rejects.
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 1)));
+    expect(getGhostState(editor)?.status).toBe('idle');
+    expect(outcomes[0]?.outcome).toBe('REJECTED');
   });
 
   it('B.9 #4: Tab without a suggestion still indents a list item', () => {

@@ -1,0 +1,207 @@
+/*
+ * Editor styling — PRD §6.2 (72ch centre column, serif body, ghost text muted, 400 ms accept fade,
+ * tinted draft block, citation marks) and §6.4 (prefers-reduced-motion).
+ */
+
+.thesis-editor {
+  max-width: 72ch;
+  margin: 0 auto;
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--color-ink);
+  outline: none;
+  min-height: 60vh;
+  padding: 0.5rem 0 8rem;
+}
+
+.thesis-editor > * + * {
+  margin-top: 0.9em;
+}
+
+.thesis-editor h1 {
+  font-size: 1.9rem;
+  line-height: 1.25;
+  font-weight: 600;
+  margin-bottom: 1.2em;
+}
+.thesis-editor h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 1.6em;
+}
+.thesis-editor h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.3em;
+}
+.thesis-editor ul,
+.thesis-editor ol {
+  padding-left: 1.5em;
+}
+.thesis-editor ul {
+  list-style: disc;
+}
+.thesis-editor ol {
+  list-style: decimal;
+}
+.thesis-editor blockquote {
+  border-left: 3px solid var(--color-line);
+  padding-left: 1em;
+  color: var(--color-muted);
+}
+.thesis-editor pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: #f3f4f6;
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.thesis-editor table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.thesis-editor th,
+.thesis-editor td {
+  border: 1px solid var(--color-line);
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+}
+.thesis-editor th {
+  background: #f7f7f5;
+  font-weight: 600;
+}
+.thesis-editor img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+/* Placeholder (TipTap Placeholder extension) */
+.thesis-editor p.is-editor-empty:first-child::before,
+.thesis-editor p.is-empty:only-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Ghost text (Appendix B.3, §6.2): muted, same font, upright, a dot at the accept boundary. */
+.thesis-editor .ghost {
+  color: var(--color-muted);
+  font-style: normal;
+  user-select: none;
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+.thesis-editor .ghost::after {
+  content: "";
+  display: inline-block;
+  width: 0.35em;
+  height: 0.35em;
+  margin-left: 0.15em;
+  border-radius: 50%;
+  background: var(--color-accent);
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
+/* Accepted text: 400 ms background fade so the student sees what was inserted (§6.2). */
+.thesis-editor .ghost-accepted {
+  animation: ghost-accept-fade 400ms ease-out forwards;
+}
+@keyframes ghost-accept-fade {
+  from {
+    background-color: rgba(47, 91, 234, 0.18);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thesis-editor .ghost-accepted {
+    animation: none;
+  }
+}
+
+/* Citation node (Appendix B.5). */
+.thesis-editor .citation {
+  display: inline;
+  padding: 0 0.15em;
+  border-radius: 3px;
+  background: rgba(47, 91, 234, 0.08);
+  color: #1f3fae;
+  cursor: default;
+  white-space: nowrap;
+}
+.thesis-editor .citation--selected {
+  outline: 2px solid var(--color-accent);
+}
+.thesis-editor .citation--removed {
+  background: transparent;
+  color: #b91c1c;
+  text-decoration: underline dashed #b91c1c;
+  text-underline-offset: 3px;
+}
+
+/* Draft block (Appendix B.6, §6.2): tinted, left border, header with actions. */
+.thesis-editor .draft-block {
+  position: relative;
+  margin: 1.2em 0;
+  padding: 0.75em 1em 0.75em 1.1em;
+  border-left: 4px solid #c9a227;
+  background: rgba(201, 162, 39, 0.08);
+  border-radius: 0 6px 6px 0;
+}
+.thesis-editor .draft-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: #7a5c0e;
+  margin-bottom: 0.5em;
+}
+.thesis-editor .draft-block__actions button {
+  font: inherit;
+  padding: 0.15em 0.6em;
+  margin-left: 0.35rem;
+  border: 1px solid rgba(122, 92, 14, 0.35);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+.thesis-editor .draft-block__actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* needsSourceNote (Appendix B.6): amber note. */
+.thesis-editor .needs-source-note {
+  font-family: var(--font-sans);
+  font-size: 0.85em;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 0 0.3em;
+  border-radius: 3px;
+}
+
+/* Math */
+.thesis-editor .math-inline {
+  padding: 0 0.1em;
+}
+.thesis-editor .math-block {
+  text-align: center;
+  padding: 0.5em 0;
+}
+
+/* Provenance is invisible by default; the AI-usage view (FR-8.6) can reveal it. */
+.thesis-editor[data-show-provenance="true"] [data-provenance="ASSIST"],
+.thesis-editor[data-show-provenance="true"] [data-provenance="DRAFT"] {
+  background: rgba(47, 91, 234, 0.08);
+}
+.thesis-editor[data-show-provenance="true"] [data-provenance="HUMAN_EDITED"] {
+  background: rgba(16, 185, 129, 0.1);
+}

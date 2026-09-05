@@ -20,6 +20,8 @@ type DocumentSummary = {
   entryPath: 'A_TOPIC' | 'B_PAPER';
   createdAt: string;
   updatedAt: string;
+  /** The chapter the editor opens by default; null only for legacy rows without chapters. */
+  firstChapterId: string | null;
 };
 
 export default function DocumentListPage() {
@@ -138,7 +140,10 @@ export default function DocumentListPage() {
             {documents.map((d) => (
               <li key={d.id} className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <Link href={`/app/d/${d.id}/write/first`} className="font-medium hover:underline">
+                  <Link
+                    href={`/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`}
+                    className="font-medium hover:underline"
+                  >
                     {d.title}
                   </Link>
                   <p className="text-xs text-muted">

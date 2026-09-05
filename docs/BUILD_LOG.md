@@ -596,3 +596,232 @@ pausing for gate sign-off, and to keep `docs/PENDING.md` listing all human-only 
 done in one batch at the end. Gate checklists remain in `docs/PHASES.md` for the owner to tick
 later against this log. Nothing else in PRD §0.3 changes: no fabricated fixtures, no guessed model
 ids, no filling Appendix E.3.
+
+---
+
+## Unit: PHASE-1-W1 — Editor spike
+Started: 2026-09-04 · Sessions: 2
+
+### Task 1.1 — Schema and base editor
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui test        # test/schema.spec.ts
+   ✓ round-trips a document containing every node and mark type
+   ✓ level-1 heading is not user-insertable but stays available programmatically
+   ✓ citation renders {{cite:KEY}} in HTML so copies carry their key
+  ```
+  The round-trip fixture contains every node in B.2 (heading 1–3, paragraph, bulletList,
+  orderedList, listItem, table/Row/Header/Cell, image, mathInline, mathBlock, codeBlock,
+  blockquote, hardBreak, citation, draftBlock, needsSourceNote) and every mark (bold, italic,
+  underline, strike, link, superscript, subscript, provenance, commentAnchor).
+- Notes / deviations from PRD:
+  - TipTap **2.27.3**, not 3.x. PRD §7.2 fixes "TipTap v2"; 3.x exists but is a different major
+    (§0.3 rule 6, and a substitution would need an ADR).
+  - Level-1 headings: the `#` input rule and `Mod-Alt-1` are removed, so the student cannot make
+    one, while `setNode('heading', { level: 1 })` still works for the chapter title (B.2).
+  - `commentAnchor` is registered and inert, as B.1 requires for Phase 3.
+  - Images store an object-storage key and never base64 (B.1); the upload hook takes a signed URL.
+- UNSURE: —
+
+### Task 1.2 — Provenance mark + appendTransaction plugin (B.4)
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui test        # test/provenance.spec.ts
+   ✓ typed text with no mark becomes HUMAN
+   ✓ B.9 #5a: typing at the END of an ASSIST range produces HUMAN text
+   ✓ B.9 #5b: typing INSIDE an ASSIST range produces HUMAN_EDITED with the same actionId
+   ✓ deleting inside an ASSIST range marks the touched text HUMAN_EDITED
+   ✓ internal paste preserves provenance marks
+   ✓ external paste becomes HUMAN
+   ✓ counts words by provenance
+  ```
+- Notes / deviations from PRD:
+  - The plugin works from the transaction's **step maps** only, as B.4 demands; it never diffs the
+    document.
+  - One case B.4 does not name: loading a chapter (`setContent`) replaces the whole document in one
+    step, which the naive rule would have re-marked as freshly typed HUMAN text. A whole-document
+    replace is now treated as a load, so stored marks survive a reload. Without this the provenance
+    of every chapter would reset each time it was opened.
+- UNSURE: —
+
+### Task 1.3 — Ghost-text plugin (B.3)
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui test        # test/ghost-text.spec.ts
+   ✓ B.9 #1: ghost text never appears in editor.getJSON() at any point during a stream
+   ✓ B.9 #2: Tab inserts the text with ASSIST provenance, converts {{cite}}, cursor to the end
+   ✓ B.9 #3: typing while a suggestion is shown clears it and aborts the request
+   ✓ B.9 #4: Tab without a suggestion still indents a list item
+   ✓ a selection transaction at the same cursor position does not cancel (browsers emit these)
+   ✓ Escape dismisses with REJECTED and reports nothing kept
+   ✓ Alt+→ accepts one word at a time and reports PARTIAL on dismiss
+   ✓ only one in-flight request per editor; requests need an eligible cursor
+   ✓ sends before/after context with citations rendered as {{cite:KEY}}
+  ```
+  B.9 #1 asserts on `getJSON()` after **every** streamed token, not just at the end.
+- Notes / deviations from PRD:
+  - B.3 says any transaction that "moves the selection" cancels. Taken literally that kills every
+    suggestion in a real browser: Chrome fires `selectionchange` when the widget decoration is
+    inserted under the caret, producing a selection transaction at the *same* position. Cancelling
+    now requires the cursor to actually leave `anchorPos`. Caught by the Playwright run, not by the
+    unit tests, which is why the jsdom suite alone was not enough.
+  - `editor.commands.keyboardShortcut()` cannot test this plugin: it is a capture-and-replay
+    simulation that drops transaction metas. The tests dispatch real `KeyboardEvent`s instead.
+  - The transport is injected (`options.request`), so the app passes SSE and tests pass a fake.
+- UNSURE: —
+
+### Task 1.5 — Citation node + NodeView (B.5)
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui test        # test/citation-draft.spec.ts
+   ✓ B.9 #6: switching APA → IEEE re-renders labels but leaves the document JSON untouched
+   ✓ renders a removed source red-dashed and never deletes it
+   ✓ insertCitation creates a node with a stable key and defaults
+  ```
+- Notes / deviations from PRD:
+  - The label is never stored in the document: the NodeView reads `editor.storage.citations` and
+    re-renders on `citationsRerender` meta (B.5). The B.9 #6 test asserts `getJSON()` is equal
+    before and after a style switch.
+  - The renderer is the week-1 placeholder B.5 allows; `packages/citations` (citeproc) replaces it
+    in Phase 2 week 10.
+- UNSURE: —
+
+### Task 1.6 — Draft block (B.6)
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui test        # test/citation-draft.spec.ts
+   ✓ B.9 #7: accept unwraps the block and keeps citations and marks; notes become visible text
+   ✓ discard removes the block entirely
+   ✓ editing inside a pending draft yields HUMAN_EDITED, and requests are refused there
+  ```
+- Notes / deviations from PRD:
+  - Regenerate is rendered but disabled, as PHASES 1.6 directs (it becomes a metered action in
+    week 4).
+  - Accept converts `needsSourceNote` atoms to plain `[NEEDS SOURCE: …]` text with HUMAN
+    provenance, so they stay visible until the student deals with them (B.6).
+- UNSURE: —
+
+### Task 1.4 — SSE endpoint `/assist/suggest` (B.8, §9.3)
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/api exec vitest run test/week1.spec.ts
+   Test Files  1 passed (1)
+        Tests  10 passed (10)
+   ✓ streams the 3-sentence mock: start < 100 ms, tokens, then done with usage
+   ✓ records the outcome the editor reports
+   ✓ disconnecting the client aborts the provider stream (assert on the mock)
+   ✓ a second request while one is open is refused with 409 (single in-flight per user)
+   ✓ exhausting the ASSIST cap answers 429 CAP_EXCEEDED with resetsAt, and makes no provider call
+   ✓ a chapter the user does not own answers 404 before any stream opens
+
+  # and against the running dev stack:
+  $ curl -N -s -b cookies.txt -d '{"chapterId":"...","before":"Prior studies in Karnataka found "}' \
+      http://localhost:3001/api/v1/assist/suggest
+  event: start
+  data: {"suggestionId":"01a06d6e-ef66-7f86-bbef-299cff4b483d"}
+  event: token
+  data: {"t":"Evidence from rural Karn"}
+  ... 13 token events ...
+  event: done
+  data: {"suggestionId":"...","citations":[{"key":"S1#c1","sourceId":null,"chunkId":null,
+         "rendered":"(Source, n.d.)"}],"usage":{"inputTokens":52,"cachedInputTokens":537,
+         "cacheWriteTokens":0,"outputTokens":77},"ttfbMs":262,"latencyMs":469,"empty":false}
+
+  $ psql -tAc "SELECT outcome, shownChars, keptChars, ttfbMs, latencyMs FROM SuggestionEvent ..."
+  suggestion outcome=ACCEPTED shown=305 kept=120 ttfb=262 latency=469 guided=false
+  aicall model=mock-fast cost=0 ok=true out_tokens=77     # mock: cost 0, counter still increments
+  ```
+- Notes / deviations from PRD:
+  - **The disconnect hook was wrong at first and the test caught it.** `request.raw.on('close')`
+    fires as soon as the request *body* has been read, which for a JSON POST is before the handler
+    runs — so every stream aborted immediately. The abort now hangs off the response socket
+    closing before the response finished.
+  - Refusals (404 / 409 / 429) are raised before the first SSE event, so the controller answers
+    with problem-details JSON instead of a 200 stream carrying an error event.
+  - The prompt is a **placeholder**: A.0 preamble + the A.1 task block loaded verbatim from
+    `packages/ai/prompts/`, with no retrieved passages. The real cached/volatile builder, retrieval
+    and memory trimming are week 3 (PHASES 3.2-3.4). Marked `TODO(prd)` in the source.
+  - `done.citations[]` currently echoes each `{{cite:ID}}` with no resolved source. The retrieval
+    whitelist that strips ids outside the retrieved set and counts `HALLUCINATED_CITE` (§10.6)
+    lands in week 3 task 3.4.
+  - Empty output refunds the cap unit and logs `EMPTY_SUGGESTION` (A.1 post-processing step 4).
+    A provider error refunds too (§11.5). A client that disconnects mid-stream does **not** get a
+    refund: tokens were generated and paid for.
+- UNSURE: —
+
+### Task 1.7 — Autosave, versions, conflict (B.7)
+- Status: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui test        # test/autosave.spec.ts - client half
+   ✓ saves 2 s after the last change, with the current baseVersion
+   ✓ writes a localStorage safety copy on every change and clears it after a save
+   ✓ B.9 #8: a 409 conflict stops autosave and reports `conflict`
+   ✓ flush() on blur or route change saves immediately
+   ✓ saves every 30 s while dirty even if changes keep arriving
+   ✓ keeps the change and reports `error` when the save fails, then retries
+
+  $ pnpm --filter @tc/api exec vitest run test/week1.spec.ts   # server half
+   ✓ a stale baseVersion is refused with 409 and the server version
+   ✓ stores per-provenance word counts on save (B.4)
+   ✓ a chapter owned by someone else reads as 404, never 403 (§12.1)
+   ✓ a manual snapshot lands in object storage and the version list
+
+  # against the dev stack:
+  $ curl -X PUT -d '{"content":{...},"baseVersion":1}' .../chapters/$CH
+  {"version":2,"wordCount":9,"snapshotTaken":true}
+  $ curl -X PUT -d '{...,"baseVersion":1}' .../chapters/$CH          # stale
+  {"type":"CONFLICT","status":409,"detail":"This chapter was changed elsewhere - reload to
+   continue.","serverVersion":2,"baseVersion":1}
+  $ mc ls -r l/thesis-copilot/snapshots/
+  199B  .../1788542379917-autosave.json.gz
+  203B  .../1788542380588-manual.json.gz
+  $ psql -tAc "SELECT version, wordCounts, snapshotAt FROM Chapter ..."
+  chapter version=2 wordCount=9 wordCounts={"DRAFT":0,"HUMAN":6,"ASSIST":3,"COMMAND":0,
+                                            "HUMAN_EDITED":0} snapshotAt=2026-09-04 17:19:40.606
+  ```
+- Notes / deviations from PRD:
+  - Appendix B.7 needs `Chapter.version`, a snapshot timestamp and a word-count breakdown; PRD §8's
+    `Chapter` has none of them. Added additively in migration `0003_chapter_version` under
+    **ADR-0003**; logged as item 13 in `docs/CONSISTENCY_REVIEW.md`. Needs owner sign-off.
+  - Snapshots are gzipped JSON in MinIO with a `DocumentVersion` row holding the key, per §8.
+  - The kill-tab check B.9 names is covered structurally by the localStorage safety copy written on
+    every 2 s debounce; the manual browser run of it is pending (see tasks 1.8 and 1.9 below).
+- UNSURE: —
+
+### Task 1.8 — Editor page layout (§6.2)
+- Status: CODE COMPLETE, BROWSER VERIFICATION BLOCKED (see below)
+- What exists: `/app/d/:id/write/:chapterId` renders the §6.2 layout — left chapter rail, centre
+  editor at 72ch in a serif face, right Sources/Citations tabs, top bar with document and chapter
+  title, autosave state, the usage meter reading `/usage/me`, and an Assist|Draft mode marker.
+  Ghost text is muted with a dot at the accept boundary; accepted text gets the 400 ms fade, which
+  is disabled under `prefers-reduced-motion` (§6.4). Ctrl/Cmd+S forces a save and a MANUAL
+  snapshot. A 409 shows the reload banner and stops autosave. A newer localStorage draft offers
+  Restore / Discard.
+- BLOCKED: **Docker Desktop's engine service (`com.docker.service`) is stopped and starting it
+  needs Administrator rights this session does not have.** Postgres, Redis and MinIO are therefore
+  down, the API cannot boot, and the browser end-to-end run (B.9 test 9) cannot be executed.
+  Everything above was written and typechecks; it has not been driven in a real browser since the
+  last round of fixes.
+- UNSURE: the Playwright run before those fixes failed twice — once on the ghost-text
+  selection-cancel bug (fixed, now covered by a unit test) and once on a knock-on assertion. The
+  fixes are in, but until the suite runs green in Chromium this task is not proven.
+
+### Task 1.9 — Latency measurement
+- Status: BLOCKED — same Docker cause as 1.8.
+- What exists: `apps/api/scripts/assist-bench.mjs` runs N `/assist/suggest` calls and prints p50/p95
+  for client TTFB, the server's own `ttfbMs`, and total latency, then checks the two PHASES 1.9
+  thresholds (p95 TTFB ≤ 600 ms; overhead over the 250 ms mock ≤ 350 ms) and that call 51 is
+  refused with `CAP_EXCEEDED`. A dev-only overlay in the editor shows the last TTFB and latency.
+- Single-sample datapoint from the dev stack before Docker stopped: `ttfbMs 262`, `latencyMs 469`
+  against a 250 ms mock, i.e. **12 ms of server overhead**. That is one call, not the 50-call
+  p50/p95 the DoD requires.
+- To unblock: start Docker Desktop as Administrator, `docker compose -f
+  infra/compose/docker-compose.dev.yml up -d`, start the API, then
+  `node apps/api/scripts/assist-bench.mjs 50`.

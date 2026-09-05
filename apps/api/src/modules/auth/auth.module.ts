@@ -5,10 +5,13 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { AuthController } from './auth.controller.js';
 import { type Auth, createAuth, isGoogleConfigured } from './auth.js';
 import { AUTH } from './auth.tokens.js';
+import { DevOtpController } from './dev-otp.js';
 
 @Global()
 @Module({
-  controllers: [AuthController],
+  // The dev OTP sink never exists in production (it also refuses at request time).
+  controllers:
+    process.env.NODE_ENV === 'production' ? [AuthController] : [DevOtpController, AuthController],
   providers: [
     {
       provide: AUTH,

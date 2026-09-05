@@ -12,6 +12,7 @@ import type { PrismaClient } from '@tc/db';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
+import { rememberDevOtp } from './dev-otp.js';
 
 export type SendOtp = (input: { email: string; otp: string; type: string }) => Promise<void>;
 
@@ -21,6 +22,7 @@ export type SendOtp = (input: { email: string; otp: string; type: string }) => P
  */
 const consoleOtp: SendOtp = async ({ email, otp, type }) => {
   console.log(`[auth] one-time code for ${email} (${type}): ${otp}`);
+  if (process.env.NODE_ENV !== 'production') rememberDevOtp(email, otp);
 };
 
 export function createAuth(env: Env, prisma: PrismaClient, sendOtp: SendOtp = consoleOtp) {
