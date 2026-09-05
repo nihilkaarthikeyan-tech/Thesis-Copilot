@@ -44,7 +44,13 @@ blocks the agent from continuing to build against mocks.
       `fixtures/papers/README.md`. Needed for extraction accuracy scoring (Phase 1 week 2).
 - [ ] After the agent writes `pNN.expected.draft.json`, correct them and rename to `pNN.expected.json`.
 - [ ] **Retrieval Q&A set** `fixtures/retrieval/qa.json` (30 questions → correct chunk ids), Appendix C.4.
-- [ ] **Prompt golden set** review, Appendix C.5 (the agent drafts; you judge).
+- [ ] **Prompt golden set**, Appendix C.5: ten Assist scenarios in `fixtures/prompts/*.json`.
+      The runner, the judge and a template (`example.draft.json`) are built and tested; only your
+      scenarios are missing, because §0.3 rule 3 forbids the agent writing fixture expectations and
+      the point of the set is your judgement of a good suggestion. `fixtures/prompts/README.md`
+      explains each field. The most valuable scenarios are the ones where the right answer is
+      **not** to cite. Run with `RUN_GOLDEN=1` and a provider key; it is a nightly job, never a
+      per-PR test.
 - [ ] **Thirty real Assist suggestions** (PHASES 3.4 done-when): with a provider key set, run
       thirty suggestions on a fixture chapter and paste five examples (before / after / suggestion /
       citations), the hallucinated-cite count and the cache hit rate over the thirty into

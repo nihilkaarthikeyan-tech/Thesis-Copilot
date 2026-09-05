@@ -1376,3 +1376,55 @@ therefore deferred. What follows is the part that is pure logic and provable on 
   - The accept fade decorates the accepted range and ProseMirror redraws it when the fade ends
     (~400 ms), which can recreate the NodeView and close a popover opened inside that window. Minor
     and self-correcting — the next hover reopens it — so it is recorded rather than worked around.
+
+### Tasks 3.6, 3.7, 3.8 — citation suggestion, guided input, prompt golden set
+- Files: `packages/ai/src/builder/cite.ts`, `packages/ai/src/golden.ts`,
+  `packages/ai/test/{cite.spec.ts,golden.spec.ts}`,
+  `apps/api/src/modules/assist/{cite.service.ts,citations.controller.ts}`,
+  `apps/web/src/components/editor/{CiteSuggestions.tsx,GuidedInput.tsx}`,
+  `fixtures/prompts/{README.md,example.draft.json}`.
+- **Cadence change.** The owner directed on 2026-09-05 to build first and test at the end, which
+  sets aside PRD §0.3 rule 7 ("one task at a time … do not start three things in parallel"). These
+  three tasks were built as one batch and verified once. Rule 7 is otherwise unchanged in the PRD;
+  this is a logged deviation, not an edit to the source of truth.
+- Evidence:
+
+  ```
+  $ pnpm test
+   config 62 · types 39 · ui 37 · db 2 · ai 170 (+1 skipped) · retrieval 149 · web 6 ·
+   worker 39 · api 80        = 584 passing
+  $ pnpm lint
+   Checked 237 files. No fixes applied.
+  $ npx playwright test --workers=1
+   12 passed
+  ```
+- Notes / deviations from PRD:
+  - **The claim heuristic is deliberately narrow.** It gates a metered call, so the two error
+    directions are not symmetric: a false positive spends one of the student's 10–30 monthly CITE
+    units and interrupts their typing, while a false negative costs nothing because they can still
+    ask by hand. Structural sentences are excluded outright — A.1 tells the model to write "This
+    section examines…" when it has no passage to cite, so offering a citation for one would be
+    nonsense. Twenty sentences pin the boundary, ten each way, as PHASES 3.6 asks.
+  - The trigger listens only for `.`, `!` and `?` on keyup and remembers the sentences it has
+    already asked about, so FR-4.5's "never on every keystroke, at most once per sentence end"
+    holds without a debounce timer.
+  - **A declined suggestion is silence, not a message.** The heuristic saying no, an empty library,
+    or a network failure all render nothing. Only a cap refusal speaks, because that one is about
+    the student's plan rather than about this sentence.
+  - Retrieval runs *before* the cap check here, unlike Assist. With no passages there is nothing to
+    cite and therefore nothing to charge for; charging first would bill for an empty answer.
+  - A.3 shares Assist's cached prefix (preamble + memory), so a CITE call reuses the block Assist
+    has already warmed rather than paying a second cache write (§10.3).
+  - **The golden set's scenarios are the human's to write** (§0.3 rule 3 forbids the agent
+    authoring fixture expectations, and C.5's value is the owner's judgement of a good suggestion).
+    The runner, the judge and a `example.draft.json` template are built and tested; the judge is
+    proven against hand-made outputs with no key needed. The real-provider half is nightly only,
+    behind `RUN_GOLDEN=1`, because a model's answer varies between runs and must never gate a PR.
+  - The judge scores the *post-processed* text, not the raw output. The student never sees the raw
+    output, so a prompt that leans on A.1's two-sentence cut is not thereby broken.
+  - `window.prompt` replaced with an inline input (3.7): it blocked the page, stole focus from the
+    document and could not be dismissed with Escape like the rest of the editor. The plugin captures
+    `promptForInstruction` once, so the controller identity is stable across renders, and a pending
+    promise is resolved on unmount or the next `Shift+→` would be ignored for ever.
+- BLOCKED: PHASES 3.9 (ten weak suggestions with reasons) needs real model output, so it waits on a
+  provider key together with 3.4's thirty-suggestion run. Both are in `docs/PENDING.md`.

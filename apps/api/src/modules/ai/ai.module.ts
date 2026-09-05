@@ -13,6 +13,7 @@ import {
   type LlmRequest,
   MockEmbeddingProvider,
   MockLlmProvider,
+  mockCiteResponse,
   type Providers,
 } from '@tc/ai';
 import type { Env } from '@tc/config';
@@ -51,6 +52,14 @@ export function mockSuggestionFor(req: LlmRequest): string {
         if (env.AI_PROVIDER === 'mock') {
           return {
             llm: new MockLlmProvider({
+              // A.3 is a structured call, so the mock answers it from the passages in its own
+              // prompt rather than the default text (which is A.1's streamed paragraph).
+              responses: [
+                {
+                  match: (req: LlmRequest) => req.action === 'CITE',
+                  respond: mockCiteResponse,
+                },
+              ],
               latencyMs: env.AI_MOCK_LATENCY_MS,
               // ~24 chars per chunk at 10 ms apart: the whole suggestion arrives in ~150 ms after TTFB.
               chunkSize: 24,

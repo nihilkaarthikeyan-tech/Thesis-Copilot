@@ -49,6 +49,8 @@ function shortRefOf(source: PassageDto['source']): string {
 }
 
 import { CitationList } from './CitationList';
+import { CiteSuggestions } from './CiteSuggestions';
+import { useGuidedInput } from './GuidedInput';
 import { SourcePins } from './SourcePins';
 
 type ChapterMeta = {
@@ -150,6 +152,7 @@ function ChapterEditor({
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
   const [tab, setTab] = useState<'sources' | 'citations'>('sources');
   const autosaveRef = useRef<Autosave | null>(null);
+  const guided = useGuidedInput();
 
   const reducedMotion = useMemo(
     () =>
@@ -181,10 +184,9 @@ function ChapterEditor({
             onUsageChange();
           },
           onError: (e) => setNotice(e.message),
-          promptForInstruction: () =>
-            Promise.resolve(
-              window.prompt('Guide the suggestion (e.g. "contrast with the 2019 study")'),
-            ),
+          // PHASES 3.7: an inline input, not window.prompt, which blocks the page and steals
+          // focus from the document.
+          promptForInstruction: guided.controller.ask,
         },
         draft: {
           onBeforeAccept: async (draftId) => {
@@ -216,7 +218,7 @@ function ChapterEditor({
         },
         resizableTables: true,
       }),
-    [chapter.id, reducedMotion, onUsageChange],
+    [chapter.id, reducedMotion, onUsageChange, guided.controller],
   );
 
   const editor = useEditor({
@@ -426,6 +428,10 @@ function ChapterEditor({
           </div>
         </aside>
       </div>
+
+      {guided.element}
+
+      <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />
 
       {process.env.NODE_ENV !== 'production' ? (
         <div

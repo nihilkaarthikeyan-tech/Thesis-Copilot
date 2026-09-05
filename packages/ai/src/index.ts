@@ -7,6 +7,23 @@ export {
   type PromptPassage,
 } from './builder/assist.js';
 export {
+  buildCiteRequest,
+  CITE,
+  type CiteBuildInput,
+  type CiteCandidate,
+  type CiteResult,
+  type ClaimReason,
+  type ClaimVerdict,
+  citeCandidateSchema,
+  citeResultSchema,
+  citeUserMessage,
+  detectClaim,
+  endsSentence,
+  lastCompleteSentence,
+  mockCiteResponse,
+  usableCandidates,
+} from './builder/cite.js';
+export {
   buildMemoryBlock,
   type GlossaryEntry,
   MEMORY_BUDGET_TOKENS,
@@ -40,6 +57,17 @@ export {
   splitForExtraction,
 } from './extraction.js';
 export { createProviders, type Providers } from './factory.js';
+export {
+  countSentences,
+  formatGoldenReport,
+  type GoldenFailure,
+  type GoldenOutcome,
+  type GoldenPassage,
+  type GoldenScenario,
+  goldenScenarioSchema,
+  goldenSetSchema,
+  judge,
+} from './golden.js';
 export {
   deriveExtraction,
   mockExtractionResponse,

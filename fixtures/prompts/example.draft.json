@@ -1,0 +1,38 @@
+{
+  "name": "cost-barrier-direct",
+  "intent": "The passage states the claim outright, so the suggestion should cite it and not invent a second source.",
+  "chapter": {
+    "title": "Literature review",
+    "scopeNote": "What is known about household adoption barriers, and where the evidence thins out."
+  },
+  "passages": [
+    {
+      "id": "S1#c1",
+      "shortRef": "Kumar 2021",
+      "page": 7,
+      "text": "In a 2021 survey of 312 rural households in Karnataka, upfront cost was reported as the main barrier to rooftop solar adoption, ahead of awareness and roof suitability."
+    },
+    {
+      "id": "S2#c1",
+      "shortRef": "Rao 2019",
+      "page": 3,
+      "text": "Wind turbine siting decisions in coastal Kerala were dominated by grid connection distance rather than measured wind speed."
+    },
+    {
+      "id": "S3#c1",
+      "shortRef": "Hoogwijk 2010",
+      "page": 3044,
+      "text": "Bottom-up sectoral mitigation potentials were assessed across regions using a common accounting framework."
+    }
+  ],
+  "before": "Prior studies in Karnataka found ",
+  "after": "",
+  "instruction": null,
+  "expect": {
+    "maxSentences": 2,
+    "mustCiteAnyOf": ["S1#c1"],
+    "mustNotCite": ["S2#c1", "S3#c1"],
+    "mustNotContain": ["Sharma", "et al.", "78%"],
+    "allowEmpty": false
+  }
+}
