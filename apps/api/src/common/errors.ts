@@ -63,6 +63,13 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/** Signed in, but not allowed. Distinct from UNAUTHORIZED so the client does not send them to sign in again. */
+export class ForbiddenError extends AppError {
+  constructor(detail = 'You do not have access to that.') {
+    super('FORBIDDEN', 'Not allowed', HttpStatus.FORBIDDEN, detail);
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(detail: string, issues?: unknown) {
     super('VALIDATION_FAILED', 'Invalid request', HttpStatus.BAD_REQUEST, detail, { issues });

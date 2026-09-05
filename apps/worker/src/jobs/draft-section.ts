@@ -43,7 +43,25 @@ export type DraftSectionDeps = {
   strongTier: () => Promise<boolean>;
   /** Progress and result, published for the API's SSE stream. */
   publish: (event: DraftEvent) => Promise<unknown>;
+  /** Writes the `AiCallLog` row (§10.2 step 5). Optional so unit tests can omit it. */
+  logCall?: (call: DraftCallLog) => Promise<unknown>;
   log?: (event: Record<string, unknown>) => void;
+};
+
+export type DraftCallLog = {
+  userId: string;
+  documentId: string;
+  tier: 'fast' | 'strong';
+  modelId: string;
+  usage: {
+    inputTokens: number;
+    cachedInputTokens?: number;
+    cacheWriteTokens?: number;
+    outputTokens: number;
+  } | null;
+  latencyMs: number;
+  ok: boolean;
+  error?: string;
 };
 
 export type DraftChapter = {
@@ -133,11 +151,34 @@ export async function runDraftSection(
   });
 
   let markdown = '';
+  let usage: {
+    inputTokens: number;
+    cachedInputTokens?: number;
+    cacheWriteTokens?: number;
+    outputTokens: number;
+  } | null = null;
+  let modelId = deps.llm.modelIdFor(tier);
+  const startedAt = Date.now();
   try {
     for await (const chunk of deps.llm.stream(request)) {
       if (chunk.type === 'text') markdown += chunk.text;
+      else {
+        usage = chunk.usage;
+        modelId = chunk.modelId;
+      }
     }
   } catch (error) {
+    // §10.2 step 5: a failed call is logged too, at zero cost, so the failure rate is visible.
+    await deps.logCall?.({
+      userId: job.userId,
+      documentId: job.documentId,
+      tier,
+      modelId,
+      usage: null,
+      latencyMs: Date.now() - startedAt,
+      ok: false,
+      error: String(error instanceof Error ? error.message : error).slice(0, 500),
+    });
     await deps.publish({
       type: 'error',
       draftId,
@@ -146,6 +187,18 @@ export async function runDraftSection(
     log({ msg: 'draft provider error', draftId, error: String(error) });
     return { draftId, status: 'error', words: 0, citations: 0, needsSource: 0, short: false };
   }
+
+  // §10.2 step 5 / PHASES 4.3: every provider call lands in `AiCallLog` with its real token
+  // usage. Cost is computed by the API's shared table, so the worker only reports what it saw.
+  await deps.logCall?.({
+    userId: job.userId,
+    documentId: job.documentId,
+    tier,
+    modelId,
+    usage,
+    latencyMs: Date.now() - startedAt,
+    ok: true,
+  });
 
   const processed = postProcessDraft(markdown, passages, targetWords);
 

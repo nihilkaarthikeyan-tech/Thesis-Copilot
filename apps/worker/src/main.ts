@@ -13,7 +13,7 @@ import {
   mockExtractionResponse,
   type Providers,
 } from '@tc/ai';
-import { type Env, loadEnv } from '@tc/config';
+import { computeCallCost, type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
 import {
   buildChapterMemory,
@@ -247,6 +247,30 @@ async function main(): Promise<void> {
           },
           publish: (event) =>
             connection.publish(`draft:${job.data.draftId}`, JSON.stringify(event)),
+          logCall: async (call) => {
+            // PHASES 1.4: the mock logs zero cost but the row still lands, so the dashboard's
+            // call and token counts are real even before a provider key exists.
+            const cost =
+              call.ok && call.usage && env.AI_PROVIDER !== 'mock'
+                ? computeCallCost({ tier: call.tier, modelId: call.modelId, usage: call.usage })
+                : 0;
+            await prisma.aiCallLog.create({
+              data: {
+                userId: call.userId,
+                documentId: call.documentId,
+                action: 'DRAFT',
+                model: call.modelId,
+                inputTokens: call.usage?.inputTokens ?? 0,
+                cachedInputTokens: call.usage?.cachedInputTokens ?? 0,
+                cacheWriteTokens: call.usage?.cacheWriteTokens ?? 0,
+                outputTokens: call.usage?.outputTokens ?? 0,
+                costMicroInr: BigInt(cost),
+                latencyMs: call.latencyMs,
+                ok: call.ok,
+                error: call.error ?? null,
+              },
+            });
+          },
           log: (event) => log({ jobId: job.id, ...event }),
         });
         return result;

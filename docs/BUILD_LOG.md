@@ -1552,6 +1552,59 @@ therefore deferred. What follows is the part that is pure logic and provable on 
   - Bibliography lines are built from the stored CSL fields, not citeproc. `@citation-js` arrives in
     Phase 2 (§7.2); until then the line says what is actually known and invents nothing.
 
-### Tasks 4.1, 4.3–4.6, 4.9 — still to do
-- Caps on every P1 action, the cost and telemetry queries, the admin dashboard, alerts and the
-  feature-flags UI.
+### Tasks 4.3, 4.4, 4.5 (API), 4.9 (API) — cost, telemetry, dashboards, flag toggle
+- Files: `apps/api/src/modules/admin/{admin.service.ts,admin.controller.ts,superadmin.guard.ts}`,
+  `apps/api/src/common/errors.ts` (`ForbiddenError`), `apps/worker/src/jobs/draft-section.ts`
+  (call logging), `apps/worker/test/draft-section.spec.ts`,
+  `packages/db/prisma/migrations/0004_verification_text_id`, `docs/ADR/0002-*` (addendum).
+- Evidence, from the live stack:
+
+  ```
+  -- PHASES 4.3: after the Assist runs and two Draft runs
+  SELECT action, count(*), round(sum("costMicroInr")/1e6, 4) AS inr, sum("inputTokens") … GROUP BY 1
+   action | count |  inr   | input | cached | output
+   ASSIST |    80 | 0.0000 |  9333 |  44497 |   6128
+   DRAFT  |     2 | 0.0000 |   170 |   1322 |    234
+
+  GET /admin/costs      users=31  total=INR 0.00  ceiling=INR 100
+    ASSIST calls=80 failed=0 cache=82.7%
+  GET /admin/telemetry  ASSIST shown=90 accepted=22 rate=24.4% · DRAFT shown=12 accepted=3 rate=25.0%
+                        hallucinated-cite rate 0.0% · avg latency {ASSIST: 483}
+  PUT /admin/flags/draftModeStrongTier {"enabled":false} -> {key, enabled:false}; GET shows false; restored
+  GET /admin/costs as a STUDENT -> 403 FORBIDDEN     as SUPERADMIN -> 200
+  $ pnpm test   621 passing (4 new)     $ pnpm lint   Checked 254 files. No fixes applied.
+  ```
+- **Cost is ₹0.0000 because the provider is the mock** (PHASES 1.4 says so): the rows, token
+  counts and cache ratio are real, the price is not. The 82.7% cache figure is the mock's own usage
+  simulation and says nothing about the real provider. Both are `docs/PENDING.md` items (a key,
+  then `pnpm ai:verify`).
+- **A bug three weeks old: the seeded SUPERADMIN could not sign in.** Every attempt answered 500.
+  Better Auth 1.7.2's `reserveVerificationValue` inserts a verification row with an id it generates
+  itself under `forceAllowId: true`, which bypasses the `generateId: false` setting ADR-0002 relies
+  on, and that id is not a UUID. It runs only from `revokeUnprovenAccountAccess` — an *existing*
+  user who never verified, i.e. a seeded or invited account — so every self-signed-up student was
+  fine and nothing noticed. Migration 0004 makes `Verification.id` text with a UUID-shaped default;
+  `User.id` stays as §8 defines it. Full account in the ADR addendum. Found only because 4.5 needed
+  a SUPERADMIN to exist.
+  - `prisma generate` needs *both* the API and the worker stopped on Windows; the worker holds the
+    engine DLL too. CLAUDE.md said only the API.
+  - The migrate-diff check compares the schema's `dbgenerated(…)` text against how Postgres
+    reports the default, so the schema must say `(uuid_generate_v7())::text`, parentheses included.
+- **Draft calls were not reaching `AiCallLog`.** The job wrote only the `SuggestionEvent`. §10.2
+  step 5 and PHASES 4.3 need every provider call in the log with its real usage, so the worker now
+  writes the row (zero cost on the mock, as the API does), and a failed call is logged as failed
+  rather than lost, so the failure rate §14 alerts on can actually be computed.
+- Notes / deviations from PRD:
+  - `/admin/cost-model` stays open (PHASES 0.10 wants the banner without a login); everything
+    with real numbers is behind `SessionGuard` + `SuperadminGuard`. A missing role is treated as
+    the least privilege. `FORBIDDEN` (403) is a new error type distinct from `UNAUTHORIZED`, so the
+    client does not send an admin to sign in again.
+  - Per-user spend is reported alongside the average and the worst user, because the ₹100
+    ceiling in §11 is per user and an average can hide a user who is over it.
+  - "Accepted" counts ACCEPTED and PARTIAL: a partly kept suggestion was still useful.
+  - The latency figure is a **mean** and is named `avgLatencyMs`, because Postgres has no cheap
+    median. The p95 §16 asks for comes from the Prometheus histogram, not this query.
+  - The hallucinated-cite rate is computed from the durable `AiCallLog` rather than the Prometheus
+    counter, so a restart does not reset the dashboard's view of it.
+- Still to do in this group: the `/admin` **page** (PHASES 4.5 wants screenshots under
+  `docs/evidence/`), the flags **UI** (4.9), cap tests for CITE and DRAFT (4.1), alerts (4.6).

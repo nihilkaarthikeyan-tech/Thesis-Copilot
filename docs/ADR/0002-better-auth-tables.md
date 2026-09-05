@@ -57,3 +57,30 @@ seed, the cap tests and the enum-parity test all still pass. Reversible with one
 Either accept this ADR and add the tables to PRD §8 in the next PRD revision, or choose a different
 auth approach — in which case Phase 0 task 0.8 reopens. Logged as item 12 in
 `docs/CONSISTENCY_REVIEW.md`.
+
+## Addendum (2026-09-05) — `Verification.id` is `text`, not `uuid`
+
+**Found while building PHASES 4.5.** The seeded SUPERADMIN could not sign in: every attempt answered
+500. Students signing up fresh were unaffected, which is why it went unnoticed for three weeks.
+
+**Cause.** Better Auth 1.7.2's `reserveVerificationValue` (`db/internal-adapter.mjs`) inserts a
+verification row with `forceAllowId: true` and an id it generates itself, which is not a UUID.
+`forceAllowId` deliberately bypasses the `advanced.database.generateId: false` setting this ADR
+relies on, so no configuration avoids it. The call sits under `revokeUnprovenAccountAccess`, which
+runs when an *existing* user who has never verified their email signs in — exactly a seeded or
+invited account, never a self-signed-up one. Against a `uuid` column both the insert and Better
+Auth's own fallback lookup fail.
+
+**Change.** Migration `0004_verification_text_id` makes `Verification.id` a `text` column with a
+UUID-shaped default (`(uuid_generate_v7())::text`), so rows Better Auth inserts without an id are
+unchanged and rows it inserts with its own id now fit. `User.id` stays `uuid` as PRD §8 defines it;
+Better Auth omits that id and the database fills it, which has always worked.
+
+**Evidence.** After the migration the seeded admin signs in and `/admin/costs` answers 200; an
+ordinary student is refused with 403. Both are in `docs/BUILD_LOG.md` under task 4.5.
+
+**Why only this column.** `Session` and `Account` ids are also `uuid`, and Better Auth omits them
+on insert under `generateId: false`, so they are fine today. They would break the same way if a
+future Better Auth version force-supplied an id for them. If that happens, the same one-line
+migration applies; it is not applied pre-emptively because §0.3 rule 6 prefers boring over clever
+and a column type is not something to change on speculation.

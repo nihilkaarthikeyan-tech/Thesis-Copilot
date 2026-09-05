@@ -475,7 +475,9 @@ model Account {
 }
 
 model Verification {
-  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  // Text, not Uuid: Better Auth's `reserveVerificationValue` inserts an id it generates itself with
+  // `forceAllowId: true`, bypassing `generateId: false`. See migration 0004 and ADR-0002.
+  id         String   @id @default(dbgenerated("(uuid_generate_v7())::text"))
   identifier String
   value      String
   expiresAt  DateTime
