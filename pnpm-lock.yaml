@@ -406,6 +406,9 @@ importers:
       '@tc/config':
         specifier: workspace:*
         version: link:../config
+      '@tc/types':
+        specifier: workspace:*
+        version: link:../types
       mammoth:
         specifier: 1.12.2
         version: 1.12.2

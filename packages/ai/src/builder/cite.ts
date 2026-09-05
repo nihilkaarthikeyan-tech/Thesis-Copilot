@@ -13,7 +13,6 @@
 
 import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
-import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
 import type { PromptPassage } from './assist.js';
 

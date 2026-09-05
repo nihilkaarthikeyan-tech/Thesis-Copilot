@@ -38,9 +38,10 @@ describe('fetchOpenAccessPdf', () => {
   });
 
   it('follows redirects, because repositories always redirect', async () => {
-    const fetchFn = vi.fn(async () => respondWith(PDF));
+    // Typed with the parameters, so `calls[0][1]` is the init rather than an empty tuple.
+    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => respondWith(PDF));
     await fetchOpenAccessPdf('https://doi.org/10.1/x', { fetch: fetchFn });
-    const init = fetchFn.mock.calls[0]?.[1] as RequestInit | undefined;
+    const init = fetchFn.mock.calls[0]?.[1];
     expect(init?.redirect).toBe('follow');
   });
 

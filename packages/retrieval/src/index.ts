@@ -10,6 +10,15 @@ export {
   type SectionSpan,
 } from './chunker.js';
 export {
+  buildChapterMemory,
+  type ContextChapter,
+  type ContextClient,
+  docToText,
+  type RetrievalResult,
+  type RetrievedPassage,
+  retrievePassages,
+} from './context.js';
+export {
   type DocumentKind,
   detectGutter,
   detectSections,

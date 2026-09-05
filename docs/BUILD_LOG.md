@@ -1428,3 +1428,44 @@ therefore deferred. What follows is the part that is pure logic and provable on 
     promise is resolved on unmount or the next `Shift+→` would be ignored for ever.
 - BLOCKED: PHASES 3.9 (ten weak suggestions with reasons) needs real model output, so it waits on a
   provider key together with 3.4's thirty-suggestion run. Both are in `docs/PENDING.md`.
+
+## Phase 1 — Week 4 (caps, draft mode, telemetry, export)
+
+### Task 4.2 — draft mode, server side (FR-4.4, A.2, §10.7.3)
+- Files: `packages/ai/src/builder/draft.ts`, `packages/retrieval/src/context.ts`,
+  `apps/worker/src/jobs/draft-section.ts`, `apps/api/src/modules/assist/{draft.service.ts,
+  draft.controller.ts,sse.ts,context.service.ts}`, `packages/ai/test/draft.spec.ts`.
+- Evidence:
+
+  ```
+  $ pnpm test
+   config 62 · types 39 · ui 37 · db 2 · ai 188 (+1 skipped) · retrieval 149 · web 6 ·
+   worker 39 · api 80        = 604 passing
+  $ pnpm lint
+   Checked 244 files. No fixes applied.
+  ```
+- Notes / deviations from PRD:
+  - **There is no `Draft` table, and none was added.** PRD §8 defines none, and FR-4.4 puts the
+    draft in the document as a marked block the student must accept or discard. So the durable
+    record is the `SuggestionEvent` plus the block itself, and §9.3's `draftId` is that event's id.
+    Accept and discard write the outcome, which is exactly what FR-9.4's telemetry measures.
+  - **The refusal is the feature.** Draft writes hundreds of words at once, so an ungrounded draft
+    is the most damaging output this product could make: fluent prose citing nothing, in a document
+    that will be examined. With no retrievable passages the job refuses and names the fix ("pin at
+    least one source"), and the cap unit is refunded because the student was not served.
+  - A passage cited more than A.2's limit of three is **recorded, not rewritten**. Deleting the
+    fourth citation would leave a claim uncited, which is worse than an over-cited one.
+  - **The context glue moved to `@tc/retrieval`.** The worker needs the identical memory block and
+    §10.4 retrieval the API uses, and the two must not drift: a draft retrieved from a different
+    candidate set than the Assist call beside it would cite different sources for the same chapter.
+    `ContextService` is now Nest wiring plus the §10.3 trim logging.
+  - The SSE hijack block moved to `assist/sse.ts` and both endpoints share it. The CORS header and
+    the disconnect detection each cost a debugging session in week 1; a second copy would
+    eventually lose one of them.
+  - The worker publishes progress and the result to a Redis channel and the API relays it, rather
+    than the API making the call. A student who reloads mid-draft has not lost it: the worker
+    finishes regardless and the result is waiting on the channel.
+  - `target_words` sits in the cached block, so drafting at two lengths makes two cached prefixes.
+    That is correct rather than wasteful: the instruction really did change.
+- Still to do in 4.2: the editor trigger (`Ctrl+Shift+D`) and the draft block's needs-source notes,
+  then the two E2E cases PHASES asks for. The server half is complete and unit-tested.

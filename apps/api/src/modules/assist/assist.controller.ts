@@ -14,6 +14,7 @@ import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { AssistService, OUTCOMES } from './assist.service.js';
+import { streamSse } from './sse.js';
 
 const suggestBody = z.object({
   chapterId: z.string().uuid(),
@@ -49,60 +50,9 @@ export class AssistController {
       throw new ValidationError('Invalid suggestion request', parsed.error.issues);
 
     // B.8: abort propagates from the client's disconnect to the provider stream.
-    //
-    // Not `request.raw.on('close')`: since Node 16 an IncomingMessage's `close` fires once the
-    // request body has been fully read, which for a JSON POST is before this handler runs. A
-    // client that goes away mid-stream shows up as the *response* closing before it finished, or
-    // as the socket closing.
-    const abort = new AbortController();
-    const onClose = () => {
-      if (!reply.raw.writableFinished) abort.abort();
-    };
-    reply.raw.on('close', onClose);
-    request.raw.socket?.on('close', onClose);
-
-    const stream = this.assist.suggest(user, parsed.data, abort.signal);
-
-    // Refusals (404 / 409 / 429) are thrown before the first event, so pull it first and let the
-    // problem-details filter answer with JSON when it throws.
-    const first = await stream.next();
-
-    reply.hijack();
-    const raw = reply.raw;
-    raw.writeHead(200, {
-      'content-type': 'text/event-stream; charset=utf-8',
-      'cache-control': 'no-cache, no-transform',
-      'x-accel-buffering': 'no',
-      connection: 'keep-alive',
-      'x-request-id': request.id,
-      // Hijacking the reply skips Fastify's onSend hooks, and with them the CORS headers Nest
-      // would otherwise add — the browser then blocks the stream with "No
-      // 'Access-Control-Allow-Origin' header is present". They are written by hand here.
-      // The origin is the configured APP_URL, never the request's own Origin.
-      'access-control-allow-origin': this.env.APP_URL,
-      'access-control-allow-credentials': 'true',
-      vary: 'Origin',
-    });
-    raw.flushHeaders?.();
-
-    const write = (event: string, data: unknown) => {
-      if (raw.destroyed) return;
-      raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    };
-
-    try {
-      if (!first.done) write(first.value.event, first.value.data);
-      for await (const evt of stream) write(evt.event, evt.data);
-    } catch (error) {
-      write('error', {
-        code: 'STREAM_FAILED',
-        message: error instanceof Error ? error.message : 'Stream failed',
-      });
-    } finally {
-      reply.raw.off('close', onClose);
-      request.raw.socket?.off('close', onClose);
-      if (!raw.destroyed) raw.end();
-    }
+    await streamSse(request, reply, this.env, (signal) =>
+      this.assist.suggest(user, parsed.data, signal),
+    );
   }
 
   @Post('outcome')

@@ -29,6 +29,7 @@
   "dependencies": {
     "@tc/ai": "workspace:*",
     "@tc/config": "workspace:*",
+    "@tc/types": "workspace:*",
     "mammoth": "1.12.2",
     "unpdf": "1.8.1"
   }

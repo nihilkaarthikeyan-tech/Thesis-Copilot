@@ -14,8 +14,18 @@ import {
 } from '@tc/ai';
 import { type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
-import { CrossrefClient, extractDocument, OpenAlexClient, UnpaywallClient } from '@tc/retrieval';
 import {
+  buildChapterMemory,
+  type ContextChapter,
+  type ContextClient,
+  CrossrefClient,
+  extractDocument,
+  OpenAlexClient,
+  retrievePassages,
+  UnpaywallClient,
+} from '@tc/retrieval';
+import {
+  type DraftSectionJob,
   type ExtractPaperJob,
   type IndexSourceJob,
   jobId,
@@ -25,6 +35,7 @@ import {
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
+import { runDraftSection } from './jobs/draft-section.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
 import { runIndexSource } from './jobs/index-source.js';
 import {
@@ -34,6 +45,7 @@ import {
 } from './jobs/resolve-reference.js';
 import {
   DEFAULT_JOB_OPTIONS,
+  QUEUE_DRAFT_SECTION,
   QUEUE_EXTRACT_PAPER,
   QUEUE_INDEX_SOURCE,
   QUEUE_NOOP,
@@ -199,6 +211,44 @@ async function main(): Promise<void> {
       // Downloads a PDF and then embeds it: mostly waiting on the network, but one paper's worth
       // of text in memory at a time per slot.
       { connection: connection.duplicate(), concurrency: 2 },
+    ),
+
+    new Worker(
+      QUEUE_DRAFT_SECTION,
+      async (job: Job<DraftSectionJob & { draftId: string }>) => {
+        const result = await runDraftSection(job.data, {
+          prisma,
+          llm: providers.llm,
+          embeddings: providers.embeddings,
+          // The same code the API's Assist path uses, so a draft and the suggestion beside it
+          // never retrieve from different candidate sets for the same chapter.
+          memoryBlock: async (chapter: ContextChapter) =>
+            (await buildChapterMemory(prisma as unknown as ContextClient, chapter)).text,
+          retrieve: (chapter: ContextChapter, query: string) =>
+            retrievePassages(
+              prisma as unknown as ContextClient,
+              (texts) => providers.embeddings.embed(texts),
+              chapter,
+              query,
+              'DRAFT',
+            ),
+          strongTier: async () => {
+            const flag = await prisma.featureFlag.findUnique({
+              where: { key: 'draftModeStrongTier' },
+              select: { enabled: true },
+            });
+            // A.2's tier is behind the flag; absent means the PRD default, which is Strong.
+            return flag?.enabled ?? true;
+          },
+          publish: (event) =>
+            connection.publish(`draft:${job.data.draftId}`, JSON.stringify(event)),
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        return result;
+      },
+      // One draft at a time per worker: it is the longest call in the product and holds a whole
+      // section plus its passages in memory.
+      { connection: connection.duplicate(), concurrency: 1 },
     ),
 
     new Worker(QUEUE_NOOP, async (job) => ({ ok: true, id: job.id }), {

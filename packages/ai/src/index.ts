@@ -24,6 +24,22 @@ export {
   usableCandidates,
 } from './builder/cite.js';
 export {
+  buildDraftRequest,
+  canDraft,
+  countDraftWords,
+  DRAFT,
+  type DraftBuildInput,
+  type DraftPostProcess,
+  type DraftResult,
+  type DraftSection,
+  draftResultSchema,
+  draftToProseMirror,
+  draftUserMessage,
+  NEEDS_SOURCE_RE,
+  NO_SOURCES_MESSAGE,
+  postProcessDraft,
+} from './builder/draft.js';
+export {
   buildMemoryBlock,
   type GlossaryEntry,
   MEMORY_BUDGET_TOKENS,
