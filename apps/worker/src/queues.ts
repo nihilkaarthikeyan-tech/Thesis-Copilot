@@ -13,6 +13,8 @@ export { QUEUE_NAMES, type QueueName };
 
 export const QUEUE_NOOP = 'noop' satisfies QueueName;
 export const QUEUE_EXTRACT_PAPER = 'extract-paper' satisfies QueueName;
+export const QUEUE_RESOLVE_REFERENCE = 'resolve-reference' satisfies QueueName;
+export const QUEUE_INDEX_SOURCE = 'index-source' satisfies QueueName;
 
 /**
  * Three attempts with exponential backoff from 1s. Jobs are kept after completion and failure so

@@ -14,12 +14,23 @@ import {
 } from '@tc/ai';
 import { type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
-import { type ExtractPaperJob, jobId, jobKeyDigest } from '@tc/types';
+import { CrossrefClient, OpenAlexClient, UnpaywallClient } from '@tc/retrieval';
+import { type ExtractPaperJob, jobId, jobKeyDigest, type ResolveReferenceJob } from '@tc/types';
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
 import { runExtractPaper } from './jobs/extract-paper.js';
-import { DEFAULT_JOB_OPTIONS, QUEUE_EXTRACT_PAPER, QUEUE_NOOP } from './queues.js';
+import {
+  isRetryExhausted,
+  markUnresolvedAfterRetries,
+  runResolveReference,
+} from './jobs/resolve-reference.js';
+import {
+  DEFAULT_JOB_OPTIONS,
+  QUEUE_EXTRACT_PAPER,
+  QUEUE_NOOP,
+  QUEUE_RESOLVE_REFERENCE,
+} from './queues.js';
 
 const log = (event: Record<string, unknown>): void => {
   console.log(JSON.stringify({ level: 30, time: Date.now(), ...event }));
@@ -73,10 +84,42 @@ async function main(): Promise<void> {
   const providers = providersFor(env);
   const storage = storageFor(env);
 
-  const resolveQueue = new Queue('resolve-reference', {
+  const resolveQueue = new Queue(QUEUE_RESOLVE_REFERENCE, {
     connection,
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   });
+  const indexQueue = new Queue('index-source', {
+    connection,
+    defaultJobOptions: DEFAULT_JOB_OPTIONS,
+  });
+
+  // Crossref, OpenAlex and Unpaywall need no API key, only a contact address for their polite
+  // pools (PRD §13.3). Set a real one before any real use — see docs/PENDING.md.
+  //
+  // Unpaywall returns HTTP 422 for the placeholder address rather than an explanation, which
+  // looks exactly like an outage in the logs. Say so plainly at boot instead.
+  const placeholders = (
+    [
+      ['CROSSREF_MAILTO', env.CROSSREF_MAILTO],
+      ['OPENALEX_MAILTO', env.OPENALEX_MAILTO],
+      ['UNPAYWALL_EMAIL', env.UNPAYWALL_EMAIL],
+    ] as const
+  ).filter(([, value]) => /@example\.(com|org|net)$/i.test(value));
+  if (placeholders.length > 0) {
+    log({
+      level: 40,
+      msg: 'scholarly contact address is still a placeholder',
+      variables: placeholders.map(([name]) => name),
+      consequence: 'Unpaywall refuses these with HTTP 422, so no source will reach FULL_TEXT',
+      fix: 'set a real contact address in .env — docs/PENDING.md',
+    });
+  }
+
+  const scholarly = {
+    crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
+    openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
+    unpaywall: new UnpaywallClient({ mailto: env.UNPAYWALL_EMAIL }),
+  };
 
   const workers = [
     new Worker(
@@ -100,6 +143,23 @@ async function main(): Promise<void> {
       { connection: connection.duplicate(), concurrency: 1 },
     ),
 
+    new Worker(
+      QUEUE_RESOLVE_REFERENCE,
+      async (job: Job<ResolveReferenceJob>) => {
+        const result = await runResolveReference(job.data, {
+          prisma,
+          ...scholarly,
+          enqueueIndex: (input) =>
+            indexQueue.add('index-source', input, { jobId: jobId('index-source', input.sourceId) }),
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        return result;
+      },
+      // A handful at a time: the clients rate-limit themselves to the polite 5 req/s, and running
+      // more in parallel would only queue behind that limiter.
+      { connection: connection.duplicate(), concurrency: 3 },
+    ),
+
     new Worker(QUEUE_NOOP, async (job) => ({ ok: true, id: job.id }), {
       connection: connection.duplicate(),
       concurrency: 4,
@@ -119,6 +179,19 @@ async function main(): Promise<void> {
           error: error.message,
         }),
       );
+
+      // A resolve job that has burned its last attempt would otherwise leave the source at
+      // PENDING for good, and the library would show "Looking it up…" forever with no way out.
+      // Mark it UNRESOLVED so the student sees "Not found" and the Fix this reference form.
+      if (
+        worker.name === QUEUE_RESOLVE_REFERENCE &&
+        job &&
+        isRetryExhausted(job.attemptsMade, job.opts.attempts)
+      ) {
+        void markUnresolvedAfterRetries(prisma, job.data as ResolveReferenceJob, (event) =>
+          log({ jobId: job.id, ...event }),
+        );
+      }
     });
   }
 
@@ -128,6 +201,7 @@ async function main(): Promise<void> {
     log({ msg: 'worker shutting down' });
     await Promise.all(workers.map((w) => w.close()));
     await resolveQueue.close();
+    await indexQueue.close();
     await prisma.$disconnect();
     await connection.quit();
     process.exit(0);
