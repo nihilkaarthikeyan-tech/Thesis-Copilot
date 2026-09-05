@@ -51,6 +51,7 @@ export {
   ScholarlyHttp,
 } from './scholarly/http.js';
 export {
+  abstractFromInvertedIndex,
   CROSSREF_CANDIDATES,
   CrossrefClient,
   type CslAuthor,
@@ -58,9 +59,11 @@ export {
   groundingLevelFor,
   type OpenAccessLocation,
   OpenAlexClient,
+  plainAbstract,
   RESOLUTION_THRESHOLD,
   type ResolvedSource,
   type Resolver,
+  resolveByDoi,
   resolveReference,
   UNRESOLVED,
   UnpaywallClient,

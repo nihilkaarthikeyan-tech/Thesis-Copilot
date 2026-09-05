@@ -8,11 +8,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RateLimiter, ScholarlyError, ScholarlyHttp } from '../src/scholarly/http.js';
 import {
+  abstractFromInvertedIndex,
   CrossrefClient,
   candidateScore,
   groundingLevelFor,
   OpenAlexClient,
+  plainAbstract,
   RESOLUTION_THRESHOLD,
+  resolveByDoi,
   resolveReference,
   UnpaywallClient,
 } from '../src/scholarly/resolve.js';
@@ -366,5 +369,208 @@ describe('groundingLevelFor (FR-2.2)', () => {
     [false, false, 'NONE'],
   ])('full=%s abstract=%s → %s', (full, abstract, expected) => {
     expect(groundingLevelFor(full, abstract)).toBe(expected);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------
+// Regression: the query parameters the live services actually accept
+// -----------------------------------------------------------------------------------------------
+
+describe('request shape (verified against the live APIs)', () => {
+  /**
+   * `subtype` is not a Crossref-selectable field. Asking for it made every single lookup return
+   * HTTP 400, which the job then retried three times and gave up on, leaving whole libraries
+   * stuck at PENDING. The 400 body lists the legal fields; these are the ones we use.
+   */
+  const CROSSREF_SELECTABLE = new Set([
+    'DOI',
+    'title',
+    'author',
+    'issued',
+    'container-title',
+    'type',
+    'is-referenced-by-count',
+    'update-to',
+    'relation',
+    'abstract',
+  ]);
+
+  it('only asks Crossref for selectable fields', async () => {
+    const fake = fakeFetch([{ match: 'api.crossref.org', body: { message: { items: [] } } }]);
+    await new CrossrefClient(options(fake.fn)).searchBibliographic(REFERENCE);
+
+    const select = new URL(fake.calls[0] as string).searchParams.get('select');
+    expect(select).not.toBeNull();
+    for (const field of (select as string).split(',')) {
+      expect(CROSSREF_SELECTABLE.has(field), `${field} is not selectable`).toBe(true);
+    }
+    expect(select).not.toContain('subtype');
+  });
+
+  it('asks Crossref for the fields the retraction and abstract checks read', async () => {
+    const fake = fakeFetch([{ match: 'api.crossref.org', body: { message: { items: [] } } }]);
+    await new CrossrefClient(options(fake.fn)).searchBibliographic(REFERENCE);
+
+    const select = (new URL(fake.calls[0] as string).searchParams.get('select') as string).split(
+      ',',
+    );
+    // crossrefRetracted reads `relation` and `type`; the abstract decides the grounding level.
+    expect(select).toContain('relation');
+    expect(select).toContain('type');
+    expect(select).toContain('abstract');
+  });
+
+  it('asks OpenAlex for the inverted index it rebuilds abstracts from', async () => {
+    const fake = fakeFetch([{ match: 'api.openalex.org', body: { results: [] } }]);
+    await new OpenAlexClient(options(fake.fn)).search(REFERENCE);
+
+    const select = new URL(fake.calls[0] as string).searchParams.get('select') as string;
+    expect(select.split(',')).toContain('abstract_inverted_index');
+  });
+});
+
+describe('abstracts', () => {
+  it('strips the JATS markup Crossref wraps abstracts in', () => {
+    expect(
+      plainAbstract('<jats:p>Rooftop solar uptake &lt; 4% in the study districts.</jats:p>'),
+    ).toBe('Rooftop solar uptake < 4% in the study districts.');
+  });
+
+  it('drops a leading "Abstract" label', () => {
+    expect(
+      plainAbstract('<jats:title>Abstract</jats:title><jats:p>We surveyed 400 homes.</jats:p>'),
+    ).toBe('We surveyed 400 homes.');
+  });
+
+  it('treats an empty or missing abstract as none', () => {
+    expect(plainAbstract(undefined)).toBeNull();
+    expect(plainAbstract('<jats:p>  </jats:p>')).toBeNull();
+  });
+
+  it('rebuilds an OpenAlex abstract from its inverted index', () => {
+    expect(abstractFromInvertedIndex({ We: [0], surveyed: [1], '400': [2], homes: [3] })).toBe(
+      'We surveyed 400 homes',
+    );
+  });
+
+  it('rebuilds words that occur more than once at every position', () => {
+    expect(abstractFromInvertedIndex({ solar: [0, 2], and: [1] })).toBe('solar and solar');
+  });
+
+  it('has no abstract when OpenAlex omits the index', () => {
+    expect(abstractFromInvertedIndex(undefined)).toBeNull();
+    expect(abstractFromInvertedIndex({})).toBeNull();
+  });
+
+  it('carries the abstract onto the resolved source', async () => {
+    const fake = fakeFetch([
+      {
+        match: 'api.crossref.org',
+        body: {
+          message: {
+            items: [{ ...crossrefItem, abstract: '<jats:p>Cost, not awareness.</jats:p>' }],
+          },
+        },
+      },
+      { match: 'api.openalex.org', body: {} },
+    ]);
+    const resolved = await resolveReference(REFERENCE, {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+    expect(resolved.via).toBe('crossref');
+    expect(resolved.abstract).toBe('Cost, not awareness.');
+    // FR-2.2: an abstract is what makes the source quotable at abstract level.
+    expect(groundingLevelFor(false, Boolean(resolved.abstract))).toBe('ABSTRACT');
+  });
+
+  it('reports no abstract when neither service published one', async () => {
+    const fake = fakeFetch([
+      { match: 'api.crossref.org', body: { message: { items: [crossrefItem] } } },
+      { match: 'api.openalex.org', body: {} },
+    ]);
+    const resolved = await resolveReference(REFERENCE, {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+    expect(resolved.abstract).toBeNull();
+    expect(groundingLevelFor(false, Boolean(resolved.abstract))).toBe('NONE');
+  });
+});
+
+describe('resolveByDoi (FR-2.1 manual fix)', () => {
+  it('takes the DOI as the answer instead of searching', async () => {
+    const fake = fakeFetch([
+      { match: 'api.crossref.org/works/', body: { message: crossrefItem } },
+      { match: 'api.openalex.org', body: { id: 'W1', open_access: { oa_status: 'gold' } } },
+    ]);
+    const resolved = await resolveByDoi('10.1016/j.enpol.2021.112121', {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+
+    expect(resolved.via).toBe('crossref');
+    expect(resolved.score).toBe(1);
+    expect(resolved.doi).toBe('10.1016/j.enpol.2021.112121');
+    expect(resolved.oaStatus).toBe('gold');
+    // The whole point: the bibliographic search is never called.
+    expect(fake.calls.some((url) => url.includes('query.bibliographic'))).toBe(false);
+  });
+
+  it('accepts a DOI pasted as a doi.org link', async () => {
+    const fake = fakeFetch([
+      { match: 'api.crossref.org/works/', body: { message: crossrefItem } },
+      { match: 'api.openalex.org', body: {} },
+    ]);
+    const resolved = await resolveByDoi('https://doi.org/10.1016/J.ENPOL.2021.112121', {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+    expect(resolved.via).toBe('crossref');
+    expect(fake.calls[0]).toContain(encodeURIComponent('10.1016/j.enpol.2021.112121'));
+  });
+
+  it('falls back to OpenAlex for a DOI Crossref did not mint', async () => {
+    const fake = fakeFetch([
+      { match: 'api.crossref.org/works/', body: {}, status: 404 },
+      {
+        match: 'api.openalex.org/works/doi:',
+        body: {
+          id: 'https://openalex.org/W2',
+          display_name: 'A DataCite-registered dataset paper',
+          publication_year: 2020,
+          type: 'preprint',
+          abstract_inverted_index: { Rainfall: [0], data: [1] },
+        },
+      },
+    ]);
+    const resolved = await resolveByDoi('10.5281/zenodo.123456', {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+    expect(resolved.via).toBe('openalex');
+    expect(resolved.title).toBe('A DataCite-registered dataset paper');
+    expect(resolved.isPreprint).toBe(true);
+    expect(resolved.abstract).toBe('Rainfall data');
+  });
+
+  it('reports unresolved when neither service knows the DOI', async () => {
+    const fake = fakeFetch([]);
+    const resolved = await resolveByDoi('10.0000/not-a-real-doi', {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+    expect(resolved.via).toBeNull();
+    expect(resolved.doi).toBeNull();
+  });
+
+  it('is unresolved for an empty DOI rather than fetching', async () => {
+    const fake = fakeFetch([]);
+    const resolved = await resolveByDoi('   ', {
+      crossref: new CrossrefClient(options(fake.fn)),
+      openalex: new OpenAlexClient(options(fake.fn)),
+    });
+    expect(resolved.via).toBeNull();
+    expect(fake.calls).toHaveLength(0);
   });
 });

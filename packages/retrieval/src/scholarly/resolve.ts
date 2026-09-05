@@ -33,6 +33,8 @@ export type ResolvedSource = {
   citationCount: number | null;
   isPreprint: boolean;
   isRetracted: boolean;
+  /** Plain-text abstract when the service published one. Decides ABSTRACT vs NONE grounding. */
+  abstract: string | null;
   /** How confident the match is; below RESOLUTION_THRESHOLD the caller stores UNRESOLVED. */
   score: number;
   via: 'crossref' | 'openalex' | null;
@@ -51,6 +53,7 @@ export const UNRESOLVED: ResolvedSource = {
   citationCount: null,
   isPreprint: false,
   isRetracted: false,
+  abstract: null,
   score: 0,
   via: null,
 };
@@ -71,6 +74,8 @@ type CrossrefItem = {
   'is-referenced-by-count'?: number;
   'update-to'?: Array<{ type?: string; DOI?: string }>;
   relation?: Record<string, unknown>;
+  /** JATS-flavoured XML, not plain text; the caller strips tags before storing it. */
+  abstract?: string;
 };
 type CrossrefResponse = { message?: { items?: CrossrefItem[] } };
 
@@ -86,7 +91,10 @@ export class CrossrefClient {
     const url =
       'https://api.crossref.org/works?rows=' +
       rows +
-      '&select=DOI,title,author,issued,container-title,type,subtype,is-referenced-by-count,update-to' +
+      // Only fields Crossref actually allows in `select`. `subtype` is NOT one of them and makes
+      // the whole request 400, which is how every lookup silently failed once. Verified against
+      // the field list the API returns in its own 400 body.
+      '&select=DOI,title,author,issued,container-title,type,is-referenced-by-count,update-to,relation,abstract' +
       '&mailto=' +
       encodeURIComponent(this.http.mailto) +
       '&query.bibliographic=' +
@@ -126,6 +134,26 @@ function crossrefRetracted(item: CrossrefItem): boolean {
   return 'is-retracted-by' in relation || 'is-retracted' in relation;
 }
 
+/**
+ * Crossref returns abstracts as JATS XML (`<jats:p>…</jats:p>`), not text. Tags are stripped and
+ * entities decoded so what is stored is what a reader would see; nothing is added.
+ */
+export function plainAbstract(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const text = raw
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/\s+/g, ' ')
+    .trim()
+    // Publishers prefix the body with the word "Abstract" often enough to be worth removing.
+    .replace(/^abstract[:\s]+/i, '');
+  return text.length > 0 ? text : null;
+}
+
 function crossrefPreprint(item: CrossrefItem): boolean {
   return (item.type ?? '') === 'posted-content' || (item.subtype ?? '') === 'preprint';
 }
@@ -146,6 +174,8 @@ type OpenAlexWork = {
   primary_location?: { source?: { display_name?: string } };
   host_venue?: { display_name?: string };
   open_access?: { oa_status?: string };
+  /** OpenAlex publishes abstracts only as a word -> positions map, for copyright reasons. */
+  abstract_inverted_index?: Record<string, number[]>;
 };
 type OpenAlexResponse = { results?: OpenAlexWork[] };
 
@@ -161,6 +191,9 @@ export class OpenAlexClient {
     const url =
       'https://api.openalex.org/works?per-page=' +
       perPage +
+      // Verified against the live API: every one of these is an accepted `select` field.
+      '&select=id,doi,title,display_name,publication_year,cited_by_count,type,authorships,' +
+      'primary_location,open_access,abstract_inverted_index' +
       '&mailto=' +
       encodeURIComponent(this.http.mailto) +
       '&search=' +
@@ -173,6 +206,28 @@ export class OpenAlexClient {
     const url = `https://api.openalex.org/works/doi:${encodeURIComponent(doi)}?mailto=${encodeURIComponent(this.http.mailto)}`;
     return this.http.getJson<OpenAlexWork>(url, signal);
   }
+}
+
+/**
+ * Rebuilds an abstract from OpenAlex's inverted index. Each key is a token and each value the
+ * positions it occupies, so placing every token at its own positions restores the original order.
+ * Gaps (a position no token claims) are dropped rather than filled, so nothing is invented.
+ */
+export function abstractFromInvertedIndex(
+  index: Record<string, number[]> | undefined,
+): string | null {
+  if (!index) return null;
+  const words: string[] = [];
+  for (const [word, positions] of Object.entries(index)) {
+    for (const position of positions) {
+      if (Number.isInteger(position) && position >= 0) words[position] = word;
+    }
+  }
+  const text = words
+    .filter((word) => word !== undefined)
+    .join(' ')
+    .trim();
+  return text.length > 0 ? text : null;
 }
 
 function openAlexAuthors(work: OpenAlexWork): CslAuthor[] {
@@ -240,6 +295,107 @@ export type Resolver = {
   openalex: OpenAlexClient;
 };
 
+/** Maps a Crossref record onto the shape the worker stores. Reads every field defensively. */
+function fromCrossrefItem(item: CrossrefItem, score: number): ResolvedSource {
+  return {
+    doi: item.DOI ? item.DOI.toLowerCase() : null,
+    openalexId: null,
+    title: item.title?.[0] ?? null,
+    authors: crossrefAuthors(item),
+    year: crossrefYear(item),
+    venue: item['container-title']?.[0] ?? null,
+    type: item.type ?? null,
+    cslJson: item as Record<string, unknown>,
+    oaStatus: null,
+    citationCount: item['is-referenced-by-count'] ?? null,
+    isPreprint: crossrefPreprint(item),
+    isRetracted: crossrefRetracted(item),
+    abstract: plainAbstract(item.abstract),
+    score,
+    via: 'crossref',
+  };
+}
+
+/** Adds OpenAlex's open-access status and citation count to a record Crossref already settled. */
+async function enrichFromOpenAlex(
+  best: ResolvedSource,
+  openalex: OpenAlexClient,
+  signal?: AbortSignal,
+): Promise<ResolvedSource> {
+  if (!best.doi) return best;
+  try {
+    const work = await openalex.byDoi(best.doi, signal);
+    if (!work) return best;
+    return {
+      ...best,
+      openalexId: work.id ?? null,
+      oaStatus: work.open_access?.oa_status ?? best.oaStatus,
+      citationCount: work.cited_by_count ?? best.citationCount,
+      abstract: best.abstract ?? abstractFromInvertedIndex(work.abstract_inverted_index),
+    };
+  } catch {
+    // Metadata enrichment is best-effort; a failure here must never lose the match.
+    return best;
+  }
+}
+
+/**
+ * Resolves a DOI the student typed in, or one printed in the reference itself. There is nothing to
+ * match here — the DOI *is* the answer — so this skips the similarity search entirely and scores 1.
+ * FR-2.1's manual fix path depends on this: re-running the bibliographic search that already
+ * failed would just fail again.
+ */
+export async function resolveByDoi(
+  doi: string,
+  resolver: Resolver,
+  signal?: AbortSignal,
+): Promise<ResolvedSource> {
+  const normalised = doi
+    .trim()
+    .replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')
+    .replace(/^doi:\s*/i, '')
+    .toLowerCase();
+  if (!normalised) return { ...UNRESOLVED };
+
+  let record: ResolvedSource | null = null;
+  try {
+    const item = await resolver.crossref.byDoi(normalised, signal);
+    if (item) record = fromCrossrefItem(item, 1);
+  } catch {
+    // Fall through to OpenAlex: a Crossref outage should not block a DOI the student is sure of.
+  }
+
+  if (record) return enrichFromOpenAlex(record, resolver.openalex, signal);
+
+  // Crossref does not mint every DOI (DataCite, medRxiv and others); OpenAlex indexes those too.
+  try {
+    const work = await resolver.openalex.byDoi(normalised, signal);
+    if (work) {
+      return {
+        doi: normalised,
+        openalexId: work.id ?? null,
+        title: work.title ?? work.display_name ?? null,
+        authors: openAlexAuthors(work),
+        year: work.publication_year ?? null,
+        venue: work.primary_location?.source?.display_name ?? work.host_venue?.display_name ?? null,
+        type: work.type ?? null,
+        cslJson: null,
+        oaStatus: work.open_access?.oa_status ?? null,
+        citationCount: work.cited_by_count ?? null,
+        isPreprint: (work.type ?? '') === 'preprint',
+        isRetracted: false,
+        abstract: abstractFromInvertedIndex(work.abstract_inverted_index),
+        score: 1,
+        via: 'openalex',
+      };
+    }
+  } catch {
+    // Both services failed. Reported as unresolved, not as a wrong guess.
+  }
+
+  return { ...UNRESOLVED };
+}
+
 /**
  * Resolves one raw reference string. Crossref first (its bibliographic search is built for exactly
  * this), OpenAlex as the fallback. Returns `UNRESOLVED` when nothing clears the threshold — never
@@ -262,40 +418,11 @@ export async function resolveReference(
     };
     const score = candidateScore(reference, candidate);
     if (score <= best.score) continue;
-    best = {
-      doi: item.DOI ? item.DOI.toLowerCase() : null,
-      openalexId: null,
-      title: candidate.title,
-      authors: candidate.authors,
-      year: candidate.year,
-      venue: item['container-title']?.[0] ?? null,
-      type: item.type ?? null,
-      cslJson: item as Record<string, unknown>,
-      oaStatus: null,
-      citationCount: item['is-referenced-by-count'] ?? null,
-      isPreprint: crossrefPreprint(item),
-      isRetracted: crossrefRetracted(item),
-      score,
-      via: 'crossref',
-    };
+    best = fromCrossrefItem(item, score);
   }
 
   if (best.score >= RESOLUTION_THRESHOLD) {
-    // Enrich with OpenAlex for oaStatus and a citation count, but never let that failure lose the
-    // Crossref match.
-    if (best.doi) {
-      try {
-        const work = await resolver.openalex.byDoi(best.doi, signal);
-        if (work) {
-          best.openalexId = work.id ?? null;
-          best.oaStatus = work.open_access?.oa_status ?? null;
-          best.citationCount = work.cited_by_count ?? best.citationCount;
-        }
-      } catch {
-        // Metadata enrichment is best-effort.
-      }
-    }
-    return best;
+    return enrichFromOpenAlex(best, resolver.openalex, signal);
   }
 
   // Crossref did not settle it: try OpenAlex search.
@@ -321,6 +448,7 @@ export async function resolveReference(
       citationCount: work.cited_by_count ?? null,
       isPreprint: (work.type ?? '') === 'preprint',
       isRetracted: false,
+      abstract: abstractFromInvertedIndex(work.abstract_inverted_index),
       score,
       via: 'openalex',
     };
