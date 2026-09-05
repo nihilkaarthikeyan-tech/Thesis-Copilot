@@ -825,3 +825,110 @@ Started: 2026-09-04 · Sessions: 2
 - To unblock: start Docker Desktop as Administrator, `docker compose -f
   infra/compose/docker-compose.dev.yml up -d`, start the API, then
   `node apps/api/scripts/assist-bench.mjs 50`.
+
+---
+
+## Unit: PHASE-1-W2 — Path B ingestion
+Started: 2026-09-05 · Sessions: 1
+
+Docker Desktop's engine service is stopped and cannot be started without Administrator rights
+(see PENDING.md). Everything in this unit that needs Postgres, Redis, MinIO or a live API is
+therefore deferred. What follows is the part that is pure logic and provable on its own.
+
+### Task 2.7 (part) — Chunker and the §10.4 retrieval ranking
+- Status: DONE for the pure-logic half. The pgvector query and the embed-and-index job are
+  deferred to the next session with Docker.
+- Evidence:
+  ```
+  $ pnpm --filter @tc/retrieval test
+   Test Files  4 passed (4)
+        Tests  78 passed (78)
+
+  # chunker (FR-2.4)
+   ✓ produces chunks near the 350-token target
+   ✓ never splits mid-sentence
+   ✓ offsets index the original text, so a chunk can be found again
+   ✓ consecutive chunks overlap by roughly 15% of the target
+   ✓ keeps the page a chunk starts on
+   ✓ never lets a chunk span two sections
+   ✓ emits an over-long sentence whole rather than cutting it
+   ✓ folds a tiny trailing remainder into the previous chunk
+   ✓ terminates on pathological input rather than looping
+   ✓ splits into batches of 64 by default (PHASES 2.7)
+
+  # ranking (§10.4) and the whitelist (§10.6)
+   ✓ is the last sentence before the cursor plus the scope note
+   ✓ adds 0.15 for a matching sub-theme and 0.1 for full text
+   ✓ takes 6 for Assist, 12 for Draft, 8 for Chat
+   ✓ strips an invented id and reports it
+  ```
+- Notes / deviations from PRD:
+  - FR-2.4 says "never split mid-sentence" but says nothing about a sentence longer than the
+    budget. Such a sentence is emitted whole: an over-long chunk costs slightly more to embed, a
+    cut one is unciteable, and the AC ("a chunk can be re-located in the PDF viewer by page +
+    offset") only holds if the text is intact.
+  - Token counts use the ~4-chars-per-token approximation PRD §11.1 already uses for the cost
+    model, rather than adding a tokenizer dependency (§0.3 rule 6).
+  - The sentence splitter is conservative on purpose: "et al.", "e.g.", initials and decimals do
+    not end a sentence, and a lowercase word never starts one. A false boundary would split
+    mid-sentence, which the DoD forbids.
+- UNSURE: —
+
+### Task 2.9 (part) — C.3 scoring rules
+- Status: Rules implemented and unit-tested. The scoring RUN is
+  `BLOCKED: fixture missing — fixtures/papers/pNN.pdf and pNN.expected.json`.
+- Evidence:
+  ```
+   ✓ applies NFKC, collapses whitespace and case-folds
+   ✓ folds the quotes and dashes PDF extractors emit
+   ✓ makes two numbering styles of one reference compare equal
+   ✓ clears the 0.85 reference bar for a realistic OCR wobble
+   ✓ stays below the bar for two different papers by the same authors
+   ✓ matches each captured string to at most one expected string
+   ✓ passes a clean extraction / fails and says why when the title differs
+   ✓ renders the per-paper table C.3 asks for
+  ```
+- Notes / deviations from PRD:
+  - Reference matching is one-to-one and greedy by best score. C.3 does not say so, but a
+    many-to-one match would let one captured string satisfy several expected entries and inflate
+    recall; a paper that cites the same authors twice would score better than it should.
+  - DOIs compare after lowercasing and stripping a `https://doi.org/` prefix, so the same DOI
+    written two ways counts as resolved.
+  - The agent has not created and will not create `*.expected.json` (§0.3 rule 3).
+- UNSURE: —
+
+### Task 2.5 (part) — Reference resolution clients
+- Status: Clients and the matching rule are DONE and tested against recorded shapes with an
+  injected `fetch`. Wiring them into the `resolve-reference` job needs Redis and Postgres; deferred.
+- Evidence:
+  ```
+   ✓ sends a contact address in the User-Agent for the polite pool
+   ✓ returns null on 404 rather than throwing
+   ✓ retries a 429 and then succeeds / gives up after the attempt budget
+   ✓ does not retry a 400
+   ✓ spaces calls by the interval (≤ 5 req/s)
+   ✓ resolves via Crossref and enriches from OpenAlex
+   ✓ falls back to OpenAlex when Crossref finds nothing good
+   ✓ returns UNRESOLVED rather than guessing when nothing matches
+   ✓ flags a preprint and a retraction
+   ✓ keeps the Crossref match when the OpenAlex enrichment fails
+   ✓ returns the best OA PDF location / reports a closed-access record
+  ```
+- Notes / deviations from PRD:
+  - FR-2.1 says "normalised similarity ≥ 0.85 on title/authors/year" without giving a formula.
+    Implemented as 0.7 × title + 0.2 × author-surname hits + 0.1 × year agreement, where the title
+    term slides a window along the reference string (a reference is author + title + venue + year,
+    so comparing it whole against a bare title would score badly however right the match is). A
+    year that contradicts the reference caps the score below the threshold: a same-titled paper
+    from another year is a different work. The weights are a judgement call the PRD does not make;
+    they will be re-checked against the fixture papers when those exist.
+  - Crossref models retraction inconsistently, so both `type: retraction` and the
+    `relation.is-retracted-by` signal are checked and neither is trusted alone.
+  - OpenAlex enrichment is best-effort: if it fails, the Crossref match still stands.
+- UNSURE: whether the 0.7/0.2/0.1 weighting hits the FR-2.1 acceptance criterion (≥ 80% of fixture
+  references resolve with the correct DOI). It cannot be known until the five fixture papers exist.
+
+### Tasks 2.1, 2.2, 2.3, 2.4, 2.6, 2.8 — deferred
+- BLOCKED on Docker (upload and storage, extraction jobs, the proposal screen and the library UI
+  all need Postgres, Redis, MinIO and a running API). Tasks 2.3 and 2.9 additionally need the five
+  fixture papers, which are the human's to supply (Appendix C.1).

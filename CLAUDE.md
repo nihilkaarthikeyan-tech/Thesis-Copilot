@@ -96,13 +96,20 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-Phase 0 (scaffold) is built and committed as of 2026-09-04; `docs/BUILD_LOG.md` has the evidence
-per task and a Gate G0 self-check. Sign-in (email OTP), the thesis list and the `/admin` banner
-work; the editor route is a placeholder. **Gate G0 is not ticked.** It is blocked on things only
-the human can do: push so CI runs, supply provider keys and run `pnpm ai:verify`, provision the
-VPS + secrets for a tag deploy, and review `docs/CONSISTENCY_REVIEW.md` and `docs/ADR/0002-*`.
-Do not start Phase 1 work — the editor, retrieval, or any Appendix A prompt call other than
-`pnpm ai:verify` — until G0 is ticked in `docs/PHASES.md`.
+Phase 0 (scaffold) and Phase 1 week 1 (editor spike) are built and committed. The owner waived the
+gate pauses on 2026-09-04: build every phase you can without stopping at a gate, and keep
+`docs/PENDING.md` listing the human-only work. `docs/BUILD_LOG.md` has per-task evidence.
+
+Working: sign-in (email OTP), the thesis list, the Stage 4 editor with streaming ghost text over
+SSE, Tab-to-accept with `ASSIST` provenance, citation nodes, the draft block, autosave with 409
+conflict handling and snapshots to object storage, the usage meter, and the `/admin` cost banner.
+`packages/retrieval` has the chunker, the C.3 scoring rules, the Crossref/OpenAlex/Unpaywall
+clients and the §10.4 reranker, all unit-tested.
+
+**Blocked right now:** Docker Desktop's engine service is stopped and needs an Administrator start,
+so Postgres, Redis and MinIO are down. The API will not boot, Testcontainers tests cannot run, and
+the browser end-to-end test and the latency benchmark (PHASES 1.8, 1.9) are unproven. See the top
+of `docs/PENDING.md`.
 
 Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
 continue from the next one. Before running `prisma generate` on Windows, stop the API — it holds
