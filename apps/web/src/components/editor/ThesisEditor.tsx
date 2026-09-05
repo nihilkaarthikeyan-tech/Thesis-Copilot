@@ -376,10 +376,12 @@ function ChapterEditor({
           </div>
           <div className="p-3 text-muted">
             {tab === 'sources' ? (
-              <p>
-                Pin sources for this chapter to enable grounded suggestions. The library arrives in
-                week 2.
-              </p>
+              <div className="space-y-2">
+                <p>Pin sources for this chapter to enable grounded suggestions.</p>
+                <Link href={`/app/d/${doc.id}/sources`} className="inline-block underline">
+                  Open the library
+                </Link>
+              </div>
             ) : (
               <p>Citations in this chapter will be listed here (week 3).</p>
             )}

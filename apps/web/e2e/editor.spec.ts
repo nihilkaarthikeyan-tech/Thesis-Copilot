@@ -76,6 +76,8 @@ test('typing while a suggestion is shown dismisses it; Tab in a list indents', a
   await page.goto('/sign-in');
   await page.getByLabel('University or personal email').fill(email);
   await page.getByRole('button', { name: 'Email me a code' }).click();
+  // Wait for the send to land before reading the dev sink, or the code is not there yet.
+  await expect(page.getByLabel('Six-digit code')).toBeVisible();
   const { otp } = (await (
     await request.get(`${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`)
   ).json()) as { otp: string };

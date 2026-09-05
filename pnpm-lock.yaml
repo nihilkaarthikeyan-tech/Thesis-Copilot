@@ -149,6 +149,9 @@ importers:
       '@tc/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@tc/retrieval':
+        specifier: workspace:*
+        version: link:../../packages/retrieval
       '@tc/types':
         specifier: workspace:*
         version: link:../../packages/types

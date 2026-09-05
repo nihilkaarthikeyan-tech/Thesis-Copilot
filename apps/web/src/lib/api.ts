@@ -31,7 +31,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: 'include',
     headers: {
       accept: 'application/json',
-      ...(init.body ? { 'content-type': 'application/json' } : {}),
+      // A FormData body must set its own content-type: the browser has to append the multipart
+      // boundary, and overriding it with `application/json` makes the API try to JSON-parse an
+      // upload. Only a body we serialised ourselves is JSON.
+      ...(init.body && !(init.body instanceof FormData)
+        ? { 'content-type': 'application/json' }
+        : {}),
       ...(init.headers ?? {}),
     },
   });

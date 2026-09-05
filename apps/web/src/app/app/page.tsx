@@ -151,6 +151,20 @@ export default function DocumentListPage() {
                     {new Date(d.updatedAt).toLocaleString()}
                   </p>
                 </div>
+                <nav className="flex shrink-0 gap-3 text-xs">
+                  <Link href={`/app/d/${d.id}/proposal`} className="text-muted hover:underline">
+                    Proposal
+                  </Link>
+                  <Link href={`/app/d/${d.id}/sources`} className="text-muted hover:underline">
+                    Sources
+                  </Link>
+                  <Link
+                    href={`/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`}
+                    className="text-muted hover:underline"
+                  >
+                    Write
+                  </Link>
+                </nav>
               </li>
             ))}
           </ul>
