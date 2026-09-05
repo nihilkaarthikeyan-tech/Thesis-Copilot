@@ -1336,3 +1336,43 @@ therefore deferred. What follows is the part that is pure logic and provable on 
 - BLOCKED (PHASES 3.3 done-when): recall@6 on the C.4 labelled set needs `fixtures/retrieval/qa.json`,
   which only the human can write. BLOCKED (3.4 done-when): 30 real suggestions with cache hit rate
   need a provider key. Both in `docs/PENDING.md`.
+
+### Task 3.5 — `{{cite}}` becomes a citation node with a real source (FR-5.x, B.5)
+- Files: `apps/api/src/modules/chapters/{citations.ts,chapters.service.ts}`,
+  `apps/api/src/modules/sources/{sources.service.ts,sources.controller.ts}`,
+  `packages/ui/src/editor/{citation.ts,ghost-text.ts,extensions.ts}`,
+  `apps/web/src/components/editor/{CitationList.tsx,ThesisEditor.tsx}`, `apps/web/src/app/editor.css`.
+- Evidence:
+
+  ```
+  $ npx playwright test --workers=1
+    ok 7 3.5: an accepted citation resolves to a real source, shows its passage, and survives a reload
+    12 passed
+  $ pnpm test
+   config 62 · types 39 · ui 37 · db 2 · ai 127 · retrieval 149 · web 6 · worker 39 · api 80
+  $ pnpm lint
+   Checked 228 files. No fixes applied.
+  ```
+- Notes / deviations from PRD:
+  - **`Citation` rows follow the document, never lead it.** B.2 makes the node's attrs the only
+    citation state, so `save` mirrors them into the table: rows for nodes that are gone are deleted,
+    the rest upserted by node key. Only sources still in this document's library get a row — a node
+    whose source was removed stays in the text as a red-dashed orphan (B.5) with no row, because a
+    row must reference a `Source` that exists.
+  - `GET /sources/:id/chunks/:chunkId` returns the passage plus a signed PDF link. The chunk must
+    belong to the named source *and* that source to the caller's document, so a chunk id from
+    another student's library answers 404 rather than leaking a passage.
+  - The popover is a child of the citation's own DOM, so `ignoreMutation` already covers it and it
+    can never reach the document. It is fetched on hover after a short delay, never on render.
+  - **The popover has to be absolutely positioned.** Inline, it reflows the line, which shifts the
+    citation out from under a stationary pointer; Chrome then fires `mouseleave` on the layout
+    change and closes the popover it just opened. Only a browser shows this.
+  - The label the server rendered (`(Jumper 2021)`) is carried from `done.citations` into the
+    citation store, so an accepted node shows a real label instead of the `(Source, n.d.)`
+    placeholder. The label still lives in storage, never in the document (B.5); a test asserts the
+    document JSON does not contain it.
+  - `data-source-id` / `data-chunk-id` are set on the live element, not only in the serialised
+    form: the Citations tab, the E2E and a debugger all read the DOM.
+  - The accept fade decorates the accepted range and ProseMirror redraws it when the fade ends
+    (~400 ms), which can recreate the NodeView and close a popover opened inside that window. Minor
+    and self-correcting — the next hover reopens it — so it is recorded rather than worked around.

@@ -19,7 +19,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
-import { Citation } from './citation.js';
+import { Citation, type CitationOptions } from './citation.js';
 import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
 import { GhostText, type GhostTextOptions } from './ghost-text.js';
 import { MathBlock, MathInline } from './math.js';
@@ -35,6 +35,8 @@ import { Provenance } from './provenance.js';
 export type ThesisEditorOptions = {
   ghostText: Partial<GhostTextOptions> & Pick<GhostTextOptions, 'chapterId' | 'request'>;
   draft?: Partial<DraftBlockOptions>;
+  /** The passage resolver behind the citation hover popover (PHASES 3.5). */
+  citation?: CitationOptions;
   imageUpload?: ImageUpload;
   placeholder?: string;
   /** Tables measure the DOM for column resizing; off in tests (jsdom has no layout). */
@@ -62,7 +64,7 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     ThesisImage.configure({ ...(options.imageUpload ? { upload: options.imageUpload } : {}) }),
     MathInline,
     MathBlock,
-    Citation,
+    Citation.configure(options.citation ?? {}),
     NeedsSourceNote,
     DraftBlock.configure({ regenerateEnabled: false, ...options.draft }),
     Provenance,

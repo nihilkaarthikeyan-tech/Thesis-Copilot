@@ -7,7 +7,7 @@
 import type { Editor } from '@tiptap/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pendingDraft } from '../src/editor/draft-block.js';
-import { createTestEditor, provenanceRuns } from './helpers.js';
+import { createTestEditor, fakeRequest, pressKey, provenanceRuns, tick } from './helpers.js';
 
 let editor: Editor;
 afterEach(() => editor?.destroy());
@@ -169,5 +169,131 @@ describe('draft block (Appendix B.6)', () => {
       provenanceRuns(editor).some((r) => r.kind === 'HUMAN_EDITED' && r.actionId === 'd-1'),
     ).toBe(true);
     expect(editor.commands.requestSuggestion()).toBe(false);
+  });
+});
+
+describe('citation passage popover and rendered labels (PHASES 3.5)', () => {
+  const passage = {
+    text: 'A 2021 survey of 312 rural households found upfront cost the main barrier.',
+    page: 7,
+    section: 'Findings',
+    shortRef: 'Kumar 2021',
+    pdfUrl: 'https://minio.example/signed.pdf',
+  };
+
+  it('shows the real passage on hover, with an open-at-page link, and never touches the doc', async () => {
+    const calls: Array<[string, string | null]> = [];
+    editor = createTestEditor(
+      {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Claim ' },
+              {
+                ...cite('c_p', 'src-4'),
+                attrs: { ...cite('c_p', 'src-4').attrs, chunkId: 'chunk-2' },
+              },
+            ],
+          },
+        ],
+      },
+      {},
+      [],
+      {
+        hoverDelayMs: 0,
+        resolvePassage: async (sourceId, chunkId) => {
+          calls.push([sourceId, chunkId]);
+          return passage;
+        },
+      },
+    );
+    const before = editor.getJSON();
+    const node = editor.view.dom.querySelector('span.citation') as HTMLElement;
+    expect(node).toBeTruthy();
+    expect(node.getAttribute('data-source-id')).toBe('src-4');
+    expect(node.getAttribute('data-chunk-id')).toBe('chunk-2');
+
+    node.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await new Promise((r) => setTimeout(r, 5));
+    await Promise.resolve();
+
+    expect(calls).toEqual([['src-4', 'chunk-2']]);
+    const popover = node.querySelector('.citation-popover') as HTMLElement;
+    expect(popover).toBeTruthy();
+    expect(popover.querySelector('.citation-popover__text')?.textContent).toBe(passage.text);
+    expect(popover.querySelector('.citation-popover__ref')?.textContent).toBe(
+      'Kumar 2021 · p. 7 · Findings',
+    );
+    const link = popover.querySelector('a.citation-popover__pdf') as HTMLAnchorElement;
+    expect(link.textContent).toBe('Open PDF at page 7');
+    expect(link.getAttribute('href')).toBe('https://minio.example/signed.pdf#page=7');
+    expect(link.getAttribute('rel')).toContain('noopener');
+
+    // B.2: the popover is UI, not document.
+    expect(editor.getJSON()).toEqual(before);
+
+    node.dispatchEvent(new MouseEvent('mouseleave', { bubbles: false }));
+    expect(node.querySelector('.citation-popover')).toBeNull();
+  });
+
+  it('does not fetch when the pointer leaves before the delay, or when there is no source', async () => {
+    let fetched = 0;
+    editor = createTestEditor(
+      {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [cite('c_slow', 'src-1'), cite('c_gone', null)] }],
+      },
+      {},
+      [],
+      {
+        hoverDelayMs: 50,
+        resolvePassage: async () => {
+          fetched++;
+          return passage;
+        },
+      },
+    );
+    const [slow, gone] = Array.from(
+      editor.view.dom.querySelectorAll('span.citation'),
+    ) as HTMLElement[];
+
+    slow?.dispatchEvent(new MouseEvent('mouseenter'));
+    slow?.dispatchEvent(new MouseEvent('mouseleave'));
+    await new Promise((r) => setTimeout(r, 80));
+    expect(fetched).toBe(0);
+
+    gone?.dispatchEvent(new MouseEvent('mouseenter'));
+    await new Promise((r) => setTimeout(r, 80));
+    expect(fetched).toBe(0);
+  });
+
+  it('carries the server-rendered label from done.citations onto the inserted node', async () => {
+    const fake = fakeRequest({
+      events: [
+        { type: 'start', suggestionId: 'sug-90' },
+        { type: 'token', t: 'Cost mattered most {{cite:S1#c1}}.' },
+        {
+          type: 'done',
+          citations: [
+            { key: 'S1#c1', sourceId: 'src-4', chunkId: 'chunk-2', rendered: '(Kumar 2021)' },
+          ],
+        },
+      ],
+    });
+    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor.commands.setTextSelection(8);
+    editor.commands.requestSuggestion();
+    await tick(40);
+    expect(pressKey(editor, 'Tab')).toBe(true);
+
+    const label = editor.view.dom.querySelector('span.citation')?.textContent;
+    expect(label).toBe('(Kumar 2021)');
+    const json = editor.getJSON();
+    const node = json.content?.[0]?.content?.find((n) => n.type === 'citation');
+    expect(node?.attrs).toMatchObject({ key: 'S1#c1', sourceId: 'src-4', chunkId: 'chunk-2' });
+    // The label lives in storage, never in the document (B.5).
+    expect(JSON.stringify(json)).not.toContain('Kumar 2021');
   });
 });

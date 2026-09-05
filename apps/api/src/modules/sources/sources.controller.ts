@@ -115,6 +115,16 @@ export class SourcesController {
     return this.sources.refixSource(user.id, sourceId, parsed.data.doi);
   }
 
+  /** PHASES 3.5: the passage a citation stands on, plus a signed PDF link for "Open at page". */
+  @Get('sources/:id/chunks/:chunkId')
+  passage(
+    @CurrentUser() user: SessionUser,
+    @Param('id') sourceId: string,
+    @Param('chunkId') chunkId: string,
+  ) {
+    return this.sources.passage(user.id, sourceId, chunkId);
+  }
+
   @Get('sources/:id/file')
   fileUrl(@CurrentUser() user: SessionUser, @Param('id') sourceId: string) {
     return this.sources.fileUrl(user.id, sourceId);

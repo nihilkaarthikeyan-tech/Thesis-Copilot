@@ -14,6 +14,7 @@
 import {
   type Autosave,
   type AutosaveStatus,
+  type CitationPassage,
   createAutosave,
   getGhostState,
   type LocalDraft,
@@ -25,6 +26,29 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { assistRequest } from '@/lib/sse';
+
+/** `GET /sources/:id/chunks/:chunkId` (PHASES 3.5). */
+type PassageDto = {
+  text: string;
+  page: number | null;
+  section: string | null;
+  source: { title: string | null; year: number | null; authors: unknown };
+  pdfUrl: string | null;
+};
+
+/** "Kumar 2021" for the popover header; falls back through what is actually known. */
+function shortRefOf(source: PassageDto['source']): string {
+  const first = Array.isArray(source.authors)
+    ? (source.authors[0] as { family?: string; literal?: string } | undefined)
+    : undefined;
+  const name = first?.family?.trim() || first?.literal?.trim().split(/\s+/).pop() || null;
+  if (name && source.year) return `${name} ${source.year}`;
+  if (name) return name;
+  if (source.title) return source.title.slice(0, 40);
+  return 'Source';
+}
+
+import { CitationList } from './CitationList';
 import { SourcePins } from './SourcePins';
 
 type ChapterMeta = {
@@ -170,6 +194,24 @@ function ChapterEditor({
               body: JSON.stringify({ reason: 'PRE_DRAFT_ACCEPT' }),
             }).catch(() => undefined);
             void draftId;
+          },
+        },
+        // PHASES 3.5: the hover popover reads the real passage behind a citation.
+        citation: {
+          resolvePassage: async (sourceId, chunkId): Promise<CitationPassage | null> => {
+            if (!chunkId) return null;
+            try {
+              const p = await api<PassageDto>(`/sources/${sourceId}/chunks/${chunkId}`);
+              return {
+                text: p.text,
+                page: p.page,
+                section: p.section,
+                shortRef: shortRefOf(p.source),
+                pdfUrl: p.pdfUrl,
+              };
+            } catch {
+              return null;
+            }
           },
         },
         resizableTables: true,
@@ -379,7 +421,7 @@ function ChapterEditor({
             {tab === 'sources' ? (
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
             ) : (
-              <p>Citations in this chapter will be listed here (week 3).</p>
+              <CitationList editor={editor} />
             )}
           </div>
         </aside>

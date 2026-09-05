@@ -10,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@tc/db';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { citationsIn } from './citations.js';
 import { type SnapshotReason, SnapshotsService } from './snapshots.service.js';
 import { looksLikeDoc, totalWords, wordCountsOf } from './word-counts.js';
 
@@ -117,6 +118,42 @@ export class ChaptersService {
     return { sourceIds: unique };
   }
 
+  private async syncCitations(chapterId: string, documentId: string, content: unknown) {
+    const rows = citationsIn(content);
+    const wanted = new Set(rows.map((row) => row.nodeKey));
+
+    const sourceIds = [...new Set(rows.map((row) => row.sourceId))];
+    const owned = new Set(
+      sourceIds.length === 0
+        ? []
+        : (
+            await this.prisma.source.findMany({
+              where: { id: { in: sourceIds }, documentId },
+              select: { id: true },
+            })
+          ).map((source) => source.id),
+    );
+    const valid = rows.filter((row) => owned.has(row.sourceId));
+
+    await this.prisma.$transaction([
+      this.prisma.citation.deleteMany({
+        where: { chapterId, ...(wanted.size > 0 ? { nodeKey: { notIn: [...wanted] } } : {}) },
+      }),
+      ...valid.map((row) =>
+        this.prisma.citation.upsert({
+          where: { chapterId_nodeKey: { chapterId, nodeKey: row.nodeKey } },
+          create: { chapterId, ...row },
+          update: {
+            sourceId: row.sourceId,
+            chunkId: row.chunkId,
+            role: row.role,
+            locator: row.locator,
+          },
+        }),
+      ),
+    ]);
+  }
+
   /**
    * B.7 save. Returns the new version, or throws 409 when `baseVersion` is stale.
    * Also refreshes the per-provenance word counts (B.4) and writes an AUTOSAVE snapshot when one
@@ -166,6 +203,11 @@ export class ChaptersService {
       where: { id: chapterId },
       select: { version: true, documentId: true, snapshotAt: true },
     });
+
+    // PHASES 3.5: `Citation` rows mirror the citation nodes, keyed by node key. Rows for nodes
+    // that are gone are deleted; the rest are upserted. Only sources still in this document's
+    // library are referenced — a node pointing elsewhere is a red-dashed orphan (B.5), not a row.
+    await this.syncCitations(chapterId, after.documentId, content);
 
     let snapshotTaken = false;
     if (this.snapshots.isDue(after.snapshotAt)) {

@@ -6,6 +6,7 @@ export {
   type LocalDraft,
   type SaveResult,
 } from './editor/autosave.js';
+export type { CitationOptions, CitationPassage } from './editor/citation.js';
 export {
   CITATIONS_RERENDER,
   Citation,

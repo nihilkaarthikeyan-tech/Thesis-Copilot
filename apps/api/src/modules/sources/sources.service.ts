@@ -384,6 +384,69 @@ export class SourcesService {
     return { queued: true, doi: normalised };
   }
 
+  /**
+   * PHASES 3.5: the passage behind a citation, for the hover popover and "Open PDF at page".
+   * Ownership is checked through the source's document; the chunk must belong to that source, so
+   * a chunk id from another student's library answers 404 rather than leaking a passage.
+   */
+  async passage(
+    ownerId: string,
+    sourceId: string,
+    chunkId: string,
+  ): Promise<{
+    chunkId: string;
+    sourceId: string;
+    text: string;
+    page: number | null;
+    section: string | null;
+    source: {
+      title: string | null;
+      year: number | null;
+      authors: unknown;
+      groundingLevel: string;
+      hasFile: boolean;
+    };
+    /** Signed, time-limited; null when there is no PDF. The client appends `#page=N`. */
+    pdfUrl: string | null;
+  }> {
+    const chunk = await this.prisma.sourceChunk.findFirst({
+      where: { id: chunkId, sourceId, source: { document: { ownerId } } },
+      select: {
+        id: true,
+        text: true,
+        page: true,
+        section: true,
+        source: {
+          select: {
+            id: true,
+            title: true,
+            year: true,
+            authors: true,
+            groundingLevel: true,
+            fileKey: true,
+          },
+        },
+      },
+    });
+    if (!chunk) throw new NotFoundError('That passage');
+
+    return {
+      chunkId: chunk.id,
+      sourceId: chunk.source.id,
+      text: chunk.text,
+      page: chunk.page,
+      section: chunk.section,
+      source: {
+        title: chunk.source.title,
+        year: chunk.source.year,
+        authors: chunk.source.authors,
+        groundingLevel: chunk.source.groundingLevel,
+        hasFile: Boolean(chunk.source.fileKey),
+      },
+      pdfUrl: chunk.source.fileKey ? await this.storage.signedUrl(chunk.source.fileKey) : null,
+    };
+  }
+
   /** PRD §9.2 `GET /sources/:id/file` — a time-limited link, issued only after an ownership check. */
   async fileUrl(ownerId: string, sourceId: string): Promise<{ url: string }> {
     const source = await this.prisma.source.findFirst({

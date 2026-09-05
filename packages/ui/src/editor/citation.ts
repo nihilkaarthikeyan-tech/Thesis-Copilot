@@ -22,6 +22,26 @@ export type CitationAttrs = {
   suffix: string | null;
 };
 
+/** What the hover popover shows: the passage a citation stands on (PHASES 3.5). */
+export type CitationPassage = {
+  text: string;
+  page: number | null;
+  section: string | null;
+  shortRef: string;
+  /** Signed PDF link, when the source has a file. The popover appends `#page=N`. */
+  pdfUrl: string | null;
+};
+
+export type CitationOptions = {
+  /**
+   * Fetches the passage behind a citation. Wired by the app to `GET /sources/:id/chunks/:chunkId`.
+   * Absent (tests, the bare extension) means no popover, only the title tooltip.
+   */
+  resolvePassage?: (sourceId: string, chunkId: string | null) => Promise<CitationPassage | null>;
+  /** Hover delay before the popover is fetched and shown. */
+  hoverDelayMs?: number;
+};
+
 export type CitationStorage = {
   style: string;
   /** key → rendered label, e.g. "(Kumar et al., 2021)" or "[12]". */
@@ -57,8 +77,12 @@ function labelFor(node: PmNode, storage: CitationStorage): string {
   return storage.style === 'ieee' ? '[?]' : '(Source, n.d.)';
 }
 
-export const Citation = Node.create<Record<string, never>, CitationStorage>({
+export const Citation = Node.create<CitationOptions, CitationStorage>({
   name: 'citation',
+
+  addOptions() {
+    return { hoverDelayMs: 250 };
+  },
   group: 'inline',
   inline: true,
   atom: true,
@@ -123,6 +147,7 @@ export const Citation = Node.create<Record<string, never>, CitationStorage>({
   addNodeView() {
     const editor = this.editor;
     const storage = this.storage;
+    const options = this.options;
 
     return ({ node }) => {
       let current = node;
@@ -130,10 +155,102 @@ export const Citation = Node.create<Record<string, never>, CitationStorage>({
       dom.className = 'citation';
       dom.setAttribute('data-citation', '');
       dom.setAttribute('contenteditable', 'false');
+      // The popover is positioned against the citation, so showing it never reflows the line.
+      // An inline popover shifts the citation out from under a stationary pointer, and Chrome
+      // then fires mouseleave on the layout change — closing the popover it just opened.
+      dom.style.position = 'relative';
+
+      // PHASES 3.5: "hover popover shows the real passage; 'Open PDF at page'". The popover is a
+      // child of the atom's own DOM, so ProseMirror's `ignoreMutation` covers it and nothing here
+      // ever touches the document. Fetched on hover after a short delay, never on render.
+      let popover: HTMLElement | null = null;
+      let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+      let hoverToken = 0;
+
+      const closePopover = () => {
+        if (hoverTimer) clearTimeout(hoverTimer);
+        hoverTimer = null;
+        hoverToken++;
+        popover?.remove();
+        popover = null;
+      };
+
+      const showPopover = (passage: CitationPassage) => {
+        closePopover();
+        const el = document.createElement('span');
+        el.className = 'citation-popover';
+        el.setAttribute('role', 'tooltip');
+        el.setAttribute('contenteditable', 'false');
+        // Out of the text flow (see above). Appearance beyond that belongs to the app's CSS.
+        el.style.position = 'absolute';
+        el.style.top = '100%';
+        el.style.left = '0';
+        el.style.zIndex = '20';
+        el.style.display = 'block';
+        el.style.whiteSpace = 'normal';
+        el.style.width = '22rem';
+
+        const head = document.createElement('span');
+        head.className = 'citation-popover__ref';
+        head.textContent = [
+          passage.shortRef,
+          passage.page !== null ? `p. ${passage.page}` : null,
+          passage.section,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        el.appendChild(head);
+
+        const body = document.createElement('span');
+        body.className = 'citation-popover__text';
+        body.textContent = passage.text;
+        el.appendChild(body);
+
+        if (passage.pdfUrl) {
+          const link = document.createElement('a');
+          link.className = 'citation-popover__pdf';
+          link.href =
+            passage.page !== null ? `${passage.pdfUrl}#page=${passage.page}` : passage.pdfUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent =
+            passage.page !== null ? `Open PDF at page ${passage.page}` : 'Open PDF';
+          el.appendChild(link);
+        }
+
+        dom.appendChild(el);
+        popover = el;
+      };
+
+      const onEnter = () => {
+        const a = current.attrs as CitationAttrs;
+        if (!options.resolvePassage || !a.sourceId) return;
+        if (hoverTimer) clearTimeout(hoverTimer);
+        const token = ++hoverToken;
+        hoverTimer = setTimeout(() => {
+          hoverTimer = null;
+          void options
+            .resolvePassage?.(a.sourceId as string, a.chunkId)
+            .then((passage) => {
+              // The pointer may have left, or a newer hover started, while the fetch was out.
+              if (token !== hoverToken || !passage) return;
+              showPopover(passage);
+            })
+            .catch(() => undefined);
+        }, options.hoverDelayMs ?? 250);
+      };
+      dom.addEventListener('mouseenter', onEnter);
+      dom.addEventListener('mouseleave', closePopover);
 
       const render = () => {
         const a = current.attrs as CitationAttrs;
         dom.setAttribute('data-key', a.key);
+        // The ids on the live element too, not only in the serialised form: the Citations tab,
+        // E2E and a debugger all read the DOM, and the label alone does not say what it points at.
+        if (a.sourceId) dom.setAttribute('data-source-id', a.sourceId);
+        else dom.removeAttribute('data-source-id');
+        if (a.chunkId) dom.setAttribute('data-chunk-id', a.chunkId);
+        else dom.removeAttribute('data-chunk-id');
         dom.textContent = labelFor(current, storage);
         const removed = a.sourceId === null || storage.removedSourceIds.has(a.sourceId);
         dom.classList.toggle('citation--removed', removed);
@@ -172,6 +289,9 @@ export const Citation = Node.create<Record<string, never>, CitationStorage>({
           return true;
         },
         destroy() {
+          closePopover();
+          dom.removeEventListener('mouseenter', onEnter);
+          dom.removeEventListener('mouseleave', closePopover);
           editor.off('transaction', onTransaction);
         },
       };

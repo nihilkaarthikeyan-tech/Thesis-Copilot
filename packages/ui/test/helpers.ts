@@ -1,4 +1,5 @@
 import { Editor, type JSONContent } from '@tiptap/core';
+import type { CitationOptions } from '../src/editor/citation.js';
 import { thesisExtensions } from '../src/editor/extensions.js';
 import type {
   GhostEvent,
@@ -60,6 +61,7 @@ export function createTestEditor(
   content: JSONContent | string = '<p></p>',
   ghost: Partial<GhostTextOptions> = {},
   outcomes: Array<{ suggestionId: string; outcome: string; keptChars: number }> = [],
+  citation: CitationOptions = {},
 ): Editor {
   const element = document.createElement('div');
   document.body.appendChild(element);
@@ -67,6 +69,7 @@ export function createTestEditor(
     element,
     content,
     extensions: thesisExtensions({
+      citation,
       ghostText: {
         chapterId: 'chapter-1',
         request: async function* () {},

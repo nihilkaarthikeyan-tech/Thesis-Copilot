@@ -45,6 +45,14 @@ blocks the agent from continuing to build against mocks.
 - [ ] After the agent writes `pNN.expected.draft.json`, correct them and rename to `pNN.expected.json`.
 - [ ] **Retrieval Q&A set** `fixtures/retrieval/qa.json` (30 questions → correct chunk ids), Appendix C.4.
 - [ ] **Prompt golden set** review, Appendix C.5 (the agent drafts; you judge).
+- [ ] **Thirty real Assist suggestions** (PHASES 3.4 done-when): with a provider key set, run
+      thirty suggestions on a fixture chapter and paste five examples (before / after / suggestion /
+      citations), the hallucinated-cite count and the cache hit rate over the thirty into
+      `docs/BUILD_LOG.md`. Target ≥ 70 % cache hits after warm-up (§10.3). The whole pipeline is
+      built and proven on the mock; only the real-model evidence is missing.
+- [ ] **Prompt observations** (PHASES 3.9): after the thirty runs, ten weak suggestions with a
+      one-line reason each. The prompt files must not be edited (§0.3 rule 11); propose changes
+      for the human to approve.
 - [ ] **Coherence fixture thesis** `fixtures/thesis/` with planted inconsistencies (Appendix C.6, Phase 3).
 - [ ] **A real university formatting guideline** to replace the `EXAMPLE_IN_UNIVERSITY` template (D.3.1).
 

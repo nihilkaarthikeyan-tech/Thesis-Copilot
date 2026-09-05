@@ -402,6 +402,17 @@ export const GhostText = Extension.create<GhostTextOptions>({
             };
             storage.lastTiming = timing;
             options.onTiming?.(timing);
+            // PHASES 3.5: the label the server rendered for each resolved key ("(Kumar 2021)")
+            // goes into the citation store, so the node inserted on Tab shows it rather than the
+            // placeholder. The document itself stores only the key and ids (B.2, B.5).
+            const citationStore = (
+              editor.storage as { citation?: { renderedMap?: Record<string, string> } }
+            ).citation;
+            if (citationStore?.renderedMap) {
+              for (const citation of event.citations) {
+                if (citation.rendered) citationStore.renderedMap[citation.key] = citation.rendered;
+              }
+            }
             editor.view.dispatch(
               editor.state.tr.setMeta(ghostTextKey, {
                 type: 'done',

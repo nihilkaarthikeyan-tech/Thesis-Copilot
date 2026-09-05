@@ -354,3 +354,84 @@ test.describe('Stage 4 chapter setup', () => {
     await expect(afterReload.getByText(/every source in the library/)).toBeVisible();
   });
 });
+
+test.describe('Stage 4 citations', () => {
+  test.setTimeout(180_000);
+
+  /**
+   * PHASES 3.5's done-when: "accept a suggestion containing a citation → hover shows the passage
+   * → reload → citation persists." The library here has two sources with abstracts, both pinned,
+   * so §10.4 retrieves real passages and the model (mock, obeying A.0 rule 3) cites one of them by
+   * its prompt id. What lands in the document is the real source and chunk id behind that id.
+   */
+  test('3.5: an accepted citation resolves to a real source, shows its passage, and survives a reload', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, request);
+    const id = await createThesis(page, `Cite E2E ${Date.now()}`);
+
+    await page.goto(`/app/d/${id}/proposal`);
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'seed.pdf',
+      mimeType: 'application/pdf',
+      buffer: ABSTRACTED_REFERENCES_PDF,
+    });
+    await expect(page.getByText('Read', { exact: true })).toBeVisible({ timeout: 120_000 });
+    await page.getByRole('button', { name: 'Continue to the editor' }).click();
+    await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+
+    const editor = page.locator('.thesis-editor');
+    await expect(editor).toBeVisible({ timeout: 20_000 });
+
+    // Both sources indexed and pinned, so retrieval has passages to offer.
+    const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
+    const boxes = panel.locator('input[type=checkbox]');
+    await expect(boxes).toHaveCount(2, { timeout: 120_000 });
+    await panel.getByRole('button', { name: 'Pin all' }).click();
+    await expect(panel.getByText('draw only on 2 pinned sources')).toBeVisible();
+
+    // Ask for a suggestion; the mock cites the first retrieved passage by its prompt id.
+    await editor.locator('p').first().click();
+    await page.keyboard.type('Prior studies of protein structure found ');
+    await page.keyboard.press('Control+/');
+    const ghost = editor.locator('span.ghost');
+    await expect(ghost).toBeVisible({ timeout: 10_000 });
+    await expect(ghost).toContainText('Evidence from rural Karnataka', { timeout: 10_000 });
+    // Tab accepts what is shown; wait for the stream to finish so the whole suggestion lands.
+    await expect(page.getByTestId('dev-timing')).toContainText('shown', { timeout: 10_000 });
+
+    await page.keyboard.press('Tab');
+    await expect(ghost).toHaveCount(0);
+
+    // A real citation node with real ids, labelled from the server's rendered form.
+    const citation = editor.locator('span.citation');
+    await expect(citation).toHaveCount(1);
+    await expect(citation).not.toHaveText('(Source, n.d.)');
+    const sourceId = await citation.getAttribute('data-source-id');
+    expect(sourceId, 'the node should carry the real source id').toMatch(/^[0-9a-f-]{36}$/);
+
+    // Let the accept fade and the autosave settle first. The fade decorates the accepted range and
+    // ProseMirror redraws it when the fade ends, which can recreate the NodeView and close a
+    // popover opened inside that ~400 ms window (a known, minor glitch; the next hover reopens it).
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible({ timeout: 10_000 });
+
+    // Hover shows the passage the citation stands on, straight from the chunk table.
+    await citation.hover();
+    const popover = editor.locator('.citation-popover');
+    await expect(popover).toBeVisible({ timeout: 10_000 });
+    await expect(popover.locator('.citation-popover__text')).not.toBeEmpty();
+    await expect(popover.locator('.citation-popover__ref')).toContainText(/\d{4}/);
+
+    // Reload: the node, its ids and its label persist.
+    await page.reload();
+    const after = page.locator('.thesis-editor span.citation');
+    await expect(after).toHaveCount(1, { timeout: 20_000 });
+    expect(await after.getAttribute('data-source-id')).toBe(sourceId);
+
+    // And the Citation row mirrors it (PHASES 3.5: "Citation rows upserted on save").
+    await page.getByRole('button', { name: 'citations' }).click();
+    const tab = page.getByRole('complementary').filter({ hasText: 'citations' });
+    await expect(tab.getByRole('button', { name: /^1\./ })).toBeVisible({ timeout: 10_000 });
+  });
+});

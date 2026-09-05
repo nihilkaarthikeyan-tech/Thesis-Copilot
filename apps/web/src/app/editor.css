@@ -205,3 +205,31 @@
 .thesis-editor[data-show-provenance="true"] [data-provenance="HUMAN_EDITED"] {
   background: rgba(16, 185, 129, 0.1);
 }
+
+/* Citation hover popover — PHASES 3.5. Positioning is set by the NodeView; this is appearance. */
+.thesis-editor .citation-popover {
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-line, #e5e2da);
+  border-radius: 0.375rem;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(20, 20, 20, 0.12);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-ink, #1a1a1a);
+  cursor: default;
+}
+.thesis-editor .citation-popover__ref {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-muted, #6b6b6b);
+}
+.thesis-editor .citation-popover__text {
+  display: block;
+  margin-top: 0.25rem;
+}
+.thesis-editor .citation-popover__pdf {
+  display: inline-block;
+  margin-top: 0.375rem;
+  text-decoration: underline;
+}
