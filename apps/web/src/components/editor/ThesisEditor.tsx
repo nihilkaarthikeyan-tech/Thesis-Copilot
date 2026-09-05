@@ -169,6 +169,9 @@ function ChapterEditor({
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
   const [tab, setTab] = useState<'sources' | 'citations'>('sources');
   const [howOpen, setHowOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState<ExportResult | null>(null);
   const autosaveRef = useRef<Autosave | null>(null);
@@ -401,6 +404,13 @@ function ChapterEditor({
           >
             How suggestions work
           </button>
+          <button
+            type="button"
+            className="text-xs text-muted underline"
+            onClick={() => setFeedbackOpen((open) => !open)}
+          >
+            Feedback
+          </button>
           {exported ? (
             <a
               href={exported.url}
@@ -548,6 +558,62 @@ function ChapterEditor({
 
       {guided.element}
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} />
+
+      {feedbackOpen ? (
+        <form
+          data-testid="feedback-form"
+          className="fixed right-4 bottom-16 z-30 w-[24rem] rounded-lg border border-line bg-white p-3 shadow-lg"
+          onSubmit={(event) => {
+            // PHASES 5.9: the admin receives the document id and the last five suggestion
+            // events, never the chapter text.
+            event.preventDefault();
+            if (!feedbackText.trim()) return;
+            setFeedbackBusy(true);
+            api('/feedback', {
+              method: 'POST',
+              body: JSON.stringify({
+                documentId: doc.id,
+                message: feedbackText.trim(),
+                page: window.location.pathname,
+              }),
+            })
+              .then(() => {
+                setFeedbackOpen(false);
+                setFeedbackText('');
+                setNotice(
+                  'Thanks — your note is on its way, with the ids of your last few suggestions.',
+                );
+              })
+              .catch(() => setNotice('The note did not send. Try again in a minute.'))
+              .finally(() => setFeedbackBusy(false));
+          }}
+        >
+          <label className="text-xs text-muted" htmlFor="feedback-text">
+            What happened? The admin gets this note, this document’s id and your last five
+            suggestion events — not your text.
+          </label>
+          <textarea
+            id="feedback-text"
+            rows={4}
+            maxLength={4000}
+            value={feedbackText}
+            onChange={(event) => setFeedbackText(event.target.value)}
+            className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm"
+          />
+          <div className="mt-2 flex justify-end gap-3 text-xs">
+            <button type="button" className="underline" onClick={() => setFeedbackOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={feedbackBusy || !feedbackText.trim()}
+              className="rounded-md bg-ink px-3 py-1 text-white disabled:opacity-50"
+            >
+              {feedbackBusy ? 'Sending…' : 'Send'}
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />
 

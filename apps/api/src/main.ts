@@ -13,10 +13,13 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { buildFastify, registerPlugins } from './bootstrap.js';
 import { ProblemDetailsFilter } from './common/problem-details.filter.js';
+import { initSentry } from './common/sentry.js';
 
 async function bootstrap(): Promise<void> {
   // Throws and exits if anything required is missing or malformed.
   const env = loadEnv();
+  // PHASES 5.5: on only when SENTRY_DSN is set; dev and test never report anywhere.
+  initSentry(env.SENTRY_DSN, 'api');
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,

@@ -16,7 +16,8 @@
     "db:migrate": "pnpm --filter @tc/db migrate",
     "db:seed": "pnpm --filter @tc/db seed",
     "ai:verify": "pnpm --filter @tc/ai verify",
-    "db:check": "pnpm --filter @tc/db check"
+    "db:check": "pnpm --filter @tc/db check",
+    "pilot:report": "pnpm --filter @tc/api pilot:report"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",

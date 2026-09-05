@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ProblemDetails } from './errors.js';
+import { captureException } from './sentry.js';
 
 @Catch()
 export class ProblemDetailsFilter implements ExceptionFilter {
@@ -33,6 +34,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         { err: exception, requestId, path: request.url },
         `Unhandled error: ${problem.title}`,
       );
+      captureException(exception, { requestId, path: request.url });
     }
 
     reply.status(problem.status).type('application/problem+json').send(problem);

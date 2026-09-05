@@ -63,6 +63,7 @@ export class UsageService {
     // the row with count = 1 and let one call through. PRD Appendix E.2 relies on a missing or zero
     // cap making the endpoint unusable, so this path matters.
     if (cap <= 0) {
+      await this.audit(userId, plan, action, cap);
       return { ok: false, cap, resetsAt: resetsAtFor(now) };
     }
 
@@ -81,10 +82,21 @@ export class UsageService {
 
     const row = rows[0];
     if (!row) {
+      await this.audit(userId, plan, action, cap);
       return { ok: false, cap, resetsAt: resetsAtFor(now) };
     }
 
     return { ok: true, count: row.count, cap, remaining: Math.max(cap - row.count, 0) };
+  }
+
+  /**
+   * ADR-0004: a refusal leaves no ledger row, so it is recorded here — the one place every
+   * metered action passes. `pnpm pilot:report` and the admin's per-user page count these.
+   */
+  private async audit(userId: string, plan: Plan, action: MeteredAction, cap: number) {
+    await this.prisma.auditEvent.create({
+      data: { kind: 'CAP_EXCEEDED', userId, detail: { action, plan, cap } },
+    });
   }
 
   /**

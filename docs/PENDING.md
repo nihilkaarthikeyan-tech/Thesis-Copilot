@@ -37,6 +37,28 @@ blocks the agent from continuing to build against mocks.
       request path.
 - [ ] **CORE fallback** (PHASES 2.6 / 5.1): needs `CORE_API_KEY`, optional in §13.3. Without it the
       client cannot be exercised, and Unpaywall already covers the open-access path. Not built.
+- [ ] **Sentry** (PHASES 5.5): set `SENTRY_DSN` in the VPS `.env`. The API and worker initialise
+      `@sentry/node` only when it is set (`apps/api/src/common/sentry.ts`, `apps/worker/src/sentry.ts`;
+      errors only, no tracing, no PII). Then throw one on purpose — `GET /api/v1/health?boom=1`
+      is not wired; the simplest is a bad `DATABASE_URL` for one request — and save the Sentry
+      screenshot under `docs/evidence/`. The web app has no Sentry yet (`@sentry/nextjs` is a
+      separate integration); add it if browser errors matter during the pilot.
+- [ ] **Uptime Kuma** (PHASES 5.5): it is in `docker-compose.prod.yml` on `127.0.0.1:3010`. Over an
+      SSH tunnel, create the admin account and add an HTTP monitor for
+      `http://api:3001/api/v1/health` with keyword `"status":"ok"`, 60 s. Screenshot it green.
+- [ ] **Prometheus** (PHASES 5.5): `docker compose --profile monitoring up -d` on the VPS; it
+      scrapes `api:3001/metrics` every 15 s (`infra/prometheus/prometheus.yml`). Nothing exposes it
+      publicly; use an SSH tunnel to 9090. Optional for the pilot.
+- [ ] **k6 load test** (PHASES 5.7, §15): `infra/k6/assist-stream.js` is written; k6 is not
+      installed here and PHASES wants the run against the VPS. Install k6 on your machine, sign in
+      as one pilot account, then
+      `k6 run -e API_URL=https://<domain> -e COOKIE='better-auth.session_token=…' -e CHAPTER_ID=<uuid> infra/k6/assist-stream.js`
+      with the API on the mock provider. Paste p50/p95/error rate into `docs/BUILD_LOG.md`; the
+      thresholds (p95 ≤ 600 ms, errors < 0.5%) are in the script. Reset that account's caps
+      afterwards from `/admin/users/<id>`.
+- [ ] **Pilot report interpretation** (PHASES 5.10): after ≥ 10 days of student use run
+      `pnpm pilot:report` (or `pnpm pilot:report --json`), paste it into `docs/BUILD_LOG.md`, and
+      write `docs/PILOT-1.md` — the numbers are the script's, the reading is yours.
 - [ ] **Razorpay** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 - [ ] **Sentry DSN** (optional, week 5).
 

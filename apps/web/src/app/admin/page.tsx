@@ -11,6 +11,7 @@
  * The `Cost model: UNVERIFIED` banner from PHASES 0.10 stays until a human fills Appendix E.3.
  */
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 
@@ -132,6 +133,14 @@ export default function AdminPage() {
       ) : null}
 
       <h1 className="font-serif text-2xl">Admin</h1>
+      {flags ? (
+        <p className="mt-1 text-sm">
+          <Link href="/admin/users" className="underline">
+            Pilot students
+          </Link>{' '}
+          <span className="text-muted">— usage, cost, caps and plan per account (PHASES 5.9).</span>
+        </p>
+      ) : null}
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-warn">

@@ -1,0 +1,23 @@
+# Prometheus scrape config — PRD §14, PHASES 5.5.
+#
+# The API exposes `/metrics` (prom-client) on its internal port; Caddy answers 404 for it from
+# outside (PRD §13.1). Prometheus runs on the internal Compose network under the `monitoring`
+# profile:  docker compose --profile monitoring up -d
+#
+# Series worth an alert are listed in PRD §14; the rules are evaluated by `alerts.service.ts`
+# against the database, so this file scrapes and keeps, nothing more.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api:3001']
+        labels: { service: api }
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

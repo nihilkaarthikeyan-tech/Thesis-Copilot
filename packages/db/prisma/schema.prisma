@@ -349,6 +349,23 @@ model AiCallLog {
   @@index([userId, createdAt])
 }
 
+/**
+ * ADR-0004. Things that happened to a user that no other table records: a cap refusal, an admin
+ * resetting caps or changing a plan, a feedback message. `kind` is a string, not an enum, so a
+ * new kind is a code change rather than a migration.
+ */
+model AuditEvent {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  kind       String   // CAP_EXCEEDED | CAPS_RESET | PLAN_CHANGED | FEEDBACK
+  userId     String   @db.Uuid   // the subject
+  actorId    String?  @db.Uuid   // who did it, when not the subject (an admin)
+  documentId String?  @db.Uuid
+  detail     Json?
+  createdAt  DateTime @default(now())
+  @@index([kind, createdAt])
+  @@index([userId, createdAt])
+}
+
 model UsageLedger {
   id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   userId    String   @db.Uuid

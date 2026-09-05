@@ -1788,3 +1788,95 @@ therefore deferred. What follows is the part that is pure logic and provable on 
 - The panel's copy is the product's own description of itself and repeats what the empty states
   and provenance marks already say — the same message, once in full. Nothing in it promises
   something the code does not do.
+
+### Task 5.5 — observability
+- Files: `apps/api/src/common/sentry.ts`, `apps/worker/src/sentry.ts` (`@sentry/node`, initialised
+  only when `SENTRY_DSN` is set; errors only — `tracesSampleRate: 0`, `sendDefaultPii: false` —
+  so no request body or prompt ever leaves the box, §12.2), wired into the problem-details filter
+  for every 5xx and the worker's `failed` handler; `infra/prometheus/prometheus.yml` and a
+  `prometheus` service behind the `monitoring` profile; `x-logging` anchor (json-file, 5 × 20 MB)
+  on every service in `docker-compose.prod.yml`; Uptime Kuma bound to `127.0.0.1:3010` with the
+  monitor to create written next to it.
+- Evidence:
+
+  ```
+  $ docker compose -f docker-compose.prod.yml --profile monitoring config --quiet   (dummy env)
+  compose-exit=0
+  $ tsc --noEmit  (api, worker, web)                         all clean
+  ```
+- **BLOCKED for the human**: the Sentry screenshot needs a DSN; Uptime Kuma's green needs its
+  first-run setup on the VPS. Both are in `docs/PENDING.md` with the exact steps.
+
+### Task 5.7 — load test script
+- File: `infra/k6/assist-stream.js` — 200 VUs for 5 minutes against `/assist/suggest`, TTFB from
+  `res.timings.waiting` (first byte of the stream = first token), thresholds `p(95)<600` and
+  `rate<0.005` as §15 states, a summary that prints p50/p95/error rate.
+- **BLOCKED**: k6 is not installed here and PHASES wants the numbers from the VPS. The command
+  line is in `docs/PENDING.md`. `apps/api/scripts/assist-bench.mjs` from week 1 (p95 274 ms on
+  this machine, 20 concurrent) is the local stand-in.
+
+### Task 5.9 — pilot support tooling (ADR-0004)
+- Files: `packages/db/prisma/schema.prisma` + migration `0005_audit_event` (`AuditEvent`, one
+  append-only table — see `docs/ADR/0004-audit-event-table.md`); `apps/api/src/modules/usage/usage.service.ts`
+  (a cap refusal writes `CAP_EXCEEDED`); `apps/api/src/modules/admin/{users.service,feedback.service}.ts`
+  and the routes `GET /admin/users`, `GET /admin/users/:id`, `POST /admin/users/:id/reset-caps`,
+  `PUT /admin/users/:id/plan`, `POST /feedback`; `apps/web/src/app/admin/users/{page,[id]/page}.tsx`;
+  a `Feedback` button in the editor header; `apps/api/test/admin-users.spec.ts`.
+- Evidence — `vitest run test/admin-users.spec.ts`:
+
+  ```
+  ✓ lists every account with this month’s usage against caps, cost and last activity
+  ✓ is SUPERADMIN-only, and the detail page is titles only
+  ✓ answers 404 for an unknown user
+  ✓ zeroes the period’s counters and logs who did it and what the counters were
+  ✓ changes the plan (PHASES 5.8 pilot override) and logs the change
+  ✓ rejects a plan that does not exist
+  ✓ a cap refusal … is counted on the admin’s per-user page
+  ✓ mails the admin the document id and the last five suggestion events, and logs it
+  ✓ refuses feedback about someone else’s document with 404
+  Tests  9 passed (9)
+  ```
+- The per-user page carries document titles and counts, never chapter text; the feedback mail
+  carries ids, outcomes and the student's note, never chapter text (the test asserts the word
+  `content` is absent). Every admin action lands in `AuditEvent` with the admin as `actorId` and
+  is listed on the same page.
+- The plan override exists because PHASES 5.8 needs it ("pilot users … set to STUDENT_MONTHLY
+  caps by admin override") and there was no route for it.
+
+### Task 5.10 — `pnpm pilot:report`
+- Files: `apps/api/scripts/pilot-report.ts` (+ `pilot:report` in the root and API `package.json`),
+  `apps/api/test/pilot-report.spec.ts` (words by provenance, nearest-rank percentile, rendering).
+- Evidence — against the dev database today, which holds the E2E and bench accounts rather than
+  students, so the numbers are a proof of the script, not of a pilot:
+
+  ```
+  $ pnpm pilot:report
+  Pilot report — period 2026-09 (UTC)
+  student                            plan        docs  human assist draft edited  acc%  drft+/-    p50     p95  cost₹ cap!
+  e2e-onboard-1788619917382-mkuiw3@e FREE_TRIAL     1      8     26     0      0   100      0/0 313 ms  313 ms   0.00    0
+  student1@example.com               FREE_TRIAL     3      6      3     0      0   100      0/0 262 ms  262 ms   0.00    0
+  …
+  Platform
+    students            123
+    words               human 584 · assist 753 · draft 396 · edited 0
+    AI calls            309 (9 failed)
+    cost                ₹0.00
+    hallucinated cites  0
+    cap-exceeded        0
+    Assist TTFB         p50 306 ms · p95 321 ms
+  ```
+  `--json` emits the same as an object (123 students). The 9 failed calls are the forced provider
+  failures from the 5.2 spec; `cap-exceeded 0` because the refusals in the 5.2 spec predate the
+  audit table.
+- "Shown" is every `SuggestionEvent` row for the action, the same reading as the dashboard: one
+  row per suggestion, its outcome updated in place (FR-9.4). The first draft of the script counted
+  rows with `outcome = SHOWN` and reported "–" for students who had accepted everything.
+- `docs/PILOT-1.md` is the human's after ≥ 10 days of use (`docs/PENDING.md`).
+
+### Task 5.8 — deploy
+- **BLOCKED**: needs the VPS, `DOMAIN`, GHCR access and the production `.env` (`docs/PENDING.md`,
+  Phase 0 items). Everything the task names is in place from Phase 0 and this week: `release.yml`
+  builds and pushes the images on a `v*` tag, `infra/scripts/deploy.sh` pulls and runs
+  `prisma migrate deploy`, the seed creates the SUPERADMIN, the flags default to
+  `automaticSuggest=false` and `draftModeStrongTier=true`, and pilot accounts can be moved to
+  `STUDENT_MONTHLY` from `/admin/users/:id` (5.9). Tag `v0.1.0` when the server exists.

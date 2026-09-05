@@ -52,6 +52,7 @@ import {
   QUEUE_NOOP,
   QUEUE_RESOLVE_REFERENCE,
 } from './queues.js';
+import { captureException, initSentry } from './sentry.js';
 
 const log = (event: Record<string, unknown>): void => {
   console.log(JSON.stringify({ level: 30, time: Date.now(), ...event }));
@@ -108,6 +109,7 @@ function storageFor(env: Env): {
 
 async function main(): Promise<void> {
   const env = loadEnv();
+  initSentry(env.SENTRY_DSN, 'worker');
 
   // BullMQ requires `maxRetriesPerRequest: null` on the connection it blocks on.
   const connection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
@@ -288,6 +290,7 @@ async function main(): Promise<void> {
 
   for (const worker of workers) {
     worker.on('failed', (job, error) => {
+      captureException(error, { queue: worker.name, jobId: job?.id, attempt: job?.attemptsMade });
       console.error(
         JSON.stringify({
           level: 50,

@@ -96,13 +96,17 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-**Phase 1 weeks 0–4 are built** (2026-09-05). `docs/BUILD_LOG.md` has per-task evidence. Working
+**Phase 1 weeks 0–5 are built** (2026-09-05). `docs/BUILD_LOG.md` has per-task evidence. Working
 end to end and driven in a real browser: sign-in, the thesis list, the proposal screen, the
 library with grounding badges and manual DOI fix, the TipTap editor with Assist through the real
 prompt pipeline (A.0/A.0.1/A.1 rendered from the prompt files, §10.4 retrieval, §10.6 whitelist),
 citations that resolve to real sources with a hover passage, claim-triggered citation suggestion,
 draft mode (grounded or refused, accepted or discarded), `.docx`/PDF export, the AI-usage log,
-the SUPERADMIN dashboards, §14 alerts through a console mailer, and live feature-flag toggles.
+the SUPERADMIN dashboards, §14 alerts through a console mailer, live feature-flag toggles, the
+§6.2 error/empty states, first-run hints and the "How suggestions work" panel, the §12.1
+authorisation and rate-limit tests, `/admin/users` (per-student usage, logged cap reset and plan
+change, ADR-0004 `AuditEvent`), the feedback link, Sentry behind `SENTRY_DSN`, and
+`pnpm pilot:report`.
 
 Not done, and why:
 - **Task 2.9 (C.3 scoring)**, the C.4 recall set, the C.5 golden scenarios, the 3.4 thirty-run
@@ -110,8 +114,9 @@ Not done, and why:
   papers, a provider key, hand-written scenarios. `docs/PENDING.md` lists each.
 - **Every AI call so far went to the mock.** Cost is ₹0 everywhere; token counts and cache ratios
   are the mock's simulation. `pnpm ai:verify` with a real key settles the cost model.
-- **Week 5 is next**: deferred items, error and empty states, onboarding, the security pass,
-  observability, backups.
+- **Week 5's VPS half** — the k6 run, Sentry's first event, Uptime Kuma, the deploy (5.8), the
+  backup crons — needs the server and keys. `docs/PENDING.md` has the exact steps.
+- **Phase 2 is next** (`docs/PHASES.md` → PHASE-2).
 
 The owner's standing instructions (2026-09-04/05): build every phase without stopping at a gate,
 **build first and verify in batches** rather than PRD §0.3 rule 7's one-task-at-a-time cadence,

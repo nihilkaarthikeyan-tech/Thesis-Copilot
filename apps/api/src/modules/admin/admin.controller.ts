@@ -7,16 +7,25 @@
  */
 
 import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { computeMonthlyBudget } from '@tc/config';
+import { computeMonthlyBudget, PLANS } from '@tc/config';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
+import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { AdminService } from './admin.service.js';
 import { AlertsService } from './alerts.service.js';
+import { FeedbackService } from './feedback.service.js';
 import { SuperadminGuard } from './superadmin.guard.js';
+import { UsersService } from './users.service.js';
 
 const flagBody = z.object({ enabled: z.boolean() });
+const planBody = z.object({ plan: z.enum(PLANS) });
+const feedbackBody = z.object({
+  documentId: z.string().uuid(),
+  message: z.string().trim().min(1).max(4_000),
+  page: z.string().max(300).optional(),
+});
 
 @Controller('admin')
 export class AdminController {
@@ -24,7 +33,38 @@ export class AdminController {
     private readonly flags: FlagsService,
     private readonly admin: AdminService,
     private readonly alerts: AlertsService,
+    private readonly users: UsersService,
   ) {}
+
+  /** PHASES 5.9: every pilot student's usage on one screen. */
+  @Get('users')
+  @UseGuards(SessionGuard, SuperadminGuard)
+  listUsers() {
+    return this.users.list();
+  }
+
+  @Get('users/:id')
+  @UseGuards(SessionGuard, SuperadminGuard)
+  getUser(@Param('id') id: string) {
+    return this.users.get(id);
+  }
+
+  /** PHASES 5.9 "reset caps (logged)": the admin's id goes into the audit row. */
+  @Post('users/:id/reset-caps')
+  @HttpCode(200)
+  @UseGuards(SessionGuard, SuperadminGuard)
+  resetCaps(@CurrentUser() admin: SessionUser, @Param('id') id: string) {
+    return this.users.resetCaps(admin.id, id);
+  }
+
+  /** PHASES 5.8: pilot accounts get STUDENT_MONTHLY caps by admin override. */
+  @Put('users/:id/plan')
+  @UseGuards(SessionGuard, SuperadminGuard)
+  setPlan(@CurrentUser() admin: SessionUser, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = planBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid plan', parsed.error.issues);
+    return this.users.setPlan(admin.id, id, parsed.data.plan);
+  }
 
   /**
    * PRD §0.3 rule 5 and Appendix E.3: until a human has filled the verification ledger, the
@@ -96,5 +136,20 @@ export class AdminController {
     const updated = await this.admin.setFlag(key, parsed.data.enabled);
     this.flags.invalidate();
     return updated;
+  }
+}
+
+/** PHASES 5.9: the feedback link. Any signed-in student, about their own document. */
+@Controller('feedback')
+@UseGuards(SessionGuard)
+export class FeedbackController {
+  constructor(private readonly feedback: FeedbackService) {}
+
+  @Post()
+  @HttpCode(200)
+  send(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = feedbackBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid feedback', parsed.error.issues);
+    return this.feedback.send(user, parsed.data);
   }
 }
