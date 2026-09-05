@@ -29,6 +29,12 @@ export type MockResponse = {
   readonly text?: string;
   /** For `complete`: the object to return instead of parsing `text`. */
   readonly value?: unknown;
+  /**
+   * For `complete`: derives the object from the request. Lets a mock answer a structured call
+   * whose shape depends on the input — extraction, for one, has to reflect the paper it was given.
+   * Takes precedence over `value`.
+   */
+  readonly respond?: (req: LlmRequest) => unknown;
   /** Overrides the usage numbers reported on the finish chunk. */
   readonly usage?: Partial<TokenUsage>;
   /** Throws instead of answering, to exercise the error path (no cap charged, PRD §11.5). */
@@ -142,7 +148,11 @@ export class MockLlmProvider implements LlmProvider {
       throw new LlmProviderError(req.action, response.error);
     }
 
-    const raw = response.value !== undefined ? response.value : JSON.parse(response.text ?? '{}');
+    const raw = response.respond
+      ? response.respond(req)
+      : response.value !== undefined
+        ? response.value
+        : JSON.parse(response.text ?? '{}');
     const parsed = req.schema.safeParse(raw);
     if (!parsed.success) {
       throw new LlmValidationError(req.action, parsed.error.issues, JSON.stringify(raw));

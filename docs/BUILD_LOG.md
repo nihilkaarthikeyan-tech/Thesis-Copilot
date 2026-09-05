@@ -1023,7 +1023,74 @@ therefore deferred. What follows is the part that is pure logic and provable on 
 - UNSURE: whether the 0.7/0.2/0.1 weighting hits the FR-2.1 acceptance criterion (≥ 80% of fixture
   references resolve with the correct DOI). It cannot be known until the five fixture papers exist.
 
-### Tasks 2.1, 2.2, 2.3, 2.4, 2.6, 2.8 — deferred
-- BLOCKED on Docker (upload and storage, extraction jobs, the proposal screen and the library UI
-  all need Postgres, Redis, MinIO and a running API). Tasks 2.3 and 2.9 additionally need the five
-  fixture papers, which are the human's to supply (Appendix C.1).
+### Tasks 2.1 and 2.3 — upload, storage and the extraction job
+- Status: DONE against the dev stack. The accuracy DoD ("the expected title appears within the
+  first 2,000 characters of each fixture PDF") stays
+  `BLOCKED: fixture missing — fixtures/papers/pNN.pdf`.
+- Evidence:
+  ```
+  # 1. an executable renamed .pdf is refused on its bytes, not its name
+  $ curl -F "file=@fake.pdf;filename=evil.pdf;type=application/pdf" .../seed-papers
+  CONTENT_MISMATCH | That file is not a readable PDF or Word document.
+
+  # 2. a real PDF is accepted, stored and queued
+  $ curl -F "file=@sample-paper.pdf;filename=p01.pdf" .../seed-papers
+  {"id":"01a07070-1821-...","filename":"p01.pdf","status":"PENDING","hasExtraction":false}
+
+  # 3. the worker ran extract-paper end to end
+  $ curl .../seed-papers/01a07070-1821-...
+  status     : DONE | error: None
+  title      : 'Solar adoption in rural Karnataka'
+  abstract   : 'We survey 312 households across three districts and report the leading'
+  references : 2
+     - [1] Kumar, A. (2021). Solar adoption in rural Karnataka. Energy Policy, 152, 112121.
+     - [2] Rao, B. (2019). Wind turbine siting in coastal Kerala. Renewable Energy, 140, 55.
+  sections   : ['Abstract', '1. Introduction', '2. Method', 'References']
+
+  # 4. one Source per reference, queued for resolution (FR-2.1)
+  $ curl .../sources
+  count: 2
+     PENDING | NONE | [1] Kumar, A. (2021). Solar adoption in rural Karnataka. Energ
+     PENDING | NONE | [2] Rao, B. (2019). Wind turbine siting in coastal Kerala. Ren
+
+  # worker log
+  {"msg":"extract-paper done","jobId":"extract-paper__01a07070-...","references":2,
+   "parts":1,"retries":0,"pages":1,"twoColumnPages":[],"queuedResolutions":2}
+
+  $ pnpm --filter @tc/api exec vitest run test/upload-rules.spec.ts
+   Tests  22 passed (22)
+  $ pnpm --filter @tc/worker test
+   Tests  17 passed (17)
+  ```
+- Notes / deviations from PRD:
+  - **BullMQ refuses a job id containing `:`** ("Custom Id cannot contain :"), which was the
+    obvious separator and made every upload 500. Job ids now come from a shared `jobId()` helper in
+    `@tc/types` that joins with `__`, so the API and the worker derive the same id for the same work
+    and the constraint is documented in one place. The id is what makes an enqueue idempotent.
+  - PHASES 2.1 lists the quota check before the content check. Reversed: a student who uploads the
+    wrong file while at quota should be told the file is wrong, which is the thing they can act on,
+    and reading five magic bytes costs nothing.
+  - The job contract (queue names, payload shapes, retry policy) lives in `@tc/types`, not a new
+    package: PRD §7.3 fixes the package list, and §7.3 describes `types` as the shared DTOs both
+    sides use. A new `@tc/queues` would have needed an ADR for no benefit.
+  - `SeedPaper.status` gains `EXTRACTING` between `PENDING` and `DONE`/`FAILED`. §8 types the
+    column as a free `String` with a `PENDING` default and never enumerates the values, so this is
+    a filling-in rather than a change; the set is declared in `@tc/types`.
+  - Failures are recorded on the row as something a student can act on, which is FR-1.1's
+    acceptance criterion ("failures show a readable reason"): a password-protected PDF, a file with
+    no text layer (suggesting OCR), and a corrupt file each get their own sentence.
+  - The glossary is seeded from the paper's terminology (FR-3.5) and **never overwrites an entry the
+    student already has**, so re-running extraction cannot undo their edits.
+  - `AI_PROVIDER=mock` now answers an EXTRACT request by deriving a structurally valid
+    `PaperExtraction` from the paper's own text — title, abstract, reference entries, headings. It
+    invents nothing; every field is copied from the input or left empty, the same rule A.5 gives the
+    real model. Without this an upload in mock mode failed schema validation and the whole
+    proposal-and-library path was undevelopable before provider keys exist. `AiCallLog` still
+    records `mock-strong` at zero cost, and `pnpm ai:verify` still refuses to let mock output stand
+    in for a real verification (§0.3 rule 5).
+- UNSURE: the extraction accuracy thresholds in C.3 cannot be judged until the five fixture papers
+  exist. The pipeline is proven to run; how well it reads a real two-column paper is unmeasured.
+
+### Tasks 2.4, 2.6, 2.8 — still to do
+- The proposal screen, the full-text fetch and the library UI. The extraction they depend on now
+  works, so these are next.

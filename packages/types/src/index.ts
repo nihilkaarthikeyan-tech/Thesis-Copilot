@@ -15,3 +15,18 @@ export {
   terminologySchema,
 } from './extraction.js';
 export { analyseGap, draftScopeFrom, type ProposalScope } from './gap.js';
+export {
+  type DraftSectionJob,
+  type ExtractPaperJob,
+  type IndexSourceJob,
+  JOB_RETRY,
+  type JobPayloads,
+  jobId,
+  jobKeyDigest,
+  QUEUE_NAMES,
+  type QueueName,
+  type ResolveReferenceJob,
+  SEED_PAPER_STATUSES,
+  type SearchLiteratureJob,
+  type SeedPaperStatus,
+} from './jobs.js';

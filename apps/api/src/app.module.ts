@@ -12,6 +12,7 @@ import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
+import { SourcesModule } from './modules/sources/sources.module.js';
 import { UsageModule } from './modules/usage/usage.module.js';
 
 @Module({
@@ -47,6 +48,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     AiModule,
     ChaptersModule,
     AssistModule,
+    SourcesModule,
     AdminModule,
   ],
 })

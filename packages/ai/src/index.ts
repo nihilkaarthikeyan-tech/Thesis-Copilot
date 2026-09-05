@@ -12,6 +12,11 @@ export {
 } from './extraction.js';
 export { createProviders, type Providers } from './factory.js';
 export {
+  deriveExtraction,
+  mockExtractionResponse,
+  paperTextFromMessage,
+} from './mock-extraction.js';
+export {
   extractFencedBlocks,
   type LoadedPrompt,
   listPromptFiles,

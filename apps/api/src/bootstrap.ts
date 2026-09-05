@@ -6,6 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { Env } from '@tc/config';
 import type {
@@ -58,6 +59,12 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
   const fastify = app.getHttpAdapter().getInstance() as unknown as ApiFastify;
 
   await fastify.register(cookie);
+
+  // Uploads (PRD FR-1.1, FR-2.3). The outer ceiling matches `bodyLimit`; the per-plan limit from
+  // §11.3 is enforced in `upload-rules.ts`, which needs the bytes to check the magic number anyway.
+  await fastify.register(multipart, {
+    limits: { fileSize: 100 * 1024 * 1024, files: 1 },
+  });
 
   const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
   redis.on('error', () => {

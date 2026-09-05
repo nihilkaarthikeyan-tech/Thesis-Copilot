@@ -1,26 +1,22 @@
 /**
- * Queue names and the shared retry policy — PRD §7.2 (BullMQ on Redis, separate worker process)
- * and PHASES.md task 0.7.
+ * Queue wiring for the worker — PRD §7.2 and PHASES 0.7.
  *
- * Phase 0 registers one queue, `noop`, to prove the wiring. The real queues arrive with the work
- * that needs them: `extract-paper` (week 2), `index-source` (week 2), `search-literature`
- * (Phase 2), `draft-section` (week 4). PRD §9 names those four; nothing else is invented here.
+ * Names, payload shapes and the retry policy come from `@tc/types`, shared with `apps/api` so the
+ * producer and the consumer cannot drift apart.
  */
 
+import { JOB_RETRY, QUEUE_NAMES, type QueueName } from '@tc/types';
 import type { JobsOptions } from 'bullmq';
 
-export const QUEUE_NOOP = 'noop';
+export type { ExtractPaperJob, IndexSourceJob, JobPayloads, ResolveReferenceJob } from '@tc/types';
+export { QUEUE_NAMES, type QueueName };
+
+export const QUEUE_NOOP = 'noop' satisfies QueueName;
+export const QUEUE_EXTRACT_PAPER = 'extract-paper' satisfies QueueName;
 
 /**
- * Retry policy for every queue.
- *
- * Three attempts with exponential backoff from 1s (1s, 2s, 4s). Jobs are kept after completion and
- * failure so the admin dashboard can report the failure rate §14 alerts on; without that, a failed
- * job disappears and the alert has nothing to count.
+ * Three attempts with exponential backoff from 1s. Jobs are kept after completion and failure so
+ * the admin dashboard can report the failure rate §14 alerts on; without that, a failed job
+ * disappears and the alert has nothing to count.
  */
-export const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: { type: 'exponential', delay: 1_000 },
-  removeOnComplete: { age: 24 * 3600, count: 1_000 },
-  removeOnFail: { age: 7 * 24 * 3600 },
-};
+export const DEFAULT_JOB_OPTIONS: JobsOptions = JOB_RETRY as JobsOptions;
