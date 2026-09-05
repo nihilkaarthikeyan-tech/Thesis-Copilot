@@ -1,3 +1,15 @@
+export {
+  buildExtractionRequest,
+  buildExtractionUserMessage,
+  DEFAULT_MAX_PART_CHARS,
+  ExtractionFailed,
+  type ExtractionPart,
+  extractPaper,
+  findReferenceSection,
+  MAX_PARTS,
+  mergeExtractions,
+  splitForExtraction,
+} from './extraction.js';
 export { createProviders, type Providers } from './factory.js';
 export {
   extractFencedBlocks,
