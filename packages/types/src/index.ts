@@ -30,3 +30,14 @@ export {
   type SearchLiteratureJob,
   type SeedPaperStatus,
 } from './jobs.js';
+export {
+  DEFAULT_CHAPTER_TITLE,
+  findOutlineNode,
+  firstChapterOutline,
+  type OutlineNode,
+  outlineNodeId,
+  outlineNodeSchema,
+  outlineSchema,
+  readOutline,
+  walkOutline,
+} from './outline.js';

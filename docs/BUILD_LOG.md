@@ -1227,3 +1227,48 @@ therefore deferred. What follows is the part that is pure logic and provable on 
 ### Task 2.9 — still to do
 - The Appendix C.3 scoring run. **BLOCKED: fixtures missing** — it needs the five corrected
   `fixtures/papers/pNN.expected.json`, which only the human can write (`docs/PENDING.md`).
+
+## Phase 1 — Week 3 (real prompts and citations)
+
+### Task 3.1 — minimal chapter and source pins (FR-3.3, FR-3.4, §10.4)
+- Files: `packages/types/src/outline.ts`, `apps/api/src/modules/memory/memory.controller.ts`,
+  `apps/api/src/modules/chapters/{chapters.service.ts,chapters.controller.ts}`,
+  `apps/web/src/components/editor/SourcePins.tsx`, `apps/api/test/{_harness.ts,week3.spec.ts}`,
+  `apps/web/e2e/proposal-sources.spec.ts`.
+- Evidence:
+
+  ```
+  $ pnpm --filter @tc/api exec vitest run test/week3.spec.ts   # real containers
+   Tests  9 passed (9)
+  $ npx playwright test --workers=1
+    ok 6 3.1: Continue opens the chapter from the paper, and two sources can be pinned
+    11 passed
+  $ pnpm test
+   config 62 · types 39 · ui 31 · db 2 · ai 90 · retrieval 149 · web 6 · worker 39 · api 68
+  $ pnpm lint
+   Checked 215 files. No fixes applied.
+  ```
+- Notes / deviations from PRD:
+  - **"Abstract" was becoming the first chapter title.** PHASES 3.1 says to take "the first section
+    from the paper's `sections`", and a real paper's first section is almost always its abstract.
+    `firstChapterOutline` now skips front and back matter — abstract, keywords, acknowledgements,
+    funding, references, appendices — and falls back to a neutral default rather than naming a
+    student's opening chapter after the paper's front matter. Found by the browser, not by a test.
+  - **The pins panel showed every source as unusable.** Grounding is decided by two background jobs,
+    so a panel opened seconds after an upload saw `NONE` everywhere and stayed wrong until a manual
+    reload. It now polls while any source is still `PENDING`, and says "still looking up" rather
+    than "nothing to quote", which are different facts.
+  - Continue does not touch a chapter the student has already written in (`wordCount > 0`) or an
+    outline that already exists. The outline serves their draft; it does not overwrite it.
+  - Pins are validated against the chapter's own document. A pin is a retrieval filter, and one
+    that reached across documents would put another student's sources into this draft.
+  - Only a source with something to quote is offered for pinning. Pinning a `NONE` source would
+    filter retrieval down to nothing and read as a broken suggestion.
+  - **The E2E suite tripped its own auth rate limit** (20 requests a minute from one address, which
+    is right for production): five sign-ins plus their session checks exceed it, and a test failed
+    for a reason unrelated to what it tested. The spec now establishes one session and reuses it;
+    the sign-in UI is still covered by `smoke.spec.ts` and `editor.spec.ts`. The limit was not
+    changed — loosening a security control to make a test pass would be the wrong fix.
+  - `apps/api/test/_harness.ts` extracts the container boot from `week1.spec.ts` so later weeks
+    share it. A copied harness would drift, and two suites would then disagree about what the
+    application is.

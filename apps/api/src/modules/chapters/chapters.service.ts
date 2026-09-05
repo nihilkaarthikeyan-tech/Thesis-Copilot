@@ -60,6 +60,64 @@ export class ChaptersService {
   }
 
   /**
+   * PHASES 3.1 and §10.4: the sources this chapter draws on. An empty set means "search the whole
+   * library"; a non-empty one restricts retrieval to exactly those sources, which is how a student
+   * keeps a literature-review chapter from quoting their methods papers.
+   */
+  async pins(ownerId: string, chapterId: string): Promise<{ sourceIds: string[] }> {
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: chapterId, document: { ownerId } },
+      select: { pins: { select: { sourceId: true } } },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+    return { sourceIds: chapter.pins.map((pin) => pin.sourceId) };
+  }
+
+  /**
+   * Replaces the pin set. Every id is checked to belong to the same document first, so a pin can
+   * never point at a source from someone else's library — the pins are a retrieval filter, and a
+   * filter that reached across documents would leak one student's sources into another's drafts.
+   */
+  async setPins(
+    ownerId: string,
+    chapterId: string,
+    sourceIds: readonly string[],
+  ): Promise<{ sourceIds: string[] }> {
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: chapterId, document: { ownerId } },
+      select: { id: true, documentId: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+
+    const unique = [...new Set(sourceIds)];
+    if (unique.length > 0) {
+      const owned = await this.prisma.source.findMany({
+        where: { id: { in: unique }, documentId: chapter.documentId },
+        select: { id: true },
+      });
+      if (owned.length !== unique.length) {
+        const found = new Set(owned.map((source) => source.id));
+        throw new ValidationError('Those sources are not in this thesis’ library', [
+          { path: ['sourceIds'], message: unique.filter((id) => !found.has(id)).join(', ') },
+        ]);
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.chapterSourcePin.deleteMany({ where: { chapterId: chapter.id } }),
+      ...(unique.length > 0
+        ? [
+            this.prisma.chapterSourcePin.createMany({
+              data: unique.map((sourceId) => ({ chapterId: chapter.id, sourceId })),
+            }),
+          ]
+        : []),
+    ]);
+
+    return { sourceIds: unique };
+  }
+
+  /**
    * B.7 save. Returns the new version, or throws 409 when `baseVersion` is stale.
    * Also refreshes the per-provenance word counts (B.4) and writes an AUTOSAVE snapshot when one
    * is due.

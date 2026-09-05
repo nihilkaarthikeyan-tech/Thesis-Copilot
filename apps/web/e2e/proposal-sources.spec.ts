@@ -60,6 +60,22 @@ const REAL_REFERENCES_PDF = buildPdf([
   'and regional mitigation potentials. Energy Policy, 38, 3044-3057.',
 ]);
 
+/**
+ * References whose records carry a published abstract, so `index-source` can chunk something and
+ * the sources reach ABSTRACT grounding. Plenty of real papers publish no abstract to Crossref —
+ * the two in REAL_REFERENCES_PDF do not — and a source with nothing to quote is not pinnable.
+ */
+const ABSTRACTED_REFERENCES_PDF = buildPdf([
+  'Rooftop solar adoption in rural Karnataka',
+  'Abstract',
+  'We survey 312 households across three districts and report the leading barrier to adoption.',
+  '1. Introduction',
+  'Rooftop solar has grown steadily since 2015 across the surveyed districts of the state.',
+  'References',
+  '[1] Jumper, J., Evans, R., Pritzel, A. (2021). Highly accurate protein structure prediction with AlphaFold. Nature, 596, 583-589.',
+  '[2] Trijono, R. (2023). Regulatory Frameworks for Renewable Energy. Renewable Energy.',
+]);
+
 /** A reference to a paper that does not exist, so it can never resolve. */
 const INVENTED_REFERENCE_PDF = buildPdf([
   'A paper citing something that was never published',
@@ -69,21 +85,54 @@ const INVENTED_REFERENCE_PDF = buildPdf([
   '[1] Kumar, A. (2021). Solar adoption in rural Karnataka. Energy Policy, 152, 112121.',
 ]);
 
-async function signIn(page: Page, request: APIRequestContext): Promise<void> {
+/**
+ * One session for the whole file.
+ *
+ * Signing in per test tripped the auth rate limiter (20 requests a minute from one address, which
+ * is right for production): five sign-ins plus their session checks exceed it, and the sixth test
+ * failed for a reason that had nothing to do with what it was testing. The sign-in UI itself is
+ * covered by `smoke.spec.ts` and `editor.spec.ts`; here it is only a way in.
+ */
+let session: { cookieName: string; cookieValue: string } | null = null;
+
+async function establishSession(request: APIRequestContext): Promise<NonNullable<typeof session>> {
+  if (session) return session;
+
   const email = `e2e-w2-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-  await page.goto('/sign-in');
-  await page.getByLabel('University or personal email').fill(email);
-  await page.getByRole('button', { name: 'Email me a code' }).click();
-  await expect(page.getByLabel('Six-digit code')).toBeVisible();
+  const sent = await request.post(`${API_URL}/api/v1/auth/email-otp/send-verification-otp`, {
+    data: { email, type: 'sign-in' },
+  });
+  expect(sent.ok(), 'sending the one-time code').toBe(true);
 
   const otpRes = await request.get(
     `${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`,
   );
-  expect(otpRes.ok()).toBe(true);
+  expect(otpRes.ok(), 'reading the dev one-time code').toBe(true);
   const { otp } = (await otpRes.json()) as { otp: string };
-  await page.getByLabel('Six-digit code').fill(otp);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/app$/, { timeout: 20_000 });
+
+  const signedIn = await request.post(`${API_URL}/api/v1/auth/sign-in/email-otp`, {
+    data: { email, otp },
+  });
+  expect(signedIn.ok(), 'signing in').toBe(true);
+
+  const setCookie = signedIn.headers()['set-cookie'] ?? '';
+  const pair = setCookie.split(';')[0] ?? '';
+  const index = pair.indexOf('=');
+  expect(index, 'the sign-in response should set a session cookie').toBeGreaterThan(0);
+
+  session = { cookieName: pair.slice(0, index), cookieValue: pair.slice(index + 1) };
+  return session;
+}
+
+async function signIn(page: Page, request: APIRequestContext): Promise<void> {
+  const { cookieName, cookieValue } = await establishSession(request);
+  await page
+    .context()
+    .addCookies([{ name: cookieName, value: cookieValue, domain: 'localhost', path: '/' }]);
+  await page.goto('/app');
+  await expect(page.getByRole('heading', { name: 'Your theses' })).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 /** Creates a thesis from the list screen and returns its id, taken from the Proposal link. */
@@ -249,5 +298,59 @@ test.describe('Stage 1 proposal and Stage 2 library', () => {
     });
     await expect(page.getByRole('link', { name: '10.1038/nature14539' })).toBeVisible();
     await expect(page.getByText('Not found')).toHaveCount(0);
+  });
+});
+
+test.describe('Stage 4 chapter setup', () => {
+  test.setTimeout(180_000);
+
+  /**
+   * PHASES 3.1's done-when: "continue → editor opens on the chapter → pin two sources."
+   * Pins are the retrieval filter (§10.4), so what matters is that the choice reaches the API and
+   * survives a reload, not that a box looks ticked.
+   */
+  test('3.1: Continue opens the chapter from the paper, and two sources can be pinned', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, request);
+    const id = await createThesis(page, `Pins E2E ${Date.now()}`);
+
+    await page.goto(`/app/d/${id}/proposal`);
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'seed.pdf',
+      mimeType: 'application/pdf',
+      buffer: ABSTRACTED_REFERENCES_PDF,
+    });
+    await expect(page.getByText('Read', { exact: true })).toBeVisible({ timeout: 120_000 });
+
+    await page.getByRole('button', { name: 'Continue to the editor' }).click();
+    await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+    await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
+
+    // The chapter is the paper's own first section, not the "Chapter 1" placeholder (FR-3.3).
+    await expect(page.locator('.thesis-editor h1').first()).not.toHaveText('Chapter 1');
+
+    const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
+    await expect(panel.getByText(/Suggestions .* every source in the library/)).toBeVisible({
+      timeout: 60_000,
+    });
+
+    // Both references resolve with an abstract, so both are pinnable.
+    const boxes = panel.locator('input[type=checkbox]');
+    await expect(boxes).toHaveCount(2, { timeout: 120_000 });
+    await boxes.nth(0).check();
+    await boxes.nth(1).check();
+    await expect(panel.getByText('draw only on 2 pinned sources')).toBeVisible();
+
+    // The filter is only real if it survived the round trip.
+    await page.reload();
+    const afterReload = page.getByRole('complementary').filter({ hasText: 'sources' });
+    await expect(afterReload.getByText('draw only on 2 pinned sources')).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await afterReload.getByRole('button', { name: 'Clear' }).click();
+    await expect(afterReload.getByText(/every source in the library/)).toBeVisible();
   });
 });

@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { assistRequest } from '@/lib/sse';
+import { SourcePins } from './SourcePins';
 
 type ChapterMeta = {
   id: string;
@@ -376,12 +377,7 @@ function ChapterEditor({
           </div>
           <div className="p-3 text-muted">
             {tab === 'sources' ? (
-              <div className="space-y-2">
-                <p>Pin sources for this chapter to enable grounded suggestions.</p>
-                <Link href={`/app/d/${doc.id}/sources`} className="inline-block underline">
-                  Open the library
-                </Link>
-              </div>
+              <SourcePins documentId={doc.id} chapterId={chapter.id} />
             ) : (
               <p>Citations in this chapter will be listed here (week 3).</p>
             )}
