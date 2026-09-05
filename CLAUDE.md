@@ -1,8 +1,8 @@
 # Thesis Copilot — agent brief
 
 `docs/PRD-version-2.md` is the build spec and the single source of truth (v1.1, `docs/PRD.md`, is
-kept for reference; v2 is the same product with the build-process gates removed). `docs/PHASES.md`
-is the running order. If they ever disagree, **the PRD wins** and the difference goes in
+kept for reference; v2 is the same product with the build-process gates removed).
+`docs/PHASES-version-2.md` is the running order (v1 `docs/PHASES.md` stays for the finished units). If they ever disagree, **the PRD wins** and the difference goes in
 `docs/BUILD_LOG.md`. This file is a summary for speed, not an authority.
 
 ## Agent rules (PRD v2 §0.3)
@@ -15,7 +15,7 @@ is the running order. If they ever disagree, **the PRD wins** and the difference
 6. Prompts are content, not code — `packages/ai/prompts/*.md` are verbatim from Appendix A.
 7. Never delete or skip a test to make CI pass.
 
-How to work: build a whole week of `docs/PHASES.md` at a time (code + typecheck + lint), commit
+How to work: build a whole unit of `docs/PHASES-version-2.md` at a time (code + typecheck + lint), commit
 and push per week, keep `docs/PENDING.md` current for anything only a human can do, and one short
 `docs/BUILD_LOG.md` note per week. Verification runs come as a separate batch, not per task.
 
@@ -126,8 +126,8 @@ logged in `docs/BUILD_LOG.md`; the PRD itself is unchanged.
 `packages/ui` (and the other packages) are consumed from `dist`: after editing one, run `pnpm build`
 in that package or the running web/API keeps the old code. `apps/api` likewise runs `dist/main.js`.
 
-Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
-continue from the next one. Before running `prisma generate` on Windows, stop the API **and the
+Start a session with: read the status table in `docs/PHASES-version-2.md` and continue with the
+next unit. Before running `prisma generate` on Windows, stop the API **and the
 worker** — both hold the engine DLL open, and a running worker fails the rename with EPERM.
 
 ## Hard-won rules
