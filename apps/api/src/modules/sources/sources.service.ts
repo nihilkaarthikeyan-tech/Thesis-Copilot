@@ -337,6 +337,53 @@ export class SourcesService {
     return { ...rest, hasFile: Boolean(fileKey) };
   }
 
+  /**
+   * PHASES 2.8 "Fix reference": the student supplies the DOI for a reference the resolver could not
+   * place, and it is queued for another attempt. The DOI is stored first so the retry has it even
+   * if the queue is briefly unavailable.
+   */
+  async refixSource(
+    ownerId: string,
+    sourceId: string,
+    doi: string,
+  ): Promise<{ queued: true; doi: string }> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: sourceId, document: { ownerId } },
+      select: { id: true, documentId: true, rawReference: true },
+    });
+    if (!source) throw new NotFoundError('That source');
+
+    const normalised = doi
+      .trim()
+      .replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')
+      .replace(/^doi:\s*/i, '');
+
+    await this.prisma.source.update({
+      where: { id: source.id },
+      data: { doi: normalised, status: 'PENDING' },
+    });
+
+    await this.queue.enqueue(
+      'resolve-reference',
+      {
+        documentId: source.documentId,
+        userId: ownerId,
+        rawReference: source.rawReference ?? normalised,
+        printedDoi: normalised,
+      },
+      // A new id each time, so a re-fix is not swallowed as a duplicate of the first attempt.
+      {
+        jobId: jobId(
+          'resolve-reference',
+          source.documentId,
+          jobKeyDigest(`${normalised}:${Date.now()}`),
+        ),
+      },
+    );
+
+    return { queued: true, doi: normalised };
+  }
+
   /** PRD §9.2 `GET /sources/:id/file` — a time-limited link, issued only after an ownership check. */
   async fileUrl(ownerId: string, sourceId: string): Promise<{ url: string }> {
     const source = await this.prisma.source.findFirst({

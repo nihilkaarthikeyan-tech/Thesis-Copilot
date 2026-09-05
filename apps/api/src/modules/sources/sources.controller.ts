@@ -15,6 +15,8 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { SourcesService, UploadRejected } from './sources.service.js';
 
+const refixBody = z.object({ doi: z.string().trim().min(3).max(200) });
+
 const resolveBody = z.object({
   references: z
     .array(z.object({ raw: z.string().trim().min(1), doi: z.string().trim().optional() }))
@@ -100,6 +102,17 @@ export class SourcesController {
       filename,
       bytes,
     });
+  }
+
+  @Post('sources/:id/refix')
+  async refix(
+    @CurrentUser() user: SessionUser,
+    @Param('id') sourceId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = refixBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Enter a DOI', parsed.error.issues);
+    return this.sources.refixSource(user.id, sourceId, parsed.data.doi);
   }
 
   @Get('sources/:id/file')

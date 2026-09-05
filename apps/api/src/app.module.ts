@@ -11,6 +11,7 @@ import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { SourcesModule } from './modules/sources/sources.module.js';
 import { UsageModule } from './modules/usage/usage.module.js';
@@ -49,6 +50,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     ChaptersModule,
     AssistModule,
     SourcesModule,
+    MemoryModule,
     AdminModule,
   ],
 })
