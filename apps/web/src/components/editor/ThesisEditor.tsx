@@ -64,6 +64,7 @@ import { CitationList } from './CitationList';
 import { CiteSuggestions } from './CiteSuggestions';
 import { DraftMode } from './DraftMode';
 import { useGuidedInput } from './GuidedInput';
+import { ScaffoldPanel } from './ScaffoldPanel';
 import { SourcePins } from './SourcePins';
 
 type ExportResult = { url: string; filename: string; bytes: number };
@@ -493,7 +494,12 @@ function ChapterEditor({
 
       <div className="flex flex-1">
         <aside className="hidden w-56 shrink-0 border-r border-line bg-paper px-3 py-4 text-sm md:block">
-          <p className="mb-2 text-xs uppercase tracking-wide text-muted">Chapters</p>
+          <p className="mb-2 flex items-baseline justify-between text-xs uppercase tracking-wide text-muted">
+            <span>Chapters</span>
+            <Link href={`/app/d/${doc.id}/outline`} className="normal-case underline">
+              Outline
+            </Link>
+          </p>
           <ul className="space-y-1">
             {doc.chapters.map((c) => (
               <li key={c.id}>
@@ -501,7 +507,12 @@ function ChapterEditor({
                   href={`/app/d/${doc.id}/write/${c.id}`}
                   className={`block rounded px-2 py-1 ${c.id === chapter.id ? 'bg-white font-medium' : 'hover:bg-white'}`}
                 >
-                  {c.order}. {c.title}
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="truncate">
+                      {c.order}. {c.title}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted">{c.wordCount}</span>
+                  </span>
                 </Link>
               </li>
             ))}
@@ -509,6 +520,7 @@ function ChapterEditor({
         </aside>
 
         <main className="flex-1 px-6 py-8">
+          <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
             This is your chapter. Write as you normally would; press <kbd>Ctrl+/</kbd> when you want
             a suggestion, and <kbd>Tab</kbd> to keep it. Pin the sources it may cite in the panel on

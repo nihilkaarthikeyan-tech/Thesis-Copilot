@@ -49,3 +49,13 @@ export {
   parsePricingOverride,
   priceFor,
 } from './pricing.js';
+export {
+  type ChapterRole,
+  renderTemplateBlock,
+  suggestTemplate,
+  TEMPLATE_SPECS,
+  TEMPLATES,
+  type Template,
+  type TemplateChapter,
+  type TemplateSpec,
+} from './templates.js';

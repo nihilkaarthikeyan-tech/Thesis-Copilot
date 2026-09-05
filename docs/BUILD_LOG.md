@@ -1984,3 +1984,61 @@ typecheck and lint per unit; specs are owed and listed at the end.
 - API: run → poll → select → source rows created with `subTheme` and resolve jobs enqueued;
   cross-user 404s on the three new routes.
 - E2E: the Discover tab from a saved proposal to three added sources.
+
+## Phase 2 — Week 8 (templates, outline, document memory, multi-chapter)
+
+### Task 8.1 — templates (FR-3.1)
+- `packages/config/src/templates.ts` — the three shapes with a chapter list each: title, `role`
+  (used later by A.12.3's chapter-role exemptions), a one-line intent for A.9's `<template>` block,
+  and a typical word share. `STEM_EMPIRICAL` has a fixed chapter count; the other two are flexible,
+  which is what A.9's first rule keys on. `suggestTemplate(field)` picks from the field string the
+  student typed, defaulting to the empirical shape.
+
+### Task 8.2 — outline generation (FR-3.2, FR-3.3, A.9)
+- `packages/ai/src/builder/outline.ts` — the A.9 request (`<template>`, `<scope>`, `<gap_map>`,
+  `<extraction>`), `normaliseOutline` (stable `ch2-sec3-slug` ids, uniqueness, trimming),
+  `enforceTemplateShape` (with a fixed-count template a dropped chapter is restored from the
+  template rather than silently lost; extras become sections), and a mock that builds the tree
+  from the inputs themselves — one Literature Review section per gap-map theme with thin themes
+  saying so, the paper's sections mapped, and the standard additions named.
+- `apps/worker/src/jobs/generate-outline.ts` + queue `generate-outline` (new `QueueName`) — one
+  Strong call logged under `OUTLINE`, the tree written to `DocumentMemory.outline`, and `Chapter`
+  rows synced by `outlineNodeId`. **A re-run never deletes a chapter**: a chapter whose node
+  disappeared is reported as orphaned and pushed to the end of the order, because losing written
+  text to a model's re-run is unrecoverable.
+
+### Task 8.3 — editable tree (FR-3.4)
+- `apps/api/src/modules/memory/{outline.service,outline.controller}.ts`:
+  `GET /documents/:id/outline` (template, tree, chapters with word counts and orphan flags,
+  glossary, generating flag), `PUT /documents/:id/template`, `POST /documents/:id/outline/generate`,
+  `PUT /documents/:id/memory/outline`, `PUT /documents/:id/memory/glossary`,
+  `DELETE /documents/:id/chapters/:chapterId` (which requires the word count the client was shown,
+  so a stale screen cannot delete a chapter that has since been written in).
+- `apps/web/src/app/app/d/[id]/outline/OutlineScreen.tsx` — the template picker, the tree with
+  rename, scope-note editing, move up/down, indent (become a section of the item above), outdent,
+  add and delete, plus the orphan list. Reordering is buttons, not drag: keyboard-reachable, works
+  on a phone, no library. Every save writes the whole tree to the record the prompt builder reads.
+
+### Task 8.4 — scaffold panel (FR-4.2)
+- `apps/web/src/components/editor/ScaffoldPanel.tsx` — the chapter's scope note and its
+  subheadings above the editor, collapsible (the collapsed state is remembered per node in
+  `localStorage`), with a line saying nothing here is inserted and a link to the outline.
+
+### Task 8.5 — multi-chapter navigation
+- The editor's left rail now shows a per-chapter word count and links to the outline; the thesis
+  list and the proposal screen link to it too. Chapter switching already preserved autosave state.
+
+### Task 8.6 — glossary editor
+- A Glossary tab on the outline screen: add, rename, edit definitions and usage notes, delete. A
+  term the cross-paper pass flagged (W6) shows both definitions with "use this one" / "keep mine".
+  Saving writes `DocumentMemory.glossary`, so an added term is in the next cached block.
+
+### Tests owed (week 8)
+- `suggestTemplate`, `renderTemplateBlock`.
+- `normaliseOutline` (ids unique and slug-shaped), `enforceTemplateShape` (restores a dropped
+  chapter, folds extras), the A.9 mock against a gap map and an extraction.
+- `generate-outline` against a fake Prisma: chapters created, renamed on re-run, never deleted.
+- API: outline save syncs chapters; the delete route's word-count guard; cross-user 404s.
+- The FR-3.4 acceptance test: an outline edit changes the next cached prompt block (a snapshot
+  test in `packages/ai`).
+- E2E: generate → rename a chapter → save → the editor rail and scaffold panel show the new title.

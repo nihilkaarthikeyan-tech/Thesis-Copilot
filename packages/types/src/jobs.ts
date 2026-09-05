@@ -17,6 +17,8 @@ export const QUEUE_NAMES = [
   'index-source',
   'search-literature',
   'draft-section',
+  // FR-3.2: outline generation is a Strong call, so it runs as a job (PRD 9.1).
+  'generate-outline',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -67,6 +69,13 @@ export type DraftSectionJob = {
   targetWords?: number;
 };
 
+/** `generate-outline` - A.9 over the template, scope, gap map and (Path B) extraction. */
+export type GenerateOutlineJob = {
+  documentId: string;
+  userId: string;
+  template?: string;
+};
+
 export type JobPayloads = {
   noop: Record<string, never>;
   'extract-paper': ExtractPaperJob;
@@ -74,6 +83,7 @@ export type JobPayloads = {
   'index-source': IndexSourceJob;
   'search-literature': SearchLiteratureJob;
   'draft-section': DraftSectionJob;
+  'generate-outline': GenerateOutlineJob;
 };
 
 /**

@@ -166,6 +166,9 @@ export default function DocumentListPage() {
                   <Link href={`/app/d/${d.id}/proposal`} className="text-muted hover:underline">
                     Proposal
                   </Link>
+                  <Link href={`/app/d/${d.id}/outline`} className="text-muted hover:underline">
+                    Outline
+                  </Link>
                   <Link href={`/app/d/${d.id}/sources`} className="text-muted hover:underline">
                     Sources
                   </Link>

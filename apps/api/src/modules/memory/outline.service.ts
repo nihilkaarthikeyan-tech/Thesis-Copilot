@@ -1,0 +1,258 @@
+/**
+ * The outline tree — PRD FR-3.2–3.5, §9.1, PHASES v2 W8.2, W8.3, W8.6.
+ *
+ * FR-3.4: "Edits write directly to `DocumentMemory.outline`; the tree UI and the prompt builder
+ * read the same record." So this service is the only writer of that record besides the outline
+ * job, and every write syncs `Chapter` rows by `outlineNodeId` — a rename here is the chapter's
+ * new title in the next cached prompt block.
+ *
+ * A chapter is never deleted because a node vanished. Deleting a node the student has written in
+ * is an explicit action with its own confirmation in the UI; anything else is reported as
+ * orphaned and left alone.
+ */
+
+import { Injectable } from '@nestjs/common';
+import { suggestTemplate, TEMPLATE_SPECS, TEMPLATES, type Template } from '@tc/config';
+import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
+import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
+import { PrismaService } from '../../common/prisma.service.js';
+import { QueueService } from '../../common/queue.service.js';
+import { emptyChapterDoc } from '../chapters/word-counts.js';
+
+export type OutlineView = {
+  template: Template | null;
+  suggestedTemplate: Template;
+  templates: Array<{ key: Template; name: string; summary: string; chapters: string[] }>;
+  outline: OutlineNode[];
+  chapters: Array<{
+    id: string;
+    outlineNodeId: string;
+    title: string;
+    order: number;
+    wordCount: number;
+    orphaned: boolean;
+  }>;
+  glossary: Record<string, unknown>;
+  /** True while an outline job is in flight, so the screen can wait. */
+  generating: boolean;
+};
+
+@Injectable()
+export class OutlineService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly queue: QueueService,
+  ) {}
+
+  private async owned(ownerId: string, documentId: string) {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerId },
+      select: { id: true, field: true, template: true, meta: true },
+    });
+    if (!document) throw new NotFoundError('That document');
+    return document;
+  }
+
+  async get(ownerId: string, documentId: string): Promise<OutlineView> {
+    const document = await this.owned(ownerId, documentId);
+    const [memory, chapters] = await Promise.all([
+      this.prisma.documentMemory.findUnique({
+        where: { documentId },
+        select: { outline: true, glossary: true },
+      }),
+      this.prisma.chapter.findMany({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true, outlineNodeId: true, title: true, order: true, wordCount: true },
+      }),
+    ]);
+    const outline = readOutline(memory?.outline);
+    const known = new Set(outline.map((n) => n.id));
+    const meta = (document.meta as { outlineRun?: { status?: string } } | null) ?? {};
+
+    return {
+      template: (document.template as Template | null) ?? null,
+      suggestedTemplate: suggestTemplate(document.field),
+      templates: TEMPLATES.map((key) => ({
+        key,
+        name: TEMPLATE_SPECS[key].name,
+        summary: TEMPLATE_SPECS[key].summary,
+        chapters: TEMPLATE_SPECS[key].chapters.map((c) => c.title),
+      })),
+      outline,
+      chapters: chapters.map((c) => ({ ...c, orphaned: !known.has(c.outlineNodeId) })),
+      glossary: (memory?.glossary as Record<string, unknown>) ?? {},
+      generating: meta.outlineRun?.status === 'RUNNING',
+    };
+  }
+
+  /** FR-3.1: the student picks; `PATCH /documents/:id` also accepts it. */
+  async setTemplate(
+    ownerId: string,
+    documentId: string,
+    template: Template,
+  ): Promise<{ template: Template }> {
+    await this.owned(ownerId, documentId);
+    await this.prisma.document.update({ where: { id: documentId }, data: { template } });
+    return { template };
+  }
+
+  /** `POST /documents/:id/outline/generate` → job (FR-3.2). */
+  async generate(
+    ownerId: string,
+    documentId: string,
+    template?: Template,
+  ): Promise<{ queued: true; template: Template }> {
+    const document = await this.owned(ownerId, documentId);
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { scope: true },
+    });
+    const scope = memory?.scope as { workingTitle?: string } | null;
+    if (!scope?.workingTitle) {
+      throw new ValidationError('Save the proposal first; the outline is generated from it.');
+    }
+    const chosen =
+      template ?? (document.template as Template | null) ?? suggestTemplate(document.field);
+    const meta = (document.meta as Record<string, unknown> | null) ?? {};
+    await this.prisma.document.update({
+      where: { id: documentId },
+      data: {
+        template: chosen,
+        meta: { ...meta, outlineRun: { status: 'RUNNING', startedAt: new Date().toISOString() } },
+      },
+    });
+    await this.queue.enqueue(
+      'generate-outline',
+      { documentId, userId: ownerId, template: chosen },
+      { jobId: `generate-outline-${documentId}-${Date.now()}` },
+    );
+    return { queued: true, template: chosen };
+  }
+
+  /**
+   * `PUT /documents/:id/memory/outline` — the tree after any edit (reorder, rename, merge, add,
+   * delete). Validated against §10.7.2, ids checked for uniqueness, then chapters synced.
+   */
+  async save(
+    ownerId: string,
+    documentId: string,
+    nodes: unknown,
+  ): Promise<{ outline: OutlineNode[]; created: number; updated: number; orphaned: string[] }> {
+    await this.owned(ownerId, documentId);
+    const parsed = outlineSchema.safeParse(nodes);
+    if (!parsed.success) throw new ValidationError('Invalid outline', parsed.error.issues);
+    const outline = parsed.data;
+    if (outline.length === 0) throw new ValidationError('A thesis needs at least one chapter.');
+
+    const ids = walkOutline(outline).map((n) => n.id);
+    if (new Set(ids).size !== ids.length) {
+      throw new ValidationError('Two outline nodes share an id; ids must be unique.');
+    }
+
+    await this.prisma.documentMemory.update({
+      where: { documentId },
+      data: { outline: outline as never },
+    });
+    const sync = await this.syncChapters(documentId, outline);
+    return { outline, ...sync };
+  }
+
+  /**
+   * Deleting a chapter the student has written in (PHASES W8.3: "confirmation when a chapter has
+   * content"). The confirmation is the UI's; this refuses silently-destructive calls by requiring
+   * the word count the client saw.
+   */
+  async deleteChapter(
+    ownerId: string,
+    documentId: string,
+    chapterId: string,
+    expectWordCount: number,
+  ): Promise<{ deleted: true }> {
+    await this.owned(ownerId, documentId);
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: chapterId, documentId },
+      select: { id: true, wordCount: true, outlineNodeId: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+    if (chapter.wordCount !== expectWordCount) {
+      throw new ConflictError(
+        'That chapter changed since you opened the outline. Reload before deleting it.',
+      );
+    }
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { outline: true },
+    });
+    const outline = readOutline(memory?.outline).filter((n) => n.id !== chapter.outlineNodeId);
+    await this.prisma.$transaction([
+      this.prisma.chapter.delete({ where: { id: chapterId } }),
+      this.prisma.documentMemory.update({
+        where: { documentId },
+        data: { outline: outline as never },
+      }),
+    ]);
+    return { deleted: true };
+  }
+
+  /** W8.6: the glossary editor writes the whole map, the way the outline does. */
+  async saveGlossary(
+    ownerId: string,
+    documentId: string,
+    glossary: Record<string, unknown>,
+  ): Promise<{ terms: number }> {
+    await this.owned(ownerId, documentId);
+    await this.prisma.documentMemory.update({
+      where: { documentId },
+      data: { glossary: glossary as never },
+    });
+    return { terms: Object.keys(glossary).length };
+  }
+
+  /** The same rule the outline job uses: chapters follow top-level nodes, nothing is deleted. */
+  private async syncChapters(
+    documentId: string,
+    nodes: readonly OutlineNode[],
+  ): Promise<{ created: number; updated: number; orphaned: string[] }> {
+    const existing = await this.prisma.chapter.findMany({
+      where: { documentId },
+      select: { id: true, outlineNodeId: true, title: true, scopeNote: true, order: true },
+    });
+    const byNode = new Map(existing.map((c) => [c.outlineNodeId, c]));
+    let created = 0;
+    let updated = 0;
+
+    for (const [index, node] of nodes.entries()) {
+      const order = index + 1;
+      const row = byNode.get(node.id);
+      if (!row) {
+        await this.prisma.chapter.create({
+          data: {
+            documentId,
+            outlineNodeId: node.id,
+            title: node.title,
+            scopeNote: node.scopeNote,
+            order,
+            content: emptyChapterDoc(node.title) as never,
+          },
+        });
+        created++;
+        continue;
+      }
+      if (row.title !== node.title || row.scopeNote !== node.scopeNote || row.order !== order) {
+        await this.prisma.chapter.update({
+          where: { id: row.id },
+          data: { title: node.title, scopeNote: node.scopeNote, order },
+        });
+        updated++;
+      }
+    }
+
+    const wanted = new Set(nodes.map((n) => n.id));
+    const orphaned = existing.filter((c) => !wanted.has(c.outlineNodeId)).map((c) => c.id);
+    for (const [i, id] of orphaned.entries()) {
+      await this.prisma.chapter.update({ where: { id }, data: { order: nodes.length + i + 1 } });
+    }
+    return { created, updated, orphaned };
+  }
+}

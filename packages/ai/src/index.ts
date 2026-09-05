@@ -52,6 +52,19 @@ export {
   type StyleProfile,
 } from './builder/memory.js';
 export {
+  buildOutlineRequest,
+  enforceTemplateShape,
+  type GapMapTheme,
+  mockOutlineResponse,
+  normaliseOutline,
+  OUTLINE,
+  type OutlineBuildInput,
+  outlineResultSchema,
+  outlineUserMessage,
+  readOutlineResult,
+  roleForChapter,
+} from './builder/outline.js';
+export {
   CITE_RE,
   cutAfterSecondSentence,
   type PostProcessInput,

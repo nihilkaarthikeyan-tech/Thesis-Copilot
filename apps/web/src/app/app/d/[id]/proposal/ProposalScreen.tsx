@@ -257,6 +257,9 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
           >
             {saving ? 'Saving…' : 'Continue to the editor'}
           </button>
+          <Link href={`/app/d/${documentId}/outline`} className="text-sm underline">
+            Build the outline
+          </Link>
           <Link href={`/app/d/${documentId}/sources`} className="text-sm underline">
             See the sources found in your paper
           </Link>

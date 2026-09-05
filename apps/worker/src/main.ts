@@ -12,6 +12,7 @@ import {
   mockCrossPaperResponse,
   mockDraftFor,
   mockExtractionResponse,
+  mockOutlineResponse,
   mockQueriesResponse,
   mockThemesResponse,
   type Providers,
@@ -33,6 +34,7 @@ import {
 import {
   type DraftSectionJob,
   type ExtractPaperJob,
+  type GenerateOutlineJob,
   type IndexSourceJob,
   jobId,
   jobKeyDigest,
@@ -45,6 +47,7 @@ import { Client as MinioClient } from 'minio';
 import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
+import { runGenerateOutline } from './jobs/generate-outline.js';
 import { runIndexSource } from './jobs/index-source.js';
 import {
   isRetryExhausted,
@@ -56,6 +59,7 @@ import {
   DEFAULT_JOB_OPTIONS,
   QUEUE_DRAFT_SECTION,
   QUEUE_EXTRACT_PAPER,
+  QUEUE_GENERATE_OUTLINE,
   QUEUE_INDEX_SOURCE,
   QUEUE_NOOP,
   QUEUE_RESOLVE_REFERENCE,
@@ -84,6 +88,7 @@ function providersFor(env: Env): Providers {
           mockCrossPaperResponse,
           mockThemesResponse,
           mockQueriesResponse,
+          mockOutlineResponse,
         ],
         modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
       }),
@@ -322,6 +327,44 @@ async function main(): Promise<void> {
       connection: connection.duplicate(),
       concurrency: 4,
     }),
+    new Worker(
+      QUEUE_GENERATE_OUTLINE,
+      async (job: Job<GenerateOutlineJob>) => {
+        const result = await runGenerateOutline(
+          { ...job.data, template: job.data.template as never },
+          {
+            prisma,
+            llm: providers.llm,
+            aiProvider: env.AI_PROVIDER,
+            emptyChapter: (title) => ({
+              type: 'doc',
+              content: [
+                { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: title }] },
+                { type: 'paragraph' },
+              ],
+            }),
+            log: (event) => log({ jobId: job.id, ...event }),
+          },
+        );
+        // The outline screen polls `outlineRun`; clear it whatever the outcome.
+        const document = await prisma.document.findUnique({
+          where: { id: job.data.documentId },
+          select: { meta: true },
+        });
+        await prisma.document.update({
+          where: { id: job.data.documentId },
+          data: {
+            meta: {
+              ...((document?.meta as Record<string, unknown> | null) ?? {}),
+              outlineRun: { status: 'DONE', finishedAt: new Date().toISOString() },
+            },
+          },
+        });
+        log({ msg: 'generate-outline finished', jobId: job.id, ...result });
+        return result;
+      },
+      { connection, concurrency: 1 },
+    ),
     new Worker(
       QUEUE_SEARCH_LITERATURE,
       async (job: Job<SearchLiteratureJob>) => {
