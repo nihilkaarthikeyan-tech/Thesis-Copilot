@@ -51,7 +51,12 @@ export type MockProviderOptions = {
   /** Recorded responses, tried in order. */
   readonly responses?: readonly MockResponse[];
   /** Used when nothing matches. */
-  readonly defaultText?: string;
+  /**
+   * What an unscripted stream returns. A function sees the request, so the API's mock can cite a
+   * passage that is actually in the prompt — the way a real model behaves under A.0 rule 3 — and
+   * cite nothing when the prompt carries no passages.
+   */
+  readonly defaultText?: string | ((req: LlmRequest) => string);
   readonly modelIds?: Partial<Record<Tier, string>>;
 };
 
@@ -69,7 +74,7 @@ export class MockLlmProvider implements LlmProvider {
   private readonly chunkDelayMs: number;
   private readonly chunkSize: number;
   private readonly responses: readonly MockResponse[];
-  private readonly defaultText: string;
+  private readonly defaultText: string | ((req: LlmRequest) => string);
   private readonly modelIds: Record<Tier, string>;
 
   constructor(options: MockProviderOptions = {}) {
@@ -98,7 +103,7 @@ export class MockLlmProvider implements LlmProvider {
   }
 
   private resolve(req: LlmRequest): MockResponse {
-    return this.responses.find((r) => !r.match || r.match(req)) ?? { text: this.defaultText };
+    return this.responses.find((r) => !r.match || r.match(req)) ?? {};
   }
 
   private usageFor(req: LlmRequest, output: string, override?: Partial<TokenUsage>): TokenUsage {
@@ -123,7 +128,9 @@ export class MockLlmProvider implements LlmProvider {
       throw new LlmProviderError(req.action, response.error);
     }
 
-    const text = response.text ?? this.defaultText;
+    const text =
+      response.text ??
+      (typeof this.defaultText === 'function' ? this.defaultText(req) : this.defaultText);
     for (let i = 0; i < text.length; i += this.chunkSize) {
       if (req.signal?.aborted) return;
       yield { type: 'text', text: text.slice(i, i + this.chunkSize) };

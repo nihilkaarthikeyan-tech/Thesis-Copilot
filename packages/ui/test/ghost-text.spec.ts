@@ -233,3 +233,62 @@ describe('ghost text (Appendix B.3)', () => {
     expect(payload?.after).toBe(' here and after.');
   });
 });
+
+describe('the done event may carry post-processed text (A.1 steps 1–3, PHASES 3.4)', () => {
+  it('replaces the streamed buffer with the server’s final text', async () => {
+    // What streamed had three sentences and a citation the server later stripped (§10.6).
+    const streamed =
+      'Cost was the main barrier {{cite:S9#c9}}. This section examines it. A third sentence.';
+    const final = 'Cost was the main barrier. This section examines it.';
+    const fake = fakeRequest({
+      events: [
+        { type: 'start', suggestionId: 'sug-77' },
+        ...streamed
+          .split(' ')
+          .map((w, i) => ({ type: 'token' as const, t: i === 0 ? w : ` ${w}` })),
+        { type: 'done', citations: [], text: final },
+      ],
+    });
+    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor.commands.setTextSelection(8);
+    editor.commands.requestSuggestion();
+    await tick(40);
+
+    const ghost = getGhostState(editor);
+    expect(ghost?.status).toBe('shown');
+    expect(ghost?.text).toBe(final);
+    expect(editor.view.dom.querySelector('span.ghost')?.textContent).toBe(final);
+
+    // Tab inserts the final text, not what was streamed: no third sentence, no stray citation.
+    expect(pressKey(editor, 'Tab')).toBe(true);
+    expect(editor.state.doc.textContent).toContain('This section examines it.');
+    expect(editor.state.doc.textContent).not.toContain('A third sentence');
+    expect(editor.state.doc.textContent).not.toContain('{{cite');
+  });
+
+  it('goes idle when the final text is empty (A.1 step 4: EMPTY_SUGGESTION)', async () => {
+    const fake = fakeRequest({
+      events: [
+        { type: 'start', suggestionId: 'sug-78' },
+        { type: 'token', t: '{{cite:S1#c1}}' },
+        { type: 'done', citations: [], text: '' },
+      ],
+    });
+    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor.commands.setTextSelection(8);
+    editor.commands.requestSuggestion();
+    await tick(40);
+
+    expect(getGhostState(editor)?.status ?? 'idle').toBe('idle');
+    expect(editor.view.dom.querySelector('span.ghost')).toBeNull();
+  });
+
+  it('keeps the streamed text when done carries none (the stream was final)', async () => {
+    const fake = streamOf(SUGGESTION);
+    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor.commands.setTextSelection(8);
+    editor.commands.requestSuggestion();
+    await tick(40);
+    expect(getGhostState(editor)?.text).toBe(SUGGESTION);
+  });
+});

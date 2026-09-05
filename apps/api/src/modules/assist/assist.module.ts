@@ -4,11 +4,12 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { AssistController } from './assist.controller.js';
 import { AssistService } from './assist.service.js';
+import { ContextService } from './context.service.js';
 
 @Module({
   imports: [UsageModule],
   controllers: [AssistController],
-  providers: [AssistService, RedisService, SessionGuard],
-  exports: [AssistService],
+  providers: [AssistService, ContextService, RedisService, SessionGuard],
+  exports: [AssistService, ContextService],
 })
 export class AssistModule {}

@@ -8,7 +8,13 @@
  */
 
 import { Global, Module } from '@nestjs/common';
-import { createProviders, MockEmbeddingProvider, MockLlmProvider, type Providers } from '@tc/ai';
+import {
+  createProviders,
+  type LlmRequest,
+  MockEmbeddingProvider,
+  MockLlmProvider,
+  type Providers,
+} from '@tc/ai';
 import type { Env } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
 
@@ -20,6 +26,20 @@ export const MOCK_SUGGESTION =
   'barrier households reported {{cite:S1#c1}}. This pattern is consistent with findings from ' +
   'comparable districts. The following section therefore examines cost-related barriers before ' +
   'turning to policy responses.';
+
+/**
+ * The mock behaves the way A.0 rule 3 asks a real model to: it cites a passage only when one is
+ * in the request, using the id shown on it. With no passages the same sentence is written
+ * without a citation, so the §10.6 whitelist has nothing to strip and a library-less document
+ * still gets a suggestion. Sentence three is left in so the A.1 two-sentence cut is exercised.
+ */
+export function mockSuggestionFor(req: LlmRequest): string {
+  const user = req.messages.find((m) => m.role === 'user')?.content ?? '';
+  const firstPassage = /<passage id="([^"]+)"/.exec(user)?.[1];
+  return firstPassage
+    ? MOCK_SUGGESTION.replace('{{cite:S1#c1}}', `{{cite:${firstPassage}}}`)
+    : MOCK_SUGGESTION.replace(' {{cite:S1#c1}}', '');
+}
 
 @Global()
 @Module({
@@ -35,7 +55,7 @@ export const MOCK_SUGGESTION =
               // ~24 chars per chunk at 10 ms apart: the whole suggestion arrives in ~150 ms after TTFB.
               chunkSize: 24,
               chunkDelayMs: 10,
-              defaultText: MOCK_SUGGESTION,
+              defaultText: mockSuggestionFor,
               modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
             }),
             embeddings: new MockEmbeddingProvider({

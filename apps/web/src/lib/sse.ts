@@ -90,6 +90,7 @@ export async function* assistRequest(
             (parsed.citations as GhostEvent extends { type: 'done'; citations: infer C }
               ? C
               : never) ?? [],
+          ...(typeof parsed.text === 'string' ? { text: parsed.text } : {}),
           usage: parsed.usage,
           ttfbMs: typeof parsed.ttfbMs === 'number' ? parsed.ttfbMs : undefined,
           latencyMs: typeof parsed.latencyMs === 'number' ? parsed.latencyMs : undefined,

@@ -55,7 +55,11 @@ test('B.9 #9: suggestion streams, Tab accepts, text survives a reload with prove
   await expect(ghost).toHaveCount(0);
   await expect(editor).toContainText('Evidence from rural Karnataka indicates');
   await expect(editor.locator('[data-provenance="ASSIST"]').first()).toContainText('Evidence');
-  await expect(editor.locator('span.citation')).toHaveCount(1);
+  // This thesis has no indexed sources, so the prompt carried no passages and the model (mock or
+  // real, under A.0 rule 3) cited nothing; §10.6 has nothing to strip. The pins E2E in
+  // proposal-sources.spec.ts covers the case with a library. A.1 step 3 cut the third sentence.
+  await expect(editor.locator('span.citation')).toHaveCount(0);
+  await expect(editor).not.toContainText('The following section therefore');
   await expect(page.getByTestId('usage-meter')).toContainText('Assist 1/');
 
   // Autosave (2 s debounce), then reload: the accepted text and its provenance persist.

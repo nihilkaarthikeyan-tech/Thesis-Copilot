@@ -41,6 +41,11 @@ export type GhostEvent =
   | {
       type: 'done';
       citations: SuggestionCitation[];
+      /**
+       * The text after A.1 post-processing, when the server changed it (a stripped citation, a
+       * third sentence cut). Replaces what was streamed; absent means the stream was final.
+       */
+      text?: string;
       usage?: unknown;
       ttfbMs?: number;
       latencyMs?: number;
@@ -95,7 +100,7 @@ type GhostMeta =
     }
   | { type: 'start'; suggestionId: string }
   | { type: 'token'; t: string }
-  | { type: 'done'; citations: SuggestionCitation[] }
+  | { type: 'done'; citations: SuggestionCitation[]; text?: string }
   | { type: 'accepted'; fade: { from: number; to: number } | null }
   | {
       type: 'acceptWord';
@@ -293,12 +298,15 @@ export const GhostText = Extension.create<GhostTextOptions>({
                   next = { ...prev, status: 'streaming', text, shownChars: text.length };
                   break;
                 }
-                case 'done':
+                case 'done': {
+                  // The server's post-processed text wins over what streamed (A.1 steps 1–3).
+                  const finalText = meta.text ?? prev.text;
                   next =
-                    prev.text.length === 0
+                    finalText.length === 0
                       ? { ...IDLE }
-                      : { ...prev, status: 'shown', citations: meta.citations };
+                      : { ...prev, text: finalText, status: 'shown', citations: meta.citations };
                   break;
+                }
                 case 'accepted':
                   next = { ...IDLE, fade: meta.fade };
                   break;
@@ -395,7 +403,11 @@ export const GhostText = Extension.create<GhostTextOptions>({
             storage.lastTiming = timing;
             options.onTiming?.(timing);
             editor.view.dispatch(
-              editor.state.tr.setMeta(ghostTextKey, { type: 'done', citations: event.citations }),
+              editor.state.tr.setMeta(ghostTextKey, {
+                type: 'done',
+                citations: event.citations,
+                ...(typeof event.text === 'string' ? { text: event.text } : {}),
+              }),
             );
           } else if (event.type === 'error') {
             options.onError?.({ code: event.code, message: event.message });

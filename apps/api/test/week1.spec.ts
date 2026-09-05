@@ -321,14 +321,18 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
     expect(tokens.length).toBeGreaterThan(3);
     const text = tokens.map((t) => String(t.data.t)).join('');
     expect(text.split(/[.!?]\s/).length).toBeGreaterThanOrEqual(3);
-    expect(text).toContain('{{cite:S1#c1}}');
+    // This document has no indexed sources, so the prompt carries no passages and the mock —
+    // like a real model under A.0 rule 3 — cites nothing. Nothing for §10.6 to strip.
+    expect(text).not.toContain('{{cite:');
 
     const done = events.at(-1);
     expect(done?.event).toBe('done');
     expect(done?.data.usage).toMatchObject({ outputTokens: expect.any(Number) });
-    expect(done?.data.citations).toEqual([
-      { key: 'S1#c1', sourceId: null, chunkId: null, rendered: '(Source, n.d.)' },
-    ]);
+    expect(done?.data.citations).toEqual([]);
+    // A.1 step 3: the three streamed sentences are cut to two on `done`, and that is what the
+    // editor keeps.
+    expect(String(done?.data.text).split(/[.!?]\s/).length).toBe(2);
+    expect(String(done?.data.text)).not.toContain('The following section therefore');
     expect(done?.data.ttfbMs).toBeGreaterThanOrEqual(240);
     expect(done?.data.ttfbMs).toBeLessThan(600);
 
@@ -336,7 +340,7 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
       where: { id: String(done?.data.suggestionId) },
     });
     expect(suggestion.outcome).toBe('SHOWN');
-    expect(suggestion.shownChars).toBe(text.length);
+    expect(suggestion.shownChars).toBe(String(done?.data.text).length);
     expect(suggestion.ttfbMs).toBeGreaterThan(0);
 
     const ledger = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });

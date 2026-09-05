@@ -1,14 +1,15 @@
 /**
  * Assist mode — PRD §9.3 `/assist/suggest`, FR-4.3, Appendix B.8 (transport), A.1 (prompt),
- * §10.2 (call sequence: cap → prompt → call → parse → AiCallLog → ledger), §11.5.
+ * §10.2 (call sequence: cap → prompt → call → parse → AiCallLog → ledger), §10.6, §11.5.
  *
- * Week 1 scope (PHASES 1.4): the transport, the cap, the single-in-flight guard, timers,
- * `SuggestionEvent`, and a *placeholder* prompt. Retrieval, the cached/volatile builder and
- * memory trimming arrive in week 3 (PHASES 3.2–3.4) and replace `buildPlaceholderRequest`.
+ * The sequence, in §10.2's order: cap check (atomic, before any provider call) → cached memory
+ * block (A.0.1) + retrieved passages (§10.4) → A.1 request → stream → A.1 post-processing with the
+ * §10.6 whitelist → `AiCallLog` → `SuggestionEvent`. The post-processed text travels on the `done`
+ * event because steps 1–3 can change what was streamed.
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { type LlmProvider, type LlmRequest, loadPrompt, type Providers } from '@tc/ai';
+import { buildAssistRequest, type LlmProvider, type Providers, postProcessAssist } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
@@ -18,12 +19,14 @@ import {
   aiCostMicroInr,
   aiTtfb,
   capExceeded,
+  hallucinatedCite,
   suggestionOutcome,
 } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { UsageService } from '../usage/usage.service.js';
+import { ContextService } from './context.service.js';
 
 export type SuggestInput = {
   chapterId: string;
@@ -47,6 +50,8 @@ export type SuggestEvent =
       event: 'done';
       data: {
         suggestionId: string;
+        /** After A.1 post-processing. Replaces what was streamed. */
+        text: string;
         citations: SuggestCitation[];
         usage: unknown;
         ttfbMs: number;
@@ -70,8 +75,6 @@ export type Outcome = (typeof OUTCOMES)[number];
 /** B.3 / B.8: one open suggestion per user; a second request answers 409. */
 const IN_FLIGHT_TTL_SECONDS = 60;
 
-const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
-
 @Injectable()
 export class AssistService {
   private readonly logger = new Logger(AssistService.name);
@@ -81,6 +84,7 @@ export class AssistService {
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
     redis: RedisService,
+    private readonly context: ContextService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {
@@ -101,7 +105,14 @@ export class AssistService {
   ): AsyncGenerator<SuggestEvent> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: input.chapterId, document: { ownerId: user.id } },
-      select: { id: true, title: true, scopeNote: true, documentId: true },
+      select: {
+        id: true,
+        title: true,
+        scopeNote: true,
+        documentId: true,
+        outlineNodeId: true,
+        content: true,
+      },
     });
     if (!chapter) throw new NotFoundError('That chapter');
 
@@ -137,7 +148,22 @@ export class AssistService {
       });
       yield { event: 'start', data: { suggestionId: event.id } };
 
-      const request = this.buildPlaceholderRequest(user.id, chapter, input, signal);
+      // §10.3 / §10.4: the cached block and the passages, then A.1 assembled from prompt files.
+      const [memory, retrieved] = await Promise.all([
+        this.context.memoryBlock(chapter),
+        this.context.retrieve(chapter, input.before, 'ASSIST'),
+      ]);
+      const request = buildAssistRequest({
+        memoryBlock: memory.text,
+        chapter: { title: chapter.title, scopeNote: chapter.scopeNote },
+        passages: retrieved.passages,
+        before: input.before,
+        after: input.after,
+        instruction: input.guided ?? null,
+        userId: user.id,
+        documentId: chapter.documentId,
+        signal,
+      });
       let text = '';
       let ttfbMs: number | null = null;
       let usage: unknown = null;
@@ -207,7 +233,19 @@ export class AssistService {
         return;
       }
 
-      const empty = text.trim().length === 0;
+      // A.1 post-processing, in its order, with §10.6's whitelist: only ids that were in the
+      // prompt may survive. Anything else is stripped and counted.
+      const processed = postProcessAssist({
+        output: text,
+        passageIds: retrieved.passages.map((p) => p.id),
+        before: input.before,
+      });
+      for (const key of processed.hallucinated) {
+        hallucinatedCite.inc();
+        this.logger.warn({ suggestionId: event.id, key }, 'HALLUCINATED_CITE');
+      }
+
+      const empty = processed.empty;
       if (empty) {
         // A.1 post-processing step 4: empty output does not count against the cap.
         await this.usage.refund(user.id, 'ASSIST');
@@ -219,16 +257,28 @@ export class AssistService {
       } else {
         await this.prisma.suggestionEvent.update({
           where: { id: event.id },
-          data: { shownChars: text.length, latencyMs, ttfbMs },
+          data: { shownChars: processed.text.length, latencyMs, ttfbMs },
         });
         suggestionOutcome.inc({ outcome: 'SHOWN' });
       }
+
+      // Each surviving key resolves to the real source and chunk it stood for in this request.
+      const citations: SuggestCitation[] = processed.cited.map((key) => {
+        const real = retrieved.byKey.get(key);
+        return {
+          key,
+          sourceId: real?.sourceId ?? null,
+          chunkId: real?.chunkId ?? null,
+          rendered: real ? `(${real.shortRef})` : '(Source)',
+        };
+      });
 
       yield {
         event: 'done',
         data: {
           suggestionId: event.id,
-          citations: this.citationsFor(text),
+          text: processed.text,
+          citations,
           usage,
           ttfbMs: ttfbMs ?? latencyMs,
           latencyMs,
@@ -253,59 +303,6 @@ export class AssistService {
     });
     if (updated.count === 0) throw new NotFoundError('That suggestion');
     suggestionOutcome.inc({ outcome });
-  }
-
-  /**
-   * Week-1 stub for the `done.citations[]` payload (B.8): every `{{cite:ID}}` the model emitted
-   * becomes an entry keyed by that ID with no resolved source. Week 3 (PHASES 3.4–3.5) replaces
-   * this with the retrieval whitelist: ids not in the retrieved set are stripped and counted as
-   * HALLUCINATED_CITE (§10.6); resolved ones carry sourceId/chunkId and a rendered label.
-   */
-  private citationsFor(text: string): SuggestCitation[] {
-    const seen = new Set<string>();
-    const out: SuggestCitation[] = [];
-    for (const match of text.matchAll(CITE_RE)) {
-      const key = match[1] ?? '';
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      out.push({ key, sourceId: null, chunkId: null, rendered: '(Source, n.d.)' });
-    }
-    return out;
-  }
-
-  /**
-   * TODO(prd): PHASES 3.2 — replace with the real prompt builder (cached block = A.0 + A.0.1 with
-   * memory trimming; volatile block = title, pinned sources, retrieved passages, before/after).
-   * This week the system block is A.0 + the A.1 task block verbatim (§0.3 rule 11: prompt text is
-   * loaded from files, never rewritten) and the user message is A.1's template with no passages.
-   */
-  private buildPlaceholderRequest(
-    userId: string,
-    chapter: { id: string; title: string; scopeNote: string | null; documentId: string },
-    input: SuggestInput,
-    signal: AbortSignal,
-  ): LlmRequest {
-    const preamble = loadPrompt('_preamble').system;
-    const assist = loadPrompt('assist');
-    const user = (assist.user ?? '')
-      .replace(/\{\{#each passages\}\}[\s\S]*?\{\{\/each\}\}\n?/g, '')
-      .replace('{{chapter.title}}', chapter.title)
-      .replace('{{chapter.scopeNote}}', chapter.scopeNote ?? '')
-      .replace('{{before}}', input.before)
-      .replace('{{after}}', input.after)
-      .replace('{{instruction_or_none}}', input.guided?.trim() || 'none');
-
-    return {
-      tier: 'fast',
-      system: { cached: `${preamble}\n\n${assist.system}` },
-      messages: [{ role: 'user', content: user }],
-      maxTokens: 120,
-      temperature: 0.4,
-      action: 'ASSIST',
-      userId,
-      documentId: chapter.documentId,
-      signal,
-    };
   }
 
   private async logCall(

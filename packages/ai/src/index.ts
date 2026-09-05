@@ -1,4 +1,33 @@
 export {
+  ASSIST,
+  type AssistBuildInput,
+  assistCachedBlock,
+  assistUserMessage,
+  buildAssistRequest,
+  type PromptPassage,
+} from './builder/assist.js';
+export {
+  buildMemoryBlock,
+  type GlossaryEntry,
+  MEMORY_BUDGET_TOKENS,
+  type MemoryBlock,
+  type MemoryInput,
+  type MemoryScope,
+  type MemoryTrim,
+  renderOutline,
+  type StyleProfile,
+} from './builder/memory.js';
+export {
+  CITE_RE,
+  cutAfterSecondSentence,
+  type PostProcessInput,
+  type PostProcessResult,
+  postProcessAssist,
+  removeLeadingOverlap,
+  stripUnknownCitations,
+} from './builder/postprocess.js';
+export { approxTokens, CHARS_PER_TOKEN, headByTokens, tailByTokens } from './builder/tokens.js';
+export {
   buildExtractionRequest,
   buildExtractionUserMessage,
   DEFAULT_MAX_PART_CHARS,
@@ -39,6 +68,7 @@ export {
   type MockProviderOptions,
   type MockResponse,
 } from './providers/mock.js';
+export { renderTemplate, type TemplateData } from './template.js';
 export {
   type AiAction,
   type EmbeddingProvider,

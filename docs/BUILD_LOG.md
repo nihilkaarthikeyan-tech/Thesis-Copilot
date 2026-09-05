@@ -1272,3 +1272,67 @@ therefore deferred. What follows is the part that is pure logic and provable on 
   - `apps/api/test/_harness.ts` extracts the container boot from `week1.spec.ts` so later weeks
     share it. A copied harness would drift, and two suites would then disagree about what the
     application is.
+
+### Tasks 3.2, 3.3, 3.4 — prompt builder, retrieval wiring, Assist through the real pipeline
+- Files: `packages/ai/src/{template.ts,builder/memory.ts,builder/assist.ts,builder/postprocess.ts,builder/tokens.ts}`,
+  `packages/ai/test/{builder.spec.ts,_memory-fixture.ts,__snapshots__/builder.spec.ts.snap}`,
+  `apps/api/src/modules/assist/{context.service.ts,doc-text.ts,assist.service.ts}`,
+  `apps/api/src/modules/ai/ai.module.ts`, `packages/ui/src/editor/ghost-text.ts`,
+  `apps/web/src/lib/sse.ts`.
+- Evidence:
+
+  ```
+  $ pnpm --filter @tc/ai test
+   Tests  127 passed (127)     # 37 new: template dialect, outline render, trimming order,
+                               # cached-block snapshot, FR-3.4 outline-edit test, A.1 steps 1–4
+  fixture memory block:  344 tokens (420 with a style profile)     ≤ 3,200  (A.0.1)
+  fixture cached block:  881 tokens (957 with a style profile)     ≤ 4,000  (§10.3)
+
+  $ pnpm --filter @tc/api exec vitest run test/week1.spec.ts      # real containers
+   Tests  10 passed (10)       # assist now: memory block + §10.4 retrieval + A.1 + post-processing
+  $ pnpm --filter @tc/ui test
+   Tests  34 passed (34)       # 3 new: `done.text` replaces the streamed buffer
+  $ npx playwright test --workers=1
+   11 passed
+  $ pnpm lint
+   Checked 225 files. No fixes applied.
+  ```
+- Token counting: **an estimator, not the tokenizer.** ~4 characters per token, which is PRD §11.1's
+  own assumption, so the budget check and the cost model agree with each other. It is NOT
+  calibrated against the real tokenizer — that needs `pnpm ai:verify` and a key (`docs/PENDING.md`).
+  Modern tokenizers run 4.0–4.5 chars/token on academic English, so this over-estimates slightly
+  and trims a little early, which is the safe direction for a cache budget.
+- Notes / deviations from PRD:
+  - **The prompt files are rendered, not rebuilt.** A.0.1 and A.1 are written in a small
+    Handlebars-like dialect (`{{path}}`, `{{#each}}`, `{{#if}}`); `template.ts` renders exactly
+    that, so the file on disk is the prompt byte for byte and the builder only fills the holes it
+    declares (§0.3 rule 11). Not Handlebars itself: it HTML-escapes by default, which would turn a
+    student's `<` into `&lt;` inside the prompt. `<!-- … -->` comments in the templates are notes
+    from the PRD to the builder (A.0.1 carries one about the outline) and are dropped at render.
+  - **Byte-stability is enforced, not hoped for.** Glossary rows render in a fixed order whatever
+    the JSON key order; no timestamp or per-request id enters the cached block; a test proves the
+    same memory renders to the same bytes and that only the volatile block changes between calls.
+    Every byte of the cached block is part of the provider's cache key, and a miss costs six times
+    §11.2's per-call price.
+  - A.0.1's trimming step (3), "style profile samples", is a no-op today: the template renders no
+    samples. The step is kept in code so the order is visible and the log says it ran. UNSURE
+    whether the PRD intends `transitions` to count as samples; left as written.
+  - **Passage ids are short and per request** (`S1#c1`, `S2#c1`), the form §10.4's example shows.
+    A UUID pair per passage would cost ~25 tokens each and is exactly the kind of string a model
+    mis-copies. The map back to real ids lives for one request; the accepted citation node stores
+    the real ids (task 3.5).
+  - **The `done` event now carries the post-processed text.** A.1 steps 1–3 can change what was
+    streamed (a stripped citation, a third sentence cut), and the ghost text is a decoration of
+    the streamed buffer. The plugin replaces its buffer with `done.text` when present; an empty
+    final text goes idle (step 4). Without this, Tab would insert what the model said rather than
+    what A.1 allows.
+  - **The mock now obeys A.0 rule 3.** It cites the first passage actually in its prompt, by that
+    passage's id, and cites nothing when there are none. The week-1 mock always emitted
+    `{{cite:S1#c1}}`, which under the §10.6 whitelist was a guaranteed HALLUCINATED_CITE on every
+    library-less document and made every E2E citation assertion meaningless. The week-1 assertions
+    were updated to the new contract: no citation without a library, two sentences on `done`.
+  - The chapter's sub-theme for the §10.4 rerank comes from its outline node; `Chapter` has no
+    such column and the outline is the record FR-3.4 says both sides read.
+- BLOCKED (PHASES 3.3 done-when): recall@6 on the C.4 labelled set needs `fixtures/retrieval/qa.json`,
+  which only the human can write. BLOCKED (3.4 done-when): 30 real suggestions with cache hit rate
+  need a provider key. Both in `docs/PENDING.md`.
