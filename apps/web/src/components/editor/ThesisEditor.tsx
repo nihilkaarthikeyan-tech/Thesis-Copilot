@@ -24,7 +24,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { API_URL, ApiError, api } from '@/lib/api';
 import { assistRequest } from '@/lib/sse';
 
 /** `GET /sources/:id/chunks/:chunkId` (PHASES 3.5). */
@@ -50,6 +50,7 @@ function shortRefOf(source: PassageDto['source']): string {
 
 import { CitationList } from './CitationList';
 import { CiteSuggestions } from './CiteSuggestions';
+import { DraftMode } from './DraftMode';
 import { useGuidedInput } from './GuidedInput';
 import { SourcePins } from './SourcePins';
 
@@ -67,6 +68,8 @@ type ChapterView = {
   content: unknown;
   version: number;
   wordCount: number;
+  /** Which outline node this chapter is; draft mode drafts that node (FR-4.4). */
+  outlineNodeId: string;
 };
 type Usage = { actions: Array<{ action: string; used: number; cap: number; remaining: number }> };
 type Timing = { ttfbMs: number; latencyMs: number };
@@ -189,6 +192,18 @@ function ChapterEditor({
           promptForInstruction: guided.controller.ask,
         },
         draft: {
+          onOutcome: ({ draftId, outcome }) => {
+            void fetch(
+              `${API_URL}/api/v1/draft/${draftId}/${outcome === 'ACCEPTED' ? 'accept' : 'discard'}`,
+              {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            ).catch(() => undefined);
+            onUsageChange();
+          },
           onBeforeAccept: async (draftId) => {
             await autosaveRef.current?.flush();
             await api(`/chapters/${chapter.id}/snapshot`, {
@@ -432,6 +447,13 @@ function ChapterEditor({
       {guided.element}
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />
+
+      <DraftMode
+        editor={editor}
+        chapterId={chapter.id}
+        outlineNodeId={chapter.outlineNodeId}
+        onUsageChange={onUsageChange}
+      />
 
       {process.env.NODE_ENV !== 'production' ? (
         <div

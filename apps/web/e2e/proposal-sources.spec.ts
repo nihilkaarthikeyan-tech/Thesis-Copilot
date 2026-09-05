@@ -435,3 +435,99 @@ test.describe('Stage 4 citations', () => {
     await expect(tab.getByRole('button', { name: /^1\./ })).toBeVisible({ timeout: 10_000 });
   });
 });
+
+test.describe('Stage 4 draft mode', () => {
+  test.setTimeout(240_000);
+
+  /**
+   * PHASES 4.2's done-when, first half: "pin sources → Ctrl+Shift+D on the chapter heading →
+   * draft appears tinted with citations → Accept → provenance DRAFT → reload persists."
+   */
+  test('4.2: a drafted section arrives as a block, and only Accept puts it in the chapter', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, request);
+    const id = await createThesis(page, `Draft E2E ${Date.now()}`);
+
+    await page.goto(`/app/d/${id}/proposal`);
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'seed.pdf',
+      mimeType: 'application/pdf',
+      buffer: ABSTRACTED_REFERENCES_PDF,
+    });
+    await expect(page.getByText('Read', { exact: true })).toBeVisible({ timeout: 120_000 });
+    await page.getByRole('button', { name: 'Continue to the editor' }).click();
+    await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+
+    const editor = page.locator('.thesis-editor');
+    await expect(editor).toBeVisible({ timeout: 20_000 });
+
+    const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
+    await expect(panel.locator('input[type=checkbox]')).toHaveCount(2, { timeout: 120_000 });
+    await panel.getByRole('button', { name: 'Pin all' }).click();
+    await expect(panel.getByText('draw only on 2 pinned sources')).toBeVisible();
+
+    await editor.locator('p').first().click();
+    await page.keyboard.press('Control+Shift+D');
+
+    // The draft arrives inside a marked block, not as ordinary text.
+    const block = editor.locator('[data-draft="true"]');
+    await expect(block).toBeVisible({ timeout: 120_000 });
+    await expect(block).toHaveClass(/draft-block--pending/);
+    await expect(page.getByTestId('draft-status')).toContainText('Draft inserted');
+    await expect(block.locator('span.citation').first()).toBeVisible();
+
+    // Accepting unwraps it; the text stays and carries DRAFT provenance.
+    // The block's own header ("AI draft — review before accepting") disappears on accept, so
+    // sample the drafted prose rather than the whole block.
+    const drafted = (await block.locator('p').first().innerText()).slice(0, 40);
+    await block.getByRole('button', { name: /Accept/ }).click();
+    await expect(editor.locator('[data-draft="true"]')).toHaveCount(0);
+    await expect(editor.locator('[data-provenance="DRAFT"]').first()).toBeVisible();
+
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await page.reload();
+    await expect(page.locator('.thesis-editor')).toContainText(drafted.trim().slice(0, 20), {
+      timeout: 20_000,
+    });
+    await expect(page.locator('.thesis-editor [data-provenance="DRAFT"]').first()).toBeVisible();
+  });
+
+  /**
+   * PHASES 4.2's done-when, second half: "A second E2E proves refusal with no pins."
+   *
+   * This is the assertion that matters most in the product: hundreds of fluent words citing
+   * nothing would be the worst thing it could produce, so with nothing to draft from it must
+   * refuse and say what to do instead.
+   */
+  test('4.2: drafting with an empty library refuses and names the fix', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, request);
+    const id = await createThesis(page, `Draft refusal E2E ${Date.now()}`);
+
+    // No paper, so no sources at all.
+    await page.goto(`/app/d/${id}/proposal`);
+    await expect(page.getByText('Upload the paper this thesis grows from.')).toBeVisible();
+
+    await page.goto('/app');
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Draft refusal E2E' })
+      .getByRole('link', { name: 'Write' })
+      .click();
+
+    const editor = page.locator('.thesis-editor');
+    await expect(editor).toBeVisible({ timeout: 20_000 });
+    await editor.locator('p').first().click();
+    await page.keyboard.press('Control+Shift+D');
+
+    const status = page.getByTestId('draft-status');
+    await expect(status).toContainText('nothing to draft from', { timeout: 60_000 });
+    await expect(status).toContainText('Pin at least one source');
+    // Nothing was written into the chapter.
+    await expect(editor.locator('[data-draft="true"]')).toHaveCount(0);
+  });
+});

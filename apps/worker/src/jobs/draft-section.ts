@@ -17,6 +17,7 @@ import {
   DRAFT,
   type DraftResult,
   type DraftSection,
+  draftToProseMirror,
   NO_SOURCES_MESSAGE,
   type PromptPassage,
   postProcessDraft,
@@ -60,6 +61,8 @@ export type DraftEvent =
       type: 'done';
       draftId: string;
       result: DraftResult;
+      /** §9.3's `content`: ProseMirror nodes with DRAFT provenance, ready to insert. */
+      content: unknown[];
       short: boolean;
       needsSource: string[];
       words: number;
@@ -149,15 +152,35 @@ export async function runDraftSection(
   // Prompt ids become the real ids the citation nodes will carry.
   const citations = processed.result.citations.flatMap((citation) => {
     const real = retrieved.byKey.get(citation.key);
-    return real ? [{ key: citation.key, sourceId: real.sourceId, chunkId: real.chunkId }] : [];
+    return real
+      ? [
+          {
+            key: citation.key,
+            sourceId: real.sourceId,
+            chunkId: real.chunkId,
+            // The label the citation node renders. Without it the node falls back to
+            // "(Source, n.d.)", which tells the student nothing about what they are citing.
+            rendered: `(${real.shortRef})`,
+          },
+        ]
+      : [];
   });
 
   const result: DraftResult = { ...processed.result, citations };
+
+  // §9.3's result carries `content`, not markdown: the conversion belongs here, beside the
+  // citation map, rather than in the browser where the prompt package cannot go.
+  const byKey = new Map(citations.map((citation) => [citation.key, citation]));
+  const content = draftToProseMirror(result.markdown, draftId, (key) => {
+    const citation = byKey.get(key);
+    return citation ? { sourceId: citation.sourceId, chunkId: citation.chunkId } : null;
+  });
 
   await deps.publish({
     type: 'done',
     draftId,
     result,
+    content,
     short: processed.short,
     needsSource: processed.result.needsSource,
     words: processed.result.words,

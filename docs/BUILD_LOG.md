@@ -1467,5 +1467,45 @@ therefore deferred. What follows is the part that is pure logic and provable on 
     finishes regardless and the result is waiting on the channel.
   - `target_words` sits in the cached block, so drafting at two lengths makes two cached prefixes.
     That is correct rather than wasteful: the instruction really did change.
-- Still to do in 4.2: the editor trigger (`Ctrl+Shift+D`) and the draft block's needs-source notes,
-  then the two E2E cases PHASES asks for. The server half is complete and unit-tested.
+
+### Task 4.2 (continued) — draft mode in the editor
+- Files: `apps/web/src/components/editor/DraftMode.tsx`, `apps/web/src/components/editor/ThesisEditor.tsx`,
+  `packages/ai/src/builder/draft.ts` (`mockDraftFor`), `apps/worker/src/main.ts`,
+  `apps/web/e2e/proposal-sources.spec.ts`.
+- Evidence:
+
+  ```
+  $ npx playwright test --workers=1
+    ok  8  4.2: a drafted section arrives as a block, and only Accept puts it in the chapter
+    ok  9  4.2: drafting with an empty library refuses and names the fix
+    14 passed
+
+  worker: {"msg":"draft written","tier":"strong","words":65,"targetWords":500,
+           "citations":1,"needsSource":1,"short":true,"hallucinated":0,"overused":[]}
+  $ pnpm test    604 passing        $ pnpm lint    Checked 245 files. No fixes applied.
+  ```
+- Notes / deviations from PRD:
+  - **§9.3's result carries `content`, not markdown**, so the Markdown-to-ProseMirror conversion
+    happens in the worker beside the citation map. The first attempt did it in the browser, which
+    would have dragged `@tc/ai` — a package that reads prompt files off disk with `node:fs` — into
+    the client bundle.
+  - **The mock needed a draft-shaped reply.** The worker's mock answered a DRAFT stream with its
+    three-word placeholder, so the whole A.2 path (headings, citations, needs-source notes, the
+    SHORT check, the node conversion) was never exercised. `mockDraftFor` builds an answer from the
+    passages in its own prompt and invents nothing: every sentence restates the passage it cites,
+    and the subheadings come from the prompt's own block.
+  - **`insertDraft` takes ProseMirror nodes, not JSON.** Passing the server's JSON straight through
+    silently produced an empty block: no error, no draft, nothing to debug from. The client now
+    converts through `schema.nodeFromJSON`, and a single malformed block is skipped rather than
+    losing the whole draft.
+  - The worker sends a rendered label per citation. Without it the node fell back to
+    "(Source, n.d.)", which tells the student nothing about what they are citing.
+  - The E2E selector had to be `[data-draft="true"]`, not `section[data-draft]`: the React NodeView
+    renders a wrapper, and the `<section>` is only the serialised form. Worth remembering — the
+    node's `renderHTML` and its NodeView produce different DOM.
+  - Accept and discard post to `/draft/:draftId/accept|discard`, which writes the `SuggestionEvent`
+    outcome. That is the record FR-9.4's telemetry reads.
+
+### Tasks 4.1, 4.3–4.9 — still to do
+- Caps on every P1 action, the cost and telemetry queries, the admin dashboard, alerts, `.docx`
+  export, the AI-usage log export and the feature-flags UI.

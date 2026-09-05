@@ -9,6 +9,7 @@ import {
   createProviders,
   MockEmbeddingProvider,
   MockLlmProvider,
+  mockDraftFor,
   mockExtractionResponse,
   type Providers,
 } from '@tc/ai';
@@ -60,6 +61,10 @@ function providersFor(env: Env): Providers {
   if (env.AI_PROVIDER === 'mock') {
     return {
       llm: new MockLlmProvider({
+        // A DRAFT request gets an A.2-shaped answer built from its own passages, so the whole
+        // draft path is exercisable before provider keys exist. Nothing is invented: each
+        // sentence restates the passage it cites.
+        defaultText: (req) => (req.action === 'DRAFT' ? mockDraftFor(req) : 'Mock text.'),
         latencyMs: env.AI_MOCK_LATENCY_MS,
         // An EXTRACT request is answered from the paper's own text, so an upload still yields a
         // usable proposal screen and library before real provider keys exist. It invents nothing.

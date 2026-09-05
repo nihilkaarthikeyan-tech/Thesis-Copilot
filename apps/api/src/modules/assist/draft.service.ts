@@ -32,6 +32,7 @@ export type DraftEvent =
       data: {
         draftId: string;
         result: DraftResult;
+        content: unknown[];
         short: boolean;
         needsSource: string[];
         words: number;
@@ -151,6 +152,7 @@ export class DraftService {
           reason?: string;
           message?: string;
           result?: DraftResult;
+          content?: unknown[];
           short?: boolean;
           needsSource?: string[];
           words?: number;
@@ -197,6 +199,7 @@ export class DraftService {
             data: {
               draftId,
               result: parsed.result,
+              content: parsed.content ?? [],
               short: parsed.short ?? false,
               needsSource: parsed.needsSource ?? [],
               words: parsed.words ?? 0,

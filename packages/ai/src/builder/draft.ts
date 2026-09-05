@@ -62,7 +62,13 @@ export type DraftBuildInput = {
 export const draftResultSchema = z.object({
   markdown: z.string(),
   citations: z.array(
-    z.object({ key: z.string(), sourceId: z.string(), chunkId: z.string().optional() }),
+    z.object({
+      key: z.string(),
+      sourceId: z.string(),
+      chunkId: z.string().optional(),
+      /** The label the citation node renders, e.g. "(Kumar 2021)". */
+      rendered: z.string().optional(),
+    }),
   ),
   needsSource: z.array(z.string()),
   words: z.number().int().min(0),
@@ -273,4 +279,47 @@ export const NO_SOURCES_MESSAGE =
 
 export function canDraft(passages: readonly PromptPassage[]): boolean {
   return passages.length > 0;
+}
+
+/**
+ * A draft-shaped reply for the mock provider, built from the passages in its own prompt.
+ *
+ * Without this the mock answers a DRAFT stream with its generic placeholder, and the whole A.2
+ * path — headings, citations, needs-source notes, the SHORT check, the ProseMirror conversion —
+ * is never exercised before a provider key exists. It invents no facts: every sentence restates
+ * the passage it cites, and the subheadings come from the prompt's own `<subheadings>` block.
+ */
+export function mockDraftFor(req: LlmRequest): string {
+  const user = req.messages.find((message) => message.role === 'user')?.content ?? '';
+
+  const passages = [...user.matchAll(/<passage id="([^"]+)"[^>]*>([\s\S]*?)<\/passage>/g)].map(
+    (match) => ({ id: match[1] as string, text: (match[2] ?? '').trim() }),
+  );
+  const subheadings = [...user.matchAll(/^- ([^:\n]+):/gm)].map((match) =>
+    (match[1] as string).trim(),
+  );
+
+  if (passages.length === 0) return '';
+
+  const blocks: string[] = [];
+  const headings = subheadings.length > 0 ? subheadings : [null];
+
+  headings.forEach((heading, index) => {
+    if (heading) blocks.push(`### ${heading}`);
+    const passage = passages[index % passages.length];
+    if (!passage) return;
+    // Two sentences per section: one restating the passage, one connective. Padded so the result
+    // clears A.2's 60% SHORT threshold at the default target and the happy path is testable.
+    blocks.push(
+      `${passage.text} {{cite:${passage.id}}}. ` +
+        `This bears directly on what this section sets out to establish, and the evidence is ` +
+        `reported consistently across the sources pinned for this chapter, which together give ` +
+        `the section its factual basis and shape the argument that follows in the next part.`,
+    );
+  });
+
+  // A.2's marker, so the needs-source path is exercised too.
+  blocks.push('[[NEEDS SOURCE: figures for the remaining districts]]');
+
+  return blocks.join('\n\n');
 }

@@ -35,6 +35,7 @@ export {
   draftResultSchema,
   draftToProseMirror,
   draftUserMessage,
+  mockDraftFor,
   NEEDS_SOURCE_RE,
   NO_SOURCES_MESSAGE,
   postProcessDraft,
