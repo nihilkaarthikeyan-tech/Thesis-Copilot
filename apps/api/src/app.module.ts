@@ -9,6 +9,7 @@ import { AssistModule } from './modules/assist/assist.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
+import { ExportModule } from './modules/export/export.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
@@ -46,6 +47,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     FlagsModule,
     UsageModule,
     DocumentsModule,
+    ExportModule,
     AiModule,
     ChaptersModule,
     AssistModule,

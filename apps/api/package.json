@@ -22,6 +22,7 @@
     "@tc/ai": "workspace:*",
     "@tc/config": "workspace:*",
     "@tc/db": "workspace:*",
+    "@tc/export": "workspace:*",
     "@tc/retrieval": "workspace:*",
     "@tc/types": "workspace:*",
     "better-auth": "1.7.2",

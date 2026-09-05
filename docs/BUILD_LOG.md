@@ -1506,6 +1506,52 @@ therefore deferred. What follows is the part that is pure logic and provable on 
   - Accept and discard post to `/draft/:draftId/accept|discard`, which writes the `SuggestionEvent`
     outcome. That is the record FR-9.4's telemetry reads.
 
-### Tasks 4.1, 4.3–4.9 — still to do
-- Caps on every P1 action, the cost and telemetry queries, the admin dashboard, alerts, `.docx`
-  export, the AI-usage log export and the feature-flags UI.
+### Tasks 4.7 and 4.8 — `.docx` export and the AI-usage log (FR-8.1, FR-8.6, §12)
+- Files: `packages/export/src/{docx.ts,ai-usage.ts}`, `packages/export/test/export.spec.ts`,
+  `apps/api/src/modules/export/*`.
+- Evidence — driven against the live API, files converted through Gotenberg (LibreOffice headless):
+
+  ```
+  $ curl -d '{"chapterId":"…","format":"docx"}' .../documents/<id>/export
+    filename: chapter-1.docx  bytes: 8591
+  $ curl -d '{"chapterId":"…","format":"pdf"}'  .../documents/<id>/export
+    filename: chapter-1.pdf   bytes: 12662
+  $ curl -d '{"format":"csv"}' .../documents/<id>/export/ai-usage-log
+    chapter,human,assist,draft,command,human_edited,total_words,ai_share_percent,ai_actions
+    Chapter 1,0,0,0,0,0,0,0,0
+    TOTAL,0,0,0,0,0,0,0,0
+
+  # a populated fixture, read back out of the produced PDF:
+  chapter.pdf  → "Literature review Cost barriers Upfront cost dominated the responses
+                  (Kumar et al., 2021). … ● A bullet point References Kumar, A. (2021)…"
+  ai-usage.pdf → "AI usage log … Actions recorded between 2026-09-01 and 2026-09-30…"
+
+  $ pnpm test    617 passing (13 new)      $ pnpm lint    Checked 251 files. No fixes applied.
+  ```
+- **PHASES 4.7 asks for `soffice --convert-to pdf`; LibreOffice is not installed on this machine.**
+  The conversion was done through Gotenberg instead, which *is* LibreOffice headless in a container
+  and is the PRD's own production path (§7.2: "`docx` → Gotenberg for PDF"). The produced PDF was
+  then re-read with the project's own PDF extractor to prove it is not an empty file. Installing
+  LibreOffice locally would add nothing the container has not already shown.
+- Notes / deviations from PRD:
+  - **An unaccepted draft is never exported.** A `draftBlock` is skipped outright: text the student
+    has not approved must not reach the file they submit. This is the same "flag, don't fix" rule
+    the editor enforces, applied at the last point where it still matters.
+  - **An unresolved needs-source note ships visible**, in bold. Quietly dropping it would hide
+    exactly the gap the student needs to see, in the artefact an examiner reads.
+  - A citation whose source is gone renders "(source missing)" rather than disappearing. A silently
+    removed citation turns a supported claim into an unsupported one.
+  - `HUMAN_EDITED` words count towards the student's own share in the usage log. That is what the
+    mark means: they took the text over and rewrote it.
+  - The `.docx` tests unzip the result and read `word/document.xml`. A file that "builds" but will
+    not open is the failure that actually happens with this format, and only reading the part Word
+    reads catches it. (Zip entries are raw deflate, not zlib — `inflateRawSync`, not `unzipSync`.)
+  - Exports are written to object storage under a timestamped key and answered as a signed URL, so
+    a second export never overwrites a file the student is still downloading, and a slow conversion
+    never holds an HTTP connection open.
+  - Bibliography lines are built from the stored CSL fields, not citeproc. `@citation-js` arrives in
+    Phase 2 (§7.2); until then the line says what is actually known and invents nothing.
+
+### Tasks 4.1, 4.3–4.6, 4.9 — still to do
+- Caps on every P1 action, the cost and telemetry queries, the admin dashboard, alerts and the
+  feature-flags UI.
