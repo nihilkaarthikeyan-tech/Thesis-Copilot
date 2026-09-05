@@ -31,7 +31,17 @@ async function bootstrap(): Promise<void> {
   // uptime paths stay stable.
   app.setGlobalPrefix('api/v1', { exclude: ['metrics'] });
 
-  app.enableCors({ origin: env.APP_URL, credentials: true });
+  // `methods` is set explicitly: the default list does not include PUT, so the autosave preflight
+  // (`PUT /chapters/:id`, Appendix B.7) was refused with "Method PUT is not allowed by
+  // Access-Control-Allow-Methods". Only a browser surfaces that; server-side tests never preflight.
+  app.enableCors({
+    origin: env.APP_URL,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['content-type', 'accept', 'authorization', 'x-request-id'],
+    exposedHeaders: ['x-request-id'],
+    maxAge: 86_400,
+  });
 
   await registerPlugins(app, env);
 

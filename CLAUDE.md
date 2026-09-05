@@ -96,20 +96,25 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-Phase 0 (scaffold) and Phase 1 week 1 (editor spike) are built and committed. The owner waived the
+Phase 0 (scaffold) and Phase 1 week 1 (editor spike) are complete and pushed. The owner waived the
 gate pauses on 2026-09-04: build every phase you can without stopping at a gate, and keep
 `docs/PENDING.md` listing the human-only work. `docs/BUILD_LOG.md` has per-task evidence.
 
-Working: sign-in (email OTP), the thesis list, the Stage 4 editor with streaming ghost text over
-SSE, Tab-to-accept with `ASSIST` provenance, citation nodes, the draft block, autosave with 409
-conflict handling and snapshots to object storage, the usage meter, and the `/admin` cost banner.
-`packages/retrieval` has the chunker, the C.3 scoring rules, the Crossref/OpenAlex/Unpaywall
-clients and the §10.4 reranker, all unit-tested.
+Working end to end, proven in a real browser: sign-in by emailed code, the thesis list, and the
+Stage 4 editor — streaming ghost text over SSE, `Tab` to accept with `ASSIST` provenance, citation
+nodes, the draft block, autosave with 409 conflict handling and snapshots to object storage, the
+usage meter and cap refusal, and the `/admin` cost banner. All nine Appendix B.9 tests pass.
+p95 time-to-first-token is 274 ms against the 600 ms ceiling.
 
-**Blocked right now:** Docker Desktop's engine service is stopped and needs an Administrator start,
-so Postgres, Redis and MinIO are down. The API will not boot, Testcontainers tests cannot run, and
-the browser end-to-end test and the latency benchmark (PHASES 1.8, 1.9) are unproven. See the top
-of `docs/PENDING.md`.
+`packages/retrieval` has the chunker, the C.3 scoring rules, the Crossref/OpenAlex/Unpaywall
+clients and the §10.4 reranker, unit-tested with no network. The rest of week 2 (upload,
+extraction, the proposal screen, the library UI) is next.
+
+262 tests pass across eight workspaces; Biome and every typecheck are clean.
+
+Two CORS traps are worth remembering: `enableCors` needs an explicit `methods` list or PUT is
+refused at the preflight, and any handler calling `reply.hijack()` (the SSE endpoints) must write
+its own CORS headers because Fastify's `onSend` hooks are skipped.
 
 Start a session with: read `docs/BUILD_LOG.md`, find the last completed task in `docs/PHASES.md`,
 continue from the next one. Before running `prisma generate` on Windows, stop the API — it holds

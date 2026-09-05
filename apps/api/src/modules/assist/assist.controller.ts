@@ -5,9 +5,11 @@
  * `X-Accel-Buffering: no`. Caddy adds `flush_interval -1` in front (infra/compose/Caddyfile).
  */
 
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Inject, Post, Req, Res, UseGuards } from '@nestjs/common';
+import type { Env } from '@tc/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { ENV } from '../../common/env.token.js';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
@@ -30,7 +32,10 @@ const outcomeBody = z.object({
 @Controller('assist')
 @UseGuards(SessionGuard)
 export class AssistController {
-  constructor(private readonly assist: AssistService) {}
+  constructor(
+    private readonly assist: AssistService,
+    @Inject(ENV) private readonly env: Env,
+  ) {}
 
   @Post('suggest')
   async suggest(
@@ -70,6 +75,13 @@ export class AssistController {
       'x-accel-buffering': 'no',
       connection: 'keep-alive',
       'x-request-id': request.id,
+      // Hijacking the reply skips Fastify's onSend hooks, and with them the CORS headers Nest
+      // would otherwise add — the browser then blocks the stream with "No
+      // 'Access-Control-Allow-Origin' header is present". They are written by hand here.
+      // The origin is the configured APP_URL, never the request's own Origin.
+      'access-control-allow-origin': this.env.APP_URL,
+      'access-control-allow-credentials': 'true',
+      vary: 'Origin',
     });
     raw.flushHeaders?.();
 

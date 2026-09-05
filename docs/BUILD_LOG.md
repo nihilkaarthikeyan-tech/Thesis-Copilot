@@ -828,6 +828,101 @@ Started: 2026-09-04 · Sessions: 2
 
 ---
 
+### Tasks 1.8 and 1.9 — unblocked and closed (2026-09-05)
+
+Docker Desktop finished starting on its own; the dev Compose stack came up and both tasks ran.
+The browser run then found two CORS faults that nothing else could have caught.
+
+#### Two bugs only a browser revealed
+
+1. **`PUT /chapters/:id` was refused at the preflight.** `enableCors({ origin, credentials })`
+   without an explicit `methods` list does not allow PUT, so Chrome answered the autosave with
+   "Method PUT is not allowed by Access-Control-Allow-Methods in preflight response". Every save
+   failed and the top bar sat on "Save failed — retrying". Server-side tests never preflight, so
+   the 30 API tests and the manual `curl` drive all passed while the real editor could not save a
+   single keystroke. Fixed by listing the methods, headers and exposed headers explicitly.
+
+2. **`POST /assist/suggest` had no CORS headers at all.** The SSE handler calls `reply.hijack()`
+   and writes the response head itself, which skips Fastify's `onSend` hooks — and with them the
+   CORS headers Nest would have added. Chrome blocked the stream with "No
+   'Access-Control-Allow-Origin' header is present". Fixed by writing
+   `access-control-allow-origin` (the configured `APP_URL`, never the request's own Origin),
+   `access-control-allow-credentials` and `Vary: Origin` into the hijacked head.
+
+   `UNSURE:` resolved — this is why Appendix B.9 test 9 is specified as a browser test rather than
+   an integration test. Recorded here so the same trap is not re-entered for `/draft/section`,
+   `/chat` and the coherence stream, which all hijack the reply the same way.
+
+#### Task 1.8 — Editor page layout: DONE
+- Evidence:
+  ```
+  $ pnpm --filter @tc/web e2e
+  Running 7 tests using 7 workers
+    ok 5 smoke.spec.ts:45 › API answers errors as RFC 9457 problem details (503ms)
+    ok 7 smoke.spec.ts:32 › API health reports every dependency up (563ms)
+    ok 1 smoke.spec.ts:9  › home page renders and states the integrity position (2.9s)
+    ok 4 smoke.spec.ts:17 › sign-in screen offers email OTP and asks for an address (3.0s)
+    ok 6 smoke.spec.ts:27 › unauthenticated /app redirects to sign-in (3.1s)
+    ok 3 editor.spec.ts:71 › typing while a suggestion is shown dismisses it; Tab in a list indents (6.6s)
+    ok 2 editor.spec.ts:10 › B.9 #9: suggestion streams, Tab accepts, text survives a reload with provenance (10.7s)
+  7 passed (11.9s)
+  ```
+  B.9 test 9 in full: sign in by emailed code, create a thesis, open its chapter, type a sentence,
+  press `Ctrl+/`, ghost text streams in, press `Tab`, the text is inserted carrying
+  `data-provenance="ASSIST"` with one citation node, the usage meter moves from `Assist 0/50` to
+  `Assist 1/50`, autosave reports `Saved`, the page is reloaded, and both the typed and the
+  accepted text are still there with provenance intact and no ghost widget.
+
+  The second test covers B.9 #3 and #4 in a real browser: typing dismisses a shown suggestion, and
+  `Tab` with no suggestion still indents a list item.
+
+#### Task 1.9 — Latency measurement: DONE
+- Evidence:
+  ```
+  $ node apps/api/scripts/assist-bench.mjs 50 http://localhost:3001
+  ..................................................
+  assist-bench: 50 streamed, 0 refused, mock latency 250 ms
+  client TTFB    p50   279 ms   p95   303 ms   min  267   max  417
+  server ttfbMs  p50   260 ms   p95   274 ms   min  253   max  322
+  latency        p50   506 ms   p95   585 ms   min  466   max  654
+  overhead p95 (server ttfb − 250) = 24 ms   →   OK: p95 TTFB ≤ 600 ms
+  call 51 (cap check): HTTP 429 — CAP_EXCEEDED as expected
+  ```
+- Against the PHASES 1.9 thresholds: p95 server TTFB **274 ms** against a ceiling of 600 ms, and
+  **24 ms** of our own overhead against a ceiling of 350 ms. Both comfortable.
+- Call 51 is refused with `CAP_EXCEEDED`, confirming the FREE_TRIAL cap of 50 holds end to end
+  through the real HTTP path, not just in the unit test.
+- These are mock-provider numbers on a developer laptop. The figure that matters for Gate G2 is
+  p95 TTFB on the pilot VPS with the real provider, measured in week 5.
+
+#### Whole-repo state at the close of week 1
+```
+$ pnpm biome check .
+Checked 169 files in 213ms. No fixes applied.
+
+# tests, per package
+@tc/config      62 passed        @tc/ui          31 passed
+@tc/db           2 passed        @tc/api         30 passed
+@tc/ai          48 passed        @tc/worker       4 passed
+@tc/retrieval   78 passed        @tc/web (e2e)    7 passed
+                                            total 262
+
+# typecheck: 0 errors in all eight workspaces
+```
+
+#### Gate G1 — agent's self-check (the human ticks the real one in docs/PHASES.md)
+- [x] All nine B.9 tests pass, with output in this log: #1–#7 in `@tc/ui`, #8 across `@tc/ui`
+      (client) and `@tc/api` (server 409), #9 in Playwright.
+- [x] p50/p95 TTFB recorded: p95 274 ms server-side, ≤ 600 ms.
+- [x] `editor.getJSON()` contains no ghost text during a stream — asserted after every streamed
+      token, not only at the end.
+- [ ] The human opens the editor themselves, types, presses `Ctrl+/`, `Tab`, reloads.
+- [ ] The human types while a suggestion shows and sees it vanish.
+- [ ] The human presses `Tab` inside a list with no suggestion and sees it indent.
+- [ ] Kill-tab test run by hand and the result recorded.
+
+---
+
 ## Unit: PHASE-1-W2 — Path B ingestion
 Started: 2026-09-05 · Sessions: 1
 
