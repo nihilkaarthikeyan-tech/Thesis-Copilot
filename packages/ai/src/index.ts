@@ -79,6 +79,31 @@ export {
   SKELETON_INSTRUCTION,
   skeletonSchema,
 } from './builder/proposal.js';
+export {
+  buildQueriesRequest,
+  cleanQueries,
+  mockQueriesResponse,
+  QUERIES,
+  QUERY_ANGLES,
+  type QueriesInput,
+  type QueriesResult,
+  queriesSchema,
+  queriesUserMessage,
+  renderScope,
+  type ScopeForQueries,
+} from './builder/queries.js';
+export {
+  buildThemesRequest,
+  type GapTheme,
+  mockThemesResponse,
+  normaliseThemes,
+  THEMES,
+  type ThemeCandidate,
+  type ThemesInput,
+  type ThemesResult,
+  themesSchema,
+  themesUserMessage,
+} from './builder/themes.js';
 export { approxTokens, CHARS_PER_TOKEN, headByTokens, tailByTokens } from './builder/tokens.js';
 export {
   buildCrossPaperRequest,

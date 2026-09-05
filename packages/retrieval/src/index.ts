@@ -62,6 +62,25 @@ export {
   topK,
 } from './rank.js';
 export {
+  type BibEntry,
+  type BibFormat,
+  detectBibFormat,
+  parseBibliography,
+  parseBibtex,
+  parseRis,
+} from './scholarly/bibliography.js';
+export {
+  cosine,
+  DISCOVER,
+  type DiscoveredWork,
+  mergeWorks,
+  normaliseDoi,
+  normaliseTitle,
+  OpenAlexDiscovery,
+  openalexShortId,
+  SemanticScholarClient,
+} from './scholarly/discover.js';
+export {
   FETCH_TIMEOUT_MS,
   type FullTextFailure,
   type FullTextFetchOptions,

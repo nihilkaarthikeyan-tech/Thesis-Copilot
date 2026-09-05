@@ -16,6 +16,7 @@ export const QUEUE_EXTRACT_PAPER = 'extract-paper' satisfies QueueName;
 export const QUEUE_RESOLVE_REFERENCE = 'resolve-reference' satisfies QueueName;
 export const QUEUE_INDEX_SOURCE = 'index-source' satisfies QueueName;
 export const QUEUE_DRAFT_SECTION = 'draft-section' satisfies QueueName;
+export const QUEUE_SEARCH_LITERATURE = 'search-literature' satisfies QueueName;
 
 /**
  * Three attempts with exponential backoff from 1s. Jobs are kept after completion and failure so

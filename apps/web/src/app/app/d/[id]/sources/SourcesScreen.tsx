@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { DiscoverPanel } from './DiscoverPanel';
 
 type Source = {
   id: string;
@@ -43,6 +44,9 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'full' | 'unresolved'>('all');
+  const [tab, setTab] = useState<'library' | 'discover'>('library');
+  const [importing, setImporting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -104,6 +108,32 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     }
   }
 
+  // FR-2.9: a .bib/.ris export from Zotero or Mendeley.
+  async function importFile(file: File) {
+    setImporting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const result = await api<{ entries: number; queued: number; alreadyPresent: number }>(
+        `/documents/${documentId}/sources/import`,
+        { method: 'POST', body: form },
+      );
+      setTab('library');
+      setNotice(
+        `Imported ${result.queued} of ${result.entries} entries; they are being looked up.`,
+      );
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That import did not work.',
+      );
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function refix(sourceId: string, doi: string) {
     setError(null);
     try {
@@ -160,20 +190,67 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             {counts.unresolved > 0 ? ` · ${counts.unresolved} need a hand` : ''}
           </p>
         </div>
-        <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
-          {uploading ? 'Uploading…' : 'Add a PDF'}
-          <input
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void upload(file);
-            }}
-          />
-        </label>
+        <div className="flex gap-2">
+          <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
+            {importing ? 'Importing…' : 'Import .bib / .ris'}
+            <input
+              type="file"
+              accept=".bib,.bibtex,.ris"
+              className="hidden"
+              disabled={importing}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void importFile(file);
+              }}
+            />
+          </label>
+          <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
+            {uploading ? 'Uploading…' : 'Add a PDF'}
+            <input
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void upload(file);
+              }}
+            />
+          </label>
+        </div>
       </div>
+
+      <div className="mt-6 flex border-b border-line text-sm">
+        {(
+          [
+            ['library', 'Library'],
+            ['discover', 'Discover'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 ${tab === key ? 'border-b-2 border-ink font-medium' : 'text-muted'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {notice ? (
+        <p role="status" className="mt-4 text-sm">
+          {notice}
+        </p>
+      ) : null}
+
+      {tab === 'discover' ? (
+        <DiscoverPanel
+          documentId={documentId}
+          hasLibrary={counts.total - counts.pending - counts.unresolved > 0}
+          onAdded={() => void load()}
+        />
+      ) : null}
 
       {error ? (
         <p
@@ -184,44 +261,48 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
         </p>
       ) : null}
 
-      <div className="mt-6 flex gap-2 text-sm">
-        {(
-          [
-            ['all', `All ${counts.total}`],
-            ['full', `Full text ${counts.fullText}`],
-            ['unresolved', `Needs a hand ${counts.unresolved}`],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setFilter(key)}
-            className={`rounded-md px-3 py-1 ${filter === key ? 'bg-ink text-white' : 'border border-line hover:bg-paper'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {tab === 'library' ? (
+        <>
+          <div className="mt-6 flex gap-2 text-sm">
+            {(
+              [
+                ['all', `All ${counts.total}`],
+                ['full', `Full text ${counts.fullText}`],
+                ['unresolved', `Needs a hand ${counts.unresolved}`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`rounded-md px-3 py-1 ${filter === key ? 'bg-ink text-white' : 'border border-line hover:bg-paper'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-      {visible.length === 0 ? (
-        <p className="mt-10 rounded-lg border border-dashed border-line p-8 text-center text-sm text-muted">
-          {counts.total === 0
-            ? 'Nothing here yet. Upload your paper on the proposal screen and its references land here automatically.'
-            : 'Nothing matches that filter.'}
-        </p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line rounded-lg border border-line">
-          {visible.map((source) => (
-            <SourceRow
-              key={source.id}
-              source={source}
-              onRefix={refix}
-              onRemove={remove}
-              onOpen={openPdf}
-            />
-          ))}
-        </ul>
-      )}
+          {visible.length === 0 ? (
+            <p className="mt-10 rounded-lg border border-dashed border-line p-8 text-center text-sm text-muted">
+              {counts.total === 0
+                ? 'Nothing here yet. Upload your paper on the proposal screen and its references land here automatically.'
+                : 'Nothing matches that filter.'}
+            </p>
+          ) : (
+            <ul className="mt-6 divide-y divide-line rounded-lg border border-line">
+              {visible.map((source) => (
+                <SourceRow
+                  key={source.id}
+                  source={source}
+                  onRefix={refix}
+                  onRemove={remove}
+                  onOpen={openPdf}
+                />
+              ))}
+            </ul>
+          )}
+        </>
+      ) : null}
     </main>
   );
 }

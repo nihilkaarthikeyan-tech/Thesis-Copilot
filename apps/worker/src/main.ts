@@ -12,6 +12,8 @@ import {
   mockCrossPaperResponse,
   mockDraftFor,
   mockExtractionResponse,
+  mockQueriesResponse,
+  mockThemesResponse,
   type Providers,
 } from '@tc/ai';
 import { computeCallCost, type Env, loadEnv } from '@tc/config';
@@ -23,7 +25,9 @@ import {
   CrossrefClient,
   extractDocument,
   OpenAlexClient,
+  OpenAlexDiscovery,
   retrievePassages,
+  SemanticScholarClient,
   UnpaywallClient,
 } from '@tc/retrieval';
 import {
@@ -33,6 +37,7 @@ import {
   jobId,
   jobKeyDigest,
   type ResolveReferenceJob,
+  type SearchLiteratureJob,
 } from '@tc/types';
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -46,6 +51,7 @@ import {
   markUnresolvedAfterRetries,
   runResolveReference,
 } from './jobs/resolve-reference.js';
+import { runSearchLiterature } from './jobs/search-literature.js';
 import {
   DEFAULT_JOB_OPTIONS,
   QUEUE_DRAFT_SECTION,
@@ -53,6 +59,7 @@ import {
   QUEUE_INDEX_SOURCE,
   QUEUE_NOOP,
   QUEUE_RESOLVE_REFERENCE,
+  QUEUE_SEARCH_LITERATURE,
 } from './queues.js';
 import { captureException, initSentry } from './sentry.js';
 
@@ -71,7 +78,13 @@ function providersFor(env: Env): Providers {
         latencyMs: env.AI_MOCK_LATENCY_MS,
         // An EXTRACT request is answered from the paper's own text, so an upload still yields a
         // usable proposal screen and library before real provider keys exist. It invents nothing.
-        responses: [mockExtractionResponse, mockCrossPaperResponse],
+        // Themes before queries: both are SEARCH_QUERIES calls, told apart by <candidates>.
+        responses: [
+          mockExtractionResponse,
+          mockCrossPaperResponse,
+          mockThemesResponse,
+          mockQueriesResponse,
+        ],
         modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
       }),
       embeddings: new MockEmbeddingProvider({ dims: env.EMBED_DIMS, modelId: env.AI_EMBED_MODEL }),
@@ -156,6 +169,11 @@ async function main(): Promise<void> {
     crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
     openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
     unpaywall: new UnpaywallClient({ mailto: env.UNPAYWALL_EMAIL }),
+    // FR-2.5 discovery: OpenAlex primary, Semantic Scholar only when a key exists (PRD 13.3).
+    discovery: new OpenAlexDiscovery({ mailto: env.OPENALEX_MAILTO }),
+    semanticScholar: env.SEMANTIC_SCHOLAR_API_KEY
+      ? new SemanticScholarClient(env.SEMANTIC_SCHOLAR_API_KEY, { mailto: env.OPENALEX_MAILTO })
+      : null,
   };
 
   const workers = [
@@ -304,6 +322,23 @@ async function main(): Promise<void> {
       connection: connection.duplicate(),
       concurrency: 4,
     }),
+    new Worker(
+      QUEUE_SEARCH_LITERATURE,
+      async (job: Job<SearchLiteratureJob>) => {
+        const result = await runSearchLiterature(job.data, {
+          prisma,
+          llm: providers.llm,
+          embeddings: providers.embeddings,
+          openalex: scholarly.discovery,
+          semanticScholar: scholarly.semanticScholar,
+          aiProvider: env.AI_PROVIDER,
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        log({ msg: 'search-literature finished', jobId: job.id, ...result });
+        return result;
+      },
+      { connection, concurrency: 2 },
+    ),
   ];
 
   for (const worker of workers) {

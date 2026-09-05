@@ -103,7 +103,10 @@ export function cleanQueries(result: QueriesResult, title: string): QueriesResul
   const seen = new Set<string>();
   const out: QueriesResult['queries'] = [];
   for (const query of result.queries) {
-    const q = query.q.replace(/["“”?]/g, '').replace(/\s+/g, ' ').trim();
+    const q = query.q
+      .replace(/["“”?]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const words = q.split(' ').filter(Boolean);
     if (words.length < 3 || words.length > 12) continue;
     if (q.toLowerCase() === title.trim().toLowerCase()) continue;

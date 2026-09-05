@@ -1918,3 +1918,69 @@ under "Tests owed" and run later.
 - `apps/web/e2e/path-a.spec.ts` is written, not yet run in a browser.
 - A browser pass of the cross-paper section needs a STUDENT-plan account (FREE_TRIAL allows one
   seed paper); none written.
+
+## Phase 2 — Week 7 (literature search, gap map, curation, import)
+
+Built against `docs/PRD-version-2.md` and `docs/PHASES-version-2.md` in build-first mode: code,
+typecheck and lint per unit; specs are owed and listed at the end.
+
+### Task 7.1 — query generation and the search job (FR-2.5)
+- `packages/ai/src/builder/queries.ts` — A.7 builder (Strong, temp 0.7, `SEARCH_QUERIES`), the
+  `<scope>` renderer shared with A.8, `<existing_sources>` for Path B, `cleanQueries` enforcing
+  A.7's rules in code (3–12 words, no quotes, not the title verbatim, deduped, max 6), and a
+  data-derived mock that builds queries only from the scope's own words.
+- `packages/retrieval/src/scholarly/discover.ts` — `OpenAlexDiscovery` (search with
+  `type:article|preprint|book-chapter` and `from_publication_date` = current−15, `citedBy`,
+  `related`), `SemanticScholarClient` (only when `SEMANTIC_SCHOLAR_API_KEY` is set), `mergeWorks`
+  (DOI first, then normalised title; a later duplicate only fills empty fields), `cosine`.
+- `apps/worker/src/jobs/search-literature.ts` — the run: one Strong call for queries → OpenAlex
+  (+ S2) per query → merge → drop what the library already holds → embed the scope and every
+  candidate (batches of 64) and keep the top 60 by cosine (**no** Strong call in the filter,
+  FR-2.5) → one Fast call for themes → `SearchCandidate` rows + `DocumentMemory.gapMap`. Counts
+  per stage are logged and stored on `Document.meta.searchRuns[runId]`, so a run that loses
+  candidates says where.
+
+### Task 7.2 — theme labelling and the gap map (FR-2.6)
+- `packages/ai/src/builder/themes.ts` — A.8 builder (Fast, temp 0), and `normaliseThemes`, which
+  enforces what the prompt asks for rather than trusting it: unknown ids dropped, duplicates kept
+  in their first theme, forgotten candidates collected under "Other", more than eight themes
+  merged down, `thin = count < 4`. The mock groups by the most frequent title word — a label taken
+  from the papers themselves.
+
+### Task 7.3 — curation (FR-2.7)
+- `apps/api/src/modules/sources/{search.service,search.controller}.ts` —
+  `POST /documents/:id/search`, `GET …/search`, `GET …/search/:runId` (grouped by theme, thin
+  flagged), `POST …/search/:runId/select`. Selection is the only path into the library: each
+  candidate becomes a `Source` with `subTheme` set and goes through the existing
+  resolve → full-text → index pipeline, so it ends up with the same grounding badge as any other
+  source. Already-present DOIs and reference lines are counted, not duplicated.
+- `apps/web/src/app/app/d/[id]/sources/DiscoverPanel.tsx` + a Library/Discover tab on the sources
+  screen: run, poll, gap-map grid with thin themes flagged in warn colour, checkboxes, "Add N to
+  the library". Nothing is ticked by default.
+
+### Task 7.4 — Path B expansion (FR-2.8)
+- `mode: 'expand'` in the same job: for each resolved source with an OpenAlex id, `cited_by`
+  (top 10, most cited first) and `related_works`, merged and stored under the theme "Related to
+  your citations". No model call, so it costs nothing but time.
+
+### Task 7.5 — BibTeX/RIS import (FR-2.9)
+- `packages/retrieval/src/scholarly/bibliography.ts` — a plain parser for both formats: BibTeX
+  brace/quote values, `@string` substitution, `#` concatenation, TeX accent unescaping; RIS
+  two-letter tags with `TY`/`ER` records. Entries without a title and without a DOI are skipped
+  rather than guessed at. `POST /documents/:id/sources/import` (multipart) feeds them to the same
+  `resolveReferences` the extraction uses; an "Import .bib / .ris" control sits next to "Add a PDF".
+
+### Task 7.6 — sub-theme on sources
+- `Source.subTheme` is written at selection time from the candidate's theme; the §10.4 rerank
+  bonus for a matching sub-theme was already in `packages/retrieval/src/rank.ts`.
+
+### Tests owed (week 7)
+- Builders: A.7 `cleanQueries` rules, A.8 `normaliseThemes` (every id exactly once, ≤ 8 themes,
+  thin flag), the two mocks.
+- `mergeWorks` dedupe by DOI and by title; `cosine`.
+- Bibliography parser: a BibTeX fixture with `@string`, braces and accents; a RIS fixture.
+- Job: discover end to end against a fake Prisma and scripted provider (counts per stage, one
+  Strong + one Fast call); expand with two sources.
+- API: run → poll → select → source rows created with `subTheme` and resolve jobs enqueued;
+  cross-user 404s on the three new routes.
+- E2E: the Discover tab from a saved proposal to three added sources.

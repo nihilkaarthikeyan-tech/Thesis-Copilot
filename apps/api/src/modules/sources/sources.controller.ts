@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { SearchService } from './search.service.js';
 import { SourcesService, UploadRejected } from './sources.service.js';
 
 const refixBody = z.object({ doi: z.string().trim().min(3).max(200) });
@@ -44,7 +45,21 @@ async function readUpload(
 @Controller()
 @UseGuards(SessionGuard)
 export class SourcesController {
-  constructor(private readonly sources: SourcesService) {}
+  constructor(
+    private readonly sources: SourcesService,
+    private readonly search: SearchService,
+  ) {}
+
+  /** FR-2.9: BibTeX/RIS from Zotero or Mendeley into the resolve pipeline. */
+  @Post('documents/:id/sources/import')
+  async importBibliography(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Req() request: FastifyRequest,
+  ) {
+    const { filename, bytes } = await readUpload(request);
+    return this.search.importBibliography(user.id, documentId, filename, Buffer.from(bytes));
+  }
 
   @Post('documents/:id/seed-papers')
   async addSeedPaper(
