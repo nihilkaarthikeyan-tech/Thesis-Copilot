@@ -2089,3 +2089,67 @@ typecheck and lint per unit; specs are owed and listed at the end.
 - Stored turns carry an id: the thread is trimmed from the front, so a list index is not an
   identity, and keying the panel's list on one would have re-used a React node for a different
   turn after the fifth question.
+
+## Phase 2 — Week 10 (citations done properly)
+
+### Task 10.1 — CSL rendering (FR-5.2, FR-5.3)
+- Files: `packages/citations/` — `styles.ts` (the registry of 22 entries: the ten PHASES names,
+  ten more common in Indian engineering/medical/social-science departments, and two
+  `IN_UNIVERSITY_*` placeholders), `csl.ts` (`Source` → CSL-JSON, stored `cslJson` winning field by
+  field over the row), `render.ts` (citeproc through `@citation-js/core` + `plugin-csl`),
+  `checks.ts`, `styles/*.csl` (verbatim from the CSL project, CC BY-SA 3.0, provenance in
+  `styles/README.md`).
+- **One engine renders the whole document in one pass.** citation-js's own `citation` formatter
+  rebuilds the processor state per call: 200 citations took **1,550 ms** and — worse — its
+  `bibliography` formatter has no citation history, so a numeric style produced labels in citation
+  order and a bibliography in load order. They did not match. Driving one engine with every
+  cluster (`rebuildProcessorState`, then `makeBibliography`) gives labels and bibliography from the
+  same state: **29 ms** for the same 200, and `[1]` is the first source the thesis cites.
+- Evidence — the renderer against three styles and a removed source:
+
+  ```
+  ieee      -> {"k1":"[1]","k2":"[2]","k3":"[1]"}   missing ['gone']
+     bib: [1] A. Kumar, “Solar adoption in rural Karnataka,” Energy Policy, 2021.
+          [2] Y. LeCun, Y. Bengio, and G. Hinton, “Deep learning,” Nature, vol. 521, …
+  apa       -> {"k1":"(Kumar, 2021)","k2":"(LeCun et al., 2015)","k3":"(Kumar, 2021)"}
+  vancouver -> {"k1":"(1)","k2":"(2)","k3":"(1)"}
+  ```
+  The same source cited twice keeps one number; an uncited source takes none; a citation whose
+  source has left the library is reported rather than rendered (B.5's orphan).
+- Document order comes from the chapters themselves — chapter order, then ProseMirror position
+  (`citationNodesIn`) — not from the `Citation` rows, which have no position and no order between
+  chapters. That is what makes "across chapters" true.
+
+### Task 10.2 — style switcher (FR-5.2)
+- Files: `apps/api/src/modules/chapters/citations.{service,controller}.ts`
+  (`GET /documents/:id/citations`, `PUT /documents/:id/citation-style`),
+  `apps/web/src/components/editor/CitationsPanel.tsx`, and `applyRendered` in `ThesisEditor`.
+- A switch writes one column and returns the new labels; the editor calls `setCitationStyle`,
+  which dispatches a re-render transaction. No chapter is written, so no autosave, no version
+  bump, and no way for a switch to lose an unsaved sentence — which is what FR-5.2's "no body
+  edits" has to mean in an editor that autosaves.
+
+### Task 10.3 — mechanical checks (FR-5.4)
+- `packages/citations/src/checks.ts`: ORPHAN (a citation node whose source left the library),
+  UNUSED (a source nothing cites — stated as a fact, not an error), UNTAGGED (three narrow regexes
+  for author–date, narrative and numeric strings the student typed rather than inserted). No model
+  is involved, so nothing here can invent a problem; each finding carries a ProseMirror position
+  and the panel's "Show me" selects it.
+
+### Task 10.4 — paste-parse (FR-5.5, A.15)
+- Files: `packages/ai/src/builder/cite-parse.ts` (A.15 Fast/temperature-0 call, a mock that reads
+  the obvious shape out of a reference and invents nothing),
+  `apps/api/src/modules/chapters/cite-parse.service.ts`, `POST /documents/:id/citations/parse` and
+  `…/accept`, the "Paste a reference" tab.
+- Parse then verify, never merged: the model's fields are a guess until Crossref says the paper
+  exists. A printed DOI beats a produced one; a title search has to clear the same C.3 similarity
+  threshold the library uses **and** say the title that was pasted, or the outcome is "unverified —
+  check manually" with no button to add it. Accepting one puts it through the ordinary resolution
+  path, so it arrives with the same grounding badge as everything else.
+
+### Task 10.5 — `.docx` export upgrade (FR-8.1)
+- `packages/export/src/docx.ts` gained numbered headings (computed here, not left to Word's list
+  engine — a `.docx` that renumbers itself on open is one whose cross-references stop matching);
+  `apps/api/src/modules/export/export.service.ts` now renders through the same citeproc pass as the
+  editor, so an exported chapter's labels are the labels on screen, and prints only the sources
+  that chapter cites. The hand-built "(Author, year)" fallback and its helper are gone.

@@ -59,6 +59,12 @@ blocks the agent from continuing to build against mocks.
 - [ ] **Pilot report interpretation** (PHASES 5.10): after ≥ 10 days of student use run
       `pnpm pilot:report` (or `pnpm pilot:report --json`), paste it into `docs/BUILD_LOG.md`, and
       write `docs/PILOT-1.md` — the numbers are the script's, the reading is yours.
+- [ ] **`pnpm build` for the web app on Windows** (environment, not code): Next's `output:
+      'standalone'` copies traced files with symlinks, and Windows refuses them without Developer
+      Mode or an elevated shell — `EPERM: operation not permitted, symlink … @opentelemetry/api`.
+      Every other workspace builds. `pnpm dev` and the Docker image (Linux) are unaffected, so this
+      only bites if you want a production build on this machine: turn on Settings → Privacy &
+      security → For developers → Developer Mode, or build in Docker.
 - [ ] **Razorpay** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 - [ ] **Sentry DSN** (optional, week 5).
 

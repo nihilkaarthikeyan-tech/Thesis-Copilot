@@ -1,1 +1,29 @@
-export {};
+export {
+  type ChapterDoc,
+  type CheckInput,
+  type CitationCheckKind,
+  type CitationFinding,
+  citationNodesIn,
+  type FoundCitationNode,
+  runCitationChecks,
+  untaggedCitationsIn,
+} from './checks.js';
+export { type CslItem, type CslName, namesFrom, type SourceLike, toCslItem } from './csl.js';
+export {
+  type BibliographyEntry,
+  type CitationRef,
+  type RenderInput,
+  type RenderResult,
+  renderCitations,
+} from './render.js';
+export {
+  DEFAULT_STYLE,
+  findStyle,
+  isKnownStyle,
+  resolveStyle,
+  STYLES,
+  STYLES_DIR,
+  type StyleEntry,
+  type StyleFamily,
+  styleXml,
+} from './styles.js';

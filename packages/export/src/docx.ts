@@ -40,7 +40,29 @@ export type ExportOptions = {
   bibliography?: readonly string[];
   /** Images by object-storage key. Absent keys become a placeholder line, never a broken file. */
   images?: Record<string, { data: Uint8Array; width: number; height: number }>;
+  /**
+   * PHASES v2 W10.5: number the headings ("3.2 Method"). The numbers are computed here rather
+   * than left to Word's list engine, because a `.docx` that renumbers itself when opened is a
+   * `.docx` whose cross-references in the student's own text stop matching.
+   */
+  numberHeadings?: boolean;
+  /** The chapter's position in the thesis, so its headings number from it. Defaults to 1. */
+  chapterNumber?: number;
 };
+
+/** Running heading counters for one export (H2 within the chapter, H3 within the H2). */
+type HeadingCounter = { h2: number; h3: number };
+
+function headingNumber(level: number, counter: HeadingCounter, chapter: number): string {
+  if (level <= 1) return `${chapter}`;
+  if (level === 2) {
+    counter.h2 += 1;
+    counter.h3 = 0;
+    return `${chapter}.${counter.h2}`;
+  }
+  counter.h3 += 1;
+  return `${chapter}.${counter.h2}.${counter.h3}`;
+}
 
 const HEADING = {
   1: HeadingLevel.HEADING_1,
@@ -96,18 +118,25 @@ function runsFrom(nodes: readonly PmNode[], options: ExportOptions): TextRun[] {
 function paragraphsFrom(
   node: PmNode,
   options: ExportOptions,
-  context: { listLevel?: number; ordered?: boolean } = {},
+  context: { listLevel?: number; ordered?: boolean; counter?: HeadingCounter } = {},
 ): Array<Paragraph | Table> {
   const out: Array<Paragraph | Table> = [];
 
   switch (node.type) {
     case 'heading': {
       const level = Number(node.attrs?.level ?? 2);
+      const runs = runsFrom(node.content ?? [], options);
+      if (options.numberHeadings && context.counter && level > 1) {
+        const number = headingNumber(level, context.counter, options.chapterNumber ?? 1);
+        runs.unshift(new TextRun({ text: `${number} ` }));
+      }
       out.push(
-        new Paragraph({
-          heading: HEADING[level as 1 | 2 | 3] ?? HeadingLevel.HEADING_3,
-          children: runsFrom(node.content ?? [], options),
-        }),
+        {
+          paragraph: new Paragraph({
+            heading: HEADING[level as 1 | 2 | 3] ?? HeadingLevel.HEADING_3,
+            children: runs,
+          }),
+        }.paragraph,
       );
       break;
     }
@@ -242,9 +271,16 @@ function textOf(node: PmNode): string {
  */
 export async function chapterToDocx(doc: unknown, options: ExportOptions): Promise<Buffer> {
   const root = (doc ?? {}) as PmNode;
+  const counter: HeadingCounter = { h2: 0, h3: 0 };
+  const chapterNumber = options.chapterNumber ?? 1;
   const body: Array<Paragraph | Table> = [
-    new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun(options.title)] }),
-    ...(root.content ?? []).flatMap((node) => paragraphsFrom(node, options)),
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      children: [
+        new TextRun(options.numberHeadings ? `${chapterNumber}. ${options.title}` : options.title),
+      ],
+    }),
+    ...(root.content ?? []).flatMap((node) => paragraphsFrom(node, options, { counter })),
   ];
 
   const bibliography = options.bibliography ?? [];

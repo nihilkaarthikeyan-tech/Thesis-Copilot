@@ -26,6 +26,7 @@
     "dist"
   ],
   "dependencies": {
+    "@tc/citations": "workspace:^",
     "docx": "9.7.1"
   }
 }

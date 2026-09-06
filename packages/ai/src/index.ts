@@ -39,6 +39,17 @@ export {
   usableCandidates,
 } from './builder/cite.js';
 export {
+  buildCiteParseRequest,
+  CITE_PARSE,
+  type CiteParseInput,
+  CSL_TYPES,
+  doiIn,
+  mockCiteParseResponse,
+  type ParsedCitation,
+  parsedCitationSchema,
+  referenceLinesIn,
+} from './builder/cite-parse.js';
+export {
   buildCommandRequest,
   COMMAND,
   COMMAND_LABELS,

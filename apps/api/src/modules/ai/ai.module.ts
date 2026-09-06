@@ -14,6 +14,7 @@ import {
   MockEmbeddingProvider,
   MockLlmProvider,
   mockChatFor,
+  mockCiteParseResponse,
   mockCiteResponse,
   mockCommandResponse,
   mockProposalFor,
@@ -63,6 +64,9 @@ export function mockSuggestionFor(req: LlmRequest): string {
                   match: (req: LlmRequest) => req.action === 'CITE',
                   respond: mockCiteResponse,
                 },
+                // FR-5.5: a pasted reference is parsed by the same shaped answer the real model
+                // gives, so the verify-then-insert path is exercisable without a key.
+                mockCiteParseResponse,
                 mockCommandResponse,
                 mockStyleResponse,
                 {

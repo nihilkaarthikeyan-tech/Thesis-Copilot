@@ -69,12 +69,30 @@ export function newCitationKey(): string {
   return `c_${nanoid(10)}`;
 }
 
+/** Styles whose labels are numbers; the registry in `@tc/citations` is the full list. */
+const NUMERIC_PLACEHOLDER = new Set([
+  'ieee',
+  'vancouver',
+  'nature',
+  'acm',
+  'ama',
+  'acs',
+  'aip',
+  'bmj',
+  'science',
+  'rsc',
+  'elsevier-vancouver',
+  'IN_UNIVERSITY_NUMERIC',
+]);
+
 function labelFor(node: PmNode, storage: CitationStorage): string {
   const key = String(node.attrs.key);
   const rendered = storage.renderedMap[key];
   if (rendered) return rendered;
-  // Placeholder until citeproc lands (Phase 2 week 10): APA-ish or numeric by style family.
-  return storage.style === 'ieee' ? '[?]' : '(Source, n.d.)';
+  // No label yet: the render is a round trip (GET /documents/:id/citations), so a citation
+  // inserted this second shows a placeholder for one frame. Shaped like the style so the line
+  // does not reflow when the real label arrives.
+  return NUMERIC_PLACEHOLDER.has(storage.style) ? '[·]' : '(Source, n.d.)';
 }
 
 export const Citation = Node.create<CitationOptions, CitationStorage>({

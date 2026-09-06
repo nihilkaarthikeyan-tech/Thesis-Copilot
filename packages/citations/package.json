@@ -19,10 +19,16 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
+    "@types/node": "22.20.1",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
   },
   "files": [
-    "dist"
-  ]
+    "dist",
+    "styles"
+  ],
+  "dependencies": {
+    "@citation-js/core": "^0.8.2",
+    "@citation-js/plugin-csl": "^0.8.2"
+  }
 }

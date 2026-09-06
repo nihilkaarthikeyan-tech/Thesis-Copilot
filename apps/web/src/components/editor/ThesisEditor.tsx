@@ -62,6 +62,7 @@ import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ChatPanel } from './ChatPanel';
 import { CitationList } from './CitationList';
+import { CitationsPanel, type Rendered } from './CitationsPanel';
 import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
 import { DraftMode } from './DraftMode';
@@ -383,6 +384,14 @@ function ChapterEditor({
     return () => clearTimeout(t);
   }, [notice]);
 
+  /**
+   * FR-5.2: a style switch re-renders every citation without touching the document — the labels
+   * live in the extension's storage, and `setCitationStyle` dispatches a re-render transaction.
+   */
+  const applyRendered = useCallback((rendered: Rendered) => {
+    editorRef.current?.commands.setCitationStyle(rendered.style, rendered.labels);
+  }, []);
+
   const assist = usage?.actions.find((a) => a.action === 'ASSIST');
   const draft = usage?.actions.find((a) => a.action === 'DRAFT');
   const ghost = editor ? getGhostState(editor) : undefined;
@@ -573,7 +582,15 @@ function ChapterEditor({
             {tab === 'sources' ? (
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
             ) : tab === 'citations' ? (
-              <CitationList editor={editor} />
+              <>
+                <CitationList editor={editor} />
+                <CitationsPanel
+                  documentId={doc.id}
+                  chapterId={chapter.id}
+                  editor={editor}
+                  onRendered={applyRendered}
+                />
+              </>
             ) : (
               <ChatPanel
                 documentId={doc.id}

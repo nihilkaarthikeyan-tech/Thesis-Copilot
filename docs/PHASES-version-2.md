@@ -29,8 +29,8 @@ push, and keep docs/PENDING.md current. Then continue with the next unit.
 | PHASE-2 W7 | Literature search, gap map, curation, import | done |
 | PHASE-2 W8 | Templates, outline, document memory, multi-chapter | done |
 | PHASE-2 W9 | Style profile, section commands, automatic-suggest, chat | done |
-| PHASE-2 W10 | Citations done properly (CSL, styles, checks, paste-parse, docx upgrade) | **next** |
-| PHASE-2 W11 | Billing, plans, marketing | |
+| PHASE-2 W10 | Citations done properly (CSL, styles, checks, paste-parse, docx upgrade) | done |
+| PHASE-2 W11 | Billing, plans, marketing | **next** |
 | PHASE-3 B1 | Coherence engine | |
 | PHASE-3 B2 | Guide and committee cycle | |
 | PHASE-3 B3 | Institution templates, compliance, PDF, polish | |

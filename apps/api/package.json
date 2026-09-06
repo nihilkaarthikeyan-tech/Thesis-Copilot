@@ -22,6 +22,7 @@
     "@prisma/client": "6.19.3",
     "@sentry/node": "^10.73.0",
     "@tc/ai": "workspace:*",
+    "@tc/citations": "workspace:^",
     "@tc/config": "workspace:*",
     "@tc/db": "workspace:*",
     "@tc/export": "workspace:*",

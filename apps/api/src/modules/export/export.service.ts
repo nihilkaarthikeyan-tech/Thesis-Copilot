@@ -23,6 +23,7 @@ import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
+import { CitationsService } from '../chapters/citations.service.js';
 
 export type ExportFormat = 'docx' | 'pdf';
 
@@ -33,6 +34,7 @@ export class ExportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly citations: CitationsService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -45,40 +47,36 @@ export class ExportService {
         title: true,
         content: true,
         documentId: true,
+        order: true,
         citations: {
           select: {
+            sourceId: true,
             nodeKey: true,
-            source: { select: { title: true, year: true, authors: true, venue: true } },
           },
         },
       },
     });
     if (!chapter) throw new NotFoundError('That chapter');
 
-    // Until citeproc lands (Phase 2), the label and the bibliography line are built from the
-    // stored CSL fields. They say what is actually known and invent nothing.
-    const renderedMap: Record<string, string> = {};
-    const bibliography: string[] = [];
-    for (const citation of chapter.citations) {
-      const source = citation.source;
-      const name = firstAuthor(source.authors);
-      renderedMap[citation.nodeKey] =
-        `(${[name, source.year].filter(Boolean).join(', ') || 'Source'})`;
-      const line = [
-        name ? `${name}${source.year ? ` (${source.year})` : ''}.` : null,
-        source.title ? `${source.title}.` : null,
-        source.venue ? `${source.venue}.` : null,
-      ]
-        .filter(Boolean)
-        .join(' ');
-      if (line && !bibliography.includes(line)) bibliography.push(line);
-    }
-    bibliography.sort((a, b) => a.localeCompare(b, 'en'));
+    // FR-5.2/FR-8.1: the same renderer the editor uses, on the whole document — so the labels in
+    // the exported chapter are the labels on screen, and a numeric style's numbers match the
+    // bibliography's order. Only the sources this chapter cites are printed.
+    const rendered = await this.citations.render(ownerId, chapter.documentId);
+    const citedHere = new Set(chapter.citations.map((c) => c.nodeKey));
+    const sourcesHere = new Set(chapter.citations.map((c) => c.sourceId));
+    const renderedMap = Object.fromEntries(
+      Object.entries(rendered.labels).filter(([key]) => citedHere.has(key)),
+    );
+    const bibliography = rendered.bibliography
+      .filter((entry) => sourcesHere.has(entry.sourceId))
+      .map((entry) => entry.text);
 
     const docx = await chapterToDocx(chapter.content, {
       title: chapter.title,
       renderedMap,
       bibliography,
+      numberHeadings: true,
+      chapterNumber: chapter.order,
     });
 
     const safeTitle = slug(chapter.title);
@@ -183,12 +181,6 @@ function slug(title: string): string {
       .replace(/^-+|-+$/g, '')
       .slice(0, 60) || 'chapter'
   );
-}
-
-function firstAuthor(authors: unknown): string | null {
-  if (!Array.isArray(authors) || authors.length === 0) return null;
-  const first = authors[0] as { family?: string; literal?: string };
-  return first?.family?.trim() || first?.literal?.trim() || null;
 }
 
 /** `Chapter.wordCounts` is JSON written on save (B.4); anything unexpected reads as zero. */
