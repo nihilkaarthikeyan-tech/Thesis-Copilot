@@ -96,27 +96,29 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-**Phase 1 weeks 0–5 are built** (2026-09-05). `docs/BUILD_LOG.md` has per-task evidence. Working
-end to end and driven in a real browser: sign-in, the thesis list, the proposal screen, the
-library with grounding badges and manual DOI fix, the TipTap editor with Assist through the real
-prompt pipeline (A.0/A.0.1/A.1 rendered from the prompt files, §10.4 retrieval, §10.6 whitelist),
-citations that resolve to real sources with a hover passage, claim-triggered citation suggestion,
-draft mode (grounded or refused, accepted or discarded), `.docx`/PDF export, the AI-usage log,
-the SUPERADMIN dashboards, §14 alerts through a console mailer, live feature-flag toggles, the
-§6.2 error/empty states, first-run hints and the "How suggestions work" panel, the §12.1
-authorisation and rate-limit tests, `/admin/users` (per-student usage, logged cap reset and plan
-change, ADR-0004 `AuditEvent`), the feedback link, Sentry behind `SENTRY_DSN`, and
-`pnpm pilot:report`.
+**Phase 1 and Phase 2 are built** (2026-09-06). `docs/BUILD_LOG.md` has per-task evidence.
+
+Working end to end: OTP sign-in; Path A (a 2–4 turn conversation with an OpenAlex gap check) and
+Path B (upload 1–3 papers, extraction, cross-paper flags); the proposal screen; literature
+discovery with a themed gap map, curation and BibTeX/RIS import; templates and generated outlines
+with an editable tree; the editor with Assist ghost text over SSE, citations with passage popovers,
+guided input, draft mode, section commands with a diff, chat over the library, and automatic
+suggest behind a per-user setting; a style profile learned from the student's own 1,500 words;
+citeproc citations in 22 styles with an instant switch, mechanical checks and paste-parse;
+`.docx`/PDF export with numbered headings and a real bibliography; caps, the usage meter,
+`/admin` and `/admin/users`; Razorpay subscriptions with T−3 reminders, one-click cancel and
+invoice PDFs; and the marketing pages (`/pricing`, `/privacy`, `/refunds`).
 
 Not done, and why:
-- **Task 2.9 (C.3 scoring)**, the C.4 recall set, the C.5 golden scenarios, the 3.4 thirty-run
-  evidence and 3.9 prompt observations are all BLOCKED on things only the human can do: fixture
-  papers, a provider key, hand-written scenarios. `docs/PENDING.md` lists each.
 - **Every AI call so far went to the mock.** Cost is ₹0 everywhere; token counts and cache ratios
   are the mock's simulation. `pnpm ai:verify` with a real key settles the cost model.
-- **Week 5's VPS half** — the k6 run, Sentry's first event, Uptime Kuma, the deploy (5.8), the
-  backup crons — needs the server and keys. `docs/PENDING.md` has the exact steps.
-- **Phase 2 is next** (`docs/PHASES.md` → PHASE-2).
+- **Tests for weeks 6–11 are owed** — the build-first instruction. `docs/PHASES-version-2.md` →
+  VERIFY lists them; weeks 1–5 are covered (659 unit/integration, 21 Playwright).
+- **Anything needing a key, a server or a human decision** is in `docs/PENDING.md`: provider keys,
+  the VPS and deploy, k6, Sentry, Razorpay keys and price confirmation, fixture papers, the C.4/C.5
+  sets, university templates.
+- **Phase 3 is next** (`docs/PHASES-version-2.md` → PHASE-3): coherence engine, guide cycle,
+  institution templates and compliance, institution admin.
 
 The owner's standing instructions (2026-09-04/05): build every phase without stopping at a gate,
 **build first and verify in batches** rather than PRD §0.3 rule 7's one-task-at-a-time cadence,
