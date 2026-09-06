@@ -10,3 +10,4 @@ export {
   type WordCounts,
 } from './ai-usage.js';
 export { chapterToDocx, type ExportOptions } from './docx.js';
+export { type InvoiceInput, invoiceToDocx } from './invoice.js';

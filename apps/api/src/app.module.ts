@@ -7,6 +7,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
 import { AssistModule } from './modules/assist/assist.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
 import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { ExportModule } from './modules/export/export.module.js';
@@ -19,6 +20,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
 
 @Module({
   imports: [
+    BillingModule,
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),

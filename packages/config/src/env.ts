@@ -102,6 +102,9 @@ export const envSchema = z
     RAZORPAY_KEY_ID: optionalString,
     RAZORPAY_KEY_SECRET: optionalString,
     RAZORPAY_WEBHOOK_SECRET: optionalString,
+    // Plan ids created once in the Razorpay dashboard (docs/PENDING.md); §11.6's prices.
+    RAZORPAY_PLAN_MONTHLY: optionalString,
+    RAZORPAY_PLAN_ANNUAL: optionalString,
 
     // ---- Email: Resend or SMTP (§13.3 "RESEND_API_KEY or SMTP_*") ----
     RESEND_API_KEY: optionalString,

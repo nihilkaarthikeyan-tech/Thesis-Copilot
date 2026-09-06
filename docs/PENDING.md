@@ -65,7 +65,17 @@ blocks the agent from continuing to build against mocks.
       Every other workspace builds. `pnpm dev` and the Docker image (Linux) are unaffected, so this
       only bites if you want a production build on this machine: turn on Settings → Privacy &
       security → For developers → Developer Mode, or build in Docker.
-- [ ] **Razorpay** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
+- [ ] **Razorpay keys and plans** (PHASES v2 W11.1): create the two subscription plans in the
+      Razorpay dashboard at §11.6's prices (₹299/month, ₹2,499/year), then set `RAZORPAY_KEY_ID`,
+      `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_PLAN_MONTHLY` and
+      `RAZORPAY_PLAN_ANNUAL`. Point the webhook at `https://<domain>/api/v1/billing/webhook` and
+      subscribe it to `subscription.activated`, `charged`, `pending`, `halted`, `cancelled`,
+      `completed`, `paused`, `resumed`. Without the keys the product runs in full except that
+      nothing can be bought, and `/app/account` says so. Then buy one subscription in test mode
+      and check the caps change, the invoice PDF renders, and cancelling emails you.
+- [ ] **Confirm §11.6's prices** (PRD marks it `DECISION PENDING`): ₹299 / ₹2,499 / negotiated
+      institution seat are what `packages/config/src/billing.ts` and the pricing page use today.
+- [ ] **Old Razorpay note** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 - [ ] **Sentry DSN** (optional, week 5).
 
 ## Deployment

@@ -9,6 +9,18 @@ export {
   type UnmeteredAction,
 } from './actions.js';
 export {
+  BILLING,
+  type BillingPeriod,
+  effectivePlan,
+  isPurchasable,
+  type PlanPricing,
+  PRICING,
+  PURCHASABLE_PLANS,
+  type PurchasablePlan,
+  SUBSCRIPTION_STATUSES,
+  type SubscriptionStatus,
+} from './billing.js';
+export {
   ACTION_PROFILES,
   type ActionProfile,
   type BudgetLine,

@@ -12,6 +12,7 @@ import type { Env } from '@tc/config';
 import type {
   FastifyBaseLogger,
   FastifyInstance,
+  FastifyRequest,
   FastifyServerOptions,
   FastifyTypeProviderDefault,
   RawServerDefault,
@@ -45,6 +46,9 @@ export function buildFastify(): FastifyServerOptions {
   };
 }
 
+/** The one route whose raw body is kept, for the HMAC check (FR-9.5). */
+const WEBHOOK_PATH = '/api/v1/billing/webhook';
+
 /** Sign-in is the endpoint worth brute-forcing, so it gets the strict limit. */
 const AUTH_PATH = '/api/v1/auth/';
 /**
@@ -69,6 +73,25 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
   const fastify = app.getHttpAdapter().getInstance() as unknown as ApiFastify;
 
   await fastify.register(cookie);
+
+  // Razorpay signs the exact bytes it sent (FR-9.5), so the webhook needs them unparsed. Fastify's
+  // JSON parser is replaced by one that keeps the buffer on the request and then parses as usual —
+  // every other route is unaffected, and the signature check has something real to verify.
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'buffer' },
+    (request, body: Buffer, done) => {
+      if (request.url.startsWith(WEBHOOK_PATH)) {
+        (request as FastifyRequest & { rawBody?: Buffer }).rawBody = body;
+      }
+      if (body.length === 0) return done(null, {});
+      try {
+        done(null, JSON.parse(body.toString('utf8')) as unknown);
+      } catch (error) {
+        done(error as Error, undefined);
+      }
+    },
+  );
 
   // Uploads (PRD FR-1.1, FR-2.3). The outer ceiling matches `bodyLimit`; the per-plan limit from
   // §11.3 is enforced in `upload-rules.ts`, which needs the bytes to check the magic number anyway.

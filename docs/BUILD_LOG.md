@@ -2153,3 +2153,54 @@ typecheck and lint per unit; specs are owed and listed at the end.
   `apps/api/src/modules/export/export.service.ts` now renders through the same citeproc pass as the
   editor, so an exported chapter's labels are the labels on screen, and prints only the sources
   that chapter cites. The hand-built "(Author, year)" fallback and its helper are gone.
+
+## Phase 2 — Week 11 (billing, plans, marketing)
+
+### Task 11.1 — Razorpay subscriptions (FR-9.5)
+- Files: `packages/config/src/billing.ts` (§11.6's prices, the lifecycle constants, and
+  `effectivePlan` — the one function that decides which caps apply),
+  `apps/api/src/modules/billing/{billing.service,billing.controller,billing.module}.ts`,
+  the raw-body content-type parser in `bootstrap.ts`, `RAZORPAY_PLAN_MONTHLY` / `_ANNUAL` in the
+  env schema.
+- Three decisions worth stating:
+  - **The webhook is the source of truth.** A checkout that succeeded in the browser is not a
+    subscription; `subscription.activated` is. Nothing grants caps before it arrives, so a student
+    who closes the tab mid-payment cannot end up with caps they did not buy — or without ones they
+    did.
+  - **Idempotent by event.** Razorpay retries until it gets a 2xx. Every applied event is recorded
+    and a repeat returns `duplicate` without touching the period end; the webhook always answers
+    200, because a non-2xx makes it retry something already decided.
+  - **`effectivePlan` is the only place the rules live.** Cancelled keeps its plan to the end of the
+    paid period; past-due keeps it through three grace days and then falls back to `FREE_TRIAL`
+    caps with every document untouched (FR-9.5). The `User.plan` column follows it, so the cap
+    check reads one value.
+- The raw body: Razorpay signs the exact bytes, so Fastify's JSON parser is replaced by one that
+  keeps the buffer for `/billing/webhook` and parses as before for everything else. The signature
+  is compared with `timingSafeEqual`.
+- Without keys the whole product runs and nothing is buyable; `/app/account` says why.
+
+### Task 11.2 — billing hygiene (§2.5)
+- Renewal reminder T−3 days (`renewal.scheduler.ts`, hourly, idempotent per user per period
+  through an `AuditEvent` — a restart storm cannot email twice); one-click cancel on
+  `/app/account`, first control on the card, working at 375 px, with a confirmation that states
+  what is kept and that nothing is deleted; a cancellation confirmation email; `/refunds` linked
+  from pricing, the account screen and the cancellation email; an invoice PDF per charge
+  (`packages/export/src/invoice.ts` → the same Gotenberg path as a thesis export).
+- §2.5 is the design brief for all of it: 22% of the reference product's reviews are one-star, and
+  almost all of them are about a renewal nobody saw and a cancel button nobody could find.
+
+### Task 11.3 — pricing page and marketing (§11.6, §12.3, §12.2)
+- `/pricing` is a server component reading `PRICING` and `PLAN_LIMITS` from `packages/config` — the
+  same tables the charge and the cap check read, so the page cannot promise an allowance the
+  software will not give. It carries the caps table, the integrity position in full, and an FAQ
+  that answers the Jenni comparison in plain words.
+- `/privacy` states what is sent and when, what is logged (call metadata, never bodies), who can
+  see what, and that we do not train on a student's thesis. `/` links all three.
+
+### Task 11.4 — usage meter polish
+- `/app/account` shows per-action bars against the caps, the reset date, and one sentence on what
+  counts: an action is charged when the AI generates something, kept or dismissed, and nothing the
+  student types counts.
+
+**Phase 2 is complete.** Weeks 6–11 built; the human items (Razorpay keys and the price
+confirmation) are in `docs/PENDING.md`.

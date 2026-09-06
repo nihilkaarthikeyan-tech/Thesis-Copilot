@@ -77,6 +77,9 @@ export default function DocumentListPage() {
         <Link href="/app/settings" className="text-xs text-muted underline">
           Settings
         </Link>
+        <Link href="/app/account" className="text-xs text-muted underline">
+          Account
+        </Link>
         <button
           type="button"
           className="text-xs text-muted underline"

@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 /**
- * `/` — marketing placeholder (PRD §6.1). The real marketing site is Phase 2 week 11.
- * PRD §12.3 asks the marketing site to state the academic-integrity position plainly; that line
- * is here from day one.
+ * `/` — the marketing home (PRD §6.1, §12.3, PHASES v2 W11.3).
+ *
+ * §12.3 asks the marketing site to state the academic-integrity position plainly. It is the second
+ * paragraph, not a link in a footer.
  */
 export default function HomePage() {
   return (
@@ -15,7 +16,7 @@ export default function HomePage() {
         keeps a log of everything it did so you can disclose it.
       </p>
       <p className="mt-2 text-sm text-muted">No “humanise” features. No detector evasion. Ever.</p>
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         <Button asChild>
           <Link href="/sign-in">Sign in</Link>
         </Button>
@@ -23,6 +24,19 @@ export default function HomePage() {
           <Link href="/app">Your theses</Link>
         </Button>
       </div>
+      <p className="mt-10 text-sm text-muted">
+        <Link href="/pricing" className="underline">
+          Pricing and what each plan allows
+        </Link>{' '}
+        ·{' '}
+        <Link href="/privacy" className="underline">
+          What we do with your text
+        </Link>{' '}
+        ·{' '}
+        <Link href="/refunds" className="underline">
+          Refunds
+        </Link>
+      </p>
     </main>
   );
 }
