@@ -1,0 +1,158 @@
+'use client';
+
+/**
+ * `/app/settings` — PRD FR-4.6, FR-9.2, PHASES v2 W9.3.
+ *
+ *   "per-user setting, 800 ms idle trigger with the B.3 conditions; same cap; setting screen
+ *    explains cost in cap units."
+ *
+ * The cost is stated in the unit the student is actually charged in — one Assist suggestion, out
+ * of the month's allowance — next to the counter that shows how much of it is left. Nothing here
+ * changes what a suggestion costs; it changes how often one is asked for, which is exactly the
+ * thing a student needs told before they switch it on.
+ */
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ApiError, api } from '@/lib/api';
+
+type Usage = {
+  plan: string;
+  resetsAt: string;
+  actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
+};
+
+type Settings = { automaticSuggest?: boolean };
+
+export default function SettingsPage() {
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    api<Settings>('/settings')
+      .then(setSettings)
+      .catch((e: unknown) =>
+        setError(e instanceof ApiError ? e.problem.title : 'Could not load your settings.'),
+      );
+    api<Usage>('/usage/me')
+      .then(setUsage)
+      .catch(() => undefined);
+  }, []);
+
+  async function toggleAutoSuggest(next: boolean) {
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const updated = await api<Settings>('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ automaticSuggest: next }),
+      });
+      setSettings(updated);
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const assist = usage?.actions.find((a) => a.action === 'ASSIST');
+
+  return (
+    <main className="mx-auto max-w-2xl px-6 py-12">
+      <nav className="text-xs text-muted">
+        <Link href="/app" className="hover:underline">
+          Theses
+        </Link>{' '}
+        / Settings
+      </nav>
+      <h1 className="mt-2 font-serif text-2xl">Settings</h1>
+
+      {error ? (
+        <p role="alert" className="mt-4 text-sm text-warn">
+          {error}
+        </p>
+      ) : null}
+
+      <section className="mt-8 rounded-lg border border-line bg-white p-4">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="text-sm font-medium">Suggest without my asking</h2>
+            <p className="mt-1 text-sm text-muted">
+              Off by default. When it is on, a suggestion appears about a second after you stop
+              typing, instead of only when you press <kbd>Ctrl+/</kbd>. It never interrupts you
+              mid-word, and it never fires while a suggestion is already showing.
+            </p>
+            <p className="mt-2 text-sm">
+              <strong>What it costs:</strong> every suggestion counts as one Assist action, whether
+              you keep it or dismiss it — the same as pressing <kbd>Ctrl+/</kbd> yourself. Leaving
+              this on typically spends the month's allowance several times faster.
+            </p>
+            {assist ? (
+              <p className="mt-2 text-sm text-muted" data-testid="assist-allowance">
+                You have used {assist.used} of {assist.cap} Assist actions this month
+                {usage ? ` on ${usage.plan}` : ''} — {assist.remaining} left, resetting on{' '}
+                {usage ? new Date(usage.resetsAt).toLocaleDateString() : '—'}.
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.automaticSuggest === true}
+            aria-label="Suggest without my asking"
+            disabled={busy || settings === null}
+            onClick={() => void toggleAutoSuggest(settings?.automaticSuggest !== true)}
+            data-testid="auto-suggest-toggle"
+            className={`shrink-0 rounded-full px-3 py-1 text-xs ${
+              settings?.automaticSuggest ? 'bg-ink text-white' : 'border border-line text-muted'
+            }`}
+          >
+            {settings?.automaticSuggest ? 'On' : 'Off'}
+          </button>
+        </div>
+        {saved ? (
+          <p role="status" className="mt-3 text-xs text-muted">
+            Saved. It takes effect the next time you open a chapter.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+        <h2 className="text-sm font-medium">This month</h2>
+        {usage ? (
+          <ul className="mt-2 space-y-1 text-sm" data-testid="usage-list">
+            {usage.actions.map((a) => (
+              <li key={a.action} className="flex items-baseline justify-between gap-4">
+                <span>{LABELS[a.action] ?? a.action}</span>
+                <span className={a.remaining === 0 ? 'text-warn' : 'text-muted'}>
+                  {a.used} / {a.cap}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Loading…</p>
+        )}
+        <p className="mt-3 text-xs text-muted">
+          Everything the AI does for you is counted here and nowhere else. Dismissing a suggestion
+          still counts: the text was written before you saw it.
+        </p>
+      </section>
+    </main>
+  );
+}
+
+/** Plain names for the metered actions (PRD §11.3). */
+const LABELS: Record<string, string> = {
+  ASSIST: 'Assist suggestions',
+  DRAFT: 'Draft sections',
+  CITE: 'Citation suggestions',
+  CHAT: 'Questions to your library',
+  COMMAND: 'Section commands',
+  COHERENCE: 'Coherence checks',
+};

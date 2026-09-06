@@ -6,9 +6,11 @@ import { OutlineController } from './outline.controller.js';
 import { OutlineService } from './outline.service.js';
 import { ProposalController } from './proposal.controller.js';
 import { ProposalService } from './proposal.service.js';
+import { StyleService } from './style.service.js';
 
 @Module({
   controllers: [MemoryController, ProposalController, OutlineController],
-  providers: [SessionGuard, ProposalService, OutlineService, QueueService],
+  exports: [StyleService],
+  providers: [SessionGuard, ProposalService, OutlineService, StyleService, QueueService],
 })
 export class MemoryModule {}

@@ -83,6 +83,14 @@ export type GhostTextOptions = {
   /** Fires on `done` with what the server knew about grounding, for the §6.2 hint. */
   onDone?: (info: { grounded: boolean; pinned: number; empty: boolean }) => void;
   onTiming?: (timing: { ttfbMs: number; latencyMs: number }) => void;
+  /**
+   * FR-4.6: automatic-suggest. When true, a suggestion is requested `autoSuggestIdleMs` after the
+   * student stops typing. Off by default; the same cap applies. B.3's conditions still hold — the
+   * timer is reset by every keystroke and cancelled when a suggestion is already open.
+   */
+  autoSuggest?: boolean;
+  /** FR-4.6: "fires 800 ms after typing pause". */
+  autoSuggestIdleMs?: number;
   /** Guided suggestion (Shift+→): asks the student for an instruction. Null cancels. */
   promptForInstruction?: () => Promise<string | null>;
   /** Milliseconds of accepted-text fade (§6.2: 400). 0 disables, e.g. prefers-reduced-motion. */
@@ -271,6 +279,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
   },
 
   addProseMirrorPlugins() {
+    const editor = this.editor;
     const options = this.options;
 
     const report = (
@@ -378,6 +387,38 @@ export const GhostText = Extension.create<GhostTextOptions>({
           decorations(state) {
             return ghostTextKey.getState(state)?.decorations ?? null;
           },
+        },
+      }),
+      /**
+       * FR-4.6: automatic-suggest. A timer that every document change resets, so it can only fire
+       * after a real pause; it never fires while a suggestion is open or a request is in flight
+       * (B.3's conditions), and the request goes through the same command and the same cap.
+       */
+      new Plugin({
+        key: new PluginKey('ghostTextAutoSuggest'),
+        view: () => {
+          let timer: ReturnType<typeof setTimeout> | null = null;
+          const clear = () => {
+            if (timer) clearTimeout(timer);
+            timer = null;
+          };
+          return {
+            update: (currentView, previous) => {
+              if (!options.autoSuggest) return clear();
+              if (!currentView.state.doc.eq(previous.doc)) {
+                clear();
+                const idle = options.autoSuggestIdleMs ?? 800;
+                timer = setTimeout(() => {
+                  const ghost = ghostTextKey.getState(currentView.state);
+                  const selection = currentView.state.selection;
+                  if (ghost && ghost.status !== 'idle') return;
+                  if (!selection.empty || !currentView.hasFocus()) return;
+                  editor.commands.requestSuggestion();
+                }, idle);
+              }
+            },
+            destroy: clear,
+          };
         },
       }),
     ];

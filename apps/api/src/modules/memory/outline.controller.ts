@@ -19,6 +19,7 @@ import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { OutlineService } from './outline.service.js';
+import { StyleService } from './style.service.js';
 
 const templateBody = z.object({ template: z.enum(TEMPLATES) });
 const generateBody = z.object({ template: z.enum(TEMPLATES).optional() });
@@ -29,7 +30,23 @@ const deleteBody = z.object({ wordCount: z.number().int().min(0) });
 @Controller('documents/:id')
 @UseGuards(SessionGuard)
 export class OutlineController {
-  constructor(private readonly outline: OutlineService) {}
+  constructor(
+    private readonly outline: OutlineService,
+    private readonly style: StyleService,
+  ) {}
+
+  /** FR-4.7: how close the student is to a style profile, and the profile itself. */
+  @Get('style-profile')
+  styleStatus(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.style.status(user.id, documentId);
+  }
+
+  /** PRD 9.3 `POST /documents/:id/style-profile` - "Re-learn my style". */
+  @Post('style-profile')
+  @HttpCode(200)
+  learnStyle(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.style.learn(user.id, documentId);
+  }
 
   /** Template, outline tree, chapters and glossary in one read — the outline screen's state. */
   @Get('outline')

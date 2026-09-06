@@ -10,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@tc/db';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { StyleService } from '../memory/style.service.js';
 import { citationsIn } from './citations.js';
 import { type SnapshotReason, SnapshotsService } from './snapshots.service.js';
 import { looksLikeDoc, totalWords, wordCountsOf } from './word-counts.js';
@@ -49,6 +50,7 @@ export class ChaptersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly snapshots: SnapshotsService,
+    private readonly style: StyleService,
   ) {}
 
   async get(ownerId: string, chapterId: string): Promise<ChapterView> {
@@ -219,6 +221,11 @@ export class ChaptersService {
       });
       snapshotTaken = true;
     }
+
+    // FR-4.7: the profile is inferred the first time the document passes 1,500 HUMAN words.
+    // Not awaited: it is a Strong-tier call, and an autosave must return in milliseconds. The
+    // service swallows its own failures and tries again on the next save.
+    void this.style.maybeLearn(ownerId, after.documentId).catch(() => undefined);
 
     return { version: after.version, wordCount, snapshotTaken };
   }

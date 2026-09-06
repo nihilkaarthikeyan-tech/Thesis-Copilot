@@ -74,6 +74,9 @@ export default function DocumentListPage() {
         <Link href="/app/new" className="text-xs underline">
           New thesis: from a paper or from a topic
         </Link>
+        <Link href="/app/settings" className="text-xs text-muted underline">
+          Settings
+        </Link>
         <button
           type="button"
           className="text-xs text-muted underline"

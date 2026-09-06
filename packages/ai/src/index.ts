@@ -7,6 +7,21 @@ export {
   type PromptPassage,
 } from './builder/assist.js';
 export {
+  activeFilters,
+  buildChatRequest,
+  CHAT,
+  type ChatBuildInput,
+  type ChatFilters,
+  type ChatOutcome,
+  type ChatPostProcess,
+  type ChatTurn,
+  chatUserMessage,
+  mockChatFor,
+  NOT_ENOUGH_PREFIX,
+  postProcessChat,
+  WRITING_REDIRECT_PREFIX,
+} from './builder/chat.js';
+export {
   buildCiteRequest,
   CITE,
   type CiteBuildInput,
@@ -23,6 +38,22 @@ export {
   mockCiteResponse,
   usableCandidates,
 } from './builder/cite.js';
+export {
+  buildCommandRequest,
+  COMMAND,
+  COMMAND_LABELS,
+  COMMANDS,
+  type CommandBuildInput,
+  type CommandName,
+  type CommandPostProcess,
+  commandResultSchema,
+  commandUserMessage,
+  type DiffOp,
+  diffWords,
+  mockCommandFor,
+  mockCommandResponse,
+  postProcessCommand,
+} from './builder/command.js';
 export {
   buildDraftRequest,
   canDraft,
@@ -105,6 +136,16 @@ export {
   renderScope,
   type ScopeForQueries,
 } from './builder/queries.js';
+export {
+  buildStyleRequest,
+  humanText,
+  mockStyleResponse,
+  STYLE,
+  type StyleBuildInput,
+  type StyleProfileResult,
+  styleProfileSchema,
+  trimSample,
+} from './builder/style.js';
 export {
   buildThemesRequest,
   type GapTheme,

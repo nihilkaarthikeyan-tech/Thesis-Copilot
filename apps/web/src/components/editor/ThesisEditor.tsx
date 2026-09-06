@@ -60,8 +60,10 @@ function shortRefOf(source: PassageDto['source']): string {
 
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
+import { ChatPanel } from './ChatPanel';
 import { CitationList } from './CitationList';
 import { CiteSuggestions } from './CiteSuggestions';
+import { CommandToolbar } from './CommandToolbar';
 import { DraftMode } from './DraftMode';
 import { useGuidedInput } from './GuidedInput';
 import { ScaffoldPanel } from './ScaffoldPanel';
@@ -168,7 +170,15 @@ function ChapterEditor({
   const [timing, setTiming] = useState<Timing | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
-  const [tab, setTab] = useState<'sources' | 'citations'>('sources');
+  const [tab, setTab] = useState<'sources' | 'citations' | 'chat'>('sources');
+  const [autoSuggest, setAutoSuggest] = useState(false);
+
+  // FR-4.6: automatic-suggest is per user and off by default (ADR-0006).
+  useEffect(() => {
+    api<{ automaticSuggest?: boolean }>('/settings')
+      .then((s) => setAutoSuggest(s.automaticSuggest === true))
+      .catch(() => undefined);
+  }, []);
   const [howOpen, setHowOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -194,6 +204,7 @@ function ChapterEditor({
         ghostText: {
           chapterId: chapter.id,
           request: assistRequest,
+          autoSuggest,
           fadeMs: reducedMotion ? 0 : 400,
           onOutcome: (e) => {
             void api('/assist/outcome', {
@@ -293,7 +304,7 @@ function ChapterEditor({
         },
         resizableTables: true,
       }),
-    [chapter.id, reducedMotion, onUsageChange, guided.controller],
+    [chapter.id, reducedMotion, onUsageChange, guided.controller, autoSuggest],
   );
 
   const editor = useEditor({
@@ -547,7 +558,7 @@ function ChapterEditor({
 
         <aside className="hidden w-72 shrink-0 border-l border-line bg-paper text-sm lg:block">
           <div className="flex border-b border-line">
-            {(['sources', 'citations'] as const).map((t) => (
+            {(['sources', 'citations', 'chat'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -561,8 +572,20 @@ function ChapterEditor({
           <div className="p-3 text-muted">
             {tab === 'sources' ? (
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
-            ) : (
+            ) : tab === 'citations' ? (
               <CitationList editor={editor} />
+            ) : (
+              <ChatPanel
+                documentId={doc.id}
+                onUsageChange={onUsageChange}
+                onOpenPassage={(sourceId, chunkId) => {
+                  window.open(
+                    `/app/d/${doc.id}/sources#source-${sourceId}-${chunkId}`,
+                    '_blank',
+                    'noopener,noreferrer',
+                  );
+                }}
+              />
             )}
           </div>
         </aside>
@@ -626,6 +649,13 @@ function ChapterEditor({
           </div>
         </form>
       ) : null}
+
+      <CommandToolbar
+        editor={editor}
+        chapterId={chapter.id}
+        onUsageChange={onUsageChange}
+        onNotice={setNotice}
+      />
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />
 

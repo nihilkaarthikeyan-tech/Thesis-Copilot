@@ -1,0 +1,133 @@
+/**
+ * `/chat`, `/commands/run`, and the per-user settings — PRD §9.3, FR-4.6, FR-4.8, FR-4.9.
+ */
+
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Put,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import { COMMANDS } from '@tc/ai';
+import type { Env } from '@tc/config';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { ENV } from '../../common/env.token.js';
+import { ValidationError } from '../../common/errors.js';
+import { PrismaService } from '../../common/prisma.service.js';
+import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
+import { SessionGuard } from '../auth/session.guard.js';
+import { ChatService } from './chat.service.js';
+import { CommandService } from './command.service.js';
+import { streamSse } from './sse.js';
+
+const chatBody = z.object({
+  documentId: z.string().uuid(),
+  message: z.string().trim().min(1).max(2_000),
+  filters: z
+    .object({
+      yearFrom: z.number().int().min(1800).max(2100).nullish(),
+      yearTo: z.number().int().min(1800).max(2100).nullish(),
+      minCitations: z.number().int().min(0).max(100_000).nullish(),
+      excludePreprints: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+const commandBody = z.object({
+  chapterId: z.string().uuid(),
+  command: z.enum(COMMANDS),
+  selection: z.string().min(1).max(20_000),
+  contextBefore: z.string().max(10_000).optional(),
+  contextAfter: z.string().max(10_000).optional(),
+});
+
+const settingsBody = z.object({
+  automaticSuggest: z.boolean().optional(),
+  chatFilters: z
+    .object({
+      yearFrom: z.number().int().nullish(),
+      yearTo: z.number().int().nullish(),
+      minCitations: z.number().int().nullish(),
+      excludePreprints: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+@Controller()
+@UseGuards(SessionGuard)
+export class ChatController {
+  constructor(
+    private readonly chat: ChatService,
+    private readonly commands: CommandService,
+    private readonly prisma: PrismaService,
+    @Inject(ENV) private readonly env: Env,
+  ) {}
+
+  /** FR-4.9. SSE over POST, like `/assist/suggest` (Appendix B.8). */
+  @Post('chat')
+  async ask(
+    @CurrentUser() user: SessionUser,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
+    const parsed = chatBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Ask a question first', parsed.error.issues);
+    await streamSse(request, reply, this.env, (signal) => this.chat.ask(user, parsed.data, signal));
+  }
+
+  @Get('chat/:documentId')
+  history(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
+    return this.chat.history(user.id, documentId);
+  }
+
+  @Post('chat/:documentId/clear')
+  @HttpCode(200)
+  clear(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
+    return this.chat.clear(user.id, documentId);
+  }
+
+  /** FR-4.8: `{ chapterId, selection, command }` → the rewrite and its diff. */
+  @Post('commands/run')
+  @HttpCode(200)
+  run(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = commandBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid command', parsed.error.issues);
+    return this.commands.run(user, parsed.data);
+  }
+
+  /** FR-4.6: automatic-suggest is per user and off by default (ADR-0006). */
+  @Get('settings')
+  async settings(@CurrentUser() user: SessionUser) {
+    const row = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { settings: true },
+    });
+    const settings = (row?.settings as Record<string, unknown> | null) ?? {};
+    return { automaticSuggest: settings.automaticSuggest === true, ...settings };
+  }
+
+  @Put('settings')
+  async saveSettings(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = settingsBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid settings', parsed.error.issues);
+    const row = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { settings: true },
+    });
+    const settings = {
+      ...((row?.settings as Record<string, unknown> | null) ?? {}),
+      ...parsed.data,
+    };
+    await this.prisma.user.update({ where: { id: user.id }, data: { settings } });
+    return settings;
+  }
+}

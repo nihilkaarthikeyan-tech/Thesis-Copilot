@@ -2042,3 +2042,50 @@ typecheck and lint per unit; specs are owed and listed at the end.
 - The FR-3.4 acceptance test: an outline edit changes the next cached prompt block (a snapshot
   test in `packages/ai`).
 - E2E: generate → rename a chapter → save → the editor rail and scaffold panel show the new title.
+
+## Phase 2 — Week 9 (style profile, section commands, automatic-suggest, chat)
+
+### Task 9.1 — style profile (FR-4.7, A.10)
+- Files: `packages/ai/src/builder/style.ts` (A.10 Strong call, `styleProfileSchema`, a mock that
+  measures the sample rather than describing it), `apps/api/src/modules/memory/style.service.ts`
+  (`status`, `learn`, `maybeLearn`), `GET`/`POST /documents/:id/style-profile`,
+  `apps/api/src/modules/chapters/chapters.service.ts` (the trigger).
+- The threshold is counted from provenance, so `ASSIST` and `DRAFT` words never push a student over
+  it — the profile describes their voice or it describes nothing. The profile joins the cached
+  memory block, so it costs nothing per suggestion after the one call that infers it.
+- The trigger hangs off a chapter save, which is the only event that can cross 1,500 human words.
+  It is deliberately not awaited: a Strong call inside an autosave would make every keystroke wait
+  on it. Failure is swallowed and retried on the next save.
+- "Re-learn my style" is the same call with `force`, from the outline screen.
+
+### Task 9.2 — section commands (FR-4.8, A.11)
+- Files: `packages/ai/src/builder/command.ts` (the five commands, each with its own instruction and
+  its own length rule), `apps/api/src/modules/assist/command.service.ts`, `POST /commands/run`,
+  `apps/web/src/components/editor/CommandToolbar.tsx` (selection toolbar → word-level diff →
+  Apply/Discard).
+- Citations inside the selection are the reason the result is a diff rather than a replacement:
+  the toolbar applies the words, and every `citation` node in range survives because nothing
+  rewrites the nodes it did not touch. Provenance on what lands is `COMMAND`; the cap is `COMMAND`.
+
+### Task 9.3 — automatic-suggest opt-in (FR-4.6)
+- Files: `packages/ui/src/editor/ghost-text.ts` (a second plugin: an 800 ms idle timer that every
+  document change resets, and which refuses to fire while a suggestion is open, while a request is
+  in flight, when the selection is not empty, or when the editor does not have focus — B.3's
+  conditions), `apps/web/src/app/app/settings/page.tsx`, `GET`/`PUT /settings`,
+  migration `0008_user_settings` + `docs/ADR/0006-user-settings-column.md`.
+- Off by default, per user (ADR-0006), and gated by the `automaticSuggest` feature flag as well.
+  The settings screen states the cost in the unit the student is charged in — one Assist action per
+  suggestion, kept or dismissed — next to how much of the month's allowance is left.
+
+### Task 9.4 — chat over the library (FR-4.9, A.4)
+- Files: `packages/ai/src/builder/chat.ts`, `apps/api/src/modules/assist/chat.service.ts`,
+  `chat.controller.ts` (`POST /chat` SSE, `GET`/`DELETE /chat/:documentId`),
+  `apps/web/src/components/editor/ChatPanel.tsx` (third tab in the right panel).
+- Filters (year range, minimum citations, exclude preprints) are applied to the retrieved passages
+  *before* the prompt is built, so A.4's "passages outside the filter were already removed" is a
+  true statement rather than an instruction the model has to be trusted with. Answers cite only
+  the passages in the request (§10.6), and a citation opens the same passage popover the editor
+  uses. The thread keeps its last four turns, on the document.
+- Stored turns carry an id: the thread is trimmed from the front, so a list index is not an
+  identity, and keying the panel's list on one would have re-used a React node for a different
+  turn after the fifth question.

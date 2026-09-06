@@ -6,17 +6,22 @@ import { FlagsModule } from '../flags/flags.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { AssistController } from './assist.controller.js';
 import { AssistService } from './assist.service.js';
+import { ChatController } from './chat.controller.js';
+import { ChatService } from './chat.service.js';
 import { CitationsController } from './citations.controller.js';
 import { CiteService } from './cite.service.js';
+import { CommandService } from './command.service.js';
 import { ContextService } from './context.service.js';
 import { DraftController } from './draft.controller.js';
 import { DraftService } from './draft.service.js';
 
 @Module({
   imports: [UsageModule, FlagsModule],
-  controllers: [AssistController, CitationsController, DraftController],
+  controllers: [AssistController, CitationsController, DraftController, ChatController],
   providers: [
     AssistService,
+    ChatService,
+    CommandService,
     CiteService,
     ContextService,
     DraftService,
@@ -24,6 +29,6 @@ import { DraftService } from './draft.service.js';
     RedisService,
     SessionGuard,
   ],
-  exports: [AssistService, CiteService, ContextService, DraftService],
+  exports: [AssistService, CiteService, ChatService, CommandService, ContextService, DraftService],
 })
 export class AssistModule {}

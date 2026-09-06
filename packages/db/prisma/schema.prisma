@@ -111,6 +111,7 @@ model User {
   institutionId String?  @db.Uuid
   institution   Institution? @relation(fields: [institutionId], references: [id])
   timezone      String   @default("Asia/Kolkata")
+  settings      Json?    // ADR-0006: per-user preferences (FR-4.6 automaticSuggest, chat filters)
   createdAt     DateTime @default(now())
   // --- Better Auth additions (ADR-0002); everything above this line is PRD §8 verbatim ---
   emailVerified Boolean  @default(false)

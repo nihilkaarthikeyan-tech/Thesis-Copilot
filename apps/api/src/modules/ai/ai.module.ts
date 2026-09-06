@@ -13,8 +13,11 @@ import {
   type LlmRequest,
   MockEmbeddingProvider,
   MockLlmProvider,
+  mockChatFor,
   mockCiteResponse,
+  mockCommandResponse,
   mockProposalFor,
+  mockStyleResponse,
   type Providers,
 } from '@tc/ai';
 import type { Env } from '@tc/config';
@@ -60,6 +63,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                   match: (req: LlmRequest) => req.action === 'CITE',
                   respond: mockCiteResponse,
                 },
+                mockCommandResponse,
+                mockStyleResponse,
                 {
                   // Only the mock knows this string; it lets a browser test force the
                   // provider-error state (PHASES 5.2) without a real outage.
@@ -74,8 +79,12 @@ export function mockSuggestionFor(req: LlmRequest): string {
               chunkDelayMs: 10,
               // A PROPOSAL request (A.6) is answered from the conversation itself: a narrowing
               // question, then a skeleton in the student's own words (PHASES 6.1).
-              defaultText: (req) =>
-                req.action === 'PROPOSAL' ? mockProposalFor(req) : mockSuggestionFor(req),
+              defaultText: (req) => {
+                if (req.action === 'PROPOSAL') return mockProposalFor(req);
+                // A.4: answered from the passages in the request, or the exact "not enough" reply.
+                if (req.action === 'CHAT') return mockChatFor(req);
+                return mockSuggestionFor(req);
+              },
               modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
             }),
             embeddings: new MockEmbeddingProvider({
