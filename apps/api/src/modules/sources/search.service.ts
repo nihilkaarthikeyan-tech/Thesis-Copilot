@@ -391,7 +391,14 @@ export class SearchService {
     documentId: string,
     filename: string,
     bytes: Buffer,
-  ): Promise<{ format: string; entries: number; queued: number; alreadyPresent: number }> {
+  ): Promise<{
+    format: string;
+    entries: number;
+    /** Records in the file that had neither a title nor a DOI, so nothing could resolve them. */
+    skipped: number;
+    queued: number;
+    alreadyPresent: number;
+  }> {
     const parsed = parseBibliography(bytes.toString('utf8'), filename);
     if (!parsed) {
       throw new ValidationError(
@@ -406,7 +413,12 @@ export class SearchService {
       documentId,
       parsed.entries.map((e: BibEntry) => ({ raw: e.raw, ...(e.doi ? { doi: e.doi } : {}) })),
     );
-    return { format: parsed.format, entries: parsed.entries.length, ...result };
+    return {
+      format: parsed.format,
+      entries: parsed.entries.length,
+      skipped: parsed.skipped,
+      ...result,
+    };
   }
 }
 

@@ -116,13 +116,23 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     try {
       const form = new FormData();
       form.append('file', file);
-      const result = await api<{ entries: number; queued: number; alreadyPresent: number }>(
-        `/documents/${documentId}/sources/import`,
-        { method: 'POST', body: form },
-      );
+      const result = await api<{
+        entries: number;
+        skipped: number;
+        queued: number;
+        alreadyPresent: number;
+      }>(`/documents/${documentId}/sources/import`, { method: 'POST', body: form });
       setTab('library');
       setNotice(
-        `Imported ${result.queued} of ${result.entries} entries; they are being looked up.`,
+        [
+          `Imported ${result.queued} of ${result.entries} entries; they are being looked up.`,
+          // A silently shorter library is the thing a student notices last and trusts least.
+          result.skipped > 0
+            ? `${result.skipped} more had no title and no DOI, so there was nothing to look them up by — add those by hand.`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
       );
       await load();
     } catch (e) {

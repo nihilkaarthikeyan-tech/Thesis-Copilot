@@ -92,14 +92,66 @@ function bibValue(raw: string, strings: Map<string, string>): string {
       i = j;
     }
   }
-  return parts
-    .join('')
-    .replace(/[{}]/g, '')
-    .replace(/\\[`'^"~=.]\{?([a-zA-Z])\}?/g, '$1')
-    .replace(/\\&/g, '&')
-    .replace(/~/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return decodeTex(parts.join(''));
+}
+
+/** TeX accent command → the Unicode combining mark it stands for. */
+const ACCENTS: Record<string, string> = {
+  '`': '̀', // grave
+  "'": '́', // acute
+  '^': '̂', // circumflex
+  '"': '̈', // diaeresis
+  '~': '̃', // tilde
+  '=': '̄', // macron
+  '.': '̇', // dot above
+  c: '̧', // cedilla
+  v: '̌', // caron
+  u: '̆', // breve
+  H: '̋', // double acute
+};
+
+/** Letters TeX writes as a whole command rather than a letter plus an accent. */
+const LIGATURES: Record<string, string> = {
+  ss: 'ß',
+  o: 'ø',
+  O: 'Ø',
+  aa: 'å',
+  AA: 'Å',
+  ae: 'æ',
+  AE: 'Æ',
+  oe: 'œ',
+  OE: 'Œ',
+  l: 'ł',
+  L: 'Ł',
+};
+
+/**
+ * Turns TeX escapes into the characters they stand for.
+ *
+ * This used to drop the accent and keep the letter, which turned Müller into Muller and García
+ * into Garcia. A misspelled name is a misspelled citation in a submitted bibliography, and it is
+ * the author's name — so the accent is decoded rather than discarded. Anything unrecognised keeps
+ * its letter, which is still better than losing the word.
+ */
+export function decodeTex(text: string): string {
+  return (
+    text
+      // `\"{U}`, `\"U`, `{\"U}` — the brace forms Zotero and BibDesk both write.
+      .replace(/\\([`'^"~=.cvuH])\s*\{?([a-zA-Z])\}?/g, (_, accent: string, letter: string) =>
+        `${letter}${ACCENTS[accent] ?? ''}`.normalize('NFC'),
+      )
+      .replace(
+        /\\(ss|aa|AA|ae|AE|oe|OE|[oOlL])(?![a-zA-Z])\{?\}?/g,
+        (whole, name: string) => LIGATURES[name] ?? whole,
+      )
+      .replace(/\\&/g, '&')
+      .replace(/\\%/g, '%')
+      .replace(/\\_/g, '_')
+      .replace(/[{}]/g, '')
+      .replace(/~/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function splitBibFields(body: string): Map<string, string> {
@@ -245,8 +297,18 @@ export function parseRis(text: string): BibEntry[] {
 export function parseBibliography(
   text: string,
   filename?: string,
-): { format: BibFormat; entries: BibEntry[] } | null {
+): { format: BibFormat; entries: BibEntry[]; skipped: number } | null {
   const format = detectBibFormat(text, filename);
   if (!format) return null;
-  return { format, entries: format === 'bibtex' ? parseBibtex(text) : parseRis(text) };
+  const entries = format === 'bibtex' ? parseBibtex(text) : parseRis(text);
+  // An entry with neither a title nor a DOI cannot be resolved and is dropped. Counting the drops
+  // is the difference between "38 of your 40 references came across" and a student wondering
+  // where two of them went.
+  return { format, entries, skipped: Math.max(0, countRecords(text, format) - entries.length) };
+}
+
+/** How many records the file contains, whether or not they could be read. */
+function countRecords(text: string, format: BibFormat): number {
+  if (format === 'ris') return (text.match(/^TY {2}- /gm) ?? []).length;
+  return (text.match(/@(?!string\b|comment\b|preamble\b)\w+\s*[{(]/gi) ?? []).length;
 }
