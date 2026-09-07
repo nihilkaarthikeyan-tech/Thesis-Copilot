@@ -181,6 +181,9 @@ export default function DocumentListPage() {
                   <Link href={`/app/d/${d.id}/review`} className="text-muted hover:underline">
                     Review
                   </Link>
+                  <Link href={`/app/d/${d.id}/submit`} className="text-muted hover:underline">
+                    Submit
+                  </Link>
                   <Link
                     href={`/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`}
                     className="text-muted hover:underline"

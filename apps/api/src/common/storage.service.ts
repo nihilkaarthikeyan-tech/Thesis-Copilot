@@ -64,6 +64,16 @@ export class StorageService implements OnModuleInit {
     return Buffer.concat(chunks);
   }
 
+  /** Every key under a prefix, oldest first by name. Used to keep the last N exports (D.3.2). */
+  async list(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    const stream = this.client.listObjectsV2(this.bucket, prefix, true);
+    for await (const item of stream) {
+      if (item.name) keys.push(item.name);
+    }
+    return keys.sort();
+  }
+
   async remove(key: string): Promise<void> {
     await this.client.removeObject(this.bucket, key);
   }

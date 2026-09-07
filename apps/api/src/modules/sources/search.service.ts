@@ -15,6 +15,7 @@ import { jobId, jobKeyDigest } from '@tc/types';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { SourcesService } from './sources.service.js';
 
 export type SearchRunView = {
@@ -26,9 +27,17 @@ export type SearchRunView = {
   error: string | null;
   counts: Record<string, number>;
   queries: Array<{ angle: string; q: string }>;
+  /** Set when the `livingGapMap` flag is on: when the stored map was last recomputed. */
+  refreshedAt?: string;
   themes: Array<{
     name: string;
     thin: boolean;
+    /**
+     * How many of this theme's papers the student actually kept. Only present when the
+     * `livingGapMap` flag is on — without it `thin` is the run's own result count and nothing
+     * moves as the library is curated (FR-2.6).
+     */
+    libraryCount?: number;
     candidates: Array<{
       id: string;
       title: string;
@@ -64,6 +73,7 @@ export class SearchService {
     private readonly prisma: PrismaService,
     private readonly queue: QueueService,
     private readonly sources: SourcesService,
+    private readonly flags: FlagsService,
   ) {}
 
   private async ownedDocument(ownerId: string, documentId: string) {
@@ -159,7 +169,13 @@ export class SearchService {
       .map(([name, candidates]) => ({ name, thin: candidates.length < THIN_BELOW, candidates }))
       .sort((a, b) => b.candidates.length - a.candidates.length);
 
+    // FR-2.6, "living" half: `refreshGapMap` recomputes `thin` from what is in the library rather
+    // than from what the run returned. That record is in `DocumentMemory.gapMap`, and this is the
+    // only screen that shows it — without this merge the flag changes nothing anyone can see.
+    const living = await this.livingThemes(documentId, runId);
+
     return {
+      ...(living?.refreshedAt ? { refreshedAt: living.refreshedAt } : {}),
       runId: record.runId,
       mode: record.mode,
       status: record.status,
@@ -168,8 +184,43 @@ export class SearchService {
       error: record.error ?? null,
       counts: record.counts ?? {},
       queries: record.queries ?? [],
-      themes,
+      themes: living
+        ? themes.map((theme) => {
+            const stored = living.byName.get(theme.name);
+            return stored
+              ? { ...theme, libraryCount: stored.libraryCount, thin: stored.thin }
+              : theme;
+          })
+        : themes,
     };
+  }
+
+  /** The stored gap map for this run, when the flag is on and it was written by this run. */
+  private async livingThemes(
+    documentId: string,
+    runId: string,
+  ): Promise<{
+    refreshedAt?: string;
+    byName: Map<string, { libraryCount: number; thin: boolean }>;
+  } | null> {
+    if (!(await this.flags.isEnabled('livingGapMap'))) return null;
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { gapMap: true },
+    });
+    const gapMap = memory?.gapMap as {
+      runId?: string;
+      refreshedAt?: string;
+      themes?: Array<{ name?: unknown; libraryCount?: unknown; thin?: unknown }>;
+    } | null;
+    if (!gapMap?.themes || gapMap.runId !== runId) return null;
+    const byName = new Map<string, { libraryCount: number; thin: boolean }>();
+    for (const theme of gapMap.themes) {
+      if (typeof theme.name !== 'string' || typeof theme.libraryCount !== 'number') continue;
+      byName.set(theme.name, { libraryCount: theme.libraryCount, thin: Boolean(theme.thin) });
+    }
+    if (byName.size === 0) return null;
+    return { ...(gapMap.refreshedAt ? { refreshedAt: gapMap.refreshedAt } : {}), byName };
   }
 
   /**
@@ -251,6 +302,7 @@ export class SearchService {
       candidates.map((c) => c.id),
       sourceIds,
     );
+    await this.refreshGapMap(documentId);
     return { added, alreadyPresent, sourceIds };
   }
 
@@ -280,6 +332,56 @@ export class SearchService {
     await this.prisma.documentMemory.update({
       where: { documentId },
       data: { gapMap: gapMap as never },
+    });
+  }
+
+  /**
+   * FR-9.7's `livingGapMap`: recompute the gap map against the library as it stands.
+   *
+   * Not a new search — that would be a Strong call every time a source is added. The themes came
+   * from the run; what changes as the student curates is how many of each theme they actually
+   * kept, and that is the number worth watching: a theme that looked well covered in the results
+   * is thin in the library if only one paper was selected from it.
+   */
+  async refreshGapMap(documentId: string): Promise<void> {
+    if (!(await this.flags.isEnabled('livingGapMap'))) return;
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { gapMap: true },
+    });
+    const gapMap = memory?.gapMap as {
+      runId?: string;
+      themes?: Array<Record<string, unknown>>;
+    } | null;
+    if (!gapMap?.themes) return;
+
+    const sources = await this.prisma.source.findMany({
+      where: { documentId },
+      select: { id: true, subTheme: true },
+    });
+    const byTheme = new Map<string, string[]>();
+    for (const source of sources) {
+      const theme = source.subTheme ?? 'Other';
+      byTheme.set(theme, [...(byTheme.get(theme) ?? []), source.id]);
+    }
+
+    const themes = gapMap.themes.map((theme) => {
+      const name = String(theme.name ?? '');
+      const inLibrary = byTheme.get(name) ?? [];
+      return {
+        ...theme,
+        sourceIds: inLibrary,
+        /** Candidates found by the run — unchanged. */
+        count: theme.count,
+        /** What the student actually has, which is what "thin" should mean once curating starts. */
+        libraryCount: inLibrary.length,
+        thin: inLibrary.length > 0 ? inLibrary.length < THIN_BELOW : Boolean(theme.thin),
+      };
+    });
+
+    await this.prisma.documentMemory.update({
+      where: { documentId },
+      data: { gapMap: { ...gapMap, themes, refreshedAt: new Date().toISOString() } as never },
     });
   }
 

@@ -27,6 +27,7 @@
   ],
   "dependencies": {
     "@tc/citations": "workspace:^",
+    "@tc/types": "workspace:^",
     "docx": "9.7.1"
   }
 }

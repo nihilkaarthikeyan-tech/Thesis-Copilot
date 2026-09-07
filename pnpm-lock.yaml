@@ -422,6 +422,9 @@ importers:
       '@tc/citations':
         specifier: workspace:^
         version: link:../citations
+      '@tc/types':
+        specifier: workspace:^
+        version: link:../types
       docx:
         specifier: 9.7.1
         version: 9.7.1

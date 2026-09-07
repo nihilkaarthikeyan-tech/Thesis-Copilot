@@ -20,6 +20,7 @@ import {
   mockCommandResponse,
   mockProposalFor,
   mockRevisionFor,
+  mockSectionScopeResponse,
   mockStyleResponse,
   type Providers,
 } from '@tc/ai';
@@ -71,6 +72,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 mockCiteParseResponse,
                 // A.13: a guide's comment is classified from the verbs it uses (D.2.3).
                 mockClassifyResponse,
+                // FR-3.6: one chapter's scope note, rewritten from its own title and siblings.
+                mockSectionScopeResponse,
                 mockCommandResponse,
                 mockStyleResponse,
                 {

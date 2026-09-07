@@ -15,6 +15,7 @@ import {
   mockExtractionResponse,
   mockOutlineResponse,
   mockQueriesResponse,
+  mockSectionScopeResponse,
   mockThemesResponse,
   type Providers,
 } from '@tc/ai';
@@ -93,6 +94,8 @@ function providersFor(env: Env): Providers {
           mockCoherenceResponse,
           mockThemesResponse,
           mockQueriesResponse,
+          // FR-3.6 is also an OUTLINE call; it is matched first by its `<target>` block.
+          mockSectionScopeResponse,
           mockOutlineResponse,
         ],
         modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },

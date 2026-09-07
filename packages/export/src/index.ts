@@ -9,6 +9,17 @@ export {
   usageToDocx,
   type WordCounts,
 } from './ai-usage.js';
+export {
+  CHECK_LABELS,
+  type CheckId,
+  type ComplianceChapter,
+  type ComplianceFinding,
+  type ComplianceInput,
+  type ComplianceResult,
+  figuresOf,
+  headingsOf,
+  runComplianceChecks,
+} from './compliance.js';
 export { chapterToDocx, type ExportOptions } from './docx.js';
 export { type InvoiceInput, invoiceToDocx } from './invoice.js';
 export {
@@ -18,3 +29,10 @@ export {
   type ResponseTableInput,
   responseTableToDocx,
 } from './response-table.js';
+export {
+  pageSetupOf,
+  renderLabel,
+  type ThesisChapter,
+  type ThesisExportInput,
+  thesisToDocx,
+} from './thesis.js';

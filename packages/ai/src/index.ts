@@ -196,6 +196,15 @@ export {
   type ScopeForQueries,
 } from './builder/queries.js';
 export {
+  buildSectionScopeRequest,
+  mockSectionScopeResponse,
+  SECTION_SCOPE,
+  type SectionScopeInput,
+  type SectionScopeResult,
+  sectionScopeSchema,
+  sectionScopeUserMessage,
+} from './builder/section-scope.js';
+export {
   buildStyleRequest,
   humanText,
   mockStyleResponse,

@@ -85,7 +85,25 @@ export const ONE_TIME_PROFILES = {
   EXTRACT: { tier: 'strong', inputTokens: 12_000, cachedInputTokens: 0, outputTokens: 2_000 },
   OUTLINE: { tier: 'strong', inputTokens: 6_000, cachedInputTokens: 0, outputTokens: 2_000 },
   STYLE_PROFILE: { tier: 'strong', inputTokens: 3_000, cachedInputTokens: 0, outputTokens: 400 },
+  /**
+   * FR-3.6, per-section regeneration. Smaller than a whole outline — one chapter's siblings in,
+   * one scope note out — but it is a Strong call a student can ask for repeatedly, which §11.4's
+   * "once per document" assumption does not cover. ADR-0008.
+   */
+  OUTLINE_SECTION: {
+    tier: 'strong',
+    inputTokens: 2_000,
+    cachedInputTokens: 4_000,
+    outputTokens: 600,
+  },
 } as const satisfies Record<string, ActionProfile>;
+
+/**
+ * The hard bound on `OUTLINE` calls for one document: the first generation plus FR-3.6
+ * regenerations. `OUTLINE` carries no §11.3 cap because §11.4 treats it as once-per-document;
+ * FR-3.6 makes that untrue, so the bound lives here and the budget below pays for all of them.
+ */
+export const OUTLINE_CALLS_PER_DOCUMENT = 12;
 
 /** Embedding a ~30-paper library, one time (PRD §11.2: ~300k tokens, ₹0.50). */
 export const ONE_TIME_EMBED_TOKENS = 300_000;
@@ -184,6 +202,8 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
   const oneTimeMicro =
     profileCost(ONE_TIME_PROFILES.EXTRACT, pricing) +
     profileCost(ONE_TIME_PROFILES.OUTLINE, pricing) +
+    // Every regeneration the bound allows, priced as if the student used all of them.
+    (OUTLINE_CALLS_PER_DOCUMENT - 1) * profileCost(ONE_TIME_PROFILES.OUTLINE_SECTION, pricing) +
     profileCost(ONE_TIME_PROFILES.STYLE_PROFILE, pricing) +
     computeEmbeddingCost(ONE_TIME_EMBED_TOKENS, pricing);
 

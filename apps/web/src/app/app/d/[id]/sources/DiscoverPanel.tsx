@@ -36,7 +36,8 @@ type Run = {
   error: string | null;
   counts: Record<string, number>;
   queries: Array<{ angle: string; q: string }>;
-  themes: Array<{ name: string; thin: boolean; candidates: Candidate[] }>;
+  /** Present once the `livingGapMap` flag is on: how many of this theme the student kept. */
+  themes: Array<{ name: string; thin: boolean; libraryCount?: number; candidates: Candidate[] }>;
 };
 
 type RunSummary = { runId: string; mode: 'discover' | 'expand'; status: string; startedAt: string };
@@ -247,14 +248,17 @@ export function DiscoverPanel({
                 <h3 className="flex items-baseline justify-between text-sm font-medium">
                   <span>{theme.name}</span>
                   <span className="text-xs text-muted">
-                    {theme.candidates.length}
+                    {theme.libraryCount === undefined
+                      ? theme.candidates.length
+                      : `${theme.libraryCount} of ${theme.candidates.length} kept`}
                     {theme.thin ? ' · thin' : ''}
                   </span>
                 </h3>
                 {theme.thin ? (
                   <p className="mt-1 text-xs text-warn">
-                    Fewer than four papers found here — a gap, or a topic to search again with other
-                    words.
+                    {theme.libraryCount === undefined
+                      ? 'Fewer than four papers found here — a gap, or a topic to search again with other words.'
+                      : 'Fewer than four of these are in your library — either a real gap, or a theme you have not curated yet.'}
                   </p>
                 ) : null}
                 <ul className="mt-2 space-y-2">

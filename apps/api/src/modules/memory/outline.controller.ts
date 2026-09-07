@@ -22,6 +22,10 @@ import { OutlineService } from './outline.service.js';
 import { StyleService } from './style.service.js';
 
 const templateBody = z.object({ template: z.enum(TEMPLATES) });
+const regenerateBody = z.object({
+  instruction: z.string().trim().max(500).optional(),
+});
+
 const generateBody = z.object({ template: z.enum(TEMPLATES).optional() });
 const outlineBody = z.object({ outline: z.array(z.unknown()) });
 const glossaryBody = z.object({ glossary: z.record(z.string(), z.unknown()) });
@@ -64,6 +68,20 @@ export class OutlineController {
     const parsed = templateBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Unknown template', parsed.error.issues);
     return this.outline.setTemplate(user.id, documentId, parsed.data.template);
+  }
+
+  /** FR-3.6: rewrite one chapter's scope note, with its siblings for context. */
+  @Post('outline/:nodeId/regenerate')
+  @HttpCode(200)
+  regenerateSection(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('nodeId') nodeId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = regenerateBody.safeParse(body ?? {});
+    if (!parsed.success) throw new ValidationError('Invalid request', parsed.error.issues);
+    return this.outline.regenerateSection(user, documentId, nodeId, parsed.data.instruction);
   }
 
   /** FR-3.2: Strong-tier generation as a job. */

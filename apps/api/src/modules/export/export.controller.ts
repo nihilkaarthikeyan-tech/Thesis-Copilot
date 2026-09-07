@@ -5,12 +5,14 @@
  * downloaded from storage, so a slow conversion never holds an HTTP connection open.
  */
 
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { thesisDetailsSchema } from '@tc/types';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { ExportService } from './export.service.js';
+import { ThesisExportService } from './thesis-export.service.js';
 
 const exportBody = z.object({
   format: z.enum(['docx', 'pdf']).default('docx'),
@@ -18,12 +20,74 @@ const exportBody = z.object({
   chapterId: z.string().uuid(),
 });
 
+const templateBody = z.object({ templateId: z.string().uuid() });
+const thesisExportBody = z.object({
+  format: z.enum(['docx', 'pdf']).default('docx'),
+  overrideReason: z.string().trim().min(10).max(500).optional(),
+});
+
 const usageBody = z.object({ format: z.enum(['docx', 'csv']).default('docx') });
 
 @Controller('documents/:id')
 @UseGuards(SessionGuard)
 export class ExportController {
-  constructor(private readonly exports: ExportService) {}
+  constructor(
+    private readonly exports: ExportService,
+    private readonly thesis: ThesisExportService,
+  ) {}
+
+  /** D.3.2 step 1: the details a student fills once, plus the templates they can pick. */
+  @Get('thesis-details')
+  details(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.thesis.details(user.id, documentId);
+  }
+
+  @Put('thesis-details')
+  saveDetails(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = thesisDetailsSchema.safeParse(body ?? {});
+    if (!parsed.success) throw new ValidationError('Check these details', parsed.error.issues);
+    return this.thesis.saveDetails(user.id, documentId, parsed.data);
+  }
+
+  /** The university's formatting template; `PUT template` is the chapter skeleton (FR-3.1). */
+  @Put('institution-template')
+  setTemplate(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = templateBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Pick a template', parsed.error.issues);
+    return this.thesis.setTemplate(user.id, documentId, parsed.data.templateId);
+  }
+
+  /** D.3.3: the checklist, before anything is generated. */
+  @Get('compliance')
+  compliance(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.thesis.check(user.id, documentId);
+  }
+
+  /** The whole thesis. `.docx` always; `.pdf` only when the checklist passes or is overridden. */
+  @Post('export/thesis')
+  @HttpCode(200)
+  exportThesis(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = thesisExportBody.safeParse(body ?? {});
+    if (!parsed.success) throw new ValidationError('Invalid export request', parsed.error.issues);
+    return this.thesis.exportThesis(
+      user,
+      documentId,
+      parsed.data.format,
+      parsed.data.overrideReason,
+    );
+  }
 
   @Post('export')
   async exportChapter(@CurrentUser() user: SessionUser, @Body() body: unknown) {

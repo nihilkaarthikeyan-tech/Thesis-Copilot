@@ -11,12 +11,28 @@
  * orphaned and left alone.
  */
 
-import { Injectable } from '@nestjs/common';
-import { suggestTemplate, TEMPLATE_SPECS, TEMPLATES, type Template } from '@tc/config';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  buildSectionScopeRequest,
+  type Providers,
+  type SectionScopeResult,
+  sectionScopeSchema,
+} from '@tc/ai';
+import {
+  computeCallCost,
+  type Env,
+  OUTLINE_CALLS_PER_DOCUMENT,
+  suggestTemplate,
+  TEMPLATE_SPECS,
+  TEMPLATES,
+  type Template,
+} from '@tc/config';
 import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
+import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
+import { PROVIDERS } from '../ai/ai.module.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 
 export type OutlineView = {
@@ -42,6 +58,8 @@ export class OutlineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queue: QueueService,
+    @Inject(PROVIDERS) private readonly providers: Providers,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   private async owned(ownerId: string, documentId: string) {
@@ -210,6 +228,163 @@ export class OutlineService {
   }
 
   /** The same rule the outline job uses: chapters follow top-level nodes, nothing is deleted. */
+  /**
+   * FR-3.6: rewrite one chapter's scope note, with its siblings in the prompt so the new note does
+   * not repeat what the chapters either side already promise.
+   *
+   * Synchronous rather than a job: it is one Strong call about a paragraph, and the student is
+   * looking at the tree waiting for it. It writes only that node; the rest of the outline and every
+   * chapter's text are untouched.
+   */
+  async regenerateSection(
+    user: { id: string; plan: string },
+    documentId: string,
+    nodeId: string,
+    instruction?: string,
+  ): Promise<{ node: OutlineNode }> {
+    await this.owned(user.id, documentId);
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { scope: true, outline: true },
+    });
+    const outline = readOutline(memory?.outline);
+    const index = outline.findIndex((n) => n.id === nodeId);
+    if (index < 0) throw new NotFoundError('That section');
+    const node = outline[index] as OutlineNode;
+
+    const scope = memory?.scope as Record<string, unknown> | null;
+    if (!scope?.workingTitle) {
+      throw new ValidationError('Save the proposal first; a scope note is written from it.');
+    }
+
+    // ADR-0008. `OUTLINE` has no §11.3 cap because §11.4 counts it once per document, and FR-3.6
+    // lets a student ask for it again on every section. Without a bound this is unmetered Strong
+    // spend, which §11 does not allow to ship. The count includes the first generation.
+    const used = await this.prisma.aiCallLog.count({ where: { documentId, action: 'OUTLINE' } });
+    if (used >= OUTLINE_CALLS_PER_DOCUMENT) {
+      throw new ValidationError(
+        `This thesis has used all ${OUTLINE_CALLS_PER_DOCUMENT} outline rewrites. Edit the scope note yourself — the outline tree is fully editable — or start the next revision in a new thesis.`,
+      );
+    }
+
+    const request = buildSectionScopeRequest({
+      scope: {
+        workingTitle: String(scope.workingTitle),
+        problemStatement: String(scope.problemStatement ?? ''),
+        objectives: Array.isArray(scope.objectives) ? (scope.objectives as string[]) : [],
+        ...(scope.whyOpen ? { whyOpen: String(scope.whyOpen) } : {}),
+      },
+      node: {
+        id: node.id,
+        title: node.title,
+        scopeNote: node.scopeNote ?? '',
+      },
+      siblings: outline.flatMap((sibling, i) =>
+        i === index
+          ? []
+          : [
+              {
+                title: sibling.title,
+                scopeNote: sibling.scopeNote ?? '',
+                position: (i < index ? 'before' : 'after') as 'before' | 'after',
+              },
+            ],
+      ),
+      ...(instruction ? { instruction } : {}),
+      userId: user.id,
+      documentId,
+    });
+
+    const startedAt = Date.now();
+    let result: SectionScopeResult;
+    try {
+      const answer = await this.providers.llm.complete({ ...request, schema: sectionScopeSchema });
+      await this.logCall(
+        user.id,
+        documentId,
+        answer.modelId,
+        answer.usage,
+        Date.now() - startedAt,
+        true,
+      );
+      result = answer.value;
+    } catch (error) {
+      await this.logCall(
+        user.id,
+        documentId,
+        this.providers.llm.modelIdFor('strong'),
+        null,
+        Date.now() - startedAt,
+        false,
+        error,
+      );
+      throw error;
+    }
+
+    // The id never changes: chapters are bound to it (`Chapter.outlineNodeId`), and a new id would
+    // orphan the student's written text.
+    const updated: OutlineNode = {
+      ...node,
+      title: result.title,
+      scopeNote: result.scopeNote,
+      ...(result.children.length > 0
+        ? {
+            children: result.children.map((child, i) => ({
+              id: `${node.id}-s${i + 1}`,
+              title: child.title,
+              scopeNote: child.scopeNote,
+              children: [],
+            })),
+          }
+        : {}),
+    };
+    const next = [...outline];
+    next[index] = updated;
+
+    await this.prisma.documentMemory.update({
+      where: { documentId },
+      data: { outline: next as never },
+    });
+    await this.syncChapters(documentId, next);
+    return { node: updated };
+  }
+
+  private async logCall(
+    userId: string,
+    documentId: string,
+    model: string,
+    usage: {
+      inputTokens: number;
+      cachedInputTokens?: number;
+      cacheWriteTokens?: number;
+      outputTokens: number;
+    } | null,
+    latencyMs: number,
+    ok: boolean,
+    error?: unknown,
+  ): Promise<void> {
+    const cost =
+      ok && usage && this.env.AI_PROVIDER !== 'mock'
+        ? computeCallCost({ tier: 'strong', modelId: model, usage })
+        : 0;
+    await this.prisma.aiCallLog.create({
+      data: {
+        userId,
+        documentId,
+        action: 'OUTLINE',
+        model,
+        inputTokens: usage?.inputTokens ?? 0,
+        cachedInputTokens: usage?.cachedInputTokens ?? 0,
+        cacheWriteTokens: usage?.cacheWriteTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        costMicroInr: BigInt(cost),
+        latencyMs,
+        ok,
+        error: ok ? null : String(error instanceof Error ? error.message : error).slice(0, 500),
+      },
+    });
+  }
+
   private async syncChapters(
     documentId: string,
     nodes: readonly OutlineNode[],

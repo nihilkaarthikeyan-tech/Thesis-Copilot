@@ -2344,3 +2344,88 @@ suggest: 200 "We surveyed 312 households... [[NEEDS INPUT: what the guide asked 
 accept: 200 ACCEPTED, chapter version 3      (before the NEEDS-INPUT guard was added)
 response table: 200 response-to-comments-....docx, 9,055 bytes, 1 row
 ```
+
+## PHASE-3 Block 3 - the submission bundle (2026-09-07)
+
+PRD v2 D.3, FR-8.1, FR-3.6, FR-2.6. Template spec, compliance checks, full-thesis export,
+the submit screen, per-section outline regeneration, the living gap map.
+
+### Task B3.1 - the template spec (D.3.1)
+- Files: `packages/types/src/template.ts`, seed.
+- `templateSpecSchema` and `thesisDetailsSchema`. Zod 4 wants `.prefault({})` rather than
+  `.default({})` for a nested object default; 15 sites.
+- The seeded template is named `EXAMPLE_IN_UNIVERSITY` and the screen says so in a banner. Its
+  margins and fonts are common Indian conventions, not any university's rules.
+
+### Task B3.2 - compliance checks (D.3.3)
+- File: `packages/export/src/compliance.ts`. All ten checks, deterministic, each finding naming
+  what is wrong and where.
+
+### Task B3.3 - the thesis document (D.3.2)
+- Files: `packages/export/src/thesis.ts`, `apps/api/.../thesis-export.service.ts`.
+- Front matter in the template's order, styled body, heading numbers computed in code,
+  bibliography from one citeproc pass, appendices.
+- `.docx` is never blocked. PDF waits for the checklist unless overridden with a reason, and the
+  reason goes to an `EXPORT_OVERRIDE` `AuditEvent`.
+
+### Task B3.4 - the submit screen
+- File: `apps/web/src/app/app/d/[id]/submit/SubmitScreen.tsx`.
+
+### Task B3.5 - FR-3.6 and the living gap map
+- Files: `packages/ai/src/builder/section-scope.ts`, `outline.service.ts`, `search.service.ts`,
+  `DiscoverPanel.tsx`.
+
+### Six faults the smoke test found
+
+1. **`FST_ERR_DUPLICATED_ROUTE`, and the API would not boot.** `PUT /documents/:id/template` was
+   already the chapter skeleton (FR-3.1); the new formatting template claimed the same path. It is
+   now `PUT /documents/:id/institution-template`.
+2. **The contents pages printed their own field codes.** `fieldParagraph` hand-rolled a Word field
+   out of `TextRun`s with `{ type: 'begin' } as never` - a shape the `docx` package does not
+   accept, so `TOC \o "1-3" \h \z \u` came out as visible text in the PDF. Replaced with the
+   library's real `TableOfContents`. Agent rule 1, paid for in full.
+3. **The contents page was then empty.** `TOC \o` collects by *outline level*, and the Heading
+   styles `docx` writes carry no `w:outlineLvl`. Every heading paragraph now sets `outlineLevel`,
+   and the API sends Gotenberg `updateIndexes=true`, so LibreOffice builds the index during the
+   conversion. Verified: `INTRODUCTION.....1 / 1.1 Motivation.....1 / 1.1.1 Post-harvest
+   losses.....1`.
+4. **The heading level was on the wrong line.** `CHAPTER 1` carried Heading 1 and the title below
+   it did not, so the contents page would have listed `CHAPTER 1, CHAPTER 2` and no titles. The
+   title line carries it now, and the title comes from the chapter's own level-1 heading rather
+   than the stored `Chapter.title`, which drift apart the moment a student edits the heading.
+5. **The mock returned more themes than the schema allows.** `themesSchema` caps at 12 and the
+   prompt asks for 8; the mock made one theme per frequent title word, which for 60 candidates is
+   far more. Every large search run failed with "output that does not match the schema for action
+   SEARCH_QUERIES". The mock now keeps the largest 7 and folds the tail into `Other`.
+6. **The living gap map updated a record nothing read.** `refreshGapMap` wrote `libraryCount` and
+   a recomputed `thin` into `DocumentMemory.gapMap`, but `GET /search/:runId` rebuilt its themes
+   from the candidate rows, so turning the flag on changed nothing on screen. The view merges the
+   stored map now, and the grid says "2 of 26 kept" with the explanation changed to match.
+
+### ADR-0008 - FR-3.6 was unbounded spend
+
+`OUTLINE` carries no §11.3 cap because §11.4 counts it once per document. FR-3.6 lets a student
+regenerate any section as often as they like, on the Strong tier - so that assumption was false and
+the feature could not have shipped under §11. `OUTLINE_CALLS_PER_DOCUMENT = 12` now bounds it, a
+new `OUTLINE_SECTION` cost profile prices a regeneration honestly, and `computeMonthlyBudget` pays
+for every call the bound allows: the amortised one-time line goes ₹2.94 → ₹6.81 and FREE_TRIAL
+goes ₹32.90 → ₹36.77 against the ₹100 ceiling.
+
+### Block 3 - verified end to end (dev stack, mock provider)
+
+```
+compliance, empty thesis:  3 of 10 checks fail, naming the title page, the fields and the citations
+.docx while failing:       200  solar-dryers-....docx  11,184 bytes  (PK magic)
+PDF while failing:         400  "3 formatting checks did not pass..."
+PDF with an override:      200  31,557 bytes (%PDF), EXPORT_OVERRIDE audited with the reason
+details filled in:         3 failing -> 1  (only CITATIONS, which is true - nothing is cited)
+PUT institution-template:  200   and PUT template still reaches the FR-3.1 outline route
+thesis PDF, 11 pages:      title page / certificate / declaration / acknowledgements / abstract /
+                           contents with page numbers / figures / tables / abbreviations / body
+FR-3.6 regenerate:         200, target note rewritten, siblings untouched, unknown node 404
+the bound:                 calls 1-12 ok, call 13 -> 400 with the sentence about editing it yourself
+living gap map, flag on:   "Solar" thin:false (26 found) -> thin:true libraryCount:2 after curating
+```
+
+Both the `livingGapMap` flag and the seeded `EXAMPLE_IN_UNIVERSITY` template are dev state; the
+flag ships off and the template needs a real university guideline (`docs/PENDING.md`).

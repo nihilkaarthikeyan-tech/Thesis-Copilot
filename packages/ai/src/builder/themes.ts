@@ -154,9 +154,14 @@ export const mockThemesResponse = {
       const key = best ? best[0]?.toUpperCase() + best.slice(1) : 'Other';
       groups.set(key, [...(groups.get(key) ?? []), row.id]);
     }
-    const themes = [...groups.entries()]
-      .sort((a, b) => b[1].length - a[1].length)
-      .map(([name, candidateIds]) => ({ name, candidateIds }));
+    // `themesSchema` allows at most 12. Sixty varied titles produce far more groups than that,
+    // so the largest keep their names and the tail folds into one — every id still lands in
+    // exactly one theme, and nothing is dropped to fit the bound.
+    const ranked = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+    const kept = ranked.slice(0, THEMES.maxThemes - 1);
+    const rest = ranked.slice(THEMES.maxThemes - 1).flatMap(([, ids]) => ids);
+    const themes = kept.map(([name, candidateIds]) => ({ name, candidateIds }));
+    if (rest.length > 0) themes.push({ name: 'Other', candidateIds: rest });
     return { themes };
   },
 };
