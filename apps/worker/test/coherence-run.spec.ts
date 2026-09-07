@@ -406,8 +406,9 @@ describe('the flag identity across runs (ADR-0007)', () => {
       chapters: [{ id: 'ch-1', title: 'Introduction', order: 1, content: orphan }],
     });
     await runCoherence(JOB, f.deps);
-    expect(typeof f.created[0]?.fingerprint).toBe('string');
-    expect((f.created[0]?.fingerprint as string).length).toBeGreaterThan(0);
+    const fingerprint = f.created[0]?.fingerprint;
+    expect(typeof fingerprint).toBe('string');
+    expect(String(fingerprint).length).toBeGreaterThan(0);
   });
 
   it('does not raise a flag the student ignored', async () => {
