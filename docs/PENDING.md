@@ -192,19 +192,9 @@ produce, because none of it is the agent's to make up:
       evidence, all listed above and all blocked on the same two things: fixture papers and a
       provider key.
 
-## Agent work still outstanding (found by the 2026-09-07 audit)
+## Prompt for FR-5.6 (ADR-0010)
 
-Unlike everything above, these are **not** blocked on anything human — they are features the
-specification asks for that were never built, found by auditing the PRD against the code. About a
-day in total. Listed here so they are not lost; they belong to the agent, not to you.
-
-- [ ] **FR-5.6 — narrative ↔ parenthetical rewrite.** The citation node already carries
-      `role: 'parenthetical' | 'narrative'` and renders each correctly. Missing: the action that
-      flips one and rewrites the sentence around it (a Strong call; it has to move the author name
-      in or out of the prose). Needs a cap decision like ADR-0008's — the ₹100 ceiling has ~₹1.
-- [ ] **§2.2 — a separate switch for automatic citation.** "Auto-cite from library can be toggled
-      independently of autocomplete." `automaticSuggest` covers autocomplete; there is no second
-      setting, so a student who wants suggestions without citations cannot have that.
-- [ ] **§2.2 — honour the document language.** `Document.language` is stored, defaulted to `en`,
-      and read by nothing. Every prompt should carry it and the model should be told to answer in
-      it. Not a pilot blocker (the pilot is English) but a real limit on who can use the product.
+- [ ] **Add an `A.17 Citation role rewrite` section to the PRD** with the text of
+      `packages/ai/prompts/cite_role.md`. Appendix A had no prompt for FR-5.6, so that file is the
+      one hand-written prompt in the product and is marked as such. Once the PRD carries it, the
+      file becomes a verbatim copy like the other 21 and ADR-0010 becomes history.

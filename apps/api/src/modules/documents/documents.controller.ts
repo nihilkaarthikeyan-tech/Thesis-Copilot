@@ -10,7 +10,7 @@
  * document belonging to someone else reads as absent rather than forbidden.
  */
 
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import type { Prisma } from '@tc/db';
 import { z } from 'zod';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
@@ -18,6 +18,21 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
+
+const languageBody = z.object({
+  language: z
+    .string()
+    .trim()
+    .min(2)
+    .max(35)
+    .refine((tag) => {
+      try {
+        return new Intl.Locale(tag).language.length >= 2;
+      } catch {
+        return false;
+      }
+    }, 'That is not a language tag — use one like "en", "hi" or "pt-BR".'),
+});
 
 const createDocument = z.object({
   title: z.string().trim().min(1, 'Give the thesis a working title').max(300),
@@ -125,6 +140,31 @@ export class DocumentsController {
     });
 
     return toSummary(document);
+  }
+
+  /**
+   * §2.2: the language the thesis is written in. Every prompt built for this document carries it,
+   * so a Hindi thesis gets Hindi suggestions rather than English ones.
+   *
+   * An IETF tag, validated by `Intl` rather than against a list of our own: the set of languages
+   * a student may write in is not ours to decide, and a list would be a list we had to maintain.
+   */
+  @Put(':id/language')
+  async setLanguage(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<{ language: string }> {
+    const parsed = languageBody.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError('Pick a language', parsed.error.issues);
+    }
+    const updated = await this.prisma.document.updateMany({
+      where: { id, ownerId: user.id },
+      data: { language: parsed.data.language },
+    });
+    if (updated.count === 0) throw new NotFoundError('That document');
+    return { language: parsed.data.language };
   }
 
   /** PRD §9.1: document + memory + chapters (meta). */

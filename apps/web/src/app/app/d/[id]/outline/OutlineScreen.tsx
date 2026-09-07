@@ -26,8 +26,32 @@ type Node = {
   children: Node[];
 };
 
+/**
+ * The languages the picker offers. Not every language a student might write in — the API accepts
+ * any valid IETF tag — but the ones a pilot in India is most likely to need, plus the European
+ * ones, so the common case is one click rather than typing a tag.
+ */
+const LANGUAGES = [
+  { tag: 'en', name: 'English' },
+  { tag: 'hi', name: 'Hindi' },
+  { tag: 'bn', name: 'Bengali' },
+  { tag: 'ta', name: 'Tamil' },
+  { tag: 'te', name: 'Telugu' },
+  { tag: 'mr', name: 'Marathi' },
+  { tag: 'gu', name: 'Gujarati' },
+  { tag: 'kn', name: 'Kannada' },
+  { tag: 'ml', name: 'Malayalam' },
+  { tag: 'pa', name: 'Punjabi' },
+  { tag: 'ur', name: 'Urdu' },
+  { tag: 'fr', name: 'French' },
+  { tag: 'de', name: 'German' },
+  { tag: 'es', name: 'Spanish' },
+  { tag: 'pt', name: 'Portuguese' },
+] as const;
+
 type View = {
   template: string | null;
+  language: string;
   suggestedTemplate: string;
   templates: Array<{ key: string; name: string; summary: string; chapters: string[] }>;
   outline: Node[];
@@ -350,6 +374,35 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
         />
       ) : (
         <>
+          <section className="mt-6 rounded-lg border border-line bg-white p-4">
+            <label className="text-sm font-medium" htmlFor="thesis-language">
+              Language
+            </label>
+            <p className="mt-1 text-xs text-muted">
+              What the thesis is written in. Suggestions, drafts and chat all answer in it.
+            </p>
+            <select
+              id="thesis-language"
+              data-testid="language-picker"
+              value={view.language}
+              onChange={(e) => {
+                const language = e.target.value;
+                setView((v) => (v ? { ...v, language } : v));
+                void api(`/documents/${documentId}/language`, {
+                  method: 'PUT',
+                  body: JSON.stringify({ language }),
+                }).catch(() => setError('Could not change the language.'));
+              }}
+              className="mt-2 w-full rounded-md border border-line bg-white px-2 py-1 text-sm md:w-72"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.tag} value={l.tag}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </section>
+
           <section className="mt-6 rounded-lg border border-line bg-white p-4">
             <h2 className="text-sm font-medium">Template</h2>
             <div className="mt-3 grid gap-2 md:grid-cols-3">

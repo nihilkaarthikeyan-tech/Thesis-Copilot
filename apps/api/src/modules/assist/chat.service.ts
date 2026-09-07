@@ -111,6 +111,8 @@ export class ChatService {
         documentId: true,
         outlineNodeId: true,
         content: true,
+        // §2.2: the prompts answer in the document's language.
+        document: { select: { language: true } },
       },
     });
     if (!chapter) throw new NotFoundError('That document has no chapters yet');

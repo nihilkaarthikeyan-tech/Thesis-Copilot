@@ -15,20 +15,41 @@ import { listPromptFiles, loadAllPrompts, loadPrompt, PROMPT_NAMES } from '../sr
 const prd = readFileSync(PRD_PATH, 'utf8');
 const extracted = extractPrompts(prd);
 
+/**
+ * Exactly one prompt is not a copy of an Appendix A section: `cite_role`, for FR-5.6, which the
+ * appendix has no prompt for (ADR-0010). It is named here rather than detected, so adding a second
+ * hand-written prompt fails this file and has to be argued for.
+ */
+const NOT_FROM_APPENDIX_A = ['cite_role'] as const;
+
+const fromAppendixA = PROMPT_NAMES.filter(
+  (n) => !(NOT_FROM_APPENDIX_A as readonly string[]).includes(n),
+);
+
 describe('Appendix A prompt files', () => {
-  it('there are exactly 21', () => {
-    expect(listPromptFiles()).toHaveLength(21);
-    expect(PROMPT_NAMES).toHaveLength(21);
+  it('there are 22 prompts, 21 of them copied from the PRD', () => {
+    expect(PROMPT_NAMES).toHaveLength(22);
+    expect(fromAppendixA).toHaveLength(21);
+    expect(listPromptFiles()).toHaveLength(22);
   });
 
   it('the files on disk are exactly the ones §10.5 names', () => {
     expect(listPromptFiles()).toEqual([...PROMPT_NAMES].sort());
   });
 
-  it('the PRD still defines all 21', () => {
+  it('the PRD still defines all 21 of the copied ones', () => {
     expect(extracted.map((p) => p.filename).sort()).toEqual(
-      PROMPT_NAMES.map((n) => `${n}.md`).sort(),
+      fromAppendixA.map((n) => `${n}.md`).sort(),
     );
+  });
+
+  it('the hand-written one says on its face that it is not from the PRD', () => {
+    // A future reader must not mistake it for a verbatim copy and "correct" it back to the PRD.
+    for (const name of NOT_FROM_APPENDIX_A) {
+      const raw = loadPrompt(name).raw;
+      expect(raw, name).toContain('NOT FROM PRD APPENDIX A');
+      expect(raw, name).toContain('ADR');
+    }
   });
 
   describe('each file matches the PRD byte for byte', () => {
@@ -44,9 +65,9 @@ describe('Appendix A prompt files', () => {
 });
 
 describe('loadPrompt', () => {
-  it('loads all 21 without throwing', () => {
+  it('loads all 22 without throwing', () => {
     const all = loadAllPrompts();
-    expect(all.size).toBe(21);
+    expect(all.size).toBe(22);
   });
 
   it('gives _preamble the six shared rules from A.0', () => {
@@ -93,9 +114,12 @@ describe('loadPrompt', () => {
    *
    * These two tests pin that shape so it cannot drift unnoticed. Recorded in docs/BUILD_LOG.md.
    */
-  const TWO_BLOCK_PROMPTS = ['assist', 'draft'] as const;
+  // `cite_role` is the third, and the reason it is not a counter-example: it is not from Appendix
+  // A at all (FR-5.6 has no prompt there — ADR-0010), so it was written with its user message
+  // fenced rather than described in prose.
+  const TWO_BLOCK_PROMPTS = ['assist', 'draft', 'cite_role'] as const;
 
-  it('only assist and draft carry a fenced user template', () => {
+  it('only assist, draft and cite_role carry a fenced user template', () => {
     for (const name of PROMPT_NAMES) {
       const prompt = loadPrompt(name);
       const expected = (TWO_BLOCK_PROMPTS as readonly string[]).includes(name) ? 2 : 1;

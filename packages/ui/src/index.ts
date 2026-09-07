@@ -16,6 +16,13 @@ export {
   newCitationKey,
 } from './editor/citation.js';
 export {
+  applyCitationRole,
+  type CitationRole,
+  type SentenceForCitation,
+  sentenceAroundCitation,
+  sentenceToFragment,
+} from './editor/citation-role.js';
+export {
   DraftBlock,
   type DraftBlockOptions,
   type DraftStatus,

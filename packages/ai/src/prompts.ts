@@ -61,6 +61,9 @@ export const PROMPT_NAMES = [
   'revise',
   'cite_parse',
   'xpaper',
+  // FR-5.6. The only prompt here that is not a verbatim copy of an Appendix A section, because
+  // Appendix A has none for it — see docs/ADR/0010-fr-5-6-prompt.md.
+  'cite_role',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

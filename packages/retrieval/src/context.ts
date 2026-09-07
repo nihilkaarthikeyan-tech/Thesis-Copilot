@@ -42,6 +42,8 @@ export type ContextChapter = {
   title: string;
   scopeNote: string | null;
   content: unknown;
+  /** §2.2: `Document.language`, so every prompt built from this chapter answers in it. */
+  language?: string | null;
 };
 
 export type RetrievedPassage = PromptPassage & {
@@ -112,6 +114,7 @@ export async function buildChapterMemory(
     glossary: readGlossary(memory?.glossary),
     styleProfile: readStyleProfile(memory?.styleProfile),
     chapter: { outlineNodeId: chapter.outlineNodeId, text: docToText(chapter.content) },
+    ...(chapter.language ? { language: chapter.language } : {}),
   });
 }
 

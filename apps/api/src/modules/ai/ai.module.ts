@@ -16,6 +16,7 @@ import {
   mockChatFor,
   mockCiteParseResponse,
   mockCiteResponse,
+  mockCiteRoleResponse,
   mockClassifyResponse,
   mockCommandResponse,
   mockProposalFor,
@@ -74,6 +75,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 mockClassifyResponse,
                 // FR-3.6: one chapter's scope note, rewritten from its own title and siblings.
                 mockSectionScopeResponse,
+                // FR-5.6 is also a COMMAND call; it is matched first by its `<target>` block.
+                mockCiteRoleResponse,
                 mockCommandResponse,
                 mockStyleResponse,
                 {

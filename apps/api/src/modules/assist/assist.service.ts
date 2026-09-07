@@ -115,6 +115,8 @@ export class AssistService {
         documentId: true,
         outlineNodeId: true,
         content: true,
+        // §2.2: the prompts answer in the document's language.
+        document: { select: { language: true } },
       },
     });
     if (!chapter) throw new NotFoundError('That chapter');
@@ -152,10 +154,14 @@ export class AssistService {
       yield { event: 'start', data: { suggestionId: event.id } };
 
       // §10.3 / §10.4: the cached block and the passages, then A.1 assembled from prompt files.
-      const [memory, retrieved] = await Promise.all([
+      const [memory, retrieved, settings] = await Promise.all([
         this.context.memoryBlock(chapter),
         this.context.retrieve(chapter, input.before, 'ASSIST'),
+        // §2.2's citation toggle, per user and independent of automatic-suggest (ADR-0006).
+        this.prisma.user.findUnique({ where: { id: user.id }, select: { settings: true } }),
       ]);
+      const autoCite =
+        ((settings?.settings as Record<string, unknown> | null) ?? {}).autoCite !== false;
       const request = buildAssistRequest({
         memoryBlock: memory.text,
         chapter: { title: chapter.title, scopeNote: chapter.scopeNote },
@@ -242,6 +248,7 @@ export class AssistService {
         output: text,
         passageIds: retrieved.passages.map((p) => p.id),
         before: input.before,
+        autoCite,
       });
       for (const key of processed.hallucinated) {
         hallucinatedCite.inc();

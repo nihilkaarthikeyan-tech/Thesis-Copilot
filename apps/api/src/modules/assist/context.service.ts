@@ -22,6 +22,20 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 
 export type ChapterForContext = ContextChapter;
+
+/**
+ * A chapter as the services select it: Prisma nests the document's language under `document`,
+ * and the prompt builders want it flat. One place converts, so no caller has to remember.
+ */
+export type ChapterWithDocument = ContextChapter & {
+  document?: { language: string | null } | null;
+};
+
+function withLanguage(chapter: ChapterWithDocument): ContextChapter {
+  const language = chapter.language ?? chapter.document?.language ?? null;
+  return { ...chapter, ...(language ? { language } : {}) };
+}
+
 export type { RetrievalResult };
 
 @Injectable()
@@ -37,8 +51,8 @@ export class ContextService {
     return this.prisma as unknown as ContextClient;
   }
 
-  async memoryBlock(chapter: ChapterForContext): Promise<MemoryBlock> {
-    const block = await buildChapterMemory(this.db, chapter);
+  async memoryBlock(chapter: ChapterWithDocument): Promise<MemoryBlock> {
+    const block = await buildChapterMemory(this.db, withLanguage(chapter));
     if (block.trimmed.length > 0) {
       this.logger.log(
         {

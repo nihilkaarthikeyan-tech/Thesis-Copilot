@@ -22,7 +22,7 @@ type Usage = {
   actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
 };
 
-type Settings = { automaticSuggest?: boolean };
+type Settings = { automaticSuggest?: boolean; autoCite?: boolean };
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -42,14 +42,14 @@ export default function SettingsPage() {
       .catch(() => undefined);
   }, []);
 
-  async function toggleAutoSuggest(next: boolean) {
+  async function save(patch: Partial<Settings>) {
     setBusy(true);
     setError(null);
     setSaved(false);
     try {
       const updated = await api<Settings>('/settings', {
         method: 'PUT',
-        body: JSON.stringify({ automaticSuggest: next }),
+        body: JSON.stringify(patch),
       });
       setSettings(updated);
       setSaved(true);
@@ -106,7 +106,7 @@ export default function SettingsPage() {
             aria-checked={settings?.automaticSuggest === true}
             aria-label="Suggest without my asking"
             disabled={busy || settings === null}
-            onClick={() => void toggleAutoSuggest(settings?.automaticSuggest !== true)}
+            onClick={() => void save({ automaticSuggest: settings?.automaticSuggest !== true })}
             data-testid="auto-suggest-toggle"
             className={`shrink-0 rounded-full px-3 py-1 text-xs ${
               settings?.automaticSuggest ? 'bg-ink text-white' : 'border border-line text-muted'
@@ -120,6 +120,42 @@ export default function SettingsPage() {
             Saved. It takes effect the next time you open a chapter.
           </p>
         ) : null}
+      </section>
+
+      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="text-sm font-medium">Cite my library automatically</h2>
+            <p className="mt-1 text-sm text-muted">
+              On by default. When a suggestion draws on a paper in your library, it arrives with the
+              citation already attached, so you can see which source it came from.
+            </p>
+            <p className="mt-2 text-sm">
+              <strong>Turning this off does not make suggestions less grounded.</strong> Your
+              sources are still what the suggestion is written from and it still may not claim
+              anything they do not say — you simply get the sentence without the marker, and add the
+              citation yourself.
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              Costs nothing either way. Citation <em>suggestions</em>, which you ask for with the
+              cite button, are a separate action and are unaffected.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.autoCite !== false}
+            aria-label="Cite my library automatically"
+            disabled={busy || settings === null}
+            onClick={() => void save({ autoCite: settings?.autoCite === false })}
+            data-testid="auto-cite-toggle"
+            className={`shrink-0 rounded-full px-3 py-1 text-xs ${
+              settings?.autoCite !== false ? 'bg-ink text-white' : 'border border-line text-muted'
+            }`}
+          >
+            {settings?.autoCite !== false ? 'On' : 'Off'}
+          </button>
+        </div>
       </section>
 
       <section className="mt-6 rounded-lg border border-line bg-white p-4">

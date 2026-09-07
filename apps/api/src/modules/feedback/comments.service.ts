@@ -281,6 +281,8 @@ export class CommentsService {
         content: true,
         scopeNote: true,
         outlineNodeId: true,
+        // §2.2: the prompts answer in the document's language.
+        document: { select: { language: true } },
       },
     });
     const sentences = sentencesOf(chapter.id, chapter.content);

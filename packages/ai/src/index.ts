@@ -57,6 +57,18 @@ export {
   referenceLinesIn,
 } from './builder/cite-parse.js';
 export {
+  buildCiteRoleRequest,
+  CITATION_ROLES,
+  CITE_ROLE,
+  type CitationRole,
+  type CiteRoleInput,
+  type CiteRolePostProcess,
+  citeRoleCachedBlock,
+  citeRoleUserMessage,
+  mockCiteRoleResponse,
+  postProcessCiteRole,
+} from './builder/cite-role.js';
+export {
   buildChapterSummaryRequest,
   buildClaimsRequest,
   buildContradictionRequest,

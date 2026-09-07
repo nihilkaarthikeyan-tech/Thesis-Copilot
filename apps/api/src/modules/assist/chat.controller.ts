@@ -15,7 +15,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { COMMANDS } from '@tc/ai';
+import { CITATION_ROLES, COMMANDS } from '@tc/ai';
 import type { Env } from '@tc/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -25,6 +25,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { ChatService } from './chat.service.js';
+import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
 import { streamSse } from './sse.js';
 
@@ -49,8 +50,17 @@ const commandBody = z.object({
   contextAfter: z.string().max(10_000).optional(),
 });
 
+const citeRoleBody = z.object({
+  chapterId: z.string().uuid(),
+  citationId: z.string().trim().min(1).max(120),
+  targetRole: z.enum(CITATION_ROLES),
+  sentence: z.string().trim().min(1).max(4_000),
+});
+
 const settingsBody = z.object({
   automaticSuggest: z.boolean().optional(),
+  /** §2.2: auto-cite is toggled independently of autocomplete. On unless turned off. */
+  autoCite: z.boolean().optional(),
   chatFilters: z
     .object({
       yearFrom: z.number().int().nullish(),
@@ -67,6 +77,7 @@ export class ChatController {
   constructor(
     private readonly chat: ChatService,
     private readonly commands: CommandService,
+    private readonly citeRoles: CiteRoleService,
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -104,6 +115,20 @@ export class ChatController {
     return this.commands.run(user, parsed.data);
   }
 
+  /**
+   * FR-5.6: move a citation between narrative and parenthetical form.
+   *
+   * Answers with the rewritten sentence and its diff; nothing reaches the chapter until the
+   * student applies it, exactly like a section command.
+   */
+  @Post('citations/role')
+  @HttpCode(200)
+  citeRole(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = citeRoleBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid request', parsed.error.issues);
+    return this.citeRoles.run(user, parsed.data);
+  }
+
   /** FR-4.6: automatic-suggest is per user and off by default (ADR-0006). */
   @Get('settings')
   async settings(@CurrentUser() user: SessionUser) {
@@ -112,7 +137,13 @@ export class ChatController {
       select: { settings: true },
     });
     const settings = (row?.settings as Record<string, unknown> | null) ?? {};
-    return { automaticSuggest: settings.automaticSuggest === true, ...settings };
+    return {
+      automaticSuggest: settings.automaticSuggest === true,
+      // Unlike automatic-suggest, citations are on by default: a grounded suggestion that shows
+      // where it came from is the product's whole argument, and turning that off is the choice.
+      autoCite: settings.autoCite !== false,
+      ...settings,
+    };
   }
 
   @Put('settings')

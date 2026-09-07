@@ -6,14 +6,14 @@
 
 ## Headline
 
-**Development is effectively complete — 58 of 61 in-scope requirements. A line-by-line audit on
-2026-09-07 found three small gaps, listed below; they are ~1 day of work. The launch blockers are
-not code.**
+**Development is complete — 61 of 61 in-scope requirements. A line-by-line audit on 2026-09-07
+found three gaps the phase plan had never scheduled; all three were built the same day. The launch
+blockers are not code.**
 
 | | |
 |---|---|
-| Requirements built | **58 of 61 in scope (95%)** |
-| Gaps found by audit | 3, all P2/P3, ~1 day (see "Audit findings") |
+| Requirements built | **61 of 61 in scope (100%)** |
+| Gaps found by audit, and closed | 3 (see "Audit findings") |
 | Deferred by the spec itself | 2 (LaTeX export, annotated-PDF import — both marked post-launch in the PRD) |
 | Automated tests passing | **994** unit/integration + **28** browser |
 | Build, lint, type-check | Clean |
@@ -26,6 +26,7 @@ not code.**
 A requirement-by-requirement audit against the specification, rather than against the project plan,
 found three features that were specified and never built. All three fell between the specification
 and the phase plan — the phase plan never scheduled them, so no task was ever marked incomplete.
+**All three are now built and tested.**
 
 | Ref | Feature | Priority | Impact |
 |---|---|---|---|
@@ -33,8 +34,8 @@ and the phase plan — the phase plan never scheduled them, so no task was ever 
 | §2.2 | Separate on/off switch for automatic citation, independent of automatic suggestions | P2 | A student who wants suggestions without citations cannot have that today. |
 | §2.2 | Suggestions follow the document's language setting | P2 | The language is stored and ignored, so a non-English thesis gets English suggestions. Not a pilot blocker — the pilot is English — but a real limit on the market. |
 
-Estimated to close: about one day. Recommend closing before the pilot rather than after, since the
-second and third are both visible to a student.
+Closed on 2026-09-07. The first needed a prompt the specification does not contain, which is
+recorded as a decision (`docs/ADR/0010`) with a one-line follow-up for the specification's author.
 
 A fourth, non-functional finding: three screens in the specification were merged into other screens
 during the build (citations and coherence flags became panels inside the editor; export became the
@@ -134,8 +135,8 @@ is blocked on further development.**
 
 The software was built to specification and is tested to a standard we can defend: 994 automated
 tests and every user-facing screen exercised in a real browser. An audit against the specification
-found three small gaps, listed above and now scheduled; they were found by re-reading the
-requirements rather than by trusting the project plan, which is the check worth having done.
+found three gaps, listed above and now closed; they were found by re-reading the requirements
+rather than by trusting the project plan, which is the check worth having done.
 
 What stands between us and a live product is not code. It is three purchases and half a day of
 subject-matter input. The honest position is that we have finished building and have not yet

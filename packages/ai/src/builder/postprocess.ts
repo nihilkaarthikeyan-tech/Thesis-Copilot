@@ -21,6 +21,13 @@ export type PostProcessInput = {
   passageIds: readonly string[];
   /** The text before the cursor, for the overlap check. */
   before: string;
+  /**
+   * §2.2: "Auto-cite from library can be toggled independently of autocomplete." When the student
+   * has turned citations off, every marker is removed — including the legitimate ones — and none
+   * of them counts as a hallucination. Grounding is unchanged: the passages still go to the model
+   * and still constrain what it may claim. Only the visible markers go.
+   */
+  autoCite?: boolean;
 };
 
 export type PostProcessResult = {
@@ -136,7 +143,12 @@ export function cutAfterSecondSentence(output: string): { text: string; truncate
 }
 
 export function postProcessAssist(input: PostProcessInput): PostProcessResult {
-  const stripped = stripUnknownCitations(input.output, input.passageIds);
+  // With auto-cite off the allowed set is empty, but a removed marker is the student's choice
+  // rather than the model's fault, so `suppressed` keeps it out of the hallucination count.
+  const suppressed = input.autoCite === false;
+  const stripped = suppressed
+    ? { ...stripUnknownCitations(input.output, []), hallucinated: [], cited: [] }
+    : stripUnknownCitations(input.output, input.passageIds);
   const overlap = removeLeadingOverlap(stripped.text, input.before);
   const cut = cutAfterSecondSentence(overlap.text);
 

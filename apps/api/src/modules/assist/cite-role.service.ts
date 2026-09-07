@@ -1,59 +1,57 @@
 /**
- * Section commands — PRD FR-4.8, §9.3 `POST /commands/run`, A.11, PHASES v2 W9.2.
+ * Citation role rewrite — PRD FR-5.6, ADR-0010.
  *
- * One Strong call per run, metered as `COMMAND`. The rewrite never reaches the chapter here: the
- * response is the rewritten text plus a word-level diff, and the editor applies it only when the
- * student presses Apply ("flag, don't fix"). Provenance `COMMAND` is set by the editor at that
- * moment, so a discarded command leaves no trace but the cap unit and the call log.
+ * "Narrative ↔ parenthetical rewrite on request (strong tier; language task)." One Strong call,
+ * metered as `COMMAND` (ADR-0008's reasoning: the same kind of act as a section command, and the
+ * ₹100 ceiling has no room for a cap of its own).
+ *
+ * Like every other rewrite in the product, this one does not touch the chapter. It answers with
+ * the sentence as it would read and a word-level diff, and the editor applies it when the student
+ * presses Apply — §12.3, "flag, don't fix". A feature whose entire job is to rewrite a sentence is
+ * exactly where that rule is easiest to forget.
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
-  buildCommandRequest,
-  COMMAND,
-  type CommandName,
+  buildCiteRoleRequest,
+  type CitationRole,
   commandResultSchema,
   type DiffOp,
   diffWords,
   type Providers,
-  postProcessCommand,
+  postProcessCiteRole,
 } from '@tc/ai';
-import { computeCallCost, type Env } from '@tc/config';
+import { computeCallCost, type Env, type Plan } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
 import { CapExceededError, NotFoundError, ValidationError } from '../../common/errors.js';
-import {
-  aiCallLatency,
-  aiCostMicroInr,
-  capExceeded,
-  hallucinatedCite,
-} from '../../common/metrics.js';
+import { aiCallLatency, aiCostMicroInr, capExceeded } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import type { SessionUser } from '../auth/current-user.decorator.js';
 import { UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
 
-export type CommandRunInput = {
+export type CiteRoleInput = {
   chapterId: string;
-  command: CommandName;
-  selection: string;
-  contextBefore?: string;
-  contextAfter?: string;
+  /** The citation node's key, as the editor knows it. */
+  citationId: string;
+  targetRole: CitationRole;
+  /** The sentence the citation sits in, exactly as the chapter reads now. */
+  sentence: string;
 };
 
-export type CommandRunResult = {
-  command: CommandName;
-  text: string;
+export type CiteRoleResult = {
+  sentence: string;
   diff: DiffOp[];
-  words: number;
-  originalWords: number;
-  /** Citations the model dropped from the selection — the student is warned before applying. */
-  droppedCitations: string[];
+  targetRole: CitationRole;
   unchanged: boolean;
+  /** Set when the rewrite broke a rule and was refused; the sentence is then the original. */
+  refusal: string | null;
 };
 
 @Injectable()
-export class CommandService {
-  private readonly logger = new Logger(CommandService.name);
+export class CiteRoleService {
+  private readonly logger = new Logger(CiteRoleService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -63,13 +61,12 @@ export class CommandService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  async run(user: { id: string; plan: string }, input: CommandRunInput): Promise<CommandRunResult> {
-    const selection = input.selection.trim();
-    if (!selection) throw new ValidationError('Select some text first.');
-    if (selection.length > COMMAND.maxSelectionChars) {
-      throw new ValidationError(
-        `That selection is too long for one command (${selection.length} characters, limit ${COMMAND.maxSelectionChars}). Select a paragraph or two.`,
-      );
+  async run(user: SessionUser, input: CiteRoleInput): Promise<CiteRoleResult> {
+    const sentence = input.sentence.trim();
+    if (!sentence) throw new ValidationError('There is no sentence to rewrite.');
+    if (!sentence.includes(`{{cite:${input.citationId}}}`)) {
+      // Without the marker there is nothing to move, and the model would invent a place for it.
+      throw new ValidationError('That citation is not in the sentence you sent.');
     }
 
     const chapter = await this.prisma.chapter.findFirst({
@@ -81,34 +78,23 @@ export class CommandService {
         documentId: true,
         outlineNodeId: true,
         content: true,
-        // §2.2: the prompts answer in the document's language.
         document: { select: { language: true } },
       },
     });
     if (!chapter) throw new NotFoundError('That chapter');
 
-    const cap = await this.usage.consume(
-      user.id,
-      user.plan as Parameters<UsageService['consume']>[1],
-      'COMMAND',
-    );
+    const cap = await this.usage.consume(user.id, user.plan as Plan, 'COMMAND');
     if (!cap.ok) {
       capExceeded.inc({ action: 'COMMAND' });
       throw new CapExceededError('COMMAND', cap.cap, cap.resetsAt);
     }
 
-    // A.11 sends passages only to expand and consistency; the others rewrite what is there.
-    const passages = COMMAND.needsPassages.includes(input.command)
-      ? (await this.context.retrieve(chapter, selection, 'CHAT')).passages.slice(0, COMMAND.topK)
-      : [];
     const memory = await this.context.memoryBlock(chapter);
-    const request = buildCommandRequest({
-      command: input.command,
+    const request = buildCiteRoleRequest({
+      sentence,
+      citationId: input.citationId,
+      targetRole: input.targetRole,
       memoryBlock: memory.text,
-      selection,
-      contextBefore: (input.contextBefore ?? '').slice(-1_500),
-      contextAfter: (input.contextAfter ?? '').slice(0, 1_500),
-      passages,
       userId: user.id,
       documentId: chapter.documentId,
     });
@@ -124,29 +110,24 @@ export class CommandService {
       const latencyMs = Date.now() - startedAt;
       aiCallLatency.observe({ action: 'COMMAND', tier: 'strong' }, latencyMs);
 
-      const processed = postProcessCommand(
-        result.value.text,
-        selection,
-        passages.map((p) => p.id),
-      );
-      for (const key of processed.hallucinated) {
-        hallucinatedCite.inc();
-        this.logger.warn({ chapterId: chapter.id, key }, 'HALLUCINATED_CITE');
+      const processed = postProcessCiteRole(result.value.text, sentence, input.citationId);
+      if (processed.refusal) {
+        this.logger.warn(
+          { chapterId: chapter.id, citationId: input.citationId, refusal: processed.refusal },
+          'citation role rewrite refused',
+        );
       }
       await this.log(user.id, chapter.documentId, modelId, result.usage, latencyMs, true);
 
-      // A.11's consistency command returns the selection unchanged when nothing conflicts.
-      const unchanged = processed.text.trim() === selection;
       return {
-        command: input.command,
-        text: processed.text,
-        diff: unchanged
-          ? [{ type: 'same', text: selection }]
-          : diffWords(selection, processed.text),
-        words: processed.words,
-        originalWords: processed.originalWords,
-        droppedCitations: processed.dropped,
-        unchanged,
+        sentence: processed.sentence,
+        diff:
+          processed.ok && !processed.unchanged
+            ? diffWords(sentence, processed.sentence)
+            : [{ type: 'same', text: sentence }],
+        targetRole: input.targetRole,
+        unchanged: !processed.ok || processed.unchanged,
+        refusal: processed.refusal,
       };
     } catch (error) {
       await this.log(
@@ -158,8 +139,6 @@ export class CommandService {
         false,
         error,
       );
-      // §11.5: the student was never served, so the unit goes back.
-      await this.usage.refund(user.id, 'COMMAND');
       throw error;
     }
   }

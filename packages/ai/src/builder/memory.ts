@@ -52,6 +52,15 @@ export type MemoryInput = {
     /** The chapter's current plain text; decides which glossary entries survive trimming. */
     text: string;
   };
+  /**
+   * §2.2 "Language: follows document language setting" — `Document.language`, an IETF tag.
+   *
+   * Appended after the memory block rather than inside it: `_memory.md` is verbatim from Appendix
+   * A (§0.3 rule 6) and has no slot for this. Omitted entirely for English, which is the default
+   * and what A.1 already asks for ("plain academic English"), so an English document's cached
+   * prefix is byte-identical to what it was before this existed.
+   */
+  language?: string | null;
   budgetTokens?: number;
 };
 
@@ -167,14 +176,59 @@ function render(
       }
     : null;
 
-  return renderTemplate(template, {
+  const block = renderTemplate(template, {
     scope: input.scope,
     chapter: { outlineNodeId: input.chapter.outlineNodeId },
     outline_rendered: renderOutline(input.outline, input.chapter.outlineNodeId, options.titlesOnly),
     glossary,
     styleProfile,
   }).trim();
+
+  const language = languageLine(input.language);
+  return language ? `${block}\n\n${language}` : block;
 }
+
+/**
+ * The one-line instruction that makes §2.2's "follows document language setting" true.
+ *
+ * English returns nothing at all, for two reasons: A.1 already says "plain academic English", so
+ * the line would be redundant; and an English document is every document today, so saying nothing
+ * keeps the cached prefix byte-identical to what it was before this feature existed.
+ */
+export function languageLine(language: string | null | undefined): string | null {
+  const tag = (language ?? '').trim();
+  if (!tag || /^en(-|$)/i.test(tag)) return null;
+  return `The thesis is written in ${LANGUAGE_NAMES[tag.toLowerCase()] ?? tag}. Write in that language, not in English.`;
+}
+
+/**
+ * Names for the tags a student can pick in the UI. A tag with no name here is passed through as
+ * itself — "Write in that language" with an IETF tag is still an instruction a model follows, and
+ * inventing a name for a tag we do not know would be worse.
+ */
+const LANGUAGE_NAMES: Record<string, string> = {
+  hi: 'Hindi',
+  bn: 'Bengali',
+  ta: 'Tamil',
+  te: 'Telugu',
+  mr: 'Marathi',
+  gu: 'Gujarati',
+  kn: 'Kannada',
+  ml: 'Malayalam',
+  pa: 'Punjabi',
+  ur: 'Urdu',
+  fr: 'French',
+  de: 'German',
+  es: 'Spanish',
+  pt: 'Portuguese',
+  it: 'Italian',
+  nl: 'Dutch',
+  ru: 'Russian',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  ar: 'Arabic',
+};
 
 /**
  * Renders A.0.1 and applies its trimming steps, in its order, only as far as needed. Each step is

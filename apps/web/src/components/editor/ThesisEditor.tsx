@@ -603,7 +603,7 @@ function ChapterEditor({
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
             ) : tab === 'citations' ? (
               <>
-                <CitationList editor={editor} />
+                <CitationList editor={editor} chapterId={chapter.id} />
                 <CitationsPanel
                   documentId={doc.id}
                   chapterId={chapter.id}

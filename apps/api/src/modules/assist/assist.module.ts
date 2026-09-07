@@ -10,6 +10,7 @@ import { ChatController } from './chat.controller.js';
 import { ChatService } from './chat.service.js';
 import { CitationsController } from './citations.controller.js';
 import { CiteService } from './cite.service.js';
+import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
 import { ContextService } from './context.service.js';
 import { DraftController } from './draft.controller.js';
@@ -21,6 +22,7 @@ import { DraftService } from './draft.service.js';
   providers: [
     AssistService,
     ChatService,
+    CiteRoleService,
     CommandService,
     CiteService,
     ContextService,
@@ -29,6 +31,14 @@ import { DraftService } from './draft.service.js';
     RedisService,
     SessionGuard,
   ],
-  exports: [AssistService, CiteService, ChatService, CommandService, ContextService, DraftService],
+  exports: [
+    AssistService,
+    CiteService,
+    ChatService,
+    CiteRoleService,
+    CommandService,
+    ContextService,
+    DraftService,
+  ],
 })
 export class AssistModule {}

@@ -43,6 +43,8 @@ import { UsageService } from '../usage/usage.service.js';
 
 export type OutlineView = {
   template: Template | null;
+  /** §2.2: the language every prompt for this document answers in. */
+  language: string;
   suggestedTemplate: Template;
   templates: Array<{ key: Template; name: string; summary: string; chapters: string[] }>;
   outline: OutlineNode[];
@@ -72,7 +74,7 @@ export class OutlineService {
   private async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
-      select: { id: true, field: true, template: true, meta: true },
+      select: { id: true, field: true, template: true, meta: true, language: true },
     });
     if (!document) throw new NotFoundError('That document');
     return document;
@@ -97,6 +99,7 @@ export class OutlineService {
 
     return {
       template: (document.template as Template | null) ?? null,
+      language: document.language,
       suggestedTemplate: suggestTemplate(document.field),
       templates: TEMPLATES.map((key) => ({
         key,
