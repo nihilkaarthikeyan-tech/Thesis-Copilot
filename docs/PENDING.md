@@ -94,7 +94,14 @@ blocks the agent from continuing to build against mocks.
 - [ ] **Five fixture papers** `fixtures/papers/p01.pdf … p05.pdf` + `p05.docx`, per the checklist in
       `fixtures/papers/README.md`. Needed for extraction accuracy scoring (Phase 1 week 2).
 - [ ] After the agent writes `pNN.expected.draft.json`, correct them and rename to `pNN.expected.json`.
-- [ ] **Retrieval Q&A set** `fixtures/retrieval/qa.json` (30 questions → correct chunk ids), Appendix C.4.
+- [ ] **Retrieval Q&A set** `fixtures/retrieval/qa.json`, Appendix C.4: six questions per fixture
+      paper, thirty in all, each with the page and a verbatim quote of the answering passage. The
+      scorer and its runner are built (`packages/retrieval/src/recall.ts`,
+      `test/recall.spec.ts`) — the suite reports BLOCKED and skips until the file exists, then
+      prints the per-paper table for `docs/BUILD_LOG.md`.
+      `fixtures/retrieval/README.md` explains what makes a usable quote, and
+      `example.draft.json` is the shape to copy. §0.3 rule 2 forbids the agent writing the
+      questions: the point of the set is your judgement of what a paper answers.
 - [ ] **Prompt golden set**, Appendix C.5: ten Assist scenarios in `fixtures/prompts/*.json`.
       The runner, the judge and a template (`example.draft.json`) are built and tested; only your
       scenarios are missing, because §0.3 rule 3 forbids the agent writing fixture expectations and

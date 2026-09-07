@@ -80,6 +80,23 @@ export {
   topK,
 } from './rank.js';
 export {
+  C4_RECALL_THRESHOLD,
+  formatRecallReport,
+  type IndexedChunk,
+  locateQuote,
+  normaliseForQuote,
+  type QaQuestion,
+  type QaSet,
+  QUESTIONS_PER_PAPER,
+  type QuestionOutcome,
+  qaQuestionSchema,
+  qaSetSchema,
+  type RecallScore,
+  readQaSet,
+  scoreQuestion,
+  scoreRecall,
+} from './recall.js';
+export {
   type BibEntry,
   type BibFormat,
   detectBibFormat,

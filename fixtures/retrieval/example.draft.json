@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "A TEMPLATE, not data. The agent may write *.draft.json and never the fixture itself",
+    "(PRD §0.3 rule 2). Copy this to qa.json and replace every question, page and quote with",
+    "your own, read out of the real papers in fixtures/papers/.",
+    "",
+    "Two questions are shown for p01 as a shape; the real set needs six per paper, thirty in all.",
+    "The quotes below are invented and match no paper — leaving them in would fail to locate.",
+    "",
+    "fixtures/retrieval/README.md explains what makes a good question and a usable quote."
+  ],
+  "questions": [
+    {
+      "paper": "p01",
+      "question": "What did most households give as the reason they had not adopted?",
+      "page": 7,
+      "quote": "REPLACE ME — a verbatim sentence from p01 page 7 that answers the question above."
+    },
+    {
+      "paper": "p01",
+      "question": "How was the sample selected?",
+      "page": 4,
+      "quote": "REPLACE ME — a verbatim sentence from p01's method section describing the sampling."
+    }
+  ]
+}
