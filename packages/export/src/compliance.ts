@@ -42,7 +42,7 @@ export type ComplianceResult = {
 
 export const CHECK_LABELS: Record<CheckId, string> = {
   FRONT_MATTER: 'Required front matter is present',
-  TITLE_PAGE_FIELDS: 'Every title-page field is filled',
+  TITLE_PAGE_FIELDS: 'Every front-matter field is filled',
   ABSTRACT_LENGTH: 'The abstract is within its word limit',
   CHAPTER_HEADINGS: 'Each chapter starts with one level-1 heading',
   HEADING_NUMBERING: 'Headings run in order with no gaps',
@@ -134,7 +134,7 @@ export function figuresOf(chapter: ComplianceChapter): Figure[] {
   return out;
 }
 
-/** Plain text of a chapter — used to check that every figure is referred to. */
+/** Plain text of a chapter, in document order. */
 function plainText(chapter: ComplianceChapter): string {
   const parts: string[] = [];
   const walk = (node: Node | undefined) => {
@@ -159,6 +159,11 @@ function sectionApplies(id: string, figures: readonly Figure[], details: ThesisD
 }
 
 /** Does the document have content for this front-matter section? */
+/** "TITLE_PAGE" → "title page", for a message a student reads. */
+function sectionName(id: string): string {
+  return id.replace(/_/g, ' ').toLowerCase();
+}
+
 function sectionHasContent(
   id: string,
   details: ThesisDetails,
@@ -169,7 +174,8 @@ function sectionHasContent(
     case 'TITLE_PAGE':
       return documentTitle.trim().length > 0 && details.studentName.trim().length > 0;
     case 'CERTIFICATE':
-      return details.guideName.trim().length > 0;
+      // Both names are printed on it, and both are signed for.
+      return details.guideName.trim().length > 0 && details.hodName.trim().length > 0;
     case 'DECLARATION':
       return details.studentName.trim().length > 0 && details.declarationDate.trim().length > 0;
     case 'ACKNOWLEDGEMENTS':
@@ -217,15 +223,27 @@ export function runComplianceChecks(input: ComplianceInput): ComplianceResult {
     }
   }
 
-  // 2. Title-page fields.
-  const titlePage = spec.frontMatter.find((section) => section.id === 'TITLE_PAGE');
-  for (const field of titlePage?.fields ?? []) {
-    const value =
-      field === 'title'
-        ? input.documentTitle
-        : ((details as unknown as Record<string, unknown>)[field] as string | undefined);
-    if (!String(value ?? '').trim()) {
-      add('TITLE_PAGE_FIELDS', `The title page needs “${field}”, which is empty.`);
+  // 2. The fields every required front-matter section names.
+  //
+  // Every section's `fields`, not just the title page's: the certificate names `hodName` and the
+  // declaration names a date, and a blank in either is printed on a page the department signs.
+  // The check keeps D.3.3's id, which was written when the title page was the only one listed.
+  const seenFields = new Set<string>();
+  for (const section of spec.frontMatter) {
+    if (section.required === false) continue;
+    for (const field of section.fields) {
+      // The example template writes the declaration's date as `date`; `ThesisDetails` calls it
+      // `declarationDate`. Alias rather than rename, so an installed template keeps working.
+      const key = field === 'date' ? 'declarationDate' : field;
+      if (seenFields.has(key)) continue;
+      seenFields.add(key);
+      const value =
+        key === 'title'
+          ? input.documentTitle
+          : ((details as unknown as Record<string, unknown>)[key] as string | undefined);
+      if (!String(value ?? '').trim()) {
+        add('TITLE_PAGE_FIELDS', `The ${sectionName(section.id)} needs “${key}”, which is empty.`);
+      }
     }
   }
 
@@ -272,7 +290,19 @@ export function runComplianceChecks(input: ComplianceInput): ComplianceResult {
   }
 
   // 6. Figures and tables: captioned, and referred to in the text.
-  const allText = chapters.map(plainText).join(' ');
+  // The captions are removed before the search below, because a caption reads "Figure 1.1:
+  // Drying curve" — the very phrase the search looks for. Counting it would let every captioned
+  // figure pass whether the prose mentions it or not: the check defeated by the thing it checks.
+  // The strings come from `figuresOf`, which knows which paragraphs are captions, rather than
+  // from a heuristic that would also eat a sentence legitimately beginning "Figure 1 shows…".
+  const captionText = new Set(figures.map((f) => f.caption).filter(Boolean) as string[]);
+  const allText = chapters
+    .map((c) => {
+      let text = plainText(c);
+      for (const caption of captionText) text = text.split(caption).join(' ');
+      return text;
+    })
+    .join(' ');
   for (const chapter of chapters) {
     for (const item of figuresOf(chapter)) {
       if (!item.caption) {

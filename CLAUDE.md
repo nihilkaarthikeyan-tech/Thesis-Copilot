@@ -165,3 +165,7 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
 - **Check the library's real API before hand-rolling one.** `fieldParagraph` built a Word field out
   of `TextRun`s with `{ type: 'begin' } as never`; `docx` has `TableOfContents`, and the hand-rolled
   version printed its own field codes into the PDF.
+- **Never write a regex through a Python heredoc.** `\b` in a Python string is a literal backspace
+  byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
+  matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a
+  backslash in it.
