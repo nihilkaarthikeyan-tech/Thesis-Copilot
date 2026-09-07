@@ -160,7 +160,7 @@ export class AssistService {
         // ยง2.2's citation toggle, per user and independent of automatic-suggest (ADR-0006).
         this.prisma.user.findUnique({ where: { id: user.id }, select: { settings: true } }),
       ]);
-      // ง2.2: auto-cite is on unless the student turned it off in settings.
+      // PRD 2.2: auto-cite is on unless the student turned it off in settings.
       const userSettings = (settings?.settings ?? {}) as Record<string, unknown>;
       const autoCite = userSettings.autoCite !== false;
       const request = buildAssistRequest({
