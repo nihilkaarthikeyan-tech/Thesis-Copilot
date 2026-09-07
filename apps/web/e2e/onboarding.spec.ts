@@ -1,6 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { establishSession, freshEmail, type Session } from './_session.js';
 
 /**
  * Onboarding — PRD §6.1, PHASES 5.3.
@@ -51,29 +50,16 @@ const SEED_PDF = buildPdf([
   '[1] LeCun, Y., Bengio, Y., & Hinton, G. (2015). Deep learning. Nature, 521, 436-444.',
 ]);
 
-async function freshSession(request: APIRequestContext) {
-  const email = `e2e-onboard-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-  const sent = await request.post(`${API_URL}/api/v1/auth/email-otp/send-verification-otp`, {
-    data: { email, type: 'sign-in' },
-  });
-  expect(sent.ok()).toBe(true);
-  const { otp } = (await (
-    await request.get(`${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`)
-  ).json()) as { otp: string };
-  const signedIn = await request.post(`${API_URL}/api/v1/auth/sign-in/email-otp`, {
-    data: { email, otp },
-  });
-  expect(signedIn.ok()).toBe(true);
-  const pair = (signedIn.headers()['set-cookie'] ?? '').split(';')[0] ?? '';
-  const i = pair.indexOf('=');
-  return { cookieName: pair.slice(0, i), cookieValue: pair.slice(i + 1) };
-}
+/** One session for the file: §12.1 allows twenty sign-in attempts a minute per IP. */
+let session: Session | null = null;
 
 async function signIn(page: Page, request: APIRequestContext) {
-  const { cookieName, cookieValue } = await freshSession(request);
+  session ??= await establishSession(request, freshEmail('onboard'));
   await page
     .context()
-    .addCookies([{ name: cookieName, value: cookieValue, domain: 'localhost', path: '/' }]);
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
 }
 
 test('a fresh account is walked from first sign-in to a first suggestion', async ({
@@ -148,6 +134,10 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   await page.keyboard.type('Farmers in the surveyed districts reported ');
   await page.keyboard.press('Control+/');
   await expect(page.locator('.thesis-editor span.ghost')).toBeVisible({ timeout: 15_000 });
+  // Wait for the suggestion to settle before pressing Tab. `toBeVisible` passes on the first
+  // streamed token, and Tab is deliberately inert until the text is final — accepting half a
+  // sentence would put half a sentence in the thesis.
+  await expect(page.getByTestId('dev-timing')).toContainText('shown', { timeout: 15_000 });
   await page.keyboard.press('Tab');
   await expect(page.locator('.thesis-editor span.ghost')).toHaveCount(0);
 

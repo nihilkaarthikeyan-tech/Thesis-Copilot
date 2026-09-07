@@ -1,6 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { establishSession, freshEmail, type Session } from './_session.js';
 
 /**
  * Stage 1 proposal screen and Stage 2 library — PRD FR-1.3, FR-1.4, FR-2.1, FR-2.2
@@ -93,39 +92,11 @@ const INVENTED_REFERENCE_PDF = buildPdf([
  * failed for a reason that had nothing to do with what it was testing. The sign-in UI itself is
  * covered by `smoke.spec.ts` and `editor.spec.ts`; here it is only a way in.
  */
-let session: { cookieName: string; cookieValue: string } | null = null;
-
-async function establishSession(request: APIRequestContext): Promise<NonNullable<typeof session>> {
-  if (session) return session;
-
-  const email = `e2e-w2-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-  const sent = await request.post(`${API_URL}/api/v1/auth/email-otp/send-verification-otp`, {
-    data: { email, type: 'sign-in' },
-  });
-  expect(sent.ok(), 'sending the one-time code').toBe(true);
-
-  const otpRes = await request.get(
-    `${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`,
-  );
-  expect(otpRes.ok(), 'reading the dev one-time code').toBe(true);
-  const { otp } = (await otpRes.json()) as { otp: string };
-
-  const signedIn = await request.post(`${API_URL}/api/v1/auth/sign-in/email-otp`, {
-    data: { email, otp },
-  });
-  expect(signedIn.ok(), 'signing in').toBe(true);
-
-  const setCookie = signedIn.headers()['set-cookie'] ?? '';
-  const pair = setCookie.split(';')[0] ?? '';
-  const index = pair.indexOf('=');
-  expect(index, 'the sign-in response should set a session cookie').toBeGreaterThan(0);
-
-  session = { cookieName: pair.slice(0, index), cookieValue: pair.slice(index + 1) };
-  return session;
-}
+let session: Session | null = null;
 
 async function signIn(page: Page, request: APIRequestContext): Promise<void> {
-  const { cookieName, cookieValue } = await establishSession(request);
+  session ??= await establishSession(request, freshEmail('w2'));
+  const { cookieName, cookieValue } = session;
   await page
     .context()
     .addCookies([{ name: cookieName, value: cookieValue, domain: 'localhost', path: '/' }]);

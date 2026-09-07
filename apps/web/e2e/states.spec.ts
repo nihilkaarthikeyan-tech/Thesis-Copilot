@@ -1,6 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { establishSession, freshEmail, type Session } from './_session.js';
 
 /**
  * Error and empty states — PRD §6.2, §6.4, PHASES 5.2.
@@ -13,30 +12,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
  * reads, because that is what §6.4 specifies.
  */
 
-let session: { cookieName: string; cookieValue: string } | null = null;
-
-async function establishSession(request: APIRequestContext) {
-  if (session) return session;
-  const email = `e2e-states-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-  const sent = await request.post(`${API_URL}/api/v1/auth/email-otp/send-verification-otp`, {
-    data: { email, type: 'sign-in' },
-  });
-  expect(sent.ok()).toBe(true);
-  const { otp } = (await (
-    await request.get(`${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`)
-  ).json()) as { otp: string };
-  const signedIn = await request.post(`${API_URL}/api/v1/auth/sign-in/email-otp`, {
-    data: { email, otp },
-  });
-  expect(signedIn.ok()).toBe(true);
-  const pair = (signedIn.headers()['set-cookie'] ?? '').split(';')[0] ?? '';
-  const i = pair.indexOf('=');
-  session = { cookieName: pair.slice(0, i), cookieValue: pair.slice(i + 1) };
-  return session;
-}
+let session: Session | null = null;
 
 async function signIn(page: Page, request: APIRequestContext) {
-  const { cookieName, cookieValue } = await establishSession(request);
+  session ??= await establishSession(request, freshEmail('states'));
+  const { cookieName, cookieValue } = session;
   await page
     .context()
     .addCookies([{ name: cookieName, value: cookieValue, domain: 'localhost', path: '/' }]);
@@ -110,14 +90,26 @@ test.describe('§6.2 states, forced through the mock', () => {
     page,
     request,
   }) => {
-    await signIn(page, request);
+    // Its own account, not the file's shared one: spending fifty Assist units is most of §12.1's
+    // sixty-a-minute per-user burst guard, and sharing the session with the other tests here
+    // trips that guard before the cap this test is about.
+    const own = await establishSession(request, freshEmail('states-cap'));
+    await page
+      .context()
+      .addCookies([
+        { name: own.cookieName, value: own.cookieValue, domain: 'localhost', path: '/' },
+      ]);
+    await page.goto('/app');
+    await expect(page.getByRole('heading', { name: 'Your theses' })).toBeVisible({
+      timeout: 20_000,
+    });
     await openFreshChapter(page, `States cap ${Date.now()}`);
     const editor = page.locator('.thesis-editor');
     await editor.locator('p').first().click();
     await page.keyboard.type('Prior studies found ');
 
     // FREE_TRIAL allows 50 Assist actions a month (PRD §11.3). Dismissing still counts: the
-    // tokens were generated. The session is shared across this file, so start from the meter.
+    // tokens were generated.
     const meter = page.getByTestId('usage-meter');
     await expect(meter).toContainText(/Assist \d+\/50/);
     const used = Number(/Assist (\d+)\/50/.exec((await meter.textContent()) ?? '')?.[1] ?? 0);

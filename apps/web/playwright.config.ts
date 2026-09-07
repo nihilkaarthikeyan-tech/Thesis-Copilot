@@ -14,7 +14,11 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  fullyParallel: true,
+  // Files run in parallel; the tests inside one do not. §12.1 allows twenty sign-in attempts a
+  // minute per IP and sixty AI requests a minute per user, and a fully parallel suite signs in
+  // once per test — enough to trip a limit that is right for the internet. Serialising within a
+  // file lets each file's cached session serve all of its tests.
+  fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: {

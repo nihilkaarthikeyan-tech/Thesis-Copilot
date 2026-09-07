@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { signInThroughTheScreen } from './_session.js';
 
 /**
  * PRD Appendix B.9 test 9 — the week-1 end-to-end proof:
@@ -11,20 +10,9 @@ test('B.9 #9: suggestion streams, Tab accepts, text survives a reload with prove
   page,
   request,
 }) => {
-  const email = `e2e-${Date.now()}@example.com`;
-
-  // Sign in through the real OTP flow; the dev sink exposes the code outside production.
-  await page.goto('/sign-in');
-  await page.getByLabel('University or personal email').fill(email);
-  await page.getByRole('button', { name: 'Email me a code' }).click();
-  await expect(page.getByLabel('Six-digit code')).toBeVisible();
-  const otpRes = await request.get(
-    `${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`,
-  );
-  expect(otpRes.ok()).toBe(true);
-  const { otp } = (await otpRes.json()) as { otp: string };
-  await page.getByLabel('Six-digit code').fill(otp);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  // Sign in through the real screen and the real OTP flow; the dev sink exposes the code outside
+  // production. This is the only spec that drives the form rather than injecting a cookie.
+  await signInThroughTheScreen(page, request);
   await expect(page).toHaveURL(/\/app$/, { timeout: 20_000 });
 
   // Create a thesis and open its first chapter.
@@ -76,17 +64,7 @@ test('typing while a suggestion is shown dismisses it; Tab in a list indents', a
   page,
   request,
 }) => {
-  const email = `e2e-b-${Date.now()}@example.com`;
-  await page.goto('/sign-in');
-  await page.getByLabel('University or personal email').fill(email);
-  await page.getByRole('button', { name: 'Email me a code' }).click();
-  // Wait for the send to land before reading the dev sink, or the code is not there yet.
-  await expect(page.getByLabel('Six-digit code')).toBeVisible();
-  const { otp } = (await (
-    await request.get(`${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`)
-  ).json()) as { otp: string };
-  await page.getByLabel('Six-digit code').fill(otp);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await signInThroughTheScreen(page, request);
   await page.getByLabel('Working title').fill('Dismiss test');
   await page.getByRole('button', { name: 'Create thesis' }).click();
   await page.getByRole('link', { name: 'Dismiss test' }).click();

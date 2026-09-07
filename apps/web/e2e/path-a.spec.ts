@@ -1,6 +1,5 @@
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { expect, test } from '@playwright/test';
+import { signInAs } from './_session.js';
 
 /**
  * Path A — PRD FR-1.5, PHASES 6.1 and 6.3.
@@ -11,34 +10,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
  * the skeleton in the same editable form Path B uses, edit it, continue to the editor.
  */
 
-async function signIn(page: Page, request: APIRequestContext) {
-  const email = `e2e-path-a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-  const sent = await request.post(`${API_URL}/api/v1/auth/email-otp/send-verification-otp`, {
-    data: { email, type: 'sign-in' },
-  });
-  expect(sent.ok()).toBe(true);
-  const { otp } = (await (
-    await request.get(`${API_URL}/api/v1/auth/dev/last-otp?email=${encodeURIComponent(email)}`)
-  ).json()) as { otp: string };
-  const signedIn = await request.post(`${API_URL}/api/v1/auth/sign-in/email-otp`, {
-    data: { email, otp },
-  });
-  expect(signedIn.ok()).toBe(true);
-  const pair = (signedIn.headers()['set-cookie'] ?? '').split(';')[0] ?? '';
-  const i = pair.indexOf('=');
-  await page
-    .context()
-    .addCookies([
-      { name: pair.slice(0, i), value: pair.slice(i + 1), domain: 'localhost', path: '/' },
-    ]);
-}
-
 test('a topic becomes an editable proposal skeleton through a three-question conversation', async ({
   page,
   request,
 }) => {
   test.setTimeout(120_000);
-  await signIn(page, request);
+  await signInAs(page, request);
 
   // The chooser (6.3): both paths, one line each.
   await page.goto('/app');
