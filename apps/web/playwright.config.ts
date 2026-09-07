@@ -13,12 +13,19 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30_000,
+  // These run against a live stack with the §12.1 rate limits in force, and the helpers wait
+  // those out rather than weakening them. Thirty seconds was right when the suite was three
+  // specs; a test that may legitimately sit through a limiter's window needs longer.
+  timeout: 120_000,
   // Files run in parallel; the tests inside one do not. §12.1 allows twenty sign-in attempts a
   // minute per IP and sixty AI requests a minute per user, and a fully parallel suite signs in
   // once per test — enough to trip a limit that is right for the internet. Serialising within a
   // file lets each file's cached session serve all of its tests.
   fullyParallel: false,
+  // Two, not one per core. Every spec file needs at least one account, and §12.1 allows twenty
+  // sign-in attempts a minute per IP — a limit that is right for the internet and that a suite
+  // running six files at once walks straight into. Two workers spread the sign-ins over the run.
+  workers: 2,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: {
