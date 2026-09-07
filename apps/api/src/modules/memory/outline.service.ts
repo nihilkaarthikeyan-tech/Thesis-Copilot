@@ -21,7 +21,7 @@ import {
 import {
   computeCallCost,
   type Env,
-  OUTLINE_CALLS_PER_DOCUMENT,
+  type Plan,
   suggestTemplate,
   TEMPLATE_SPECS,
   TEMPLATES,
@@ -29,11 +29,17 @@ import {
 } from '@tc/config';
 import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
-import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
+import {
+  CapExceededError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
+import { UsageService } from '../usage/usage.service.js';
 
 export type OutlineView = {
   template: Template | null;
@@ -60,6 +66,7 @@ export class OutlineService {
     private readonly queue: QueueService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
+    private readonly usage: UsageService,
   ) {}
 
   private async owned(ownerId: string, documentId: string) {
@@ -257,15 +264,12 @@ export class OutlineService {
       throw new ValidationError('Save the proposal first; a scope note is written from it.');
     }
 
-    // ADR-0008. `OUTLINE` has no §11.3 cap because §11.4 counts it once per document, and FR-3.6
-    // lets a student ask for it again on every section. Without a bound this is unmetered Strong
-    // spend, which §11 does not allow to ship. The count includes the first generation.
-    const used = await this.prisma.aiCallLog.count({ where: { documentId, action: 'OUTLINE' } });
-    if (used >= OUTLINE_CALLS_PER_DOCUMENT) {
-      throw new ValidationError(
-        `This thesis has used all ${OUTLINE_CALLS_PER_DOCUMENT} outline rewrites. Edit the scope note yourself — the outline tree is fully editable — or start the next revision in a new thesis.`,
-      );
-    }
+    // ADR-0008: this is metered against the `COMMAND` cap, not `OUTLINE`. `OUTLINE` carries no
+    // §11.3 cap because §11.4 counts it once per document, which FR-3.6 makes untrue — and the
+    // ₹100 ceiling has no room for a new capped action, so a rewrite of one section shares the
+    // cap with the other Strong-tier rewrites of the student's own text.
+    const cap = await this.usage.consume(user.id, user.plan as Plan, 'COMMAND');
+    if (!cap.ok) throw new CapExceededError('COMMAND', cap.cap, cap.resetsAt);
 
     const request = buildSectionScopeRequest({
       scope: {

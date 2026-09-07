@@ -103,7 +103,10 @@ describe('§11.3 — plan caps match the PRD table', () => {
       DRAFT: 10,
       CITE: 30,
       CHAT: 15,
-      COMMAND: 5,
+      // ADR-0008 lowered this from §11.3's 5: FR-3.6's per-section scope rewrite is metered
+      // against the same cap, and each unit now buys a longer response, so five would not fit
+      // under the ₹100 ceiling. The ceiling test below is what caught it.
+      COMMAND: 4,
       COHERENCE: 1,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
@@ -134,7 +137,10 @@ describe('§11.2 — derived unit costs vs the PRD table', () => {
     { action: 'CITE', derived: 0.3393, prd: 0.3 },
     { action: 'CHAT', derived: 0.5133, prd: 0.5 },
     { action: 'DRAFT', derived: 2.7144, prd: 2.5 },
-    { action: 'COMMAND', derived: 1.2789, prd: 1.2 },
+    // ADR-0008 raised COMMAND's output allowance from 500 to 600 tokens, because FR-3.6's scope
+    // rewrite draws on this cap and is the longer of the two responses. §11.2 prints ₹1.2 for the
+    // 500-token version; the ADR is the authority for the number the code uses.
+    { action: 'COMMAND', derived: 1.4094, prd: 1.4 },
     { action: 'COHERENCE', derived: 5.8725, prd: 6.0 },
   ];
 

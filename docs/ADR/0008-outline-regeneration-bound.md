@@ -1,47 +1,62 @@
-# 0008 — Per-section outline regeneration needs its own bound
+# 0008 — Per-section outline regeneration is metered against the COMMAND cap
 
 Date: 2026-09-07
 Status: accepted
-Supersedes: nothing. Amends the reasoning in PRD §11.4 for the `OUTLINE` action.
+Amends: PRD §11.3 (the `COMMAND` cap), §11.2/§11.4 (the `COMMAND` unit cost), and the reasoning
+in §11.4 for the `OUTLINE` action.
 
 ## Context
 
-PRD §11.3 gives monthly caps to six actions. `OUTLINE` is not one of them. §11.4 explains why:
-it is a **once-per-document** operation, so it is amortised into the monthly budget as a fixed
-line rather than metered per call. `packages/config/src/actions.ts` records that reasoning in
-`UNMETERED_ACTIONS`, and `computeMonthlyBudget` charges exactly one `OUTLINE` call per document.
+PRD §11.3 gives monthly caps to six actions. `OUTLINE` is not one of them, and §11.4 explains why:
+it is a **once-per-document** operation, amortised into the monthly budget as a fixed line rather
+than metered per call. `packages/config/src/actions.ts` records that in `UNMETERED_ACTIONS`, and
+`computeMonthlyBudget` charges exactly one `OUTLINE` call per document.
 
-FR-3.6 — "per-section scope regeneration with sibling context", built in Phase 3 Block 3 —
-breaks that assumption. `POST /documents/:id/outline/:nodeId/regenerate` is a Strong-tier call a
-student can make on any section, as often as they like. As first written it had no cap and no
-bound: a student could spend indefinitely on the Strong tier.
+FR-3.6 — "per-section scope regeneration with sibling context", built in Phase 3 Block 3 — breaks
+that assumption. `POST /documents/:id/outline/:nodeId/regenerate` is a Strong-tier call a student
+can make on any section, as often as they like. As first written it had no cap and no bound, which
+collides with the hard constraint in §11: *a feature that cannot be metered and capped does not
+ship.*
 
-That collides with the hard constraint in §11: *a feature that cannot be metered and capped does
-not ship.*
+The first attempt at a fix was a per-document bound of twelve `OUTLINE` calls, paid for in the
+one-time line. **The ceiling test rejected it**, and that is the more important finding: the
+STUDENT plan already computes to **₹99.61** of the ₹100 ceiling before FR-3.6 exists. §11.4's own
+table prints ≈₹95.8 using rounded unit costs; the exact rates leave ₹0.39. There is no room in
+the budget for a new capped action, and any bound large enough to make per-section regeneration
+useful costs more than that.
 
 ## Decision
 
-Bound `OUTLINE` calls per **document** rather than adding a monthly cap.
+Meter FR-3.6 against the existing **`COMMAND`** cap, and pay for it by lowering that cap.
 
-- `OUTLINE_CALLS_PER_DOCUMENT = 12` in `packages/config/src/cost.ts` — the first generation plus
-  eleven rewrites. `OutlineService.regenerateSection` counts this document's `AiCallLog` rows for
-  `OUTLINE` and refuses past the bound.
-- A new `ONE_TIME_PROFILES.OUTLINE_SECTION` profile prices a regeneration honestly: one chapter
-  and its siblings in, one scope note out, far smaller than a whole outline.
-- `computeMonthlyBudget` now pays for **every** call the bound allows, as if the student used all
-  of them. The amortised one-time line goes from ₹2.94 to ₹6.81; the FREE_TRIAL total goes from
-  ₹32.90 to ₹36.77 against the ₹100 ceiling.
+- `OutlineService.regenerateSection` calls `usage.consume(userId, plan, 'COMMAND')` before the
+  provider, and answers `CAP_EXCEEDED` when it is spent — the §11.5 path every other metered
+  action already uses.
+- `ACTION_PROFILES.COMMAND` goes from 500 to **600 output tokens**. A shared cap must be priced
+  for the more expensive thing that draws on it, and a scope note is longer than a section command
+  (`SECTION_SCOPE.maxTokens` is 600). The unit cost goes ₹1.2789 → ₹1.4094.
+- The `COMMAND` cap in `PLAN_LIMITS.STUDENT` and `INSTITUTION_SEAT` goes from **5 to 4**.
+  `FREE_TRIAL` stays at 2, which it has room for.
+- `OUTLINE` stays in `UNMETERED_ACTIONS`, still once per document, still amortised. FR-3.6 is no
+  longer an `OUTLINE`-cap question at all.
 
-A per-document bound rather than a monthly cap because it keeps §11.4's frame: `OUTLINE` is still
-a document-lifecycle operation, bounded the way `EXTRACT` is bounded by seed-paper count. It also
-fails in the right place — a student who has rewritten one thesis's outline twelve times has an
-outline problem, not a quota problem, and the refusal says so and points at the editable tree.
+STUDENT lands at **₹98.92**, FREE_TRIAL at ₹33.16. Both within the ceiling; the ceiling test in
+`packages/config/test/cost-model.spec.ts` is what holds this.
+
+A shared cap rather than a new one because the two actions are the same kind of act — a Strong-tier
+rewrite of one piece of the student's own text, on request, applied only when they accept it — and
+because the ₹100 ceiling is a real constraint rather than a target. A student who spends all four
+on scope notes has chosen that; the meter in `/usage/me` says which.
 
 ## Consequences
 
-- `OUTLINE` stays in `UNMETERED_ACTIONS`; the E.2 completeness assertion is unchanged.
-- The refusal is not a cap error and does not appear in `/usage/me`. A student who hits it sees a
-  plain sentence, not a meter.
-- The budget model now over-charges the common case (most documents will use one or two calls).
-  That is the right direction for a ₹100 ceiling: the ceiling has to hold for the heaviest user
-  the bound permits, not the average one.
+- A student gets four Strong-tier rewrites a month instead of five, and can spend them on either
+  section commands or scope notes.
+- Two assertions in `cost-model.spec.ts` were updated with this ADR as their authority: the
+  `COMMAND` cap (5 → 4) and its derived unit cost (₹1.2789 → ₹1.4094). §11.2's printed ₹1.2 is the
+  500-token figure and is now the older number.
+- **For the human:** the ₹100 ceiling has roughly ₹1 of headroom. The next Strong-tier feature will
+  not fit either, and the honest options are the ones §11.4 already names — running drafts on the
+  Fast tier when `draftModeStrongTier` is off frees ₹19 — or moving the ceiling. `docs/PENDING.md`
+  carries it. Note also that every cost here is computed from `DEFAULT_PRICING`, and no real
+  provider call has been made yet: `pnpm ai:verify` is what turns this arithmetic into evidence.

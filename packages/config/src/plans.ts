@@ -36,7 +36,7 @@ const MB = 1024 * 1024;
 
 /** STUDENT_MONTHLY and STUDENT_ANNUAL share one row in §11.3 ("STUDENT (monthly/annual)"). */
 const STUDENT: PlanLimits = {
-  caps: { ASSIST: 180, DRAFT: 10, CITE: 30, CHAT: 15, COMMAND: 5, COHERENCE: 1 },
+  caps: { ASSIST: 180, DRAFT: 10, CITE: 30, CHAT: 15, COMMAND: 4, COHERENCE: 1 },
   seedPapers: 3,
   libraryPdfs: 60,
   pdfMaxBytes: 50 * MB,
@@ -58,7 +58,7 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
   STUDENT_MONTHLY: STUDENT,
   STUDENT_ANNUAL: STUDENT,
   INSTITUTION_SEAT: {
-    caps: { ASSIST: 180, DRAFT: 10, CITE: 30, CHAT: 15, COMMAND: 5, COHERENCE: 1 },
+    caps: { ASSIST: 180, DRAFT: 10, CITE: 30, CHAT: 15, COMMAND: 4, COHERENCE: 1 },
     seedPapers: 3,
     libraryPdfs: 60,
     pdfMaxBytes: 50 * MB,

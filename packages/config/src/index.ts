@@ -37,7 +37,6 @@ export {
   ONE_TIME_AMORTISATION_MONTHS,
   ONE_TIME_EMBED_TOKENS,
   ONE_TIME_PROFILES,
-  OUTLINE_CALLS_PER_DOCUMENT,
   type TokenUsage,
 } from './cost.js';
 export {

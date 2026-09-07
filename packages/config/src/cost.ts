@@ -76,7 +76,10 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
   CITE: { tier: 'fast', inputTokens: 3_000, cachedInputTokens: 4_000, outputTokens: 100 },
   CHAT: { tier: 'fast', inputTokens: 4_000, cachedInputTokens: 4_000, outputTokens: 300 },
   DRAFT: { tier: 'strong', inputTokens: 6_000, cachedInputTokens: 4_000, outputTokens: 800 },
-  COMMAND: { tier: 'strong', inputTokens: 2_000, cachedInputTokens: 4_000, outputTokens: 500 },
+  // 600 rather than §11.4's 500: FR-3.6's per-section scope rewrite is metered against this cap
+  // (ADR-0008), and a scope note is the longer of the two responses. A shared cap has to be
+  // priced for the more expensive thing that draws on it.
+  COMMAND: { tier: 'strong', inputTokens: 2_000, cachedInputTokens: 4_000, outputTokens: 600 },
   COHERENCE: { tier: 'strong', inputTokens: 15_000, cachedInputTokens: 0, outputTokens: 1_500 },
 };
 
@@ -202,8 +205,6 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
   const oneTimeMicro =
     profileCost(ONE_TIME_PROFILES.EXTRACT, pricing) +
     profileCost(ONE_TIME_PROFILES.OUTLINE, pricing) +
-    // Every regeneration the bound allows, priced as if the student used all of them.
-    (OUTLINE_CALLS_PER_DOCUMENT - 1) * profileCost(ONE_TIME_PROFILES.OUTLINE_SECTION, pricing) +
     profileCost(ONE_TIME_PROFILES.STYLE_PROFILE, pricing) +
     computeEmbeddingCost(ONE_TIME_EMBED_TOKENS, pricing);
 

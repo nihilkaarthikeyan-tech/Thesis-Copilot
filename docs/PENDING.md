@@ -151,3 +151,18 @@ One is left, and it needs a decision:
       lets through.
 
       Decide: schedule the v3 upgrade, or accept the mitigation and record why.
+
+## The ₹100 ceiling has about ₹1 left
+
+- [ ] **Decide what gives.** Building FR-3.6 surfaced this (ADR-0008): the STUDENT plan computes to
+      **₹98.92** of the ₹100 ceiling, and was at ₹99.61 before that feature was metered. §11.4's own
+      table prints ≈₹95.8 using rounded unit costs; the exact rates leave about a rupee.
+
+      That is not a bug — it means the ceiling is doing its job — but the next Strong-tier feature
+      will not fit, and neither will a real provider's prices if they are higher than
+      `DEFAULT_PRICING` assumes. §11.4 already names the lever: with `draftModeStrongTier` off,
+      Draft costs ₹8 instead of ₹27 and the total falls to about ₹80.
+
+      Nothing here is evidence yet. Every figure comes from `DEFAULT_PRICING` and every AI call so
+      far went to the mock; `pnpm ai:verify` with a real key is what settles it. Do that first, then
+      decide: Fast-tier drafts, lower caps, or a higher ceiling.
