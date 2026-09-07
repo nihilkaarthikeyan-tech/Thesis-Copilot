@@ -2666,3 +2666,26 @@ fallback; nothing stopped it being built.
   `apps/worker/test/index-source.spec.ts`, including the worker-without-a-key shape.
 - Rate: 1 request/s by default. CORE's published limit was not readable from here; the fallback is
   reached rarely enough that the figure does not matter in practice.
+
+### Outbound email, for real (§7.2, §13.3) — 2026-09-07
+
+Same classification pass as the CORE item, worse finding: `packages/config` refused to start
+production without `RESEND_API_KEY` or `SMTP_*`, and `Mailer` had one implementation —
+`ConsoleMailer`. The OTP went through `consoleOtp` unconditionally. A production boot with a
+key would have printed every student's sign-in code to the server log and emailed nothing.
+
+- `apps/api/src/common/mailer.ts` — `ResendMailer` (SDK `resend` 6.26.0, `emails.send`, which
+  reports refusals in a `{ data, error }` envelope rather than throwing) and `SmtpMailer`
+  (`nodemailer` 10.0.1, implicit TLS on 465, STARTTLS otherwise). Both take their client as a
+  constructor argument; `createMailer(env)` picks Resend, then SMTP, then console. `MAIL_FROM`
+  added to the env schema, falling back to `SMTP_FROM` and then `no-reply@<APP_URL host>`.
+- `MailerModule` (global) provides the one `MAILER`. Admin, billing and feedback each provided
+  their own `ConsoleMailer` before, which is why a test reading the alerts mailer never saw a
+  billing reminder — separate instances. One provider now, one record.
+- `otpSenderFor(mailer)` in `auth.ts`: through the mailer when there is a real one, printed as
+  before when it is the console one (the console mailer logs only the subject, and the code has to
+  be readable). The dev OTP sink is fed in either case outside production.
+- `apps/api/test/mailer.spec.ts` (16): selection, sender address, both transports against a
+  recorder, the refusal envelope, the OTP email, and the console case.
+- Not verifiable here: a message actually arriving. That needs the key and a verified domain
+  (docs/PENDING.md), and the first live check is signing in.

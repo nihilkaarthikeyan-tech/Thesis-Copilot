@@ -44,6 +44,11 @@ to run it live; the client could be built and tested against the API's own recor
 now is. Without the key the worker skips it, exactly as before. Obtaining the free key is a
 five-minute item on the owner's list.
 
+A fifth, found the same way and more serious: outbound email had an interface and a console
+stand-in but no real transport, so on a live server the sign-in code could not have reached a
+student. Resend and SMTP are now both implemented and tested behind the same interface; the
+owner supplies the key and a verified sending domain, and the first live check is signing in.
+
 A fourth, non-functional finding: three screens in the specification were merged into other screens
 during the build (citations and coherence flags became panels inside the editor; export became the
 submission screen). These are sound design decisions and the product is complete without them, but

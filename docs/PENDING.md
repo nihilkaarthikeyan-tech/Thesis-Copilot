@@ -14,13 +14,15 @@ blocks the agent from continuing to build against mocks.
       (`docs/PRD.md`). Then flip the `costModelVerified` feature flag (admin UI, or
       `UPDATE "FeatureFlag" SET enabled=true WHERE key='costModelVerified'`). Why: PRD §0.3 rule 5;
       the admin page shows "Cost model: UNVERIFIED" until then. Budget printed must be ≤ ₹100.
-- [ ] **Email delivery**: `RESEND_API_KEY` (or `SMTP_*`) in the production `.env`. Dev prints the
-      one-time code to the API console instead.
-      **Now also carries the §14 alert emails** (user cost > ₹120, platform average > ₹90, job
-      failures > 5 %, TTFB p95 > 900 ms, each over 15 min). The alerts are built and tested through
-      a console mailer that records what it would have sent; a Resend or SMTP implementation of
-      `Mailer` in `apps/api/src/common/mailer.ts` is the one file to add once a key exists. The
-      admin address they go to is `SEED_ADMIN_EMAIL`.
+- [ ] **Email delivery key**: `RESEND_API_KEY` (or `SMTP_HOST` + `SMTP_PORT`, plus `SMTP_USER` /
+      `SMTP_PASS` if the relay wants them) and `MAIL_FROM` in the production `.env`. Both
+      transports are built (`apps/api/src/common/mailer.ts` — Resend through its SDK, SMTP through
+      nodemailer — chosen once at boot by `MailerModule`, 16 tests) and carry the sign-in code,
+      the §14 alert emails (user cost > ₹120, platform average > ₹90, job failures > 5 %, TTFB p95
+      > 900 ms, each over 15 min; sent to `SEED_ADMIN_EMAIL`), billing reminders and review
+      invitations. With Resend, verify the sending domain in its dashboard first: an unverified
+      `MAIL_FROM` is refused per message and the API logs the refusal. Dev keeps printing the
+      one-time code to the API console. The first live check is simply signing in.
 - [ ] **Google sign-in** (optional): `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, both or neither.
 - [ ] **Scholarly API contact emails**: set `OPENALEX_MAILTO`, `CROSSREF_MAILTO`, `UNPAYWALL_EMAIL`
       to a real address you monitor (polite-pool rules). Optional: `SEMANTIC_SCHOLAR_API_KEY`, `CORE_API_KEY`.
@@ -29,12 +31,6 @@ blocks the agent from continuing to build against mocks.
       full-text path (task 2.6) cannot be measured. Crossref and OpenAlex do answer a placeholder,
       but only outside their polite pool. The worker warns about this at boot; verified with
       `curl "https://api.unpaywall.org/v2/10.1038/nature14539?email=<address>"` returning 200.
-- [ ] **Fastify pin decision** (PHASES 5.4): `pnpm audit` reports one moderate in `fastify`
-      ("schema validation bypass via root primitive coercion"). Fastify is pinned at 5.11.3 by
-      `pnpm.overrides` (week 1, to keep one copy in the tree); 5.12.3 exists. Either bump the pin
-      and re-run the SSE tests (`apps/api/test/week1.spec.ts`, the E2E), or accept the moderate —
-      §12.1's bar is high/critical, which the audit passes today. Nothing else in the audit is in a
-      request path.
 - [ ] **CORE fallback key** (FR-2.2, PHASES 2.6 / 5.1): the fallback is built
       (`packages/retrieval/src/scholarly/core.ts`, wired in `apps/worker/src/jobs/index-source.ts`
       after Unpaywall fails; 11 + 8 tests against the API's recorded responses). It runs only when
@@ -80,8 +76,6 @@ blocks the agent from continuing to build against mocks.
       and check the caps change, the invoice PDF renders, and cancelling emails you.
 - [ ] **Confirm §11.6's prices** (PRD marks it `DECISION PENDING`): ₹299 / ₹2,499 / negotiated
       institution seat are what `packages/config/src/billing.ts` and the pricing page use today.
-- [ ] **Old Razorpay note** (Phase 2 week 11): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
-- [ ] **Sentry DSN** (optional, week 5).
 
 ## Deployment
 

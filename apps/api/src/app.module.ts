@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { MailerModule } from './common/mailer.module.js';
 import { AppConfigModule } from './config.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
@@ -48,6 +49,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
       },
     }),
     AppConfigModule,
+    MailerModule,
     AuthModule,
     HealthModule,
     MetricsModule,

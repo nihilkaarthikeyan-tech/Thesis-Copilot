@@ -115,6 +115,9 @@ export const envSchema = z
     SMTP_USER: optionalString,
     SMTP_PASS: optionalString,
     SMTP_FROM: optionalString,
+    // Sender for either transport, e.g. "Thesis Copilot <no-reply@example.edu>". Falls back to
+    // SMTP_FROM, then to no-reply@<APP_URL host>.
+    MAIL_FROM: optionalString,
 
     // ---- Document services ----
     GOTENBERG_URL: url('GOTENBERG_URL'),

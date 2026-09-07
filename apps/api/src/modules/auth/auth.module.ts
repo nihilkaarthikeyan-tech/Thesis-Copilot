@@ -1,9 +1,10 @@
 import { Global, Inject, Module } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
+import { MAILER, type Mailer } from '../../common/mailer.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { AuthController } from './auth.controller.js';
-import { type Auth, createAuth, isGoogleConfigured } from './auth.js';
+import { type Auth, createAuth, isGoogleConfigured, otpSenderFor } from './auth.js';
 import { AUTH } from './auth.tokens.js';
 import { DevOtpController } from './dev-otp.js';
 
@@ -15,8 +16,9 @@ import { DevOtpController } from './dev-otp.js';
   providers: [
     {
       provide: AUTH,
-      inject: [ENV, PrismaService],
-      useFactory: (env: Env, prisma: PrismaService): Auth => createAuth(env, prisma),
+      inject: [ENV, PrismaService, MAILER],
+      useFactory: (env: Env, prisma: PrismaService, mailer: Mailer): Auth =>
+        createAuth(env, prisma, otpSenderFor(mailer)),
     },
   ],
   exports: [AUTH],

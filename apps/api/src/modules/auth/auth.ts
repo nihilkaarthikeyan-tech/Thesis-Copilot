@@ -12,6 +12,7 @@ import type { PrismaClient } from '@tc/db';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
+import { ConsoleMailer, type Mail, type Mailer } from '../../common/mailer.js';
 import { claimInstitutionInvite } from '../institution/claim-invite.js';
 import { rememberDevOtp } from './dev-otp.js';
 
@@ -25,6 +26,40 @@ const consoleOtp: SendOtp = async ({ email, otp, type }) => {
   console.log(`[auth] one-time code for ${email} (${type}): ${otp}`);
   if (process.env.NODE_ENV !== 'production') rememberDevOtp(email, otp);
 };
+
+/** Ten minutes, matching `expiresIn` on the plugin below. */
+export const OTP_MINUTES = 10;
+
+/** The one-time-code email. Plain text: the code is the whole message, and nothing should distract from it. */
+export function otpMail(input: { email: string; otp: string; type: string }): Mail {
+  const purpose = input.type === 'sign-in' ? 'sign in to' : 'confirm your email address for';
+  return {
+    to: [input.email],
+    subject: `${input.otp} is your Thesis Copilot code`,
+    text:
+      `Use this code to ${purpose} Thesis Copilot:
+
+    ${input.otp}
+
+` +
+      `It expires in ${OTP_MINUTES} minutes. If you did not ask for it, ignore this email — ` +
+      'nobody can use the code without access to this inbox.',
+  };
+}
+
+/**
+ * How the code reaches the student: by email through the configured mailer, or — when the mailer
+ * is the console one, i.e. no transport is configured — printed to the API console as before.
+ * Outside production the dev OTP sink is fed either way, so the E2E can still sign in when a real
+ * transport is set locally.
+ */
+export function otpSenderFor(mailer: Mailer): SendOtp {
+  if (mailer instanceof ConsoleMailer) return consoleOtp;
+  return async (input) => {
+    if (process.env.NODE_ENV !== 'production') rememberDevOtp(input.email, input.otp);
+    await mailer.send(otpMail(input));
+  };
+}
 
 export function createAuth(env: Env, prisma: PrismaClient, sendOtp: SendOtp = consoleOtp) {
   const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
