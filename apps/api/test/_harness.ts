@@ -113,7 +113,10 @@ export async function startHarness(email: string): Promise<Harness> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter(buildFastify()),
-    { logger: false },
+    // `rawBody` matches `main.ts`: FR-9.5's webhook verifies an HMAC over the exact bytes, and a
+    // harness that omitted it made every correctly signed request fail with a 401 — the harness
+    // and the application disagreeing about what the application is.
+    { logger: false, rawBody: true },
   );
   app.useGlobalFilters(new ProblemDetailsFilter());
   app.setGlobalPrefix('api/v1', { exclude: ['metrics'] });
