@@ -9,6 +9,7 @@ import {
   createProviders,
   MockEmbeddingProvider,
   MockLlmProvider,
+  mockCoherenceResponse,
   mockCrossPaperResponse,
   mockDraftFor,
   mockExtractionResponse,
@@ -32,6 +33,7 @@ import {
   UnpaywallClient,
 } from '@tc/retrieval';
 import {
+  type CoherenceRunJob,
   type DraftSectionJob,
   type ExtractPaperJob,
   type GenerateOutlineJob,
@@ -44,6 +46,7 @@ import {
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
+import { runCoherence } from './jobs/coherence-run.js';
 import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
@@ -57,6 +60,7 @@ import {
 import { runSearchLiterature } from './jobs/search-literature.js';
 import {
   DEFAULT_JOB_OPTIONS,
+  QUEUE_COHERENCE,
   QUEUE_DRAFT_SECTION,
   QUEUE_EXTRACT_PAPER,
   QUEUE_GENERATE_OUTLINE,
@@ -86,6 +90,7 @@ function providersFor(env: Env): Providers {
         responses: [
           mockExtractionResponse,
           mockCrossPaperResponse,
+          mockCoherenceResponse,
           mockThemesResponse,
           mockQueriesResponse,
           mockOutlineResponse,
@@ -364,6 +369,27 @@ async function main(): Promise<void> {
         return result;
       },
       { connection, concurrency: 1 },
+    ),
+    new Worker(
+      QUEUE_COHERENCE,
+      async (job: Job<CoherenceRunJob>) => {
+        const result = await runCoherence(job.data, {
+          prisma,
+          llm: providers.llm,
+          embeddings: providers.embeddings,
+          aiProvider: env.AI_PROVIDER,
+          // D.1.1 step 3: the sidebar watches the run through the API's SSE endpoint, which
+          // subscribes to this channel — the same shape the draft stream uses.
+          onProgress: async (event) => {
+            await connection.publish(`coherence:${job.data.runId}`, JSON.stringify(event));
+          },
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        log({ msg: 'coherence finished', jobId: job.id, ...result });
+        return result;
+      },
+      // D.1.1: "concurrency 2 per worker".
+      { connection, concurrency: 2 },
     ),
     new Worker(
       QUEUE_SEARCH_LITERATURE,

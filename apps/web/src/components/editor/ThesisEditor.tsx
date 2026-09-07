@@ -66,6 +66,7 @@ import { CitationsPanel, type Rendered } from './CitationsPanel';
 import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
 import { DraftMode } from './DraftMode';
+import { type Flag, FlagsPanel } from './FlagsPanel';
 import { useGuidedInput } from './GuidedInput';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { SourcePins } from './SourcePins';
@@ -171,7 +172,7 @@ function ChapterEditor({
   const [timing, setTiming] = useState<Timing | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
-  const [tab, setTab] = useState<'sources' | 'citations' | 'chat'>('sources');
+  const [tab, setTab] = useState<'sources' | 'citations' | 'chat' | 'flags'>('sources');
   const [autoSuggest, setAutoSuggest] = useState(false);
 
   // FR-4.6: automatic-suggest is per user and off by default (ADR-0006).
@@ -392,6 +393,25 @@ function ChapterEditor({
     editorRef.current?.commands.setCitationStyle(rendered.style, rendered.labels);
   }, []);
 
+  /**
+   * D.1.3's "Suggest fix". Until scoped revision lands (A.14, Block 2) this selects the flagged
+   * range and points the student at the command toolbar, which is the same COMMAND-capped path a
+   * fix would take. It never edits the chapter — no flag is ever applied automatically.
+   */
+  const suggestFix = useCallback((flag: Flag) => {
+    const editorInstance = editorRef.current;
+    if (!editorInstance) return;
+    editorInstance
+      .chain()
+      .focus()
+      .setTextSelection({ from: flag.from, to: flag.to })
+      .scrollIntoView()
+      .run();
+    setNotice(
+      `Selected the flagged text. Use the toolbar above it to rewrite — the flag says: ${flag.description}`,
+    );
+  }, []);
+
   const assist = usage?.actions.find((a) => a.action === 'ASSIST');
   const draft = usage?.actions.find((a) => a.action === 'DRAFT');
   const ghost = editor ? getGhostState(editor) : undefined;
@@ -567,7 +587,7 @@ function ChapterEditor({
 
         <aside className="hidden w-72 shrink-0 border-l border-line bg-paper text-sm lg:block">
           <div className="flex border-b border-line">
-            {(['sources', 'citations', 'chat'] as const).map((t) => (
+            {(['sources', 'citations', 'chat', 'flags'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -591,7 +611,7 @@ function ChapterEditor({
                   onRendered={applyRendered}
                 />
               </>
-            ) : (
+            ) : tab === 'chat' ? (
               <ChatPanel
                 documentId={doc.id}
                 onUsageChange={onUsageChange}
@@ -602,6 +622,13 @@ function ChapterEditor({
                     'noopener,noreferrer',
                   );
                 }}
+              />
+            ) : (
+              <FlagsPanel
+                documentId={doc.id}
+                chapterId={chapter.id}
+                editor={editor}
+                onSuggestFix={suggestFix}
               />
             )}
           </div>

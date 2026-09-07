@@ -199,3 +199,89 @@ export function shortReference(
   if (title) return title.slice(0, 40);
   return undefined;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Chapter chunks — the coherence engine's index (PRD Appendix D.1.1)
+// ---------------------------------------------------------------------------------------------
+
+/** One chapter chunk ready to store, with its ProseMirror positions. */
+export type ChapterChunkRow = {
+  chapterId: string;
+  ordinal: number;
+  from: number;
+  to: number;
+  text: string;
+  embedding: readonly number[];
+};
+
+/**
+ * Replaces one chapter's chunks. D.1.1 re-chunks only changed chapters, so this is per chapter and
+ * never per document: a run must not disturb the index of a chapter nobody touched.
+ */
+export async function replaceChapterChunks(
+  db: RawClient,
+  chapterId: string,
+  chunks: readonly ChapterChunkRow[],
+  dimensions = EMBEDDING_DIMENSIONS,
+): Promise<number> {
+  await db.$executeRawUnsafe('DELETE FROM "ChapterChunk" WHERE "chapterId" = $1::uuid', chapterId);
+  let written = 0;
+  for (const chunk of chunks) {
+    const literal = toVectorLiteral(chunk.embedding, dimensions);
+    await db.$executeRawUnsafe(
+      `INSERT INTO "ChapterChunk" ("id", "chapterId", "ordinal", "from", "to", "text", "embedding")
+       VALUES (uuid_generate_v7(), $1::uuid, $2, $3, $4, $5, $6::vector)`,
+      chunk.chapterId,
+      chunk.ordinal,
+      chunk.from,
+      chunk.to,
+      chunk.text,
+      literal,
+    );
+    written += 1;
+  }
+  return written;
+}
+
+export type NeighbourChunk = {
+  chunkId: string;
+  chapterId: string;
+  ordinal: number;
+  from: number;
+  to: number;
+  text: string;
+  distance: number;
+};
+
+/**
+ * D.1.2 CLAIM_CONTRADICTION: the passages most like a claim, **from other chapters**.
+ *
+ * Excluding the claim's own chapter is the point — a claim always matches the paragraph it came
+ * from, and a check that reports a chapter contradicting itself in the same sentence is noise.
+ */
+export async function findChapterNeighbours(
+  db: RawClient,
+  documentId: string,
+  excludeChapterId: string,
+  embedding: readonly number[],
+  limit = 5,
+  dimensions = EMBEDDING_DIMENSIONS,
+): Promise<NeighbourChunk[]> {
+  const literal = toVectorLiteral(embedding, dimensions);
+  const sql = `
+    SELECT cc."id"        AS "chunkId",
+           cc."chapterId" AS "chapterId",
+           cc."ordinal"   AS "ordinal",
+           cc."from"      AS "from",
+           cc."to"        AS "to",
+           cc."text"      AS "text",
+           cc."embedding" <=> $1::vector AS "distance"
+      FROM "ChapterChunk" cc
+      JOIN "Chapter" ch ON ch."id" = cc."chapterId"
+     WHERE ch."documentId" = $2::uuid
+       AND cc."chapterId" <> $3::uuid
+       AND cc."embedding" IS NOT NULL
+     ORDER BY cc."embedding" <=> $1::vector
+     LIMIT ${Math.max(1, Math.floor(limit))}`;
+  return db.$queryRawUnsafe<NeighbourChunk[]>(sql, literal, documentId, excludeChapterId);
+}

@@ -19,6 +19,8 @@ export const QUEUE_NAMES = [
   'draft-section',
   // FR-3.2: outline generation is a Strong call, so it runs as a job (PRD 9.1).
   'generate-outline',
+  // D.1.1: a coherence run is minutes of Strong calls; it never blocks a request.
+  'coherence',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -28,6 +30,19 @@ export type ExtractPaperJob = {
   seedPaperId: string;
   documentId: string;
   userId: string;
+};
+
+/**
+ * `coherence` — one run of the five D.1.2 checks over a document (FR-6.x, Appendix D.1).
+ *
+ * `triggeredBy` decides whether the run costs a cap unit: a student pressing "Check" does,
+ * a re-run after a guide's feedback round does not (D.2.4).
+ */
+export type CoherenceRunJob = {
+  documentId: string;
+  userId: string;
+  runId: string;
+  triggeredBy: 'MANUAL' | 'AUTOSAVE' | 'FEEDBACK';
 };
 
 /** `resolve-reference` — turn one raw reference string into a `Source` (FR-2.1). */
@@ -84,6 +99,7 @@ export type JobPayloads = {
   'search-literature': SearchLiteratureJob;
   'draft-section': DraftSectionJob;
   'generate-outline': GenerateOutlineJob;
+  coherence: CoherenceRunJob;
 };
 
 /**

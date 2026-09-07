@@ -434,9 +434,14 @@ model CoherenceFlag {
   suggestion  String?
   relatedChapterId String? @db.Uuid
   status      String   @default("OPEN") // OPEN | RESOLVED | IGNORED
+  /** ADR-0007: type + chapter + normalised flagged text; what D.1.1 dedupes and suppresses on. */
+  fingerprint String   @default("")
+  /** Optional reason the student gave when ignoring it (D.1.3). */
+  ignoreReason String?
   runId       String   @db.Uuid
   createdAt   DateTime @default(now())
   @@index([documentId, status])
+  @@index([documentId, fingerprint])
 }
 
 model InstitutionTemplate {

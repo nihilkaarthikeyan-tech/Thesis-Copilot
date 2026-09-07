@@ -1,4 +1,13 @@
 export {
+  type Block,
+  blocksOf,
+  CHAPTER_CHUNK_TOKENS,
+  type ChapterChunkInput,
+  type ChapterSentence,
+  chunkChapter,
+  sentencesOf,
+} from './chapter-chunks.js';
+export {
   batched,
   type Chunk,
   type ChunkInput,
@@ -37,11 +46,15 @@ export {
 } from './extract/index.js';
 export {
   type CandidateQuery,
+  type ChapterChunkRow,
   type ChunkRow,
   EMBEDDING_DIMENSIONS,
   EmbeddingShapeError,
   findCandidates,
+  findChapterNeighbours,
+  type NeighbourChunk,
   type RawClient,
+  replaceChapterChunks,
   replaceSourceChunks,
   shortReference,
   toVectorLiteral,

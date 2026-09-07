@@ -2204,3 +2204,62 @@ typecheck and lint per unit; specs are owed and listed at the end.
 
 **Phase 2 is complete.** Weeks 6–11 built; the human items (Razorpay keys and the price
 confirmation) are in `docs/PENDING.md`.
+
+## Phase 3 — Block 1 (coherence engine)
+
+### Task B1.1 — ChapterChunk indexing
+- Files: `packages/retrieval/src/chapter-chunks.ts` (`blocksOf`, `chunkChapter`, `sentencesOf`),
+  `replaceChapterChunks` and `findChapterNeighbours` in `pgvector.ts`.
+- Paragraph-aligned, ~300 tokens, positions from ProseMirror's own accounting — the same walk
+  `@tc/citations` uses — so a chunk's `from`/`to` are positions the editor can select without
+  translation. A block longer than the budget becomes its own chunk rather than being cut: a flag
+  that starts mid-sentence is a flag the student cannot act on.
+- A `citation` node contributes one position and no text (FR-5.1: the label lives in storage, not
+  in the document), so a chunk's text does not change when the style does.
+- Re-indexing is per chapter, never per document: D.1.1 re-chunks only what changed, and a run
+  must not disturb the index of a chapter nobody touched.
+
+### Task B1.2 — run lifecycle (D.1.1)
+- Files: `apps/worker/src/jobs/coherence-run.ts`, `apps/api/src/modules/coherence/*`, the
+  `coherence` queue and `CoherenceRunJob`.
+- **One run, one cap unit.** D.1.1 says "regardless of size", so the cap is taken once in the API
+  rather than per call in the job — nine changed chapters must not cost nine units. A run
+  triggered by a guide's feedback round is not charged at all (D.2.4).
+- Changed = `updatedAt > lastCheckedAt`; related = two glossary terms or one cited source in
+  common. An unchanged document finishes with "nothing changed" and no calls.
+- The budget guard runs before the first call: an estimate from §11.2's unit costs, and above ₹12
+  the claim extraction drops from 25 to 15 and the run says so in its summary.
+- Progress is published to Redis (`coherence:<runId>`) and republished by the API over SSE, the
+  same shape the draft stream uses, so the sidebar fills in per check rather than after minutes of
+  spinner.
+
+### Tasks B1.3–B1.7 — the five checks
+- `CITATION_INTEGRITY` (no calls): orphans, retracted sources, sources nothing cites, duplicate
+  DOIs, and D.1.2's two regexes for citation-like strings typed as plain text.
+- `TERM_DRIFT` (A.12.1): up to 12 glossary terms by frequency in the changed chapters, up to 40
+  sentences each across the whole thesis, one call per term.
+- `CLAIM_CONTRADICTION` (A.12.2): claims extracted per changed chapter, each embedded and matched
+  against `ChapterChunk`s **from other chapters only** — a claim always matches the paragraph it
+  came from, and a chapter contradicting itself in the same sentence is noise — then one
+  comparison call per chapter.
+- `UNSUPPORTED_CLAIM` (A.12.3): the heuristic pre-filter first (figure, attribution phrase, causal
+  or comparative claim, and no citation node inside the sentence), then at most two Fast batches of
+  40 per chapter. An Introduction gets `INFO` where a Results chapter gets `WARN`.
+- `OUTLINE_DRIFT` (A.12.4): a 150-word Fast summary, then the scope note against it.
+- **Every check maps the model's output back through ids the code assigned.** A flag whose
+  sentence, claim or passage id was not in the request is dropped — the same rule §10.6 applies to
+  citations, for the same reason.
+
+### Task B1.8 — the sidebar, and what a re-run does to it
+- Files: `apps/web/src/components/editor/FlagsPanel.tsx`, a fourth tab in the editor's right panel.
+- Grouped by chapter then severity, filter chips by type, Resolve / Ignore (with a reason) /
+  Suggest fix. **Nothing here edits the chapter**: Go to selects a range, Suggest fix selects it
+  and points at the command toolbar (the scoped-revision flow it will call arrives in Block 2).
+- A flag whose chapter changed after the run says "location moved — re-run" instead of scrolling
+  the student to the wrong sentence.
+- Reconciliation is why ADR-0007 exists (`CoherenceFlag.fingerprint`, migration
+  `0009_coherence_flag_fingerprint`): an OPEN flag this run did not reproduce is deleted, RESOLVED
+  and IGNORED flags stay as the record of what was decided, an OPEN flag with the same fingerprint
+  keeps its id rather than being re-created, and a candidate matching an IGNORED fingerprint is
+  never raised again. The fingerprint cannot be recomputed later — it is taken over the flagged
+  text as it read when the flag was raised — which is what the column is for.

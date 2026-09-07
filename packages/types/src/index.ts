@@ -16,6 +16,7 @@ export {
 } from './extraction.js';
 export { analyseGap, draftScopeFrom, type ProposalScope } from './gap.js';
 export {
+  type CoherenceRunJob,
   type DraftSectionJob,
   type ExtractPaperJob,
   type GenerateOutlineJob,
