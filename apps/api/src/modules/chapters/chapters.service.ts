@@ -13,7 +13,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { StyleService } from '../memory/style.service.js';
 import { citationsIn } from './citations.js';
 import { type SnapshotReason, SnapshotsService } from './snapshots.service.js';
-import { looksLikeDoc, totalWords, wordCountsOf } from './word-counts.js';
+import { looksLikeDoc, stripUnsafeKeys, totalWords, wordCountsOf } from './word-counts.js';
 
 export type ChapterView = {
   id: string;
@@ -175,6 +175,9 @@ export class ChaptersService {
     if (!Number.isInteger(baseVersion) || baseVersion < 1) {
       throw new ValidationError('baseVersion must be a positive integer');
     }
+    // Before anything else touches it: see `stripUnsafeKeys`. Silently, because a `__proto__` key
+    // in a document is never something a student typed on purpose.
+    stripUnsafeKeys(content);
 
     const counts = wordCountsOf(content);
     const wordCount = totalWords(counts);

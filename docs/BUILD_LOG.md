@@ -2429,3 +2429,107 @@ living gap map, flag on:   "Solar" thin:false (26 found) -> thin:true libraryCou
 
 Both the `livingGapMap` flag and the seeded `EXAMPLE_IN_UNIVERSITY` template are dev state; the
 flag ships off and the template needs a real university guideline (`docs/PENDING.md`).
+
+## PHASE-3 Block 4 — institution admin and hardening (2026-09-07)
+
+PRD FR-9.6, FR-7.3, §7.5, §12.1. The last unit of the build.
+
+### Task B4.1 — institution admin (FR-9.6)
+
+Files: `apps/api/src/modules/institution/*`, `apps/web/src/app/institution/page.tsx`,
+migration `0010_institution_billing_and_invites`, ADR-0009.
+
+Two things FR-9.6 asks for could not be built against §8's `Institution` model, and ADR-0009 says
+why: there is no rate to invoice against (§11.6 prices a seat at "₹200–250 **negotiated**", so
+`PRICING.INSTITUTION_SEAT` is `priceInr: 0` — right for the pricing page, useless for an invoice),
+and seats cannot be counted from `Institution.users`, because an invitation goes to an address
+with no account. Thirty seats could be invited three hundred times and the overcount would surface
+at the thirty-first acceptance — which is one person already on a capped plan nobody paid for.
+
+So: `seatPriceInr`, `billingPeriod` and `billingEmail` on the row, and an `InstitutionInvite`
+table where **a pending invitation holds a seat**. Seats used = members + live invitations.
+
+- An invitation is claimed at **sign-in**, not at account creation (`claim-invite.ts`, called from
+  Better Auth's `databaseHooks.session.create.after`). A student may already have a free-trial
+  account when their department buys seats, and a hook that only fired for new accounts would
+  silently skip everyone who had already tried the product.
+- The roll shows counts, costs and last-active dates. No title, no chapter text, nothing that
+  hints at content (§12.2). A department has a real interest in whether its seats are used and
+  none at all in what a student is writing.
+- The institution's template becomes the default `institutionTemplateId` on every thesis started
+  inside it, so a student never has to know which one their department uses.
+- The invoice is per **period** rather than per charge — institutions are billed by agreement, so
+  there is no `BILLING_EVENT` row to build one from. With no rate recorded it prints "no rate has
+  been recorded for this institution" rather than a plausible wrong number (§0.3 rule 4).
+
+### Task B4.2 — `.docx` comment import (FR-7.3)
+
+Files: `packages/retrieval/src/extract/docx-comments.ts`,
+`apps/api/src/modules/feedback/docx-import.service.ts`.
+
+`word/comments.xml` holds the bodies; `word/document.xml` marks each anchored range inline with
+`<w:commentRangeStart w:id="N"/> … <w:commentRangeEnd w:id="N"/>`, and the quoted text is every
+`<w:t>` between them. Ranges nest and overlap, so each id is sliced independently.
+
+- The quoted text is searched for in **every** chapter with D.2.2's three attempts and the best
+  match wins. A guide's file is the exported thesis, which has front matter and appendices the
+  chapters do not, so guessing from order would be wrong.
+- A comment whose quote is nowhere is kept at document level and shown unanchored. A remark a
+  guide took the trouble to write is not ours to discard because we could not place it.
+- Re-importing is keyed on `docx:<author>:<w:id>` in `anchorKey`, so a revised file adds only what
+  is new and leaves any work the student has done on the old comments alone.
+- **Tracked changes are counted and left alone.** FR-7.3 names them beside comments, but a
+  revision is an edit rather than a remark, and importing them as comments would put edits into
+  the review queue dressed as questions. The count is reported so the student knows.
+
+### Task B4.3 — hardening
+
+- `docs/RUNBOOK.md`: deploy, rollback, key rotation, backups, restore, §7.5 step 2 (worker on a
+  second VPS), a triage section, and the dependency-audit rules.
+- **Dependency audit.** `pnpm audit --prod` found five moderate advisories; four are fixed here.
+  `fastify` 5.11.3 → 5.12.1 for a schema-validation bypass **and** X-Forwarded spoofing under
+  `trustProxy` — `bootstrap.ts` sets `trustProxy: true` behind Caddy, so that one was live. pnpm
+  `overrides` for `decode-uri-component` ≥ 0.5.0 and `stream-json` ≥ 3.5.0, both transitive under
+  `minio@8.0.7`.
+- The fifth is `@tiptap/core` prototype pollution, fixed in 3.30.4 against our 2.27.3. PRD §7.2
+  fixes the stack at TipTap v2, so it is a major upgrade and an ADR, not a bump; `docs/PENDING.md`
+  carries the decision. Mitigated by `stripUnsafeKeys`, and the smoke test separated the two
+  halves: **Fastify's JSON parser already refuses a request body containing `__proto__`** with a
+  400 before any of our code runs, so the HTTP path was never open. The guard covers what does not
+  go through that parser — the worker writing a drafted section, and a `citation` node whose
+  attributes are built from Crossref and OpenAlex metadata — and strips `constructor` and
+  `prototype`, which the parser allows.
+
+### Block 4 — verified end to end (dev stack, mock provider)
+
+```
+create institution (SUPERADMIN):   3 seats at ₹220/yr; a student gets 403, and 404 for /institutions/me
+invite 1, 2, 3:                    used 1/3, 2/3, 3/3
+invite 4:                          400 "All 3 seats are taken — 0 students and 3 invitations waiting"
+revoke one:                        free 1  (the pending invitation was holding it)
+invited student signs in:          on the roll, plan INSTITUTION_SEAT
+the roll's columns:                id,email,name,plan,joinedAt,lastActiveAt,documents,costInr,usage
+a new thesis in the institution:   starts on the institution's template
+invoice 2026:                      2 seats × ₹220 = ₹440, billed to the admin
+invoice 2026-09:                   400 "A yearly agreement is invoiced per year, e.g. 2026"
+invoice PDF:                       200, 36,785 bytes, %PDF
+a seat holder reading the roll:    403
+
+docx import:                       3 imported, 1 tracked change counted, 1 unanchored,
+                                   the empty balloon skipped
+anchors:                           113-193 and 195-262 in the chapter
+authors:                           Dr S Raman, Dr S Raman, Dr P Menon — not the uploading student
+a two-paragraph comment:           keeps its line break
+re-import of the same file:        0 imported, 3 duplicates
+a .pdf renamed .docx:              400, by name, before any parsing
+
+__proto__ in a request body:       400 from Fastify's parser
+the same document without it:      200
+constructor/prototype:             200, and both stripped before storage; "smith2020" survived
+```
+
+**The build is complete.** Every unit of `docs/PHASES-version-2.md` is done. What remains is the
+VERIFY batch (the deferred specs, then `pnpm pilot:report` and `docs/PILOT-1.md`) and the items in
+`docs/PENDING.md` that need a human: provider keys, the VPS and its deploy, k6, Sentry, Razorpay
+keys and the §11.6 price confirmation, fixture papers, the C.4/C.5 sets, and a real university
+template to replace `EXAMPLE_IN_UNIVERSITY`.

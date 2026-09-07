@@ -6,12 +6,24 @@
  * thesis or spends a cap unit is the student's alone.
  */
 
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { CommentsService } from './comments.service.js';
+import { DocxImportService } from './docx-import.service.js';
 import { FeedbackExportService } from './feedback-export.service.js';
 import { ReviewService } from './review.service.js';
 import { SharesService } from './shares.service.js';
@@ -47,6 +59,7 @@ export class FeedbackController {
     private readonly comments: CommentsService,
     private readonly review: ReviewService,
     private readonly exports: FeedbackExportService,
+    private readonly docx: DocxImportService,
   ) {}
 
   // ---- shares (student only) ----------------------------------------------------------------
@@ -93,6 +106,28 @@ export class FeedbackController {
   }
 
   /** D.2.2: a pasted email or list becomes one comment per item, for the student to assign. */
+  /**
+   * FR-7.3: a guide's marked-up `.docx` back into the review queue.
+   *
+   * Multipart, like every other upload in the product — `@fastify/multipart` is registered in
+   * `bootstrap.ts`, and a JSON content-type on this route would make Nest try to parse the file.
+   */
+  @Post('comments/import-docx')
+  @HttpCode(200)
+  async importDocx(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Req() request: FastifyRequest,
+  ) {
+    const file = await (
+      request as unknown as {
+        file: () => Promise<{ filename: string; toBuffer: () => Promise<Buffer> } | undefined>;
+      }
+    ).file();
+    if (!file) throw new ValidationError('Attach the .docx your guide sent back.');
+    return this.docx.import(user, documentId, file.filename, await file.toBuffer());
+  }
+
   @Post('comments/paste')
   @HttpCode(200)
   paste(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Body() body: unknown) {

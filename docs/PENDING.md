@@ -126,3 +126,28 @@ blocks the agent from continuing to build against mocks.
 
 - [ ] Recruit five pilot students; collect consent for using their papers.
 - [ ] Review `docs/PILOT-1.md` when the agent produces it.
+
+## Dependency advisories (B4.3 audit, 2026-09-07)
+
+`pnpm audit --prod` found five moderate advisories. Four were fixed in the audit itself: `fastify`
+5.11.3 → 5.12.1 (schema-validation bypass, and X-Forwarded spoofing under `trustProxy` — the app
+sets `trustProxy: true` behind Caddy, so that one was live), and pnpm `overrides` for
+`decode-uri-component` ≥ 0.5.0 and `stream-json` ≥ 3.5.0, both transitive under `minio@8.0.7`.
+
+One is left, and it needs a decision:
+
+- [ ] **`@tiptap/core` prototype pollution** (GHSA, moderate). `mergeAttributes()` turns an own
+      `__proto__` key into inherited executable DOM attributes. Fixed in **3.30.4**; we are on
+      2.27.3, and PRD §7.2 fixes the stack at "TipTap v2 (ProseMirror)", so the fix is a major
+      upgrade — a substitution that needs an ADR and a real migration of five custom extensions
+      (`ghostText`, `citation`, `draftBlock`, `provenance`, `commentAnchor`), not a version bump.
+
+      **Mitigated, not fixed, in the meantime,** and the smoke test showed the two halves are
+      different: Fastify's JSON parser already refuses a request body containing `__proto__`
+      outright (HTTP 400, before any of our code runs), so the HTTP path was never open.
+      `stripUnsafeKeys` in `apps/api/src/modules/chapters/word-counts.ts` covers the rest — the
+      worker writing a drafted section, and a `citation` node whose attributes come from Crossref
+      and OpenAlex metadata — and also strips `constructor` and `prototype`, which the parser
+      lets through.
+
+      Decide: schedule the v3 upgrade, or accept the mitigation and record why.

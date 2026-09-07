@@ -93,12 +93,21 @@ export class DocumentsController {
       throw new ValidationError('The document could not be created.', parsed.error.issues);
     }
 
+    // FR-9.6/D.3.1: a thesis started inside an institution begins on that institution's
+    // formatting template, so a student never has to know which one their department uses.
+    const member = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { institution: { select: { templateId: true } } },
+    });
+    const institutionTemplateId = member?.institution?.templateId ?? null;
+
     const document = await this.prisma.document.create({
       data: {
         ownerId: user.id,
         title: parsed.data.title,
         entryPath: parsed.data.entryPath,
         ...(parsed.data.field ? { field: parsed.data.field } : {}),
+        ...(institutionTemplateId ? { institutionTemplateId } : {}),
         // Every document has exactly one memory row (PRD §8). Created with the document so nothing
         // downstream has to handle its absence.
         memory: { create: { scope: {}, outline: [], glossary: {} } },

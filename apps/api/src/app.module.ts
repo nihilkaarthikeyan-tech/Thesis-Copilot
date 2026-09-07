@@ -15,6 +15,7 @@ import { ExportModule } from './modules/export/export.module.js';
 import { FeedbackModule } from './modules/feedback/feedback.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { InstitutionModule } from './modules/institution/institution.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { SourcesModule } from './modules/sources/sources.module.js';
@@ -60,6 +61,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     SourcesModule,
     MemoryModule,
     AdminModule,
+    InstitutionModule,
   ],
 })
 export class AppModule {}

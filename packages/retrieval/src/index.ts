@@ -28,6 +28,11 @@ export {
   retrievePassages,
 } from './context.js';
 export {
+  type DocxComment,
+  type DocxCommentImport,
+  readDocxComments,
+} from './extract/docx-comments.js';
+export {
   type DocumentKind,
   detectGutter,
   detectSections,

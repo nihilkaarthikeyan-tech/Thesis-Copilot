@@ -12,6 +12,7 @@ import type { PrismaClient } from '@tc/db';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
+import { claimInstitutionInvite } from '../institution/claim-invite.js';
 import { rememberDevOtp } from './dev-otp.js';
 
 export type SendOtp = (input: { email: string; otp: string; type: string }) => Promise<void>;
@@ -75,6 +76,30 @@ export function createAuth(env: Env, prisma: PrismaClient, sendOtp: SendOtp = co
           },
         }
       : {}),
+
+    // FR-9.6: an invited address takes its institution seat the first time it signs in. At
+    // sign-in rather than at account creation, because a student may already have a free-trial
+    // account when their department buys seats. A failure here is logged and swallowed: a seat
+    // that did not attach is a support ticket, a sign-in that did not complete is a locked-out
+    // student.
+    databaseHooks: {
+      session: {
+        create: {
+          async after(session) {
+            try {
+              const user = await prisma.user.findUnique({
+                where: { id: session.userId },
+                select: { email: true },
+              });
+              if (user) await claimInstitutionInvite(prisma, session.userId, user.email);
+            } catch (error) {
+              // eslint-disable-next-line no-console
+              console.error('[auth] could not claim an institution invite', error);
+            }
+          },
+        },
+      },
+    },
 
     plugins: [
       emailOTP({

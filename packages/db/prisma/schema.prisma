@@ -134,6 +134,36 @@ model Institution {
   templateId String? @db.Uuid
   users     User[]
   createdAt DateTime @default(now())
+  // --- ADR-0009: FR-9.6 needs a rate and an address to invoice against ---
+  /** The negotiated per-seat rate for a period (PRD 11.6: "200-250 negotiated"). */
+  seatPriceInr Int @default(0)
+  /** monthly | yearly - what one seat charge buys. */
+  billingPeriod String @default("yearly")
+  /** Where the invoice goes; the admin's own address when it is not set. */
+  billingEmail String?
+  invites   InstitutionInvite[]
+}
+
+/**
+ * A seat held for a named address before that person has an account - ADR-0009.
+ *
+ * Seats have to be counted before anyone signs up, or an institution with 30 seats can invite 300
+ * people and only discover the overcount when the 31st arrives. A pending invite holds a seat; it
+ * is released when the invite is revoked or it expires.
+ */
+model InstitutionInvite {
+  id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  institutionId String   @db.Uuid
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  email         String
+  invitedById   String   @db.Uuid
+  acceptedAt    DateTime?
+  acceptedById  String?  @db.Uuid
+  revokedAt     DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  @@unique([institutionId, email])
+  @@index([email])
 }
 
 model Document {

@@ -46,6 +46,37 @@ export function looksLikeDoc(value: unknown): value is { type: 'doc'; content: u
   );
 }
 
+/**
+ * Keys that must never reach a node's `attrs`.
+ *
+ * GHSA (moderate, `@tiptap/core` < 3.30.4): `mergeAttributes()` turns an own `__proto__` key into
+ * inherited executable DOM attributes. PRD §7.2 fixes TipTap at v2, so the patched version is a
+ * major upgrade and an ADR — `docs/PENDING.md` carries the decision.
+ *
+ * Fastify's JSON parser already refuses a **request body** containing `__proto__` outright (a 400
+ * before this code runs; the smoke test in `docs/BUILD_LOG.md` shows both halves). This covers the
+ * paths that do not go through it: the worker writing a drafted section, and a `citation` node
+ * whose attributes are built from Crossref and OpenAlex metadata. `constructor` and `prototype`
+ * pass the parser, so they are stripped here too.
+ */
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** Strips those keys from every object in a ProseMirror document, in place. */
+export function stripUnsafeKeys(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) stripUnsafeKeys(item);
+    return;
+  }
+  if (typeof value !== 'object' || value === null) return;
+  for (const key of Object.keys(value)) {
+    if (FORBIDDEN_KEYS.has(key)) {
+      delete (value as Record<string, unknown>)[key];
+      continue;
+    }
+    stripUnsafeKeys((value as Record<string, unknown>)[key]);
+  }
+}
+
 /** Empty chapter body: the level-1 title heading plus one paragraph (Appendix B.2). */
 export function emptyChapterDoc(title: string): { type: 'doc'; content: unknown[] } {
   return {

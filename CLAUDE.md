@@ -96,41 +96,40 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 ## Current state
 
-**Phase 1 and Phase 2 are built** (2026-09-06). `docs/BUILD_LOG.md` has per-task evidence.
+**The build is complete** (2026-09-07). Every unit of `docs/PHASES-version-2.md` is done:
+Phase 1 weeks 0–5, Phase 2 weeks 6–11, Phase 3 Blocks 1–4. `docs/BUILD_LOG.md` has the per-unit
+record and the end-to-end evidence for each; ADRs 0001–0009 record every decision that departed
+from the PRD.
 
-Working end to end: OTP sign-in; Path A (a 2–4 turn conversation with an OpenAlex gap check) and
-Path B (upload 1–3 papers, extraction, cross-paper flags); the proposal screen; literature
-discovery with a themed gap map, curation and BibTeX/RIS import; templates and generated outlines
-with an editable tree; the editor with Assist ghost text over SSE, citations with passage popovers,
-guided input, draft mode, section commands with a diff, chat over the library, and automatic
-suggest behind a per-user setting; a style profile learned from the student's own 1,500 words;
-citeproc citations in 22 styles with an instant switch, mechanical checks and paste-parse;
-`.docx`/PDF export with numbered headings and a real bibliography; caps, the usage meter,
-`/admin` and `/admin/users`; Razorpay subscriptions with T−3 reminders, one-click cancel and
-invoice PDFs; and the marketing pages (`/pricing`, `/privacy`, `/refunds`).
+Working end to end against the dev stack on the mock provider: sign-in, the thesis list, the
+proposal screen, the library with grounding badges, literature search with the living gap map, the
+outline tree and per-section regeneration, the TipTap editor with Assist, citations, draft mode,
+chat and section commands, the style profile, the coherence engine, the guide and committee cycle
+(shares, comments, scoped revisions, the review queue, the response-to-committee table, `.docx`
+comment import), the submission bundle (template spec, ten compliance checks, thesis `.docx`/PDF
+with a real contents page, the override with a reason), billing, institution admin with seats and
+invoices, the SUPERADMIN dashboards, §14 alerts, feature flags and `pnpm pilot:report`.
 
-Not done, and why:
-- **Every AI call so far went to the mock.** Cost is ₹0 everywhere; token counts and cache ratios
-  are the mock's simulation. `pnpm ai:verify` with a real key settles the cost model.
-- **Tests for weeks 6–11 are owed** — the build-first instruction. `docs/PHASES-version-2.md` →
-  VERIFY lists them; weeks 1–5 are covered (659 unit/integration, 21 Playwright).
-- **Anything needing a key, a server or a human decision** is in `docs/PENDING.md`: provider keys,
-  the VPS and deploy, k6, Sentry, Razorpay keys and price confirmation, fixture papers, the C.4/C.5
-  sets, university templates.
-- **Phase 3 is next** (`docs/PHASES-version-2.md` → PHASE-3): coherence engine, guide cycle,
-  institution templates and compliance, institution admin.
+**Next: the VERIFY batch** — `docs/PHASES-version-2.md` → VERIFY. One batch of the specs deferred
+from week 6 on, then `pnpm pilot:report` and `docs/PILOT-1.md`.
+
+Everything else that is not done needs a human, and `docs/PENDING.md` lists each with its steps:
+provider keys (every AI call so far went to the mock, so cost is ₹0 everywhere and `pnpm ai:verify`
+is what settles the cost model), the VPS and its deploy, k6, Sentry, Uptime Kuma, backup crons,
+Razorpay keys and the §11.6 price confirmation, fixture papers, the C.3/C.4/C.5 sets, a real
+university guideline to replace `EXAMPLE_IN_UNIVERSITY`, and the `@tiptap/core` v3 decision from
+the B4.3 dependency audit.
 
 The owner's standing instructions (2026-09-04/05): build every phase without stopping at a gate,
-**build first and verify in batches** rather than PRD §0.3 rule 7's one-task-at-a-time cadence,
-and keep `docs/PENDING.md` listing everything that needs a human. The deviation from rule 7 is
-logged in `docs/BUILD_LOG.md`; the PRD itself is unchanged.
+**build first and verify in batches**, and keep `docs/PENDING.md` listing everything that needs a
+human. PRD v2 is the lean spec that reflects this; v1.1 (`docs/PRD.md`) is kept for reference.
 
 `packages/ui` (and the other packages) are consumed from `dist`: after editing one, run `pnpm build`
 in that package or the running web/API keeps the old code. `apps/api` likewise runs `dist/main.js`.
 
-Start a session with: read the status table in `docs/PHASES-version-2.md` and continue with the
-next unit. Before running `prisma generate` on Windows, stop the API **and the
-worker** — both hold the engine DLL open, and a running worker fails the rename with EPERM.
+Start a session with: read the status table in `docs/PHASES-version-2.md`. Before running
+`prisma generate` on Windows, stop the API **and the worker** — both hold the engine DLL open, and
+a running worker fails the rename with EPERM.
 
 ## Hard-won rules
 
@@ -156,3 +155,13 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
   `NestFactory.create` and read `request.rawBody`.
 - **Never assert a fact the code has not observed.** Grounding levels, abstracts and citation counts
   are only written when something was actually fetched and read.
+- **Kill a process by its wrapper's path, not the bare command.** The API and worker both run as
+  `node dist/main.js`, so a pattern matching that kills the wrong one. Match the `dotenv-cli`
+  parent's path, or find the pid from the listening port.
+- **The worker owns terminal job state.** Writing it only from the SSE watcher left a coherence run
+  stuck at `RUNNING` whenever nobody was watching.
+- **Nest installs Fastify's JSON parser itself,** at `init()`. Registering one first is
+  `FST_ERR_CTP_ALREADY_PRESENT`; for raw bodies pass `{ rawBody: true }` to `NestFactory.create`.
+- **Check the library's real API before hand-rolling one.** `fieldParagraph` built a Word field out
+  of `TextRun`s with `{ type: 'begin' } as never`; `docx` has `TableOfContents`, and the hand-rolled
+  version printed its own field codes into the PDF.

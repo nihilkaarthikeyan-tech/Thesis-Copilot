@@ -7,6 +7,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { ChaptersModule } from '../chapters/chapters.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { CommentsService } from './comments.service.js';
+import { DocxImportService } from './docx-import.service.js';
 import { FeedbackController, GuideController } from './feedback.controller.js';
 import { FeedbackExportService } from './feedback-export.service.js';
 import { ReviewService } from './review.service.js';
@@ -21,6 +22,7 @@ import { SharesService } from './shares.service.js';
     CommentsService,
     ReviewService,
     FeedbackExportService,
+    DocxImportService,
     StorageService,
     QueueService,
     SessionGuard,
