@@ -184,7 +184,7 @@ describe('the mock', () => {
     const { text } = mockCiteRoleResponse.respond(ask(ORIGINAL, 'narrative'));
     const words = text.replace(/\{\{cite:[^}]+\}\}/g, '').toLowerCase();
     for (const word of words.split(/[^a-z]+/).filter(Boolean)) {
-      expect(ORIGINAL.toLowerCase() + ' found that', word).toContain(word);
+      expect(`${ORIGINAL.toLowerCase()} found that`, word).toContain(word);
     }
   });
 

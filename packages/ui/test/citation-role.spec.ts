@@ -38,6 +38,10 @@ const paragraph = (...content: JSONContent[]): JSONContent => ({ type: 'paragrap
 
 const doc = (...content: JSONContent[]): JSONContent => ({ type: 'doc', content });
 
+/** A node's attributes from `getJSON()`, or none — so a missing node fails an assertion, not a read. */
+const attrsOf = (node: Record<string, unknown> | undefined): Record<string, unknown> =>
+  (node?.attrs ?? {}) as Record<string, unknown>;
+
 describe('finding the sentence a citation sits in', () => {
   it('serialises the citation as {{cite:KEY}} and returns the whole sentence', () => {
     editor = createTestEditor(
@@ -138,8 +142,8 @@ describe('applying the rewrite', () => {
     };
     const nodes = json.content[0]?.content ?? [];
     expect(nodes[0]?.type).toBe('citation');
-    expect((nodes[0]?.attrs as Record<string, unknown>).sourceId).toBe('src-a');
-    expect((nodes[0]?.attrs as Record<string, unknown>).chunkId).toBe('chunk-a');
+    expect(attrsOf(nodes[0]).sourceId).toBe('src-a');
+    expect(attrsOf(nodes[0]).chunkId).toBe('chunk-a');
     expect(editor.getText()).toContain('found that cost was the main barrier');
   });
 
@@ -158,7 +162,7 @@ describe('applying the rewrite', () => {
       content: Array<{ content: Array<Record<string, unknown>> }>;
     };
     const citation = (json.content[0]?.content ?? []).find((n) => n.type === 'citation');
-    expect((citation?.attrs as Record<string, unknown>).role).toBe('narrative');
+    expect(attrsOf(citation).role).toBe('narrative');
   });
 
   it('leaves a second citation in the sentence at its own role', () => {
@@ -187,9 +191,9 @@ describe('applying the rewrite', () => {
     };
     const citations = (json.content[0]?.content ?? []).filter((n) => n.type === 'citation');
     expect(citations).toHaveLength(2);
-    expect((citations[0]?.attrs as Record<string, unknown>).role).toBe('narrative');
+    expect(attrsOf(citations[0]).role).toBe('narrative');
     // The one the student did not ask about is untouched.
-    expect((citations[1]?.attrs as Record<string, unknown>).role).toBe('parenthetical');
+    expect(attrsOf(citations[1]).role).toBe('parenthetical');
   });
 
   it('marks the rewritten range COMMAND, not ASSIST', () => {
