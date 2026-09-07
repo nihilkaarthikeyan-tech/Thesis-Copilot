@@ -6,7 +6,7 @@
  * actually succeeded, never assumed from the fact that a source resolved.
  */
 
-import { EMBEDDING_DIMENSIONS, type UnpaywallClient } from '@tc/retrieval';
+import { type CoreClient, EMBEDDING_DIMENSIONS, type UnpaywallClient } from '@tc/retrieval';
 import type { IndexSourceJob } from '@tc/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -35,7 +35,12 @@ function fakeDeps(
     source?: Partial<SourceRow> | null;
     oaPdfUrl?: string | null;
     unpaywallThrows?: boolean;
+    /** `undefined` means no CORE client at all — the shape of a worker without `CORE_API_KEY`. */
+    coreUrl?: string | null;
+    coreThrows?: boolean;
     fetchedPdf?: Buffer | 'fail';
+    /** URLs the fake network answers 404 for, so one copy can fail while another works. */
+    failUrls?: string[];
     extractedText?: string;
   } = {},
 ) {
@@ -79,11 +84,25 @@ function fakeDeps(
     }),
   } as unknown as UnpaywallClient;
 
+  const core =
+    over.coreUrl === undefined && !over.coreThrows
+      ? null
+      : ({
+          fullTextUrl: vi.fn(async () => {
+            if (over.coreThrows) throw new Error('core: HTTP 401');
+            return over.coreUrl
+              ? { pdfUrl: over.coreUrl, coreId: 1, title: null, via: 'downloadUrl' as const }
+              : null;
+          }),
+        } as unknown as CoreClient);
+
   // The global fetch the full-text fetcher reaches for.
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => {
-      if (over.fetchedPdf === 'fail') return new Response('nope', { status: 404 });
+    vi.fn(async (url: string) => {
+      if (over.fetchedPdf === 'fail' || over.failUrls?.includes(url)) {
+        return new Response('nope', { status: 404 });
+      }
       return new Response(new Uint8Array(over.fetchedPdf ?? PDF), {
         status: 200,
         headers: { 'content-type': 'application/pdf' },
@@ -102,6 +121,7 @@ function fakeDeps(
       }),
     },
     unpaywall,
+    core,
     getObject: vi.fn(async (key: string) => stored.get(key) ?? PDF),
     putObject: vi.fn(async (key: string, body: Buffer) => {
       stored.set(key, body);
@@ -242,5 +262,117 @@ describe('runIndexSource', () => {
     deps.embeddings.embed = vi.fn(async () => [embedding()]);
     // Silently writing fewer chunks than were embedded would corrupt every later retrieval.
     await expect(runIndexSource(job(), deps)).rejects.toThrow(/does not match/);
+  });
+});
+
+describe('the CORE fallback (FR-2.2)', () => {
+  it('is asked when Unpaywall lists no PDF, and its copy earns FULL_TEXT', async () => {
+    const { deps, logs, stored } = fakeDeps({
+      oaPdfUrl: null,
+      coreUrl: 'https://core.ac.uk/download/132289095.pdf',
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('FULL_TEXT');
+    expect(result.from).toBe('open-access-pdf');
+    expect(result.via).toBe('core');
+    expect(stored.size).toBe(1);
+    expect(logs.some((entry) => entry.msg === 'full text fetched via core fallback')).toBe(true);
+  });
+
+  it('is asked when Unpaywall named a copy that could not be fetched', async () => {
+    const { deps } = fakeDeps({
+      oaPdfUrl: 'https://publisher.example.com/gone.pdf',
+      failUrls: ['https://publisher.example.com/gone.pdf'],
+      coreUrl: 'https://core.ac.uk/download/1.pdf',
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('FULL_TEXT');
+    expect(result.via).toBe('core');
+  });
+
+  it('is not asked when Unpaywall already delivered', async () => {
+    const { deps } = fakeDeps({
+      oaPdfUrl: 'https://repo.example.org/p.pdf',
+      coreUrl: 'https://core.ac.uk/download/1.pdf',
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.via).toBe('unpaywall');
+    expect(deps.core?.fullTextUrl).not.toHaveBeenCalled();
+  });
+
+  it('is not asked after Unpaywall itself failed to answer either', async () => {
+    // Both services answer the same question; a network fault at one is not a reason to skip the
+    // other. This is the one case where the fallback runs after a lookup error, not a miss.
+    const { deps, logs } = fakeDeps({
+      unpaywallThrows: true,
+      coreUrl: 'https://core.ac.uk/download/1.pdf',
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('FULL_TEXT');
+    expect(result.via).toBe('core');
+    expect(logs.some((entry) => entry.msg === 'unpaywall lookup failed')).toBe(true);
+  });
+
+  it('keeps the Unpaywall verdict when CORE has nothing', async () => {
+    const { deps } = fakeDeps({
+      oaPdfUrl: null,
+      coreUrl: null,
+      source: { cslJson: { abstract: 'Indexable from the abstract.' } },
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('ABSTRACT');
+    expect(result.fullTextFailure).toBe('no-location');
+    expect(result.via).toBeUndefined();
+  });
+
+  it('survives CORE refusing the key', async () => {
+    const { deps, logs } = fakeDeps({
+      oaPdfUrl: null,
+      coreThrows: true,
+      source: { cslJson: { abstract: 'Indexable from the abstract.' } },
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('ABSTRACT');
+    expect(logs.some((entry) => entry.msg === 'core lookup failed')).toBe(true);
+  });
+
+  it("reports the CORE copy's failure when CORE named one and it was not a PDF", async () => {
+    const { deps } = fakeDeps({
+      oaPdfUrl: null,
+      coreUrl: 'https://core.ac.uk/download/gone.pdf',
+      failUrls: ['https://core.ac.uk/download/gone.pdf'],
+      source: { cslJson: { abstract: 'Indexable from the abstract.' } },
+    });
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('ABSTRACT');
+    // A 404 from the named copy is more specific than Unpaywall's "no location".
+    expect(result.fullTextFailure).not.toBe('no-location');
+  });
+
+  it('is simply absent without a key — nothing changes for a worker that has none', async () => {
+    const { deps } = fakeDeps({
+      oaPdfUrl: null,
+      source: { cslJson: { abstract: 'Indexable from the abstract.' } },
+    });
+    expect(deps.core).toBe(null);
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(result.groundingLevel).toBe('ABSTRACT');
+    expect(result.fullTextFailure).toBe('no-location');
   });
 });

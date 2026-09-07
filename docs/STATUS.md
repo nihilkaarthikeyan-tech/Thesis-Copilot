@@ -37,6 +37,13 @@ and the phase plan — the phase plan never scheduled them, so no task was ever 
 Closed on 2026-09-07. The first needed a prompt the specification does not contain, which is
 recorded as a decision (`docs/ADR/0010`) with a one-line follow-up for the specification's author.
 
+A fourth gap surfaced the same day while sorting the open list into "needs a human" and "does not":
+**FR-2.2's CORE fallback** (P1) — the second place the product looks for a paper's open-access PDF
+when the first (Unpaywall) has none — had been parked as needing an API key. The key is only needed
+to run it live; the client could be built and tested against the API's own recorded responses, and
+now is. Without the key the worker skips it, exactly as before. Obtaining the free key is a
+five-minute item on the owner's list.
+
 A fourth, non-functional finding: three screens in the specification were merged into other screens
 during the build (citations and coherence flags became panels inside the editor; export became the
 submission screen). These are sound design decisions and the product is complete without them, but

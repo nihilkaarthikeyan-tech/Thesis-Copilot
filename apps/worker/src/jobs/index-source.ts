@@ -15,6 +15,7 @@ import type { EmbeddingProvider } from '@tc/ai';
 import type { PrismaClient } from '@tc/db';
 import {
   batched,
+  type CoreClient,
   chunkText,
   type ExtractedDocument,
   type FullTextFailure,
@@ -33,6 +34,8 @@ export type IndexSourceDeps = {
   prisma: PrismaClient;
   embeddings: EmbeddingProvider;
   unpaywall: UnpaywallClient;
+  /** FR-2.2's fallback, asked only after Unpaywall failed. Null without `CORE_API_KEY` (§13.3). */
+  core?: CoreClient | null;
   /** Reads a PDF already in object storage — a student upload, or one fetched by an earlier run. */
   getObject: (key: string) => Promise<Buffer>;
   /** Writes a fetched open-access PDF to object storage. */
@@ -48,6 +51,8 @@ export type IndexSourceResult = {
   chunks: number;
   /** Where the indexed text came from, so the log says what was actually read. */
   from: 'stored-pdf' | 'open-access-pdf' | 'abstract' | 'nothing';
+  /** Which service located an open-access PDF, when one was fetched. */
+  via?: 'unpaywall' | 'core';
   fullTextFailure?: FullTextFailure;
 };
 
@@ -84,6 +89,7 @@ export async function runIndexSource(
   let sections: Array<{ section: string; start: number; end: number }> | undefined;
   let from: IndexSourceResult['from'] = 'nothing';
   let fullTextFailure: FullTextFailure | undefined;
+  let via: 'unpaywall' | 'core' | undefined;
   let fileKey = source.fileKey;
 
   // 1. A PDF we already hold — the student's own upload (FR-2.3), or one fetched by an earlier run.
@@ -112,6 +118,7 @@ export async function runIndexSource(
           pages = [...extracted.pages];
           sections = [...extracted.sections];
           from = 'open-access-pdf';
+          via = outcome.via;
         } else {
           // A scanned PDF with no text layer grounds nothing, so it is not stored or claimed.
           fullTextFailure = 'not-a-pdf';
@@ -202,6 +209,7 @@ export async function runIndexSource(
     msg: 'source indexed',
     sourceId: source.id,
     from,
+    ...(via ? { via } : {}),
     chunks: written,
     groundingLevel,
     ...(fullTextFailure ? { fullTextFailure } : {}),
@@ -212,29 +220,67 @@ export async function runIndexSource(
     groundingLevel,
     chunks: written,
     from,
+    ...(via ? { via } : {}),
     ...(fullTextFailure ? { fullTextFailure } : {}),
   };
 }
 
-/** Asks Unpaywall where the open-access copy is, then fetches it. Never throws. */
+type OpenAccessOutcome =
+  | { ok: true; bytes: Buffer; via: 'unpaywall' | 'core' }
+  | { ok: false; reason: FullTextFailure };
+
+/**
+ * Asks Unpaywall where the open-access copy is and fetches it; when that yields nothing, asks CORE
+ * (FR-2.2: "Unpaywall `best_oa_location` → PDF; fallback CORE"). Never throws.
+ */
 async function fetchFromOpenAccess(
   doi: string,
   deps: IndexSourceDeps,
   log: (event: Record<string, unknown>) => void,
   sourceId: string,
-): Promise<{ ok: true; bytes: Buffer } | { ok: false; reason: FullTextFailure }> {
+): Promise<OpenAccessOutcome> {
   let pdfUrl: string | null = null;
+  let unpaywallFailure: FullTextFailure | null = null;
   try {
     const location = await deps.unpaywall.bestOpenAccess(doi);
     pdfUrl = location?.pdfUrl ?? null;
   } catch (error) {
     // A placeholder contact address makes Unpaywall answer 422; the worker warns about that at boot.
     log({ msg: 'unpaywall lookup failed', sourceId, error: String(error) });
-    return { ok: false, reason: 'network' };
+    unpaywallFailure = 'network';
   }
 
-  const result = await fetchOpenAccessPdf(pdfUrl);
-  return result.ok ? { ok: true, bytes: result.bytes } : { ok: false, reason: result.reason };
+  if (!unpaywallFailure) {
+    const result = await fetchOpenAccessPdf(pdfUrl);
+    if (result.ok) return { ok: true, bytes: result.bytes, via: 'unpaywall' };
+    unpaywallFailure = result.reason;
+  }
+
+  // The fallback. Only reached once Unpaywall has failed, and only when a key was configured.
+  if (!deps.core) return { ok: false, reason: unpaywallFailure };
+
+  let coreUrl: string | null = null;
+  try {
+    const hit = await deps.core.fullTextUrl(doi);
+    if (hit) {
+      coreUrl = hit.pdfUrl;
+      log({ msg: 'core has a copy', sourceId, coreId: hit.coreId, via: hit.via });
+    }
+  } catch (error) {
+    // An invalid key answers 401; the fallback is best-effort, so the Unpaywall verdict stands.
+    log({ msg: 'core lookup failed', sourceId, error: String(error) });
+    return { ok: false, reason: unpaywallFailure };
+  }
+  if (!coreUrl) return { ok: false, reason: unpaywallFailure };
+
+  const result = await fetchOpenAccessPdf(coreUrl);
+  if (result.ok) {
+    log({ msg: 'full text fetched via core fallback', sourceId, url: coreUrl });
+    return { ok: true, bytes: result.bytes, via: 'core' };
+  }
+  // CORE named a copy and it could not be read: that is the more specific reason to report.
+  log({ msg: 'core copy could not be fetched', sourceId, url: coreUrl, reason: result.reason });
+  return { ok: false, reason: result.reason };
 }
 
 /** The plain-text abstract `resolve-reference` stored on the CSL record, if there is one. */

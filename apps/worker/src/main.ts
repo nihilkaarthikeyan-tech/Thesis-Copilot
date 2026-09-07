@@ -25,6 +25,7 @@ import {
   buildChapterMemory,
   type ContextChapter,
   type ContextClient,
+  CoreClient,
   CrossrefClient,
   extractDocument,
   OpenAlexClient,
@@ -182,6 +183,10 @@ async function main(): Promise<void> {
     crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
     openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
     unpaywall: new UnpaywallClient({ mailto: env.UNPAYWALL_EMAIL }),
+    // FR-2.2's full-text fallback; the key is optional (PRD §13.3), so without it there is no client.
+    core: env.CORE_API_KEY
+      ? new CoreClient(env.CORE_API_KEY, { mailto: env.UNPAYWALL_EMAIL })
+      : null,
     // FR-2.5 discovery: OpenAlex primary, Semantic Scholar only when a key exists (PRD 13.3).
     discovery: new OpenAlexDiscovery({ mailto: env.OPENALEX_MAILTO }),
     semanticScholar: env.SEMANTIC_SCHOLAR_API_KEY
@@ -257,6 +262,7 @@ async function main(): Promise<void> {
           prisma,
           embeddings: providers.embeddings,
           unpaywall: scholarly.unpaywall,
+          core: scholarly.core,
           getObject: (key) => storage.get(key),
           putObject: (key, body) => storage.put(key, body),
           extract: (bytes) => extractDocument(bytes, 'pdf'),

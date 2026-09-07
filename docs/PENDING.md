@@ -35,8 +35,13 @@ blocks the agent from continuing to build against mocks.
       and re-run the SSE tests (`apps/api/test/week1.spec.ts`, the E2E), or accept the moderate —
       §12.1's bar is high/critical, which the audit passes today. Nothing else in the audit is in a
       request path.
-- [ ] **CORE fallback** (PHASES 2.6 / 5.1): needs `CORE_API_KEY`, optional in §13.3. Without it the
-      client cannot be exercised, and Unpaywall already covers the open-access path. Not built.
+- [ ] **CORE fallback key** (FR-2.2, PHASES 2.6 / 5.1): the fallback is built
+      (`packages/retrieval/src/scholarly/core.ts`, wired in `apps/worker/src/jobs/index-source.ts`
+      after Unpaywall fails; 11 + 8 tests against the API's recorded responses). It runs only when
+      `CORE_API_KEY` is set (optional, §13.3). Register for a free key at core.ac.uk/services/api,
+      set it in `.env`, then re-index one source whose DOI Unpaywall has no PDF for and look for
+      `full text fetched via core fallback` in the worker log. A wrong key logs
+      `core lookup failed` with HTTP 401 and the source falls back to its abstract as before.
 - [ ] **Sentry** (PHASES 5.5): set `SENTRY_DSN` in the VPS `.env`. The API and worker initialise
       `@sentry/node` only when it is set (`apps/api/src/common/sentry.ts`, `apps/worker/src/sentry.ts`;
       errors only, no tracing, no PII). Then throw one on purpose — `GET /api/v1/health?boom=1`

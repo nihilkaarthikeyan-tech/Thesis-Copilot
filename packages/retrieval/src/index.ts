@@ -105,6 +105,12 @@ export {
   parseRis,
 } from './scholarly/bibliography.js';
 export {
+  CORE_REQUESTS_PER_SECOND,
+  CORE_SEARCH_LIMIT,
+  CoreClient,
+  type CoreFullText,
+} from './scholarly/core.js';
+export {
   cosine,
   DISCOVER,
   type DiscoveredWork,

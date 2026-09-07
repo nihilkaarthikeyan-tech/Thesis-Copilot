@@ -2641,3 +2641,28 @@ written down, and §0.3 rule 3 requires a changed decision to be recorded.
 
 Logged here rather than as an ADR because none of them changes a decision the PRD reasoned about —
 they move a panel. The PRD's §6.1 remains the specification; this records where the build differs.
+
+### CORE full-text fallback (FR-2.2) — 2026-09-07
+
+Found while classifying `docs/PENDING.md` into owner-work and agent-work: the CORE entry said
+"needs `CORE_API_KEY` … not built", which conflated the two. The key is needed to *run* the
+fallback; nothing stopped it being built.
+
+- `packages/retrieval/src/scholarly/core.ts` — `CoreClient(apiKey, options).fullTextUrl(doi)`:
+  `GET /v3/search/works?q=doi:"…"&limit=5` with `Authorization: Bearer`, matched back against the
+  DOI exactly (the endpoint is a search, and a near-miss would ground one paper in another's text),
+  preferring `downloadUrl` and falling back to `sourceFulltextUrls[0]`.
+- §0.3 rule 1: the docs site answers 403 to anything that is not a browser, so the contract was
+  read from the live API instead — two unkeyed searches (one work with a copy, one without) and one
+  request with a bad key (401, `{"message":"The API key you provided is not valid."}`). The
+  responses are quoted in the file header and the tests use those shapes and nothing else.
+- `apps/worker/src/jobs/index-source.ts` — `fetchFromOpenAccess` asks CORE only after Unpaywall
+  has failed (no location, an unfetchable copy, or a lookup error) and only when
+  `deps.core` exists; `IndexSourceResult.via` records which service found the PDF. When CORE
+  names a copy that then fails, that failure is the one reported — it is more specific than
+  Unpaywall's "no location".
+- `apps/worker/src/main.ts` builds the client from `CORE_API_KEY` or passes `null`.
+- Tests: `packages/retrieval/test/core.spec.ts` (11) and eight cases added to
+  `apps/worker/test/index-source.spec.ts`, including the worker-without-a-key shape.
+- Rate: 1 request/s by default. CORE's published limit was not readable from here; the fallback is
+  reached rarely enough that the figure does not matter in practice.
