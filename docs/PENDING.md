@@ -191,3 +191,20 @@ produce, because none of it is the agent's to make up:
 - [ ] The C.3 scoring set, the C.4 recall set, the C.5 golden scenarios and the thirty-run Assist
       evidence, all listed above and all blocked on the same two things: fixture papers and a
       provider key.
+
+## Agent work still outstanding (found by the 2026-09-07 audit)
+
+Unlike everything above, these are **not** blocked on anything human — they are features the
+specification asks for that were never built, found by auditing the PRD against the code. About a
+day in total. Listed here so they are not lost; they belong to the agent, not to you.
+
+- [ ] **FR-5.6 — narrative ↔ parenthetical rewrite.** The citation node already carries
+      `role: 'parenthetical' | 'narrative'` and renders each correctly. Missing: the action that
+      flips one and rewrites the sentence around it (a Strong call; it has to move the author name
+      in or out of the prose). Needs a cap decision like ADR-0008's — the ₹100 ceiling has ~₹1.
+- [ ] **§2.2 — a separate switch for automatic citation.** "Auto-cite from library can be toggled
+      independently of autocomplete." `automaticSuggest` covers autocomplete; there is no second
+      setting, so a student who wants suggestions without citations cannot have that.
+- [ ] **§2.2 — honour the document language.** `Document.language` is stored, defaulted to `en`,
+      and read by nothing. Every prompt should carry it and the model should be told to answer in
+      it. Not a pilot blocker (the pilot is English) but a real limit on who can use the product.

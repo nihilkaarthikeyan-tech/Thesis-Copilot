@@ -6,16 +6,40 @@
 
 ## Headline
 
-**Development is complete. The product cannot be launched yet, and none of what remains is coding
-work.**
+**Development is effectively complete — 58 of 61 in-scope requirements. A line-by-line audit on
+2026-09-07 found three small gaps, listed below; they are ~1 day of work. The launch blockers are
+not code.**
 
 | | |
 |---|---|
-| Requirements built | **61 of 61 in scope (100%)** |
+| Requirements built | **58 of 61 in scope (95%)** |
+| Gaps found by audit | 3, all P2/P3, ~1 day (see "Audit findings") |
 | Deferred by the spec itself | 2 (LaTeX export, annotated-PDF import — both marked post-launch in the PRD) |
 | Automated tests passing | **994** unit/integration + **28** browser |
 | Build, lint, type-check | Clean |
 | **Ready for paying users** | **No** — three external dependencies, listed below |
+
+---
+
+## Audit findings (2026-09-07)
+
+A requirement-by-requirement audit against the specification, rather than against the project plan,
+found three features that were specified and never built. All three fell between the specification
+and the phase plan — the phase plan never scheduled them, so no task was ever marked incomplete.
+
+| Ref | Feature | Priority | Impact |
+|---|---|---|---|
+| FR-5.6 | Rewrite a citation between narrative and parenthetical form on request | P3 | Convenience. The citation already stores which form it is; what is missing is the button that rewrites the sentence around it. |
+| §2.2 | Separate on/off switch for automatic citation, independent of automatic suggestions | P2 | A student who wants suggestions without citations cannot have that today. |
+| §2.2 | Suggestions follow the document's language setting | P2 | The language is stored and ignored, so a non-English thesis gets English suggestions. Not a pilot blocker — the pilot is English — but a real limit on the market. |
+
+Estimated to close: about one day. Recommend closing before the pilot rather than after, since the
+second and third are both visible to a student.
+
+A fourth, non-functional finding: three screens in the specification were merged into other screens
+during the build (citations and coherence flags became panels inside the editor; export became the
+submission screen). These are sound design decisions and the product is complete without them, but
+they were never written down as deviations. Now recorded in `docs/BUILD_LOG.md`.
 
 ---
 
@@ -109,8 +133,9 @@ is blocked on further development.**
 ## Summary for the record
 
 The software was built to specification and is tested to a standard we can defend: 994 automated
-tests, every user-facing screen exercised in a real browser, and every decision that departed from
-the specification documented and justified (`docs/ADR/`).
+tests and every user-facing screen exercised in a real browser. An audit against the specification
+found three small gaps, listed above and now scheduled; they were found by re-reading the
+requirements rather than by trusting the project plan, which is the check worth having done.
 
 What stands between us and a live product is not code. It is three purchases and half a day of
 subject-matter input. The honest position is that we have finished building and have not yet

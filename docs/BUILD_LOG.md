@@ -2607,3 +2607,37 @@ integration account of this build's own making, and every AI call in it went to 
 cost column is ₹0 by construction. **`docs/PILOT-1.md` needs real students using the product**, and
 `docs/PENDING.md` carries it along with the fixture-dependent items (C.3 scoring, the C.4 recall
 set, the C.5 golden scenarios, the coherence fixture thesis, and the thirty-run Assist evidence).
+
+## Specification audit (2026-09-07)
+
+Checked every functional requirement in `docs/PRD-version-2.md` against the code, rather than
+checking the phase table against itself. The phase table was not wrong — it recorded that every
+task it listed was done — but three requirements were never listed by it, so nothing was ever
+marked incomplete. That is the failure mode the audit exists to catch, and it is why the PRD, not
+PHASES, is the source of truth.
+
+**Built: 58 of 61 in scope.** Two more (FR-8.5 LaTeX export, FR-7.3's annotated-PDF half) are
+marked post-P3 by the PRD and correctly absent.
+
+### Not built
+
+| Ref | What | Why it was missed |
+|---|---|---|
+| FR-5.6 | Narrative ↔ parenthetical rewrite on request (strong tier) | The `role` attribute is on the citation node and the renderer honours it, so the feature looked present. What is absent is the action that rewrites the surrounding sentence. Neither PHASES v1 nor v2 ever scheduled it. |
+| §2.2 | "Auto-cite from library can be toggled independently of autocomplete" | `automaticSuggest` covers the autocomplete half; the citation half has no switch. §2.2's table was read as describing Assist, and this row describes a setting. |
+| §2.2 | "Language: follows document language setting" | `Document.language` exists with a default of `en`, is written on create, and is read by nothing. A stored column that nothing consumes reads as done at a glance. |
+
+### Deviation from §6.1 that was never logged
+
+Three routes in the PRD's information architecture were folded into other screens during the
+build. Each is a reasonable decision and the functionality is present; the failure is that none was
+written down, and §0.3 rule 3 requires a changed decision to be recorded.
+
+| §6.1 route | Where it went |
+|---|---|
+| `/app/d/:id/citations` (Stage 5) | The Citations panel in the editor's right rail. A citation is edited while looking at the sentence it sits in; a separate screen would mean leaving the text to fix the reference to it. |
+| `/app/d/:id/review` (Stage 6, coherence) | The Flags panel in the same rail, for the same reason: a coherence flag points at a range, and the point is to see it in place. `/review` is Stage 7. |
+| `/app/d/:id/export` (Stage 8) | `/app/d/:id/submit`, which does the same job under the name the student uses for it. |
+
+Logged here rather than as an ADR because none of them changes a decision the PRD reasoned about —
+they move a panel. The PRD's §6.1 remains the specification; this records where the build differs.
