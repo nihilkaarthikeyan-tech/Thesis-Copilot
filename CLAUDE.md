@@ -98,7 +98,7 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 **The build is complete** (2026-09-07). Every unit of `docs/PHASES-version-2.md` is done:
 Phase 1 weeks 0–5, Phase 2 weeks 6–11, Phase 3 Blocks 1–4. `docs/BUILD_LOG.md` has the per-unit
-record and the end-to-end evidence for each; ADRs 0001–0009 record every decision that departed
+record and the end-to-end evidence for each; ADRs 0001–0010 record every decision that departed
 from the PRD.
 
 Working end to end against the dev stack on the mock provider: sign-in, the thesis list, the
@@ -115,6 +115,14 @@ Playwright specs pass; `docs/BUILD_LOG.md` → "VERIFY" lists what was added and
 defects writing them found. `pnpm test`, `pnpm lint` and `pnpm typecheck` are clean; `pnpm e2e`
 needs the dev stack up (web on :3000, API on :3001, worker, and Compose).
 
+**A requirement-by-requirement PRD audit (2026-09-07) found five things the phase plan never
+scheduled, all built the same day:** FR-5.6 citation-role rewrite (ADR-0010: the one prompt not
+from Appendix A), the §2.2 auto-cite toggle, §2.2 document language, the FR-2.2 CORE full-text
+fallback, and real outbound email (Resend / SMTP — before it, production would have printed every
+sign-in code to the log). `docs/BUILD_LOG.md` → "Specification audit" has the account. Before
+saying anything is "done", audit the PRD's FR lines, not the phase plan; the owner has been told
+"finished" prematurely more than once and it is the one thing they have objected to.
+
 Everything else that is not done needs a human, and `docs/PENDING.md` lists each with its steps:
 provider keys (every AI call so far went to the mock, so cost is ₹0 everywhere and `pnpm ai:verify`
 is what settles the cost model), the VPS and its deploy, k6, Sentry, Uptime Kuma, backup crons,
@@ -129,7 +137,8 @@ human. PRD v2 is the lean spec that reflects this; v1.1 (`docs/PRD.md`) is kept 
 `packages/ui` (and the other packages) are consumed from `dist`: after editing one, run `pnpm build`
 in that package or the running web/API keeps the old code. `apps/api` likewise runs `dist/main.js`.
 
-Start a session with: read the status table in `docs/PHASES-version-2.md`. Before running
+Start a session with: read `docs/PENDING.md` — nothing buildable is left, so new work comes from
+the owner, from a key arriving, or from a fresh PRD audit. Before running
 `prisma generate` on Windows, stop the API **and the worker** — both hold the engine DLL open, and
 a running worker fails the rename with EPERM.
 

@@ -81,7 +81,7 @@ blocks the agent from continuing to build against mocks.
 
 - [ ] **VPS** (8 vCPU / 16 GB / 160 GB, Ubuntu 24.04, Docker) + a **domain** pointing at it + SSH key.
 - [ ] Copy the repo to `~/thesis-copilot` on the VPS, create `infra/compose/.env` from
-      `infra/compose/.env.production.example` plus the root `.env.example` values.
+      `infra/compose/.env.production.example` (every variable, with the in-network hostnames filled in).
 - [ ] **GitHub secrets** for `release.yml`: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `DOMAIN`,
       `NEXT_PUBLIC_API_URL` (= `https://<domain>`). GHCR is enabled automatically with `GITHUB_TOKEN`.
 - [ ] **Off-site backup bucket**: `BACKUP_S3_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET` in the VPS `.env`.
