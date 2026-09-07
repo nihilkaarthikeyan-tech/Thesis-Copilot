@@ -35,7 +35,7 @@ push, and keep docs/PENDING.md current. Then continue with the next unit.
 | PHASE-3 B2 | Guide and committee cycle | done |
 | PHASE-3 B3 | Institution templates, compliance, PDF, polish | done |
 | PHASE-3 B4 | Institution admin and hardening | done |
-| VERIFY | Test batch and pilot report | **next** |
+| VERIFY | Test batch and pilot report | tests done; the pilot report needs students |
 
 `docs/BUILD_LOG.md` has the per-task record of the finished units.
 

@@ -110,8 +110,10 @@ comment import), the submission bundle (template spec, ten compliance checks, th
 with a real contents page, the override with a reason), billing, institution admin with seats and
 invoices, the SUPERADMIN dashboards, §14 alerts, feature flags and `pnpm pilot:report`.
 
-**Next: the VERIFY batch** — `docs/PHASES-version-2.md` → VERIFY. One batch of the specs deferred
-from week 6 on, then `pnpm pilot:report` and `docs/PILOT-1.md`.
+**The VERIFY batch is done too.** 967 unit and integration tests (Vitest, 69 files) and 28
+Playwright specs pass; `docs/BUILD_LOG.md` → "VERIFY" lists what was added and the seven real
+defects writing them found. `pnpm test`, `pnpm lint` and `pnpm typecheck` are clean; `pnpm e2e`
+needs the dev stack up (web on :3000, API on :3001, worker, and Compose).
 
 Everything else that is not done needs a human, and `docs/PENDING.md` lists each with its steps:
 provider keys (every AI call so far went to the mock, so cost is ₹0 everywhere and `pnpm ai:verify`

@@ -2533,3 +2533,77 @@ VERIFY batch (the deferred specs, then `pnpm pilot:report` and `docs/PILOT-1.md`
 `docs/PENDING.md` that need a human: provider keys, the VPS and its deploy, k6, Sentry, Razorpay
 keys and the §11.6 price confirmation, fixture papers, the C.4/C.5 sets, and a real university
 template to replace `EXAMPLE_IN_UNIVERSITY`.
+
+## VERIFY — the deferred test batch (2026-09-07)
+
+`docs/PHASES-version-2.md` → VERIFY, run as one batch after the build as the owner asked. Every
+spec it names is written and passing: **967 unit and integration tests** (Vitest, 69 files) and
+**28 Playwright specs** against the dev stack.
+
+### What was added
+
+| Spec | Covers |
+|---|---|
+| `packages/ai/test/search.spec.ts` | A.7 `cleanQueries`, A.8 `normaliseThemes`, both mocks |
+| `packages/ai/test/outline.spec.ts` | `suggestTemplate`, `renderTemplateBlock`, `normaliseOutline`, `enforceTemplateShape`, FR-3.6 |
+| `packages/ai/test/feedback.spec.ts` | D.2.2 re-anchoring, A.14 post-processing, A.13 classification |
+| `packages/citations/test/render.spec.ts` | CSL golden strings for APA, IEEE, Vancouver, Harvard, Chicago |
+| `packages/export/test/compliance.spec.ts` | All ten D.3.3 checks, each with its negative |
+| `packages/retrieval/test/bibliography.spec.ts` | BibTeX with `@string`, braces and accents; RIS |
+| `packages/retrieval/test/docx-comments.spec.ts` | FR-7.3's parser, against real Word packages |
+| `apps/worker/test/search-literature.spec.ts` | The discover run, stage by stage |
+| `apps/worker/test/generate-outline.spec.ts` | Chapters created, renamed, never deleted |
+| `apps/worker/test/coherence-run.spec.ts` | D.1.1's lifecycle and ADR-0007's flag identity |
+| `apps/api/test/institution.spec.ts` | FR-9.6's seat arithmetic, on Testcontainers |
+| `apps/api/test/billing-webhook.spec.ts` | FR-9.5's HMAC, idempotency and always-200 |
+| `apps/api/test/guide-cycle.spec.ts` | Appendix D.2 end to end, both audiences |
+| `apps/web/e2e/outline-commands-chat.spec.ts` | The outline tree, the command diff, chat |
+
+### Faults the batch found
+
+Writing tests against finished code found seven real defects, which is the argument for the batch.
+
+1. **Only the title page's fields were checked.** D.3.3's check 2 read `TITLE_PAGE.fields` and
+   nothing else, so a blank `hodName` reached a printed certificate and the declaration's date was
+   never looked at. It now reads every required section's fields, aliasing the example template's
+   `date` to `declarationDate`, and `CERTIFICATE` requires both names.
+2. **The "is this figure referred to?" check could never fire.** A caption reads "Figure 1.1:
+   Drying curve", which contains the phrase the check searches for, so every captioned figure
+   passed. The captions `figuresOf` identified are removed from the text before the search — by
+   exact string, not by a rule about paragraphs starting with "Figure", which would also eat a
+   sentence that legitimately opens that way.
+3. **TeX accents were dropped rather than decoded**, so a Zotero export turned Müller into Muller
+   and García into Garcia — a misspelled author in a submitted bibliography.
+4. **Bibliography entries were skipped silently.** An entry with neither a title nor a DOI cannot
+   be resolved and is dropped, which is right; dropping it without saying so turned a 40-reference
+   export into 38 with no explanation. The count is reported now, all the way to the screen.
+5. **The test harness built the Nest app without `rawBody`**, so it disagreed with `main.ts` about
+   what the application is and every correctly signed webhook failed with a 401.
+6. **The ₹100 ceiling test rejected ADR-0008's first shape** — see the ADR. That is the test doing
+   its job, and the finding underneath it is the more important one.
+7. **`CAPTION_RE` reached the file as `/^(figure|table)\x08/i`** because a `\b` was written through
+   a Python heredoc, where it is a backspace byte. Silent, and it never matched. The rule is in
+   `CLAUDE.md`.
+
+### The Playwright suite, run as a whole for the first time
+
+`path-a.spec.ts`, written in week 6, had never been executed. It passes.
+
+Four spec files each carried a copy of the sign-in helper. There is one now, `e2e/_session.ts`,
+and it waits out the rate limiter rather than assuming it away: §12.1 allows twenty sign-in
+attempts a minute per IP and sixty AI requests a minute per user, both right for the internet and
+neither survivable by a fully parallel suite that signs in once per test. Tests inside a file run
+in series so a file's session serves all of them, the suite runs two workers, and the tests that
+spend a metered unit — the cap test, the three command tests — get their own accounts, because
+FREE_TRIAL allows two `COMMAND` actions a month and three tests cannot share them.
+
+The onboarding spec pressed Tab on the first streamed token, where Tab is deliberately inert:
+accepting half a sentence would put half a sentence in the thesis.
+
+### What VERIFY still cannot produce
+
+`pnpm pilot:report` runs and prints the platform table. Every row in it is a smoke-test or
+integration account of this build's own making, and every AI call in it went to the mock, so the
+cost column is ₹0 by construction. **`docs/PILOT-1.md` needs real students using the product**, and
+`docs/PENDING.md` carries it along with the fixture-dependent items (C.3 scoring, the C.4 recall
+set, the C.5 golden scenarios, the coherence fixture thesis, and the thirty-run Assist evidence).

@@ -166,3 +166,21 @@ One is left, and it needs a decision:
       Nothing here is evidence yet. Every figure comes from `DEFAULT_PRICING` and every AI call so
       far went to the mock; `pnpm ai:verify` with a real key is what settles it. Do that first, then
       decide: Fast-tier drafts, lower caps, or a higher ceiling.
+
+## After the VERIFY batch (2026-09-07)
+
+Every test `docs/PHASES-version-2.md` → VERIFY names is written and passing. What it could not
+produce, because none of it is the agent's to make up:
+
+- [ ] **`docs/PILOT-1.md`.** `pnpm pilot:report` runs and prints the platform table, but every row
+      in it today is a smoke-test account of this build's own making and every AI call went to the
+      mock, so the cost column is ₹0 by construction. The report needs five real students using
+      the product for a few weeks. The numbers are the script's; the reading is yours.
+- [ ] **A coherence fixture thesis** (`fixtures/thesis/`, Appendix C.6) with inconsistencies you
+      planted on purpose. `coherence-run.spec.ts` proves the run's lifecycle, the flag identity
+      across re-runs and the mechanical checks; what it cannot prove is whether the model *finds*
+      a contradiction a supervisor would care about, and that needs a thesis where you know the
+      answer. §0.3 rule 2 forbids the agent writing the expectations.
+- [ ] The C.3 scoring set, the C.4 recall set, the C.5 golden scenarios and the thirty-run Assist
+      evidence, all listed above and all blocked on the same two things: fixture papers and a
+      provider key.
