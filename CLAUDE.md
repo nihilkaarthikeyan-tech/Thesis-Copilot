@@ -143,5 +143,16 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
   uploads, and a saved proposal that re-rendered as a fresh draft.
 - **Check a third-party API's field list before selecting from it.** `subtype` is not
   Crossref-selectable and made every reference lookup a 400.
+- **Kill a Node app by its wrapper path, not by `dist/main.js`.** Every app's process command
+  line on Windows is the bare `node dist/main.js`; only the `dotenv-cli` parent carries
+  `apps\worker` or `apps\api`. A pattern that misses leaves a stale process consuming the same
+  BullMQ queue, and half the jobs run against the code you just replaced - which looks exactly
+  like a bug in the new code.
+- **A job's terminal state belongs to the worker, not to whoever is watching.** The coherence
+  run was marked DONE by the SSE endpoint, so closing the tab wedged the document at "already
+  running". The worker writes it now; the stream's copy is the idempotent second write.
+- **Nest owns Fastify's JSON parser.** A second `application/json` parser fails at `listen()`
+  with `FST_ERR_CTP_ALREADY_PRESENT`; for a raw body pass `{ rawBody: true }` to
+  `NestFactory.create` and read `request.rawBody`.
 - **Never assert a fact the code has not observed.** Grounding levels, abstracts and citation counts
   are only written when something was actually fetched and read.

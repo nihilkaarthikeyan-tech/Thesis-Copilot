@@ -32,8 +32,8 @@ push, and keep docs/PENDING.md current. Then continue with the next unit.
 | PHASE-2 W10 | Citations done properly (CSL, styles, checks, paste-parse, docx upgrade) | done |
 | PHASE-2 W11 | Billing, plans, marketing | done |
 | PHASE-3 B1 | Coherence engine | done |
-| PHASE-3 B2 | Guide and committee cycle | **next** |
-| PHASE-3 B3 | Institution templates, compliance, PDF, polish | |
+| PHASE-3 B2 | Guide and committee cycle | done |
+| PHASE-3 B3 | Institution templates, compliance, PDF, polish | **next** |
 | PHASE-3 B4 | Institution admin and hardening | |
 | VERIFY | Test batch and pilot report | after the build |
 

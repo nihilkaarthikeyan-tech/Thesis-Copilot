@@ -12,6 +12,7 @@ import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { CoherenceModule } from './modules/coherence/coherence.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { ExportModule } from './modules/export/export.module.js';
+import { FeedbackModule } from './modules/feedback/feedback.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
@@ -23,6 +24,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
   imports: [
     BillingModule,
     CoherenceModule,
+    FeedbackModule,
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),

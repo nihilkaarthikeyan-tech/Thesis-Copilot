@@ -16,8 +16,10 @@ import {
   mockChatFor,
   mockCiteParseResponse,
   mockCiteResponse,
+  mockClassifyResponse,
   mockCommandResponse,
   mockProposalFor,
+  mockRevisionFor,
   mockStyleResponse,
   type Providers,
 } from '@tc/ai';
@@ -67,6 +69,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 // FR-5.5: a pasted reference is parsed by the same shaped answer the real model
                 // gives, so the verify-then-insert path is exercisable without a key.
                 mockCiteParseResponse,
+                // A.13: a guide's comment is classified from the verbs it uses (D.2.3).
+                mockClassifyResponse,
                 mockCommandResponse,
                 mockStyleResponse,
                 {
@@ -87,6 +91,9 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 if (req.action === 'PROPOSAL') return mockProposalFor(req);
                 // A.4: answered from the passages in the request, or the exact "not enough" reply.
                 if (req.action === 'CHAT') return mockChatFor(req);
+                // A.14: keeps the passage and says what the student must supply, which is what
+                // the prompt tells a real model to do when the thesis lacks the answer (D.2.3).
+                if (req.action === 'SCOPED_REVISION') return mockRevisionFor(req);
                 return mockSuggestionFor(req);
               },
               modelIds: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },

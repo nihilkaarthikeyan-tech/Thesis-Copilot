@@ -24,7 +24,11 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(buildFastify()),
-    { bufferLogs: true },
+    // FR-9.5: Razorpay signs the exact bytes it sent, so the webhook needs them unparsed.
+    // Nest installs its own JSON parser during `init()`; a second one for the same content type
+    // is refused (FST_ERR_CTP_ALREADY_PRESENT), so this asks Nest for `request.rawBody` instead
+    // of fighting it. Every other route is unaffected.
+    { bufferLogs: true, rawBody: true },
   );
 
   app.useLogger(app.get(Logger));

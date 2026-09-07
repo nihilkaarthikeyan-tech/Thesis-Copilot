@@ -1,4 +1,11 @@
 export {
+  type AnchorMatch,
+  type AnchorSentence,
+  findAnchor,
+  normalise,
+  similarity,
+} from './builder/anchor.js';
+export {
   ASSIST,
   type AssistBuildInput,
   assistCachedBlock,
@@ -90,6 +97,22 @@ export {
   mockCommandResponse,
   postProcessCommand,
 } from './builder/command.js';
+export {
+  buildClassifyRequest,
+  buildReviseRequest,
+  type ClassifyResult,
+  COMMENT,
+  COMMENT_CLASSES,
+  type CommentClass,
+  classifySchema,
+  mockClassifyResponse,
+  mockRevisionFor,
+  NEEDS_INPUT_RE,
+  postProcessRevision,
+  type ReviseInput,
+  type RevisionPostProcess,
+  reviseUserMessage,
+} from './builder/comment.js';
 export {
   buildDraftRequest,
   canDraft,

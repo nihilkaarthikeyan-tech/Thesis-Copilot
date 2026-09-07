@@ -1,0 +1,234 @@
+/**
+ * Guide shares — PRD §5.7, Appendix D.2.1, §12.1, PHASES v2 B2.1.
+ *
+ *   "Opening the link requires sign-in with that email (OTP). On first sign-in the user is created
+ *    with role `GUIDE`. A guide sees only documents shared with them, read-only, with comment mode
+ *    enabled. Guides never see the AI panels, usage meters, or the student's other documents."
+ *
+ * The token in the URL is an invitation, not an authorisation: it names which document is on offer
+ * and to whom. Access is granted only after the guide signs in as the address the student typed,
+ * so a forwarded link gets the recipient an OTP challenge they cannot pass, and a leaked one gets
+ * nothing at all.
+ */
+
+import { randomBytes } from 'node:crypto';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { Env } from '@tc/config';
+import { ENV } from '../../common/env.token.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../common/errors.js';
+import { MAILER, type Mailer } from '../../common/mailer.js';
+import { PrismaService } from '../../common/prisma.service.js';
+
+export type ShareView = {
+  id: string;
+  guideEmail: string;
+  createdAt: string;
+  /** Set once the guide has signed in and been bound to the share. */
+  acceptedAt: string | null;
+  comments: number;
+  url: string;
+};
+
+/** What a guide is allowed to see about a document they were shared (D.2.1). */
+export type GuideDocumentView = {
+  documentId: string;
+  title: string;
+  studentEmail: string;
+  chapters: Array<{ id: string; title: string; order: number }>;
+};
+
+@Injectable()
+export class SharesService {
+  private readonly logger = new Logger(SharesService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(MAILER) private readonly mailer: Mailer,
+    @Inject(ENV) private readonly env: Env,
+  ) {}
+
+  private async ownedDocument(ownerId: string, documentId: string) {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerId },
+      select: { id: true, title: true },
+    });
+    if (!document) throw new NotFoundError('That document');
+    return document;
+  }
+
+  private url(token: string): string {
+    return `${this.env.APP_URL.replace(/\/$/, '')}/guide/${token}`;
+  }
+
+  async list(ownerId: string, documentId: string): Promise<ShareView[]> {
+    await this.ownedDocument(ownerId, documentId);
+    const shares = await this.prisma.guideShare.findMany({
+      where: { documentId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const counts = await this.prisma.comment.groupBy({
+      by: ['authorEmail'],
+      where: { documentId },
+      _count: { _all: true },
+    });
+    const byEmail = new Map(counts.map((c) => [c.authorEmail.toLowerCase(), c._count._all]));
+    return shares.map((share) => ({
+      id: share.id,
+      guideEmail: share.guideEmail,
+      createdAt: share.createdAt.toISOString(),
+      acceptedAt: share.guideUserId ? share.createdAt.toISOString() : null,
+      comments: byEmail.get(share.guideEmail.toLowerCase()) ?? 0,
+      url: this.url(share.token),
+    }));
+  }
+
+  async create(
+    owner: { id: string; email: string },
+    documentId: string,
+    guideEmail: string,
+  ): Promise<ShareView> {
+    const document = await this.ownedDocument(owner.id, documentId);
+    const email = guideEmail.trim().toLowerCase();
+    if (email === owner.email.toLowerCase()) {
+      throw new ValidationError('That is your own address.');
+    }
+
+    const existing = await this.prisma.guideShare.findFirst({
+      where: { documentId, guideEmail: email },
+    });
+    const share =
+      existing ??
+      (await this.prisma.guideShare.create({
+        data: { documentId, guideEmail: email, token: randomBytes(24).toString('base64url') },
+      }));
+
+    await this.mailer.send({
+      to: [email],
+      subject: `${owner.email} has asked you to review a thesis chapter`,
+      text: [
+        `${owner.email} would like your comments on “${document.title}”.`,
+        '',
+        this.url(share.token),
+        '',
+        'The link asks you to sign in with this email address — we send you a six-digit code, there',
+        'is no password. You will see the thesis read-only and can comment on any passage.',
+        'You will not see anything else in their account.',
+      ].join('\n'),
+    });
+    this.logger.log({ documentId, guideEmail: email }, 'guide share sent');
+
+    const [view] = await this.list(owner.id, documentId).then((all) =>
+      all.filter((s) => s.id === share.id),
+    );
+    return view as ShareView;
+  }
+
+  /** D.2.1: "The student can revoke a share; the guide's comments remain." */
+  async revoke(ownerId: string, documentId: string, shareId: string): Promise<{ revoked: true }> {
+    await this.ownedDocument(ownerId, documentId);
+    const share = await this.prisma.guideShare.findFirst({ where: { id: shareId, documentId } });
+    if (!share) throw new NotFoundError('That share');
+    await this.prisma.guideShare.delete({ where: { id: share.id } });
+    return { revoked: true };
+  }
+
+  /**
+   * Binds a signed-in user to the share their token names, and only if the address matches.
+   *
+   * This is the security boundary of the whole guide feature: the token says which document, the
+   * session says who, and they must agree. A guide who signs in with a different address gets a
+   * 403 rather than someone else's thesis.
+   */
+  async accept(
+    user: { id: string; email: string; role: string },
+    token: string,
+  ): Promise<GuideDocumentView> {
+    const share = await this.prisma.guideShare.findUnique({
+      where: { token },
+      select: { id: true, documentId: true, guideEmail: true, guideUserId: true },
+    });
+    if (!share) throw new NotFoundError('That link');
+    if (share.guideEmail.toLowerCase() !== user.email.toLowerCase()) {
+      throw new ForbiddenError(
+        'This link was sent to a different address. Sign in as the address that received it.',
+      );
+    }
+
+    if (!share.guideUserId) {
+      await this.prisma.guideShare.update({
+        where: { id: share.id },
+        data: { guideUserId: user.id },
+      });
+    }
+    // A student who is also someone's guide keeps their own role; only a new account becomes GUIDE.
+    if (user.role !== 'GUIDE' && user.role === 'STUDENT') {
+      const own = await this.prisma.document.count({ where: { ownerId: user.id } });
+      if (own === 0) {
+        await this.prisma.user.update({ where: { id: user.id }, data: { role: 'GUIDE' } });
+      }
+    }
+
+    return this.documentFor(user, share.documentId);
+  }
+
+  /** The read-only view a guide gets. Deliberately thin: no memory, no usage, no other documents. */
+  async documentFor(
+    user: { id: string; email: string },
+    documentId: string,
+  ): Promise<GuideDocumentView> {
+    await this.assertShared(user, documentId);
+    const document = await this.prisma.document.findUniqueOrThrow({
+      where: { id: documentId },
+      select: {
+        id: true,
+        title: true,
+        owner: { select: { email: true } },
+        chapters: {
+          orderBy: { order: 'asc' },
+          select: { id: true, title: true, order: true },
+        },
+      },
+    });
+    return {
+      documentId: document.id,
+      title: document.title,
+      studentEmail: document.owner.email,
+      chapters: document.chapters,
+    };
+  }
+
+  /**
+   * §12.1: a guide reaching anything they were not shared gets a 404, not a 403 — the same answer
+   * a document that does not exist gives, so the ids leak nothing.
+   */
+  async assertShared(user: { id: string; email: string }, documentId: string): Promise<void> {
+    const share = await this.prisma.guideShare.findFirst({
+      where: {
+        documentId,
+        OR: [{ guideUserId: user.id }, { guideEmail: user.email.toLowerCase() }],
+      },
+      select: { id: true },
+    });
+    if (!share) throw new NotFoundError('That document');
+  }
+
+  /** Every document shared with this guide — the list their landing page shows. */
+  async sharedWith(user: {
+    id: string;
+    email: string;
+  }): Promise<Array<{ documentId: string; title: string; studentEmail: string; token: string }>> {
+    const shares = await this.prisma.guideShare.findMany({
+      where: { OR: [{ guideUserId: user.id }, { guideEmail: user.email.toLowerCase() }] },
+      select: {
+        token: true,
+        document: { select: { id: true, title: true, owner: { select: { email: true } } } },
+      },
+    });
+    return shares.map((share) => ({
+      documentId: share.document.id,
+      title: share.document.title,
+      studentEmail: share.document.owner.email,
+      token: share.token,
+    }));
+  }
+}

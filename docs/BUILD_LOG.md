@@ -2263,3 +2263,84 @@ confirmation) are in `docs/PENDING.md`.
   keeps its id rather than being re-created, and a candidate matching an IGNORED fingerprint is
   never raised again. The fingerprint cannot be recomputed later — it is taken over the flagged
   text as it read when the flag was raised — which is what the column is for.
+
+### Block 1 — verified end to end (dev stack, mock provider)
+
+```
+estimate: { changedChapters: 1, estimatedInr: 8.4, willReduceScope: false }
+run 1: 202 -> DONE
+counts: { total: 4, OUTLINE_DRIFT: 1, CITATION_INTEGRITY: 1, UNSUPPORTED_CLAIM: 2 }
+  OUTLINE_DRIFT      WARN @ 0-358   The scope note promises "...", which this chapter does not cover yet.
+  CITATION_INTEGRITY WARN @ 344-357 "(Rao, 2019)" is plain text, not a citation...
+  UNSUPPORTED_CLAIM  INFO @ 9-87    No citation, and this states a figure or attributes a finding.
+ignore the citation flag with a reason -> caps reset -> touch the chapter -> run 2: 202 -> DONE
+ignored flag: IGNORED, reason kept: "Deliberate in this chapter"
+re-raised as OPEN: 0 (expect 0)
+open now: { total: 3, OUTLINE_DRIFT: 1, UNSUPPORTED_CLAIM: 2 }
+```
+- The three flags the student did not touch survived the re-run without duplicating; the ignored
+  one stayed ignored, with the reason. That is ADR-0007's fingerprint doing its job.
+- **A bug this found: the run's terminal state was owned by the SSE endpoint.** `finish()` was only
+  called when a browser was watching, so closing the tab left the run at `RUNNING` for ever - and
+  the next check was refused with "a check is already running". The worker now writes `DONE`
+  itself (and `FAILED` from a catch around the job), and the stream's write is the idempotent
+  second copy rather than the only one.
+- **A second bug the same run exposed:** two worker processes were alive, because a kill pattern on
+  `dist/main.js` matches every app equally. Half the jobs ran against the previous build. The rule
+  is in CLAUDE.md: match the `dotenv-cli` parent path, or the port.
+- `FREE_TRIAL` has `COHERENCE: 0` and `STUDENT_MONTHLY` has `1` (section 11.3), so the smoke needed
+  an admin plan change and a cap reset between runs - both through the routes built in week 5.
+
+## Phase 3 - Block 2 (guide and committee cycle)
+
+### Task B2.1 - share and guide role (D.2.1)
+- Files: `apps/api/src/modules/feedback/shares.service.ts`, `GuideController`,
+  `apps/web/src/app/guide/[token]/page.tsx`.
+- **The token is an invitation, not an authorisation.** It names which document is on offer and to
+  whom; access is granted only when the signed-in address matches the one the student typed. A
+  forwarded link gets the recipient an OTP challenge they cannot pass; a leaked one gets nothing.
+- A guide sees the chapter as read-only paragraphs and a comment box. No AI panel, no usage meter,
+  no other document - and anything they reach outside their share answers 404, not 403 (12.1).
+- Revoking deletes the share and keeps the comments, as D.2.1 requires.
+
+### Tasks B2.2-B2.4 - comments, classification, scoped revision
+- Files: `comments.service.ts`, `packages/ai/src/builder/{comment,anchor}.ts`.
+- Re-anchoring runs **on read**, not on save: the text moves under a comment continuously, so a
+  range computed once at creation is wrong by the time anyone looks. D.2.2's three attempts in
+  order - exact, whitespace-normalised, then the best window of consecutive sentences at >= 0.85
+  Dice similarity - and an honest "unanchored" when none of them finds it.
+- A.13 classifies on create, not awaited (a slow model must not make a guide's comment fail to
+  save) and uncapped but logged.
+- A.14 is capped as `COMMAND`, never automatic, and never offered in bulk for `SUBSTANTIVE`
+  comments - those ask the student to change an argument. Its output is stored and shown as a
+  diff; it is not applied.
+
+### Task B2.5 - the review queue
+- Files: `apps/web/src/app/app/d/[id]/review/*`, `review.service.ts`.
+- Ordered by chapter, then class (substantive first), then position; `j`/`k`/`a`/`e`/`r` with the
+  keys ignored while a textarea has focus, so typing a rejection reason cannot accept the comment
+  behind it. Rejection needs ten characters, because the reason is printed for the committee.
+- Accept snapshots first (`PRE_REVISION`), replaces exactly the anchored range, and enqueues a
+  coherence run flagged `FEEDBACK` - not cap-counted (D.2.4).
+- **A guard the smoke test earned:** A.14 appends `[[NEEDS INPUT: ...]]` when the comment asks for
+  something the thesis does not contain. Accepting that verbatim would write a placeholder into
+  the chapter and mark the comment answered, so accept now refuses it by name and tells the
+  student to write the passage themselves.
+
+### Task B2.6 - response to committee (D.2.5)
+- Files: `packages/export/src/response-table.ts`, `feedback-export.service.ts`.
+- The four fixed wordings - Accepted as suggested / Revised manually / Not changed - reason /
+  Still open - and the passage as it reads **now**, not the revision that was offered. A student
+  who accepted a suggestion and then edited it again should hand their committee what is in the
+  thesis.
+
+### Block 2 - verified end to end (dev stack, mock provider)
+
+```
+share: 200 -> guide accept: 200 (1 chapter, read-only)
+guide comment: 200 created  -> classified SUBSTANTIVE
+guide reading the flags endpoint: 404   (not their document)
+suggest: 200 "We surveyed 312 households... [[NEEDS INPUT: what the guide asked for - ...]]"
+accept: 200 ACCEPTED, chapter version 3      (before the NEEDS-INPUT guard was added)
+response table: 200 response-to-comments-....docx, 9,055 bytes, 1 row
+```

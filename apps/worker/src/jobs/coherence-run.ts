@@ -101,6 +101,38 @@ type ChapterRow = {
 /** §11.2's Strong and Fast unit costs, used only for the pre-flight estimate (D.1.1 step 4). */
 const ESTIMATE_INR = { strong: 2.5, fast: 0.3 } as const;
 
+/**
+ * Records the run's outcome on the document.
+ *
+ * The worker owns this, not the SSE endpoint that relays progress: a student who closes the tab
+ * must still come back to a finished run. When the API's stream also sees `run-done` it writes the
+ * same terminal state, which is idempotent.
+ */
+async function writeRunState(
+  prisma: PrismaClient,
+  documentId: string,
+  runId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const document = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { meta: true },
+  });
+  const meta = (document?.meta as Record<string, unknown> | null) ?? {};
+  const runs = (meta.coherenceRuns as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const record = runs[runId];
+  if (!record) return;
+  await prisma.document.update({
+    where: { id: documentId },
+    data: {
+      meta: {
+        ...meta,
+        coherenceRuns: { ...runs, [runId]: { ...record, ...patch } },
+      },
+    } as never,
+  });
+}
+
 export async function runCoherence(
   job: CoherenceRunJob,
   deps: CoherenceRunDeps,
@@ -129,6 +161,12 @@ export async function runCoherence(
   const changed = chapters.filter((c) => !c.lastCheckedAt || c.updatedAt > c.lastCheckedAt);
   if (changed.length === 0) {
     await progress('run-done', { totals: { flags: 0 }, skipped: 'nothing changed' });
+    await writeRunState(deps.prisma, job.documentId, job.runId, {
+      status: 'DONE',
+      finishedAt: now().toISOString(),
+      totals: {},
+      skipped: 'nothing changed',
+    });
     return {
       runId: job.runId,
       chaptersChecked: 0,
@@ -480,6 +518,12 @@ export async function runCoherence(
     reducedScope,
     estimatedInr: estimate,
   };
+  await writeRunState(deps.prisma, job.documentId, job.runId, {
+    status: 'DONE',
+    finishedAt: now().toISOString(),
+    totals: byType,
+    reducedScope,
+  });
   await progress('run-done', { totals: result });
   log({ msg: 'coherence run done', ...result, calls: counted });
   return result;

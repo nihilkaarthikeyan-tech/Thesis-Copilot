@@ -373,20 +373,52 @@ async function main(): Promise<void> {
     new Worker(
       QUEUE_COHERENCE,
       async (job: Job<CoherenceRunJob>) => {
-        const result = await runCoherence(job.data, {
-          prisma,
-          llm: providers.llm,
-          embeddings: providers.embeddings,
-          aiProvider: env.AI_PROVIDER,
-          // D.1.1 step 3: the sidebar watches the run through the API's SSE endpoint, which
-          // subscribes to this channel — the same shape the draft stream uses.
-          onProgress: async (event) => {
-            await connection.publish(`coherence:${job.data.runId}`, JSON.stringify(event));
-          },
-          log: (event) => log({ jobId: job.id, ...event }),
-        });
-        log({ msg: 'coherence finished', jobId: job.id, ...result });
-        return result;
+        try {
+          const result = await runCoherence(job.data, {
+            prisma,
+            llm: providers.llm,
+            embeddings: providers.embeddings,
+            aiProvider: env.AI_PROVIDER,
+            // D.1.1 step 3: the sidebar watches the run through the API's SSE endpoint, which
+            // subscribes to this channel — the same shape the draft stream uses.
+            onProgress: async (event) => {
+              await connection.publish(`coherence:${job.data.runId}`, JSON.stringify(event));
+            },
+            log: (event) => log({ jobId: job.id, ...event }),
+          });
+          log({ msg: 'coherence finished', jobId: job.id, ...result });
+          return result;
+        } catch (error) {
+          // The document must never be left with a run stuck at RUNNING: that would refuse every
+          // later check with "a check is already running".
+          const document = await prisma.document.findUnique({
+            where: { id: job.data.documentId },
+            select: { meta: true },
+          });
+          const meta = (document?.meta as Record<string, unknown> | null) ?? {};
+          const runs =
+            (meta.coherenceRuns as Record<string, Record<string, unknown>> | undefined) ?? {};
+          if (runs[job.data.runId]) {
+            await prisma.document.update({
+              where: { id: job.data.documentId },
+              data: {
+                meta: {
+                  ...meta,
+                  coherenceRuns: {
+                    ...runs,
+                    [job.data.runId]: {
+                      ...runs[job.data.runId],
+                      status: 'FAILED',
+                      finishedAt: new Date().toISOString(),
+                      error: error instanceof Error ? error.message : String(error),
+                    },
+                  },
+                },
+              } as never,
+            });
+          }
+          throw error;
+        }
       },
       // D.1.1: "concurrency 2 per worker".
       { connection, concurrency: 2 },
