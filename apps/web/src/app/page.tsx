@@ -47,8 +47,11 @@ export default function HomePage() {
             <Button asChild variant="ghost" size="sm">
               <Link href="/pricing">Pricing</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild variant="ghost" size="sm">
               <Link href="/sign-in">Sign in</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/sign-up">Start free</Link>
             </Button>
           </div>
         </nav>
@@ -69,7 +72,7 @@ export default function HomePage() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
-                <Link href="/sign-in">Start writing</Link>
+                <Link href="/sign-up">Start writing free</Link>
               </Button>
               <Button asChild variant="secondary" size="lg">
                 <Link href="/pricing">See what each plan allows</Link>
@@ -192,7 +195,7 @@ export default function HomePage() {
             </p>
           </div>
           <Button asChild size="lg">
-            <Link href="/sign-in">Start writing</Link>
+            <Link href="/sign-up">Start writing free</Link>
           </Button>
         </section>
       </main>

@@ -1,18 +1,18 @@
 'use client';
 
 /**
- * Sign in / sign up — email OTP (PRD §7.2), with Google when it is configured.
+ * `/sign-up` — the same email-OTP flow as `/sign-in`, framed for someone who has no account.
  *
- * Mechanically identical to `/sign-up`: with an email code the first use of an address creates the
- * account, so either page will do either job, and both say so. The two exist because the person
- * arriving here is asking "let me back in" while the one arriving at `/sign-up` is asking "what do
- * I get" — one screen would have to answer both and would answer neither well.
+ * Mechanically there is one flow: with an email code, the first use of an address creates the
+ * account, and Better Auth needs no separate endpoint. But a person arriving from "Start writing"
+ * is asking a different question — *what do I get, and what will this cost me* — than one arriving
+ * at "Sign in", who is asking *let me back in*. Sending both to one screen means one of them reads
+ * copy written for the other, so the route exists and answers its own question: the trial's real
+ * allowances, and that no card is involved.
  *
- * Two columns. The right is the form; the left is the reason to trust it, because this is the first
- * screen a student sees after the marketing page and the thing they are actually deciding is
- * whether an AI tool will get them into trouble (§12.3). On a narrow screen the left column is
- * dropped rather than stacked — it is reassurance, not instruction, and a phone should get to the
- * field immediately.
+ * Anyone who already has an account can type their address here and it simply signs them in. That
+ * is stated rather than hidden, because being told "account already exists" after committing to a
+ * form is the most annoying way to learn it.
  */
 
 import Link from 'next/link';
@@ -20,13 +20,20 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
-import { Hint, Input, Kbd, Label } from '@/components/ui/primitives';
+import { Hint, Input, Label } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 
 type Step = 'email' | 'code';
 
-/** Google's mark. Inline because the CSP allows no external images and it must not be recoloured. */
+/** PRD §11.6's free-trial row, spelled out. Numbers from `packages/config` FREE_TRIAL caps. */
+const TRIAL = [
+  { n: '50', what: 'suggestions as you type' },
+  { n: '2', what: 'drafted sections' },
+  { n: '10', what: 'citation suggestions' },
+  { n: '5', what: 'questions to your library' },
+];
+
 function GoogleMark() {
   return (
     <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
@@ -50,7 +57,7 @@ function GoogleMark() {
   );
 }
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -108,57 +115,46 @@ export default function SignInPage() {
       </header>
 
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-stretch lg:grid-cols-2">
-        {/* ------------------------------------------------------ the case -- */}
+        {/* ------------------------------------------------- what you get -- */}
         <section className="hidden flex-col justify-center border-r border-line bg-sunk px-10 py-14 lg:flex">
-          <p className="eyebrow">Before you sign in</p>
-          <h2 className="mt-3 max-w-[18ch] text-balance font-serif text-[30px] font-semibold leading-[1.15]">
-            It only cites what it can show you.
+          <p className="eyebrow">Free for 14 days</p>
+          <h2 className="mt-3 max-w-[19ch] text-balance font-serif text-[30px] font-semibold leading-[1.15]">
+            No card. Everything works.
           </h2>
+          <Hint className="mt-3 max-w-[42ch] text-[14px]">
+            The trial is the whole product at smaller monthly allowances — not a locked demo. Each
+            month you get:
+          </Hint>
 
-          <div className="mt-8 rounded-md border border-line bg-surface">
-            <div className="border-b border-line px-4 py-2 text-[11px] text-faint">
-              Chapter 1 · Introduction
-            </div>
-            <div className="px-4 py-4">
-              <p className="font-serif text-[13.5px] leading-[1.75] text-ink">
-                Household adoption of rooftop solar remains low despite falling panel prices{' '}
-                <span className="font-semibold text-accent">(Kumar, 2021)</span>.{' '}
-                <span className="text-ghost">
-                  This puzzle motivates the research: what barriers prevent rural households from
-                  adopting the technology?
+          <ul className="mt-7 grid list-none gap-0 p-0">
+            {TRIAL.map((row) => (
+              <li
+                key={row.what}
+                className="flex items-baseline gap-4 border-b border-line py-2.5 last:border-b-0"
+              >
+                <span className="tnum w-8 shrink-0 text-right font-serif text-[19px] font-semibold text-ink">
+                  {row.n}
                 </span>
-              </p>
-              <p className="mt-3 flex items-center gap-1.5 text-[11px] text-faint">
-                <Kbd>Ctrl+/</Kbd> suggests · <Kbd>Tab</Kbd> keeps it · <Kbd>Esc</Kbd> discards
-              </p>
-            </div>
-          </div>
-
-          <ul className="mt-8 grid list-none gap-3 p-0 text-[13.5px] leading-relaxed text-muted">
-            <li className="border-l-2 border-line pl-3.5">
-              <strong className="font-semibold text-ink">Grey is not yours yet.</strong> Nothing
-              enters your thesis until you accept it.
-            </li>
-            <li className="border-l-2 border-line pl-3.5">
-              <strong className="font-semibold text-ink">It cannot invent a source.</strong> The
-              model may only cite passages it was shown.
-            </li>
-            <li className="border-l-2 border-line pl-3.5">
-              <strong className="font-semibold text-ink">Everything is logged.</strong> Export the
-              record and hand it to your guide.
-            </li>
+                <span className="text-[13.5px] text-muted">{row.what}</span>
+              </li>
+            ))}
           </ul>
+
+          <p className="mt-7 border-l-2 border-line pl-3.5 text-[13.5px] leading-relaxed text-muted">
+            <strong className="font-semibold text-ink">Your thesis stays yours.</strong> We never
+            train on it, and if you stop paying, your documents, sources and exports remain.
+          </p>
         </section>
 
         {/* ---------------------------------------------------------- form -- */}
         <section className="flex flex-col justify-center px-6 py-14 sm:px-12">
           <div className="mx-auto w-full max-w-[24rem]">
             <h1 className="text-balance font-serif text-[30px] font-semibold leading-tight">
-              {step === 'email' ? 'Sign in or create an account' : 'Check your email'}
+              {step === 'email' ? 'Create your account' : 'Check your email'}
             </h1>
             <Hint className="mt-2 text-[14px]">
               {step === 'email'
-                ? 'No password. We email you a six-digit code that works for ten minutes — and if this address is new, that first code creates your account.'
+                ? 'Enter your email and we send a six-digit code. That code creates the account — there is no password to choose or forget.'
                 : 'The code works for ten minutes. It may take a moment to arrive.'}
             </Hint>
 
@@ -171,17 +167,18 @@ export default function SignInPage() {
                     name="email"
                     type="email"
                     autoComplete="email"
-                    // biome-ignore lint/a11y/noAutofocus: the page exists to take this one value.
-                    autoFocus
                     required
                     className="h-11"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@university.edu"
                   />
+                  <Hint>
+                    Use the address your guide knows you by — shared drafts and comments go to it.
+                  </Hint>
                 </div>
                 <Button type="submit" size="lg" disabled={busy || email.length === 0}>
-                  {busy ? 'Sending…' : 'Email me a code'}
+                  {busy ? 'Sending…' : 'Create my account'}
                 </Button>
               </form>
             ) : (
@@ -198,8 +195,6 @@ export default function SignInPage() {
                     pattern="[0-9]{6}"
                     maxLength={6}
                     autoComplete="one-time-code"
-                    // biome-ignore lint/a11y/noAutofocus: the student has just been sent here to type it.
-                    autoFocus
                     required
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
@@ -208,7 +203,7 @@ export default function SignInPage() {
                   />
                 </div>
                 <Button type="submit" size="lg" disabled={busy || code.length !== 6}>
-                  {busy ? 'Checking…' : 'Sign in'}
+                  {busy ? 'Checking…' : 'Create account and start'}
                 </Button>
                 <button
                   type="button"
@@ -249,25 +244,19 @@ export default function SignInPage() {
                   }
                 >
                   <GoogleMark />
-                  Continue with Google
+                  Sign up with Google
                 </Button>
               </>
             ) : null}
 
             <p className="mt-8 border-t border-line pt-4 text-[13px] text-muted">
-              New here?{' '}
-              <Link href="/sign-up" className="font-semibold text-accent hover:underline">
-                Create an account
-              </Link>{' '}
-              — or just enter your address above; the first code creates it.
-            </p>
-
-            <p className="mt-4 text-[12.5px] leading-relaxed text-faint">
-              By continuing you accept how we handle your text —{' '}
-              <Link href="/privacy" className="underline underline-offset-2 hover:text-muted">
-                read that first
+              Already have an account?{' '}
+              <Link href="/sign-in" className="font-semibold text-accent hover:underline">
+                Sign in
               </Link>
-              . We never train on your thesis.
+              <span className="mt-1 block text-[12.5px] text-faint">
+                Either page works — the same code signs you in or creates the account.
+              </span>
             </p>
           </div>
         </section>
