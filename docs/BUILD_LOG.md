@@ -2804,3 +2804,43 @@ that lands in spam is indistinguishable to the student from a broken product.
 Two things follow, both in `docs/PENDING.md`: the block still has to reach the VPS `.env` at
 deploy time, and the mailbox is shared by four products under one password, so a dedicated
 `no-reply@` is worth having before the pilot widens.
+
+### The product, running for real (2026-09-08)
+
+The stack had never been run with live providers — only tests and the mock. It was, end to end, in
+a browser. Everything below is observed.
+
+- **Health**: all four checks up, `aiProvider` among them (352 ms) — a real Anthropic call at boot.
+- **Worker**: ready on all eight queues, `provider: anthropic`.
+- **Sign-in**: entered an address on `/sign-in`, the code went out over Hostinger SMTP, and the
+  session was created. The full loop — Better Auth → `otpMail` → `SmtpMailer` → inbox → session —
+  with nothing mocked.
+- **Path A**: thesis created from a topic, editor opened, chapter saved.
+- **Assist**: `Ctrl+/` streamed a real suggestion from `claude-haiku-4-5-20251001` as ghost text;
+  `Tab` accepted it into the document. The usage meter moved `Assist 0/50 → 1/50`.
+
+The `AiCallLog` row for that suggestion, which is the first real one this project has ever written:
+
+| model | in | cached in | out | cost | latency |
+|---|---|---|---|---|---|
+| claude-haiku-4-5-20251001 | 657 | **0** | 39 | **₹0.074** | 2,070 ms |
+
+Two things it confirms, both predicted earlier the same day and now measured in the product rather
+than in a probe:
+
+1. **`cachedInputTokens: 0`.** A real Assist prompt on an empty chapter with no sources is 657
+   tokens — far under the fast tier's cache floor, so §10.3 buys nothing here. It cost ₹0.074
+   against the ₹0.18 the budget allows, so the ceiling is not at risk from this direction: the
+   prompt is cheap precisely because it is small. The risk is the opposite case, a long chapter
+   with many sources whose cached block lands *between* the floor and the 4,000 tokens `cost.ts`
+   assumes. Still a pilot measurement, not a desk one.
+2. **TTFB 1,596 ms**, against §16's 600 ms p95. Not a verdict: this is a cold call from a laptop in
+   India straight to the provider, with no VPS, no warm connection and no cache. §16's number is a
+   VPS measurement and PHASES 5.7's k6 run is what settles it. Recorded so the first real figure is
+   on the record rather than remembered.
+
+Also fixed while here: `OPENALEX_MAILTO`, `CROSSREF_MAILTO` and `UNPAYWALL_EMAIL` were still
+`you@example.com`, which the worker warns about at boot because Unpaywall answers 422 to it and no
+source can then reach `FULL_TEXT`. Set to a real monitored inbox — verified by a 200 from
+`https://api.unpaywall.org/v2/10.1038/nature14539?email=…` before writing it — and the boot warning
+is gone.

@@ -52,13 +52,14 @@ blocks the agent from continuing to build against mocks.
       `no-reply@` on whatever domain Thesis Copilot ships under would isolate it. Not urgent —
       the shared box works and is already warmed up.
 - [ ] **Google sign-in** (optional): `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, both or neither.
-- [ ] **Scholarly API contact emails**: set `OPENALEX_MAILTO`, `CROSSREF_MAILTO`, `UNPAYWALL_EMAIL`
-      to a real address you monitor (polite-pool rules). Optional: `SEMANTIC_SCHOLAR_API_KEY`, `CORE_API_KEY`.
-      **Now blocking, not cosmetic.** They are all still `you@example.com`, and Unpaywall rejects
-      that exact address with HTTP 422, so no source can reach `FULL_TEXT` grounding and the whole
-      full-text path (task 2.6) cannot be measured. Crossref and OpenAlex do answer a placeholder,
-      but only outside their polite pool. The worker warns about this at boot; verified with
-      `curl "https://api.unpaywall.org/v2/10.1038/nature14539?email=<address>"` returning 200.
+- [x] **Scholarly API contact emails.** Done 2026-09-08. `OPENALEX_MAILTO`, `CROSSREF_MAILTO` and
+      `UNPAYWALL_EMAIL` are a real monitored inbox instead of `you@example.com`, checked first with
+      `curl "https://api.unpaywall.org/v2/10.1038/nature14539?email=<address>"` returning 200 (the
+      placeholder gets a 422, which is why no source could reach `FULL_TEXT` before). The worker no
+      longer warns at boot. Change it if you would rather the polite pools wrote to a project
+      address than a personal one -- it is one line each in `.env`.
+- [ ] **Optional scholarly keys**: `SEMANTIC_SCHOLAR_API_KEY` (second discovery source) and
+      `CORE_API_KEY` (full-text fallback, below). Both free, both skipped cleanly when unset.
 - [ ] **CORE fallback key** (FR-2.2, PHASES 2.6 / 5.1): the fallback is built
       (`packages/retrieval/src/scholarly/core.ts`, wired in `apps/worker/src/jobs/index-source.ts`
       after Unpaywall fails; 11 + 8 tests against the API's recorded responses). It runs only when
