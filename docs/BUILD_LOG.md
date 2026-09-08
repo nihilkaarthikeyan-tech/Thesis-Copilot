@@ -2734,3 +2734,49 @@ the work was correct, only the budget was wrong.
 After all three: `pnpm test` 19/19 tasks green, `pnpm lint` and `pnpm typecheck` clean, and
 `ai:verify` recomputes the STUDENT budget at ₹98.92 against the ₹100 ceiling. The embedding half
 is still the mock's until a Voyage key exists, so Appendix E.3 stays unfilled.
+
+### First real evidence: the pipeline against live providers (2026-09-08)
+
+With both keys in, the whole path was exercised for real for the first time. Everything below is
+observed output, not a mock's simulation.
+
+**Assist — fast tier, streaming, grounded.** One passage in the prompt, cursor mid-sentence.
+
+- TTFT **1,117 ms** (§16's ceiling is 600 ms p95 — this is a single cold call from a laptop in
+  India to the API, not the VPS measurement, so it is not the benchmark; k6 on the VPS still is).
+- 667 input / 82 output tokens, cost **₹0.094** against the §11.4 assumption of ₹0.18 per Assist.
+- The model cited `{{cite:S1#c1}}` twice, both legitimate: `postProcessAssist` reported
+  `cited: ["S1#c1"]`, `hallucinated: []`. §10.6's grounding whitelist passed its first real test.
+
+**Command — strong tier, structured output through `generateObject`.** `buildCiteRoleRequest`
+returned `{"text":"{{cite:S1#c1}} found that upfront cost was the main barrier."}`,
+schema-valid first time, and `postProcessCiteRole` accepted it (`ok: true`, no refusal). FR-5.6
+works against a real model.
+
+**Embeddings.** `voyage-3`, batch of two, 1024 finite dimensions each — matching `EMBED_DIMS`
+and the `vector(1024)` column.
+
+**§10.3 prompt caching is real, and it has a floor.** Two identical cached prefixes, second call:
+
+| Tier | Model | Prefix | Cache write (1st) | Cache read (2nd) |
+|---|---|---|---|---|
+| fast | claude-haiku-4-5-20251001 | ~999 tok | 0 | 0 |
+| fast | claude-haiku-4-5-20251001 | ~1,879 tok | 0 | 0 |
+| fast | claude-haiku-4-5-20251001 | ~4,190 tok | 4,168 | **4,168** |
+| strong | claude-sonnet-5 | ~1,720 tok | 1,714 | **1,714** |
+
+So caching works exactly as §10.3 designs it — 99.5% of the prefix served from cache on the second
+call — **but only above a minimum prefix size, and that minimum is higher on the fast tier.** It
+did not engage at 1,879 tokens on Haiku and did at 4,190.
+
+That matters because Assist runs on the fast tier and `cost.ts` prices it at
+`cachedInputTokens: 4_000`. The assumption is above the observed floor, so the ₹98.92 total
+stands — but only just, and only if real chapters produce a cached block that big. A thin
+`<document_memory>` early in a thesis will fall under it and cost full price. Worth measuring in
+the pilot rather than assuming; the first probe of the day, a realistic-looking Assist call with one
+passage, came to 667 tokens and cached nothing.
+
+**`claude-sonnet-5` ignores `temperature`.** The SDK warns and drops it. Several strong-tier
+builders set one (`CITE_ROLE` at 0.2, and Appendix A specifies temperatures throughout). Nothing
+fails and no code changed — but a temperature in a strong-tier prompt spec is decorative on this
+model, and the PRD's Appendix A numbers should not be read as effective there.

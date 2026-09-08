@@ -16,23 +16,26 @@ blocks the agent from continuing to build against mocks.
       Check both against https://docs.claude.com/en/docs/about-claude/pricing. If either is
       higher, the ₹98.92 total moves and the ₹100 ceiling decision below becomes live. Add real
       entries to `pricing.ts` (or `PRICING_OVERRIDE_JSON`) and re-run `pnpm ai:verify`.
-- [ ] **Voyage API key + embedding model.** `VOYAGE_API_KEY`, `AI_EMBED_MODEL` (1024-d), `EMBED_PROVIDER=voyage`.
-- [ ] **Finish `pnpm ai:verify` and fill Appendix E.3.** Half-done: run on 2026-09-08 with the
-      Anthropic key, both LLM ids confirmed live, STUDENT budget recomputed at **₹98.92 ≤ ₹100**.
-      The embedding row is still the mock's, so the run is **not yet quotable** — the script says so
-      itself. Once `VOYAGE_API_KEY` is set, re-run and paste the printed table into PRD Appendix
-      E.3 (`docs/PRD.md`), filling "Verified value" and "By" yourself — §0.3 rule 3 forbids the
-      agent filling that table. Then flip the flag (admin UI, or
+- [x] **Voyage API key + embedding model.** Done 2026-09-08. `VOYAGE_API_KEY` is in `.env` with
+      `EMBED_PROVIDER=voyage` and `AI_EMBED_MODEL=voyage-3`; `ai:verify` got 1024-d vectors back,
+      matching `EMBED_DIMS` and the `vector(1024)` column.
+- [ ] **Fill PRD Appendix E.3 and flip the flag.** `pnpm ai:verify` ran fully real on 2026-09-08 —
+      no mock in it — and passed. Paste the block it prints into Appendix E.3 (`docs/PRD.md`),
+      filling "Verified value" and "By" yourself: §0.3 rule 3 forbids the agent filling that table.
+      Then flip the flag (admin UI, or
       `UPDATE "FeatureFlag" SET enabled=true WHERE key='costModelVerified'`); the admin page reads
-      "Cost model: UNVERIFIED" until you do. What the 2026-09-08 run printed, for reference:
+      "Cost model: UNVERIFIED" until you do. What the run printed:
 
       | Item | Value |
       |---|---|
-      | Fast model id | `claude-haiku-4-5-20251001` — accepted, 21 in / 4 out on the probe |
-      | Strong model id | `claude-sonnet-5` — accepted, 26 in / 4 out |
-      | Embedding model | `mock-embed`, 1024 d — **not real yet** |
+      | Fast model id | `claude-haiku-4-5-20251001` — accepted live |
+      | Strong model id | `claude-sonnet-5` — accepted live |
+      | Embedding model | `voyage-3`, 1024 d — accepted live |
       | Exchange rate | INR 87 = USD 1 (`pricing.ts`) |
-      | Recomputed §11.4 STUDENT total | ₹98.92, within by ₹1.08 |
+      | Recomputed §11.4 STUDENT total | **₹98.92**, within the ceiling by ₹1.08 |
+
+      Still yours to supply in that table: the two model prices, the cache multipliers and the VPS
+      monthly cost, none of which the agent may guess (§0.3 rule 4).
 - [ ] **Email delivery key**: `RESEND_API_KEY` (or `SMTP_HOST` + `SMTP_PORT`, plus `SMTP_USER` /
       `SMTP_PASS` if the relay wants them) and `MAIL_FROM` in the production `.env`. Both
       transports are built (`apps/api/src/common/mailer.ts` — Resend through its SDK, SMTP through
