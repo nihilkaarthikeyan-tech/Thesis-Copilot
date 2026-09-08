@@ -258,7 +258,13 @@ async function main(): Promise<void> {
 
   // Step 5.
   console.log('');
-  const budget = computeMonthlyBudget('STUDENT_MONTHLY', { pricing });
+  // The configured ids go in, so a per-model price in `pricing.models` reaches the total. Pricing
+  // by tier alone would report the same number whichever model is configured, which is exactly the
+  // mistake this script exists to catch.
+  const budget = computeMonthlyBudget('STUDENT_MONTHLY', {
+    pricing,
+    models: { fast: env.AI_FAST_MODEL, strong: env.AI_STRONG_MODEL },
+  });
   console.log(formatBudget(budget));
 
   // Step 6.

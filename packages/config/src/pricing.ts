@@ -51,8 +51,22 @@ const STRONG: ModelPrice = {
   cacheWriteMult: 1.25,
 };
 
+/**
+ * Per-model prices, which override the tier price for that id.
+ *
+ * This exists because a model can be configured on either tier. `claude-sonnet-5` is priced at
+ * §11.1's Strong rate wherever it is used — putting it on the fast tier does not make it cheap,
+ * and pricing it as if it were is how a budget silently understates itself by 3×.
+ *
+ * §0.3 rule 4 still applies: these are the PRD's own stated rates, not a guess at the provider's.
+ * `pnpm ai:verify` prints them next to the provider's pricing page for a human to confirm.
+ */
+const MODEL_PRICES: Record<string, ModelPrice> = {
+  'claude-sonnet-5': STRONG,
+};
+
 export const DEFAULT_PRICING: Pricing = {
-  models: {},
+  models: MODEL_PRICES,
   tiers: { fast: FAST, strong: STRONG },
   embeddingPerM: 0.02,
   inrPerUsd: 87,

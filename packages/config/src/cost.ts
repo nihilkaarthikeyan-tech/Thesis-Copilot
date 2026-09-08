@@ -143,12 +143,26 @@ export type BudgetOptions = {
    */
   readonly draftModeStrongTier?: boolean;
   readonly pricing?: Pricing;
+  /**
+   * The model configured on each tier, so a per-model price in `pricing.models` is applied.
+   *
+   * Without this the budget prices purely by tier, and configuring an expensive model on the fast
+   * tier changes nothing in the total — it understates by whatever the two models differ by. That
+   * is the opposite of what the ₹100 ceiling is for, so `pnpm ai:verify` passes the real ids from
+   * the environment and the number moves when the configuration does.
+   */
+  readonly models?: { readonly fast?: string; readonly strong?: string };
 };
 
-function profileCost(profile: ActionProfile, pricing: Pricing): number {
+function profileCost(
+  profile: ActionProfile,
+  pricing: Pricing,
+  models?: BudgetOptions['models'],
+): number {
   return computeCallCost(
     {
       tier: profile.tier,
+      ...(models?.[profile.tier] ? { modelId: models[profile.tier] as string } : {}),
       usage: {
         inputTokens: profile.inputTokens,
         cachedInputTokens: profile.cachedInputTokens,
@@ -177,7 +191,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
     const base = ACTION_PROFILES[action];
     const profile: ActionProfile =
       action === 'DRAFT' && !draftStrong ? { ...base, tier: 'fast' } : base;
-    const cost = profileCost(profile, pricing);
+    const cost = profileCost(profile, pricing, options.models);
     return action === 'ASSIST' ? Math.round(cost * pricing.assistCacheMissUplift) : cost;
   };
 

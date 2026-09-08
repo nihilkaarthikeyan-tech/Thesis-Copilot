@@ -4,18 +4,22 @@ import { useEffect, useId, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Light / dark / system, per docs/DESIGN.md.
+ * Light or dark, per docs/DESIGN.md.
  *
- * Three states, not two. "System" is the default and stamps nothing on the root element, so the
- * `prefers-color-scheme` rules in `globals.css` decide; an explicit choice stamps
- * `data-theme="light"` or `"dark"`, which beats the media query in both directions.
+ * The control offers two states. A first visit still follows the device — nothing is stamped on the
+ * root element until someone chooses, so `prefers-color-scheme` in `globals.css` decides, and the
+ * toggle shows whichever of the two that resolved to. From the first click on it is an explicit
+ * choice, stamped as `data-theme` and beating the media query in both directions.
+ *
+ * (The CSS keeps all three cases because the un-stamped state is real and has to render; what was
+ * removed is the third *button*, not the third behaviour.)
  *
  * The choice is per-browser and lives in `localStorage`. It is deliberately not a user setting on
  * the server: a student writing at night on their laptop and reviewing on a library machine in the
  * morning wants each device to keep its own answer.
  */
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 const KEY = 'tc-theme';
 
@@ -31,32 +35,34 @@ export function ThemeScript() {
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }
 
-function apply(theme: Theme): void {
-  const root = document.documentElement;
-  if (theme === 'system') root.removeAttribute('data-theme');
-  else root.setAttribute('data-theme', theme);
-}
-
 export function useTheme(): [Theme, (next: Theme) => void] {
-  const [theme, setThemeState] = useState<Theme>('system');
+  // Light until the browser tells us otherwise. The effect below corrects it on mount; rendering
+  // 'light' first matches the server, so there is no hydration mismatch.
+  const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
+    let stored: string | null = null;
     try {
-      const stored = localStorage.getItem(KEY);
-      if (stored === 'dark' || stored === 'light') setThemeState(stored);
+      stored = localStorage.getItem(KEY);
     } catch {
-      // A browser with site data blocked still gets the system theme; nothing else depends on it.
+      // Site data blocked. The device preference below still applies for this page view.
     }
+    if (stored === 'dark' || stored === 'light') {
+      setThemeState(stored);
+      return;
+    }
+    // Nothing chosen yet: show what the device resolved to, without stamping it. The page is
+    // already rendering that theme via `prefers-color-scheme`; this only makes the toggle agree.
+    setThemeState(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }, []);
 
   const setTheme = (next: Theme) => {
     setThemeState(next);
-    apply(next);
+    document.documentElement.setAttribute('data-theme', next);
     try {
-      if (next === 'system') localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, next);
+      localStorage.setItem(KEY, next);
     } catch {
-      // Same as above: the choice holds for this page view even when it cannot be stored.
+      // The choice holds for this page view even when it cannot be stored.
     }
   };
 
@@ -64,13 +70,12 @@ export function useTheme(): [Theme, (next: Theme) => void] {
 }
 
 const OPTIONS: ReadonlyArray<{ value: Theme; label: string; title: string }> = [
-  { value: 'light', label: 'Light', title: 'Always light' },
-  { value: 'dark', label: 'Dark', title: 'Always dark' },
-  { value: 'system', label: 'Auto', title: 'Follow this device' },
+  { value: 'light', label: 'Light', title: 'Light theme' },
+  { value: 'dark', label: 'Dark', title: 'Dark theme' },
 ];
 
 /**
- * A three-way segmented control. Small enough for a top bar, explicit enough to need no legend.
+ * A two-way segmented control. Small enough for a top bar, explicit enough to need no legend.
  *
  * Built from real radio inputs rather than buttons carrying `role="radio"`: a native radio group
  * already gives arrow-key navigation and a correct announcement, and the visible control is the
