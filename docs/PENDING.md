@@ -51,7 +51,24 @@ blocks the agent from continuing to build against mocks.
       four products and its password is the same everywhere; one leak rotates all four. A
       `no-reply@` on whatever domain Thesis Copilot ships under would isolate it. Not urgent —
       the shared box works and is already warmed up.
-- [ ] **Google sign-in** (optional): `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, both or neither.
+- [ ] **Google sign-in.** Everything but the credentials is built: Better Auth's Google provider is
+      registered whenever both variables are set (`apps/api/src/modules/auth/auth.ts`), the API
+      reports it at `GET /api/v1/auth/methods`, and the sign-in page shows a "Continue with Google"
+      button only when that says `true` — so a missing key hides the button rather than showing one
+      that fails. Right now it reports `{"emailOtp":true,"google":false}`.
+
+      To turn it on, at https://console.cloud.google.com/apis/credentials:
+      1. Create (or pick) a project, then **Create credentials → OAuth client ID → Web application**.
+      2. **Authorised redirect URIs** — add both, exactly:
+         - `http://localhost:3001/api/v1/auth/callback/google` (local)
+         - `https://<your-domain>/api/v1/auth/callback/google` (production)
+         The path is `{API_URL}` + `/api/v1/auth/callback/google`; `API_URL` and the basePath are
+         set in `auth.ts` and must match character for character or Google returns `redirect_uri_mismatch`.
+      3. Configure the OAuth consent screen: External, app name "Thesis Copilot", your support
+         email, and the `email` + `profile` scopes. While it is in *Testing* only addresses you add
+         as test users can sign in — publish it before the pilot.
+      4. Put the client id and secret in `.env` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`,
+         both or neither, and restart the API. The button appears on its own.
 - [x] **Scholarly API contact emails.** Done 2026-09-08. `OPENALEX_MAILTO`, `CROSSREF_MAILTO` and
       `UNPAYWALL_EMAIL` are a real monitored inbox instead of `you@example.com`, checked first with
       `curl "https://api.unpaywall.org/v2/10.1038/nature14539?email=<address>"` returning 200 (the
