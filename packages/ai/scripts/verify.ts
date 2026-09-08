@@ -42,6 +42,20 @@ type ProbeResult = {
   readonly outputTokens: number;
 };
 
+/** The innermost `cause`, which is where the SDK puts the reason and the adapter wraps it. */
+function rootCause(error: unknown): { name: string; message: string } {
+  let current = error;
+  while (current instanceof Error && current.cause instanceof Error) current = current.cause;
+  return current instanceof Error
+    ? { name: current.name, message: current.message }
+    : { name: 'Error', message: String(current) };
+}
+
+/** Whether the provider refused the id itself, as opposed to failing before or after that. */
+function looksLikeBadModelId(root: { name: string; message: string }): boolean {
+  return /model|not_found|404/i.test(root.message);
+}
+
 /** Step 2: one minimal real call per LLM tier — a tiny prompt, `maxTokens: 5`. */
 async function probeTier(llm: LlmProvider, tier: Tier): Promise<ProbeResult> {
   const configuredId = llm.modelIdFor(tier);
@@ -128,15 +142,25 @@ async function main(): Promise<void> {
     try {
       probes.push(await probeTier(llm, tier));
     } catch (cause) {
+      // Not necessarily a bad model id: on 2026-09-08 this printed "the provider rejected the fast
+      // model id" for a request the SDK itself refused to build, and the id was fine. Report what
+      // actually failed and let the reader judge.
+      const root = rootCause(cause);
       console.error('');
-      console.error(`FAILED: the provider rejected the ${tier} model id.`);
+      console.error(`FAILED: the ${tier} probe did not complete.`);
       console.error(`  configured: ${llm.modelIdFor(tier)}`);
-      console.error(`  error:      ${cause instanceof Error ? cause.message : String(cause)}`);
+      console.error(`  error:      ${root.name}: ${root.message}`);
       console.error('');
-      console.error('This script does not guess model ids (PRD §0.3 rule 5).');
-      console.error(
-        `Choose one from the provider and set it in .env: ${pricing.providerPricingUrl}`,
-      );
+      if (looksLikeBadModelId(root)) {
+        console.error('That reads like the provider refusing the model id.');
+        console.error('This script does not guess model ids (PRD §0.3 rule 5).');
+        console.error(
+          `Choose one from the provider and set it in .env: ${pricing.providerPricingUrl}`,
+        );
+      } else {
+        console.error('That is not the provider refusing the id — the request never got that far.');
+        console.error('Check the adapter (packages/ai/src/providers/anthropic.ts) and the key.');
+      }
       process.exit(1);
     }
   }

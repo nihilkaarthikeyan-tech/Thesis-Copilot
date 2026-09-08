@@ -10,7 +10,14 @@
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateObject, type LanguageModel, type LanguageModelUsage, streamText } from 'ai';
+import {
+  generateObject,
+  type LanguageModel,
+  type LanguageModelUsage,
+  type ModelMessage,
+  type SystemModelMessage,
+  streamText,
+} from 'ai';
 import type { z } from 'zod';
 import {
   type EmbeddingProvider,
@@ -29,6 +36,12 @@ export type AnthropicProviderOptions = {
   readonly fastModel: string;
   readonly strongModel: string;
   readonly baseURL?: string;
+  /**
+   * Custom `fetch`, which the SDK documents as the way to test without a network. Product code
+   * never passes it; `anthropic.spec.ts` does, to read the request body this adapter actually
+   * sends.
+   */
+  readonly fetch?: typeof globalThis.fetch;
 };
 
 /** Maps the SDK's usage shape onto the four numbers `packages/config` prices (PRD §11.5). */
@@ -56,6 +69,7 @@ export class AnthropicLlmProvider implements LlmProvider {
     this.anthropic = createAnthropic({
       apiKey: options.apiKey,
       ...(options.baseURL ? { baseURL: options.baseURL } : {}),
+      ...(options.fetch ? { fetch: options.fetch } : {}),
     });
     this.models = { fast: options.fastModel, strong: options.strongModel };
   }
@@ -72,57 +86,58 @@ export class AnthropicLlmProvider implements LlmProvider {
    * PRD §10.3: only the `cached` half of the system block carries `cache_control`. The volatile half
    * is a second system part with no cache marker, so a changed chapter or a new retrieved passage
    * never invalidates the cached prefix.
+   *
+   * These go in `instructions`, not in `messages`. The AI SDK (v7) refuses a system message inside
+   * `messages` — "System messages are not allowed in the prompt or messages fields" — and
+   * `Instructions` is typed `string | SystemModelMessage | SystemModelMessage[]`, so an array of
+   * parts is how per-block cache control survives.
    */
-  private systemParts(req: LlmRequest) {
-    const parts = [
+  private instructions(req: LlmRequest): SystemModelMessage[] {
+    const parts: SystemModelMessage[] = [
       {
-        role: 'system' as const,
+        role: 'system',
         content: req.system.cached,
-        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' as const } } },
+        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
       },
     ];
     if (req.system.volatile) {
-      parts.push({
-        role: 'system' as const,
-        content: req.system.volatile,
-      } as (typeof parts)[number]);
+      parts.push({ role: 'system', content: req.system.volatile });
     }
     return parts;
   }
 
-  private messages(req: LlmRequest) {
-    return [
-      ...this.systemParts(req),
-      ...req.messages.map((m) => ({ role: m.role, content: m.content })),
-    ];
+  private messages(req: LlmRequest): ModelMessage[] {
+    return req.messages.map((m) => ({ role: m.role, content: m.content }) as ModelMessage);
   }
 
   async *stream(req: LlmRequest): AsyncIterable<LlmChunk> {
-    let result: ReturnType<typeof streamText>;
+    let usage: TokenUsage;
+    let finishReason: string;
+
     try {
-      result = streamText({
+      const result = streamText({
         model: this.model(req.tier),
+        instructions: this.instructions(req),
         messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
         ...(req.signal ? { abortSignal: req.signal } : {}),
-        // Same boundary as complete(): the SDK option type is an overloaded intersection that our
-        // per-part providerOptions on system messages do not satisfy; validated at runtime.
-      } as unknown as Parameters<typeof streamText>[0]);
+      });
 
       for await (const delta of result.textStream) {
         yield { type: 'text', text: delta };
       }
+
+      // Inside the try, deliberately. A refused request ends `textStream` without throwing and
+      // surfaces the failure on these promises instead; awaiting them outside let an SDK error
+      // escape untyped, which is how a rejected request read as "no output generated".
+      usage = toTokenUsage(await result.usage);
+      finishReason = await result.finishReason;
     } catch (cause) {
       throw new LlmProviderError(req.action, 'Anthropic stream failed', cause);
     }
 
-    yield {
-      type: 'finish',
-      usage: toTokenUsage(await result.usage),
-      modelId: this.models[req.tier],
-      finishReason: await result.finishReason,
-    };
+    yield { type: 'finish', usage, modelId: this.models[req.tier], finishReason };
   }
 
   async complete<T>(req: LlmRequest & { schema: z.ZodType<T> }): Promise<LlmResult<T>> {
@@ -136,6 +151,7 @@ export class AnthropicLlmProvider implements LlmProvider {
       const result = await generateObject({
         model: this.model(req.tier),
         schema: req.schema,
+        instructions: this.instructions(req),
         messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),

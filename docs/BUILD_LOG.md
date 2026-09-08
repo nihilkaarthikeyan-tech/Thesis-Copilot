@@ -2689,3 +2689,48 @@ key would have printed every student's sign-in code to the server log and emaile
   recorder, the refusal envelope, the OTP email, and the console case.
 - Not verifiable here: a message actually arriving. That needs the key and a verified domain
   (docs/PENDING.md), and the first live check is signing in.
+
+### The first real provider call — two defects and a flake (2026-09-08)
+
+The owner supplied the Anthropic key. `pnpm ai:verify` made the first non-mock call this project
+has ever made, and it failed. Three things came out of it.
+
+**1. The adapter could not have worked, at all.** `packages/ai/src/providers/anthropic.ts` built
+its request as `messages: [...systemParts, ...userMessages]`. The AI SDK v7 refuses that —
+"System messages are not allowed in the prompt or messages fields. Use the instructions option
+instead" — so every Assist, draft, chat, command, coherence and cite call in the product would have
+failed the moment a real key existed. The fix is `instructions: SystemModelMessage[]`, which is
+what `Instructions` is typed as (`string | SystemModelMessage | Array<SystemModelMessage>`), so
+§10.3's per-block `cache_control` survives unchanged. Both `as unknown as` casts came out with
+it: the shapes now line up on their own, which is its own evidence.
+
+The captured wire body is exactly §10.3:
+
+```json
+"system": [ { "type": "text", "text": "CACHED PREFIX", "cache_control": { "type": "ephemeral" } },
+            { "type": "text", "text": "VOLATILE HALF" } ],
+"messages": [ { "role": "user", "content": [ { "type": "text", "text": "hello" } ] } ]
+```
+
+**2. A provider failure escaped untyped.** In `stream()`, `await result.usage` and
+`await result.finishReason` sat *outside* the try/catch. A refused request ends `textStream`
+without throwing and surfaces the failure on those promises, so a raw `AI_NoOutputGeneratedError`
+escaped instead of the `LlmProviderError` §0.2's error contract promises. That is also why
+`ai:verify` blamed the model id for a fault that had nothing to do with it. Both awaits are inside
+the try now, and `verify.ts` reports the root cause and only says "the provider refused the id"
+when the message actually looks like that.
+
+**Why neither was caught:** the adapter had no test, and everything ran on the mock. Now
+`packages/ai/test/anthropic.spec.ts` (7) asserts the request body that goes over the wire, captured
+through the SDK's own documented `fetch` injection point — asserting on our own arguments would
+have proved nothing, since the arguments looked right and the SDK rejected them.
+
+**3. `packages/citations` was flaky under `pnpm test`.** `render.spec.ts` failed a *different*
+case on each full run, always on timeout. citeproc compiles a CSL stylesheet per style and the
+suite walks all 22: ~4 s alone, over vitest's 5 s default when sharing cores with 18 other packages.
+`testTimeout: 60_000` in that package's config. Nothing skipped, nothing deleted (§0.3 rule 7) —
+the work was correct, only the budget was wrong.
+
+After all three: `pnpm test` 19/19 tasks green, `pnpm lint` and `pnpm typecheck` clean, and
+`ai:verify` recomputes the STUDENT budget at ₹98.92 against the ₹100 ceiling. The embedding half
+is still the mock's until a Voyage key exists, so Appendix E.3 stays unfilled.

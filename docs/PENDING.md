@@ -6,14 +6,33 @@ blocks the agent from continuing to build against mocks.
 
 ## Accounts, keys and services
 
-- [ ] **Anthropic API key + model ids.** Put `ANTHROPIC_API_KEY`, `AI_FAST_MODEL`, `AI_STRONG_MODEL`
-      in `.env`, set `AI_PROVIDER=anthropic`. Choose ids from https://docs.claude.com/en/docs/about-claude/pricing.
-      Why: the app refuses to guess model ids (PRD §0.3 rule 5); all AI runs on a mock until then.
+- [x] **Anthropic API key + model ids.** Done 2026-09-08. The owner supplied the key; it is in the
+      root `.env` (git-ignored) with `AI_PROVIDER=anthropic`,
+      `AI_FAST_MODEL=claude-haiku-4-5-20251001` and `AI_STRONG_MODEL=claude-sonnet-5`. Both ids
+      were accepted by the provider on a live call — see the `ai:verify` block below.
+- [ ] **Confirm the two model prices** (§0.3 rule 4 — the agent must not guess a price).
+      `packages/config/src/pricing.ts` has **no per-model entry** for either id, so the budget
+      below falls back to the PRD §11.1 tier assumption: Fast $1/$5 per M in/out, Strong $3/$15.
+      Check both against https://docs.claude.com/en/docs/about-claude/pricing. If either is
+      higher, the ₹98.92 total moves and the ₹100 ceiling decision below becomes live. Add real
+      entries to `pricing.ts` (or `PRICING_OVERRIDE_JSON`) and re-run `pnpm ai:verify`.
 - [ ] **Voyage API key + embedding model.** `VOYAGE_API_KEY`, `AI_EMBED_MODEL` (1024-d), `EMBED_PROVIDER=voyage`.
-- [ ] **Run `pnpm ai:verify` with the real keys** and paste the printed table into PRD Appendix E.3
-      (`docs/PRD.md`). Then flip the `costModelVerified` feature flag (admin UI, or
-      `UPDATE "FeatureFlag" SET enabled=true WHERE key='costModelVerified'`). Why: PRD §0.3 rule 5;
-      the admin page shows "Cost model: UNVERIFIED" until then. Budget printed must be ≤ ₹100.
+- [ ] **Finish `pnpm ai:verify` and fill Appendix E.3.** Half-done: run on 2026-09-08 with the
+      Anthropic key, both LLM ids confirmed live, STUDENT budget recomputed at **₹98.92 ≤ ₹100**.
+      The embedding row is still the mock's, so the run is **not yet quotable** — the script says so
+      itself. Once `VOYAGE_API_KEY` is set, re-run and paste the printed table into PRD Appendix
+      E.3 (`docs/PRD.md`), filling "Verified value" and "By" yourself — §0.3 rule 3 forbids the
+      agent filling that table. Then flip the flag (admin UI, or
+      `UPDATE "FeatureFlag" SET enabled=true WHERE key='costModelVerified'`); the admin page reads
+      "Cost model: UNVERIFIED" until you do. What the 2026-09-08 run printed, for reference:
+
+      | Item | Value |
+      |---|---|
+      | Fast model id | `claude-haiku-4-5-20251001` — accepted, 21 in / 4 out on the probe |
+      | Strong model id | `claude-sonnet-5` — accepted, 26 in / 4 out |
+      | Embedding model | `mock-embed`, 1024 d — **not real yet** |
+      | Exchange rate | INR 87 = USD 1 (`pricing.ts`) |
+      | Recomputed §11.4 STUDENT total | ₹98.92, within by ₹1.08 |
 - [ ] **Email delivery key**: `RESEND_API_KEY` (or `SMTP_HOST` + `SMTP_PORT`, plus `SMTP_USER` /
       `SMTP_PASS` if the relay wants them) and `MAIL_FROM` in the production `.env`. Both
       transports are built (`apps/api/src/common/mailer.ts` — Resend through its SDK, SMTP through
