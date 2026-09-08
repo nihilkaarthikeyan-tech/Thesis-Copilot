@@ -204,6 +204,43 @@ One is left, and it needs a decision:
 
       Decide: schedule the v3 upgrade, or accept the mitigation and record why.
 
+## What the ₹100 ceiling actually rests on (measured 2026-09-08)
+
+The ceiling is a **design projection**, not a runtime guarantee. What enforces it today is the
+per-action caps: 180 Assist × an *assumed* cost per call = ₹98.92. Nothing measures actual money
+spent and refuses when it reaches ₹100 — the only runtime signal is an email to the admin once a
+user passes **₹120**, which is detection after the fact, and above the ceiling.
+
+Three things decide whether the projection holds.
+
+- [ ] **Prove the prompt cache engages on real chapters. This is the whole promise.**
+      `cost.ts` prices Assist assuming a 4,000-token cached prefix read at 0.1×. Measured:
+
+      | Assist unit cost | Month total | |
+      |---|---|---|
+      | as modelled (4k cached) | ₹0.1803 | **₹98.92** ✅ |
+      | if the cache never engages | ₹0.5310 | **₹162.06** ❌ |
+      | measured, empty chapter (657 tok) | ₹0.0830 | ₹81.41 ✅ |
+
+      Break-even for Assist is **₹0.1863**; the model assumes ₹0.1803. That is a **3 % margin**. The
+      first real call in the product came back `cachedInputTokens: 0`, because a 657-token prompt is
+      under the fast tier's cache floor — harmless there (small prompt, cheap call), but it means
+      the cached case is still unproven. A full chapter with six pinned passages is the case that
+      matters, and it is only reachable with the fixture papers.
+
+- [ ] **Decide whether to add a hard stop at ₹100 of actual spend.** Caps are a proxy for cost, not
+      a measure of it. A per-user month-to-date ceiling that refuses metered actions at ₹100
+      regardless of remaining caps is the only thing that *guarantees* the number. It is maybe half
+      a day's work, and it needs a product decision first: a student who has written all month is
+      told "no more AI until the 1st" while their Assist counter still shows 40 left. Alternatives:
+      degrade to the cheaper model instead of refusing, or alert the admin and let a human decide.
+
+- [ ] **Lower the alert threshold below the ceiling.** `ALERT.userCostInr` is ₹120 — it only fires
+      once a user is already ₹20 over. A second threshold around ₹85 would give warning while there
+      is still something to do about it.
+
+---
+
 ## The ₹100 ceiling has about ₹1 left
 
 - [ ] **Decide what gives.** Building FR-3.6 surfaced this (ADR-0008): the STUDENT plan computes to
