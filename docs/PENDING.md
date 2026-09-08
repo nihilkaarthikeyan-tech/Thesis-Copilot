@@ -36,15 +36,21 @@ blocks the agent from continuing to build against mocks.
 
       Still yours to supply in that table: the two model prices, the cache multipliers and the VPS
       monthly cost, none of which the agent may guess (§0.3 rule 4).
-- [ ] **Email delivery key**: `RESEND_API_KEY` (or `SMTP_HOST` + `SMTP_PORT`, plus `SMTP_USER` /
-      `SMTP_PASS` if the relay wants them) and `MAIL_FROM` in the production `.env`. Both
-      transports are built (`apps/api/src/common/mailer.ts` — Resend through its SDK, SMTP through
-      nodemailer — chosen once at boot by `MailerModule`, 16 tests) and carry the sign-in code,
-      the §14 alert emails (user cost > ₹120, platform average > ₹90, job failures > 5 %, TTFB p95
-      > 900 ms, each over 15 min; sent to `SEED_ADMIN_EMAIL`), billing reminders and review
-      invitations. With Resend, verify the sending domain in its dashboard first: an unverified
-      `MAIL_FROM` is refused per message and the API logs the refusal. Dev keeps printing the
-      one-time code to the API console. The first live check is simply signing in.
+- [x] **Email delivery.** Done 2026-09-08, and proven by a real send. The owner's existing
+      Hostinger mailbox is reused — the same one Gate, Bank and TNPSC already send their OTP and
+      reset mail from, so deliverability is established rather than hoped for:
+      `SMTP_HOST=smtp.hostinger.com`, `SMTP_PORT=465`, `SMTP_USER=no-reply@rademics.ai`,
+      `MAIL_FROM=Thesis Copilot <no-reply@rademics.ai>`, password in `.env` (git-ignored).
+      `createMailer` selected `smtp`, and one real sign-in code arrived in the owner's inbox.
+      This carries the sign-in code, the §14 alert emails (to `SEED_ADMIN_EMAIL`), billing
+      reminders and review invitations. `RESEND_API_KEY` stays empty and unused; the Resend
+      transport is built and tested should the pilot ever want a separate sending domain.
+- [ ] **Copy the SMTP block into the VPS `.env` at deploy time.** It is only in the local `.env`
+      today. `infra/compose/.env.production.example` lists the five variables.
+- [ ] **Consider a dedicated mailbox before the pilot.** `no-reply@rademics.ai` is shared across
+      four products and its password is the same everywhere; one leak rotates all four. A
+      `no-reply@` on whatever domain Thesis Copilot ships under would isolate it. Not urgent —
+      the shared box works and is already warmed up.
 - [ ] **Google sign-in** (optional): `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, both or neither.
 - [ ] **Scholarly API contact emails**: set `OPENALEX_MAILTO`, `CROSSREF_MAILTO`, `UNPAYWALL_EMAIL`
       to a real address you monitor (polite-pool rules). Optional: `SEMANTIC_SCHOLAR_API_KEY`, `CORE_API_KEY`.

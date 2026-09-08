@@ -2780,3 +2780,27 @@ passage, came to 667 tokens and cached nothing.
 builders set one (`CITE_ROLE` at 0.2, and Appendix A specifies temperatures throughout). Nothing
 fails and no code changed — but a temperature in a strong-tier prompt spec is decorative on this
 model, and the PRD's Appendix A numbers should not be read as effective there.
+
+### Email, proven end to end (2026-09-08)
+
+The owner asked for their own domain rather than a new sending service. Reading the other four
+products on the same VPS settled it: `Gate-Ai-Agent/backend/src/lib/mailer.ts` (nodemailer),
+`Bank-AI-Agent/apps/api/app/core/mailer.py` (stdlib `smtplib`, its docstring naming Hostinger) and
+`TNPSC-Ai-Agent/backend/src/lib/mailer.ts` all do the same thing — raw SMTP, port 465, implicit
+TLS, no third-party mail service — and all three send from one mailbox, `no-reply@rademics.ai`.
+`SmtpMailer` was already that shape, so nothing needed writing.
+
+Live values, read from `/opt/gate-ai/.env.prod` and copied into the local `.env`:
+
+    SMTP_HOST=smtp.hostinger.com   SMTP_PORT=465
+    SMTP_USER=no-reply@rademics.ai
+    MAIL_FROM=Thesis Copilot <no-reply@rademics.ai>
+
+`createMailer` selected `smtp` and one real sign-in code was sent through the production path —
+`otpMail` → `SmtpMailer.send` — and **arrived in the inbox, not spam**. That last part is the
+reason for reusing an established mailbox rather than standing up a new sender: a one-time code
+that lands in spam is indistinguishable to the student from a broken product.
+
+Two things follow, both in `docs/PENDING.md`: the block still has to reach the VPS `.env` at
+deploy time, and the mailbox is shared by four products under one password, so a dedicated
+`no-reply@` is worth having before the pilot widens.
