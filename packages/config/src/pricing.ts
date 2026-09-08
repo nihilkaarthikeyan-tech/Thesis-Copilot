@@ -63,6 +63,10 @@ const STRONG: ModelPrice = {
  */
 const MODEL_PRICES: Record<string, ModelPrice> = {
   'claude-sonnet-5': STRONG,
+  // Symmetrically: Haiku stays at the Fast rate even if it is configured on the strong tier.
+  // Without both entries the fallback is the *tier* price, which prices whichever model is there
+  // as though it were the one the tier was designed around — wrong in both directions.
+  'claude-haiku-4-5-20251001': FAST,
 };
 
 export const DEFAULT_PRICING: Pricing = {
