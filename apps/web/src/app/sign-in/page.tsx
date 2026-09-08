@@ -171,7 +171,6 @@ export default function SignInPage() {
                     name="email"
                     type="email"
                     autoComplete="email"
-                    // biome-ignore lint/a11y/noAutofocus: the page exists to take this one value.
                     autoFocus
                     required
                     className="h-11"
@@ -198,7 +197,6 @@ export default function SignInPage() {
                     pattern="[0-9]{6}"
                     maxLength={6}
                     autoComplete="one-time-code"
-                    // biome-ignore lint/a11y/noAutofocus: the student has just been sent here to type it.
                     autoFocus
                     required
                     value={code}

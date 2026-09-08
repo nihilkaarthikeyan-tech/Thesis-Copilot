@@ -47,6 +47,28 @@ export class CapExceededError extends AppError {
 }
 
 /**
+ * PRD §11's ₹100 ceiling, refusing at run time rather than in a projection.
+ *
+ * Separate from `CapExceededError` because it can arrive while the student's action counter still
+ * shows units left, and being told "you have 40 suggestions remaining" and then refused is the
+ * kind of thing that reads as a bug. The message says plainly that the month's AI is finished and
+ * when it comes back; everything that is not an AI call — writing, editing, citations already in
+ * the document, export — keeps working.
+ */
+export class CeilingExceededError extends AppError {
+  constructor(action: string, spentInr: number, ceilingInr: number, resetsAt: Date) {
+    super(
+      'CEILING_EXCEEDED',
+      'Monthly AI limit reached',
+      HttpStatus.TOO_MANY_REQUESTS,
+      `You have used this month's AI allowance. It resets on the 1st. ` +
+        'You can keep writing, editing and exporting in the meantime.',
+      { action, spentInr, ceilingInr, resetsAt: resetsAt.toISOString() },
+    );
+  }
+}
+
+/**
  * PRD §12.1: "every document/chapter/source query is scoped by ownerId or an active GuideShare. No
  * object is fetched by id alone." An object the caller may not see is reported as absent, so the
  * API never confirms that an id exists to someone without access.

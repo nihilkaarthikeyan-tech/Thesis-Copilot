@@ -14,13 +14,13 @@ import { DRAFT, type DraftResult } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import type { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
-import { CapExceededError, NotFoundError } from '../../common/errors.js';
+import { NotFoundError } from '../../common/errors.js';
 import { capExceeded, suggestionOutcome } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { FlagsService } from '../flags/flags.service.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 
 export type DraftInput = { chapterId: string; outlineNodeId: string; targetWords?: number };
 
@@ -81,7 +81,7 @@ export class DraftService {
     );
     if (!cap.ok) {
       capExceeded.inc({ action: 'DRAFT' });
-      throw new CapExceededError('DRAFT', cap.cap, cap.resetsAt);
+      throw refusal('DRAFT', cap);
     }
 
     const event = await this.prisma.suggestionEvent.create({

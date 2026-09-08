@@ -19,7 +19,7 @@ import {
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
-import { CapExceededError, NotFoundError } from '../../common/errors.js';
+import { NotFoundError } from '../../common/errors.js';
 import {
   aiCallLatency,
   aiCostMicroInr,
@@ -29,7 +29,7 @@ import {
 } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
 
 export type ChatInput = {
@@ -124,7 +124,7 @@ export class ChatService {
     );
     if (!cap.ok) {
       capExceeded.inc({ action: 'CHAT' });
-      throw new CapExceededError('CHAT', cap.cap, cap.resetsAt);
+      throw refusal('CHAT', cap);
     }
 
     const history = readTurns(document.meta);

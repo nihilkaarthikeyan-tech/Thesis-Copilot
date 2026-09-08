@@ -14,11 +14,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { COHERENCE } from '@tc/ai';
 import type { Plan } from '@tc/config';
 import { jobId } from '@tc/types';
-import { CapExceededError, ConflictError, NotFoundError } from '../../common/errors.js';
+import { ConflictError, NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 
 /** D.1.1: the autosave hook may start a run at most this often. */
 export const AUTOSAVE_INTERVAL_MS = 15 * 60_000;
@@ -116,7 +116,7 @@ export class CoherenceService {
     const charged = triggeredBy !== 'FEEDBACK';
     if (charged) {
       const cap = await this.usage.consume(user.id, user.plan as Plan, 'COHERENCE');
-      if (!cap.ok) throw new CapExceededError('COHERENCE', cap.cap, cap.resetsAt);
+      if (!cap.ok) throw refusal('COHERENCE', cap);
     }
 
     const runId = randomUUID();

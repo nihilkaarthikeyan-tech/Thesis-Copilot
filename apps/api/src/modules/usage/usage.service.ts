@@ -20,12 +20,33 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { capFor, type MeteredAction, type Plan } from '@tc/config';
+import {
+  capFor,
+  type MeteredAction,
+  MONTHLY_CEILING_INR,
+  MONTHLY_CEILING_MICRO_INR,
+  type Plan,
+} from '@tc/config';
+import { CapExceededError, CeilingExceededError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+
+/**
+ * Why a refusal happened. The student sees a different sentence for each, because they mean
+ * different things: a cap is "you have used your 180 suggestions", the ceiling is "your AI budget
+ * for the month is spent" and can arrive while suggestions are still showing as remaining.
+ */
+export type RefusalReason = 'cap' | 'ceiling';
 
 export type ConsumeResult =
   | { readonly ok: true; readonly count: number; readonly cap: number; readonly remaining: number }
-  | { readonly ok: false; readonly cap: number; readonly resetsAt: Date };
+  | {
+      readonly ok: false;
+      readonly reason: RefusalReason;
+      readonly cap: number;
+      readonly resetsAt: Date;
+      /** Month-to-date spend in rupees, present when the ceiling is what refused. */
+      readonly spentInr?: number;
+    };
 
 /**
  * Billing period key, `YYYY-MM` in UTC.
@@ -63,8 +84,24 @@ export class UsageService {
     // the row with count = 1 and let one call through. PRD Appendix E.2 relies on a missing or zero
     // cap making the endpoint unusable, so this path matters.
     if (cap <= 0) {
-      await this.audit(userId, plan, action, cap);
-      return { ok: false, cap, resetsAt: resetsAtFor(now) };
+      await this.audit(userId, plan, action, cap, 'cap');
+      return { ok: false, reason: 'cap', cap, resetsAt: resetsAtFor(now) };
+    }
+
+    // PRD §11's ₹100 is a constraint on money, and caps are only a proxy for money: they assume a
+    // modelled cost per call, and a call can cost more than modelled. This is the check that makes
+    // the ceiling true rather than projected. It reads spend already logged, so the call that
+    // crosses the line is served and the next one is refused — bounded overshoot of one call.
+    const spentMicro = await this.spentThisPeriod(userId, now);
+    if (spentMicro >= MONTHLY_CEILING_MICRO_INR) {
+      await this.audit(userId, plan, action, cap, 'ceiling');
+      return {
+        ok: false,
+        reason: 'ceiling',
+        cap,
+        resetsAt: resetsAtFor(now),
+        spentInr: Math.round(Number(spentMicro) / 10_000) / 100,
+      };
     }
 
     const rows = await this.prisma.$queryRawUnsafe<Array<{ count: number }>>(
@@ -82,8 +119,8 @@ export class UsageService {
 
     const row = rows[0];
     if (!row) {
-      await this.audit(userId, plan, action, cap);
-      return { ok: false, cap, resetsAt: resetsAtFor(now) };
+      await this.audit(userId, plan, action, cap, 'cap');
+      return { ok: false, reason: 'cap', cap, resetsAt: resetsAtFor(now) };
     }
 
     return { ok: true, count: row.count, cap, remaining: Math.max(cap - row.count, 0) };
@@ -93,10 +130,48 @@ export class UsageService {
    * ADR-0004: a refusal leaves no ledger row, so it is recorded here — the one place every
    * metered action passes. `pnpm pilot:report` and the admin's per-user page count these.
    */
-  private async audit(userId: string, plan: Plan, action: MeteredAction, cap: number) {
+  private async audit(
+    userId: string,
+    plan: Plan,
+    action: MeteredAction,
+    cap: number,
+    reason: RefusalReason,
+  ) {
     await this.prisma.auditEvent.create({
-      data: { kind: 'CAP_EXCEEDED', userId, detail: { action, plan, cap } },
+      data: {
+        kind: reason === 'ceiling' ? 'CEILING_EXCEEDED' : 'CAP_EXCEEDED',
+        userId,
+        detail: { action, plan, cap, reason },
+      },
     });
+  }
+
+  /**
+   * Money this user has spent in the current period, in micro-rupees.
+   *
+   * Only successful calls: a failed one is refunded by `refund` and cost nothing to serve. Indexed
+   * by `(userId, createdAt)` on `AiCallLog`, so this is one index scan per metered request.
+   */
+  async spentThisPeriod(userId: string, now: Date = new Date()): Promise<bigint> {
+    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const rows = await this.prisma.aiCallLog.aggregate({
+      where: { userId, ok: true, createdAt: { gte: from } },
+      _sum: { costMicroInr: true },
+    });
+    return rows._sum.costMicroInr ?? 0n;
+  }
+
+  /** The ₹100 ceiling and what is left of it, for `GET /usage/me`. */
+  async ceilingFor(
+    userId: string,
+    now: Date = new Date(),
+  ): Promise<{ spentInr: number; ceilingInr: number; remainingInr: number }> {
+    const spent = Math.round(Number(await this.spentThisPeriod(userId, now)) / 10_000) / 100;
+    return {
+      spentInr: spent,
+      ceilingInr: MONTHLY_CEILING_INR,
+      remainingInr: Math.max(MONTHLY_CEILING_INR - spent, 0),
+    };
   }
 
   /**
@@ -128,4 +203,25 @@ export class UsageService {
     });
     return rows.map((r) => ({ action: r.action, count: r.count }));
   }
+}
+
+/**
+ * The error a refused `consume` should throw.
+ *
+ * One helper rather than a conditional at each of the nine metered call sites — they all refuse
+ * for the same two reasons and should say the same two things when they do.
+ */
+export function refusal(
+  action: string,
+  result: Extract<ConsumeResult, { ok: false }>,
+): CapExceededError | CeilingExceededError {
+  if (result.reason === 'ceiling') {
+    return new CeilingExceededError(
+      action,
+      result.spentInr ?? MONTHLY_CEILING_INR,
+      MONTHLY_CEILING_INR,
+      result.resetsAt,
+    );
+  }
+  return new CapExceededError(action, result.cap, result.resetsAt);
 }

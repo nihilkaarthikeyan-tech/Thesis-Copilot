@@ -20,7 +20,7 @@ import {
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
-import { CapExceededError, NotFoundError, ValidationError } from '../../common/errors.js';
+import { NotFoundError, ValidationError } from '../../common/errors.js';
 import {
   aiCallLatency,
   aiCostMicroInr,
@@ -29,7 +29,7 @@ import {
 } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
 
 export type CommandRunInput = {
@@ -94,7 +94,7 @@ export class CommandService {
     );
     if (!cap.ok) {
       capExceeded.inc({ action: 'COMMAND' });
-      throw new CapExceededError('COMMAND', cap.cap, cap.resetsAt);
+      throw refusal('COMMAND', cap);
     }
 
     // A.11 sends passages only to expand and consistency; the others rewrite what is there.

@@ -14,6 +14,17 @@ import { DEFAULT_PRICING, type Pricing, priceFor } from './pricing.js';
 
 export const MICRO_INR_PER_INR = 1_000_000;
 
+/**
+ * PRD §11: ₹100 per user per month, all-in. A hard constraint, not a target.
+ *
+ * Two things read it. `computeMonthlyBudget` checks the *projection* — caps × modelled cost per
+ * call — which is what `pnpm ai:verify` and CI enforce at build time. `UsageService` checks the
+ * *actual* month-to-date spend before every metered call, which is what enforces it at runtime.
+ * The projection can be wrong; the runtime check cannot.
+ */
+export const MONTHLY_CEILING_INR = 100;
+export const MONTHLY_CEILING_MICRO_INR = MONTHLY_CEILING_INR * MICRO_INR_PER_INR;
+
 export function inrToMicro(inr: number): number {
   return Math.round(inr * MICRO_INR_PER_INR);
 }
@@ -253,8 +264,8 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
     lines,
     totalMicroInr,
     totalInr: microToInr(totalMicroInr),
-    ceilingInr: 100,
-    withinCeiling: microToInr(totalMicroInr) <= 100,
+    ceilingInr: MONTHLY_CEILING_INR,
+    withinCeiling: microToInr(totalMicroInr) <= MONTHLY_CEILING_INR,
   };
 }
 

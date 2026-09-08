@@ -27,17 +27,12 @@ import {
 import { computeCallCost, type Env, type Plan } from '@tc/config';
 import { type ChapterSentence, sentencesOf } from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
-import {
-  CapExceededError,
-  ForbiddenError,
-  NotFoundError,
-  ValidationError,
-} from '../../common/errors.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { ContextService } from '../assist/context.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 import { SharesService } from './shares.service.js';
 
 export type CommentView = {
@@ -310,7 +305,7 @@ export class CommentsService {
       .join(' ');
 
     const cap = await this.usage.consume(user.id, user.plan as Plan, 'COMMAND');
-    if (!cap.ok) throw new CapExceededError('COMMAND', cap.cap, cap.resetsAt);
+    if (!cap.ok) throw refusal('COMMAND', cap);
 
     const memory = await this.context.memoryBlock(chapter);
     // A.14 wants six passages for the target text; `CHAT` retrieves eight and the slice below

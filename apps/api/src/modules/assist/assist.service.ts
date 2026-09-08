@@ -13,7 +13,7 @@ import { buildAssistRequest, type LlmProvider, type Providers, postProcessAssist
 import { computeCallCost, type Env } from '@tc/config';
 import { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
-import { CapExceededError, ConflictError, NotFoundError } from '../../common/errors.js';
+import { ConflictError, NotFoundError } from '../../common/errors.js';
 import {
   aiCallLatency,
   aiCostMicroInr,
@@ -25,7 +25,7 @@ import {
 import { PrismaService } from '../../common/prisma.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
 
 export type SuggestInput = {
@@ -134,7 +134,7 @@ export class AssistService {
       const cap = await this.usage.consume(user.id, plan, 'ASSIST');
       if (!cap.ok) {
         capExceeded.inc({ action: 'ASSIST' });
-        throw new CapExceededError('ASSIST', cap.cap, cap.resetsAt);
+        throw refusal('ASSIST', cap);
       }
 
       const startedAt = Date.now();

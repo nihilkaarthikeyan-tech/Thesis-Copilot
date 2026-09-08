@@ -32,6 +32,8 @@ export {
   formatBudget,
   inrToMicro,
   MICRO_INR_PER_INR,
+  MONTHLY_CEILING_INR,
+  MONTHLY_CEILING_MICRO_INR,
   type MonthlyBudget,
   microToInr,
   ONE_TIME_AMORTISATION_MONTHS,

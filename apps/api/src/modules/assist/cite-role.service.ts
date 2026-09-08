@@ -23,12 +23,12 @@ import {
 } from '@tc/ai';
 import { computeCallCost, type Env, type Plan } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
-import { CapExceededError, NotFoundError, ValidationError } from '../../common/errors.js';
+import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { aiCallLatency, aiCostMicroInr, capExceeded } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
 
 export type CiteRoleInput = {
@@ -86,7 +86,7 @@ export class CiteRoleService {
     const cap = await this.usage.consume(user.id, user.plan as Plan, 'COMMAND');
     if (!cap.ok) {
       capExceeded.inc({ action: 'COMMAND' });
-      throw new CapExceededError('COMMAND', cap.cap, cap.resetsAt);
+      throw refusal('COMMAND', cap);
     }
 
     const memory = await this.context.memoryBlock(chapter);

@@ -29,17 +29,12 @@ import {
 } from '@tc/config';
 import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
-import {
-  CapExceededError,
-  ConflictError,
-  NotFoundError,
-  ValidationError,
-} from '../../common/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
-import { UsageService } from '../usage/usage.service.js';
+import { refusal, UsageService } from '../usage/usage.service.js';
 
 export type OutlineView = {
   template: Template | null;
@@ -272,7 +267,7 @@ export class OutlineService {
     // ₹100 ceiling has no room for a new capped action, so a rewrite of one section shares the
     // cap with the other Strong-tier rewrites of the student's own text.
     const cap = await this.usage.consume(user.id, user.plan as Plan, 'COMMAND');
-    if (!cap.ok) throw new CapExceededError('COMMAND', cap.cap, cap.resetsAt);
+    if (!cap.ok) throw refusal('COMMAND', cap);
 
     const request = buildSectionScopeRequest({
       scope: {
