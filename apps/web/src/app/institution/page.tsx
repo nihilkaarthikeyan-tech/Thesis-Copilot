@@ -181,7 +181,9 @@ export default function InstitutionPage() {
         </Link>{' '}
         / Institution
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">{institution.name}</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        {institution.name}
+      </h1>
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-warn">
@@ -201,7 +203,7 @@ export default function InstitutionPage() {
           { label: 'Invitations waiting', value: seats.pendingInvites },
           { label: 'Free', value: seats.free },
         ].map((card) => (
-          <div key={card.label} className="rounded-lg border border-line bg-surface p-3">
+          <div key={card.label} className="rounded-md border border-line bg-surface p-3">
             <p className="text-xs text-muted">{card.label}</p>
             <p className="mt-1 text-xl" data-testid={`seat-${card.label.toLowerCase()}`}>
               {card.value}
@@ -210,8 +212,8 @@ export default function InstitutionPage() {
         ))}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Invite a student</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Invite a student</h2>
         <p className="mt-1 text-xs text-muted">
           An invitation holds a seat until it is accepted or revoked, so the count here is what you
           are actually committed to. The student joins the next time they sign in — an account they
@@ -225,12 +227,12 @@ export default function InstitutionPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="student@university.ac.in"
             aria-label="Student email"
-            className="flex-1 rounded-md border border-line px-2 py-1 text-sm"
+            className="flex-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
           />
           <button
             type="submit"
             disabled={busy !== null || seats.free <= 0}
-            className="rounded-md bg-ink px-3 py-1 text-sm text-paper disabled:opacity-50"
+            className="rounded-md px-3 py-1 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
           >
             {busy === 'invite' ? 'Inviting…' : 'Invite'}
           </button>
@@ -263,8 +265,8 @@ export default function InstitutionPage() {
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Formatting template</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Formatting template</h2>
         <p className="mt-1 text-xs text-muted">
           Every thesis started in this institution begins on this template, so a student never has
           to know which one their department uses.
@@ -274,7 +276,7 @@ export default function InstitutionPage() {
           disabled={busy !== null}
           onChange={(e) => void chooseTemplate(e.target.value)}
           aria-label="Default formatting template"
-          className="mt-2 w-full rounded-md border border-line px-2 py-1 text-sm"
+          className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
         >
           <option value="">No default — students pick their own</option>
           {institution.templates.map((t) => (
@@ -286,8 +288,8 @@ export default function InstitutionPage() {
         </select>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Seats in use</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Seats in use</h2>
         {students.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
             Nobody has taken a seat yet. Invitations appear above until they are accepted.
@@ -325,8 +327,8 @@ export default function InstitutionPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Invoice</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Invoice</h2>
         <p className="mt-1 text-xs text-muted">
           {institution.seatPriceInr > 0
             ? `${seats.used} seat${seats.used === 1 ? '' : 's'} at ₹${institution.seatPriceInr} each, billed ${institution.billingPeriod}.`
@@ -338,13 +340,13 @@ export default function InstitutionPage() {
             onChange={(e) => setPeriod(e.target.value)}
             aria-label="Billing period"
             placeholder={institution.billingPeriod === 'monthly' ? '2026-09' : '2026'}
-            className="w-32 rounded-md border border-line px-2 py-1 text-sm"
+            className="w-32 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
           />
           <button
             type="button"
             onClick={() => void buildInvoice()}
             disabled={busy !== null}
-            className="rounded-md border border-line px-3 py-1 text-sm disabled:opacity-50"
+            className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
           >
             {busy === 'invoice' ? 'Building…' : 'Build the PDF'}
           </button>

@@ -32,14 +32,16 @@ export default function AdminUsersPage() {
         </Link>{' '}
         / Users
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">Pilot students</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Pilot students
+      </h1>
       {error ? (
         <p role="alert" className="mt-4 text-sm text-warn">
           {error}
         </p>
       ) : null}
       {users ? (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-surface">
+        <div className="mt-6 overflow-x-auto rounded-md border border-line bg-surface">
           <table className="w-full text-sm" data-testid="admin-users">
             <thead className="text-left text-xs text-muted">
               <tr>

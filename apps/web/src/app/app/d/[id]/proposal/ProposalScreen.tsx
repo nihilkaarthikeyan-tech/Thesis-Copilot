@@ -205,7 +205,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
         <span>Proposal</span>
       </nav>
 
-      <h1 className="font-serif text-2xl">
+      <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
         {pathA
           ? 'Turn your topic into a thesis proposal'
           : 'Turn your paper into a thesis proposal'}
@@ -253,7 +253,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
             type="button"
             onClick={() => void saveAndContinue()}
             disabled={saving || scope.workingTitle.trim().length === 0}
-            className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+            className="rounded-md px-4 py-2 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
           >
             {saving ? 'Saving…' : 'Continue to the editor'}
           </button>
@@ -285,7 +285,7 @@ function PaperStatus({
         <p className="mt-1 text-xs text-muted">
           A PDF or Word file. Yours, or one you have written.
         </p>
-        <label className="mt-4 inline-block cursor-pointer rounded-md bg-ink px-4 py-2 text-sm text-paper">
+        <label className="mt-4 inline-block cursor-pointer rounded-md px-4 py-2 text-sm bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors">
           {uploading ? 'Uploading…' : 'Choose a file'}
           <input
             type="file"
@@ -430,8 +430,10 @@ function GapChecklist({
   onToggle: (next: Set<string>) => void;
 }) {
   return (
-    <aside className="rounded-lg border border-line bg-paper p-5">
-      <h2 className="font-serif text-lg">What a thesis needs that this paper does not have</h2>
+    <aside className="rounded-md border border-line bg-paper p-5">
+      <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        What a thesis needs that this paper does not have
+      </h2>
       <p className="mt-1 text-xs text-muted">Tick these off as you go. Nothing here blocks you.</p>
 
       <ul className="mt-4 space-y-3">

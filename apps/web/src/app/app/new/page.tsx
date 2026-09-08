@@ -63,7 +63,9 @@ export default function NewThesisPage() {
         </Link>{' '}
         / New
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">Where does this thesis start?</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Where does this thesis start?
+      </h1>
 
       <form onSubmit={create} className="mt-6 space-y-4">
         <fieldset className="space-y-3">
@@ -93,7 +95,7 @@ export default function NewThesisPage() {
           ))}
         </fieldset>
 
-        <div className="rounded-lg border border-line bg-surface p-4">
+        <div className="rounded-md border border-line bg-surface p-4">
           <label className="text-sm" htmlFor="title">
             Working title
           </label>

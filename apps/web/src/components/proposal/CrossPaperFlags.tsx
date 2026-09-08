@@ -43,17 +43,22 @@ export function CrossPaperFlags({ documentId, flags }: { documentId: string; fla
 
   return (
     <section className="mt-8" data-testid="cross-paper">
-      <h2 className="font-serif text-lg">Across your papers</h2>
+      <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Across your papers
+      </h2>
       <p className="mt-1 text-sm text-muted">
         {flags.papers.length} papers compared. {total === 0 ? 'Nothing to flag.' : ''}
       </p>
 
       {flags.overlaps.length > 0 ? (
         <div className="mt-3">
-          <h3 className="text-sm font-medium">Said in more than one paper</h3>
+          <h3 className="eyebrow">Said in more than one paper</h3>
           <ul className="mt-1 space-y-2 text-sm" data-testid="overlaps">
             {flags.overlaps.map((o) => (
-              <li key={o.claim} className="rounded-md border border-line bg-surface px-3 py-2">
+              <li
+                key={o.claim}
+                className="rounded-md border border-line-strong bg-surface px-3 py-2 font-semibold text-ink transition-colors hover:bg-sunk"
+              >
                 <p>{o.claim}</p>
                 <p className="mt-1 text-xs text-muted">
                   In {o.papers.map((id, i) => [i > 0 ? ' and ' : '', link(id)])} — say it once in
@@ -67,7 +72,7 @@ export function CrossPaperFlags({ documentId, flags }: { documentId: string; fla
 
       {flags.contradictions.length > 0 ? (
         <div className="mt-4">
-          <h3 className="text-sm font-medium">Cannot both be true</h3>
+          <h3 className="eyebrow">Cannot both be true</h3>
           <ul className="mt-1 space-y-2 text-sm" data-testid="contradictions">
             {flags.contradictions.map((c) => (
               <li key={c.topic} className="rounded-md border border-warn/40 bg-warn/5 px-3 py-2">
@@ -87,10 +92,13 @@ export function CrossPaperFlags({ documentId, flags }: { documentId: string; fla
 
       {flags.terminology.length > 0 ? (
         <div className="mt-4">
-          <h3 className="text-sm font-medium">Defined differently</h3>
+          <h3 className="eyebrow">Defined differently</h3>
           <ul className="mt-1 space-y-2 text-sm" data-testid="terminology">
             {flags.terminology.map((t) => (
-              <li key={t.term} className="rounded-md border border-line bg-surface px-3 py-2">
+              <li
+                key={t.term}
+                className="rounded-md border border-line-strong bg-surface px-3 py-2 font-semibold text-ink transition-colors hover:bg-sunk"
+              >
                 <p className="font-medium">{t.term}</p>
                 {t.definitions.map((d) => (
                   <p key={`${d.paper}-${d.definition}`} className="text-xs text-muted">

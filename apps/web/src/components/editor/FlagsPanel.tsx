@@ -188,7 +188,7 @@ export function FlagsPanel({
           disabled={running}
           onClick={() => void run()}
           data-testid="run-coherence"
-          className="rounded-md bg-ink px-3 py-1 text-xs text-paper disabled:opacity-50"
+          className="rounded-md px-3 py-1 text-xs disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
         >
           {running ? (stage ? `Checking ${stage.toLowerCase()}…` : 'Checking…') : 'Check coherence'}
         </button>
@@ -212,7 +212,7 @@ export function FlagsPanel({
           <button
             type="button"
             onClick={() => setFilter(null)}
-            className={`rounded px-2 py-0.5 ${filter === null ? 'bg-ink text-paper' : 'border border-line'}`}
+            className={`rounded px-2 py-0.5 ${filter === null ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
           >
             All {data.counts.total ?? 0}
           </button>
@@ -222,7 +222,7 @@ export function FlagsPanel({
                 key={type}
                 type="button"
                 onClick={() => setFilter(filter === type ? null : type)}
-                className={`rounded px-2 py-0.5 ${filter === type ? 'bg-ink text-paper' : 'border border-line'}`}
+                className={`rounded px-2 py-0.5 ${filter === type ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
               >
                 {label} {data.counts[type]}
               </button>

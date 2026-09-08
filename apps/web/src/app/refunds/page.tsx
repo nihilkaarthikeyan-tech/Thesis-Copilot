@@ -18,9 +18,13 @@ export default function RefundsPage() {
         </Link>{' '}
         / Refunds
       </nav>
-      <h1 className="mt-2 font-serif text-3xl">Refunds</h1>
+      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+        Refunds
+      </h1>
 
-      <h2 className="mt-8 font-serif text-lg">Cancelling</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Cancelling
+      </h2>
       <p className="mt-2 text-muted">
         Open Account and press Cancel. One click, on any device, at any time. Your subscription
         stops renewing; you keep everything you have paid for until that period ends. We email you a
@@ -28,7 +32,9 @@ export default function RefundsPage() {
         you.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">Refunds we give without argument</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Refunds we give without argument
+      </h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
         <li>You were charged after cancelling.</li>
         <li>You were charged twice for the same period.</li>
@@ -39,14 +45,18 @@ export default function RefundsPage() {
         <li>The service was unusable for more than 48 hours in a period, for reasons our end.</li>
       </ul>
 
-      <h2 className="mt-8 font-serif text-lg">Refunds we do not give</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Refunds we do not give
+      </h2>
       <p className="mt-2 text-muted">
         A period you used. If you have drafted with it, cited with it and exported from it, the cost
         was real on our side too — the AI calls are paid per token. Cancel instead, and the next
         period is never charged.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">How</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        How
+      </h2>
       <p className="mt-2 text-muted">
         Email us from the address on your account and say what happened. We reply within two working
         days. Approved refunds go back to the card or UPI account that paid, through Razorpay, and

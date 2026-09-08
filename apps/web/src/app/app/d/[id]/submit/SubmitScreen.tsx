@@ -169,7 +169,9 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </Link>{' '}
         / Submit
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">Prepare for submission</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Prepare for submission
+      </h1>
 
       {data.template.isExample ? (
         <p
@@ -194,14 +196,14 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </p>
       ) : null}
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Formatting template</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Formatting template</h2>
         <select
           value={data.template.id}
           disabled={busy !== null}
           onChange={(e) => void chooseTemplate(e.target.value)}
           data-testid="template-picker"
-          className="mt-2 w-full rounded-md border border-line px-2 py-1 text-sm"
+          className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
         >
           {data.templates.map((t) => (
             <option key={t.id} value={t.id}>
@@ -212,8 +214,8 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </select>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Thesis details</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Thesis details</h2>
         <p className="mt-1 text-xs text-muted">
           Filled once. They appear on the title page, the certificate and the declaration.
         </p>
@@ -227,7 +229,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
                 id={field.key}
                 value={String(details[field.key] ?? '')}
                 onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
-                className="mt-1 w-full rounded-md border border-line px-2 py-1 text-sm"
+                className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               />
               {field.hint ? <p className="mt-0.5 text-xs text-muted">{field.hint}</p> : null}
             </div>
@@ -242,7 +244,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           rows={5}
           value={details.abstract}
           onChange={(e) => setDetails({ ...details, abstract: e.target.value })}
-          className="mt-1 w-full rounded-md border border-line px-2 py-1 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
         />
         <p className="mt-0.5 text-xs text-muted">
           {details.abstract.trim().split(/\s+/).filter(Boolean).length} words. The abstract is front
@@ -257,7 +259,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           rows={3}
           value={details.acknowledgements}
           onChange={(e) => setDetails({ ...details, acknowledgements: e.target.value })}
-          className="mt-1 w-full rounded-md border border-line px-2 py-1 text-sm"
+          className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
         />
 
         <button
@@ -265,14 +267,14 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           disabled={busy !== null}
           onClick={() => void saveDetails()}
           data-testid="save-details"
-          className="mt-3 rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+          className="mt-3 rounded-md px-4 py-2 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
         >
           {busy === 'details' ? 'Saving…' : 'Save details'}
         </button>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">
           Formatting checks{' '}
           {compliance ? (
             <span className={compliance.passed ? 'text-muted' : 'text-warn'}>
@@ -308,15 +310,15 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Build the thesis</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Build the thesis</h2>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
             type="button"
             disabled={busy !== null}
             onClick={() => void exportThesis('docx')}
             data-testid="export-docx"
-            className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50"
+            className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
           >
             {busy === 'docx' ? 'Building…' : 'Download .docx'}
           </button>
@@ -325,7 +327,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
             disabled={busy !== null}
             onClick={() => void exportThesis('pdf')}
             data-testid="export-pdf"
-            className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+            className="rounded-md px-4 py-2 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
           >
             {busy === 'pdf' ? 'Building…' : 'Download PDF'}
           </button>
@@ -346,7 +348,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
               rows={2}
               value={override}
               onChange={(e) => setOverride(e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-2 py-1"
+              className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 font-semibold text-ink transition-colors hover:bg-sunk"
             />
             <button
               type="button"

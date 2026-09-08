@@ -109,14 +109,16 @@ export default function AdminUserPage() {
 
       {user ? (
         <>
-          <h1 className="mt-2 font-serif text-2xl">{user.email}</h1>
+          <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+            {user.email}
+          </h1>
           <p className="text-sm text-muted">
             {user.name || 'No name'} · {user.role} · joined {when(user.createdAt)} · last active{' '}
             {when(user.lastActiveAt)}
           </p>
 
           <section className="mt-8 grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-line bg-surface p-4 text-sm">
+            <div className="rounded-md border border-line bg-surface p-4 text-sm">
               <p className="text-xs text-muted">This month</p>
               <ul className="mt-2 space-y-1" data-testid="user-usage">
                 {user.usage
@@ -142,13 +144,13 @@ export default function AdminUserPage() {
                 type="button"
                 disabled={busy}
                 onClick={() => void resetCaps()}
-                className="mt-3 rounded-md border border-line px-3 py-1 text-xs"
+                className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1 text-xs font-semibold text-ink transition-colors hover:bg-sunk"
               >
                 Reset caps
               </button>
             </div>
 
-            <div className="rounded-lg border border-line bg-surface p-4 text-sm">
+            <div className="rounded-md border border-line bg-surface p-4 text-sm">
               <p className="text-xs text-muted">Plan</p>
               <p className="mt-2 font-mono">{user.plan}</p>
               <label className="mt-3 block text-xs text-muted" htmlFor="plan">
@@ -159,7 +161,7 @@ export default function AdminUserPage() {
                 disabled={busy}
                 value={user.plan}
                 onChange={(e) => void setPlan(e.target.value)}
-                className="mt-1 rounded-md border border-line px-2 py-1 text-sm"
+                className="mt-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
                 {PLANS.map((p) => (
                   <option key={p} value={p}>
@@ -171,11 +173,13 @@ export default function AdminUserPage() {
           </section>
 
           <section className="mt-8">
-            <h2 className="font-serif text-lg">Theses</h2>
+            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+              Theses
+            </h2>
             {user.documentList.length === 0 ? (
               <p className="mt-2 text-sm text-muted">None yet.</p>
             ) : (
-              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface text-sm">
+              <ul className="mt-2 divide-y divide-line rounded-md border border-line bg-surface text-sm">
                 {user.documentList.map((d) => (
                   <li key={d.id} className="flex justify-between px-4 py-2">
                     <span>{d.title}</span>
@@ -189,12 +193,14 @@ export default function AdminUserPage() {
           </section>
 
           <section className="mt-8">
-            <h2 className="font-serif text-lg">Recent admin actions and feedback</h2>
+            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+              Recent admin actions and feedback
+            </h2>
             {user.recentEvents.length === 0 ? (
               <p className="mt-2 text-sm text-muted">Nothing logged.</p>
             ) : (
               <ul
-                className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface text-sm"
+                className="mt-2 divide-y divide-line rounded-md border border-line bg-surface text-sm"
                 data-testid="user-events"
               >
                 {user.recentEvents.map((e) => (

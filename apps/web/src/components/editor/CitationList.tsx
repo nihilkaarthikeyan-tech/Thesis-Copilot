@@ -199,7 +199,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
                         disabled={rewrite.result.unchanged || Boolean(rewrite.result.refusal)}
                         onClick={() => applyRewrite(entry, rewrite.result)}
                         data-testid="cite-role-apply"
-                        className="rounded-md bg-ink px-2 py-0.5 text-paper disabled:opacity-40"
+                        className="rounded-md px-2 py-0.5 disabled:opacity-40 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                       >
                         Apply
                       </button>

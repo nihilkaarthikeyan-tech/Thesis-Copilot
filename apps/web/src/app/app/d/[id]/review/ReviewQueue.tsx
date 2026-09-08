@@ -308,7 +308,9 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
         </Link>{' '}
         / Review
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">Feedback</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Feedback
+      </h1>
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-warn">
@@ -321,8 +323,8 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
         </p>
       ) : null}
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">Ask your guide for comments</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Ask your guide for comments</h2>
         <div className="mt-2 flex flex-wrap gap-2">
           <input
             type="email"
@@ -336,7 +338,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
             type="button"
             disabled={busy || !guideEmail.trim()}
             onClick={() => void share()}
-            className="rounded-md bg-ink px-3 py-1 text-sm text-paper disabled:opacity-50"
+            className="rounded-md px-3 py-1 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
           >
             Send the link
           </button>
@@ -378,13 +380,13 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
             placeholder="Paste the whole email or list. Each point becomes its own comment."
-            className="mt-2 w-full rounded-md border border-line px-2 py-1"
+            className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 font-semibold text-ink transition-colors hover:bg-sunk"
           />
           <button
             type="button"
             disabled={busy || !paste.trim()}
             onClick={() => void importPasted()}
-            className="mt-1 rounded-md border border-line px-3 py-1"
+            className="mt-1 rounded-md border border-line-strong bg-surface px-3 py-1 font-semibold text-ink transition-colors hover:bg-sunk"
           >
             Split into comments
           </button>
@@ -417,7 +419,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
 
       <section className="mt-6" ref={listRef}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-serif text-lg">
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
             {open.length} to answer
             {comments && comments.length > open.length
               ? ` · ${comments.length - open.length} done`
@@ -504,14 +506,14 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
                       rows={2}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-line px-2 py-1 text-sm"
+                      className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
                     />
                     <div className="mt-1 flex gap-2 text-xs">
                       <button
                         type="button"
                         disabled={busy}
                         onClick={() => void reject(comment)}
-                        className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-50"
+                        className="rounded-md px-3 py-1 disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                       >
                         Save the reason
                       </button>
@@ -534,7 +536,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
                         type="button"
                         disabled={busy}
                         onClick={() => void act(comment, 'accept')}
-                        className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-50"
+                        className="rounded-md px-3 py-1 disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                       >
                         Accept
                       </button>
@@ -543,7 +545,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
                         type="button"
                         disabled={busy}
                         onClick={() => void act(comment, 'suggest')}
-                        className="rounded-md border border-line px-3 py-1"
+                        className="rounded-md border border-line-strong bg-surface px-3 py-1 font-semibold text-ink transition-colors hover:bg-sunk"
                       >
                         Suggest a revision
                       </button>

@@ -70,7 +70,9 @@ export default function SettingsPage() {
         </Link>{' '}
         / Settings
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">Settings</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Settings
+      </h1>
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-warn">
@@ -78,10 +80,10 @@ export default function SettingsPage() {
         </p>
       ) : null}
 
-      <section className="mt-8 rounded-lg border border-line bg-surface p-4">
+      <section className="mt-8 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="text-sm font-medium">Suggest without my asking</h2>
+            <h2 className="eyebrow">Suggest without my asking</h2>
             <p className="mt-1 text-sm text-muted">
               Off by default. When it is on, a suggestion appears about a second after you stop
               typing, instead of only when you press <kbd>Ctrl+/</kbd>. It never interrupts you
@@ -109,7 +111,9 @@ export default function SettingsPage() {
             onClick={() => void save({ automaticSuggest: settings?.automaticSuggest !== true })}
             data-testid="auto-suggest-toggle"
             className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-              settings?.automaticSuggest ? 'bg-ink text-paper' : 'border border-line text-muted'
+              settings?.automaticSuggest
+                ? 'bg-accent text-accent-ink'
+                : 'border border-line text-muted'
             }`}
           >
             {settings?.automaticSuggest ? 'On' : 'Off'}
@@ -122,10 +126,10 @@ export default function SettingsPage() {
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="text-sm font-medium">Cite my library automatically</h2>
+            <h2 className="eyebrow">Cite my library automatically</h2>
             <p className="mt-1 text-sm text-muted">
               On by default. When a suggestion draws on a paper in your library, it arrives with the
               citation already attached, so you can see which source it came from.
@@ -150,7 +154,9 @@ export default function SettingsPage() {
             onClick={() => void save({ autoCite: settings?.autoCite === false })}
             data-testid="auto-cite-toggle"
             className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-              settings?.autoCite !== false ? 'bg-ink text-paper' : 'border border-line text-muted'
+              settings?.autoCite !== false
+                ? 'bg-accent text-accent-ink'
+                : 'border border-line text-muted'
             }`}
           >
             {settings?.autoCite !== false ? 'On' : 'Off'}
@@ -158,8 +164,8 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">This month</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">This month</h2>
         {usage ? (
           <ul className="mt-2 space-y-1 text-sm" data-testid="usage-list">
             {usage.actions.map((a) => (

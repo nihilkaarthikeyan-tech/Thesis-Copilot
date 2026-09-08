@@ -18,16 +18,22 @@ export default function PrivacyPage() {
         </Link>{' '}
         / Privacy
       </nav>
-      <h1 className="mt-2 font-serif text-3xl">What we do with your text</h1>
+      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+        What we do with your text
+      </h1>
 
-      <h2 className="mt-8 font-serif text-lg">We do not train on it</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        We do not train on it
+      </h2>
       <p className="mt-2 text-muted">
         Your thesis, your sources and your prompts are never used to train a model — not ours, not
         anyone&rsquo;s. We send text to our AI provider only to answer the request you made, under
         an agreement that forbids them training on it.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">What is sent, and when</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        What is sent, and when
+      </h2>
       <p className="mt-2 text-muted">
         Only when you ask for something. A suggestion sends the paragraph you are in, your outline
         and glossary, and passages from the sources you pinned. A draft sends the section&rsquo;s
@@ -35,7 +41,9 @@ export default function PrivacyPage() {
         suggest-without-asking, and then only after you pause.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">What we log</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        What we log
+      </h2>
       <p className="mt-2 text-muted">
         Every AI call is recorded with its model, its token counts, its cost and how long it took —
         this is how the monthly allowance is counted and how we keep the price honest. The request
@@ -43,7 +51,9 @@ export default function PrivacyPage() {
         thesis text.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">Who can see it</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Who can see it
+      </h2>
       <p className="mt-2 text-muted">
         You. A supervisor only if you share a document with them, and then only that document, in
         read-and-comment mode. Our administrators can see your email, your plan, your usage and your
@@ -51,19 +61,25 @@ export default function PrivacyPage() {
         chapters.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">Where it lives</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Where it lives
+      </h2>
       <p className="mt-2 text-muted">
         On our own server, in a Postgres database and an object store we run. Files are encrypted in
         transit. Backups are taken nightly and kept for 30 days.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">Leaving</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Leaving
+      </h2>
       <p className="mt-2 text-muted">
         Export any chapter as .docx or PDF at any time, with or without a subscription. Ask us to
         delete your account and everything in it goes, including backups within 30 days.
       </p>
 
-      <h2 className="mt-8 font-serif text-lg">Integrity</h2>
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        Integrity
+      </h2>
       <p className="mt-2 text-muted">
         We do not build “humanising” or detector-evasion features and we will not. What the AI wrote
         stays marked as such in your document, and the AI-usage log is yours to export and disclose.

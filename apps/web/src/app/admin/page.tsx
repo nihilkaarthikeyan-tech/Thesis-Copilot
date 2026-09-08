@@ -132,7 +132,9 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      <h1 className="font-serif text-2xl">Admin</h1>
+      <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Admin
+      </h1>
       {flags ? (
         <p className="mt-1 text-sm">
           <Link href="/admin/users" className="underline">
@@ -156,8 +158,10 @@ export default function AdminPage() {
 
       {model ? (
         <section className="mt-8">
-          <h2 className="font-serif text-lg">Cost model (PRD §11)</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm md:grid-cols-4">
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            Cost model (PRD §11)
+          </h2>
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 rounded-md border border-line bg-surface p-4 text-sm md:grid-cols-4">
             <dt className="text-muted">Status</dt>
             <dd>{model.verified ? 'Verified' : 'UNVERIFIED'}</dd>
             <dt className="text-muted">Projected, fully active</dt>
@@ -172,14 +176,16 @@ export default function AdminPage() {
 
       {costs ? (
         <section className="mt-8" data-testid="admin-costs">
-          <h2 className="font-serif text-lg">What the AI cost this month</h2>
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            What the AI cost this month
+          </h2>
           <p className="mt-1 text-xs text-muted">
             From {costs.from.slice(0, 10)} to {costs.to.slice(0, 10)}, read from the call log.
             {costs.totalInr === 0 && costs.rows.some((r) => r.calls > 0)
               ? ' Cost is ₹0 because the provider is the mock; calls and tokens are real, the price is not.'
               : ''}
           </p>
-          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-line bg-surface p-4 text-sm md:grid-cols-4">
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 rounded-md border border-line bg-surface p-4 text-sm md:grid-cols-4">
             <dt className="text-muted">Active users</dt>
             <dd>{costs.users}</dd>
             <dt className="text-muted">Total</dt>
@@ -193,7 +199,7 @@ export default function AdminPage() {
               {inr(costs.worstUserInr)}
             </dd>
           </dl>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-surface">
+          <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted">
                 <tr>
@@ -234,9 +240,11 @@ export default function AdminPage() {
 
       {telemetry ? (
         <section className="mt-8" data-testid="admin-telemetry">
-          <h2 className="font-serif text-lg">What students did with it</h2>
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            What students did with it
+          </h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-line bg-surface p-4 text-sm">
+            <div className="rounded-md border border-line bg-surface p-4 text-sm">
               <p className="text-xs text-muted">Acceptance (FR-9.4)</p>
               {telemetry.acceptance.length === 0 ? (
                 <p className="mt-1 text-muted">No suggestions yet.</p>
@@ -253,7 +261,7 @@ export default function AdminPage() {
                 </ul>
               )}
             </div>
-            <div className="rounded-lg border border-line bg-surface p-4 text-sm">
+            <div className="rounded-md border border-line bg-surface p-4 text-sm">
               <p className="text-xs text-muted">Guardrails (§10.6, §14)</p>
               <ul className="mt-1 space-y-1">
                 <li className="flex justify-between">
@@ -277,11 +285,13 @@ export default function AdminPage() {
 
       {flags ? (
         <section className="mt-8" data-testid="admin-flags">
-          <h2 className="font-serif text-lg">Feature flags (FR-9.7)</h2>
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            Feature flags (FR-9.7)
+          </h2>
           <p className="mt-1 text-xs text-muted">
             Read at request time and cached for a minute; a toggle here is live within that.
           </p>
-          <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface">
+          <ul className="mt-3 divide-y divide-line rounded-md border border-line bg-surface">
             {flags.map((flag) => (
               <li
                 key={flag.key}
@@ -299,7 +309,7 @@ export default function AdminPage() {
                   disabled={busyFlag === flag.key}
                   onClick={() => void toggle(flag)}
                   className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-                    flag.enabled ? 'bg-ink text-paper' : 'border border-line text-muted'
+                    flag.enabled ? 'bg-accent text-accent-ink' : 'border border-line text-muted'
                   }`}
                 >
                   {flag.enabled ? 'On' : 'Off'}

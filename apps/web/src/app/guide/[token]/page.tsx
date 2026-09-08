@@ -149,7 +149,9 @@ export default function GuidePage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <header>
-        <h1 className="font-serif text-2xl">{document.title}</h1>
+        <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+          {document.title}
+        </h1>
         <p className="mt-1 text-sm text-muted">
           {document.studentEmail} asked for your comments. This is read-only — select a passage and
           write what you think; the student sees each comment in their review queue.
@@ -173,7 +175,7 @@ export default function GuidePage() {
             key={c.id}
             type="button"
             onClick={() => setChapterId(c.id)}
-            className={`rounded-md px-3 py-1 ${c.id === chapterId ? 'bg-ink text-paper' : 'border border-line'}`}
+            className={`rounded-md px-3 py-1 ${c.id === chapterId ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
           >
             {c.order}. {c.title}
           </button>
@@ -182,7 +184,7 @@ export default function GuidePage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <article
-          className="rounded-lg border border-line bg-surface p-5"
+          className="rounded-md border border-line bg-surface p-5"
           data-testid="guide-chapter"
           onMouseUp={() => {
             const text = window.getSelection()?.toString().trim() ?? '';
@@ -191,7 +193,9 @@ export default function GuidePage() {
         >
           {chapter ? (
             <>
-              <h2 className="font-serif text-xl">{chapter.title}</h2>
+              <h2 className="text-balance font-serif text-[21px] font-semibold leading-snug text-ink">
+                {chapter.title}
+              </h2>
               {paragraphsOf(chapter.content).map((text, i) => (
                 // Paragraphs are positional and read-only; their index is their identity here.
                 // biome-ignore lint/suspicious/noArrayIndexKey: read-only positional render
@@ -206,8 +210,8 @@ export default function GuidePage() {
         </article>
 
         <aside>
-          <section className="rounded-lg border border-line bg-surface p-4">
-            <h2 className="text-sm font-medium">Add a comment</h2>
+          <section className="rounded-md border border-line bg-surface p-4">
+            <h2 className="eyebrow">Add a comment</h2>
             {selection ? (
               <p className="mt-2 rounded border-l-2 border-accent bg-paper px-2 py-1 text-xs text-muted">
                 “{selection.slice(0, 200)}
@@ -225,21 +229,21 @@ export default function GuidePage() {
               maxLength={4000}
               onChange={(e) => setBody(e.target.value)}
               placeholder="What should the student change, and why?"
-              className="mt-2 w-full rounded-md border border-line px-2 py-1 text-sm"
+              className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
             />
             <button
               type="button"
               disabled={busy || body.trim().length === 0}
               onClick={() => void submit()}
               data-testid="add-comment"
-              className="mt-2 w-full rounded-md bg-ink px-3 py-2 text-sm text-paper disabled:opacity-50 sm:w-auto"
+              className="mt-2 w-full rounded-md px-3 py-2 text-sm disabled:opacity-50 sm:w-auto bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
             >
               {busy ? 'Saving…' : 'Add comment'}
             </button>
           </section>
 
           <section className="mt-4">
-            <h2 className="text-sm font-medium">
+            <h2 className="eyebrow">
               Comments on this chapter{mine.length ? ` (${mine.length})` : ''}
             </h2>
             {mine.length === 0 ? (

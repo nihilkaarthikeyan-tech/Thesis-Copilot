@@ -327,7 +327,9 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
         <span>Outline</span>
       </nav>
 
-      <h1 className="font-serif text-2xl">Outline</h1>
+      <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Outline
+      </h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
         This tree is what every suggestion reads: the chapter you are in, its scope note, and its
         neighbours. Edit it freely — a rename here is the title the AI sees next.
@@ -374,7 +376,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
         />
       ) : (
         <>
-          <section className="mt-6 rounded-lg border border-line bg-surface p-4">
+          <section className="mt-6 rounded-md border border-line bg-surface p-4">
             <label className="text-sm font-medium" htmlFor="thesis-language">
               Language
             </label>
@@ -393,7 +395,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                   body: JSON.stringify({ language }),
                 }).catch(() => setError('Could not change the language.'));
               }}
-              className="mt-2 w-full rounded-md border border-line bg-surface px-2 py-1 text-sm md:w-72"
+              className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm md:w-72 font-semibold text-ink transition-colors hover:bg-sunk"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.tag} value={l.tag}>
@@ -403,8 +405,8 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
             </select>
           </section>
 
-          <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-            <h2 className="text-sm font-medium">Template</h2>
+          <section className="mt-6 rounded-md border border-line bg-surface p-4">
+            <h2 className="eyebrow">Template</h2>
             <div className="mt-3 grid gap-2 md:grid-cols-3">
               {view.templates.map((t) => (
                 <label
@@ -444,7 +446,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                 type="button"
                 disabled={busy || view.generating}
                 onClick={() => void generate()}
-                className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+                className="rounded-md px-4 py-2 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                 data-testid="generate-outline"
               >
                 {view.generating
@@ -461,7 +463,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
 
           <section className="mt-6" data-testid="outline-tree">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-medium">
+              <h2 className="eyebrow">
                 {outline.length} chapter{outline.length === 1 ? '' : 's'} ·{' '}
                 {rows.length - outline.length} section
                 {rows.length - outline.length === 1 ? '' : 's'}
@@ -474,7 +476,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                   type="button"
                   disabled={!dirty || saving}
                   onClick={() => void save()}
-                  className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-40"
+                  className="rounded-md px-3 py-1 disabled:opacity-40 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                   data-testid="save-outline"
                 >
                   {saving ? 'Saving…' : dirty ? 'Save outline' : 'Saved'}
@@ -494,7 +496,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                     key={node.id}
                     data-testid="outline-node"
                     data-depth={depth}
-                    className="rounded-lg border border-line bg-surface p-3"
+                    className="rounded-md border border-line bg-surface p-3"
                     style={{ marginLeft: depth * 20 }}
                   >
                     <div className="flex items-start gap-2">
@@ -502,7 +504,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                         aria-label={`Title of ${node.title}`}
                         value={node.title}
                         onChange={(e) => edit(path, (n) => ({ ...n, title: e.target.value }))}
-                        className="flex-1 rounded-md border border-line px-2 py-1 text-sm font-medium"
+                        className="flex-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-medium font-semibold text-ink transition-colors hover:bg-sunk"
                       />
                       <div className="flex shrink-0 gap-1 text-xs">
                         <button
@@ -558,7 +560,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                       value={node.scopeNote}
                       rows={2}
                       onChange={(e) => edit(path, (n) => ({ ...n, scopeNote: e.target.value }))}
-                      className="mt-2 w-full rounded-md border border-line px-2 py-1 text-xs"
+                      className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-semibold text-ink transition-colors hover:bg-sunk"
                     />
                     <p className="mt-1 flex flex-wrap gap-2 text-xs text-muted">
                       <span className="font-mono">{node.id}</span>
@@ -680,7 +682,7 @@ function GlossaryEditor({
       </p>
       <ul className="mt-4 space-y-3">
         {terms.map((t, i) => (
-          <li key={t.key} className="rounded-lg border border-line bg-surface p-3">
+          <li key={t.key} className="rounded-md border border-line bg-surface p-3">
             <div className="flex gap-2">
               <input
                 aria-label={`Term ${i + 1}`}
@@ -690,7 +692,7 @@ function GlossaryEditor({
                     list.map((x, j) => (i === j ? { ...x, term: e.target.value } : x)),
                   )
                 }
-                className="w-56 rounded-md border border-line px-2 py-1 text-sm font-medium"
+                className="w-56 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-medium font-semibold text-ink transition-colors hover:bg-sunk"
               />
               <input
                 aria-label={`Definition of ${t.term}`}
@@ -700,7 +702,7 @@ function GlossaryEditor({
                     list.map((x, j) => (i === j ? { ...x, definition: e.target.value } : x)),
                   )
                 }
-                className="flex-1 rounded-md border border-line px-2 py-1 text-sm"
+                className="flex-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               />
               <button
                 type="button"
@@ -720,7 +722,7 @@ function GlossaryEditor({
                   list.map((x, j) => (i === j ? { ...x, usageNote: e.target.value } : x)),
                 )
               }
-              className="mt-2 w-full rounded-md border border-line px-2 py-1 text-xs"
+              className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-xs font-semibold text-ink transition-colors hover:bg-sunk"
             />
             {t.conflict && t.alternatives.length > 0 ? (
               <div className="mt-2 rounded-md border border-warn/40 bg-warn/5 p-2 text-xs">
@@ -792,7 +794,7 @@ function GlossaryEditor({
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-50"
+          className="rounded-md px-3 py-1 disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
         >
           {saving ? 'Saving…' : 'Save glossary'}
         </button>

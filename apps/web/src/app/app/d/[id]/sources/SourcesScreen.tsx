@@ -193,7 +193,9 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
 
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl">Sources</h1>
+          <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+            Sources
+          </h1>
           <p className="mt-1 text-sm text-muted">
             {counts.total} in the library · {counts.fullText} with full text
             {counts.pending > 0 ? ` · ${counts.pending} still looking up` : ''}
@@ -285,7 +287,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
-                className={`rounded-md px-3 py-1 ${filter === key ? 'bg-ink text-paper' : 'border border-line hover:bg-paper'}`}
+                className={`rounded-md px-3 py-1 ${filter === key ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
               >
                 {label}
               </button>
@@ -299,7 +301,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                 : 'Nothing matches that filter.'}
             </p>
           ) : (
-            <ul className="mt-6 divide-y divide-line rounded-lg border border-line">
+            <ul className="mt-6 divide-y divide-line rounded-md border border-line">
               {visible.map((source) => (
                 <SourceRow
                   key={source.id}
@@ -450,11 +452,14 @@ function SourceRow({
           <input
             aria-label="DOI"
             placeholder="10.1016/j.enpol.2021.112121"
-            className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm"
+            className="flex-1 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
             value={doi}
             onChange={(e) => setDoi(e.target.value)}
           />
-          <button type="submit" className="rounded-md bg-ink px-3 py-1.5 text-sm text-paper">
+          <button
+            type="submit"
+            className="rounded-md px-3 py-1.5 text-sm bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
+          >
             Look it up
           </button>
         </form>

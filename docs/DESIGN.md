@@ -101,9 +101,25 @@ common way a calm screen stops being calm.
 `globals.css`. §6.4 requires every AI action to be keyboard-reachable, which is worth nothing if
 the focus ring cannot be seen.
 
-## What this does not cover
+## Applied
 
-The token layer reaches every screen, so all of them theme correctly and none contains a hardcoded
-colour. Layout and typographic attention have so far been spent on the marketing page, sign-in and
-the thesis list. The editor's own panels, the proposal, sources, outline, submit, account and admin
-screens are correct and legible but have not had a compositional pass. They are the next batch.
+Every screen is on the system: no hardcoded colour survives, so all of them theme correctly, and
+headings, buttons, cards, chips and radii come from the same vocabulary.
+
+Screens given a compositional pass — layout, hierarchy, spacing decided rather than inherited:
+the marketing home, sign-in, the thesis list and the editor chrome (top bar, chapter rail, panel
+tabs, the §6.3 keyboard legend).
+
+The rest — proposal, sources, outline, review, submit, account, settings, admin, pricing, privacy,
+refunds, institution, the guide view — are consistent and correct but were normalised rather than
+composed. If one of them turns out to be doing a job its layout does not serve, that is the next
+thing to fix, one screen at a time.
+
+## Two rules that keep it from drifting
+
+1. **No literal colour in a component.** Everything through a token, or dark mode breaks silently
+   — which is exactly what had happened: 66 `bg-white` and 35 `text-white` were sitting in the
+   tree, and `text-white` on `bg-ink` inverts to white-on-white.
+2. **One primary per screen.** `bg-accent` means "the action this screen exists for". Selected
+   chips and toggles use it too, so one colour answers "which is the live one?" everywhere. Black
+   (`ink`) is body text and a scrim; it is never a control.

@@ -124,7 +124,9 @@ export default function AccountPage() {
         </Link>{' '}
         / Account
       </nav>
-      <h1 className="mt-2 font-serif text-2xl">Account</h1>
+      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        Account
+      </h1>
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-warn">
@@ -138,7 +140,7 @@ export default function AccountPage() {
       ) : null}
 
       <section
-        className="mt-6 rounded-lg border border-line bg-surface p-4"
+        className="mt-6 rounded-md border border-line bg-surface p-4"
         data-testid="plan-card"
       >
         <p className="text-xs text-muted">Your plan</p>
@@ -175,7 +177,7 @@ export default function AccountPage() {
                 <button
                   type="button"
                   onClick={() => setConfirming(false)}
-                  className="rounded-md border border-line px-4 py-2 text-sm"
+                  className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
                 >
                   Keep it
                 </button>
@@ -186,7 +188,7 @@ export default function AccountPage() {
               type="button"
               onClick={() => setConfirming(true)}
               data-testid="cancel-subscription"
-              className="mt-3 w-full rounded-md border border-line px-4 py-2 text-sm sm:w-auto"
+              className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm sm:w-auto font-semibold text-ink transition-colors hover:bg-sunk"
             >
               Cancel subscription
             </button>
@@ -196,7 +198,9 @@ export default function AccountPage() {
 
       {billing && (billing.plan === 'FREE_TRIAL' || billing.cancelAtPeriodEnd) ? (
         <section className="mt-6">
-          <h2 className="font-serif text-lg">Plans</h2>
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            Plans
+          </h2>
           {billing.unavailableReason ? (
             <p className="mt-2 text-sm text-muted">
               {billing.unavailableReason} During the pilot your allowances are set by hand — email
@@ -205,7 +209,7 @@ export default function AccountPage() {
           ) : null}
           <ul className="mt-3 space-y-3">
             {billing.plans.map((plan) => (
-              <li key={plan.plan} className="rounded-lg border border-line bg-surface p-4">
+              <li key={plan.plan} className="rounded-md border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-medium">{PLAN_LABEL[plan.plan] ?? plan.plan}</p>
                   <p className="text-lg">
@@ -220,7 +224,7 @@ export default function AccountPage() {
                   type="button"
                   disabled={busy || billing.unavailableReason !== null}
                   onClick={() => void subscribe(plan.plan)}
-                  className="mt-3 w-full rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50 sm:w-auto"
+                  className="mt-3 w-full rounded-md px-4 py-2 text-sm disabled:opacity-50 sm:w-auto bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                 >
                   Choose {PLAN_LABEL[plan.plan] ?? plan.plan}
                 </button>
@@ -237,8 +241,8 @@ export default function AccountPage() {
         </section>
       ) : null}
 
-      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-        <h2 className="text-sm font-medium">This month</h2>
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">This month</h2>
         {usage ? (
           <>
             <ul className="mt-2 space-y-1 text-sm" data-testid="account-usage">
@@ -251,7 +255,7 @@ export default function AccountPage() {
                       className="hidden h-1.5 w-24 overflow-hidden rounded bg-line sm:block"
                     >
                       <span
-                        className={`block h-full ${a.remaining === 0 ? 'bg-warn' : 'bg-ink'}`}
+                        className={`block h-full ${a.remaining === 0 ? 'bg-warn' : 'bg-accent'}`}
                         style={{
                           width: `${a.cap > 0 ? Math.min(100, (a.used / a.cap) * 100) : 0}%`,
                         }}
@@ -275,8 +279,8 @@ export default function AccountPage() {
       </section>
 
       {invoices.length > 0 ? (
-        <section className="mt-6 rounded-lg border border-line bg-surface p-4">
-          <h2 className="text-sm font-medium">Invoices</h2>
+        <section className="mt-6 rounded-md border border-line bg-surface p-4">
+          <h2 className="eyebrow">Invoices</h2>
           <ul className="mt-2 space-y-1 text-sm" data-testid="invoices">
             {invoices.map((invoice) => (
               <li key={invoice.id} className="flex items-baseline justify-between gap-3">

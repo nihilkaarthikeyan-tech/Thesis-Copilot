@@ -56,7 +56,7 @@ export function ScaffoldPanel({
   return (
     <section
       data-testid="scaffold"
-      className="mx-auto mb-4 max-w-[72ch] rounded-lg border border-line bg-paper px-4 py-3 text-sm"
+      className="mx-auto mb-4 max-w-[72ch] rounded-md border border-line bg-paper px-4 py-3 text-sm"
     >
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-xs uppercase tracking-wide text-muted">What this chapter is for</h2>

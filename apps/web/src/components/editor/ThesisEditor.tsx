@@ -60,6 +60,9 @@ function shortRefOf(source: PassageDto['source']): string {
 
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
+import { ThemeToggle } from '../theme';
+import { Button } from '../ui/button';
+import { Kbd } from '../ui/primitives';
 import { ChatPanel } from './ChatPanel';
 import { CitationList } from './CitationList';
 import { CitationsPanel, type Rendered } from './CitationsPanel';
@@ -418,53 +421,56 @@ function ChapterEditor({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-line bg-surface px-4 py-2 text-sm">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <Link href="/app" className="text-muted hover:underline">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2">
+        <div className="flex min-w-0 items-baseline gap-2 text-[13px]">
+          <Link href="/app" className="shrink-0 text-muted hover:text-accent">
             Theses
           </Link>
-          <span className="truncate font-medium">{doc.title}</span>
-          <span className="text-muted">/</span>
-          <span className="truncate">{chapter.title}</span>
+          <span className="shrink-0 text-faint" aria-hidden="true">
+            /
+          </span>
+          <span className="truncate font-serif font-semibold text-ink">{doc.title}</span>
+          <span className="shrink-0 text-faint" aria-hidden="true">
+            /
+          </span>
+          <span className="truncate text-muted">{chapter.title}</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1">
           <span
             data-testid="autosave-status"
-            className={status === 'conflict' || status === 'error' ? 'text-warn' : 'text-muted'}
+            className={`px-1.5 text-[12px] ${
+              status === 'conflict' || status === 'error' ? 'font-semibold text-warn' : 'text-faint'
+            }`}
           >
             {STATUS_LABEL[status]}
           </span>
-          <span data-testid="usage-meter" className="text-muted">
+          <span
+            data-testid="usage-meter"
+            className="tnum mr-1 border-l border-line pl-3 text-[12px] text-muted"
+          >
             Assist {assist ? `${assist.used}/${assist.cap}` : '–'} · Draft{' '}
             {draft ? `${draft.used}/${draft.cap}` : '–'}
           </span>
-          <button
-            type="button"
-            className="text-xs text-muted underline"
-            onClick={() => setHowOpen(true)}
-          >
+          <ThemeToggle className="mr-1 hidden xl:inline-flex" />
+          <Button variant="ghost" size="sm" onClick={() => setHowOpen(true)}>
             How suggestions work
-          </button>
-          <button
-            type="button"
-            className="text-xs text-muted underline"
-            onClick={() => setFeedbackOpen((open) => !open)}
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setFeedbackOpen((open) => !open)}>
             Feedback
-          </button>
+          </Button>
           {exported ? (
             <a
               href={exported.url}
               download={exported.filename}
               data-testid="export-link"
-              className="text-xs underline"
+              className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-accent transition-colors hover:bg-sunk"
             >
               Download {exported.filename}
             </a>
           ) : (
             <button
               type="button"
-              className="text-xs text-muted underline"
+              className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-45"
               disabled={exporting}
               title="Plain .docx of this chapter (FR-8.1)"
               onClick={() => {
@@ -533,25 +539,33 @@ function ChapterEditor({
       ) : null}
 
       <div className="flex flex-1">
-        <aside className="hidden w-56 shrink-0 border-r border-line bg-paper px-3 py-4 text-sm md:block">
-          <p className="mb-2 flex items-baseline justify-between text-xs uppercase tracking-wide text-muted">
-            <span>Chapters</span>
-            <Link href={`/app/d/${doc.id}/outline`} className="normal-case underline">
+        <aside className="hidden w-56 shrink-0 border-r border-line bg-sunk px-3 py-4 md:block">
+          <p className="mb-2 flex items-baseline justify-between gap-2">
+            <span className="eyebrow">Chapters</span>
+            <Link
+              href={`/app/d/${doc.id}/outline`}
+              className="text-[11px] font-semibold text-muted hover:text-accent"
+            >
               Outline
             </Link>
           </p>
-          <ul className="space-y-1">
+          <ul className="grid list-none gap-0.5 p-0">
             {doc.chapters.map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/app/d/${doc.id}/write/${c.id}`}
-                  className={`block rounded px-2 py-1 ${c.id === chapter.id ? 'bg-surface font-medium' : 'hover:bg-surface'}`}
+                  aria-current={c.id === chapter.id ? 'page' : undefined}
+                  className={`block rounded-md border-l-2 px-2 py-1.5 text-[13px] transition-colors ${
+                    c.id === chapter.id
+                      ? 'border-accent bg-surface font-semibold text-ink'
+                      : 'border-transparent text-muted hover:bg-surface hover:text-ink'
+                  }`}
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="truncate">
                       {c.order}. {c.title}
                     </span>
-                    <span className="shrink-0 text-xs text-muted">{c.wordCount}</span>
+                    <span className="tnum shrink-0 text-[11px] text-faint">{c.wordCount}</span>
                   </span>
                 </Link>
               </li>
@@ -579,26 +593,43 @@ function ChapterEditor({
             </p>
           ) : null}
           <EditorContent editor={editor} />
-          <p className="mx-auto mt-6 max-w-[72ch] text-xs text-muted">
-            Ctrl+/ suggestion · Tab accept · Alt+→ accept a word · Shift+→ guided · Esc dismiss ·
-            Ctrl+S snapshot
-          </p>
+          <div className="mx-auto mt-8 flex max-w-[72ch] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[11.5px] text-faint">
+            {[
+              ['Ctrl+/', 'suggestion'],
+              ['Tab', 'accept'],
+              ['Alt+→', 'a word'],
+              ['Shift+→', 'guided'],
+              ['Esc', 'dismiss'],
+              ['Ctrl+S', 'snapshot'],
+            ].map(([key, what]) => (
+              <span key={key} className="flex items-center gap-1.5">
+                <Kbd>{key}</Kbd>
+                {what}
+              </span>
+            ))}
+          </div>
         </main>
 
-        <aside className="hidden w-72 shrink-0 border-l border-line bg-paper text-sm lg:block">
-          <div className="flex border-b border-line">
+        <aside className="hidden w-72 shrink-0 border-l border-line bg-sunk lg:block">
+          <div className="flex border-b border-line" role="tablist">
             {(['sources', 'citations', 'chat', 'flags'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
+                role="tab"
+                aria-selected={tab === t}
                 onClick={() => setTab(t)}
-                className={`flex-1 px-3 py-2 capitalize ${tab === t ? 'bg-surface font-medium' : 'text-muted'}`}
+                className={`flex-1 border-b-2 px-2 py-2 text-[12px] capitalize transition-colors ${
+                  tab === t
+                    ? 'border-accent bg-surface font-semibold text-ink'
+                    : 'border-transparent text-muted hover:text-ink'
+                }`}
               >
                 {t}
               </button>
             ))}
           </div>
-          <div className="p-3 text-muted">
+          <div className="p-3 text-[13px] text-muted">
             {tab === 'sources' ? (
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
             ) : tab === 'citations' ? (
@@ -641,7 +672,7 @@ function ChapterEditor({
       {feedbackOpen ? (
         <form
           data-testid="feedback-form"
-          className="fixed right-4 bottom-16 z-30 w-[24rem] rounded-lg border border-line bg-surface p-3 shadow-lg"
+          className="fixed right-4 bottom-16 z-30 w-[24rem] rounded-md border border-line bg-surface p-3 shadow-lg"
           onSubmit={(event) => {
             // PHASES 5.9: the admin receives the document id and the last five suggestion
             // events, never the chapter text.
@@ -677,7 +708,7 @@ function ChapterEditor({
             maxLength={4000}
             value={feedbackText}
             onChange={(event) => setFeedbackText(event.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
           />
           <div className="mt-2 flex justify-end gap-3 text-xs">
             <button type="button" className="underline" onClick={() => setFeedbackOpen(false)}>
@@ -686,7 +717,7 @@ function ChapterEditor({
             <button
               type="submit"
               disabled={feedbackBusy || !feedbackText.trim()}
-              className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-50"
+              className="rounded-md px-3 py-1 disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
             >
               {feedbackBusy ? 'Sending…' : 'Send'}
             </button>
