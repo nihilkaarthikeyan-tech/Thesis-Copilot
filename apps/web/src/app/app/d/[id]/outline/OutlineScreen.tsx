@@ -374,7 +374,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
         />
       ) : (
         <>
-          <section className="mt-6 rounded-lg border border-line bg-white p-4">
+          <section className="mt-6 rounded-lg border border-line bg-surface p-4">
             <label className="text-sm font-medium" htmlFor="thesis-language">
               Language
             </label>
@@ -393,7 +393,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                   body: JSON.stringify({ language }),
                 }).catch(() => setError('Could not change the language.'));
               }}
-              className="mt-2 w-full rounded-md border border-line bg-white px-2 py-1 text-sm md:w-72"
+              className="mt-2 w-full rounded-md border border-line bg-surface px-2 py-1 text-sm md:w-72"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.tag} value={l.tag}>
@@ -403,7 +403,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
             </select>
           </section>
 
-          <section className="mt-6 rounded-lg border border-line bg-white p-4">
+          <section className="mt-6 rounded-lg border border-line bg-surface p-4">
             <h2 className="text-sm font-medium">Template</h2>
             <div className="mt-3 grid gap-2 md:grid-cols-3">
               {view.templates.map((t) => (
@@ -444,7 +444,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                 type="button"
                 disabled={busy || view.generating}
                 onClick={() => void generate()}
-                className="rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+                className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
                 data-testid="generate-outline"
               >
                 {view.generating
@@ -474,7 +474,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                   type="button"
                   disabled={!dirty || saving}
                   onClick={() => void save()}
-                  className="rounded-md bg-ink px-3 py-1 text-white disabled:opacity-40"
+                  className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-40"
                   data-testid="save-outline"
                 >
                   {saving ? 'Saving…' : dirty ? 'Save outline' : 'Saved'}
@@ -494,7 +494,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                     key={node.id}
                     data-testid="outline-node"
                     data-depth={depth}
-                    className="rounded-lg border border-line bg-white p-3"
+                    className="rounded-lg border border-line bg-surface p-3"
                     style={{ marginLeft: depth * 20 }}
                   >
                     <div className="flex items-start gap-2">
@@ -680,7 +680,7 @@ function GlossaryEditor({
       </p>
       <ul className="mt-4 space-y-3">
         {terms.map((t, i) => (
-          <li key={t.key} className="rounded-lg border border-line bg-white p-3">
+          <li key={t.key} className="rounded-lg border border-line bg-surface p-3">
             <div className="flex gap-2">
               <input
                 aria-label={`Term ${i + 1}`}
@@ -792,7 +792,7 @@ function GlossaryEditor({
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-md bg-ink px-3 py-1 text-white disabled:opacity-50"
+          className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save glossary'}
         </button>

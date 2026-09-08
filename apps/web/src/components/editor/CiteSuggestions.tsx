@@ -134,7 +134,7 @@ export function CiteSuggestions({
   return (
     <aside
       data-testid="cite-suggestions"
-      className="fixed bottom-20 left-1/2 z-30 w-[34rem] -translate-x-1/2 rounded-lg border border-line bg-white p-3 shadow-lg"
+      className="fixed bottom-20 left-1/2 z-30 w-[34rem] -translate-x-1/2 rounded-lg border border-line bg-surface p-3 shadow-lg"
     >
       <div className="flex items-baseline justify-between">
         <p className="text-xs text-muted">
@@ -164,7 +164,7 @@ export function CiteSuggestions({
               </p>
               <button
                 type="button"
-                className="mt-2 rounded-md bg-ink px-3 py-1 text-xs text-white"
+                className="mt-2 rounded-md bg-ink px-3 py-1 text-xs text-paper"
                 onClick={() => insert(suggestion)}
               >
                 Insert citation

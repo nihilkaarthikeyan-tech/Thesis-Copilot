@@ -253,7 +253,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
             type="button"
             onClick={() => void saveAndContinue()}
             disabled={saving || scope.workingTitle.trim().length === 0}
-            className="rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Continue to the editor'}
           </button>
@@ -285,7 +285,7 @@ function PaperStatus({
         <p className="mt-1 text-xs text-muted">
           A PDF or Word file. Yours, or one you have written.
         </p>
-        <label className="mt-4 inline-block cursor-pointer rounded-md bg-ink px-4 py-2 text-sm text-white">
+        <label className="mt-4 inline-block cursor-pointer rounded-md bg-ink px-4 py-2 text-sm text-paper">
           {uploading ? 'Uploading…' : 'Choose a file'}
           <input
             type="file"
@@ -330,7 +330,7 @@ function ProposalForm({
   scope: ProposalScope;
   onChange: (next: ProposalScope) => void;
 }) {
-  const field = 'mt-1 w-full rounded-md border border-line bg-white px-3 py-2 text-sm';
+  const field = 'mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm';
 
   return (
     <section className="space-y-5">

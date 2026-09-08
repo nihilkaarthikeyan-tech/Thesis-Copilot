@@ -180,7 +180,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
               {!orphan && chapterId ? (
                 rewrite?.key === entry.key ? (
                   <div
-                    className="mt-1 rounded-md border border-line bg-white p-2 text-xs"
+                    className="mt-1 rounded-md border border-line bg-surface p-2 text-xs"
                     data-testid="cite-role-preview"
                   >
                     {rewrite.result.refusal ? (
@@ -199,7 +199,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
                         disabled={rewrite.result.unchanged || Boolean(rewrite.result.refusal)}
                         onClick={() => applyRewrite(entry, rewrite.result)}
                         data-testid="cite-role-apply"
-                        className="rounded-md bg-ink px-2 py-0.5 text-white disabled:opacity-40"
+                        className="rounded-md bg-ink px-2 py-0.5 text-paper disabled:opacity-40"
                       >
                         Apply
                       </button>
@@ -227,7 +227,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
                 )
               ) : null}
               {open === entry.key && !orphan ? (
-                <div className="mt-1 rounded-md border border-line bg-white p-2 text-xs">
+                <div className="mt-1 rounded-md border border-line bg-surface p-2 text-xs">
                   {passage === undefined ? (
                     <p className="text-muted">Loading the passage…</p>
                   ) : passage === 'missing' ? (

@@ -39,7 +39,7 @@ export default function AdminUsersPage() {
         </p>
       ) : null}
       {users ? (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-white">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full text-sm" data-testid="admin-users">
             <thead className="text-left text-xs text-muted">
               <tr>

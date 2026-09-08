@@ -201,7 +201,7 @@ export default function InstitutionPage() {
           { label: 'Invitations waiting', value: seats.pendingInvites },
           { label: 'Free', value: seats.free },
         ].map((card) => (
-          <div key={card.label} className="rounded-lg border border-line bg-white p-3">
+          <div key={card.label} className="rounded-lg border border-line bg-surface p-3">
             <p className="text-xs text-muted">{card.label}</p>
             <p className="mt-1 text-xl" data-testid={`seat-${card.label.toLowerCase()}`}>
               {card.value}
@@ -210,7 +210,7 @@ export default function InstitutionPage() {
         ))}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Invite a student</h2>
         <p className="mt-1 text-xs text-muted">
           An invitation holds a seat until it is accepted or revoked, so the count here is what you
@@ -230,7 +230,7 @@ export default function InstitutionPage() {
           <button
             type="submit"
             disabled={busy !== null || seats.free <= 0}
-            className="rounded-md bg-ink px-3 py-1 text-sm text-white disabled:opacity-50"
+            className="rounded-md bg-ink px-3 py-1 text-sm text-paper disabled:opacity-50"
           >
             {busy === 'invite' ? 'Inviting…' : 'Invite'}
           </button>
@@ -263,7 +263,7 @@ export default function InstitutionPage() {
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Formatting template</h2>
         <p className="mt-1 text-xs text-muted">
           Every thesis started in this institution begins on this template, so a student never has
@@ -286,7 +286,7 @@ export default function InstitutionPage() {
         </select>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Seats in use</h2>
         {students.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
@@ -325,7 +325,7 @@ export default function InstitutionPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Invoice</h2>
         <p className="mt-1 text-xs text-muted">
           {institution.seatPriceInr > 0

@@ -53,7 +53,7 @@ export function CrossPaperFlags({ documentId, flags }: { documentId: string; fla
           <h3 className="text-sm font-medium">Said in more than one paper</h3>
           <ul className="mt-1 space-y-2 text-sm" data-testid="overlaps">
             {flags.overlaps.map((o) => (
-              <li key={o.claim} className="rounded-md border border-line bg-white px-3 py-2">
+              <li key={o.claim} className="rounded-md border border-line bg-surface px-3 py-2">
                 <p>{o.claim}</p>
                 <p className="mt-1 text-xs text-muted">
                   In {o.papers.map((id, i) => [i > 0 ? ' and ' : '', link(id)])} — say it once in
@@ -90,7 +90,7 @@ export function CrossPaperFlags({ documentId, flags }: { documentId: string; fla
           <h3 className="text-sm font-medium">Defined differently</h3>
           <ul className="mt-1 space-y-2 text-sm" data-testid="terminology">
             {flags.terminology.map((t) => (
-              <li key={t.term} className="rounded-md border border-line bg-white px-3 py-2">
+              <li key={t.term} className="rounded-md border border-line bg-surface px-3 py-2">
                 <p className="font-medium">{t.term}</p>
                 {t.definitions.map((d) => (
                   <p key={`${d.paper}-${d.definition}`} className="text-xs text-muted">

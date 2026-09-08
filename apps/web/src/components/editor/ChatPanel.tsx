@@ -153,7 +153,7 @@ export function ChatPanel({
       </div>
 
       {showFilters ? (
-        <div className="mb-2 space-y-2 rounded-md border border-line bg-white p-2 text-xs">
+        <div className="mb-2 space-y-2 rounded-md border border-line bg-surface p-2 text-xs">
           <label className="flex items-center justify-between gap-2">
             Published from
             <input
@@ -205,7 +205,7 @@ export function ChatPanel({
             key={turn.id}
             data-role={turn.role}
             className={`rounded-lg px-3 py-2 text-sm ${
-              turn.role === 'user' ? 'ml-auto max-w-[90%] bg-ink text-white' : 'bg-white'
+              turn.role === 'user' ? 'ml-auto max-w-[90%] bg-ink text-paper' : 'bg-surface'
             }`}
           >
             {turn.role === 'assistant' ? (
@@ -225,7 +225,7 @@ export function ChatPanel({
           </div>
         ))}
         {streaming ? (
-          <div className="rounded-lg bg-white px-3 py-2 text-sm text-muted">{streaming}</div>
+          <div className="rounded-lg bg-surface px-3 py-2 text-sm text-muted">{streaming}</div>
         ) : null}
         <div ref={endRef} />
       </div>
@@ -252,7 +252,7 @@ export function ChatPanel({
         <button
           type="submit"
           disabled={busy || draft.trim().length === 0}
-          className="rounded-md bg-ink px-3 text-sm text-white disabled:opacity-50"
+          className="rounded-md bg-ink px-3 text-sm text-paper disabled:opacity-50"
         >
           {busy ? '…' : 'Ask'}
         </button>

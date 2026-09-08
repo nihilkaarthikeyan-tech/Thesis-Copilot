@@ -130,7 +130,7 @@ export function DraftMode({
   return (
     <aside
       data-testid="draft-status"
-      className="fixed bottom-20 left-1/2 z-30 w-[30rem] -translate-x-1/2 rounded-lg border border-line bg-white p-3 text-sm shadow-lg"
+      className="fixed bottom-20 left-1/2 z-30 w-[30rem] -translate-x-1/2 rounded-lg border border-line bg-surface p-3 text-sm shadow-lg"
     >
       {state.phase === 'working' ? (
         <p className="text-muted">

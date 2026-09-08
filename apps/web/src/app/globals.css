@@ -1,25 +1,190 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: the only `!important` here is the
+   reduced-motion reset at the foot of the file, which has to beat per-component
+   animation to do its job. */
 @import "tailwindcss";
 
 /*
- * Design tokens, kept deliberately small for Phase 0. PRD §6.4: the editor is a 72ch centred
- * column, calm, high-contrast, no distractions. Real visual design lands with the editor in week 1.
+ * Paper & Ink — the Thesis Copilot design system. Full specification in `docs/DESIGN.md`.
+ *
+ * The product is a writing instrument for a document someone will be examined on, so the surface
+ * stays quiet and the student's own prose is the loudest thing on screen. Two rules follow from
+ * that and explain most of what is below:
+ *
+ *   1. Nothing competes with body text. One accent, used for action and for citation marks and
+ *      almost nowhere else; rules are hairlines; shadows are absent in light and near-absent in
+ *      dark; radii are 3px, not 12px.
+ *   2. AI output never looks like the student's own writing. `--ghost` is the one colour reserved
+ *      for text the model proposed and the student has not accepted (PRD §6.2, §12.3).
+ *
+ * Theming: every colour is a variable declared here in `@theme`, so Tailwind's utilities compile
+ * to `var(--color-…)` and a runtime override of the variable re-themes the whole app. Dark is a
+ * considered palette, not an inversion — it keeps the light theme's cool-sage neutral bias and
+ * lifts the accent so it stays legible on a dark ground.
  */
+
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-serif: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
-  --color-ink: #1b1b1f;
-  --color-muted: #6b6f76;
-  --color-line: #e3e5e8;
-  --color-paper: #fbfbfa;
-  --color-accent: #2f5bea;
+  /* ---- Type -------------------------------------------------------------- */
+  /* Loaded by `next/font` in layout.tsx, which sets these two variables. */
+  --font-serif: var(--font-spectral), Charter, "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-source-sans), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---- Surfaces ---------------------------------------------------------- */
+  --color-paper: #f5f6f4;
+  --color-surface: #fdfdfc;
+  --color-sunk: #eceee9;
+
+  /* ---- Text -------------------------------------------------------------- */
+  --color-ink: #1c1e1b;
+  --color-muted: #666b63;
+  --color-faint: #979c93;
+
+  /* ---- Lines ------------------------------------------------------------- */
+  --color-line: #dfe2db;
+  --color-line-strong: #c9cec3;
+
+  /* ---- Accent ------------------------------------------------------------ */
+  --color-accent: #33507a;
+  --color-accent-hover: #294167;
+  --color-accent-soft: #e7ecf3;
   --color-accent-ink: #ffffff;
-  --color-warn: #b45309;
+
+  /* ---- AI ---------------------------------------------------------------- */
+  /* Unaccepted model output. Never used for anything the student wrote. */
+  --color-ghost: #a5aaa0;
+  --color-draft: #f1f3ee;
+
+  /* ---- Semantic ---------------------------------------------------------- */
+  --color-ok: #3f6b4a;
+  --color-ok-soft: #e8efe9;
+  --color-warn: #8a6a1f;
+  --color-warn-soft: #f6efdd;
+  --color-danger: #9b3b33;
+  --color-danger-soft: #f6e9e7;
+
+  /* ---- Shape ------------------------------------------------------------- */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 5px;
+
+  /* ---- Measure ----------------------------------------------------------- */
+  /* PRD §6.2: the writing column is 72ch. */
+  --spacing-measure: 72ch;
+}
+
+/*
+ * Dark, three states. The bare `:root` above is light. The media query covers the default
+ * "system" setting, guarded so an explicit light choice still wins on a dark OS; the
+ * `[data-theme="dark"]` block covers the explicit choice.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-paper: #171917;
+    --color-surface: #1e211e;
+    --color-sunk: #121412;
+
+    --color-ink: #e7e9e4;
+    --color-muted: #9ba098;
+    --color-faint: #6e736b;
+
+    --color-line: #2c302b;
+    --color-line-strong: #3d423b;
+
+    --color-accent: #8faad4;
+    --color-accent-hover: #a5bce0;
+    --color-accent-soft: #232a33;
+    --color-accent-ink: #14171c;
+
+    --color-ghost: #6e736b;
+    --color-draft: #22251f;
+
+    --color-ok: #7fae8b;
+    --color-ok-soft: #1d2620;
+    --color-warn: #c8a457;
+    --color-warn-soft: #27231a;
+    --color-danger: #d18b83;
+    --color-danger-soft: #2a1e1c;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-paper: #171917;
+  --color-surface: #1e211e;
+  --color-sunk: #121412;
+
+  --color-ink: #e7e9e4;
+  --color-muted: #9ba098;
+  --color-faint: #6e736b;
+
+  --color-line: #2c302b;
+  --color-line-strong: #3d423b;
+
+  --color-accent: #8faad4;
+  --color-accent-hover: #a5bce0;
+  --color-accent-soft: #232a33;
+  --color-accent-ink: #14171c;
+
+  --color-ghost: #6e736b;
+  --color-draft: #22251f;
+
+  --color-ok: #7fae8b;
+  --color-ok-soft: #1d2620;
+  --color-warn: #c8a457;
+  --color-warn-soft: #27231a;
+  --color-danger: #d18b83;
+  --color-danger-soft: #2a1e1c;
+
+  color-scheme: dark;
 }
 
 :root {
   color-scheme: light;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------- base ---- */
+
 body {
   @apply bg-paper text-ink font-sans antialiased;
+}
+
+/* One visible focus treatment everywhere. PRD §6.4 requires every AI action to be
+   keyboard-reachable, which is worth nothing if the focus ring cannot be seen. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/*
+ * PRD §6.4. `!important` is the point here: this has to beat any animation an individual
+ * component sets, including ones inside third-party CSS, which is the whole reason the
+ * reduced-motion reset is written this way everywhere.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Numerals line up in the usage meter, cost tables and the admin dashboards. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The uppercase micro-label used for panel and section headers. */
+.eyebrow {
+  @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-faint;
 }

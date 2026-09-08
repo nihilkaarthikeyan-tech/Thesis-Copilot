@@ -194,7 +194,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </p>
       ) : null}
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Formatting template</h2>
         <select
           value={data.template.id}
@@ -212,7 +212,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </select>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Thesis details</h2>
         <p className="mt-1 text-xs text-muted">
           Filled once. They appear on the title page, the certificate and the declaration.
@@ -265,13 +265,13 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           disabled={busy !== null}
           onClick={() => void saveDetails()}
           data-testid="save-details"
-          className="mt-3 rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="mt-3 rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
         >
           {busy === 'details' ? 'Saving…' : 'Save details'}
         </button>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">
           Formatting checks{' '}
           {compliance ? (
@@ -308,7 +308,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">Build the thesis</h2>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
@@ -325,7 +325,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
             disabled={busy !== null}
             onClick={() => void exportThesis('pdf')}
             data-testid="export-pdf"
-            className="rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
           >
             {busy === 'pdf' ? 'Building…' : 'Download PDF'}
           </button>
@@ -353,7 +353,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
               disabled={override.trim().length < 10 || busy !== null}
               onClick={() => void exportThesis('pdf')}
               data-testid="override-export"
-              className="mt-2 rounded-md bg-warn px-3 py-1 text-xs text-white disabled:opacity-50"
+              className="mt-2 rounded-md bg-warn px-3 py-1 text-xs text-paper disabled:opacity-50"
             >
               Build the PDF anyway
             </button>

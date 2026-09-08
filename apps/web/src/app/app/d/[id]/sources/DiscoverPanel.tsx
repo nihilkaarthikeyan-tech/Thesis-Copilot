@@ -149,7 +149,7 @@ export function DiscoverPanel({
           type="button"
           disabled={busy !== null || running}
           onClick={() => void start('discover')}
-          className="rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
         >
           {busy === 'discover' ? 'Starting…' : 'Discover literature'}
         </button>
@@ -230,7 +230,7 @@ export function DiscoverPanel({
               type="button"
               disabled={picked.size === 0 || busy !== null}
               onClick={() => void addSelected()}
-              className="rounded-md bg-ink px-4 py-2 text-white disabled:opacity-50"
+              className="rounded-md bg-ink px-4 py-2 text-paper disabled:opacity-50"
               data-testid="add-selected"
             >
               {busy === 'select' ? 'Adding…' : `Add ${picked.size} to the library`}
@@ -243,7 +243,7 @@ export function DiscoverPanel({
                 key={theme.name}
                 data-testid="theme"
                 data-thin={theme.thin}
-                className={`rounded-lg border p-3 ${theme.thin ? 'border-warn/50 bg-warn/5' : 'border-line bg-white'}`}
+                className={`rounded-lg border p-3 ${theme.thin ? 'border-warn/50 bg-warn/5' : 'border-line bg-surface'}`}
               >
                 <h3 className="flex items-baseline justify-between text-sm font-medium">
                   <span>{theme.name}</span>

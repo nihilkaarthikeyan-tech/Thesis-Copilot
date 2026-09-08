@@ -188,7 +188,7 @@ export function FlagsPanel({
           disabled={running}
           onClick={() => void run()}
           data-testid="run-coherence"
-          className="rounded-md bg-ink px-3 py-1 text-xs text-white disabled:opacity-50"
+          className="rounded-md bg-ink px-3 py-1 text-xs text-paper disabled:opacity-50"
         >
           {running ? (stage ? `Checking ${stage.toLowerCase()}…` : 'Checking…') : 'Check coherence'}
         </button>
@@ -212,7 +212,7 @@ export function FlagsPanel({
           <button
             type="button"
             onClick={() => setFilter(null)}
-            className={`rounded px-2 py-0.5 ${filter === null ? 'bg-ink text-white' : 'border border-line'}`}
+            className={`rounded px-2 py-0.5 ${filter === null ? 'bg-ink text-paper' : 'border border-line'}`}
           >
             All {data.counts.total ?? 0}
           </button>
@@ -222,7 +222,7 @@ export function FlagsPanel({
                 key={type}
                 type="button"
                 onClick={() => setFilter(filter === type ? null : type)}
-                className={`rounded px-2 py-0.5 ${filter === type ? 'bg-ink text-white' : 'border border-line'}`}
+                className={`rounded px-2 py-0.5 ${filter === type ? 'bg-ink text-paper' : 'border border-line'}`}
               >
                 {label} {data.counts[type]}
               </button>
@@ -249,7 +249,7 @@ export function FlagsPanel({
                   key={flag.id}
                   data-testid="flag"
                   data-type={flag.type}
-                  className={`rounded-md border bg-white p-2 text-xs ${SEVERITY_CLASS[flag.severity] ?? 'border-line'}`}
+                  className={`rounded-md border bg-surface p-2 text-xs ${SEVERITY_CLASS[flag.severity] ?? 'border-line'}`}
                 >
                   <p className="font-medium">
                     {TYPE_LABEL[flag.type] ?? flag.type}

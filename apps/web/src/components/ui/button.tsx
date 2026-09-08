@@ -4,25 +4,30 @@ import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * shadcn/ui Button (new-york style), trimmed to the variants Phase 0 uses.
- * The full shadcn set arrives with the screens that need it.
+ * The one button. Paper & Ink (docs/DESIGN.md): 3px radius, no shadow, one accent.
+ *
+ * `primary` is reserved for the single action a screen exists to perform — one per view. Anything
+ * a student might do alongside it is `secondary` or `ghost`, so the eye is never asked to choose
+ * between two equally loud controls.
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-sans font-semibold transition-colors disabled:pointer-events-none disabled:opacity-45',
   {
     variants: {
       variant: {
-        default: 'bg-accent text-accent-ink hover:bg-accent/90',
-        outline: 'border border-line bg-transparent hover:bg-ink/5',
-        ghost: 'hover:bg-ink/5',
+        primary: 'bg-accent text-accent-ink hover:bg-accent-hover',
+        secondary: 'border border-line-strong bg-surface text-ink hover:bg-sunk',
+        ghost: 'text-muted hover:bg-sunk hover:text-ink',
+        danger: 'border border-danger/40 bg-transparent text-danger hover:bg-danger-soft',
+        link: 'text-accent underline underline-offset-4 hover:text-accent-hover',
       },
       size: {
-        default: 'h-9 px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-10 rounded-md px-6',
+        sm: 'h-7 px-2.5 text-[12px]',
+        md: 'h-9 px-4 text-[13px]',
+        lg: 'h-11 px-6 text-[15px]',
       },
     },
-    defaultVariants: { variant: 'default', size: 'default' },
+    defaultVariants: { variant: 'primary', size: 'md' },
   },
 );
 

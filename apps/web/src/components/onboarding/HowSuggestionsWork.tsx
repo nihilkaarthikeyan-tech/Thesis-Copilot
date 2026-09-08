@@ -34,7 +34,7 @@ export function HowSuggestionsWork({ open, onClose }: { open: boolean; onClose: 
         aria-modal="true"
         aria-labelledby="how-title"
         data-testid="how-suggestions-work"
-        className="max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-lg border border-line bg-white p-6 text-sm shadow-lg"
+        className="max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-lg border border-line bg-surface p-6 text-sm shadow-lg"
       >
         <div className="flex items-baseline justify-between">
           <h2 id="how-title" className="font-serif text-lg">

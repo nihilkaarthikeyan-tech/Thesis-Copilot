@@ -418,7 +418,7 @@ function ChapterEditor({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-line bg-white px-4 py-2 text-sm">
+      <header className="flex items-center justify-between gap-4 border-b border-line bg-surface px-4 py-2 text-sm">
         <div className="flex min-w-0 items-baseline gap-3">
           <Link href="/app" className="text-muted hover:underline">
             Theses
@@ -545,7 +545,7 @@ function ChapterEditor({
               <li key={c.id}>
                 <Link
                   href={`/app/d/${doc.id}/write/${c.id}`}
-                  className={`block rounded px-2 py-1 ${c.id === chapter.id ? 'bg-white font-medium' : 'hover:bg-white'}`}
+                  className={`block rounded px-2 py-1 ${c.id === chapter.id ? 'bg-surface font-medium' : 'hover:bg-surface'}`}
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="truncate">
@@ -592,7 +592,7 @@ function ChapterEditor({
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
-                className={`flex-1 px-3 py-2 capitalize ${tab === t ? 'bg-white font-medium' : 'text-muted'}`}
+                className={`flex-1 px-3 py-2 capitalize ${tab === t ? 'bg-surface font-medium' : 'text-muted'}`}
               >
                 {t}
               </button>
@@ -641,7 +641,7 @@ function ChapterEditor({
       {feedbackOpen ? (
         <form
           data-testid="feedback-form"
-          className="fixed right-4 bottom-16 z-30 w-[24rem] rounded-lg border border-line bg-white p-3 shadow-lg"
+          className="fixed right-4 bottom-16 z-30 w-[24rem] rounded-lg border border-line bg-surface p-3 shadow-lg"
           onSubmit={(event) => {
             // PHASES 5.9: the admin receives the document id and the last five suggestion
             // events, never the chapter text.
@@ -686,7 +686,7 @@ function ChapterEditor({
             <button
               type="submit"
               disabled={feedbackBusy || !feedbackText.trim()}
-              className="rounded-md bg-ink px-3 py-1 text-white disabled:opacity-50"
+              className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-50"
             >
               {feedbackBusy ? 'Sending…' : 'Send'}
             </button>
@@ -713,7 +713,7 @@ function ChapterEditor({
       {process.env.NODE_ENV !== 'production' ? (
         <div
           data-testid="dev-timing"
-          className="fixed bottom-3 right-3 rounded bg-ink/85 px-3 py-2 font-mono text-[11px] text-white"
+          className="fixed bottom-3 right-3 rounded bg-ink/85 px-3 py-2 font-mono text-[11px] text-paper"
         >
           ghost: {ghost?.status ?? 'idle'} · ttfb {timing ? `${timing.ttfbMs} ms` : '–'} · latency{' '}
           {timing ? `${timing.latencyMs} ms` : '–'}

@@ -105,7 +105,7 @@ export function PathAChat({
 
   return (
     <section className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]" data-testid="path-a-chat">
-      <div className="rounded-lg border border-line bg-white">
+      <div className="rounded-lg border border-line bg-surface">
         <div className="max-h-[28rem] space-y-3 overflow-y-auto p-4" aria-live="polite">
           {view.visible.length === 0 ? (
             <p className="text-sm text-muted">
@@ -119,7 +119,7 @@ export function PathAChat({
               key={`${m.role}-${m.at}-${m.text}`}
               data-role={m.role}
               className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                m.role === 'user' ? 'ml-auto bg-ink text-white' : 'bg-paper'
+                m.role === 'user' ? 'ml-auto bg-ink text-paper' : 'bg-paper'
               }`}
             >
               {m.text}
@@ -145,7 +145,7 @@ export function PathAChat({
             <button
               type="submit"
               disabled={busy || draft.trim().length === 0}
-              className="rounded-md bg-ink px-4 text-sm text-white disabled:opacity-50"
+              className="rounded-md bg-ink px-4 text-sm text-paper disabled:opacity-50"
             >
               Send
             </button>

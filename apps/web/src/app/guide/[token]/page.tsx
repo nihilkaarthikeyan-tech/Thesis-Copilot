@@ -173,7 +173,7 @@ export default function GuidePage() {
             key={c.id}
             type="button"
             onClick={() => setChapterId(c.id)}
-            className={`rounded-md px-3 py-1 ${c.id === chapterId ? 'bg-ink text-white' : 'border border-line'}`}
+            className={`rounded-md px-3 py-1 ${c.id === chapterId ? 'bg-ink text-paper' : 'border border-line'}`}
           >
             {c.order}. {c.title}
           </button>
@@ -182,7 +182,7 @@ export default function GuidePage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <article
-          className="rounded-lg border border-line bg-white p-5"
+          className="rounded-lg border border-line bg-surface p-5"
           data-testid="guide-chapter"
           onMouseUp={() => {
             const text = window.getSelection()?.toString().trim() ?? '';
@@ -206,7 +206,7 @@ export default function GuidePage() {
         </article>
 
         <aside>
-          <section className="rounded-lg border border-line bg-white p-4">
+          <section className="rounded-lg border border-line bg-surface p-4">
             <h2 className="text-sm font-medium">Add a comment</h2>
             {selection ? (
               <p className="mt-2 rounded border-l-2 border-accent bg-paper px-2 py-1 text-xs text-muted">
@@ -232,7 +232,7 @@ export default function GuidePage() {
               disabled={busy || body.trim().length === 0}
               onClick={() => void submit()}
               data-testid="add-comment"
-              className="mt-2 w-full rounded-md bg-ink px-3 py-2 text-sm text-white disabled:opacity-50 sm:w-auto"
+              className="mt-2 w-full rounded-md bg-ink px-3 py-2 text-sm text-paper disabled:opacity-50 sm:w-auto"
             >
               {busy ? 'Saving…' : 'Add comment'}
             </button>
@@ -249,7 +249,7 @@ export default function GuidePage() {
                 {mine.map((comment) => (
                   <li
                     key={comment.id}
-                    className="rounded-md border border-line bg-white p-2 text-xs"
+                    className="rounded-md border border-line bg-surface p-2 text-xs"
                   >
                     {comment.quotedText ? (
                       <p className="border-l-2 border-line pl-2 text-muted">

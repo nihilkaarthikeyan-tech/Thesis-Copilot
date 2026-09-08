@@ -137,7 +137,10 @@ export default function AccountPage() {
         </p>
       ) : null}
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4" data-testid="plan-card">
+      <section
+        className="mt-6 rounded-lg border border-line bg-surface p-4"
+        data-testid="plan-card"
+      >
         <p className="text-xs text-muted">Your plan</p>
         <p className="mt-1 text-lg">{PLAN_LABEL[billing?.plan ?? ''] ?? billing?.plan ?? '…'}</p>
         {billing?.currentPeriodEnd && billing.status !== null ? (
@@ -165,7 +168,7 @@ export default function AccountPage() {
                   disabled={busy}
                   onClick={() => void cancel()}
                   data-testid="confirm-cancel"
-                  className="rounded-md bg-warn px-4 py-2 text-sm text-white disabled:opacity-50"
+                  className="rounded-md bg-warn px-4 py-2 text-sm text-paper disabled:opacity-50"
                 >
                   {busy ? 'Cancelling…' : 'Yes, cancel'}
                 </button>
@@ -202,7 +205,7 @@ export default function AccountPage() {
           ) : null}
           <ul className="mt-3 space-y-3">
             {billing.plans.map((plan) => (
-              <li key={plan.plan} className="rounded-lg border border-line bg-white p-4">
+              <li key={plan.plan} className="rounded-lg border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-medium">{PLAN_LABEL[plan.plan] ?? plan.plan}</p>
                   <p className="text-lg">
@@ -217,7 +220,7 @@ export default function AccountPage() {
                   type="button"
                   disabled={busy || billing.unavailableReason !== null}
                   onClick={() => void subscribe(plan.plan)}
-                  className="mt-3 w-full rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50 sm:w-auto"
+                  className="mt-3 w-full rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50 sm:w-auto"
                 >
                   Choose {PLAN_LABEL[plan.plan] ?? plan.plan}
                 </button>
@@ -234,7 +237,7 @@ export default function AccountPage() {
         </section>
       ) : null}
 
-      <section className="mt-6 rounded-lg border border-line bg-white p-4">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-medium">This month</h2>
         {usage ? (
           <>
@@ -272,7 +275,7 @@ export default function AccountPage() {
       </section>
 
       {invoices.length > 0 ? (
-        <section className="mt-6 rounded-lg border border-line bg-white p-4">
+        <section className="mt-6 rounded-lg border border-line bg-surface p-4">
           <h2 className="text-sm font-medium">Invoices</h2>
           <ul className="mt-2 space-y-1 text-sm" data-testid="invoices">
             {invoices.map((invoice) => (

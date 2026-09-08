@@ -99,7 +99,7 @@ export function CitationsPanel({
         disabled={busy || !data}
         value={data?.style ?? ''}
         onChange={(e) => void switchStyle(e.target.value)}
-        className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-sm"
+        className="mt-1 w-full rounded-md border border-line bg-surface px-2 py-1 text-sm"
       >
         {(data?.styles ?? []).map((s) => (
           <option key={s.id} value={s.id}>
@@ -138,7 +138,7 @@ export function CitationsPanel({
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`rounded px-2 py-1 ${tab === key ? 'bg-ink text-white' : 'border border-line'}`}
+            className={`rounded px-2 py-1 ${tab === key ? 'bg-ink text-paper' : 'border border-line'}`}
           >
             {label}
           </button>
@@ -168,7 +168,7 @@ export function CitationsPanel({
             {data.findings.map((finding) => (
               <li
                 key={`${finding.kind}-${finding.chapterId ?? ''}-${finding.from ?? finding.text ?? finding.message}`}
-                className="rounded-md border border-line bg-white p-2"
+                className="rounded-md border border-line bg-surface p-2"
               >
                 <p className="font-medium">{KIND_LABEL[finding.kind] ?? finding.kind}</p>
                 <p className="mt-1 text-muted">{finding.message}</p>
@@ -282,7 +282,7 @@ function PasteParse({ documentId, onAdded }: { documentId: string; onAdded: () =
         type="button"
         disabled={busy || text.trim().length < 4}
         onClick={() => void parse()}
-        className="mt-1 rounded-md bg-ink px-3 py-1 text-xs text-white disabled:opacity-50"
+        className="mt-1 rounded-md bg-ink px-3 py-1 text-xs text-paper disabled:opacity-50"
       >
         {busy ? 'Checking…' : 'Check'}
       </button>
@@ -298,7 +298,7 @@ function PasteParse({ documentId, onAdded }: { documentId: string; onAdded: () =
           {outcomes.map((outcome) => (
             <li
               key={outcome.raw}
-              className={`rounded-md border p-2 ${outcome.verified ? 'border-line bg-white' : 'border-warn/50 bg-warn/5'}`}
+              className={`rounded-md border p-2 ${outcome.verified ? 'border-line bg-surface' : 'border-warn/50 bg-warn/5'}`}
             >
               <p className="text-muted">{outcome.raw}</p>
               {outcome.verified && outcome.match ? (

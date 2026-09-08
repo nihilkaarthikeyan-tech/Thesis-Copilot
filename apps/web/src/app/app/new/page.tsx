@@ -72,7 +72,7 @@ export default function NewThesisPage() {
             <label
               key={path.value}
               className={`block cursor-pointer rounded-lg border p-4 ${
-                entryPath === path.value ? 'border-ink bg-white' : 'border-line bg-paper'
+                entryPath === path.value ? 'border-ink bg-surface' : 'border-line bg-paper'
               }`}
             >
               <span className="flex items-start gap-3">
@@ -93,7 +93,7 @@ export default function NewThesisPage() {
           ))}
         </fieldset>
 
-        <div className="rounded-lg border border-line bg-white p-4">
+        <div className="rounded-lg border border-line bg-surface p-4">
           <label className="text-sm" htmlFor="title">
             Working title
           </label>

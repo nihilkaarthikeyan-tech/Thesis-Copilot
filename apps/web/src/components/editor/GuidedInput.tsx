@@ -59,7 +59,7 @@ export function useGuidedInput(): { controller: GuidedController; element: React
   const element = pending ? (
     <form
       data-testid="guided-input"
-      className="fixed bottom-20 left-1/2 z-30 w-[28rem] -translate-x-1/2 rounded-lg border border-line bg-white p-3 shadow-lg"
+      className="fixed bottom-20 left-1/2 z-30 w-[28rem] -translate-x-1/2 rounded-lg border border-line bg-surface p-3 shadow-lg"
       onSubmit={(event) => {
         event.preventDefault();
         finish(value.trim() || null);

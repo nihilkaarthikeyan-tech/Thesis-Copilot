@@ -154,7 +154,7 @@ export function CommandToolbar({
   return (
     <aside
       data-testid="command-toolbar"
-      className="fixed bottom-4 left-1/2 z-30 w-[36rem] max-w-[92vw] -translate-x-1/2 rounded-lg border border-line bg-white p-3 shadow-lg"
+      className="fixed bottom-4 left-1/2 z-30 w-[36rem] max-w-[92vw] -translate-x-1/2 rounded-lg border border-line bg-surface p-3 shadow-lg"
     >
       {result ? (
         <>
@@ -199,7 +199,7 @@ export function CommandToolbar({
               type="button"
               onClick={apply}
               disabled={result.unchanged}
-              className="rounded-md bg-ink px-3 py-1 text-white disabled:opacity-40"
+              className="rounded-md bg-ink px-3 py-1 text-paper disabled:opacity-40"
               data-testid="command-apply"
             >
               Apply

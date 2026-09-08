@@ -116,7 +116,7 @@ export default function AdminUserPage() {
           </p>
 
           <section className="mt-8 grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-line bg-white p-4 text-sm">
+            <div className="rounded-lg border border-line bg-surface p-4 text-sm">
               <p className="text-xs text-muted">This month</p>
               <ul className="mt-2 space-y-1" data-testid="user-usage">
                 {user.usage
@@ -148,7 +148,7 @@ export default function AdminUserPage() {
               </button>
             </div>
 
-            <div className="rounded-lg border border-line bg-white p-4 text-sm">
+            <div className="rounded-lg border border-line bg-surface p-4 text-sm">
               <p className="text-xs text-muted">Plan</p>
               <p className="mt-2 font-mono">{user.plan}</p>
               <label className="mt-3 block text-xs text-muted" htmlFor="plan">
@@ -175,7 +175,7 @@ export default function AdminUserPage() {
             {user.documentList.length === 0 ? (
               <p className="mt-2 text-sm text-muted">None yet.</p>
             ) : (
-              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white text-sm">
+              <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface text-sm">
                 {user.documentList.map((d) => (
                   <li key={d.id} className="flex justify-between px-4 py-2">
                     <span>{d.title}</span>
@@ -194,7 +194,7 @@ export default function AdminUserPage() {
               <p className="mt-2 text-sm text-muted">Nothing logged.</p>
             ) : (
               <ul
-                className="mt-2 divide-y divide-line rounded-lg border border-line bg-white text-sm"
+                className="mt-2 divide-y divide-line rounded-lg border border-line bg-surface text-sm"
                 data-testid="user-events"
               >
                 {user.recentEvents.map((e) => (

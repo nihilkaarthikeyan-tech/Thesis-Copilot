@@ -285,7 +285,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
-                className={`rounded-md px-3 py-1 ${filter === key ? 'bg-ink text-white' : 'border border-line hover:bg-paper'}`}
+                className={`rounded-md px-3 py-1 ${filter === key ? 'bg-ink text-paper' : 'border border-line hover:bg-paper'}`}
               >
                 {label}
               </button>
@@ -450,11 +450,11 @@ function SourceRow({
           <input
             aria-label="DOI"
             placeholder="10.1016/j.enpol.2021.112121"
-            className="flex-1 rounded-md border border-line bg-white px-3 py-1.5 text-sm"
+            className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm"
             value={doi}
             onChange={(e) => setDoi(e.target.value)}
           />
-          <button type="submit" className="rounded-md bg-ink px-3 py-1.5 text-sm text-white">
+          <button type="submit" className="rounded-md bg-ink px-3 py-1.5 text-sm text-paper">
             Look it up
           </button>
         </form>

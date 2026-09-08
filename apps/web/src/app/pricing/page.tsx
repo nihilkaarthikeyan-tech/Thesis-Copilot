@@ -47,7 +47,7 @@ export default function PricingPage() {
 
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         {PLANS.map((plan) => (
-          <div key={plan} className="rounded-lg border border-line bg-white p-4">
+          <div key={plan} className="rounded-lg border border-line bg-surface p-4">
             <p className="font-medium">{PLAN_LABEL[plan]}</p>
             <p className="mt-1 text-2xl">
               ₹{PRICING[plan].priceInr}
@@ -69,7 +69,7 @@ export default function PricingPage() {
         These are the real limits the software enforces, not marketing numbers. An action counts
         when the AI generates something, whether you keep it or throw it away.
       </p>
-      <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-muted">
             <tr>
@@ -180,7 +180,7 @@ export default function PricingPage() {
       </dl>
 
       <p className="mt-10">
-        <Link href="/sign-in" className="rounded-md bg-ink px-4 py-2 text-white">
+        <Link href="/sign-in" className="rounded-md bg-ink px-4 py-2 text-paper">
           Start the free trial
         </Link>
       </p>
