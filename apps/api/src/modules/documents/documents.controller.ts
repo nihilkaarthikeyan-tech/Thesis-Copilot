@@ -18,6 +18,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
+import { NextActionService } from './next-action.service.js';
 
 const languageBody = z.object({
   language: z
@@ -88,7 +89,10 @@ function toSummary(d: SummaryRow): DocumentSummary {
 @Controller('documents')
 @UseGuards(SessionGuard)
 export class DocumentsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly nextActionService: NextActionService,
+  ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
   @Get()
@@ -168,6 +172,15 @@ export class DocumentsController {
   }
 
   /** PRD §9.1: document + memory + chapters (meta). */
+  /**
+   * FR-none: not a PRD requirement, but the answer to the question a student actually opens the
+   * app with. Free — no model call, only counts already in the database.
+   */
+  @Get(':id/next-action')
+  async nextAction(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.nextActionService.forDocument(id, user.id);
+  }
+
   @Get(':id')
   async get(@CurrentUser() user: SessionUser, @Param('id') id: string): Promise<DocumentDetail> {
     const document = await this.prisma.document.findFirst({

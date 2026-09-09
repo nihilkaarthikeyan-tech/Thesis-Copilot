@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
@@ -268,6 +269,9 @@ export default function DocumentListPage() {
                             </Link>
                           ))}
                         </nav>
+                      </div>
+                      <div className="border-t border-line px-4 py-2">
+                        <NextAction documentId={d.id} compact />
                       </div>
                     </Card>
                   </li>
