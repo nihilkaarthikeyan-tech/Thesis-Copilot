@@ -390,11 +390,17 @@ model AiCallLog {
  */
 model AuditEvent {
   id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  kind       String   // CAP_EXCEEDED | CAPS_RESET | PLAN_CHANGED | FEEDBACK
+  kind       String   // CAP_EXCEEDED | CAPS_RESET | PLAN_CHANGED | FEEDBACK | BILLING_EVENT
   userId     String   @db.Uuid   // the subject
   actorId    String?  @db.Uuid   // who did it, when not the subject (an admin)
   documentId String?  @db.Uuid
   detail     Json?
+  /**
+   * Idempotency key for events that arrive from outside and may arrive twice — today only
+   * Razorpay webhooks, as `billing:<providerEventId>`. Unique, so a duplicate is refused by the
+   * database rather than by a read that another request can race. Null for everything else.
+   */
+  dedupeKey  String?  @unique
   createdAt  DateTime @default(now())
   @@index([kind, createdAt])
   @@index([userId, createdAt])

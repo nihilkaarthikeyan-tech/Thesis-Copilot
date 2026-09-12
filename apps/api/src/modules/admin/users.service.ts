@@ -30,6 +30,17 @@ export type UserRow = {
   usage: Array<{ action: AiAction; used: number; cap: number }>;
 };
 
+export type UserPage = {
+  rows: UserRow[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/** A page nobody asked to size. Large enough to be one screen, small enough to be one query. */
+export const USERS_PAGE_SIZE = 50;
+export const USERS_MAX_PAGE_SIZE = 200;
+
 export type UserDetail = UserRow & {
   documentList: Array<{ id: string; title: string; updatedAt: Date; chapters: number }>;
   capExceeded: number;
@@ -40,31 +51,63 @@ export type UserDetail = UserRow & {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Every user, most recently active first, with this period's usage and cost. */
-  async list(now: Date = new Date()): Promise<UserRow[]> {
+  /**
+   * One page of users, newest first, with this period's usage and cost.
+   *
+   * Paginated because this is the one list in the product that grows with the platform rather
+   * than with one student's work: unbounded, it is a full table scan plus three platform-wide
+   * aggregates on every visit to `/admin/users`.
+   *
+   * Ordered by `createdAt` rather than by last activity. Activity is derived from aggregates over
+   * two other tables and cannot be a database sort key without denormalising it, and ordering a
+   * *page* by something the database did not order by would show a different set of users
+   * depending on which page you were on. It is still a column; it is no longer the sort.
+   */
+  async list(
+    options: { limit?: number; offset?: number } = {},
+    now: Date = new Date(),
+  ): Promise<UserPage> {
+    const limit = Math.min(Math.max(options.limit ?? USERS_PAGE_SIZE, 1), USERS_MAX_PAGE_SIZE);
+    const offset = Math.max(options.offset ?? 0, 0);
     const period = periodFor(now);
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const users = await this.prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        plan: true,
-        createdAt: true,
-        _count: { select: { documents: true } },
-        usage: { where: { period }, select: { action: true, count: true } },
-      },
-    });
+    const [total, users] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          plan: true,
+          createdAt: true,
+          _count: { select: { documents: true } },
+          usage: { where: { period }, select: { action: true, count: true } },
+        },
+      }),
+    ]);
 
+    // Scoped to the page's users, so these do not scan the whole platform either.
+    const ids = users.map((u) => u.id);
     const [costs, lastCalls, lastEvents] = await Promise.all([
       this.prisma.aiCallLog.groupBy({
         by: ['userId'],
-        where: { createdAt: { gte: from } },
+        where: { userId: { in: ids }, createdAt: { gte: from } },
         _sum: { costMicroInr: true },
       }),
-      this.prisma.aiCallLog.groupBy({ by: ['userId'], _max: { createdAt: true } }),
-      this.prisma.suggestionEvent.groupBy({ by: ['userId'], _max: { createdAt: true } }),
+      this.prisma.aiCallLog.groupBy({
+        by: ['userId'],
+        where: { userId: { in: ids } },
+        _max: { createdAt: true },
+      }),
+      this.prisma.suggestionEvent.groupBy({
+        by: ['userId'],
+        where: { userId: { in: ids } },
+        _max: { createdAt: true },
+      }),
     ]);
     const costByUser = new Map(costs.map((c) => [c.userId, c._sum.costMicroInr ?? 0n]));
     const lastByUser = new Map<string, Date>();
@@ -87,15 +130,61 @@ export class UsersService {
       costInr: toInr(costByUser.get(u.id) ?? 0n),
       usage: usageWithCaps(u.plan, u.usage),
     }));
-    return rows.sort((a, b) => (b.lastActiveAt?.getTime() ?? 0) - (a.lastActiveAt?.getTime() ?? 0));
+    return { rows, total, limit, offset };
   }
 
+  /**
+   * One user in full.
+   *
+   * This used to call `list()` and pick the row out of it, which meant reading every user on the
+   * platform and three platform-wide aggregates to answer a question about one of them. It asks
+   * about the one now.
+   */
   async get(userId: string, now: Date = new Date()): Promise<UserDetail> {
-    const rows = await this.list(now);
-    const row = rows.find((r) => r.id === userId);
-    if (!row) throw new NotFoundError('That user');
-
+    const period = periodFor(now);
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        plan: true,
+        createdAt: true,
+        _count: { select: { documents: true } },
+        usage: { where: { period }, select: { action: true, count: true } },
+      },
+    });
+    if (!user) throw new NotFoundError('That user');
+
+    const [cost, lastCall, lastEvent] = await Promise.all([
+      this.prisma.aiCallLog.aggregate({
+        where: { userId, createdAt: { gte: from } },
+        _sum: { costMicroInr: true },
+      }),
+      this.prisma.aiCallLog.aggregate({ where: { userId }, _max: { createdAt: true } }),
+      this.prisma.suggestionEvent.aggregate({ where: { userId }, _max: { createdAt: true } }),
+    ]);
+    const activity = [lastCall._max.createdAt, lastEvent._max.createdAt].filter(
+      (d): d is Date => d !== null,
+    );
+    const row: UserRow = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      plan: user.plan,
+      createdAt: user.createdAt,
+      lastActiveAt: activity.length
+        ? new Date(Math.max(...activity.map((d) => d.getTime())))
+        : null,
+      documents: user._count.documents,
+      costInr: toInr(cost._sum.costMicroInr ?? 0n),
+      usage: usageWithCaps(user.plan, user.usage),
+    };
+
     const [documents, capExceeded, recentEvents] = await Promise.all([
       this.prisma.document.findMany({
         where: { ownerId: userId },

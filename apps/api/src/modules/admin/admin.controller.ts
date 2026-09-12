@@ -6,7 +6,17 @@
  * SUPERADMIN-only.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { computeMonthlyBudget, PLANS } from '@tc/config';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
@@ -18,6 +28,12 @@ import { AlertsService } from './alerts.service.js';
 import { FeedbackService } from './feedback.service.js';
 import { SuperadminGuard } from './superadmin.guard.js';
 import { UsersService } from './users.service.js';
+
+/** Query strings are always strings; coerce and bound them here rather than trusting them. */
+const usersQuery = z.object({
+  limit: z.coerce.number().int().positive().max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
 
 const flagBody = z.object({ enabled: z.boolean() });
 const planBody = z.object({ plan: z.enum(PLANS) });
@@ -36,11 +52,13 @@ export class AdminController {
     private readonly users: UsersService,
   ) {}
 
-  /** PHASES 5.9: every pilot student's usage on one screen. */
+  /** PHASES 5.9: every pilot student's usage on one screen — a page at a time. */
   @Get('users')
   @UseGuards(SessionGuard, SuperadminGuard)
-  listUsers() {
-    return this.users.list();
+  listUsers(@Query('limit') limit?: string, @Query('offset') offset?: string) {
+    const parsed = usersQuery.safeParse({ limit, offset });
+    if (!parsed.success) throw new ValidationError('limit and offset must be whole numbers.');
+    return this.users.list(parsed.data);
   }
 
   @Get('users/:id')

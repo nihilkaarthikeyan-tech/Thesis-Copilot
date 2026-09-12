@@ -49,17 +49,18 @@ function post(
 const event = (
   name: string,
   over: {
-    id?: string;
     status?: string;
     current_end?: number | null;
     current_start?: number | null;
+    /** Override the subscription this event is about, to test one the API does not know. */
+    subId?: string;
   } = {},
 ) => ({
   event: name,
   payload: {
     subscription: {
       entity: {
-        id: over.id ?? subId,
+        id: over.subId ?? subId,
         status: over.status ?? 'active',
         plan_id: 'plan_test',
         current_start: over.current_start ?? 1_780_000_000,
@@ -223,11 +224,76 @@ describe('applying an event', () => {
   });
 });
 
+type WebhookResult = { ok?: boolean; applied?: boolean; reason?: string };
+
+/**
+ * The idempotency key the controller synthesises. Razorpay has no per-delivery event id in every
+ * API version, so a state change is identified by which subscription, which event and which period
+ * it concerns — which is a better key than a delivery id anyway: two deliveries of one charge
+ * dedupe, and a genuinely new period does not.
+ */
+const keyFor = (sub: string, name: string, periodStart: number) =>
+  `billing:${sub}:${name}:${periodStart}`;
+
+describe('two copies of one event arriving at once', () => {
+  /**
+   * The case the sequential duplicate test above cannot reach.
+   *
+   * Razorpay retries until it gets a 2xx, so a slow first attempt overlapping its own retry is
+   * ordinary rather than rare. The dedupe used to be a read followed by a write, with the
+   * subscription updated in between — both requests passed the read and both extended the paid
+   * period. It is one transaction now, marker first, and the marker's key is unique, so the
+   * database picks the winner.
+   */
+  it('applies exactly one and gives away no extra time', async () => {
+    const periodStart = 1_899_000_000;
+    const periodEnd = 1_900_000_000;
+    const body = event('subscription.charged', {
+      current_start: periodStart,
+      current_end: periodEnd,
+    });
+
+    const [a, b] = await Promise.all([post(body), post(body)]);
+    const results = (await Promise.all([a.json(), b.json()])) as WebhookResult[];
+
+    expect(results.filter((r) => r.applied === true)).toHaveLength(1);
+    const refused = results.filter((r) => r.applied === false);
+    expect(refused).toHaveLength(1);
+    expect(refused[0]?.reason).toBe('duplicate');
+
+    // Both are 200: a duplicate is a correct outcome, and a non-2xx would make Razorpay retry an
+    // event that has already been applied.
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+
+    // The period moved once, not twice — the whole point.
+    expect((await subscription()).currentPeriodEnd.toISOString()).toBe(
+      new Date(periodEnd * 1000).toISOString(),
+    );
+
+    const key = keyFor(subId, 'subscription.charged', periodStart);
+    expect(await h.prisma.auditEvent.count({ where: { dedupeKey: key } })).toBe(1);
+  });
+
+  it('leaves no marker behind for an event it refused', async () => {
+    // Refused before the transaction opens, so nothing is written that would later make a real
+    // event for this period look already-applied.
+    const periodStart = 1_899_500_000;
+    const response = await post(
+      event('subscription.charged', { subId: 'sub_does_not_exist', current_start: periodStart }),
+    );
+
+    expect((await response.json()) as WebhookResult).toMatchObject({ applied: false });
+    const key = keyFor('sub_does_not_exist', 'subscription.charged', periodStart);
+    expect(await h.prisma.auditEvent.count({ where: { dedupeKey: key } })).toBe(0);
+  });
+});
+
 describe('what it will not act on', () => {
   it('answers 200 and says why, rather than making Razorpay retry for ever', async () => {
     // A non-2xx is a request to send this again. There is nothing to be gained by re-receiving an
     // event about a subscription we do not have.
-    const response = await post(event('subscription.charged', { id: 'sub_not_ours' }));
+    const response = await post(event('subscription.charged', { subId: 'sub_not_ours' }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       applied: false,

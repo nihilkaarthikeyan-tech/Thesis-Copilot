@@ -54,19 +54,41 @@ afterAll(async () => {
 });
 
 describe('GET /admin/users', () => {
+  it('bounds the page and reports the total, so the list cannot grow unbounded', async () => {
+    const response = await h.api('/admin/users?limit=1&offset=0');
+    const page = (await response.json()) as { rows: unknown[]; total: number; limit: number };
+    expect(page.rows).toHaveLength(1);
+    expect(page.limit).toBe(1);
+    // The total counts everyone, which is what makes a bounded page honest.
+    expect(page.total).toBeGreaterThanOrEqual(2);
+  });
+
+  it('refuses a limit that is not a number rather than silently ignoring it', async () => {
+    expect((await h.api('/admin/users?limit=all')).status).toBe(400);
+  });
+
   it('lists every account with this month’s usage against caps, cost and last activity', async () => {
     const response = await h.api('/admin/users');
     expect(response.status).toBe(200);
-    const rows = (await response.json()) as Array<{
-      id: string;
-      email: string;
-      plan: string;
-      documents: number;
-      costInr: number;
-      lastActiveAt: string | null;
-      usage: Array<{ action: string; used: number; cap: number }>;
-    }>;
-    const student = rows.find((r) => r.id === studentId);
+    // A page, not an array: this list grows with the platform, so it is paginated (newest first)
+    // and reports the total alongside the rows.
+    const page = (await response.json()) as {
+      total: number;
+      limit: number;
+      offset: number;
+      rows: Array<{
+        id: string;
+        email: string;
+        plan: string;
+        documents: number;
+        costInr: number;
+        lastActiveAt: string | null;
+        usage: Array<{ action: string; used: number; cap: number }>;
+      }>;
+    };
+    expect(page.total).toBeGreaterThanOrEqual(page.rows.length);
+    expect(page.limit).toBeGreaterThan(0);
+    const student = page.rows.find((r) => r.id === studentId);
     expect(student).toMatchObject({
       email: 'pilot-student@example.com',
       plan: 'FREE_TRIAL',
@@ -146,12 +168,11 @@ describe('PUT /admin/users/:id/plan', () => {
     expect(audit?.detail).toEqual({ from: 'FREE_TRIAL', to: 'STUDENT_MONTHLY' });
 
     // The list now shows STUDENT_MONTHLY caps.
-    const rows = (await (await h.api('/admin/users')).json()) as Array<{
-      id: string;
-      usage: Array<{ action: string; cap: number }>;
-    }>;
+    const page = (await (await h.api('/admin/users')).json()) as {
+      rows: Array<{ id: string; usage: Array<{ action: string; cap: number }> }>;
+    };
     expect(
-      rows.find((r) => r.id === studentId)?.usage.find((u) => u.action === 'ASSIST')?.cap,
+      page.rows.find((r) => r.id === studentId)?.usage.find((u) => u.action === 'ASSIST')?.cap,
     ).toBe(capFor('STUDENT_MONTHLY', 'ASSIST'));
   });
 

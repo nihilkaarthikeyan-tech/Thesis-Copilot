@@ -22,6 +22,7 @@ import {
   PRICING,
   type PurchasablePlan,
 } from '@tc/config';
+import { Prisma } from '@tc/db';
 import Razorpay from 'razorpay';
 import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
@@ -52,6 +53,16 @@ export type CheckoutHandle = {
   amountPaise: number;
   currency: string;
 };
+
+/**
+ * Whether a Prisma error is a unique-constraint violation.
+ *
+ * P2002 is the only code that means "a row with this key already exists", which for a webhook is
+ * not a failure but the correct answer: someone got there first.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
 
 @Injectable()
 export class BillingService {
@@ -204,8 +215,17 @@ export class BillingService {
    * One Razorpay webhook event, applied once.
    *
    * The signature is checked by the controller before this is called. `providerEventId` is the
-   * idempotency key: the row is written first, and a duplicate event fails the unique constraint
-   * and is skipped, so a retried `charged` cannot extend a period twice.
+   * idempotency key, carried on `AuditEvent.dedupeKey`, which is unique.
+   *
+   * The marker and the subscription change go in **one transaction, marker first**. The previous
+   * version read for an existing marker and then acted, which two concurrent retries can both
+   * pass — and it updated the subscription *before* writing the marker, so both would extend the
+   * paid period. Razorpay retries until it gets a 2xx, so a slow first attempt and its retry
+   * overlapping is the ordinary case, not a rare one.
+   *
+   * Doing it in a transaction rather than writing the marker alone up front matters too: if the
+   * update fails, the marker rolls back with it, so a genuine retry is still applied instead of
+   * being skipped as a duplicate of an event that never took effect.
    */
   async applyEvent(event: {
     id: string;
@@ -224,19 +244,6 @@ export class BillingService {
     });
     if (!subscription) return { applied: false, reason: 'unknown subscription' };
 
-    // Idempotency: Razorpay retries until it gets a 2xx, so the same `charged` can arrive three
-    // times. An event already recorded for this user is a no-op — without this the third copy
-    // would push the period end forward twice more than the student paid for.
-    const seen = await this.prisma.auditEvent.findFirst({
-      where: {
-        userId: subscription.userId,
-        kind: 'BILLING_EVENT',
-        detail: { path: ['providerEventId'], equals: event.id },
-      },
-      select: { id: true },
-    });
-    if (seen) return { applied: false, reason: 'duplicate' };
-
     // Every event Razorpay sends about a subscription maps onto one of the four states we store.
     const status = STATUS_BY_EVENT[event.event] ?? statusFrom(event.subscription.status);
     if (!status) return { applied: false, reason: `unhandled event ${event.event}` };
@@ -245,40 +252,44 @@ export class BillingService {
       ? new Date(event.subscription.current_end * 1000)
       : subscription.currentPeriodEnd;
 
-    await this.prisma.subscription.update({
-      where: { userId: subscription.userId },
-      data: {
-        status,
-        currentPeriodEnd: periodEnd,
-        ...(status === 'cancelled' ? { cancelAtPeriodEnd: true } : {}),
-      },
-    });
-
-    // The plan on `User` is what the cap check reads, so it follows the subscription.
-    await this.prisma.user.update({
-      where: { id: subscription.userId },
-      data: {
-        plan: effectivePlan({
-          plan: subscription.plan,
-          status,
-          currentPeriodEnd: periodEnd,
+    try {
+      await this.prisma.$transaction([
+        // First, so a concurrent duplicate loses here and nothing after it runs.
+        this.prisma.auditEvent.create({
+          data: {
+            kind: 'BILLING_EVENT',
+            userId: subscription.userId,
+            dedupeKey: `billing:${event.id}`,
+            detail: {
+              providerEventId: event.id,
+              event: event.event,
+              subId: event.subscription.id,
+              status,
+              periodEnd: periodEnd.toISOString(),
+            },
+          },
         }),
-      },
-    });
-
-    await this.prisma.auditEvent.create({
-      data: {
-        kind: 'BILLING_EVENT',
-        userId: subscription.userId,
-        detail: {
-          providerEventId: event.id,
-          event: event.event,
-          subId: event.subscription.id,
-          status,
-          periodEnd: periodEnd.toISOString(),
-        },
-      },
-    });
+        this.prisma.subscription.update({
+          where: { userId: subscription.userId },
+          data: {
+            status,
+            currentPeriodEnd: periodEnd,
+            ...(status === 'cancelled' ? { cancelAtPeriodEnd: true } : {}),
+          },
+        }),
+        // The plan on `User` is what the cap check reads, so it follows the subscription.
+        this.prisma.user.update({
+          where: { id: subscription.userId },
+          data: {
+            plan: effectivePlan({ plan: subscription.plan, status, currentPeriodEnd: periodEnd }),
+          },
+        }),
+      ]);
+    } catch (error) {
+      // P2002 is the unique violation on `dedupeKey`: this event has already been applied.
+      if (isUniqueViolation(error)) return { applied: false, reason: 'duplicate' };
+      throw error;
+    }
 
     this.logger.log(
       { event: event.event, userId: subscription.userId, status },
