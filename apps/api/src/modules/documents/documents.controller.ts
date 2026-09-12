@@ -19,6 +19,7 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { NextActionService } from './next-action.service.js';
+import { ProgressService } from './progress.service.js';
 
 const languageBody = z.object({
   language: z
@@ -92,6 +93,7 @@ export class DocumentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly nextActionService: NextActionService,
+    private readonly progressService: ProgressService,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -179,6 +181,15 @@ export class DocumentsController {
   @Get(':id/next-action')
   async nextAction(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.nextActionService.forDocument(id, user.id);
+  }
+
+  /**
+   * How the thesis is going, as against the usage meter's how-much-AI-is-left. Also free: word
+   * counts and provenance are written on every save, so this is a read and some arithmetic.
+   */
+  @Get(':id/progress')
+  async progress(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.progressService.forDocument(id, user.id);
   }
 
   @Get(':id')

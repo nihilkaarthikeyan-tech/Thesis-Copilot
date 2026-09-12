@@ -15,6 +15,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NextAction } from '@/components/NextAction';
+import { Progress } from '@/components/Progress';
 import { ApiError, api } from '@/lib/api';
 
 type Node = {
@@ -334,6 +336,9 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
         This tree is what every suggestion reads: the chapter you are in, its scope note, and its
         neighbours. Edit it freely — a rename here is the title the AI sees next.
       </p>
+
+      <NextAction documentId={documentId} className="mt-6" />
+      <Progress documentId={documentId} className="mt-4" />
 
       <div className="mt-6 flex border-b border-line text-sm">
         {(

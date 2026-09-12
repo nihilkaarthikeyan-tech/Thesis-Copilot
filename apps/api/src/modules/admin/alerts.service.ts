@@ -20,14 +20,29 @@ import { PrismaService } from '../../common/prisma.service.js';
 
 /** §11.5 and §14 thresholds. Named so a test reads the same number the code does. */
 export const ALERT = {
+  /**
+   * §11.5's figure, and deliberately above the ₹100 ceiling: reaching it means the runtime ceiling
+   * in `UsageService` did not hold, which is a fault in the metering rather than a heavy user.
+   */
   userCostInr: 120,
+  /**
+   * A second, quieter threshold below the ceiling. ₹120 only ever fires once something has already
+   * gone wrong; this one fires while there is still something to do about it — a user at ₹85 is on
+   * course to be refused before the month ends, and that is worth knowing then rather than after.
+   */
+  userApproachingInr: 85,
   platformAverageInr: 90,
   jobFailureRate: 0.05,
   ttfbP95Ms: 900,
   windowMinutes: 15,
 } as const;
 
-export type AlertKind = 'USER_COST' | 'PLATFORM_AVERAGE' | 'JOB_FAILURES' | 'TTFB_P95';
+export type AlertKind =
+  | 'USER_COST'
+  | 'USER_APPROACHING'
+  | 'PLATFORM_AVERAGE'
+  | 'JOB_FAILURES'
+  | 'TTFB_P95';
 
 export type Breach = { kind: AlertKind; detail: string; value: number; threshold: number };
 
@@ -96,9 +111,17 @@ export class AlertsService {
     if (worst.inr > ALERT.userCostInr) {
       out.push({
         kind: 'USER_COST',
-        detail: `user ${worst.userId} has spent INR ${worst.inr.toFixed(2)} this month`,
+        detail: `user ${worst.userId} has spent INR ${worst.inr.toFixed(2)} this month, past the ₹100 ceiling`,
         value: Math.round(worst.inr * 100) / 100,
         threshold: ALERT.userCostInr,
+      });
+    } else if (worst.inr > ALERT.userApproachingInr) {
+      // Only when the louder one has not fired: two emails about the same user say nothing extra.
+      out.push({
+        kind: 'USER_APPROACHING',
+        detail: `user ${worst.userId} has spent INR ${worst.inr.toFixed(2)} of the ₹100 ceiling this month`,
+        value: Math.round(worst.inr * 100) / 100,
+        threshold: ALERT.userApproachingInr,
       });
     }
 

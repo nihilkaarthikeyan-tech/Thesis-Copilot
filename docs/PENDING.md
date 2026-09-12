@@ -228,16 +228,14 @@ Three things decide whether the projection holds.
       the cached case is still unproven. A full chapter with six pinned passages is the case that
       matters, and it is only reachable with the fixture papers.
 
-- [ ] **Decide whether to add a hard stop at ₹100 of actual spend.** Caps are a proxy for cost, not
-      a measure of it. A per-user month-to-date ceiling that refuses metered actions at ₹100
-      regardless of remaining caps is the only thing that *guarantees* the number. It is maybe half
-      a day's work, and it needs a product decision first: a student who has written all month is
-      told "no more AI until the 1st" while their Assist counter still shows 40 left. Alternatives:
-      degrade to the cheaper model instead of refusing, or alert the admin and let a human decide.
+- [x] **Hard stop at ₹100 of actual spend.** Built 2026-09-08 (`UsageService.consume`).
+      It sums the period's logged cost before reserving a unit and refuses at ₹100, with its
+      own reason and its own error, because a ceiling refusal can arrive while the action
+      counter still shows units left. The owner chose "tell them the limit is over" over
+      degrading to a cheaper model. 11 tests in `apps/api/test/ceiling.spec.ts`.
+- [x] **Alert below the ceiling.** Done 2026-09-12: `ALERT.userApproachingInr` at ₹85, as an
+      else-if against the existing ₹120, so a user gets one email rather than two.
 
-- [ ] **Lower the alert threshold below the ceiling.** `ALERT.userCostInr` is ₹120 — it only fires
-      once a user is already ₹20 over. A second threshold around ₹85 would give warning while there
-      is still something to do about it.
 
 ---
 
