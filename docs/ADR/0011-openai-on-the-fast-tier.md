@@ -142,3 +142,48 @@ papers.
 The costs are no longer the question. Anything on that list clears the ₹100 ceiling with room —
 with nano on the fast tier the modelled Student total is **₹38.45** against ₹86.03 on Haiku. The
 question is now entirely reliability, which is a better problem to have and a measurable one.
+
+---
+
+## Configuration as shipped, 2026-09-13
+
+The owner asked to move off Anthropic entirely, keeping the key but not using it. Both tiers are
+OpenAI:
+
+| Tier | Model | Why |
+|---|---|---|
+| fast | `gpt-4o-mini` | 6/6 on citation format, no reasoning behaviour to work around, ₹0.0125 a suggestion against Haiku's ₹0.1014 for output of the same quality |
+| strong | `gpt-5-mini` | 4/4 valid structured output, ₹0.0614 against Sonnet's ₹0.2079; it reasons, which is what the strong tier is for |
+
+`ANTHROPIC_API_KEY` stays in `.env`, unused. Nothing reads it while both model ids are OpenAI ones,
+and putting a Claude id back in either tier restores that path with no code change — which is the
+point of deriving the vendor from the id.
+
+**Modelled cost of a fully active Student: ₹26.40**, against ₹86.03 on Anthropic and a ₹100 ceiling.
+
+### Two adapter details the probe caught
+
+- `reasoningEffort` now goes only to models that reason (`gpt-5*`, o-series). `gpt-4o-mini` logged
+  "reasoningEffort is not supported" on every call — harmless, but a warning on every call is how
+  real warnings stop being read.
+- `pnpm ai:verify`'s probe budget went from 16 to 256. At 16, `gpt-5-mini` spent everything
+  reasoning and returned an empty string, so the probe failed a model that works. The probe asks
+  for one word; nothing but a reasoning model will use more than a handful of the 256.
+
+### What this does and does not do to the pricing document
+
+At **our** caps (180 autocompletes) this configuration is ₹26.40. At the **document's** caps it is
+still a loss:
+
+| Configuration | Student at doc caps | Thesis Pro at doc caps |
+|---|---|---|
+| Haiku + Sonnet 5 (before) | ₹1,709 — loss | ₹2,724 — loss |
+| **`gpt-4o-mini` + `gpt-5-mini` (now)** | **₹451 — loss** | ₹698 — 0% margin |
+| `gpt-5-nano` + `gpt-5-mini` | ₹129 — 63% margin | ₹214 — 69% |
+| `gpt-5-nano` + `gpt-4o-mini` | ₹109 — 69% margin | ₹172 — 75% |
+
+So moving to OpenAI cut the cost by 4× but did not by itself make 8,000 autocompletes affordable.
+Only `gpt-5-nano` does that — and nano is the model that wrote `(S1#c1; S2#c1)` as literal text once
+in thirteen runs. **The choice is between the document's caps and a model with an observed failure
+rate**, and it stays open until the golden set can measure that rate properly. Lowering the caps
+removes the choice entirely, which is what `docs/PRICING-REVIEW.md` §4 recommends on other grounds.

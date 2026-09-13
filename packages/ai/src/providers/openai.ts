@@ -47,6 +47,17 @@ import {
 } from '../types.js';
 import { toTokenUsage } from './anthropic.js';
 
+/**
+ * Whether a model reasons before answering, and so spends `maxOutputTokens` doing it.
+ *
+ * `gpt-5*` and the o-series do; `gpt-4o-*` and `gpt-4.1-*` do not. Matched on the id because that
+ * is all the adapter is given, and a wrong guess costs a warning line rather than a failure.
+ */
+function reasons(modelId: string): boolean {
+  const id = modelId.trim().toLowerCase();
+  return id.startsWith('gpt-5') || /^o[134]/.test(id);
+}
+
 export type OpenAiProviderOptions = {
   readonly apiKey: string;
   readonly fastModel: string;
@@ -100,11 +111,13 @@ export class OpenAiLlmProvider implements LlmProvider {
    * returns nothing at all (see the header). The strong tier is drafting and analysis under caps
    * ten times larger, where reasoning is the point, so it keeps the model's own default.
    *
-   * Silently ignored by non-reasoning OpenAI models such as `gpt-4o-mini`, so this is safe to send
-   * whatever id is configured.
+   * Sent only to models that reason. `gpt-4o-mini` does not, and logs "reasoningEffort is not
+   * supported" for every request carrying it — harmless in itself, but a warning on every call is
+   * how real warnings stop being read.
    */
   private reasoningFor(tier: Tier) {
-    return tier === 'fast' ? { openai: { reasoningEffort: 'minimal' } } : undefined;
+    if (tier !== 'fast' || !reasons(this.models[tier])) return undefined;
+    return { openai: { reasoningEffort: 'minimal' } };
   }
 
   async *stream(req: LlmRequest): AsyncIterable<LlmChunk> {

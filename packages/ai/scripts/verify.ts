@@ -58,13 +58,15 @@ function looksLikeBadModelId(root: { name: string; message: string }): boolean {
 }
 
 /**
- * The smallest output any configured provider will accept.
+ * Output budget for the probe.
  *
- * Anthropic takes 5; OpenAI rejects anything under 16 with
- * `Invalid 'max_output_tokens': integer below minimum value`. 16 satisfies both, and no real
- * action is anywhere near it — the smallest is ASSIST at 120 — so this only concerns the probe.
+ * Three constraints meet here. Anthropic accepts 5; OpenAI rejects anything under 16; and a
+ * reasoning model such as `gpt-5-mini` spends its budget thinking before it writes, so at 16 it
+ * returns an empty string and the probe proves nothing about a model that works perfectly well in
+ * the product. 256 is comfortably above all three and still a trivial call — the probe asks for
+ * one word, so nothing but a reasoning model will use more than a handful.
  */
-const PROBE_MAX_TOKENS = 16;
+const PROBE_MAX_TOKENS = 256;
 
 /** Step 2: one minimal real call per LLM tier — a tiny prompt and the smallest allowed output. */
 async function probeTier(llm: LlmProvider, tier: Tier): Promise<ProbeResult> {
