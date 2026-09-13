@@ -222,6 +222,40 @@ describe('computeCallCost', () => {
   });
 });
 
+describe('§11.4 — the configured model reaches every line, not just the metered ones', () => {
+  // The metered lines were taught to read `options.models` when the budget was found to report the
+  // same total whichever model was configured. The one-time block was missed in that pass and kept
+  // pricing EXTRACT, OUTLINE and STYLE_PROFILE at the Strong *tier* fallback, so ₹2.94 of the
+  // STUDENT total was independent of the configuration. It overstated rather than understated,
+  // which is why nothing caught it — but a budget line that does not move when the model changes
+  // is exactly the defect the ₹100 ceiling exists to notice.
+  const cheap = {
+    'cheap-strong': { inputPerM: 0.25, outputPerM: 2, cacheReadMult: 0.1, cacheWriteMult: 1 },
+  };
+  const pricing = applyPricingOverride(DEFAULT_PRICING, { models: cheap });
+  const lineFor = (b: ReturnType<typeof computeMonthlyBudget>): number =>
+    b.lines.find((l) => l.label.startsWith('One-time ops'))?.totalMicroInr ?? 0;
+
+  it('prices the one-time block with the strong model, not the tier fallback', () => {
+    const byTier = computeMonthlyBudget('STUDENT_MONTHLY', { pricing });
+    const byModel = computeMonthlyBudget('STUDENT_MONTHLY', {
+      pricing,
+      models: { strong: 'cheap-strong' },
+    });
+
+    expect(lineFor(byModel)).toBeLessThan(lineFor(byTier));
+  });
+
+  it('still charges the embedding half, which has no model to vary', () => {
+    // computeEmbeddingCost reads `pricing.embeddingPerM`, so the line can never reach zero.
+    const byModel = computeMonthlyBudget('STUDENT_MONTHLY', {
+      pricing,
+      models: { strong: 'cheap-strong' },
+    });
+    expect(lineFor(byModel)).toBeGreaterThan(0);
+  });
+});
+
 describe('§11.4 — Draft tier lever (Appendix E.4)', () => {
   it('running Draft on the Fast tier cuts the total', () => {
     const strong = computeMonthlyBudget('STUDENT_MONTHLY', { draftModeStrongTier: true });

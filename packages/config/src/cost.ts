@@ -228,9 +228,9 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
   });
 
   const oneTimeMicro =
-    profileCost(ONE_TIME_PROFILES.EXTRACT, pricing) +
-    profileCost(ONE_TIME_PROFILES.OUTLINE, pricing) +
-    profileCost(ONE_TIME_PROFILES.STYLE_PROFILE, pricing) +
+    profileCost(ONE_TIME_PROFILES.EXTRACT, pricing, options.models) +
+    profileCost(ONE_TIME_PROFILES.OUTLINE, pricing, options.models) +
+    profileCost(ONE_TIME_PROFILES.STYLE_PROFILE, pricing, options.models) +
     computeEmbeddingCost(ONE_TIME_EMBED_TOKENS, pricing);
 
   const amortised = Math.round(oneTimeMicro / ONE_TIME_AMORTISATION_MONTHS);
