@@ -10,6 +10,19 @@ blocks the agent from continuing to build against mocks.
       root `.env` (git-ignored) with `AI_PROVIDER=anthropic`,
       `AI_FAST_MODEL=claude-haiku-4-5-20251001` and `AI_STRONG_MODEL=claude-sonnet-5`. Both ids
       were accepted by the provider on a live call — see the `ai:verify` block below.
+- [ ] **OpenAI API key** (ADR-0011). `OPENAI_API_KEY` in `.env`. Needed only once a model id names
+      an OpenAI model — the vendor is derived from the id, so setting
+      `AI_FAST_MODEL=gpt-5-nano` is the whole configuration and `packages/config` then refuses to
+      start without the key. The adapter, the per-tier router and the price entries are built and
+      tested; `pnpm ai:verify` probes whichever vendor each tier's id belongs to and prints it.
+      Get one at platform.openai.com/api-keys.
+- [ ] **Decide whether nano actually ships.** Building the provider made it *testable*, not
+      adopted. `gpt-5-nano` is ₹0.0097 an autocomplete against Haiku 4.5's ₹0.1803, which is what
+      makes the owner's 8,000-autocomplete tier affordable — but nano prose will be worse, and the
+      way to find out by how much is the Appendix C.5 golden set through both models side by side.
+      That needs the fixture papers. Until then the fast tier stays on Haiku.
+- [ ] **Amend the PRD for ADR-0011**: §7.2's AI SDK row (a second provider) and §13.3's variable
+      list (`OPENAI_API_KEY`). Same kind of follow-up as ADR-0010's A.17.
 - [ ] **Confirm the two model prices** (§0.3 rule 4 — the agent must not guess a price).
       `packages/config/src/pricing.ts` has **no per-model entry** for either id, so the budget
       below falls back to the PRD §11.1 tier assumption: Fast $1/$5 per M in/out, Strong $3/$15.

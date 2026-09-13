@@ -72,7 +72,27 @@ const SONNET_5: ModelPrice = {
   cacheWriteMult: 1.25,
 };
 
+/**
+ * OpenAI models (ADR-0011), read from developers.openai.com/api/docs/pricing on 2026-09-13.
+ *
+ * OpenAI publishes a cached-input *price* where Anthropic publishes a multiplier, so each entry
+ * carries the ratio of the two published figures. `computeCallCost` needs no change: 0.005/0.05 is
+ * 0.1 for `gpt-5-nano`, the same shape it already applies.
+ *
+ * `cacheWriteMult` is 1 throughout because OpenAI does not charge to populate its cache — it
+ * caches prefixes over ~1,024 tokens automatically, with no write step to bill.
+ */
+const OPENAI: Record<string, ModelPrice> = {
+  'gpt-5-nano': { inputPerM: 0.05, outputPerM: 0.4, cacheReadMult: 0.1, cacheWriteMult: 1 },
+  'gpt-4.1-nano': { inputPerM: 0.1, outputPerM: 0.4, cacheReadMult: 0.25, cacheWriteMult: 1 },
+  'gpt-4o-mini': { inputPerM: 0.15, outputPerM: 0.6, cacheReadMult: 0.5, cacheWriteMult: 1 },
+  'gpt-5-mini': { inputPerM: 0.25, outputPerM: 2.0, cacheReadMult: 0.1, cacheWriteMult: 1 },
+  'gpt-5.4-nano': { inputPerM: 0.2, outputPerM: 1.25, cacheReadMult: 0.1, cacheWriteMult: 1 },
+  'gpt-5.4-mini': { inputPerM: 0.75, outputPerM: 4.5, cacheReadMult: 0.1, cacheWriteMult: 1 },
+};
+
 const MODEL_PRICES: Record<string, ModelPrice> = {
+  ...OPENAI,
   'claude-sonnet-5': SONNET_5,
   // Symmetrically: Haiku stays at the Fast rate even if it is configured on the strong tier.
   // Without both entries the fallback is the *tier* price, which prices whichever model is there

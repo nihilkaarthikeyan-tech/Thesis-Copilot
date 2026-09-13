@@ -28,6 +28,7 @@ import {
   type Tier,
 } from '@tc/config';
 import { createProviders } from '../src/factory.js';
+import { providerForModel } from '../src/providers/routing.js';
 import type { LlmProvider } from '../src/types.js';
 
 const line = (char = '-'): string => char.repeat(94);
@@ -87,7 +88,8 @@ async function probeTier(llm: LlmProvider, tier: Tier): Promise<ProbeResult> {
   console.log(
     '  ' +
       tier.padEnd(7) +
-      configuredId.padEnd(34) +
+      configuredId.padEnd(28) +
+      providerForModel(configuredId).padEnd(11) +
       'in=' +
       String(usage.inputTokens).padStart(5) +
       '  cached=' +
@@ -116,8 +118,8 @@ async function main(): Promise<void> {
   console.log(line('='));
   console.log(`AI_PROVIDER    ${env.AI_PROVIDER}`);
   console.log(`EMBED_PROVIDER ${env.EMBED_PROVIDER}`);
-  console.log(`AI_FAST_MODEL  ${env.AI_FAST_MODEL}`);
-  console.log(`AI_STRONG_MODEL ${env.AI_STRONG_MODEL}`);
+  console.log(`AI_FAST_MODEL  ${env.AI_FAST_MODEL} (${providerForModel(env.AI_FAST_MODEL)})`);
+  console.log(`AI_STRONG_MODEL ${env.AI_STRONG_MODEL} (${providerForModel(env.AI_STRONG_MODEL)})`);
   console.log(`AI_EMBED_MODEL ${env.AI_EMBED_MODEL}`);
   console.log(`EMBED_DIMS     ${env.EMBED_DIMS}`);
 

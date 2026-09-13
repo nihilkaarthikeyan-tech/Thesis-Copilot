@@ -70,8 +70,15 @@ export const envSchema = z
     GOOGLE_CLIENT_SECRET: optionalString,
 
     // ---- LLM provider ----
+    /**
+     * `mock` forces the mock for both tiers; anything else means "use real providers", and which
+     * vendor serves each tier comes from that tier's model id (ADR-0011). The `anthropic` value is
+     * kept rather than renamed so existing `.env` files and every test harness keep working.
+     */
     AI_PROVIDER: z.enum(['anthropic', 'mock']).default('anthropic'),
     ANTHROPIC_API_KEY: optionalString,
+    /** ADR-0011. Required only when a configured model id is an OpenAI one. */
+    OPENAI_API_KEY: optionalString,
     // Model ids are never guessed (PRD §0.3 rule 5). They are required, have no default, and are
     // confirmed against the provider by `pnpm ai:verify` (Appendix E.1).
     AI_FAST_MODEL: requiredString('AI_FAST_MODEL'),
@@ -133,12 +140,32 @@ export const envSchema = z
   .superRefine((env, ctx) => {
     const isProd = env.NODE_ENV === 'production';
 
-    if (env.AI_PROVIDER === 'anthropic' && !env.ANTHROPIC_API_KEY) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['ANTHROPIC_API_KEY'],
-        message: 'ANTHROPIC_API_KEY is required when AI_PROVIDER=anthropic',
-      });
+    // ADR-0011: each tier's vendor comes from its model id, so the key each one needs is
+    // required only when some tier actually asks for that vendor. Kept here rather than in
+    // `packages/ai` because §0.2 says the app refuses to start on a missing required variable,
+    // and "required" is conditional on the model ids sitting right beside these keys.
+    if (env.AI_PROVIDER !== 'mock') {
+      const vendors = new Set(
+        [env.AI_FAST_MODEL, env.AI_STRONG_MODEL].map((id) =>
+          /^(gpt-|o[134])/i.test(id.trim()) ? 'openai' : 'anthropic',
+        ),
+      );
+      if (vendors.has('anthropic') && !env.ANTHROPIC_API_KEY) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ANTHROPIC_API_KEY'],
+          message:
+            'ANTHROPIC_API_KEY is required: AI_FAST_MODEL or AI_STRONG_MODEL names a Claude model',
+        });
+      }
+      if (vendors.has('openai') && !env.OPENAI_API_KEY) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['OPENAI_API_KEY'],
+          message:
+            'OPENAI_API_KEY is required: AI_FAST_MODEL or AI_STRONG_MODEL names an OpenAI model',
+        });
+      }
     }
 
     if (env.EMBED_PROVIDER === 'voyage' && !env.VOYAGE_API_KEY) {

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.49",
+    "@ai-sdk/openai": "^4.0.66",
     "@tc/config": "workspace:*",
     "@tc/types": "workspace:*",
     "ai": "7.0.92",
