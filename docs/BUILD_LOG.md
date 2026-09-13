@@ -2844,3 +2844,76 @@ Also fixed while here: `OPENALEX_MAILTO`, `CROSSREF_MAILTO` and `UNPAYWALL_EMAIL
 source can then reach `FULL_TEXT`. Set to a real monitored inbox — verified by a 200 from
 `https://api.unpaywall.org/v2/10.1038/nature14539?email=…` before writing it — and the boot warning
 is gone.
+
+---
+
+## Documentation batch, 2026-09-13 — README, PENDING and a new `COSTING.md`
+
+The owner asked for the docs to be brought up to date and for a plain answer to "what does one
+student cost us, what do we charge, what is the profit, and how is the cost calculated".
+
+### One defect found while doing it
+
+`computeMonthlyBudget` threaded `options.models` into the six metered lines but **not** into the
+one-time block. `EXTRACT`, `OUTLINE` and `STYLE_PROFILE` were still priced at the Strong *tier*
+fallback ($3/$15), so ₹2.94 of every STUDENT total was independent of which model was configured.
+
+This is the same defect as `5cf1cb6` ("the monthly budget ignored which model was configured"),
+missed in that pass because the one-time lines sit in a different expression. It overstated rather
+than understated, which is why nothing caught it — a ceiling check that errs high still refuses
+correctly. But a budget line that does not move when the model changes is exactly what the ₹100
+ceiling exists to notice, and next time the direction might not be safe.
+
+Fixed by passing `options.models` through. Two tests added in `packages/config/test/cost-model.spec.ts`
+that assert the one-time line falls when a cheaper strong model is configured, and that it never
+reaches zero (the embedding half has no model to vary).
+
+STUDENT total: **₹16.68 → ₹14.18**.
+
+### The cost model, end to end
+
+`docs/COSTING.md` is new and is the one place the whole calculation is written down: the
+`computeCallCost` formula, the six action profiles and their unit costs on today's models, the
+caps, the two fixed lines, and what changes at 50 users instead of 500.
+
+| | |
+|---|---|
+| Fully active STUDENT | **₹14.18/month** (₹6.74 AI + ₹7.00 hosting + ₹0.44 amortised one-time) |
+| Fully active FREE_TRIAL | ₹9.12/month, of which ₹1.69 is AI |
+| Charged | ₹299/month, ₹2,499/year (`billing.ts`; PRD §11.6 still `DECISION PENDING`) |
+| Gross margin | **95%** monthly, 93% annual |
+| Headroom under the ₹100 ceiling | ₹85.82 |
+
+The sensitivity that matters is not the AI. At 500 users hosting is ₹7/user and the total is
+₹14.18; at 50 users hosting is ₹70/user and the total is ₹77.18. Below **35** paying users the
+hosting line alone exceeds the ₹100 ceiling. The AI cost is now a rounding error against the
+question of whether the product finds users.
+
+### What the docs claimed and no longer do
+
+`README.md`'s Status section was three model changes and a provider migration out of date. It said
+"Every AI call so far has gone to the mock provider. There is no Anthropic key and no Voyage key in
+this repo" and "the ₹100 ceiling has about ₹1 of headroom left (the STUDENT plan computes to
+₹98.92)". Both false: three providers are live and the figure is ₹14.18. Also corrected: 967 → 1,127
+tests, 9 → 11 ADRs, migrations 0001–0010 → 0001–0011, and the `.env` block now shows the real
+per-tier routing rather than a single vendor.
+
+`docs/PENDING.md` had two sections arguing about ₹1 of headroom. They are replaced by one that
+states the opposite problem: **86% of the allowance is unused**, and the caps are now far tighter
+than the money requires. It carries the three tier options and what each costs.
+
+`docs/PRICING-REVIEW.md` keeps its structural conclusions and gains a "superseded in part" banner
+plus a recomputation. Its central claim — that the owner's proposed caps "are not survivable" —
+was true of Haiku + Sonnet (₹1,772) and is not true of today's models (₹129, or ₹99.05 with
+autocomplete capped at 7,500 and AI edits moved to the fast model). Saying so plainly matters more
+than the review looking consistent.
+
+`CLAUDE.md`'s "Current state" no longer says every call goes to the mock and cost is ₹0.
+
+### The caveat that survives all of it
+
+Every fast-tier price assumes a 4,000-token prefix served from cache at 0.1×, and **that has never
+been observed on a real chapter** — the only real Assist call so far was 657 tokens, under the
+cache floor. At our own caps it barely matters (₹14.18 → ₹16.81 with no cache at all). At the
+owner's proposed caps it is the whole question: ₹99.05 with the cache, ₹215.71 without. Five
+fixture papers settle it and nothing else will.

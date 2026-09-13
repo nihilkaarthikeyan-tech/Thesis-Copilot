@@ -1,5 +1,14 @@
 # Review of `RADemics_Thesis_Copilot_Pricing.docx`
 
+> **Superseded in part, 2026-09-13.** §1 ("What the caps cost") and §4 ("What actually fits") were
+> computed on Claude Haiku 4.5 + Sonnet 5. Both tiers moved to OpenAI the same day (ADR-0011) and
+> every unit cost fell by 10–20×. The addendum at the bottom of this file records that move, and
+> `docs/COSTING.md` carries the current figures. **The conclusions that still stand** are the
+> structural ones: the advertised cap and the enforced ceiling must be the same number (§3), no
+> "unlimited" can ship without a number behind it (§5), and the document disagrees with itself
+> about what a user costs (§2). **What no longer stands** is "the caps are not survivable" — on
+> today's models they cost ₹129, and ₹99 with two adjustments.
+
 Reviewed 2026-09-13 against the cost model in `packages/config`, with the models we actually run
 (Haiku 4.5 on the fast tier, Sonnet 5 on the strong tier — which is exactly what the document
 assumes, so no disagreement there).
@@ -228,3 +237,28 @@ Two things it is not free of:
 4. **Decide the caps independently of the model.** Even on nano, "8,000" is a number nobody will
    reach; 300–600 would cost a fraction and read as generous. A cap that no user approaches is not
    a feature, it is an unpriced liability.
+
+---
+
+# Recomputation, 2026-09-13 (after the model change landed)
+
+The addendum above was written while OpenAI was still a proposal. These are the figures with
+`gpt-5-nano` and `gpt-5-mini` actually configured and `pnpm ai:verify` green, and they supersede
+every cost number earlier in this file. Working in `docs/COSTING.md`.
+
+| Scenario | Cost/user/month | Margin at ₹299 | Margin at ₹349 |
+|---|---|---|---|
+| Document's caps, Haiku + Sonnet (§1 above) | ₹1,772 | −493% | −408% |
+| Document's caps, today's models | ₹128.98 | 57% | 63% |
+| Document's caps, AI edits on the fast model | ₹103.92 | 65% | 70% |
+| **Document's caps, edits on fast + autocomplete 7,500** | **₹99.05** | **67%** | **72%** |
+| A generous tier well inside ₹100 | ₹64.60 | 78% | 81% |
+| What ships today | ₹14.18 | 95% | 96% |
+
+Two notes on the earlier addendum. Its "₹158, 55% margin" row used a different tier assignment for
+several actions than the code now applies, so it does not reconcile with the ₹99.05 line above;
+the table here is the one to use. And its §4 replacement caps (300 autocompletes at a ₹144 cost)
+were sized for Haiku pricing and are now roughly 25× more conservative than the money requires.
+
+The one thing that did not change: **the cache assumption**. The 7,500-autocomplete tier is ₹99
+with prompt caching and ₹215.71 without it. That is still unproven on a real chapter.

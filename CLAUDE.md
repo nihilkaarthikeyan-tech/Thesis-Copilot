@@ -44,7 +44,7 @@ and push per week, keep `docs/PENDING.md` current for anything only a human can 
 | ORM / DB | Prisma 6 + PostgreSQL 16 + pgvector (HNSW); vector queries via `$queryRaw` |
 | Object storage | MinIO (S3 API) |
 | Auth | Better Auth (email OTP + Google) |
-| AI SDK | Vercel AI SDK (`ai`) + `@ai-sdk/anthropic`, behind `packages/ai` |
+| AI SDK | Vercel AI SDK (`ai`) + `@ai-sdk/openai` + `@ai-sdk/anthropic`, behind `packages/ai`; vendor per tier from the model id (ADR-0011) |
 | Embeddings | Voyage `voyage-3` (1024-d); dimension is a config constant |
 | Citations | `@citation-js/core` + `plugin-csl` |
 | Export | `docx` → Gotenberg for PDF |
@@ -98,10 +98,10 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 **The build is complete** (2026-09-07). Every unit of `docs/PHASES-version-2.md` is done:
 Phase 1 weeks 0–5, Phase 2 weeks 6–11, Phase 3 Blocks 1–4. `docs/BUILD_LOG.md` has the per-unit
-record and the end-to-end evidence for each; ADRs 0001–0010 record every decision that departed
+record and the end-to-end evidence for each; ADRs 0001–0011 record every decision that departed
 from the PRD.
 
-Working end to end against the dev stack on the mock provider: sign-in, the thesis list, the
+Working end to end against the dev stack: sign-in, the thesis list, the
 proposal screen, the library with grounding badges, literature search with the living gap map, the
 outline tree and per-section regeneration, the TipTap editor with Assist, citations, draft mode,
 chat and section commands, the style profile, the coherence engine, the guide and committee cycle
@@ -110,7 +110,8 @@ comment import), the submission bundle (template spec, ten compliance checks, th
 with a real contents page, the override with a reason), billing, institution admin with seats and
 invoices, the SUPERADMIN dashboards, §14 alerts, feature flags and `pnpm pilot:report`.
 
-**The VERIFY batch is done too.** 967 unit and integration tests (Vitest, 69 files) and 28
+**The VERIFY batch is done too.** 1,127 unit and integration tests (Vitest, 73 files; 2 skipped,
+both conditional on fixture papers that do not exist yet) and 28
 Playwright specs pass; `docs/BUILD_LOG.md` → "VERIFY" lists what was added and the seven real
 defects writing them found. `pnpm test`, `pnpm lint` and `pnpm typecheck` are clean; `pnpm e2e`
 needs the dev stack up (web on :3000, API on :3001, worker, and Compose).
@@ -123,10 +124,21 @@ sign-in code to the log). `docs/BUILD_LOG.md` → "Specification audit" has the 
 saying anything is "done", audit the PRD's FR lines, not the phase plan; the owner has been told
 "finished" prematurely more than once and it is the one thing they have objected to.
 
+**Real providers are live** (2026-09-13). `AI_PROVIDER=anthropic` means "not the mock"; the vendor
+is derived per tier from the model id (ADR-0011, `packages/ai/src/providers/routing.ts`). Today
+`AI_FAST_MODEL=gpt-5-nano` and `AI_STRONG_MODEL=gpt-5-mini` — both OpenAI. The Anthropic key is
+still in `.env` and still valid, but the owner asked that it stay unused, and no configured model
+routes to it. Embeddings are Voyage `voyage-3` (1024-d). OTP mail goes out over Hostinger SMTP as
+`no-reply@rademics.ai`, proven by a delivered message.
+
+**A fully active student costs ₹14.18/month** against the ₹100 ceiling (₹7 of it hosting, ₹6.74
+AI). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
+₹299. `pnpm ai:verify` reproduces it. The runtime hard stop at ₹100 of real spend is in
+`UsageService.consume`.
+
 Everything else that is not done needs a human, and `docs/PENDING.md` lists each with its steps:
-provider keys (every AI call so far went to the mock, so cost is ₹0 everywhere and `pnpm ai:verify`
-is what settles the cost model), the VPS and its deploy, k6, Sentry, Uptime Kuma, backup crons,
-Razorpay keys and the §11.6 price confirmation, fixture papers, the C.3/C.4/C.5 sets, a real
+the VPS and its deploy, k6, Sentry, Uptime Kuma, backup crons, Google OAuth credentials, the CORE
+key, Razorpay keys and the §11.6 price confirmation, fixture papers, the C.3/C.4/C.5 sets, a real
 university guideline to replace `EXAMPLE_IN_UNIVERSITY`, and the `@tiptap/core` v3 decision from
 the B4.3 dependency audit.
 

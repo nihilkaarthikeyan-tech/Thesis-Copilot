@@ -7,33 +7,41 @@ blocks the agent from continuing to build against mocks.
 ## Accounts, keys and services
 
 - [x] **Anthropic API key + model ids.** Done 2026-09-08. The owner supplied the key; it is in the
-      root `.env` (git-ignored) with `AI_PROVIDER=anthropic`,
-      `AI_FAST_MODEL=claude-haiku-4-5-20251001` and `AI_STRONG_MODEL=claude-sonnet-5`. Both ids
-      were accepted by the provider on a live call — see the `ai:verify` block below.
-- [ ] **OpenAI API key** (ADR-0011). `OPENAI_API_KEY` in `.env`. Needed only once a model id names
-      an OpenAI model — the vendor is derived from the id, so setting
-      `AI_FAST_MODEL=gpt-5-nano` is the whole configuration and `packages/config` then refuses to
-      start without the key. The adapter, the per-tier router and the price entries are built and
-      tested; `pnpm ai:verify` probes whichever vendor each tier's id belongs to and prints it.
-      Get one at platform.openai.com/api-keys.
-- [ ] **Decide whether nano actually ships.** Building the provider made it *testable*, not
-      adopted. `gpt-5-nano` is ₹0.0097 an autocomplete against Haiku 4.5's ₹0.1803, which is what
-      makes the owner's 8,000-autocomplete tier affordable — but nano prose will be worse, and the
-      way to find out by how much is the Appendix C.5 golden set through both models side by side.
-      That needs the fixture papers. Until then the fast tier stays on Haiku.
-- [ ] **Amend the PRD for ADR-0011**: §7.2's AI SDK row (a second provider) and §13.3's variable
-      list (`OPENAI_API_KEY`). Same kind of follow-up as ADR-0010's A.17.
-- [ ] **Confirm the two model prices** (§0.3 rule 4 — the agent must not guess a price).
-      `packages/config/src/pricing.ts` has **no per-model entry** for either id, so the budget
-      below falls back to the PRD §11.1 tier assumption: Fast $1/$5 per M in/out, Strong $3/$15.
-      Check both against https://docs.claude.com/en/docs/about-claude/pricing. If either is
-      higher, the ₹98.92 total moves and the ₹100 ceiling decision below becomes live. Add real
-      entries to `pricing.ts` (or `PRICING_OVERRIDE_JSON`) and re-run `pnpm ai:verify`.
+      root `.env` (git-ignored). Both `claude-haiku-4-5-20251001` and `claude-sonnet-5` were
+      accepted by the provider on a live call. **The key is kept but no longer used**: on
+      2026-09-13 the owner moved both tiers to OpenAI (ADR-0011) and instructed that the Anthropic
+      key stay in place, unused. No configured model routes to it, so nothing calls it; putting a
+      `claude-*` id back on either tier is all it takes to use it again.
+- [x] **OpenAI API key** (ADR-0011). Done 2026-09-13. `OPENAI_API_KEY` is in `.env`, and both tiers
+      now name OpenAI models, so the vendor is derived and the key is required at boot.
+      `pnpm ai:verify` probes each tier against the vendor its id belongs to and both came back
+      live: `gpt-5-nano` (fast) and `gpt-5-mini` (strong).
+- [x] **Decide whether nano actually ships.** Decided 2026-09-13: **yes**, `gpt-5-nano` on the fast
+      tier. It was rejected first on a six-run sample and that was wrong — over 30 runs across
+      three real Assist prompts nano produced a usable, correctly-cited suggestion 29/30 (97%)
+      against `gpt-4o-mini`'s 27/30 (90%), at 2.4× less cost. The correction is recorded at the
+      end of ADR-0011.
+      **This is not the full answer.** It is 30 runs on three prompts, not the Appendix C.5 golden
+      set, which is still blocked on the fixture papers. If the golden set contradicts it, the fast
+      tier is one environment variable away from moving back.
+- [ ] **Amend the PRD for ADR-0011**: §7.2's AI SDK row (a second provider, and per-tier routing)
+      and §13.3's variable list (`OPENAI_API_KEY`). Same kind of follow-up as ADR-0010's A.17.
+- [x] **Confirm the model prices** (§0.3 rule 4 — the agent must not guess a price). Done
+      2026-09-13, read off each provider's own published pricing page and written into
+      `packages/config/src/pricing.ts` as per-model entries:
+      `gpt-5-nano` $0.05/$0.40 per M, `gpt-5-mini` $0.25/$2.00, cached input 0.1× on both, no
+      cache-write charge (OpenAI caches automatically and bills nothing to populate).
+      **This also corrected a live error:** `claude-sonnet-5` was priced at $3/$15, which is
+      Sonnet 4.6's rate — the page carries a note that the rise scheduled for 2026-09-01 was
+      cancelled, so it is $2/$10. That alone moved the STUDENT total from ₹98.92 to ₹86.03 while
+      we were still on Claude.
+      **Still yours:** confirm both pages independently before the pilot bills anyone. Prices
+      change and nothing in the product re-reads them.
 - [x] **Voyage API key + embedding model.** Done 2026-09-08. `VOYAGE_API_KEY` is in `.env` with
       `EMBED_PROVIDER=voyage` and `AI_EMBED_MODEL=voyage-3`; `ai:verify` got 1024-d vectors back,
       matching `EMBED_DIMS` and the `vector(1024)` column.
-- [ ] **Fill PRD Appendix E.3 and flip the flag.** `pnpm ai:verify` ran fully real on 2026-09-08 —
-      no mock in it — and passed. Paste the block it prints into Appendix E.3 (`docs/PRD.md`),
+- [ ] **Fill PRD Appendix E.3 and flip the flag.** `pnpm ai:verify` ran fully real on 2026-09-08 and
+      again on 2026-09-13 after the move to OpenAI — no mock in either — and passed both times. Paste the block it prints into Appendix E.3 (`docs/PRD.md`),
       filling "Verified value" and "By" yourself: §0.3 rule 3 forbids the agent filling that table.
       Then flip the flag (admin UI, or
       `UPDATE "FeatureFlag" SET enabled=true WHERE key='costModelVerified'`); the admin page reads
@@ -41,14 +49,16 @@ blocks the agent from continuing to build against mocks.
 
       | Item | Value |
       |---|---|
-      | Fast model id | `claude-haiku-4-5-20251001` — accepted live |
-      | Strong model id | `claude-sonnet-5` — accepted live |
+      | Fast model id | `gpt-5-nano` (OpenAI) — accepted live |
+      | Strong model id | `gpt-5-mini` (OpenAI) — accepted live |
       | Embedding model | `voyage-3`, 1024 d — accepted live |
       | Exchange rate | INR 87 = USD 1 (`pricing.ts`) |
-      | Recomputed §11.4 STUDENT total | **₹98.92**, within the ceiling by ₹1.08 |
+      | Recomputed §11.4 STUDENT total | **₹14.18**, within the ceiling by ₹85.82 |
 
-      Still yours to supply in that table: the two model prices, the cache multipliers and the VPS
-      monthly cost, none of which the agent may guess (§0.3 rule 4).
+      Still yours to supply in that table: independent confirmation of the two model prices, the
+      cache multipliers and the VPS monthly cost, none of which the agent may guess (§0.3 rule 4).
+      The prices in `pricing.ts` were read off each provider's published page on 2026-09-13; that
+      is the agent reading a page, not a human confirming a contract.
 - [x] **Email delivery.** Done 2026-09-08, and proven by a real send. The owner's existing
       Hostinger mailbox is reused — the same one Gate, Bank and TNPSC already send their OTP and
       reset mail from, so deliverability is established rather than hoped for:
@@ -180,6 +190,13 @@ blocks the agent from continuing to build against mocks.
 
 ## Decisions and reviews
 
+- [ ] **Settle the price and the caps together.** `docs/COSTING.md` gives the cost side:
+      ₹14.18 per fully active student, ₹299 charged, 95% margin. `docs/PRICING-REVIEW.md` reviews
+      `RADemics_Thesis_Copilot_Pricing.docx` and its ₹349 / ₹2,999 proposal — but that review was
+      written on Haiku + Sonnet, and §1 and §4 of it are superseded by the OpenAI move; the
+      addendum and §"The caps are now far tighter" below carry the current numbers. The code still
+      has ₹299 / ₹2,499 in `packages/config/src/billing.ts` and PRD §11.6 still marks the price
+      `DECISION PENDING`.
 - [ ] Read `docs/CONSISTENCY_REVIEW.md` — 12 places where the PRD contradicts itself; the agent picked
       a side each time and says which. Confirm or overrule.
 - [ ] Acknowledge `docs/ADR/0002-better-auth-tables.md` (auth tables added to the PRD §8 schema).
@@ -217,55 +234,92 @@ One is left, and it needs a decision:
 
       Decide: schedule the v3 upgrade, or accept the mitigation and record why.
 
-## What the ₹100 ceiling actually rests on (measured 2026-09-08)
+## What the ₹100 ceiling actually rests on (revised 2026-09-13)
 
-The ceiling is a **design projection**, not a runtime guarantee. What enforces it today is the
-per-action caps: 180 Assist × an *assumed* cost per call = ₹98.92. Nothing measures actual money
-spent and refuses when it reaches ₹100 — the only runtime signal is an email to the admin once a
-user passes **₹120**, which is detection after the fact, and above the ceiling.
+Two things enforce it, and only the second is a guarantee.
 
-Three things decide whether the projection holds.
+- **The projection**: caps × modelled cost per call = **₹14.18** for a fully active STUDENT.
+  `pnpm ai:verify` and CI both recompute it and fail over ₹100. This catches a bad plan.
+- **The runtime hard stop** (built 2026-09-08, `UsageService.consume`): the sum of actual logged
+  spend for the period is checked before every metered call and refuses at ₹100 with its own
+  reason and its own error, because a ceiling refusal can arrive while the action counter still
+  shows units left. The owner chose "tell them the limit is over" over degrading to a cheaper
+  model. 11 tests in `apps/api/test/ceiling.spec.ts`. This catches reality being different from
+  the plan.
+- **An alert below the ceiling** (2026-09-12): `ALERT.userApproachingInr` at ₹85, as an else-if
+  against the existing ₹120, so a user gets one email rather than two.
 
-- [ ] **Prove the prompt cache engages on real chapters. This is the whole promise.**
-      `cost.ts` prices Assist assuming a 4,000-token cached prefix read at 0.1×. Measured:
+The projection has moved a long way and every move was a defect or a decision, not drift:
 
-      | Assist unit cost | Month total | |
+| | STUDENT total | What changed |
+|---|---|---|
+| 2026-09-08 | ₹98.92 | Haiku 4.5 + Sonnet 5, Sonnet priced at $3/$15 |
+| 2026-09-13 | ₹86.03 | Sonnet 5 is $2/$10 — the scheduled rise was cancelled |
+| 2026-09-13 | ₹26.40 | ADR-0011: `gpt-4o-mini` + `gpt-5-mini` |
+| 2026-09-13 | ₹16.68 | `gpt-5-nano` on the fast tier after a 30-run re-measurement |
+| **2026-09-13** | **₹14.18** | the one-time-ops line was still priced at the tier fallback |
+
+**What is still not proven, and it is the same thing it always was:**
+
+- [ ] **Prove the prompt cache engages on real chapters.**
+      `cost.ts` prices every fast-tier action assuming a 4,000-token cached prefix read at 0.1×.
+
+      | Assist unit cost | STUDENT month total | |
       |---|---|---|
-      | as modelled (4k cached) | ₹0.1803 | **₹98.92** ✅ |
-      | if the cache never engages | ₹0.5310 | **₹162.06** ❌ |
-      | measured, empty chapter (657 tok) | ₹0.0830 | ₹81.41 ✅ |
+      | as modelled (4k cached) | ₹0.0097 | **₹14.18** ✅ |
+      | if the cache never engages | ₹0.0244 | **₹16.81** ✅ |
 
-      Break-even for Assist is **₹0.1863**; the model assumes ₹0.1803. That is a **3 % margin**. The
-      first real call in the product came back `cachedInputTokens: 0`, because a 657-token prompt is
-      under the fast tier's cache floor — harmless there (small prompt, cheap call), but it means
-      the cached case is still unproven. A full chapter with six pinned passages is the case that
-      matters, and it is only reachable with the fixture papers.
+      At our own caps this no longer threatens the ceiling — the move to nano bought so much
+      headroom that a total cache failure costs ₹2.63 a month. **It still matters for any larger
+      tier.** The owner's proposed 7,500-autocomplete tier is ₹99 with the cache and **₹215.71**
+      without it, so the cache is the difference between that tier being viable and not.
 
-- [x] **Hard stop at ₹100 of actual spend.** Built 2026-09-08 (`UsageService.consume`).
-      It sums the period's logged cost before reserving a unit and refuses at ₹100, with its
-      own reason and its own error, because a ceiling refusal can arrive while the action
-      counter still shows units left. The owner chose "tell them the limit is over" over
-      degrading to a cheaper model. 11 tests in `apps/api/test/ceiling.spec.ts`.
-- [x] **Alert below the ceiling.** Done 2026-09-12: `ALERT.userApproachingInr` at ₹85, as an
-      else-if against the existing ₹120, so a user gets one email rather than two.
+      The first real call in the product came back `cachedInputTokens: 0`, because a 657-token
+      prompt is under the fast tier's cache floor — harmless there, but it means the cached case
+      is still unmeasured. A full chapter with six pinned passages is the case that matters, and
+      it is only reachable with the fixture papers.
 
+      OpenAI caches automatically on prefixes over ~1,024 tokens with no marker, so there is
+      nothing to configure — only something to confirm.
 
 ---
 
-## The ₹100 ceiling has about ₹1 left
+## The caps are now far tighter than the money requires
 
-- [ ] **Decide what gives.** Building FR-3.6 surfaced this (ADR-0008): the STUDENT plan computes to
-      **₹98.92** of the ₹100 ceiling, and was at ₹99.61 before that feature was metered. §11.4's own
-      table prints ≈₹95.8 using rounded unit costs; the exact rates leave about a rupee.
+- [ ] **Decide how generous the plans should be.** This item used to read "the ceiling has about ₹1
+      left". It is now the opposite problem: a fully active STUDENT costs **₹14.18** of a ₹100
+      ceiling, so **86% of the allowance is unused**.
 
-      That is not a bug — it means the ceiling is doing its job — but the next Strong-tier feature
-      will not fit, and neither will a real provider's prices if they are higher than
-      `DEFAULT_PRICING` assumes. §11.4 already names the lever: with `draftModeStrongTier` off,
-      Draft costs ₹8 instead of ₹27 and the total falls to about ₹80.
+      What fits, all recomputed 2026-09-13 on the configured models (`docs/COSTING.md` has the
+      working):
 
-      Nothing here is evidence yet. Every figure comes from `DEFAULT_PRICING` and every AI call so
-      far went to the mock; `pnpm ai:verify` with a real key is what settles it. Do that first, then
-      decide: Fast-tier drafts, lower caps, or a higher ceiling.
+      | | Ships today | A generous tier that still fits | The owner's pricing doc, adjusted |
+      |---|---|---|---|
+      | Autocomplete | 180 | 4,000 | 7,500 |
+      | Citation suggestions | 30 | 100 | 100 |
+      | Chat | 15 | 100 | 100 |
+      | AI edits | 4 | 100 | 200 (on the fast model) |
+      | Drafts | 10 | 20 | 10 |
+      | Coherence | 1 | 8 | 8 |
+      | **Cost** | **₹14.18** | **₹64.60** | **₹99.05** |
+      | **Margin at ₹299** | 95% | 78% | 67% |
+
+      The last column is `RADemics_Thesis_Copilot_Pricing.docx`'s own tier with two changes:
+      autocomplete capped at 7,500 rather than 8,000, and AI edits moved from the strong model to
+      the fast one. On Haiku + Sonnet that same tier cost ₹1,772; `docs/PRICING-REVIEW.md` said it
+      was not survivable and that was true of those models.
+
+      Three things to settle, and they are all yours:
+
+      1. **The caps.** Raising them is a config change in `plans.ts`, no new code.
+      2. **Whether AI edits move to the fast tier.** That is what makes the 200-edit row cheap
+         (₹31.32 → ₹6.26), and it is a quality decision, not an arithmetic one.
+      3. **The advertised cap and the enforced ceiling must be the same number.** If the pricing
+         page says 8,000 autocompletes and the runtime stops at ₹100, a heavy user is cut off
+         before the number they paid for. That is a refund problem, not a cost problem.
+
+      Nothing here is settled by the agent, and none of it blocks other work.
+
 
 ## After the VERIFY batch (2026-09-07)
 
