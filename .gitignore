@@ -14,3 +14,7 @@ packages/db/generated/
 *.log
 .DS_Store
 Thumbs.db
+
+# Pricing and commercial documents the owner drops in the repo root to share with the agent.
+# They are working papers, not product source, and some carry figures that are not public yet.
+/RADemics_*.docx
