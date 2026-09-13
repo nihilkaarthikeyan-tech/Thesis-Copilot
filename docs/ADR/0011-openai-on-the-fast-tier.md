@@ -187,3 +187,38 @@ Only `gpt-5-nano` does that — and nano is the model that wrote `(S1#c1; S2#c1)
 in thirteen runs. **The choice is between the document's caps and a model with an observed failure
 rate**, and it stays open until the golden set can measure that rate properly. Lowering the caps
 removes the choice entirely, which is what `docs/PRICING-REVIEW.md` §4 recommends on other grounds.
+
+---
+
+## Correction: the six-run sample was wrong
+
+The owner asked why the fast tier was not on `gpt-5-nano`, given the cost. The answer given was
+"one format failure in thirteen runs" — which was too small a sample to reject a model on, so it
+was measured properly: **30 runs each, rotating three different sentences and source sets** so the
+result is not one prompt answered thirty times.
+
+| Model | Usable | Failure mode | Cost/call | At 180/month |
+|---|---|---|---|---|
+| **`gpt-5-nano`** | **29/30 (97%)** | 1 × raw id in prose | **₹0.0048** | ₹0.87 |
+| `gpt-4o-mini` | 27/30 (90%) | 3 × no citation at all | ₹0.0114 | ₹2.05 |
+
+`gpt-5-nano` is **both more reliable and 2.4× cheaper**. The earlier six-run comparison had it at
+6/6 and `gpt-4o-mini` at 6/6, which distinguished nothing; the single nano failure that drove the
+recommendation was noise in a sample too small to carry it.
+
+The failure *modes* also differ, and not in `gpt-4o-mini`'s favour. Nano's one failure wrote
+`{S1#c1}` — a single brace instead of the double the editor expects — which is visible: the student
+sees a stray token and deletes it. `gpt-4o-mini`'s three failures wrote clean prose with **no
+citation at all**, which is silent, and a silently uncited claim in a thesis is the more dangerous
+of the two for a product whose whole promise is that it cites what it can show you.
+
+So the fast tier is `gpt-5-nano`. **Modelled Student cost: ₹16.68**, against ₹86.03 on Anthropic.
+
+This also changes the pricing answer: at the document's caps, `gpt-5-nano` + `gpt-5-mini` is ₹129
+against ₹349 — a 63% margin — so **the document's 8,000 autocompletes are now affordable as
+written**, without touching the caps. Lowering them remains worthwhile for the reasons in
+`docs/PRICING-REVIEW.md` §4, but it is no longer forced by cost.
+
+Thirty runs over three prompts is better evidence than six over one; it is still not the Appendix
+C.5 golden set, which judges whether the suggestion is *good* rather than merely well-formed. That
+remains open and still needs the fixture papers.
