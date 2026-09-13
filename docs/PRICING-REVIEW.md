@@ -130,3 +130,101 @@ against a ₹699 price, from that one feature.
 3. **A number behind every "unlimited"**, even if it is not published.
 
 Nothing here blocks other work; the plan tables are a config change whenever the numbers land.
+
+---
+
+# Addendum — can a different model make the document's caps work?
+
+Added 2026-09-13. Prices read that day from
+`platform.claude.com/docs/en/about-claude/pricing` and
+`developers.openai.com/api/docs/pricing`. None of them is a guess.
+
+## First: our own price table was wrong
+
+`pricing.ts` priced the strong tier at **$3/$15 per MTok**. That is Sonnet 4.6's rate. **Sonnet 5 is
+$2/$10**, and Anthropic's pricing page carries an explicit note that the scheduled rise to $3/$15
+on 2026-09-01 did not happen.
+
+Correcting it drops the modelled cost of a fully active Student from **₹98.92 to ₹86.03** — ₹14 of
+headroom that was always there. Everything below uses the corrected figure. (The tier *fallback*
+stays at $3/$15 deliberately: it prices an unverified model, where guessing high is the safe
+direction.)
+
+## What Jenni.ai runs
+
+Reviews of Jenni in 2026 describe it as running on GPT-4-class infrastructure, specialised for
+academic writing. Worth noting what that does *not* tell us: Jenni charges **$12–20/month
+(₹1,020–1,700)**. They have three to five times our revenue per user to spend on the same work.
+Matching their limits at ₹349 is not a model choice, it is a different business.
+
+## Cost of one autocomplete, by model
+
+Our ASSIST profile — 1,200 fresh + 4,000 cached input, 50 output, with §11.2's cache-miss uplift:
+
+| Model | Per call | × 8,000/month | No cache hit |
+|---|---|---|---|
+| `claude-haiku-4-5` (today) | ₹0.1803 | ₹1,442 | ₹4,248 |
+| `claude-sonnet-5` | ₹0.3605 | ₹2,884 | ₹8,497 |
+| **`gpt-5-nano`** | **₹0.0097** | **₹78** | ₹218 |
+| `gpt-4.1-nano` | ₹0.0234 | ₹187 | ₹421 |
+| `gpt-4o-mini` | ₹0.0497 | ₹398 | ₹631 |
+| `gpt-5-mini` | ₹0.0487 | ₹390 | ₹1,091 |
+
+`gpt-5-nano` is **18× cheaper per autocomplete than Haiku 4.5** — $0.05/$0.40 against $1/$5, with a
+90% cached-input discount against Anthropic's 90% too.
+
+## Whole Student tier at ₹349, keeping the document's caps
+
+| Autocomplete model | Total cost | Margin |
+|---|---|---|
+| Haiku 4.5 (today) | ₹1,730 | −396% |
+| gpt-5-nano, edits still on Sonnet | ₹365 | −5% |
+| **gpt-5-nano, edits also on nano** | **₹158** | **55%** |
+| gpt-4.1-nano, edits also on nano | ₹270 | 23% |
+
+**So yes — the document's 8,000 autocompletes are affordable, but only on a nano-class model, and
+only if the 200 AI edits move off Sonnet too.** At that point it lands at 55% margin, near the
+document's 60% target.
+
+## What that costs in quality — and what it does not
+
+The honest part: `gpt-5-nano` is a nano-class model. Its prose will be worse than Haiku 4.5's, and
+Haiku is already the cheap half of this product. Nobody should adopt it on arithmetic alone.
+
+The reassuring part is narrower than it looks. The product's integrity promise does **not** rest on
+the model behaving: `stripUnknownCitations` (§10.6) removes any citation the model was not shown and
+counts it as `HALLUCINATED_CITE`. A weaker model cannot invent a source here — the post-processor
+deletes it before the student sees it. So the risk is *prose quality*, not *academic integrity*,
+which is a far more testable and far less dangerous thing to be wrong about.
+
+The way to settle it is the prompt golden set (Appendix C.5, `docs/PENDING.md`): the same ten
+scenarios through Haiku and through nano, judged side by side. That needs the fixture papers, like
+everything else that would settle a question here.
+
+## What adopting OpenAI would actually cost to build
+
+Small, and that is by design. `packages/ai` already hides the provider behind `LlmProvider`, with
+`AnthropicLlmProvider` and `MockLlmProvider` as the two implementations and every call site going
+through the interface. An `OpenAiLlmProvider` is one new class plus a branch in `createProviders`,
+and the per-tier model ids already come from the environment.
+
+Two things it is not free of:
+
+- **PRD §7.2 fixes the stack** at the Vercel AI SDK with `@ai-sdk/anthropic`. A second provider is a
+  substitution and needs an ADR.
+- **`packages/config` prices by model id**, which now works correctly for both directions (see the
+  audit above), so OpenAI ids just need entries — but `pnpm ai:verify` must be taught to probe a
+  second provider, or it will keep reporting only half the picture.
+
+## Recommendation
+
+1. **Take the ₹86.03 correction now.** It is a real ₹14 that was being thrown away, and it needs no
+   decision from anyone.
+2. **Do not move the whole product.** Drafting, coherence and citation suggestions are where the
+   product's value and its integrity claims live; Sonnet 5 at $2/$10 is now cheap enough that
+   moving them saves little and risks much.
+3. **Test nano on autocomplete specifically**, against the golden set, before committing to it. That
+   is the one action with the volume to matter and the least at stake per call.
+4. **Decide the caps independently of the model.** Even on nano, "8,000" is a number nobody will
+   reach; 300–600 would cost a fraction and read as generous. A cap that no user approaches is not
+   a feature, it is an unpriced liability.

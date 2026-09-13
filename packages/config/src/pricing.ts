@@ -61,8 +61,19 @@ const STRONG: ModelPrice = {
  * §0.3 rule 4 still applies: these are the PRD's own stated rates, not a guess at the provider's.
  * `pnpm ai:verify` prints them next to the provider's pricing page for a human to confirm.
  */
+const SONNET_5: ModelPrice = {
+  // Verified against platform.claude.com/docs/en/about-claude/pricing on 2026-09-13. The page
+  // carries an explicit note that the scheduled rise to $3/$15 on 2026-09-01 did not happen, so
+  // the introductory rate is now standard. The `STRONG` tier fallback stays at $3/$15 because it
+  // prices an *unverified* model, where guessing high is the safe direction.
+  inputPerM: 2,
+  outputPerM: 10,
+  cacheReadMult: 0.1,
+  cacheWriteMult: 1.25,
+};
+
 const MODEL_PRICES: Record<string, ModelPrice> = {
-  'claude-sonnet-5': STRONG,
+  'claude-sonnet-5': SONNET_5,
   // Symmetrically: Haiku stays at the Fast rate even if it is configured on the strong tier.
   // Without both entries the fallback is the *tier* price, which prices whichever model is there
   // as though it were the one the tier was designed around — wrong in both directions.
