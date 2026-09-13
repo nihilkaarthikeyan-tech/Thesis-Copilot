@@ -79,3 +79,66 @@ what every test relies on. It is no longer the thing that picks between real pro
   is prose quality, not academic integrity.
 - **The PRD should be amended** — §7.2's AI SDK row and §13.3's variable list. `docs/PENDING.md`
   carries that, as it does for ADR-0010.
+
+---
+
+## Measured, 2026-09-13 (after the key arrived)
+
+Two things the arithmetic could not have told us, both found on the first real call.
+
+### `gpt-5-nano` reasons by default, and reasoning is billed as output
+
+At the fast tier's 120-token cap it spent all 64 tokens reasoning and returned an **empty string**.
+Raising the cap to 500 spent 448 the same way. That is not a worse answer; it is paying full price
+for nothing.
+
+| `maxOutputTokens` | Reasoning tokens | Text tokens |
+|---|---|---|
+| 120, default | 64 | **0** |
+| 500, default | 448 | **0** |
+| 120, `reasoningEffort: 'minimal'` | 0 | **75** |
+| 120, `reasoningEffort: 'low'` | 64 | **0** |
+
+So the adapter sets `reasoningEffort: 'minimal'` on the fast tier, and leaves the strong tier at the
+model's default — the fast tier is short continuations under a 120-token cap, where there is neither
+budget nor use for reasoning. Non-reasoning models such as `gpt-4o-mini` ignore the option, so it is
+safe to send whatever id is configured.
+
+`pnpm ai:verify` also had to change: its probe asked for 5 output tokens, and OpenAI rejects
+anything under 16. No real action is near that — the smallest is ASSIST at 120 — so this was the
+probe only.
+
+### Format compliance is the risk, not prose quality
+
+Six runs of the same real Assist prompt with two pinned sources, through each candidate. "Usable"
+means the editor received a `{{cite:ID}}` it could turn into a citation:
+
+| Model | Usable | Raw id in prose | Avg output | Cost per call |
+|---|---|---|---|---|
+| `claude-haiku-4-5` | 6/6 | 0/6 | 84 | ₹0.1027 |
+| **`gpt-5-nano`** | **6/6** | 0/6 | 72 | **₹0.0055** |
+| `gpt-4.1-nano` | **2/6** | 0/6 | 34 | ₹0.0072 |
+| `gpt-4o-mini` | 6/6 | 0/6 | 74 | ₹0.0129 |
+| `gpt-5-mini` | 6/6 | 0/6 | 94 | ₹0.0315 |
+
+The prose was not the problem. Every model that cited at all cited correctly and quoted the
+passages accurately. What separates them is whether they emit the marker the editor needs.
+
+- **`gpt-4.1-nano` is out.** Two usable answers in six; it writes a fluent paragraph and simply
+  omits the citation.
+- **`gpt-5-nano` is 19× cheaper than Haiku and was 6/6 here** — but on an earlier single run it
+  wrote `(S1#c1; S2#c1)` as literal text instead of the marker. One failure in thirteen runs. At
+  8,000 suggestions a month that is not a rounding error, and a student seeing `S1#c1` in their
+  own paragraph reads it as a bug in the product.
+- **`gpt-4o-mini` is 8× cheaper and was 6/6**, with no reasoning behaviour to configure around.
+
+### What this changes
+
+Nothing yet, deliberately. The fast tier stays on `claude-haiku-4-5`. One prompt six times is not
+an eval: it rules `gpt-4.1-nano` out and it proves the adapter works, but choosing between nano,
+`gpt-4o-mini` and Haiku is what the Appendix C.5 golden set is for, and that needs the fixture
+papers.
+
+The costs are no longer the question. Anything on that list clears the ₹100 ceiling with room —
+with nano on the fast tier the modelled Student total is **₹38.45** against ₹86.03 on Haiku. The
+question is now entirely reliability, which is a better problem to have and a measurable one.

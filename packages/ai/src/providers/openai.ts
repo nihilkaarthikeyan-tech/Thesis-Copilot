@@ -10,10 +10,19 @@
  * needed in the other — which is worth more here than any cleverness saved by sharing code, given
  * that the last defect in the Anthropic adapter was a request shape the SDK rejected outright.
  *
- * The one real difference is caching. Anthropic caches what you mark with `cache_control`; OpenAI
- * caches automatically on prefixes over ~1,024 tokens with no marker at all. So the system blocks
- * here carry no cache annotation, and the same §10.3 layout — stable content first, volatile after
- * — is what earns the discount, by keeping the prefix identical between calls.
+ * Two real differences from the Anthropic adapter:
+ *
+ * **Caching.** Anthropic caches what you mark with `cache_control`; OpenAI caches automatically on
+ * prefixes over ~1,024 tokens with no marker at all. So the system blocks here carry no cache
+ * annotation, and the same §10.3 layout — stable content first, volatile after — is what earns the
+ * discount, by keeping the prefix identical between calls.
+ *
+ * **Reasoning.** The `gpt-5` family reasons before answering, and reasoning tokens are billed as
+ * output and drawn from the same `maxOutputTokens` budget. Measured on 2026-09-13: at the fast
+ * tier's 120-token cap `gpt-5-nano` spent all 64 on reasoning and returned an empty string; raising
+ * the cap to 500 spent 448 the same way. That is not a degraded answer, it is paying full price for
+ * nothing. `reasoningEffort: 'minimal'` turns it off and the same request returned 75 tokens of
+ * prose. See `reasoningFor` below for why that is tied to the tier.
  */
 
 import { createOpenAI } from '@ai-sdk/openai';
@@ -83,16 +92,33 @@ export class OpenAiLlmProvider implements LlmProvider {
     return req.messages.map((m) => ({ role: m.role, content: m.content }) as ModelMessage);
   }
 
+  /**
+   * How much the model may reason before it writes, by tier.
+   *
+   * The fast tier is short continuations under a 120-token cap — a suggestion, a citation, a chat
+   * reply. There is no budget for reasoning there and no task that wants it, and leaving it on
+   * returns nothing at all (see the header). The strong tier is drafting and analysis under caps
+   * ten times larger, where reasoning is the point, so it keeps the model's own default.
+   *
+   * Silently ignored by non-reasoning OpenAI models such as `gpt-4o-mini`, so this is safe to send
+   * whatever id is configured.
+   */
+  private reasoningFor(tier: Tier) {
+    return tier === 'fast' ? { openai: { reasoningEffort: 'minimal' } } : undefined;
+  }
+
   async *stream(req: LlmRequest): AsyncIterable<LlmChunk> {
     let usage: TokenUsage;
     let finishReason: string;
 
     try {
+      const reasoning = this.reasoningFor(req.tier);
       const result = streamText({
         model: this.model(req.tier),
         instructions: this.instructions(req),
         messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
+        ...(reasoning ? { providerOptions: reasoning } : {}),
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
         ...(req.signal ? { abortSignal: req.signal } : {}),
       });
@@ -117,12 +143,14 @@ export class OpenAiLlmProvider implements LlmProvider {
     let usage: LanguageModelUsage;
 
     try {
+      const reasoning = this.reasoningFor(req.tier);
       const result = await generateObject({
         model: this.model(req.tier),
         schema: req.schema,
         instructions: this.instructions(req),
         messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
+        ...(reasoning ? { providerOptions: reasoning } : {}),
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
         ...(req.signal ? { abortSignal: req.signal } : {}),
         // Same boundary as the Anthropic adapter: `generateObject`'s return type is conditional on

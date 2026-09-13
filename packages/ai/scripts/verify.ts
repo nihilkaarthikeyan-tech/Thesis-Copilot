@@ -57,7 +57,16 @@ function looksLikeBadModelId(root: { name: string; message: string }): boolean {
   return /model|not_found|404/i.test(root.message);
 }
 
-/** Step 2: one minimal real call per LLM tier — a tiny prompt, `maxTokens: 5`. */
+/**
+ * The smallest output any configured provider will accept.
+ *
+ * Anthropic takes 5; OpenAI rejects anything under 16 with
+ * `Invalid 'max_output_tokens': integer below minimum value`. 16 satisfies both, and no real
+ * action is anywhere near it — the smallest is ASSIST at 120 — so this only concerns the probe.
+ */
+const PROBE_MAX_TOKENS = 16;
+
+/** Step 2: one minimal real call per LLM tier — a tiny prompt and the smallest allowed output. */
 async function probeTier(llm: LlmProvider, tier: Tier): Promise<ProbeResult> {
   const configuredId = llm.modelIdFor(tier);
   let text = '';
@@ -68,7 +77,7 @@ async function probeTier(llm: LlmProvider, tier: Tier): Promise<ProbeResult> {
     tier,
     system: { cached: 'You are a test probe. Reply with one word.' },
     messages: [{ role: 'user', content: 'Say OK.' }],
-    maxTokens: 5,
+    maxTokens: PROBE_MAX_TOKENS,
     action: 'ASSIST',
     userId: 'ai-verify',
   })) {
@@ -160,8 +169,12 @@ async function main(): Promise<void> {
           `Choose one from the provider and set it in .env: ${pricing.providerPricingUrl}`,
         );
       } else {
+        // Name the adapter that actually ran: with two vendors configured, pointing at the wrong
+        // file is most of the time lost.
+        const adapter =
+          providerForModel(llm.modelIdFor(tier)) === 'openai' ? 'openai.ts' : 'anthropic.ts';
         console.error('That is not the provider refusing the id — the request never got that far.');
-        console.error('Check the adapter (packages/ai/src/providers/anthropic.ts) and the key.');
+        console.error(`Check the adapter (packages/ai/src/providers/${adapter}) and the key.`);
       }
       process.exit(1);
     }
