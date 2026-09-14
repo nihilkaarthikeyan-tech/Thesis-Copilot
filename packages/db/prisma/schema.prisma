@@ -125,6 +125,23 @@ model User {
   aiCalls       AiCallLog[]
   subscription  Subscription?
   guideShares   GuideShare[]
+  // --- PRD §12.2 account deletion ---
+  /**
+   * When the student asked for their account to be erased, or null if they have not.
+   *
+   * A request, not the erasure: §12.2 allows 30 days, and the days are the point. They are what
+   * lets a student who clicked in anger, or whose mailbox was borrowed for an evening, undo it —
+   * and with OTP sign-in a borrowed mailbox is the whole threat model. `DeletionScheduler` does
+   * the erasing once the grace period is up.
+   */
+  deletionRequestedAt DateTime?
+  /**
+   * When the erasure actually ran. Set on a row that has been stripped of everything it is legal
+   * to strip: content gone, email replaced, the row kept only so the billing records §12.2
+   * requires us to retain still have something to point at.
+   */
+  deletedAt           DateTime?
+  @@index([deletionRequestedAt])
 }
 
 model Institution {

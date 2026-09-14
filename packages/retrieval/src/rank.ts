@@ -71,6 +71,58 @@ export function topK(
 }
 
 /**
+ * The cosine below which a question is not about the student's library at all.
+ *
+ * This is what stops the chat box being a general-purpose chatbot. A.4 already tells the model to
+ * answer only from the passages it is given, and `postProcessChat` strips any citation the model
+ * was not shown — but both of those are downstream of a provider call that has already been made
+ * and charged. Nothing refused an off-topic question before it cost the student a metered unit,
+ * and nothing but the model's own obedience stopped it answering from general knowledge.
+ *
+ * **Measured, not chosen.** Four library passages on one subject, fifteen questions, `voyage-3`,
+ * 2026-09-14:
+ *
+ * | | best cosine against the library |
+ * |---|---|
+ * | On topic, must be answered | 0.345 – 0.595 |
+ * | In the subject area, but the library has nothing on it | 0.302 – 0.427 |
+ * | Off topic, must be refused | 0.003 – 0.254 |
+ *
+ * 0.30 sits in the gap: above every off-topic question, below every on-topic one. "What's the
+ * weather in Chennai today?" was the closest thing to a false negative at 0.254, and a poem about
+ * the sea scored 0.003.
+ *
+ * The middle row is why this is a floor on relevance and not an answer to "is it in the library".
+ * A question about net metering is a perfectly good question that this library cannot answer, and
+ * the right reply is A.4's "Your library does not contain enough on this. Try adding sources on:
+ * …" — which needs the model, because naming the missing topic is the useful half. Those are meant
+ * to pass the floor and be refused by the prompt. Only questions that are nowhere near the subject
+ * are stopped here.
+ *
+ * **The evidence is thin and should be widened.** Fifteen questions on one subject area is enough
+ * to place a threshold in an obvious gap, and not enough to know the gap is there for every
+ * discipline. `docs/PENDING.md` carries this; the five fixture papers are what would settle it.
+ * Erring low is deliberate: a false refusal is a student told their library is off-topic when it
+ * is not, which is worse than a wasted call.
+ */
+export const RELEVANCE_FLOOR = 0.3;
+
+/**
+ * Whether a retrieved set says anything about the question.
+ *
+ * Reads `cosine` rather than `score` on purpose: §10.4's sub-theme and full-text boosts add up to
+ * 0.25, which is most of the distance between the two populations above. A wholly irrelevant
+ * passage from a full-text source with a matching sub-theme would clear a floor applied to `score`
+ * on the boosts alone.
+ */
+export function isOffTopic(
+  passages: readonly { cosine: number }[],
+  floor: number = RELEVANCE_FLOOR,
+): boolean {
+  return passages.every((passage) => passage.cosine < floor);
+}
+
+/**
  * The id the model sees on a passage — §10.4: "Chunks are passed to the model with an id:
  * `[S3#c12] <text>`". The same id must come back in `{{cite:...}}` or it is stripped as a
  * hallucination (§10.6), so this and the whitelist must agree.

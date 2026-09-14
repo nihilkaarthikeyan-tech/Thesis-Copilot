@@ -23,8 +23,10 @@ export {
   type ChatPostProcess,
   type ChatTurn,
   chatUserMessage,
+  FILTERED_OUT_REPLY,
   mockChatFor,
   NOT_ENOUGH_PREFIX,
+  OFF_TOPIC_REPLY,
   postProcessChat,
   WRITING_REDIRECT_PREFIX,
 } from './builder/chat.js';

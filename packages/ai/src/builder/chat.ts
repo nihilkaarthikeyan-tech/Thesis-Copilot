@@ -99,7 +99,37 @@ export function buildChatRequest(input: ChatBuildInput): LlmRequest {
 export const NOT_ENOUGH_PREFIX = 'Your library does not contain enough on this.';
 export const WRITING_REDIRECT_PREFIX = 'Use Assist or Draft mode in the editor for writing';
 
-export type ChatOutcome = 'answered' | 'not-enough' | 'writing-redirect';
+/**
+ * What the student is told when the question is nowhere near their library.
+ *
+ * Distinct from `NOT_ENOUGH_PREFIX`, which means "a fair question about your subject that your
+ * sources do not answer — go and add some". This one means "this is not a question about your
+ * subject at all", and pointing that student at more sources would be nonsense.
+ *
+ * Written by the server, never by a model: the whole point is that no provider call was made. See
+ * `isOffTopic` in `@tc/retrieval` for how that is decided, and for the measurements behind it.
+ */
+export const OFF_TOPIC_REPLY =
+  'This chat only answers questions about the sources in your library. ' +
+  'Nothing in your library relates to that, so there is nothing for me to answer from.';
+
+/**
+ * What the student is told when their own filters removed every passage.
+ *
+ * Separate from `OFF_TOPIC_REPLY` because the cause is the opposite and so is the fix: the library
+ * does have something to say, and a control the student set is what is stopping it. Telling them
+ * nothing relates to their question would send them off to find sources they already have.
+ */
+export const FILTERED_OUT_REPLY =
+  'Your filters left nothing to answer from. Widen the year range, or turn off the preprint and ' +
+  'citation filters, and ask again.';
+
+export type ChatOutcome =
+  | 'answered'
+  | 'not-enough'
+  | 'writing-redirect'
+  | 'off-topic'
+  | 'filtered-out';
 
 export type ChatPostProcess = {
   text: string;

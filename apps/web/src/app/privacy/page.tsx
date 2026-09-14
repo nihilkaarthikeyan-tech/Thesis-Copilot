@@ -30,6 +30,12 @@ export default function PrivacyPage() {
         anyone&rsquo;s. We send text to our AI provider only to answer the request you made, under
         an agreement that forbids them training on it.
       </p>
+      <p className="mt-2 text-muted">
+        We also ask the provider not to keep it. Every request we make is marked zero-retention, so
+        the provider does not store your text or its own reply once the answer has been returned —
+        not for their dashboard, not for review, not for thirty days. There is nothing on their side
+        for us, or anyone else, to go back and read.
+      </p>
 
       <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
         What is sent, and when
@@ -73,8 +79,22 @@ export default function PrivacyPage() {
         Leaving
       </h2>
       <p className="mt-2 text-muted">
-        Export any chapter as .docx or PDF at any time, with or without a subscription. Ask us to
-        delete your account and everything in it goes, including backups within 30 days.
+        Export any chapter as .docx or PDF at any time, with or without a subscription — do that
+        first, because the rest of this is final.
+      </p>
+      <p className="mt-2 text-muted">
+        Delete your account from the{' '}
+        <Link href="/app/account" className="underline">
+          account page
+        </Link>
+        . You are signed out everywhere immediately, and seven days later your theses, chapters,
+        sources, uploaded files, exports and comments are erased outright — not hidden, not
+        archived. The seven days are yours to change your mind in; nothing has happened until they
+        are up. Backups age out within thirty days of that.
+      </p>
+      <p className="mt-2 text-muted">
+        Two things survive: your payment records, which we are required to keep, and a note that the
+        deletion was asked for and carried out. Neither contains anything you wrote.
       </p>
 
       <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">

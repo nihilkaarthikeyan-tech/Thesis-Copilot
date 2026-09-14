@@ -31,6 +31,12 @@ type Invoice = {
   amountInr: number;
 };
 
+type Deletion = {
+  requestedAt: string | null;
+  erasesAt: string | null;
+  graceDays: number;
+};
+
 type Usage = {
   plan: string;
   resetsAt: string;
@@ -61,6 +67,10 @@ export default function AccountPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [deletion, setDeletion] = useState<Deletion | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [signedOut, setSignedOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -76,6 +86,9 @@ export default function AccountPage() {
     api<Invoice[]>('/billing/invoices')
       .then(setInvoices)
       .catch(() => undefined);
+    api<Deletion>('/account/deletion')
+      .then(setDeletion)
+      .catch(() => undefined);
   }, []);
 
   useEffect(load, [load]);
@@ -90,6 +103,44 @@ export default function AccountPage() {
       setNotice(
         `Cancelled. You keep everything until ${date(updated.currentPeriodEnd)}, and nothing is deleted after that.`,
       );
+    } catch (e) {
+      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not cancel.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteAccount() {
+    setBusy(true);
+    setError(null);
+    try {
+      const status = await api<Deletion>('/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmEmail }),
+      });
+      setDeletion(status);
+      setDeleting(false);
+      setConfirmEmail('');
+      setSignedOut(true);
+      setNotice(null);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not schedule the deletion.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function keepAccount() {
+    setBusy(true);
+    setError(null);
+    try {
+      setDeletion(await api<Deletion>('/account/deletion/cancel', { method: 'POST', body: '{}' }));
+      setSignedOut(false);
+      setNotice('Your account is staying. Nothing was deleted.');
     } catch (e) {
       setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not cancel.');
     } finally {
@@ -310,6 +361,113 @@ export default function AccountPage() {
           </ul>
         </section>
       ) : null}
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Delete your account</h2>
+
+        {deletion?.requestedAt && signedOut ? (
+          <>
+            <p className="mt-2 text-sm">
+              Scheduled. Your account and everything in it will be erased on{' '}
+              <strong>{date(deletion.erasesAt)}</strong>.
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              You have been signed out on every device, including this one. That is deliberate: if
+              this request was not yours, whoever made it no longer has a way in.
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              To undo it, sign in again with your email and choose <strong>Keep my account</strong>.
+              Nothing is deleted until {date(deletion.erasesAt)}.
+            </p>
+            <Link
+              href="/sign-in"
+              data-testid="deletion-signin"
+              className="mt-3 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+            >
+              Sign in again
+            </Link>
+          </>
+        ) : deletion?.requestedAt ? (
+          <>
+            <p className="mt-2 text-sm">
+              Your account and everything in it will be erased on{' '}
+              <strong>{date(deletion.erasesAt)}</strong>.
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              Change your mind any time before then and nothing is lost.
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void keepAccount()}
+              data-testid="cancel-deletion"
+              className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50 sm:w-auto"
+            >
+              {busy ? 'Cancelling…' : 'Keep my account'}
+            </button>
+          </>
+        ) : deleting ? (
+          <div className="mt-3 rounded-md border border-line p-3 text-sm">
+            <p>
+              This deletes your theses, chapters, sources, uploaded PDFs, exports and comments.{' '}
+              <strong>It cannot be undone once it runs.</strong> Export anything you want to keep
+              first — that works on any plan.
+            </p>
+            <p className="mt-2 text-muted">
+              Nothing happens for {deletion?.graceDays ?? 7} days. Until then you can change your
+              mind here. Your payment records are kept, because the law requires it.
+            </p>
+            <label htmlFor="confirm-email" className="mt-3 block text-xs text-muted">
+              Type your email address to confirm
+            </label>
+            <input
+              id="confirm-email"
+              type="email"
+              autoComplete="off"
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
+              data-testid="confirm-email"
+              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy || confirmEmail.trim() === ''}
+                onClick={() => void deleteAccount()}
+                data-testid="confirm-delete"
+                className="rounded-md bg-danger px-4 py-2 text-sm text-paper disabled:opacity-50"
+              >
+                {busy ? 'Scheduling…' : 'Delete my account'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleting(false);
+                  setConfirmEmail('');
+                }}
+                className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Never mind
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-muted">
+              Erases your theses, sources, files and exports. You get {deletion?.graceDays ?? 7}{' '}
+              days to change your mind.
+            </p>
+            <button
+              type="button"
+              onClick={() => setDeleting(true)}
+              data-testid="delete-account"
+              className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-sunk sm:w-auto"
+            >
+              Delete account
+            </button>
+          </>
+        )}
+      </section>
 
       <p className="mt-6 text-xs text-muted">
         <Link href="/app/settings" className="underline">

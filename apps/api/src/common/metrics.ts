@@ -52,3 +52,9 @@ export const hallucinatedCite = new Counter({
   help: 'Citations stripped because the id was not in the retrieved set (PRD 10.6)',
   registers: [registry],
 });
+
+export const chatOffTopic = new Counter({
+  name: 'chat_off_topic_total',
+  help: 'Chat questions refused before any provider call because nothing in the library related to them',
+  registers: [registry],
+});

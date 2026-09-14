@@ -37,6 +37,12 @@ blocks the agent from continuing to build against mocks.
       we were still on Claude.
       **Still yours:** confirm both pages independently before the pilot bills anyone. Prices
       change and nothing in the product re-reads them.
+- [ ] **Add a payment method to the Voyage account — it is rate-limited to 3 requests a minute.**
+      Hit on 2026-09-14: `429 … you have not yet added your payment method in the billing page and
+      will have reduced rate limits of 3 RPM and 10K TPM`. Every chapter index and every chat
+      question needs an embedding, so at 3 RPM the product is unusable with more than one student
+      on it. The 200M free tokens still apply once a card is on file — this is about the rate
+      limit, not the bill. dashboard.voyageai.com, billing page.
 - [x] **Voyage API key + embedding model.** Done 2026-09-08. `VOYAGE_API_KEY` is in `.env` with
       `EMBED_PROVIDER=voyage` and `AI_EMBED_MODEL=voyage-3`; `ai:verify` got 1024-d vectors back,
       matching `EMBED_DIMS` and the `vector(1024)` column.
@@ -211,28 +217,29 @@ export.
 
 **Gaps:**
 
-- [ ] **Account deletion — PRD §12.2 requires it and it does not exist.** "Hard-delete documents,
-      sources, chunks, files within 30 days; keep billing records as required by law." There is no
-      endpoint, no UI and no job; `prisma.user.delete` appears nowhere. The `Document` cascades are
-      in place, so the data model is ready — what is missing is the request, the grace period, the
-      file deletion from MinIO, and the carve-out that keeps `Invoice` and `AuditEvent` rows for the
-      statutory period. This is a legal obligation under India's DPDP Act, not a nicety, and it is
-      the one account feature genuinely absent.
-- [ ] **Zero-retention is not set on provider calls.** §12.2: "Provider calls use zero-retention
-      settings where the provider offers them; document this on the privacy page." OpenAI's
-      Responses API defaults to `store: true` and keeps request and response bodies for 30 days.
-      The AI SDK exposes `store` as a provider option and nothing sets it, so every chapter a
-      student writes is currently retained by OpenAI for a month. One line in
-      `packages/ai/src/providers/openai.ts` plus a matching sentence on `/privacy`.
-- [ ] **Chat has no hard stop when the library has nothing to say.** The guard against the product
-      being used as a general chatbot is real but it is all in the prompt: A.4 says "answer using
-      only the provided passages" and "if the passages do not contain the answer, say exactly …".
-      `postProcessChat` then strips any citation the model was not shown. What is missing is a code
-      floor: `chat.service.ts` retrieves the top 8 passages and calls the model **even when nothing
-      relevant came back**, so an off-topic question spends a metered CHAT unit for the model to say
-      it cannot help, and the only thing stopping it answering from its own knowledge is that it was
-      asked not to. A zero-passage short-circuit and a minimum-similarity floor would make the
-      refusal structural instead of advisory, and would be cheaper.
+- [x] **Account deletion.** Built 2026-09-14. `DELETE /account` (the address typed back to confirm)
+      marks the row and signs every device out; `DeletionScheduler` erases seven days later;
+      `POST /account/deletion/cancel` undoes it in between. Migration `0012_account_deletion`.
+      Content is hard-deleted; the `User` row survives stripped so the billing records §12.2
+      requires can still point at something, and the address is freed for a fresh signup. 16
+      integration tests, one of which walks `information_schema` so a table added later that is
+      not erased fails the test. Driven end to end in a browser.
+- [x] **Zero-retention on provider calls.** Set 2026-09-14: `store: false` on every OpenAI call.
+      Before this the Responses API's default kept every chapter for 30 days while `/privacy` said
+      otherwise. The privacy page now states the position.
+- [x] **A code floor under chat.** Built 2026-09-14: `RELEVANCE_FLOOR` in `@tc/retrieval` refuses a
+      question nothing in the library relates to *before* any provider call, and refunds the unit.
+      The threshold is measured (see `docs/BUILD_LOG.md`), not chosen.
+- [ ] **Widen the evidence under `RELEVANCE_FLOOR`.** It is placed from fifteen questions against
+      four passages in one subject area, which is enough to find an obvious gap (off-topic tops out
+      at 0.254, on-topic bottoms at 0.345) and not enough to know the gap holds for every
+      discipline. A false refusal — a student told their library is off-topic when it is not — is
+      the failure that matters, so the floor errs low and takes a per-call override. The five
+      fixture papers are what would settle it.
+- [ ] **An end-to-end test of the chat floor.** `isOffTopic` is unit-tested against the measured
+      cosines and the service wiring is typechecked, but no test drives a real off-topic question
+      through `chat.service.ts` and asserts no provider call was made. That needs a document with
+      an embedded library, which needs the fixture papers.
 - [ ] **Changing the email on an account is not possible.** Not in the PRD either, so this is a
       question rather than a defect — but with OTP sign-in the address *is* the identity, so a
       student who loses access to their university mailbox after graduating loses the thesis. Worth

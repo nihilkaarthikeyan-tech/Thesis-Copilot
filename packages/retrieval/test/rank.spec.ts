@@ -8,8 +8,10 @@ import {
   CANDIDATE_LIMIT,
   type Candidate,
   FULL_TEXT_BOOST,
+  isOffTopic,
   parsePassageId,
   passageId,
+  RELEVANCE_FLOOR,
   rerank,
   SUB_THEME_BOOST,
   stripUnknownCitations,
@@ -162,5 +164,75 @@ describe('stripUnknownCitations (§10.6)', () => {
     const { text, hallucinated } = stripUnknownCitations('No citations here.', new Set(['S1#c1']));
     expect(text).toBe('No citations here.');
     expect(hallucinated).toEqual([]);
+  });
+});
+
+describe('the relevance floor — what stops chat being a general chatbot', () => {
+  // The cosines below are the ones actually measured against voyage-3 on 2026-09-14, four library
+  // passages on one subject and fifteen questions. See RELEVANCE_FLOOR for the full table. They
+  // are recorded here so a change to the floor has to argue with the measurement.
+  const MEASURED = {
+    onTopic: [0.595, 0.499, 0.396, 0.36, 0.345],
+    nearby: [0.427, 0.381, 0.302],
+    offTopic: [0.254, 0.117, 0.091, 0.07, 0.061, 0.048, 0.003],
+  };
+
+  const at = (cosine: number) => [{ cosine }];
+
+  it('lets every question that was actually about the library through', () => {
+    for (const cosine of MEASURED.onTopic) {
+      expect(isOffTopic(at(cosine)), `on-topic ${cosine}`).toBe(false);
+    }
+  });
+
+  it('refuses every question that was not', () => {
+    for (const cosine of MEASURED.offTopic) {
+      expect(isOffTopic(at(cosine)), `off-topic ${cosine}`).toBe(true);
+    }
+  });
+
+  it('sits in the gap between the two, with room on both sides', () => {
+    const highestOffTopic = Math.max(...MEASURED.offTopic);
+    const lowestOnTopic = Math.min(...MEASURED.onTopic);
+
+    expect(highestOffTopic).toBeLessThan(RELEVANCE_FLOOR);
+    expect(lowestOnTopic).toBeGreaterThan(RELEVANCE_FLOOR);
+  });
+
+  it('lets a fair question the library cannot answer reach the model', () => {
+    // The middle population. "How does net metering work in India?" is a real question about the
+    // subject that these sources do not cover, and the useful reply is A.4's "try adding sources
+    // on: …", which only the model can write because naming the missing topic is the point. The
+    // floor is not a test of whether the answer is in there.
+    for (const cosine of MEASURED.nearby) {
+      expect(isOffTopic(at(cosine)), `nearby ${cosine}`).toBe(false);
+    }
+  });
+
+  it('needs only one relevant passage out of eight', () => {
+    // A question answered by a single source is still a question about the library.
+    const passages = [{ cosine: 0.02 }, { cosine: 0.05 }, { cosine: 0.51 }, { cosine: 0.01 }];
+    expect(isOffTopic(passages)).toBe(false);
+  });
+
+  it('treats an empty retrieval as off topic', () => {
+    // `every` on an empty array is true, which is the answer we want and worth pinning: an empty
+    // library has nothing for the model to answer from either.
+    expect(isOffTopic([])).toBe(true);
+  });
+
+  it('reads cosine, not the reranked score', () => {
+    // §10.4's boosts are worth up to +0.25 — more than the whole gap between the populations. A
+    // wholly irrelevant chunk from a full-text source with a matching sub-theme would clear a
+    // floor applied to `score` on the boosts alone, which is how this guard would quietly stop
+    // guarding anything.
+    const irrelevantButBoosted = { cosine: 0.05, score: 0.05 + SUB_THEME_BOOST + FULL_TEXT_BOOST };
+    expect(irrelevantButBoosted.score).toBeGreaterThan(RELEVANCE_FLOOR);
+    expect(isOffTopic([irrelevantButBoosted])).toBe(true);
+  });
+
+  it('takes a caller-supplied floor, so the threshold can be tuned without a deploy', () => {
+    expect(isOffTopic(at(0.4), 0.5)).toBe(true);
+    expect(isOffTopic(at(0.4), 0.2)).toBe(false);
   });
 });

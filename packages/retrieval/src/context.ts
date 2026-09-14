@@ -50,6 +50,14 @@ export type RetrievedPassage = PromptPassage & {
   sourceId: string;
   chunkId: string;
   score: number;
+  /**
+   * The raw cosine similarity, before §10.4's sub-theme and full-text boosts.
+   *
+   * Carried separately from `score` because the boosts are worth up to +0.25, which is more than
+   * the whole gap between "this is about the question" and "this is not". Any relevance decision
+   * has to read this one; `score` is for ordering.
+   */
+  cosine: number;
 };
 
 export type RetrievalResult = {
@@ -184,6 +192,7 @@ export async function retrievePassages(
       sourceId: candidate.sourceId,
       chunkId: candidate.chunkId,
       score: candidate.score,
+      cosine: candidate.cosine,
     };
   });
 

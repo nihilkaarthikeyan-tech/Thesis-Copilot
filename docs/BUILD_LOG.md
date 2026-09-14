@@ -3038,3 +3038,108 @@ This is the same lesson as `anthropic.spec.ts`, learned twice in a week: **an ad
 is a file nobody has run.** Both times the code looked right and the wire body was wrong, and both
 times the mock hid it. `pnpm ai:shakedown` is the standing answer — it needs a key and real money,
 so it is not in CI, but it is what to run after any change to a provider, a model id, or a schema.
+
+---
+
+## Account deletion, zero-retention, and a floor under chat — 2026-09-14
+
+The owner asked whether the account basics were done: password reset, email verification, account
+deletion. Auditing the account surface against PRD §12 found that two of those do not apply and
+three other things were missing — one of them a legal obligation.
+
+**Not applicable, and now written down so the question stops recurring.** There are no passwords:
+§7.2 chose Better Auth with email OTP + Google, so there is no credential to lose or reset. And the
+OTP *is* the email verification — on every sign-in, not once at signup — so an unverified account
+cannot exist.
+
+### 1. Account deletion (PRD §12.2) — did not exist at all
+
+No endpoint, no UI, no job; `prisma.user.delete` appeared nowhere in the codebase. §12.2 requires
+"hard-delete documents, sources, chunks, files within 30 days", and under India's DPDP Act that is
+an obligation rather than a feature.
+
+Built as two steps, because the thirty days are worth having. `DELETE /account` marks the row and
+signs every device out; `DeletionScheduler` erases seven days later; `POST /account/deletion/cancel`
+undoes it in between. Migration `0012_account_deletion` adds `deletionRequestedAt` and `deletedAt`.
+
+**Seven days, not thirty.** §12.2's thirty is a deadline to finish by, and the nightly backups are
+themselves kept for thirty days — erasing on day 7 puts the last copy out of the backups around day
+37, while erasing on day 30 would push it to day 60 and break the promise on the privacy page.
+
+**The grace period is the security control, not slack.** Sign-in is a code emailed to an address, so
+anyone who reads one email can ask for an account to be erased. A week in which the real owner is
+signed out, emailed, and able to undo it is the rest of the defence. Signing *every* session out —
+including the one that made the request — is deliberate for the same reason.
+
+**The `User` row survives, stripped.** §12.2 also says "keep billing records as required by law", and
+`Subscription` and `AuditEvent` both have foreign keys into `User`; a payment record pointing at
+nothing proves nothing. So the row stays with its email replaced by `deleted-<id>@deleted.invalid`
+and its name gone, which also frees the address for a fresh signup. Everything that is the
+student's *work* is deleted outright, and deliberately by an explicit list rather than a Prisma
+cascade — a cascade would silently delete whatever anyone adds to `Document` next year, including,
+one day, something we are required to keep.
+
+16 integration tests on real Postgres and MinIO. The one that matters most walks
+`information_schema` rather than a list, so a table added later that hangs off `userId` or
+`documentId` and is not handled fails the test instead of quietly retaining a deleted student's
+text.
+
+Driven end to end in a browser: request → signed out everywhere → sign in again → *Keep my account*
+→ cancelled. That run found a real defect of its own — the first version told the student "you have
+been signed out everywhere **else**" and left them staring at a dead *Keep my account* button after
+a reload, with no sign the deletion was even pending. It now says plainly that this device is signed
+out too, why, and that signing in again is how to undo it.
+
+### 2. Zero-retention was never set (PRD §12.2)
+
+"Provider calls use zero-retention settings where the provider offers them; document this on the
+privacy page." Nothing set it. OpenAI's Responses API defaults `store` to **true** and keeps request
+and response bodies for 30 days — so every chapter a student wrote was being retained for a month
+while `/privacy` said it was not.
+
+`store: false` now goes on every call: every model, every tier, structured and streamed, including
+the lenient retry. Asserted in `openai.spec.ts` on each shape of call, because this is the only
+provider option here that is not a tuning choice. The privacy page now states the position, and
+`pnpm ai:shakedown` still passes 19/19 with it on.
+
+### 3. Chat could be used as a general chatbot, and only the prompt said otherwise
+
+A.4 tells the model to answer only from the retrieved passages, and `postProcessChat` strips any
+citation it was not shown — but both run *after* the model has been called and the student charged.
+Nothing refused "what's the weather in Chennai?" before it cost a CHAT unit, and nothing but the
+model's own obedience stopped it answering from general knowledge.
+
+`RELEVANCE_FLOOR` in `@tc/retrieval` is now a code stop, and the threshold is measured rather than
+chosen. Four library passages on one subject, fifteen questions, `voyage-3`:
+
+| | best cosine against the library |
+|---|---|
+| On topic, must be answered | 0.345 – 0.595 |
+| In the subject area, but the library has nothing on it | 0.302 – 0.427 |
+| Off topic, must be refused | 0.003 – 0.254 |
+
+0.30 sits in the gap. "What's the weather in Chennai today?" was the nearest miss at 0.254; a poem
+about the sea scored 0.003.
+
+Two things worth recording. It reads `cosine`, not the reranked `score` — §10.4's sub-theme and
+full-text boosts are worth up to +0.25, which is more than the whole gap between the two
+populations, so a floor on `score` would be cleared on the boosts alone. And the middle row is
+meant to pass: a question about net metering is a fair question this library cannot answer, and the
+useful reply is A.4's "try adding sources on: …", which only the model can write.
+
+The unit is refunded, since the student gets no answer. And the browser pass turned up an edge case
+worth its own message: if the *filters* removed every passage, "nothing in your library relates to
+that" is exactly wrong — the library does have something and a control the student set is hiding
+it. That is `FILTERED_OUT_REPLY` and a separate `filtered-out` outcome.
+
+**The evidence is thin.** Fifteen questions on one subject is enough to place a threshold in an
+obvious gap and not enough to know the gap is there for every discipline; the floor is tunable per
+call for that reason, and erring low is deliberate, since a false refusal is worse than a wasted
+call. `docs/PENDING.md` carries it — the five fixture papers are what would widen it.
+
+### Also found, not fixed
+
+**Voyage is rate-limited to 3 requests per minute.** The measurement run hit
+`429 … you have not yet added your payment method … reduced rate limits of 3 RPM and 10K TPM`.
+Every chapter index and every chat question needs an embedding, so this makes the product unusable
+under any real load. It is a billing-page click, not a code change, and it is in `docs/PENDING.md`.

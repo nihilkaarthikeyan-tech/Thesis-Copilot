@@ -111,7 +111,7 @@ comment import), the submission bundle (template spec, ten compliance checks, th
 with a real contents page, the override with a reason), billing, institution admin with seats and
 invoices, the SUPERADMIN dashboards, §14 alerts, feature flags and `pnpm pilot:report`.
 
-**The VERIFY batch is done too.** 1,127 unit and integration tests (Vitest, 73 files; 2 skipped,
+**The VERIFY batch is done too.** 1,166 unit and integration tests (Vitest, 75 files; 2 skipped,
 both conditional on fixture papers that do not exist yet) and 28
 Playwright specs pass; `docs/BUILD_LOG.md` → "VERIFY" lists what was added and the seven real
 defects writing them found. `pnpm test`, `pnpm lint` and `pnpm typecheck` are clean; `pnpm e2e`
@@ -124,6 +124,16 @@ fallback, and real outbound email (Resend / SMTP — before it, production would
 sign-in code to the log). `docs/BUILD_LOG.md` → "Specification audit" has the account. Before
 saying anything is "done", audit the PRD's FR lines, not the phase plan; the owner has been told
 "finished" prematurely more than once and it is the one thing they have objected to.
+
+**Account deletion exists** (2026-09-14, PRD §12.2). `DELETE /account` marks the row and signs
+every device out; `DeletionScheduler` erases seven days later; the student can cancel in between.
+The `User` row survives stripped so the billing records §12.2 requires still have something to
+point at. There are no passwords anywhere in this product — sign-in is an emailed code, so "forgot
+password" does not apply, and the OTP is the email verification.
+
+**Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
+(`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
+refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.
 
 **Real providers are live** (2026-09-13). `AI_PROVIDER=anthropic` means "not the mock"; the vendor
 is derived per tier from the model id (ADR-0011, `packages/ai/src/providers/routing.ts`). Today

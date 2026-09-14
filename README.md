@@ -17,10 +17,10 @@ Phase 2 weeks 6–11, Phase 3 blocks 1–4, and the VERIFY batch.
 
 | | |
 |---|---|
-| Unit + integration tests | **1,127 passing** (Vitest, 73 files; 2 skipped, both waiting on fixture papers) |
+| Unit + integration tests | **1,166 passing** (Vitest, 75 files; 2 skipped, both waiting on fixture papers) |
 | Browser tests | **28 passing** (Playwright, against the dev stack) |
 | `pnpm lint`, `pnpm typecheck` | clean |
-| Migrations | 0001 → 0011, `pnpm db:check` agrees with the schema |
+| Migrations | 0001 → 0012, `pnpm db:check` agrees with the schema |
 | Decisions logged | [11 ADRs](docs/ADR/) |
 | AI providers | **live** — OpenAI (both tiers), Voyage (embeddings), Anthropic (configured, unused) |
 | Outbound email | **live** — Hostinger SMTP, `no-reply@rademics.ai`, delivery confirmed |
@@ -143,7 +143,7 @@ production, and is also readable at `GET /api/v1/auth/dev/last-otp?email=…`.
 
 ```bash
 pnpm dev            # web :3000, api :3001, worker
-pnpm test           # Vitest — 1,127 unit and integration tests
+pnpm test           # Vitest — 1,166 unit and integration tests
 pnpm e2e            # Playwright — needs the dev stack already running
 pnpm lint           # Biome; CI fails on findings
 pnpm typecheck      # tsc across all 19 workspaces

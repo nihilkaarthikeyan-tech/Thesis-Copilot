@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { MailerModule } from './common/mailer.module.js';
 import { AppConfigModule } from './config.module.js';
+import { AccountModule } from './modules/account/account.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
 import { AssistModule } from './modules/assist/assist.module.js';
@@ -54,6 +55,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     HealthModule,
     MetricsModule,
     FlagsModule,
+    AccountModule,
     UsageModule,
     DocumentsModule,
     ExportModule,

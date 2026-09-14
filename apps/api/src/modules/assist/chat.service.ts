@@ -14,10 +14,13 @@ import {
   CHAT,
   type ChatFilters,
   type ChatTurn,
+  FILTERED_OUT_REPLY,
+  OFF_TOPIC_REPLY,
   type Providers,
   postProcessChat,
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
+import { isOffTopic } from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import {
@@ -25,6 +28,7 @@ import {
   aiCostMicroInr,
   aiTtfb,
   capExceeded,
+  chatOffTopic,
   hallucinatedCite,
 } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -137,6 +141,52 @@ export class ChatService {
     ]);
     const filters = input.filters ?? {};
     const passages = (await this.applyFilters(retrieved, filters)).slice(0, CHAT.topK);
+
+    // The off-topic stop, before any provider call.
+    //
+    // A.4 tells the model to answer only from these passages, and `postProcessChat` strips any
+    // citation it was not shown — but both of those run *after* the model has been called and the
+    // student charged. Nothing refused "what's the weather in Chennai?" before it cost a CHAT unit
+    // and a provider call, and nothing but the model's own obedience stopped it answering from
+    // general knowledge. Measured cosines put every off-topic question below 0.3 and every
+    // on-topic one above it (`RELEVANCE_FLOOR`, `@tc/retrieval`), so this decides it here instead.
+    //
+    // The unit is refunded because the student is getting no answer. It is consumed first rather
+    // than after retrieval because §10.2 requires the check and increment to precede any provider
+    // call, and embedding the question is one — the same order every other metered action uses,
+    // and the same refund the failure path below uses.
+    if (passages.length === 0 || isOffTopic(passages)) {
+      // Two different refusals, and the difference matters to the student. An empty set when
+      // retrieval did find something means their own filters emptied it, and the fix is a control
+      // on this screen; anything else means the question is not about their library.
+      const filteredOut = passages.length === 0 && retrieved.passages.length > 0;
+      await this.usage.refund(user.id, 'CHAT');
+      const latencyMs = Date.now() - startedAt;
+      const best = passages.reduce((m, p) => Math.max(m, p.cosine), 0);
+      this.logger.log(
+        {
+          documentId: input.documentId,
+          passages: passages.length,
+          retrieved: retrieved.passages.length,
+          bestCosine: Number(best.toFixed(3)),
+        },
+        filteredOut
+          ? 'chat refused: the filters removed every passage'
+          : 'chat refused: nothing in the library relates to the question',
+      );
+      if (!filteredOut) chatOffTopic.inc();
+      yield {
+        event: 'done',
+        data: {
+          text: filteredOut ? FILTERED_OUT_REPLY : OFF_TOPIC_REPLY,
+          outcome: filteredOut ? ('filtered-out' as const) : ('off-topic' as const),
+          citations: [],
+          passagesUsed: 0,
+          latencyMs,
+        },
+      };
+      return;
+    }
 
     const request = buildChatRequest({
       memoryBlock: memory.text,

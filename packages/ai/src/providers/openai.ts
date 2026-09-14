@@ -181,6 +181,16 @@ export class OpenAiLlmProvider implements LlmProvider {
    * `LlmValidationError` if it does not fit. Strict mode was a second, stricter lock on a door
    * that is already locked — and it was jamming.
    *
+   * **`store: false` on every call, always.** PRD §12.2: "Provider calls use zero-retention
+   * settings where the provider offers them." OpenAI's Responses API defaults `store` to **true**
+   * and keeps the request and response bodies for 30 days, so until this was set every chapter a
+   * student wrote sat on OpenAI's servers for a month — while `/privacy` told them it did not.
+   * This is the only option here that is not a tuning choice, so it is set for every model and
+   * every call, reasoning or not, structured or streamed, and is asserted in `openai.spec.ts`.
+   *
+   * It does not affect prompt caching. Caching is keyed on the prefix and happens regardless;
+   * `store` governs whether the exchange is retained for the dashboard and for abuse review.
+   *
    * **Reasoning off on the fast tier** (unchanged, see the header): a 120-token cap leaves no room
    * to think, and leaving it on returns an empty string at full price.
    *
@@ -192,14 +202,17 @@ export class OpenAiLlmProvider implements LlmProvider {
    * `REASONING_HEADROOM`, added to the action's cap rather than taken out of it.
    */
   private providerOptionsFor(tier: Tier, strict: boolean) {
-    if (!reasons(this.models[tier])) {
-      // gpt-4o-* and gpt-4.1-* take neither key, and log "not supported" for each one they are
-      // sent. A warning on every call is how real warnings stop being read.
-      return strict ? undefined : { openai: { strictJsonSchema: false } };
+    const openai: {
+      store: false;
+      reasoningEffort?: string;
+      strictJsonSchema?: boolean;
+    } = { store: false };
+
+    // gpt-4o-* and gpt-4.1-* take no reasoning key, and log "not supported" for each one they are
+    // sent. A warning on every call is how real warnings stop being read.
+    if (reasons(this.models[tier])) {
+      openai.reasoningEffort = tier === 'fast' ? 'minimal' : 'low';
     }
-    const openai: { reasoningEffort: string; strictJsonSchema?: boolean } = {
-      reasoningEffort: tier === 'fast' ? 'minimal' : 'low',
-    };
     if (!strict) openai.strictJsonSchema = false;
     return { openai };
   }
@@ -242,7 +255,7 @@ export class OpenAiLlmProvider implements LlmProvider {
         instructions: this.instructions(req),
         messages: this.messages(req),
         maxOutputTokens: this.outputBudget(req),
-        ...(providerOptions ? { providerOptions } : {}),
+        providerOptions,
         ...(temperature !== undefined ? { temperature } : {}),
         ...(req.signal ? { abortSignal: req.signal } : {}),
       });
@@ -279,7 +292,7 @@ export class OpenAiLlmProvider implements LlmProvider {
       instructions: this.instructions(req),
       messages: this.messages(req),
       maxOutputTokens: this.outputBudget(req),
-      ...(providerOptions ? { providerOptions } : {}),
+      providerOptions,
       ...(temperature !== undefined ? { temperature } : {}),
       ...(req.signal ? { abortSignal: req.signal } : {}),
       // Same boundary as the Anthropic adapter: `generateObject`'s return type is conditional on

@@ -31,6 +31,7 @@ type WireBody = {
   max_output_tokens: number;
   temperature?: number;
   reasoning?: { effort?: string };
+  store?: boolean;
   text?: { format?: { type: string; strict?: boolean; schema?: unknown } };
   instructions?: unknown;
   input?: Array<{ role: string; content: unknown }>;
@@ -141,6 +142,31 @@ describe('room to think', () => {
     const { bodies } = await capture(request(), 'stream', { fastModel: 'gpt-4o-mini' });
 
     expect(bodies[0]?.reasoning).toBeUndefined();
+  });
+});
+
+describe('retention', () => {
+  it('tells OpenAI not to store the exchange, on every call', async () => {
+    // PRD §12.2. The Responses API defaults `store` to true and keeps request and response bodies
+    // for 30 days, so before this every chapter a student wrote was retained for a month while
+    // /privacy said otherwise. Not a tuning choice, so it is asserted on every shape of call.
+    const streamed = await capture(request(), 'stream');
+    const structured = await capture(request({ tier: 'strong' }), 'complete');
+    const plain = await capture(request(), 'stream', { fastModel: 'gpt-4o-mini' });
+
+    expect(streamed.bodies[0]?.store).toBe(false);
+    expect(structured.bodies[0]?.store).toBe(false);
+    expect(plain.bodies[0]?.store).toBe(false);
+  });
+
+  it('is still set on the lenient retry, which is a second request', async () => {
+    const lenient = z.object({ flags: z.array(z.string()).default([]) });
+    const { bodies } = await capture(request({ tier: 'strong' }), 'complete', {
+      schema: lenient,
+      respond: (n) => (n === 1 ? schemaRejection() : new Response('{"error":{}}', { status: 400 })),
+    });
+
+    expect(bodies.map((b) => b.store)).toEqual([false, false]);
   });
 });
 
