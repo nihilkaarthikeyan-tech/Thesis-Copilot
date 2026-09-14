@@ -188,6 +188,56 @@ blocks the agent from continuing to build against mocks.
 - [ ] **Coherence fixture thesis** `fixtures/thesis/` with planted inconsistencies (Appendix C.6, Phase 3).
 - [ ] **A real university formatting guideline** to replace the `EXAMPLE_IN_UNIVERSITY` template (D.3.1).
 
+## Account and privacy gaps (audit 2026-09-14)
+
+Found by auditing the account surface against PRD §12, prompted by the owner asking whether the
+basics — password reset, email verification, account deletion — were done. Three of these are the
+agent's to build and are listed here only because they were found after the phase plan closed.
+
+**Not applicable, recorded so the question stops coming back:**
+
+- *Forgot password / reset password.* There are no passwords. PRD §7.2 chose Better Auth with email
+  OTP + Google, so a sign-in is a six-digit code to the address on file, valid ten minutes. There is
+  no credential to lose, reset or leak. `apps/api/src/modules/auth/auth.ts` has no
+  `emailAndPassword` block and no route accepts one.
+- *Email verification.* The OTP **is** the verification, on every sign-in rather than once at
+  signup. An account cannot exist unverified: nobody reaches a session without reading mail sent to
+  that address. There is nothing separate to build.
+
+**Built and working:** sign-in, sign-up, sign-out, Google sign-in (needs credentials, above),
+per-IP and per-user rate limiting on the auth endpoints (20/min, `common/rate-limit.ts`), the
+account page (plan, usage meter, invoices, cancel), the settings page, and the FR-8.6 AI-usage log
+export.
+
+**Gaps:**
+
+- [ ] **Account deletion — PRD §12.2 requires it and it does not exist.** "Hard-delete documents,
+      sources, chunks, files within 30 days; keep billing records as required by law." There is no
+      endpoint, no UI and no job; `prisma.user.delete` appears nowhere. The `Document` cascades are
+      in place, so the data model is ready — what is missing is the request, the grace period, the
+      file deletion from MinIO, and the carve-out that keeps `Invoice` and `AuditEvent` rows for the
+      statutory period. This is a legal obligation under India's DPDP Act, not a nicety, and it is
+      the one account feature genuinely absent.
+- [ ] **Zero-retention is not set on provider calls.** §12.2: "Provider calls use zero-retention
+      settings where the provider offers them; document this on the privacy page." OpenAI's
+      Responses API defaults to `store: true` and keeps request and response bodies for 30 days.
+      The AI SDK exposes `store` as a provider option and nothing sets it, so every chapter a
+      student writes is currently retained by OpenAI for a month. One line in
+      `packages/ai/src/providers/openai.ts` plus a matching sentence on `/privacy`.
+- [ ] **Chat has no hard stop when the library has nothing to say.** The guard against the product
+      being used as a general chatbot is real but it is all in the prompt: A.4 says "answer using
+      only the provided passages" and "if the passages do not contain the answer, say exactly …".
+      `postProcessChat` then strips any citation the model was not shown. What is missing is a code
+      floor: `chat.service.ts` retrieves the top 8 passages and calls the model **even when nothing
+      relevant came back**, so an off-topic question spends a metered CHAT unit for the model to say
+      it cannot help, and the only thing stopping it answering from its own knowledge is that it was
+      asked not to. A zero-passage short-circuit and a minimum-similarity floor would make the
+      refusal structural instead of advisory, and would be cheaper.
+- [ ] **Changing the email on an account is not possible.** Not in the PRD either, so this is a
+      question rather than a defect — but with OTP sign-in the address *is* the identity, so a
+      student who loses access to their university mailbox after graduating loses the thesis. Worth
+      a decision before the pilot.
+
 ## Decisions and reviews
 
 - [ ] **Settle the price and the caps together.** `docs/COSTING.md` gives the cost side:
