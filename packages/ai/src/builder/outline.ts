@@ -20,7 +20,21 @@ import { renderScope, type ScopeForQueries } from './queries.js';
 
 export const OUTLINE = {
   tier: 'strong',
-  maxTokens: 3_000,
+  /**
+   * 6,000, not §11.2's 3,000.
+   *
+   * A.9 asks for a scope note of "2-4 sentences: what this part must establish and what it must
+   * not cover" on every node, and a template's worth of chapters with their children is around
+   * thirty nodes. Measured against a real model on 2026-09-14: the first full outline ran to 3,552
+   * tokens of JSON and was still cut off mid-array, `finishReason: length`, which `generateObject`
+   * reports as "could not parse the response" — an outline that failed for being too good.
+   *
+   * The mock never showed this because the mock writes one-line scope notes.
+   *
+   * It is a one-time operation per document, so the cost is small and amortised: `ONE_TIME_PROFILES
+   * .OUTLINE` in `packages/config` carries the matching output estimate.
+   */
+  maxTokens: 6_000,
   temperature: 0.3,
 } as const;
 
@@ -37,12 +51,31 @@ export type OutlineBuildInput = {
   signal?: AbortSignal;
 };
 
-/** The model may omit ids or children; both are filled in afterwards. */
+/**
+ * What `readOutlineResult` will accept: a bare array, or an array under `outline` or `nodes`.
+ * The model may omit ids or children; both are filled in afterwards.
+ *
+ * Not the schema to *ask* for — see `outlineRequestSchema`.
+ */
 export const outlineResultSchema = z.union([
   outlineSchema,
   z.object({ outline: outlineSchema }),
   z.object({ nodes: outlineSchema }),
 ]);
+
+/**
+ * The schema sent to the provider, which has to be a single JSON object.
+ *
+ * `outlineResultSchema` is a union whose first member is a bare array, and a union compiles to
+ * `anyOf` with no top-level `type`. OpenAI's `response_format` refuses it — "schema must be a JSON
+ * Schema of 'type: \"object\"', got 'type: \"None\"'" — which killed every outline generation
+ * against a real model (`pnpm ai:shakedown`, 2026-09-14).
+ *
+ * The leniency the union buys is still worth having, so the two schemas stay separate rather than
+ * one being narrowed into the other: this is what we ask for, that is what we will put up with.
+ * `readOutlineResult` accepts `{ nodes }` already, so the consumer needs no change.
+ */
+export const outlineRequestSchema = z.object({ nodes: outlineSchema });
 
 export function outlineUserMessage(input: OutlineBuildInput): string {
   const parts = [renderTemplateBlock(input.template), renderScope(input.scope)];

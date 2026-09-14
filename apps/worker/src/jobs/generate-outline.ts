@@ -17,6 +17,7 @@ import {
   enforceTemplateShape,
   type GapMapTheme,
   type LlmProvider,
+  outlineRequestSchema,
   outlineResultSchema,
   readOutlineResult,
   type ScopeForQueries,
@@ -115,7 +116,7 @@ export async function runGenerateOutline(
   const startedAt = Date.now();
   let nodes: OutlineNode[];
   try {
-    const answer = await deps.llm.complete({ ...request, schema: outlineResultSchema });
+    const answer = await deps.llm.complete({ ...request, schema: outlineRequestSchema });
     await logCall(deps, job, answer.modelId, answer.usage, Date.now() - startedAt, true);
     nodes = enforceTemplateShape(readOutlineResult(answer.value), template);
   } catch (error) {

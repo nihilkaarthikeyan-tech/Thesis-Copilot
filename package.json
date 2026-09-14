@@ -16,6 +16,7 @@
     "db:migrate": "pnpm --filter @tc/db migrate",
     "db:seed": "pnpm --filter @tc/db seed",
     "ai:verify": "pnpm --filter @tc/ai verify",
+    "ai:shakedown": "pnpm --filter @tc/ai shakedown",
     "db:check": "pnpm --filter @tc/db check",
     "pilot:report": "pnpm --filter @tc/api pilot:report"
   },

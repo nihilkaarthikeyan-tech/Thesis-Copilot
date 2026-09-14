@@ -161,6 +161,7 @@ export {
   normaliseOutline,
   OUTLINE,
   type OutlineBuildInput,
+  outlineRequestSchema,
   outlineResultSchema,
   outlineUserMessage,
   readOutlineResult,

@@ -27,8 +27,24 @@ export const outlineNodeSchema: z.ZodType<OutlineNode> = z.lazy(() =>
     id: z.string().trim().min(1),
     title: z.string().trim().min(1),
     scopeNote: z.string().trim(),
-    subTheme: z.string().trim().min(1).optional(),
-    mappedFromPaperSection: z.string().trim().min(1).optional(),
+    // `.nullish()`, not `.optional()`, because A.9 asks the model for
+    // `"subTheme": string|null` in as many words. A model that does exactly what the prompt says
+    // sent `null`, `.optional()` rejected it, and the whole outline failed to parse — which is
+    // how outline generation broke against the first real model it ever met
+    // (`pnpm ai:shakedown`, 2026-09-14). The mock omitted the keys entirely, so nothing caught it.
+    // Normalised back to `undefined` so `OutlineNode` keeps one spelling for "absent".
+    subTheme: z
+      .string()
+      .trim()
+      .min(1)
+      .nullish()
+      .transform((v) => v ?? undefined),
+    mappedFromPaperSection: z
+      .string()
+      .trim()
+      .min(1)
+      .nullish()
+      .transform((v) => v ?? undefined),
     children: z.array(outlineNodeSchema).default([]),
   }),
 );

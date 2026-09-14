@@ -197,6 +197,19 @@ blocks the agent from continuing to build against mocks.
       addendum and §"The caps are now far tighter" below carry the current numbers. The code still
       has ₹299 / ₹2,499 in `packages/config/src/billing.ts` and PRD §11.6 still marks the price
       `DECISION PENDING`.
+- [ ] **Amend PRD §11.2's token profiles to the measured figures, or decide not to.**
+      `pnpm ai:shakedown` (2026-09-14) measured real output tokens for every action for the first
+      time. Some are above §11.2's estimate and some below, and repricing the whole STUDENT plan
+      at the measured numbers lands back on **₹14.18** — so nothing is broken and nothing is
+      urgent. But three lines are out by more than double and the table now disagrees with
+      reality: Outline 2,000 → 3,394, Style profile 400 → 1,018, Command 600 → 272.
+      `docs/BUILD_LOG.md` → "Real-provider shakedown" has the whole table. §0.3 rule 3 keeps the
+      agent out of the PRD's own numbers.
+- [ ] **Decide whether the inert per-action temperatures matter.** Reasoning models reject
+      `temperature`, so on `gpt-5-nano`/`gpt-5-mini` every builder's setting does nothing —
+      `queries` asks 0.7 for varied search terms, `extract` asks 0 for none, and both now run at
+      the model's default. Nothing observably broke, and the only lever left is the prompt. Worth
+      a look once the Appendix C.5 golden set exists.
 - [ ] Read `docs/CONSISTENCY_REVIEW.md` — 12 places where the PRD contradicts itself; the agent picked
       a side each time and says which. Confirm or overrule.
 - [ ] Acknowledge `docs/ADR/0002-better-auth-tables.md` (auth tables added to the PRD §8 schema).

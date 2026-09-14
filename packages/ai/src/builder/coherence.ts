@@ -118,7 +118,12 @@ export const claimsSchema = z.object({
       z.object({
         id: z.string(),
         text: z.string(),
-        span: z.tuple([z.number(), z.number()]).optional(),
+        // A.12.2 asks the model for `"span":[from,to]`, and that is what this accepts — but as a
+        // number array, not a `z.tuple`. A tuple compiles to JSON Schema `prefixItems`, which
+        // OpenAI's `response_format` rejects outright ("[{'type': 'number'}, {'type': 'number'}]
+        // is not of type 'object', 'boolean'"), taking the whole claim-extraction call with it.
+        // Nothing reads `span`, so nothing depends on the pair-ness the tuple was buying.
+        span: z.array(z.number()).optional(),
       }),
     )
     .default([]),

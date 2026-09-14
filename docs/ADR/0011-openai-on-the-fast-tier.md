@@ -222,3 +222,47 @@ written**, without touching the caps. Lowering them remains worthwhile for the r
 Thirty runs over three prompts is better evidence than six over one; it is still not the Appendix
 C.5 golden set, which judges whether the suggestion is *good* rather than merely well-formed. That
 remains open and still needs the fixture papers.
+
+---
+
+## What adopting OpenAI actually cost, 2026-09-14
+
+This ADR was written and accepted on the strength of a streaming comparison — cost per autocomplete,
+then reliability over thirty runs. Both were about the *fast* tier, and both went through
+`stream()`.
+
+The product's other path, `complete()`, is `generateObject`: thirteen call sites where the model has
+to return JSON matching a Zod schema. Nobody had run one against a real OpenAI model.
+`pnpm ai:shakedown` did, and **sixteen of nineteen failed**. `docs/BUILD_LOG.md` →
+"Real-provider shakedown" has the full account; the decisions that belong in this ADR are these.
+
+**Structured outputs are not a drop-in.** Anthropic accepts whatever JSON Schema it is given.
+OpenAI has a strict mode, defaulted on by the SDK, that refuses any schema with a non-required key
+or a tuple — which is most of ours, because `.default([])` is how they all say "absent means none".
+But strict mode is also the only thing that makes two of our prompts work, since `cite_role.md` and
+`command.md` both end "output only the rewritten sentence" while the code wants an object. The
+adapter therefore tries strict and falls back when OpenAI refuses the schema, remembering the answer
+per schema. This is affordable only because a schema refusal arrives before generation, in ~400 ms,
+for nothing.
+
+**Reasoning is not free and it is not separate.** `gpt-5-mini` draws its thinking from the same
+`max_output_tokens` as its answer. Every `maxTokens` in `packages/ai` was written for a
+non-reasoning model, so several actions were spending their whole answer budget on thought and
+returning an empty string — the style profile did it five times out of five. The adapter now adds a
+`REASONING_HEADROOM` of 1,000 on top of the action's cap. Turning reasoning off instead was tried
+and rejected: it cost Command and the citation-role rewrite their accuracy.
+
+**Per-action temperatures are now inert.** Reasoning models reject `temperature` outright. Every
+builder sets one deliberately — 0.7 for varied search queries, 0 for extraction — and on the models
+this ADR chose, none of them do anything. That is a real loss of control that the cost comparison
+did not price, and it is not recoverable by configuration; the lever is the prompt.
+
+**The cost model survived.** Repricing the STUDENT plan at the measured output tokens moves it by
+seven paise in each direction and lands back on **₹14.18**. Reasoning tokens bill as output, so they
+were a genuine risk to the ₹100 ceiling, and measurement says they are not one at our caps.
+
+None of this reverses the decision. `gpt-5-nano` on the fast tier is still 18× cheaper than Haiku
+4.5 and measured more reliable than `gpt-4o-mini`. But the honest summary of the migration is that
+the cost case was sound and the *integration* case was untested, and the integration was broken in
+three separate ways that a cost comparison could never have surfaced. Anything that changes a
+provider, a model id or a schema should run `pnpm ai:shakedown` before it is called done.

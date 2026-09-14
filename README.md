@@ -153,6 +153,7 @@ pnpm db:migrate     # apply migrations
 pnpm db:seed        # SUPERADMIN, feature flags, the EXAMPLE_IN_UNIVERSITY template
 pnpm db:check       # assert the migrations and schema.prisma agree
 pnpm ai:verify      # one real call per tier + embeddings; recomputes the ₹100 budget
+pnpm ai:shakedown   # every structured-output path against the real models (~₹2.40 a run)
 pnpm pilot:report   # per-student usage, cost, latency and acceptance
 ```
 

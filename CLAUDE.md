@@ -79,6 +79,7 @@ pnpm dev            # turbo: web :3000, api :3001, worker
 pnpm test           # vitest
 pnpm e2e            # playwright
 pnpm ai:verify      # Appendix E.1 — real provider call, recompute the budget
+pnpm ai:shakedown   # every structured-output path against the real models (costs ~INR 2.40)
 pnpm lint           # biome check .
 ```
 
@@ -188,6 +189,20 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
 - **Check the library's real API before hand-rolling one.** `fieldParagraph` built a Word field out
   of `TextRun`s with `{ type: 'begin' } as never`; `docx` has `TableOfContents`, and the hand-rolled
   version printed its own field codes into the PDF.
+- **An adapter with no test is a file nobody has run, and the mock will hide that for months.**
+  Twice now: the Anthropic adapter put its system blocks inside `messages` for the entire build,
+  and the OpenAI adapter failed sixteen of nineteen structured calls the first time one was made.
+  Both looked right in the arguments and were wrong on the wire, and both were invisible because
+  every call went to a mock that answers correctly by construction. Assert the request **body**,
+  through the SDK's `fetch` injection point — `packages/ai/test/{anthropic,openai}.spec.ts` — and
+  run `pnpm ai:shakedown` after any change to a provider, a model id or a schema.
+- **A cap that bounds the answer does not bound a reasoning model.** `max_output_tokens` is shared
+  between thinking and answering, so every `maxTokens` written for a non-reasoning model silently
+  became a combined budget, and several actions spent all of it thinking and returned an empty
+  string. The adapter adds `REASONING_HEADROOM` on top; do not fold the two together again.
+- **OpenAI's strict structured outputs refuses `.default()` and `z.tuple`,** and is also the only
+  thing that makes a prompt saying "output only the sentence" return `{ text }`. The adapter tries
+  strict and falls back on a schema rejection, which is free because it happens before generation.
 - **Never write a regex through a Python heredoc.** `\b` in a Python string is a literal backspace
   byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
   matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a

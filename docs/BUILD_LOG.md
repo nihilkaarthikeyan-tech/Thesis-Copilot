@@ -2917,3 +2917,124 @@ been observed on a real chapter** — the only real Assist call so far was 657 t
 cache floor. At our own caps it barely matters (₹14.18 → ₹16.81 with no cache at all). At the
 owner's proposed caps it is the whole question: ₹99.05 with the cache, ₹215.71 without. Five
 fixture papers settle it and nothing else will.
+
+---
+
+## Real-provider shakedown, 2026-09-14 — sixteen of nineteen structured calls were broken
+
+`pnpm ai:verify` proves the streaming path: one short continuation per tier. It had never touched
+`complete()`, which is `generateObject` — the model must return JSON matching a Zod schema inside a
+per-action token cap. **Thirteen product call sites use it**, and every one had only ever met the
+mock, which returns well-formed objects by construction because that is what it was written to do.
+
+`packages/ai/scripts/shakedown.ts` (`pnpm ai:shakedown`) now builds a realistic request for each of
+them with the product's own builders and schemas, calls the real models, and validates the result.
+Nineteen cases: thirteen structured, four coherence sub-calls, and the two streamed paths that get
+parsed afterwards.
+
+**First run: 3 of 19 passed.** After the fixes below, 19 of 19. One full run costs about ₹2.40.
+
+### 1. OpenAI's strict Structured Outputs refuses almost every schema we have
+
+`generateObject` defaults `strictJsonSchema` to `true`. Strict mode requires every key in
+`properties` to appear in `required`, and cannot express a tuple. `.default([])` is how nearly every
+schema here says "the model may leave this out, which means none" — `flags`, `results`,
+`candidates`, `findings`, `references` — so thirteen calls were rejected before a single token was
+generated:
+
+```
+Invalid schema for response_format 'response': In context=(), 'required' is required to be
+supplied and to be an array including every key in properties. Missing 'flags'.
+```
+
+Turning it off globally fixed thirteen and broke two others. `cite_role.md` and `command.md` both
+end with "output only the rewritten sentence"; the code asks for `{ text: string }`. Under strict
+mode the model has no choice. Under JSON mode it follows the prose and returns a bare sentence —
+the citation-role rewrite failed **5 runs in 6**, each burning ~25 s of SDK retries first. With
+strict mode it passed 3 for 3.
+
+So the adapter now **tries strict and falls back on rejection**, remembering the answer per schema
+in a `WeakSet`. This is only affordable because the rejection is free: OpenAI refuses an unsupported
+schema in ~400 ms, before generating anything, for no tokens. Any other failure is raised, never
+retried — retrying a rate limit spends money on the same failure twice.
+
+### 2. Reasoning was eating the answer
+
+`max_output_tokens` is shared between the model's thinking and its answer. Every `maxTokens` in
+`packages/ai` was sized for the answer alone — Assist's 120 tokens is "a sentence or two, not a
+paragraph", a product decision about what the student sees. On a reasoning model the two budgets
+silently became one.
+
+Measured: the style profile spent all 600 of its tokens reasoning and returned no object, **five
+runs out of five**. Draft finished at `length` after 1,152 tokens with an empty string. The proposal
+skeleton did the same at 640.
+
+Turning reasoning off entirely was tried and is worse — that is what cost Command and the
+citation-role rewrite their accuracy. So the adapter asks for `maxTokens + REASONING_HEADROOM`
+(1,000) and lets the two budgets be two again. 1,000 is measured, not chosen: the largest reasoning
+spend observed at `'low'` effort was ~460 tokens.
+
+### 3. `temperature` does nothing on a reasoning model
+
+The `gpt-5` family rejects it — "temperature is not supported for reasoning models" — and the SDK
+logged that for every single call, because every builder sets one. Now withheld from models that
+would only warn.
+
+Worth stating plainly, because it is a behaviour change nobody chose: **the per-action temperatures
+are inert on the models we run.** `queries` asks for 0.7 to get varied search terms and `extract`
+asks for 0 to get none; both now run at the model's own default. If that turns out to matter, the
+lever is the prompt, not the parameter.
+
+### Three product bugs the shakedown found on the way
+
+- **`outlineNodeSchema` rejected the `null` the prompt asks for.** A.9 says
+  `"subTheme": string|null` in as many words; the schema had `.optional()`, which accepts a missing
+  key but not `null`. A model that did exactly what the prompt said produced an outline that failed
+  to parse. Now `.nullish()`, normalised back to `undefined`. The mock omitted the keys entirely,
+  so nothing caught it.
+- **`outlineResultSchema` is a union whose first member is a bare array**, which compiles to `anyOf`
+  with no top-level `type`. OpenAI refuses it: *schema must be a JSON Schema of `type: "object"`*.
+  Split in two — `outlineRequestSchema` is what we ask for, `outlineResultSchema` stays as what we
+  will put up with. `readOutlineResult` already accepted `{ nodes }`, so no consumer changed.
+- **`claimsSchema.span` was a `z.tuple`**, which compiles to `prefixItems` and is rejected outright,
+  taking the whole claim-extraction call with it. Now `z.array(z.number())`, which still accepts the
+  `[from, to]` the prompt asks for. Nothing reads `span`.
+
+### And one capacity problem that was never visible
+
+`OUTLINE.maxTokens` was 3,000. A real six-chapter outline with A.9's "2-4 sentences" scope notes on
+every node ran to **3,552 tokens of JSON and was still cut off mid-array** — an outline that failed
+for being too good. Raised to 6,000. It is one call per document, amortised over four months.
+
+### What it costs
+
+Nothing, as it turns out. The measured output tokens are above the §11.2 profile for some actions
+and below it for others, and they cancel:
+
+| Action | §11.2 output | Measured | §11.2 ₹ | Measured ₹ |
+|---|---|---|---|---|
+| Citation suggestion | 100 | 110 | 0.0183 | 0.0186 |
+| Command | 600 | 272 | 0.1566 | 0.0995 |
+| Draft | 800 | 942 | 0.2784 | 0.3031 |
+| Coherence (largest sub-call) | 1,500 | 943 | 0.5873 | 0.4903 |
+| Outline | 2,000 | 3,394 | 0.4785 | 0.7211 |
+| Extraction | 2,000 | 1,572 | 0.6090 | 0.5345 |
+| Style profile | 400 | 1,018 | 0.1348 | 0.2424 |
+
+Repricing the whole STUDENT plan at measured output moves it by **−₹0.07 on the capped lines and
++₹0.07 on the one-time block**. The total stays **₹14.18**. The ₹100 ceiling is unaffected, and the
+runtime meter was never at risk: it bills `usage.outputTokens`, which already counts reasoning.
+
+Amending §11.2's profile table to the measured figures is a human's call and is in
+`docs/PENDING.md`; the agent does not rewrite the PRD's own numbers (§0.3 rule 3).
+
+### The test that should have existed
+
+`packages/ai/test/openai.spec.ts`, 13 tests, asserting the actual request body through the SDK's
+`fetch` injection point — the reasoning headroom, the effort by tier, the withheld temperature, the
+strict-then-fallback sequence and its memo, and that a non-schema failure is not retried.
+
+This is the same lesson as `anthropic.spec.ts`, learned twice in a week: **an adapter with no test
+is a file nobody has run.** Both times the code looked right and the wire body was wrong, and both
+times the mock hid it. `pnpm ai:shakedown` is the standing answer — it needs a key and real money,
+so it is not in CI, but it is what to run after any change to a provider, a model id, or a schema.
