@@ -1,6 +1,6 @@
 # Prometheus scrape config — PRD §14, PHASES 5.5.
 #
-# The API exposes `/metrics` (prom-client) on its internal port; Caddy answers 404 for it from
+# The API exposes `/metrics` (prom-client) on its internal port; `edge.conf` answers 404 for it from
 # outside (PRD §13.1). Prometheus runs on the internal Compose network under the `monitoring`
 # profile:  docker compose --profile monitoring up -d
 #

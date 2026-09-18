@@ -187,7 +187,8 @@ docs/         PRD, PHASES, BUILD_LOG, RUNBOOK, PENDING, ADR/
 
 Postgres 16 with pgvector (HNSW), Redis, MinIO, Gotenberg (LibreOffice, for every PDF),
 Better Auth (email OTP + Google), the Vercel AI SDK behind `packages/ai`, Voyage `voyage-3`
-embeddings at 1024 dimensions, `@citation-js` for citations, `docx` for export, Caddy 2 in front.
+embeddings at 1024 dimensions, `@citation-js` for citations, `docx` for export, and nginx in
+front — the host's own, because the server already runs one for its other sites (ADR-0012).
 
 Model ids are **never** hardcoded — `AI_FAST_MODEL`, `AI_STRONG_MODEL` and `AI_EMBED_MODEL` come
 from the environment and are verified by `pnpm ai:verify`.

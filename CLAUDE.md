@@ -49,7 +49,7 @@ and push per week, keep `docs/PENDING.md` current for anything only a human can 
 | Citations | `@citation-js/core` + `plugin-csl` |
 | Export | `docx` → Gotenberg for PDF |
 | Parsing | `unpdf` (PDF), `mammoth` (DOCX), GROBID optional behind a flag |
-| Proxy / CI | Caddy 2; GitHub Actions → GHCR → SSH deploy |
+| Proxy / CI | nginx — the host's, shared with the server's other sites (ADR-0012, was Caddy 2); GitHub Actions → GHCR → SSH deploy |
 
 Model IDs are **not** hardcoded: `AI_FAST_MODEL`, `AI_STRONG_MODEL`, `AI_EMBED_MODEL` come from env
 and are verified by `pnpm ai:verify` before the cost model can be trusted (Appendix E).

@@ -2,7 +2,8 @@
  * `/assist/*` — PRD §9.3, Appendix B.8 (SSE over POST via fetch + ReadableStream).
  *
  * Response headers per B.8: `text/event-stream`, `Cache-Control: no-cache`,
- * `X-Accel-Buffering: no`. Caddy adds `flush_interval -1` in front (infra/compose/Caddyfile).
+ * `X-Accel-Buffering: no`. nginx honours that header natively, and both proxies in front also
+ * set `proxy_buffering off` (infra/compose/edge.conf, infra/nginx/thesis.rademics.ai.conf).
  */
 
 import { Body, Controller, Inject, Post, Req, Res, UseGuards } from '@nestjs/common';

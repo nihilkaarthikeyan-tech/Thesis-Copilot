@@ -10,7 +10,15 @@ set -euo pipefail
 
 NEW_TAG="${1:?tag, e.g. v0.1.0}"
 COMPOSE="docker compose -f docker-compose.prod.yml"
-HEALTH_URL="${HEALTH_URL:-https://${DOMAIN:?DOMAIN}/api/v1/health}"
+# The stack's own port, not the public URL (ADR-0012).
+#
+# A deploy can only fix what a deploy controls. If the host's nginx or its certificate is wrong,
+# the public URL fails and rolling back to the previous image changes nothing — it would just
+# undo a perfectly good release for an unrelated reason. Checking 127.0.0.1:3100 asks the only
+# question this script can act on: did the new images come up healthy?
+#
+# Set HEALTH_URL explicitly to check the public name instead.
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3100/api/v1/health}"
 PREV_TAG="$(cat .last_good_tag 2>/dev/null || true)"
 
 set_tag() { sed -i -E "s/^TAG=.*/TAG=$1/" .env; export TAG="$1"; }

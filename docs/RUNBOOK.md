@@ -16,7 +16,7 @@ Every command below runs on the VPS from `~/thesis-copilot/infra/compose`, which
 
 | Service | Port | What it is |
 |---|---|---|
-| `caddy` | 80, 443 | TLS and reverse proxy. Owns the certificates. |
+| `edge` | 127.0.0.1:3100 | nginx. Routes `/api/*` to the API, everything else to the web app. **Loopback only** — the host's own nginx terminates TLS in front of it (ADR-0012). |
 | `web` | internal | Next.js. Stateless. |
 | `api` | internal | NestJS on Fastify. Stateless — sessions are cookies plus Postgres. |
 | `worker` | none | BullMQ consumers. No inbound port; this is what makes §7.5 step 2 possible. |
@@ -30,6 +30,48 @@ Every command below runs on the VPS from `~/thesis-copilot/infra/compose`, which
 
 Health: `curl -fsS https://$DOMAIN/api/v1/health`. It returns 200 only when Postgres and Redis
 both answer, so it is the single check worth alerting on.
+
+---
+
+## 1a. First deploy only — putting the site on the host's nginx
+
+Done once, by a human, and never by the deploy script. The server already runs nginx for sixteen
+other domains; this adds a seventeenth file and touches none of the others (ADR-0012).
+
+```bash
+# 1. DNS first. The certificate cannot be issued until the name resolves.
+#    Add an A record:  thesis  ->  <server ip>     then wait for it:
+getent hosts thesis.rademics.ai
+
+# 2. Place the vhost. It is in this repo, reviewed, not generated.
+sudo cp infra/nginx/thesis.rademics.ai.conf /etc/nginx/sites-available/thesis.rademics.ai
+sudo ln -s /etc/nginx/sites-available/thesis.rademics.ai /etc/nginx/sites-enabled/
+
+# 3. Test BEFORE reloading. This is the safety net: nginx checks every site's config, and a
+#    mistake here is a refusal rather than an outage. The running sites keep the old config.
+sudo nginx -t
+
+# 4. Only if step 3 said "successful":
+sudo systemctl reload nginx
+
+# 5. Certificate. certbot edits the file in place to add the TLS lines.
+sudo certbot --nginx -d thesis.rademics.ai
+
+# 6. Prove it, and prove nothing else moved.
+curl -fsS https://thesis.rademics.ai/api/v1/health
+for d in rademics.ai bank.rademics.ai gate.rademics.ai neet.rademics.ai; do
+  printf '%s %s
+' "$d" "$(curl -s -o /dev/null -w '%{http_code}' https://$d/)"
+done
+```
+
+**If step 3 fails**, fix the file and run it again. Nothing has been reloaded, so nothing is
+broken. Do not reload on a failed test.
+
+**To undo it entirely:** `sudo rm /etc/nginx/sites-enabled/thesis.rademics.ai && sudo nginx -t &&
+sudo systemctl reload nginx`. The other sites never knew it was there.
+
+Renewal needs no action — the host's certbot cron covers this domain with the rest.
 
 ---
 
@@ -51,8 +93,12 @@ why the new one failed.
 ```bash
 $COMPOSE ps                       # every service Up, none restarting
 $COMPOSE logs --tail=50 api worker
-curl -fsS https://$DOMAIN/api/v1/health
+curl -fsS http://127.0.0.1:3100/api/v1/health   # the stack itself
+curl -fsS https://$DOMAIN/api/v1/health         # through the host's nginx
 ```
+
+Both, because they fail for different reasons: the first failing means the stack is down, the
+second alone failing means the host vhost or its certificate is.
 
 ### Migrations
 
