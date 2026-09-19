@@ -99,7 +99,7 @@ Gotenberg 3002) so the stack does not collide with other projects on the same ma
 
 **The build is complete** (2026-09-07). Every unit of `docs/PHASES-version-2.md` is done:
 Phase 1 weeks 0–5, Phase 2 weeks 6–11, Phase 3 Blocks 1–4. `docs/BUILD_LOG.md` has the per-unit
-record and the end-to-end evidence for each; ADRs 0001–0011 record every decision that departed
+record and the end-to-end evidence for each; ADRs 0001–0013 record every decision that departed
 from the PRD.
 
 Working end to end against the dev stack: sign-in, the thesis list, the

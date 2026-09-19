@@ -281,10 +281,20 @@ export.
 
 ## Dependency advisories (B4.3 audit, 2026-09-07)
 
-`pnpm audit --prod` found five moderate advisories. Four were fixed in the audit itself: `fastify`
-5.11.3 → 5.12.1 (schema-validation bypass, and X-Forwarded spoofing under `trustProxy` — the app
-sets `trustProxy: true` behind Caddy, so that one was live), and pnpm `overrides` for
-`decode-uri-component` ≥ 0.5.0 and `stream-json` ≥ 3.5.0, both transitive under `minio@8.0.7`.
+`pnpm audit --prod` found five moderate advisories. Three are settled: `fastify` 5.11.3 → 5.12.1
+(schema-validation bypass, and X-Forwarded spoofing under `trustProxy` — the app sets
+`trustProxy: true` behind nginx now, so that one was live), and a pnpm `override` for
+`decode-uri-component` ≥ 0.5.0, transitive under `minio@8.0.7`.
+
+- [x] **`stream-json` — fixed, then found broken, then fixed properly.** ADR-0013. The audit's own
+      fix (`stream-json` ≥ 3.5.0 workspace-wide) was never run against a real MinIO and crashed the
+      API and worker containers on module load the first time they were — during the first
+      production deploy, 2026-09-19. No 1.x release carries the fix (checked against the registry),
+      so there is no version satisfying both "patched" and "minio's compiled code can import it".
+      Scoped to `minio>stream-json: 1.9.1` instead of a blanket override; nothing else in the
+      workspace depends on `stream-json` at all, so this is the whole fix, not a narrower stand-in.
+      The advisory is formally still open at that version — ADR-0013 has the exploitability
+      argument for why that is an acceptable, not merely convenient, place to leave it.
 
 One is left, and it needs a decision:
 
