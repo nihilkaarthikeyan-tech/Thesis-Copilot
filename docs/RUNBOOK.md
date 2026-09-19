@@ -43,21 +43,57 @@ other domains; this adds a seventeenth file and touches none of the others (ADR-
 #    Add an A record:  thesis  ->  <server ip>     then wait for it:
 getent hosts thesis.rademics.ai
 
-# 2. Place the vhost. It is in this repo, reviewed, not generated.
-sudo cp infra/nginx/thesis.rademics.ai.conf /etc/nginx/sites-available/thesis.rademics.ai
+# 2. Clone the repo. Its own deploy key (read-only, added once as a GitHub Deploy Key on this
+#    repo), never the shared root key -- one key per project, so losing one exposes only this.
+ssh-keygen -t ed25519 -N "" -C "deploy-key-thesis-copilot" -f ~/.ssh/deploy_thesis
+cat ~/.ssh/deploy_thesis.pub    # add as a Deploy Key on the GitHub repo, read-only, then:
+cat >> ~/.ssh/config <<'SSHCFG'
+
+Host github-thesis
+    HostName github.com
+    User git
+    IdentityFile /root/.ssh/deploy_thesis
+    IdentitiesOnly yes
+SSHCFG
+git clone github-thesis:nihilkaarthikeyan-tech/Thesis-Copilot.git ~/thesis-copilot
+
+# 3. deploy.sh lives in infra/scripts (alongside backup.sh/restore.sh, its siblings) but runs from
+#    infra/compose (the directory holding docker-compose.prod.yml, .env and .last_good_tag). One
+#    symlink bridges that, for both the CI workflow and a by-hand run below.
+ln -s ../scripts/deploy.sh ~/thesis-copilot/infra/compose/deploy.sh
+
+# 4. Place the vhost. It is in this repo, reviewed, not generated.
+sudo cp ~/thesis-copilot/infra/nginx/thesis.rademics.ai.conf /etc/nginx/sites-available/thesis.rademics.ai
 sudo ln -s /etc/nginx/sites-available/thesis.rademics.ai /etc/nginx/sites-enabled/
 
-# 3. Test BEFORE reloading. This is the safety net: nginx checks every site's config, and a
+# 5. Test BEFORE reloading. This is the safety net: nginx checks every site's config, and a
 #    mistake here is a refusal rather than an outage. The running sites keep the old config.
 sudo nginx -t
 
-# 4. Only if step 3 said "successful":
+# 6. Only if step 5 said "successful":
 sudo systemctl reload nginx
 
-# 5. Certificate. certbot edits the file in place to add the TLS lines.
+# 7. Certificate. certbot edits the file in place to add the TLS lines.
 sudo certbot --nginx -d thesis.rademics.ai
 
-# 6. Prove it, and prove nothing else moved.
+# 8. The production .env (infra/compose/.env) is never in git -- build it from
+#    .env.production.example by hand, chmod 600, and never let it touch anywhere else.
+
+# 9. GitHub Actions needs its own way in, separate from the repo's own deploy key above (that one
+#    is read-only and points the other direction -- VPS reading GitHub, not GitHub reaching the
+#    VPS). Generate it, authorize it, and hand only the private half to the repo's secrets --
+#    piped directly, never saved to a file or printed, so it never sits in a shell history or a
+#    terminal scrollback:
+ssh-keygen -t ed25519 -N "" -C "github-actions-deploy-thesis-copilot" -f ~/.ssh/gha_deploy_thesis
+cat ~/.ssh/gha_deploy_thesis.pub >> ~/.ssh/authorized_keys
+#    From your own machine, with the VPS key added above and gh authenticated:
+#      ssh <vps-alias> 'cat ~/.ssh/gha_deploy_thesis' | gh secret set VPS_SSH_KEY --repo <org>/<repo>
+#      gh secret set VPS_HOST --repo <org>/<repo> --body "<server ip>"
+#      gh secret set VPS_USER --repo <org>/<repo> --body "root"
+#      gh secret set DOMAIN --repo <org>/<repo> --body "thesis.rademics.ai"
+#      gh secret set NEXT_PUBLIC_API_URL --repo <org>/<repo> --body "https://thesis.rademics.ai"
+
+# 10. Prove it, and prove nothing else moved.
 curl -fsS https://thesis.rademics.ai/api/v1/health
 for d in rademics.ai bank.rademics.ai gate.rademics.ai neet.rademics.ai; do
   printf '%s %s
