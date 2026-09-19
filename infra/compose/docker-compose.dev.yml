@@ -46,7 +46,8 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio
+    # See the prod compose file's comment: Docker Hub's minio/minio 404s now (2025 retirement).
+    image: quay.io/minio/minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:

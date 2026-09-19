@@ -4,7 +4,8 @@
 
 FROM alpine:3.20
 RUN apk add --no-cache postgresql16-client bash curl tzdata
-COPY --from=minio/mc:latest /usr/bin/mc /usr/local/bin/mc
+# docker.io/minio/mc was retired in 2025; quay.io/minio/mc is the maintained registry now.
+COPY --from=quay.io/minio/mc:latest /usr/bin/mc /usr/local/bin/mc
 WORKDIR /opt/backup
 COPY infra/scripts/backup.sh infra/scripts/restore.sh ./
 RUN chmod +x backup.sh restore.sh \
