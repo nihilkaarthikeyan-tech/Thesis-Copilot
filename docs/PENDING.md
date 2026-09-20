@@ -74,8 +74,11 @@ blocks the agent from continuing to build against mocks.
       This carries the sign-in code, the §14 alert emails (to `SEED_ADMIN_EMAIL`), billing
       reminders and review invitations. `RESEND_API_KEY` stays empty and unused; the Resend
       transport is built and tested should the pilot ever want a separate sending domain.
-- [ ] **Copy the SMTP block into the VPS `.env` at deploy time.** It is only in the local `.env`
-      today. `infra/compose/.env.production.example` lists the five variables.
+- [x] **Copy the SMTP block into the VPS `.env`.** Done 2026-09-19 with the first deploy, and proven
+      the next day: a production sign-in code arrived in the owner's inbox from
+      `no-reply@rademics.ai`. Note for any future deploy — the app checks `SMTP_FROM`, not
+      `MAIL_FROM` (`packages/config/src/env.ts:204`), and the first write of the VPS `.env` set only
+      the latter, so boot refused until both were there.
 - [ ] **Consider a dedicated mailbox before the pilot.** `no-reply@rademics.ai` is shared across
       four products and its password is the same everywhere; one leak rotates all four. A
       `no-reply@` on whatever domain Thesis Copilot ships under would isolate it. Not urgent —
@@ -122,6 +125,17 @@ blocks the agent from continuing to build against mocks.
 - [ ] **Uptime Kuma** (PHASES 5.5): it is in `docker-compose.prod.yml` on `127.0.0.1:3010`. Over an
       SSH tunnel, create the admin account and add an HTTP monitor for
       `http://api:3001/api/v1/health` with keyword `"status":"ok"`, 60 s. Screenshot it green.
+      **Checked on the VPS 2026-09-20: the container is up and `monitor` has zero rows.** So the
+      thing that is supposed to notice an outage currently notices nothing, and ADR-0014's whole
+      design — a provider outage answers 200 with `"status":"degraded"` so that a *human* is paged
+      rather than a container restarted — has no human on the other end of it until this is done.
+- [ ] **Turn off SSH password login on the VPS.** `sshd -T` on 2026-09-20 reports
+      `passwordauthentication yes` and `permitrootlogin yes`, so root is reachable from the whole
+      internet with a guessable secret, on a box that now holds student theses as well as eight
+      other projects. Keys are already in use for every deploy path, so nothing depends on the
+      password: set `PermitRootLogin prohibit-password` and `PasswordAuthentication no` in
+      `/etc/ssh/sshd_config`, **confirm a second key-based session opens before closing the first**,
+      then `systemctl reload ssh`.
 - [ ] **Prometheus** (PHASES 5.5): `docker compose --profile monitoring up -d` on the VPS; it
       scrapes `api:3001/metrics` every 15 s (`infra/prometheus/prometheus.yml`). Nothing exposes it
       publicly; use an SSH tunnel to 9090. Optional for the pilot.
