@@ -30,9 +30,19 @@ const consoleOtp: SendOtp = async ({ email, otp, type }) => {
 /** Ten minutes, matching `expiresIn` on the plugin below. */
 export const OTP_MINUTES = 10;
 
+/**
+ * What the code is for, in the second person. `change-email` is the one the student has not seen
+ * before and the one where getting it wrong matters: it arrives at an address that is not signed
+ * in anywhere yet, so the message has to say what using it will do.
+ */
+const OTP_PURPOSE: Record<string, string> = {
+  'sign-in': 'sign in to',
+  'change-email': 'start using this address to sign in to',
+};
+
 /** The one-time-code email. Plain text: the code is the whole message, and nothing should distract from it. */
 export function otpMail(input: { email: string; otp: string; type: string }): Mail {
-  const purpose = input.type === 'sign-in' ? 'sign in to' : 'confirm your email address for';
+  const purpose = OTP_PURPOSE[input.type] ?? 'confirm your email address for';
   return {
     to: [input.email],
     subject: `${input.otp} is your Thesis Copilot code`,
@@ -140,6 +150,16 @@ export function createAuth(env: Env, prisma: PrismaClient, sendOtp: SendOtp = co
       emailOTP({
         otpLength: 6,
         expiresIn: 10 * 60,
+
+        // ADR-0015. With OTP sign-in the address *is* the identity, so a student who loses their
+        // university mailbox loses the thesis unless they can move the account first.
+        //
+        // `verifyCurrentEmail: false` is deliberate: requiring a code at the old address in order
+        // to leave the old address defeats the only case this exists for. The code goes to the
+        // *new* address — which is the thing actually being proved — and `EmailChangeService`
+        // warns the old one that a move was asked for, while it can still be stopped.
+        changeEmail: { enabled: true, verifyCurrentEmail: false },
+
         async sendVerificationOTP({ email, otp, type }) {
           await sendOtp({ email, otp, type });
         },

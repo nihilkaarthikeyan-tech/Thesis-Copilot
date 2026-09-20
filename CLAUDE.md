@@ -131,6 +131,13 @@ The `User` row survives stripped so the billing records §12.2 requires still ha
 point at. There are no passwords anywhere in this product — sign-in is an emailed code, so "forgot
 password" does not apply, and the OTP is the email verification.
 
+**A student can move the account to another address** (2026-09-20, ADR-0015). Because the address
+*is* the credential here, "change my email" is how someone keeps a thesis after a university
+mailbox closes. `POST /account/email` then `/account/email/verify`: Better Auth's own `changeEmail`
+OTP goes to the **new** address, and the service around it warns the old one (destination masked),
+audits both, and refuses while a deletion is pending. Deliberately no route for someone *already*
+locked out — that would be a takeover feature.
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.

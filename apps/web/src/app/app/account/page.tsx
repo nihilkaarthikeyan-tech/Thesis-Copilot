@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { useSession } from '@/lib/auth-client';
 
 type Billing = {
   plan: string;
@@ -69,10 +70,21 @@ export default function AccountPage() {
   const [confirming, setConfirming] = useState(false);
   const [deletion, setDeletion] = useState<Deletion | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // ADR-0015. `stage` rather than two booleans: the three states are exclusive, and a screen that
+  // can show both "enter an address" and "enter the code" is a screen that will.
+  const [emailStage, setEmailStage] = useState<'idle' | 'address' | 'code'>('idle');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailChanged, setEmailChanged] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState('');
   const [signedOut, setSignedOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const session = useSession();
+  // The confirm response is the authority once the change lands: the session's copy is a snapshot
+  // taken before it, and nothing forces a refetch at that moment.
+  const currentEmail = emailChanged ?? session.data?.user.email ?? null;
 
   const load = useCallback(() => {
     api<Billing>('/billing')
@@ -143,6 +155,53 @@ export default function AccountPage() {
       setNotice('Your account is staying. Nothing was deleted.');
     } catch (e) {
       setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not cancel.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function resetEmailChange() {
+    setEmailStage('idle');
+    setNewEmail('');
+    setEmailOtp('');
+  }
+
+  async function sendEmailCode() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api<{ sent: true }>('/account/email', {
+        method: 'POST',
+        body: JSON.stringify({ newEmail }),
+      });
+      setEmailStage('code');
+      setNotice(null);
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not send the code.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmEmailChange() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api<{ email: string }>('/account/email/verify', {
+        method: 'POST',
+        body: JSON.stringify({ newEmail, otp: emailOtp }),
+      });
+      setEmailChanged(result.email);
+      resetEmailChange();
+      setNotice(`You now sign in with ${result.email}.`);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not change the address.',
+      );
     } finally {
       setBusy(false);
     }
@@ -361,6 +420,111 @@ export default function AccountPage() {
           </ul>
         </section>
       ) : null}
+
+      <section
+        className="mt-6 rounded-md border border-line bg-surface p-4"
+        data-testid="email-card"
+      >
+        <h2 className="eyebrow">Email address</h2>
+        <p className="mt-2 text-sm">
+          You sign in with <strong data-testid="current-email">{currentEmail ?? '…'}</strong>.
+        </p>
+
+        {emailStage === 'idle' ? (
+          <>
+            <p className="mt-2 text-sm text-muted">
+              There is no password on this account — the code we email you is how you get in. So
+              changing this address changes how you sign in. Move it before you lose access to a
+              university mailbox.
+            </p>
+            <button
+              type="button"
+              onClick={() => setEmailStage('address')}
+              data-testid="change-email"
+              className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk sm:w-auto"
+            >
+              Change email
+            </button>
+          </>
+        ) : emailStage === 'address' ? (
+          <div className="mt-3 rounded-md border border-line p-3 text-sm">
+            <label htmlFor="new-email" className="block text-xs text-muted">
+              The address you want to sign in with
+            </label>
+            <input
+              id="new-email"
+              type="email"
+              autoComplete="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              data-testid="new-email"
+              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
+            />
+            <p className="mt-2 text-muted">
+              We will send a code there to check you can read it. Nothing changes until you enter
+              it, and we will tell {currentEmail ?? 'your current address'} that this was asked for.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy || newEmail.trim() === ''}
+                onClick={() => void sendEmailCode()}
+                data-testid="send-email-code"
+                className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+              >
+                {busy ? 'Sending…' : 'Send the code'}
+              </button>
+              <button
+                type="button"
+                onClick={resetEmailChange}
+                className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Never mind
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-md border border-line p-3 text-sm">
+            <p>
+              We sent a six-digit code to <strong>{newEmail}</strong>. It expires in ten minutes.
+            </p>
+            <p className="mt-2 text-muted">
+              If nothing arrives, check that the address is right — for your safety this page does
+              not say whether an address already belongs to another account.
+            </p>
+            <label htmlFor="email-otp" className="mt-3 block text-xs text-muted">
+              The code from that inbox
+            </label>
+            <input
+              id="email-otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={emailOtp}
+              onChange={(e) => setEmailOtp(e.target.value)}
+              data-testid="email-otp"
+              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm tracking-widest text-ink"
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy || emailOtp.trim() === ''}
+                onClick={() => void confirmEmailChange()}
+                data-testid="confirm-email-change"
+                className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+              >
+                {busy ? 'Changing…' : 'Change my address'}
+              </button>
+              <button
+                type="button"
+                onClick={resetEmailChange}
+                className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Never mind
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <h2 className="eyebrow">Delete your account</h2>

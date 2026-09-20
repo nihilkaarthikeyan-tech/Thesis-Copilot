@@ -9,6 +9,7 @@ import { All, Controller, Get, Inject, Req, Res } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ENV } from '../../common/env.token.js';
+import { toWebHeaders } from '../../common/web-headers.js';
 import type { Auth } from './auth.js';
 import { isGoogleConfigured } from './auth.js';
 import { AUTH } from './auth.tokens.js';
@@ -30,12 +31,7 @@ export class AuthController {
   async handle(@Req() request: FastifyRequest, @Res() reply: FastifyReply): Promise<void> {
     const url = new URL(request.url, this.env.API_URL);
 
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(request.headers)) {
-      if (value === undefined) continue;
-      headers.set(key, Array.isArray(value) ? value.join(', ') : String(value));
-    }
-
+    const headers = toWebHeaders(request);
     const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
     const response = await this.auth.handler(
       new Request(url.toString(), {

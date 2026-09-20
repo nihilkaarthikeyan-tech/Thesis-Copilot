@@ -8,6 +8,7 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { UnauthorizedError } from '../../common/errors.js';
+import { toWebHeaders } from '../../common/web-headers.js';
 import type { Auth } from './auth.js';
 import { AUTH } from './auth.tokens.js';
 
@@ -18,13 +19,7 @@ export class SessionGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
 
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(request.headers)) {
-      if (value === undefined) continue;
-      headers.set(key, Array.isArray(value) ? value.join(', ') : String(value));
-    }
-
-    const session = await this.auth.api.getSession({ headers });
+    const session = await this.auth.api.getSession({ headers: toWebHeaders(request) });
     if (!session?.user) throw new UnauthorizedError();
 
     (request as { user?: unknown }).user = {
