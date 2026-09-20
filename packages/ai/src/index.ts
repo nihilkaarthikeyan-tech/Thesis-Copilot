@@ -305,6 +305,11 @@ export {
   type MockProviderOptions,
   type MockResponse,
 } from './providers/mock.js';
+export {
+  providerForModel,
+  TieredLlmProvider,
+  type Vendor,
+} from './providers/routing.js';
 export { renderTemplate, type TemplateData } from './template.js';
 export {
   type AiAction,
