@@ -18,7 +18,6 @@ import {
   type GapMapTheme,
   type LlmProvider,
   outlineRequestSchema,
-  outlineResultSchema,
   readOutlineResult,
   type ScopeForQueries,
 } from '@tc/ai';

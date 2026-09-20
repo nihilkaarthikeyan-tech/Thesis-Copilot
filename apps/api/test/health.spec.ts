@@ -45,7 +45,11 @@ const env = (over: Partial<Env> = {}): Env =>
 function makeReply() {
   const state = { code: 0 };
   return {
-    reply: { status: (code: number) => ((state.code = code), undefined) } as never,
+    reply: {
+      status(code: number) {
+        state.code = code;
+      },
+    } as never,
     state,
   };
 }

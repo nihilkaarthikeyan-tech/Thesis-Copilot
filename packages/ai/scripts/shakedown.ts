@@ -32,7 +32,6 @@ import { paperExtractionSchema } from '@tc/types';
 import type { z } from 'zod';
 import { createProviders } from '../src/factory.js';
 import {
-  buildChapterSummaryRequest,
   buildCiteParseRequest,
   buildCiteRequest,
   buildCiteRoleRequest,
@@ -66,7 +65,6 @@ import {
   postProcessDraft,
   queriesSchema,
   sectionScopeSchema,
-  skeletonSchema,
   styleProfileSchema,
   termDriftSchema,
   themesSchema,
