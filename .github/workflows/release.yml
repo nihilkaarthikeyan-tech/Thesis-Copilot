@@ -53,6 +53,37 @@ jobs:
     needs: images
     environment: production
     steps:
+      # A release is images *and* files, and only the images were ever shipped.
+      #
+      # `deploy.sh`, `docker-compose.prod.yml` and `edge.conf` all live in the VPS working tree and
+      # all decide how a tag actually runs — what is published, what the proxy does, what the
+      # deploy script itself does. Pulling new images without them means a compose or proxy change
+      # merged here silently never reaches the server, and the symptom appears later as "the new
+      # version is broken" rather than "the server is running last week's configuration".
+      #
+      # Observed 2026-09-20: the tree was at `0916302` while the containers ran `v0.1.1`, two
+      # commits ahead. Nothing had gone wrong yet; nothing was going to say so either.
+      #
+      # `--force` is safe here and nowhere else: no tracked file is ever edited on the server. The
+      # three things that are (`.env`, `.last_good_tag`, the `deploy.sh` symlink) are ignored or
+      # untracked, and a checkout does not touch untracked files.
+      - name: sync the VPS working tree to ${{ github.ref_name }}
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd ~/thesis-copilot
+            git fetch --tags --force --prune origin
+            git -c advice.detachedHead=false checkout --force "${{ github.ref_name }}"
+            git --no-pager log -1 --format='[sync] tree now at %h %s'
+
+      # `../scripts/deploy.sh`, not `./deploy.sh`. The latter worked only because of a symlink
+      # created by hand during the first deploy, which is untracked — so a fresh clone of this
+      # repo could not deploy at all, and nothing here would have said why.
       - name: ssh + deploy.sh
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -65,4 +96,54 @@ jobs:
             cd ~/thesis-copilot/infra/compose
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export DOMAIN="${{ secrets.DOMAIN }}"
-            ./deploy.sh "${{ github.ref_name }}"
+            ../scripts/deploy.sh "${{ github.ref_name }}"
+
+      # Images rolled back with the tree left forward would leave the compose file, the proxy
+      # config and `deploy.sh` describing a release that is no longer running — the same drift
+      # this job exists to end, arrived at from the other direction.
+      #
+      # `.last_good_tag` is written only after a health check passes, so it always names the tag
+      # whose files match the images `deploy.sh` has just restored.
+      - name: restore the working tree if the deploy rolled back
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ~/thesis-copilot
+            PREV="$(cat infra/compose/.last_good_tag 2>/dev/null || true)"
+            if [ -n "${PREV}" ]; then
+              git -c advice.detachedHead=false checkout --force "${PREV}"
+              echo "[sync] tree restored to ${PREV}"
+            else
+              echo "[sync] no .last_good_tag recorded — tree left at ${{ github.ref_name }}, check it by hand"
+            fi
+
+      # The host's nginx is deliberately NOT written to from here. It is shared with eight other
+      # sites (ADR-0012) and a bad vhost takes all nine down at once, which is a decision for a
+      # human at a terminal with `nginx -t` in front of them.
+      #
+      # Saying that the two have drifted is free, though, and that is the half that was invisible.
+      - name: warn if the host nginx vhost has drifted from the repo
+        if: always()
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            REPO=~/thesis-copilot/infra/nginx/thesis.rademics.ai.conf
+            LIVE=/etc/nginx/sites-available/thesis.rademics.ai
+            if [ ! -f "${REPO}" ] || [ ! -f "${LIVE}" ]; then
+              echo "[nginx] one of the two files is missing — nothing to compare"
+            elif cmp -s "${REPO}" "${LIVE}"; then
+              echo "[nginx] host vhost matches the repo"
+            else
+              echo "::warning::the host nginx vhost differs from infra/nginx/thesis.rademics.ai.conf — copy it over, run 'nginx -t', then 'systemctl reload nginx'"
+              diff -u "${LIVE}" "${REPO}" || true
+            fi

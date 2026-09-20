@@ -183,9 +183,18 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       Sunday restore test passes — but onto the same disk as the data it is backing up, and the
       backup log says so itself every night: "dump kept locally only — fine for dev, NOT for
       production". One disk failure loses the data and every backup of it together.
-- [ ] Re-sync `infra/compose/` to the VPS by hand after any change to `docker-compose.prod.yml`,
-      `edge.conf` or the nginx vhost. `release.yml` pulls new *images* but never updates those
-      files, so a compose change committed here does not reach the server on its own.
+- [x] **Re-sync `infra/compose/` to the VPS on every release.** Fixed 2026-09-20: `release.yml` now
+      checks the VPS working tree out to the tag before running `deploy.sh`, and back to
+      `.last_good_tag` if the deploy rolls back. It also calls `../scripts/deploy.sh` rather than an
+      untracked symlink made by hand during the first deploy — so a fresh clone can now deploy.
+- [ ] **Copy the host nginx vhost by hand when it changes.** Still yours on purpose: that file is
+      shared with eight other sites and a bad one takes all nine down, so CI only *warns* when
+      `infra/nginx/thesis.rademics.ai.conf` and `/etc/nginx/sites-available/thesis.rademics.ai` have
+      drifted, and prints the diff. Copy it, run `nginx -t`, then `systemctl reload nginx`.
+- [ ] **One-off: the VPS tree is behind the images it is running.** Checked 2026-09-20 — tree at
+      `0916302`, containers on `v0.1.1`. The next tagged release now fixes this by itself; to do it
+      sooner, on the VPS:
+      `cd ~/thesis-copilot && git fetch --tags && git checkout --force v0.1.1`.
 
 ## Test material (PRD Appendix C — the agent must never fabricate these)
 
@@ -264,10 +273,14 @@ export.
       cosines and the service wiring is typechecked, but no test drives a real off-topic question
       through `chat.service.ts` and asserts no provider call was made. That needs a document with
       an embedded library, which needs the fixture papers.
-- [ ] **Changing the email on an account is not possible.** Not in the PRD either, so this is a
-      question rather than a defect — but with OTP sign-in the address *is* the identity, so a
-      student who loses access to their university mailbox after graduating loses the thesis. Worth
-      a decision before the pilot.
+- [x] **Changing the email on an account.** Built 2026-09-20, ADR-0015. `POST /account/email` sends
+      a code to the *new* address and `POST /account/email/verify` spends it; Better Auth's own
+      `changeEmail` flow does the OTP, and the service around it warns the address being left (with
+      the destination masked), writes an `EMAIL_CHANGED` audit row carrying both addresses, and
+      refuses while a deletion is pending. 12 integration tests.
+      **Still yours to decide:** a student who is *already* locked out has no route, deliberately —
+      moving an account without proving control of either mailbox would be a takeover feature. That
+      stays a support matter, and there is no support process yet.
 
 ## Decisions and reviews
 
@@ -286,6 +299,15 @@ export.
       reality: Outline 2,000 → 3,394, Style profile 400 → 1,018, Command 600 → 272.
       `docs/BUILD_LOG.md` → "Real-provider shakedown" has the whole table. §0.3 rule 3 keeps the
       agent out of the PRD's own numbers.
+- [ ] **`pnpm ai:shakedown` does not cover the free-text paths.** It runs 19 structured calls and 2
+      stream-then-parse ones; a third shape exists and has no case — a plain `complete()` with no
+      schema, which today is `buildChapterSummaryRequest` inside the coherence run. Noticed
+      2026-09-20 because the script still imported that builder and never used it, which is
+      somebody having reached for it once. Worth a case: it asks for 400 tokens, and a cap sized
+      for a non-reasoning model is exactly the shape that returned empty strings before
+      `REASONING_HEADROOM` (see `docs/BUILD_LOG.md`). Not urgent — the headroom fix already covers
+      it and coherence has run end to end — but the script claims to shake down every path and
+      currently does not.
 - [ ] **Decide whether the inert per-action temperatures matter.** Reasoning models reject
       `temperature`, so on `gpt-5-nano`/`gpt-5-mini` every builder's setting does nothing —
       `queries` asks 0.7 for varied search terms, `extract` asks 0 for none, and both now run at
