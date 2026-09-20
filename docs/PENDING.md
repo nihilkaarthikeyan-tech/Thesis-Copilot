@@ -154,14 +154,24 @@ blocks the agent from continuing to build against mocks.
 
 ## Deployment
 
-- [ ] **VPS** (8 vCPU / 16 GB / 160 GB, Ubuntu 24.04, Docker) + a **domain** pointing at it + SSH key.
-- [ ] Copy the repo to `~/thesis-copilot` on the VPS, create `infra/compose/.env` from
-      `infra/compose/.env.production.example` (every variable, with the in-network hostnames filled in).
-- [ ] **GitHub secrets** for `release.yml`: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `DOMAIN`,
-      `NEXT_PUBLIC_API_URL` (= `https://<domain>`). GHCR is enabled automatically with `GITHUB_TOKEN`.
-- [ ] **Off-site backup bucket**: `BACKUP_S3_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET` in the VPS `.env`.
-- [ ] Push a tag (`git tag v0.1.0 && git push --tags`) and confirm `https://<domain>/api/v1/health` is 200.
-- [ ] Check the first CI run is green: https://github.com/nihilkaarthikeyan-tech/Thesis-Copilot/actions
+**Deployed 2026-09-19 to `https://thesis.rademics.ai`** — srv1555044, the shared Hostinger box that
+already runs eight other projects, behind its nginx rather than our own Caddy (ADR-0012).
+`docs/BUILD_LOG.md` has the account, including the four failed attempts and what each one caught.
+
+- [x] **VPS + domain + SSH key.** Existing box; `thesis` A record; its own read-only deploy key for
+      the clone, and a separate key for GitHub Actions to reach it.
+- [x] Repo at `~/thesis-copilot`, `infra/compose/.env` written by hand and `chmod 600`.
+- [x] **GitHub secrets** for `release.yml` — all five set.
+- [x] Tag pushed, CI green, `https://thesis.rademics.ai/api/v1/health` 200, first real user journey
+      walked end to end on 2026-09-20 (proposal → outline → Assist, ₹0.68).
+- [ ] **Off-site backup bucket**: `BACKUP_S3_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET` in the VPS
+      `.env`. **Still open and the most serious thing on this page.** The nightly dump runs and the
+      Sunday restore test passes — but onto the same disk as the data it is backing up, and the
+      backup log says so itself every night: "dump kept locally only — fine for dev, NOT for
+      production". One disk failure loses the data and every backup of it together.
+- [ ] Re-sync `infra/compose/` to the VPS by hand after any change to `docker-compose.prod.yml`,
+      `edge.conf` or the nginx vhost. `release.yml` pulls new *images* but never updates those
+      files, so a compose change committed here does not reach the server on its own.
 
 ## Test material (PRD Appendix C — the agent must never fabricate these)
 
