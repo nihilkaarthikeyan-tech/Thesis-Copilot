@@ -341,7 +341,22 @@ The projection has moved a long way and every move was a defect or a decision, n
 
 **What is still not proven, and it is the same thing it always was:**
 
-- [ ] **Prove the prompt cache engages on real chapters.**
+- [x] **The prompt cache engages — observed in production, 2026-09-20.** A real Assist call on
+      `thesis.rademics.ai` came back `cachedInputTokens: 1024` against 72 fresh, billed at
+      ₹0.0022 against the ₹0.0097 the model budgets. The mechanism is no longer an assumption.
+      **What is still unmeasured is the *size*.** The model assumes a 4,000-token cached prefix;
+      1,024 is OpenAI's floor and all this prompt could offer, because the chapter had no pinned
+      sources. A full chapter with six pinned passages is still the case that matters and still
+      needs the fixture papers — but it is now a question of how much caching, not whether.
+- [ ] **A cancelled suggestion is billed by OpenAI and logged as ₹0.** Observed 2026-09-20: cutting
+      an Assist stream off mid-token logged `AiCallLog` with 0/0/0 tokens and zero cost, because the
+      usage arrives on the finish chunk that a cancelled stream never sends. `assist.service.ts`
+      handles the abort deliberately and says so — "the cap unit stays consumed: tokens were
+      generated" — so the *cap* is right and only the *money* is missing. Bounded by the cap, so
+      worst case is roughly ₹2 of real spend per student per month invisible to the ₹100 runtime
+      ceiling. Small, but it is the ceiling's one blind spot, and cancelling mid-suggestion is
+      normal behaviour rather than an edge case.
+- [ ] **Prove the prompt cache engages at the size the model assumes.**
       `cost.ts` prices every fast-tier action assuming a 4,000-token cached prefix read at 0.1×.
 
       | Assist unit cost | STUDENT month total | |

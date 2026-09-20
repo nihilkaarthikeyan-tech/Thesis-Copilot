@@ -3143,3 +3143,58 @@ call. `docs/PENDING.md` carries it — the five fixture papers are what would wi
 `429 … you have not yet added your payment method … reduced rate limits of 3 RPM and 10K TPM`.
 Every chapter index and every chat question needs an embedding, so this makes the product unusable
 under any real load. It is a billing-page click, not a code change, and it is in `docs/PENDING.md`.
+
+---
+
+## First real user journey on production — 2026-09-20
+
+`thesis.rademics.ai` had been live for 24 hours with zero AI calls logged: an account had been
+created and a thesis started, and nothing past that point had ever run against real infrastructure.
+This walked the topic path end to end as a student would, over HTTPS, on the production stack.
+
+**It works.** Sign-in (email OTP, read from the `Verification` table since the dev endpoint
+correctly refuses in production), thesis creation, the proposal conversation, outline generation
+through BullMQ and the worker, and Assist streaming into the editor.
+
+| Action | Model | Fresh in | Cached in | Out | Cost | Latency |
+|---|---|---|---|---|---|---|
+| PROPOSAL | gpt-5-mini | 546 | 0 | 96 | ₹0.029 | 4.0 s |
+| PROPOSAL | gpt-5-mini | 600 | 0 | 514 | ₹0.102 | 4.8 s |
+| OUTLINE | gpt-5-mini | 898 | 0 | 3,053 | ₹0.551 | 23.0 s |
+| ASSIST | gpt-5-nano | 72 | **1,024** | 41 | ₹0.0022 | 2.2 s |
+
+The whole journey cost **₹0.68**. Quality was not the point of the exercise, but the proposal
+skeleton it produced was a real research proposal — a specific working title, a problem statement
+that named the mechanism, and measurable objectives — and the Assist suggestion continued the
+sentence in place rather than restating it.
+
+### The prompt cache engages
+
+`cachedInputTokens: 1024` on the second Assist call. This is the assumption the whole ₹14.18 cost
+model rests on, unverified since the model was written, and it is now observed rather than assumed.
+
+The size is still open and the honest reading is narrower than the headline. 1,024 is OpenAI's
+floor, not a measurement of our prefix — the chapter had no pinned sources, so the prompt was
+1,096 tokens and there was nothing more to cache. `cost.ts` assumes a 4,000-token cached prefix.
+What changed today is that this is now a question of *how much*, not *whether*, and the fixture
+papers remain what settles it.
+
+### Three things the walk turned up
+
+- **The worker path works, including the shakedown fix.** `generate-outline` went through BullMQ,
+  ran on the worker, and returned `{"chapters":6,"sections":25,"created":6}` in 23 seconds. That is
+  the `outlineRequestSchema` split from ADR-0013's sibling fix doing its job against a real model.
+- **Streaming is not buffered through either nginx.** Assist tokens arrived as individual SSE
+  events through the host nginx and the stack's own — the `proxy_buffering off` on both hops
+  (ADR-0012) verified end to end rather than by reading config.
+- **A cancelled suggestion is billed by OpenAI and logged as ₹0.** Cutting the stream off mid-token
+  logged 0/0/0 because usage rides on the finish chunk. Deliberate and documented in
+  `assist.service.ts` for the *cap*; the *money* is the gap. `docs/PENDING.md` carries it — bounded
+  by the cap at roughly ₹2 per student per month, but it is the ₹100 ceiling's one blind spot, and
+  cancelling mid-suggestion is ordinary behaviour rather than an edge case.
+
+### Left on production deliberately
+
+A smoke-test account (`nihilkaarthikeyan+tcsmoke@gmail.com`) and its thesis, "Smoke test: barriers
+to rooftop solar adoption", with the generated outline intact — worth being able to open in the
+browser. Removing it is one `DELETE` against the account endpoint whenever it stops being useful.
