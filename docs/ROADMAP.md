@@ -66,6 +66,13 @@ were invisible to typecheck, lint and 1,200 passing tests.
 
 ## Standing checks, easy to let slip
 
+- [ ] **The E2E suite assumes `AI_PROVIDER=mock`; the local `.env` does not have it.** CI rewrites
+      the variable before running Playwright (`ci.yml`); a developer machine running the real
+      providers fails every spec that asserts the mock's canned suggestion — `proposal-sources`
+      3.5 and 4.2, `onboarding`, `outline-commands-chat`. Those failures look like product bugs
+      and are not. Run `AI_PROVIDER=mock EMBED_PROVIDER=mock` against a separate stack, or read
+      the failure before believing it.
+
 - [ ] Run `pnpm ai:shakedown` after any change to a provider, a model id or a schema. It has not
       run since the free-text gap was recorded in PENDING.
 - [ ] After editing any `packages/*`, rebuild it — the apps consume `dist`. Cost a 404 on
