@@ -1,4 +1,13 @@
 export {
+  formatRef,
+  kindOfNode,
+  type NumberedTarget,
+  numberingMap,
+  numberTargets,
+  type RefKind,
+  refIdOf,
+} from './cross-ref.js';
+export {
   emptyExtraction,
   type Finding,
   findingSchema,

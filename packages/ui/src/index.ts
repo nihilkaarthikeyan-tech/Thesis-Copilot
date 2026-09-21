@@ -22,6 +22,7 @@ export {
   sentenceAroundCitation,
   sentenceToFragment,
 } from './editor/citation-role.js';
+export { CrossRef, type CrossRefOptions } from './editor/cross-ref.js';
 export {
   DraftBlock,
   type DraftBlockOptions,
@@ -61,4 +62,5 @@ export {
   provenancePluginKey,
   wordCountByProvenance,
 } from './editor/provenance.js';
+export { newRefId, TableWithRef } from './editor/ref-ids.js';
 export { blockText, CHARS_PER_TOKEN, contextAround, documentText } from './editor/text.js';

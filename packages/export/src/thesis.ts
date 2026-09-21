@@ -15,7 +15,7 @@
  *     which is the only way they can be right.
  */
 
-import type { TemplateSpec, ThesisDetails } from '@tc/types';
+import { formatRef, numberingMap, type TemplateSpec, type ThesisDetails } from '@tc/types';
 import {
   AlignmentType,
   convertMillimetersToTwip,
@@ -128,6 +128,20 @@ function runsFrom(
   const { spec } = input;
   const out: TextRun[] = [];
   for (const node of nodes) {
+    if (node.type === 'crossRef') {
+      // Numbered per chapter, from the chapter's own document — the same source the editor reads,
+      // so the submitted thesis says what the screen said.
+      const refId = typeof node.attrs?.refId === 'string' ? node.attrs.refId : '';
+      const refKind = node.attrs?.kind === 'table' ? ('table' as const) : ('figure' as const);
+      out.push(
+        new TextRun({
+          text: formatRef(numberingMap(chapter.content).get(refId), chapter.order, refKind),
+          font: spec.font.body,
+          size: pt(spec.font.sizePt),
+        }),
+      );
+      continue;
+    }
     if (node.type === 'mathInline') {
       // LaTeX source, not typeset maths — see `mathRun` in docx.ts for why, and note that the
       // alternative here was the status quo, in which the equation was absent from the submitted

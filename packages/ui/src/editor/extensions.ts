@@ -13,13 +13,13 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import Table from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
 import { Citation, type CitationOptions } from './citation.js';
+import { CrossRef } from './cross-ref.js';
 import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
 import { GhostText, type GhostTextOptions } from './ghost-text.js';
 import { MathBlock, MathInline } from './math.js';
@@ -31,6 +31,7 @@ import {
   ThesisImage,
 } from './nodes.js';
 import { Provenance } from './provenance.js';
+import { TableWithRef } from './ref-ids.js';
 
 export type ThesisEditorOptions = {
   ghostText: Partial<GhostTextOptions> & Pick<GhostTextOptions, 'chapterId' | 'request'>;
@@ -41,6 +42,8 @@ export type ThesisEditorOptions = {
   placeholder?: string;
   /** Tables measure the DOM for column resizing; off in tests (jsdom has no layout). */
   resizableTables?: boolean;
+  /** This chapter's number, for the "3.2" in "Figure 3.2". */
+  chapterNumber?: number;
 };
 
 export function thesisExtensions(options: ThesisEditorOptions): Extensions {
@@ -57,11 +60,13 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     Superscript,
     Subscript,
     Link.configure({ openOnClick: false, autolink: true }),
-    Table.configure({ resizable: options.resizableTables ?? false }),
+    // The table that carries a refId, so a cross-reference can point at it (cross-ref.ts).
+    TableWithRef.configure({ resizable: options.resizableTables ?? false }),
     TableRow,
     TableHeader,
     TableCell,
     ThesisImage.configure({ ...(options.imageUpload ? { upload: options.imageUpload } : {}) }),
+    CrossRef.configure({ chapterNumber: options.chapterNumber ?? 1 }),
     MathInline,
     MathBlock,
     Citation.configure(options.citation ?? {}),

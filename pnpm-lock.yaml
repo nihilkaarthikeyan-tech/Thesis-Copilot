@@ -523,6 +523,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@tc/types':
+        specifier: workspace:*
+        version: link:../types
       '@tiptap/core':
         specifier: 2.27.3
         version: 2.27.3(@tiptap/pm@2.27.3)

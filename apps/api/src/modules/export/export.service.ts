@@ -19,6 +19,7 @@ import {
   usageToDocx,
   type WordCounts,
 } from '@tc/export';
+import { numberingMap } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -80,6 +81,8 @@ export class ExportService {
       bibliography,
       // Without this every figure the student inserted exports as the placeholder '[image]'.
       images: await loadFigures(this.storage, chapter.content, this.logger),
+      // Cross-reference numbers, from the same walk the editor uses.
+      refTargets: numberingMap(chapter.content),
       numberHeadings: true,
       chapterNumber: chapter.order,
     });

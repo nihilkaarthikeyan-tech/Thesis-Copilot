@@ -338,9 +338,21 @@ function ChapterEditor({
           },
         },
         imageUpload: uploadFigure,
+        // Cross-references read "Figure 3.2"; this supplies the 3. The number lives on the
+        // document's chapter list, not on the loaded chapter — `ChapterView` carries the content,
+        // and a chapter does not know its own position in the thesis.
+        chapterNumber: doc.chapters.find((c) => c.id === chapter.id)?.order ?? 1,
         resizableTables: true,
       }),
-    [chapter.id, reducedMotion, onUsageChange, guided.controller, autoSuggest, uploadFigure],
+    [
+      chapter.id,
+      doc.chapters,
+      reducedMotion,
+      onUsageChange,
+      guided.controller,
+      autoSuggest,
+      uploadFigure,
+    ],
   );
 
   const editor = useEditor({

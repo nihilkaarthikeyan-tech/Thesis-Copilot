@@ -23,6 +23,7 @@
  * document owns and the student does not type.
  */
 
+import { numberTargets } from '@tc/types';
 import { wordCountByProvenance } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import {
@@ -297,6 +298,9 @@ export function FormatToolbar({
   if (!editor) return null;
 
   const inTable = editor.isActive('table');
+  // Recomputed on every render, which `useEditorTick` already drives: inserting a figure has to
+  // make it immediately referenceable, and renumber the references that exist.
+  const refTargets = numberTargets(editor.getJSON());
 
   return (
     <div
@@ -444,6 +448,36 @@ export function FormatToolbar({
         >
           <TableIcon className="size-[15px]" strokeWidth={1.75} />
         </Tool>
+
+        {/* Only when there is something to point at. A reference picker offering nothing is a
+            button that teaches people the feature is broken. */}
+        {refTargets.length > 0 ? (
+          <select
+            aria-label="Refer to a figure or table"
+            data-testid="fmt-crossref"
+            value=""
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              const chosen = refTargets.find((t) => t.refId === e.target.value);
+              if (chosen) {
+                editor
+                  .chain()
+                  .focus()
+                  .insertCrossRef({ refId: chosen.refId, kind: chosen.kind })
+                  .run();
+              }
+              e.target.value = '';
+            }}
+            className="h-7 shrink-0 rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink transition-colors hover:bg-sunk"
+          >
+            <option value="">Refer to…</option>
+            {refTargets.map((target) => (
+              <option key={target.refId} value={target.refId}>
+                {target.kind === 'figure' ? 'Figure' : 'Table'} {target.index}
+              </option>
+            ))}
+          </select>
+        ) : null}
 
         <Tool label="Equation (LaTeX)" testId="fmt-math" onClick={() => insertMath('inline')}>
           <Sigma className="size-[15px]" strokeWidth={1.75} />

@@ -9,6 +9,7 @@
  * same rendered map the editor shows — the exported file says exactly what the student saw.
  */
 
+import { formatRef, type NumberedTarget } from '@tc/types';
 import {
   AlignmentType,
   Document,
@@ -56,6 +57,14 @@ export type ExportOptions = {
   numberHeadings?: boolean;
   /** The chapter's position in the thesis, so its headings number from it. Defaults to 1. */
   chapterNumber?: number;
+  /**
+   * Figure and table numbers by `refId`, for resolving cross-references.
+   *
+   * Built by `numberingMap` over this same document — the function the editor's node view also
+   * uses. Two implementations of "figures are numbered in document order" would be one
+   * implementation and one bug, and the student would learn about it from their examiner.
+   */
+  refTargets?: ReadonlyMap<string, NumberedTarget>;
 };
 
 /** Running heading counters for one export (H2 within the chapter, H3 within the H2). */
@@ -120,6 +129,19 @@ function runsFrom(nodes: readonly PmNode[], options: ExportOptions): TextRun[] {
     }
     if (node.type === 'hardBreak') {
       runs.push(new TextRun({ text: '', break: 1 }));
+      continue;
+    }
+    if (node.type === 'crossRef') {
+      // Resolved from the same `numberTargets` the editor's node view uses, so the number in the
+      // submitted file is the number the student saw. A reference whose target was deleted prints
+      // a visible gap rather than a plausible number — see `formatRef`.
+      const refId = typeof node.attrs?.refId === 'string' ? node.attrs.refId : '';
+      const kind = node.attrs?.kind === 'table' ? ('table' as const) : ('figure' as const);
+      runs.push(
+        new TextRun({
+          text: formatRef(options.refTargets?.get(refId), options.chapterNumber ?? 1, kind),
+        }),
+      );
       continue;
     }
     if (node.type === 'mathInline') {
