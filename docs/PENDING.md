@@ -83,6 +83,12 @@ blocks the agent from continuing to build against mocks.
       four products and its password is the same everywhere; one leak rotates all four. A
       `no-reply@` on whatever domain Thesis Copilot ships under would isolate it. Not urgent —
       the shared box works and is already warmed up.
+- [~] **Google sign-in — credentials supplied 2026-09-21, not yet proven.** The owner supplied a
+      client id and secret (); both are now in the local . Two
+      things remain and neither is code: the **redirect URIs must be registered** in the Google
+      console or every attempt fails with , and the same two variables must
+      be copied to the VPS . Original instructions kept below.
+
 - [ ] **Google sign-in.** Everything but the credentials is built: Better Auth's Google provider is
       registered whenever both variables are set (`apps/api/src/modules/auth/auth.ts`), the API
       reports it at `GET /api/v1/auth/methods`, and the sign-in page shows a "Continue with Google"
@@ -281,6 +287,39 @@ export.
       **Still yours to decide:** a student who is *already* locked out has no route, deliberately —
       moving an account without proving control of either mailbox would be a takeover feature. That
       stays a support matter, and there is no support process yet.
+
+## Editor parity with general-purpose AI writing tools (audit 2026-09-21)
+
+Prompted by the owner sending a screenshot of a competitor's editor. An inventory of our own
+source against it found the product had **no formatting UI at all** — the schema supported most of
+it, reachable only by keyboard shortcut, and three things were not reachable at all.
+
+**Built the same day:** the formatting toolbar (text style, B/I/U/S, super/subscript, code, lists,
+quote, link), tables with row/column controls, inline and display equations, figure upload, and a
+live word count that also shows the AI share. Following the figure through to the export turned up
+three separate faults that would each have silently dropped it from the submitted `.docx`; all
+fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
+
+- [ ] **Prove the toolbar in a browser.** Typecheck, lint and unit tests are clean and it has
+      **not** been driven in a real browser — the dev Docker stack was down when it was built, and
+      the hard-won rule in `CLAUDE.md` exists because four faults so far were invisible to every
+      other kind of test. Insert a table, an equation and a figure, export the chapter, and open
+      the `.docx`. Until that is done this feature is "written", not "working".
+- [ ] **Decide about web search in chat.** The competitor offers "Web Ask" alongside a library
+      search. We deliberately do not, and it is not a small addition: PRD §10.6 says the model may
+      only cite passages present in the request, and everything not in the library is stripped and
+      counted as `HALLUCINATED_CITE`. A web answer has no passage to ground against and no source
+      to add to the bibliography, so this needs an ADR about what a web result *is* in a thesis
+      tool — and a metering decision, since it is an uncapped outbound call.
+- [ ] **A manual `@`-cite picker.** Citations can only be inserted today from the automatic
+      end-of-sentence suggestion. A student who wants to cite something deliberately, mid-sentence,
+      has no way to ask. Needs a small endpoint that renders a label for a not-yet-inserted
+      citation (numeric styles number by document position, so the label cannot be computed in the
+      browser).
+- [ ] **Chat scope.** Ours is library-only; the competitor also scopes to the current document.
+      "Current document" is cheap and well-defined, unlike web search.
+- [ ] **Not planned, and worth saying why:** a browser extension (a separate product with its own
+      store review) and video tutorials (content, not code).
 
 ## Decisions and reviews
 
