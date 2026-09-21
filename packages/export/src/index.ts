@@ -21,6 +21,7 @@ export {
   runComplianceChecks,
 } from './compliance.js';
 export { chapterToDocx, type ExportOptions } from './docx.js';
+export { fitToColumn, imageSize, MAX_FIGURE_WIDTH_PT, type Pixels } from './image-size.js';
 export { type InvoiceInput, invoiceToDocx } from './invoice.js';
 export {
   actionTaken,

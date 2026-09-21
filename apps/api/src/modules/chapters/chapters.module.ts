@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { QueueService } from '../../common/queue.service.js';
+import { StorageService } from '../../common/storage.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { ChaptersController } from './chapters.controller.js';
@@ -7,6 +8,7 @@ import { ChaptersService } from './chapters.service.js';
 import { DocumentCitationsController } from './citations.controller.js';
 import { CitationsService } from './citations.service.js';
 import { CiteParseService } from './cite-parse.service.js';
+import { FiguresService } from './figures.service.js';
 import { SnapshotsService } from './snapshots.service.js';
 
 @Module({
@@ -18,7 +20,9 @@ import { SnapshotsService } from './snapshots.service.js';
     SnapshotsService,
     CitationsService,
     CiteParseService,
+    FiguresService,
     QueueService,
+    StorageService,
     SessionGuard,
   ],
   exports: [ChaptersService, SnapshotsService, CitationsService],

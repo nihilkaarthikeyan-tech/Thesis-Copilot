@@ -35,6 +35,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 import { CitationsService } from '../chapters/citations.service.js';
+import { loadFigures } from './figure-bytes.js';
 
 export type TemplateView = {
   id: string;
@@ -264,6 +265,15 @@ export class ThesisExportService {
       documentTitle: document.title,
       chapters,
       bibliography: rendered.bibliography.map((b) => b.text),
+      // Every chapter's figures in one map, keyed by storage path. Before this, a submitted
+      // thesis carried a correctly numbered caption under a bracketed placeholder — the caption
+      // machinery worked, and there was nothing above it.
+      images: Object.assign(
+        {},
+        ...(await Promise.all(
+          chapters.map((chapter) => loadFigures(this.storage, chapter.content, this.logger)),
+        )),
+      ),
     });
 
     const base = slug(document.title);

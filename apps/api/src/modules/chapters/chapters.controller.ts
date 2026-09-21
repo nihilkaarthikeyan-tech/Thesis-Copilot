@@ -1,9 +1,22 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { ChaptersService } from './chapters.service.js';
+import { FiguresService } from './figures.service.js';
 import { SNAPSHOT_REASONS } from './snapshots.service.js';
 
 const saveBody = z.object({
@@ -24,7 +37,10 @@ const snapshotBody = z.object({
 @Controller()
 @UseGuards(SessionGuard)
 export class ChaptersController {
-  constructor(private readonly chapters: ChaptersService) {}
+  constructor(
+    private readonly chapters: ChaptersService,
+    private readonly figures: FiguresService,
+  ) {}
 
   @Get('chapters/:id')
   get(@CurrentUser() user: SessionUser, @Param('id') id: string) {
@@ -65,5 +81,43 @@ export class ChaptersController {
   @Get('documents/:id/versions')
   versions(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.chapters.versions(user.id, id);
+  }
+
+  /**
+   * A figure for this chapter — the editor's "Insert figure" button.
+   *
+   * Multipart, like every other upload here, and for the reason recorded in the hard-won rules:
+   * a JSON content-type on a multipart route makes Nest try to JSON-parse the file.
+   */
+  @Post('chapters/:id/figures')
+  @HttpCode(200)
+  async uploadFigure(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+  ) {
+    const file = await (
+      request as unknown as {
+        file: () => Promise<{ filename: string; toBuffer: () => Promise<Buffer> } | undefined>;
+      }
+    ).file();
+    if (!file) throw new ValidationError('Choose an image to insert.');
+    return this.figures.upload({
+      ownerId: user.id,
+      chapterId: id,
+      filename: file.filename,
+      bytes: new Uint8Array(await file.toBuffer()),
+    });
+  }
+
+  /** Re-signs a figure whose link has expired, so a chapter reopened tomorrow still renders. */
+  @Get('chapters/:id/figures/link')
+  figureLink(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Query('key') key?: string,
+  ) {
+    if (!key) throw new ValidationError('Which figure?');
+    return this.figures.link(user.id, id, key);
   }
 }

@@ -22,6 +22,7 @@ import {
   Document,
   Footer,
   HeadingLevel,
+  ImageRun,
   LevelFormat,
   NumberFormat,
   Packer,
@@ -56,6 +57,18 @@ export type ThesisExportInput = {
   bibliography: readonly string[];
   /** Optional appendices, after the bibliography (D.3.1). */
   appendices?: ReadonlyArray<{ title: string; paragraphs: readonly string[] }>;
+  /**
+   * Figure bytes by object-storage key, as `image` nodes carry in `attrs.key`.
+   *
+   * Until 2026-09-21 this did not exist and every figure in a submitted thesis was replaced by a
+   * bracketed placeholder — the numbered caption was produced correctly, under nothing. A key
+   * that is absent still falls back to that placeholder, because an export running into a
+   * deadline must not fail over one unreadable picture.
+   */
+  images?: Record<
+    string,
+    { data: Uint8Array; width: number; height: number; type?: 'png' | 'jpg' | 'gif' }
+  >;
 };
 
 type Node = {
@@ -293,9 +306,27 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
           chapter: chapter.order,
           n: counters.figure,
         }).replace('{caption}', String(block.attrs?.alt ?? ''));
-        // The image bytes are not resolved here; the placeholder names what is missing rather
-        // than producing a file with a silent gap in it.
-        const figure = centred(`[${String(block.attrs?.alt ?? 'figure')}]`, spec);
+        // `key` is the stable storage path; `src` is a signed URL that has almost certainly
+        // expired by export time, so it is only a fallback for documents written before figures
+        // carried keys.
+        const figureKey =
+          (typeof block.attrs?.key === 'string' && block.attrs.key) ||
+          (typeof block.attrs?.src === 'string' ? block.attrs.src : '');
+        const bytes = input.images?.[figureKey];
+        const figure = bytes
+          ? new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new ImageRun({
+                  type: bytes.type ?? 'png',
+                  data: bytes.data,
+                  transformation: { width: bytes.width, height: bytes.height },
+                }),
+              ],
+            })
+          : // Still a named placeholder when the bytes could not be read, so the gap is visible
+            // to the student rather than silent.
+            centred(`[${String(block.attrs?.alt ?? 'figure')}]`, spec);
         const captionLine = centred(caption, spec, spec.font.sizePt - 1);
         out.push(
           ...(spec.captions.figure.position === 'above'

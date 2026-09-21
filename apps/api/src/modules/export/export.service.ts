@@ -7,7 +7,7 @@
  * only worth anything if the numbers come from the same place the words do.
  */
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import {
   type ChapterUsage,
@@ -24,6 +24,7 @@ import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import { CitationsService } from '../chapters/citations.service.js';
+import { loadFigures } from './figure-bytes.js';
 
 export type ExportFormat = 'docx' | 'pdf';
 
@@ -31,6 +32,8 @@ export type ExportResult = { url: string; key: string; filename: string; bytes: 
 
 @Injectable()
 export class ExportService {
+  private readonly logger = new Logger(ExportService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -75,6 +78,8 @@ export class ExportService {
       title: chapter.title,
       renderedMap,
       bibliography,
+      // Without this every figure the student inserted exports as the placeholder '[image]'.
+      images: await loadFigures(this.storage, chapter.content, this.logger),
       numberHeadings: true,
       chapterNumber: chapter.order,
     });

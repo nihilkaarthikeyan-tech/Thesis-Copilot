@@ -38,8 +38,16 @@ export type ExportOptions = {
   renderedMap?: Record<string, string>;
   /** Bibliography lines, already formatted and sorted by the citation layer. */
   bibliography?: readonly string[];
-  /** Images by object-storage key. Absent keys become a placeholder line, never a broken file. */
-  images?: Record<string, { data: Uint8Array; width: number; height: number }>;
+  /**
+   * Images by object-storage key. Absent keys become a placeholder line, never a broken file.
+   *
+   * `width`/`height` are points in the document, not the file's pixels — `fitToColumn` in
+   * `image-size.ts` does that conversion. `type` must match the actual bytes.
+   */
+  images?: Record<
+    string,
+    { data: Uint8Array; width: number; height: number; type?: 'png' | 'jpg' | 'gif' }
+  >;
   /**
    * PHASES v2 W10.5: number the headings ("3.2 Method"). The numbers are computed here rather
    * than left to Word's list engine, because a `.docx` that renumbers itself when opened is a
@@ -193,7 +201,16 @@ function paragraphsFrom(
       break;
 
     case 'image': {
-      const key = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
+      // The node carries both. `key` is the stable object-storage path; `src` is a signed URL
+      // that expires. This looked up by `src` alone, which could only ever miss — the link is
+      // re-signed every time the chapter is opened, so it never matches the key the caller
+      // collected. `src` stays as the fallback for documents written before figures had keys.
+      const key =
+        typeof node.attrs?.key === 'string' && node.attrs.key
+          ? node.attrs.key
+          : typeof node.attrs?.src === 'string'
+            ? node.attrs.src
+            : '';
       const image = options.images?.[key];
       if (image) {
         out.push(
@@ -201,7 +218,10 @@ function paragraphsFrom(
             alignment: AlignmentType.CENTER,
             children: [
               new ImageRun({
-                type: 'png',
+                // Was hardcoded to 'png'. Word reads the part's declared type, so a JPEG
+                // announced as a PNG is a figure that does not render in the file a student
+                // submits — and the export itself would look like it had worked.
+                type: image.type ?? 'png',
                 data: image.data,
                 transformation: { width: image.width, height: image.height },
               }),

@@ -70,6 +70,7 @@ import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
 import { DraftMode } from './DraftMode';
 import { type Flag, FlagsPanel } from './FlagsPanel';
+import { FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { SourcePins } from './SourcePins';
@@ -203,6 +204,32 @@ function ChapterEditor({
     [],
   );
 
+  /**
+   * Stores a figure and hands the node back a key and a signed URL.
+   *
+   * `fetch` rather than the `api()` helper, and deliberately: the helper sets
+   * `content-type: application/json` for anything it does not recognise as `FormData`, and a JSON
+   * content-type on a multipart route is the exact fault the hard-won rules already record once.
+   * Letting the browser set the header is what puts the multipart boundary on it.
+   */
+  const uploadFigure = useCallback(
+    async (file: File): Promise<{ key: string; url: string }> => {
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`${API_URL}/api/v1/chapters/${chapter.id}/figures`, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      if (!response.ok) {
+        const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(problem?.detail ?? 'That image could not be added.');
+      }
+      return (await response.json()) as { key: string; url: string };
+    },
+    [chapter.id],
+  );
+
   const extensions = useMemo(
     () =>
       thesisExtensions({
@@ -307,9 +334,10 @@ function ChapterEditor({
             }
           },
         },
+        imageUpload: uploadFigure,
         resizableTables: true,
       }),
-    [chapter.id, reducedMotion, onUsageChange, guided.controller, autoSuggest],
+    [chapter.id, reducedMotion, onUsageChange, guided.controller, autoSuggest, uploadFigure],
   );
 
   const editor = useEditor({
@@ -325,6 +353,32 @@ function ChapterEditor({
     },
   });
   editorRef.current = editor;
+
+  /**
+   * The toolbar's side of "Insert figure".
+   *
+   * `uploadImage` starts the upload and returns immediately — the node is inserted in a `.then`
+   * inside the extension — so a failure surfaces here rather than as a silently missing picture.
+   */
+  const insertFigure = useCallback(
+    (file: File) => {
+      if (!editorRef.current) return;
+      setNotice(null);
+      void uploadFigure(file)
+        .then(({ key, url }) => {
+          editorRef.current
+            ?.chain()
+            .focus()
+            .setImage({ src: url, alt: file.name })
+            .updateAttributes('image', { key, caption: null })
+            .run();
+        })
+        .catch((error: unknown) => {
+          setNotice(error instanceof Error ? error.message : 'That image could not be added.');
+        });
+    },
+    [uploadFigure],
+  );
 
   // Appendix B.7 autosave.
   useEffect(() => {
@@ -592,6 +646,7 @@ function ChapterEditor({
               {notice}
             </p>
           ) : null}
+          <FormatToolbar editor={editor} onInsertImage={insertFigure} />
           <EditorContent editor={editor} />
           <div className="mx-auto mt-8 flex max-w-[72ch] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[11.5px] text-faint">
             {[
@@ -607,6 +662,7 @@ function ChapterEditor({
                 {what}
               </span>
             ))}
+            <WordCount editor={editor} className="ml-auto" />
           </div>
         </main>
 

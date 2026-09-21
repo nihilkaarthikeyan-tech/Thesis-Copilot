@@ -35,6 +35,13 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "4.3.3",
+    "@tiptap/extension-image": "2.27.3",
+    "@tiptap/extension-link": "2.27.3",
+    "@tiptap/extension-subscript": "2.27.3",
+    "@tiptap/extension-superscript": "2.27.3",
+    "@tiptap/extension-table": "2.27.3",
+    "@tiptap/extension-underline": "2.27.3",
+    "@tiptap/starter-kit": "2.27.3",
     "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
