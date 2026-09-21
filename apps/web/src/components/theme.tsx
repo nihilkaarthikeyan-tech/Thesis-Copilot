@@ -1,27 +1,34 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { Monitor, Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Light or dark, per docs/DESIGN.md.
+ * Colour theme, per docs/DESIGN.md — one button that cycles Light → Dark → System.
  *
- * The control offers two states. A first visit still follows the device — nothing is stamped on the
- * root element until someone chooses, so `prefers-color-scheme` in `globals.css` decides, and the
- * toggle shows whichever of the two that resolved to. From the first click on it is an explicit
- * choice, stamped as `data-theme` and beating the media query in both directions.
+ * It was a two-way segmented control ("Light | Dark") until 2026-09-21. One button that cycles is
+ * what the owner asked for and it is also the better control here, for a reason worth writing
+ * down: the old pair could not express **System**, even though the CSS has always had three
+ * states and an un-chosen visitor has always been in the third one. The segmented control showed
+ * such a visitor "Light" — a lie the moment they moved to a dark OS — and once either button was
+ * pressed there was no way back to following the device short of clearing site data.
  *
- * (The CSS keeps all three cases because the un-stamped state is real and has to render; what was
- * removed is the third *button*, not the third behaviour.)
+ * So the third state is not decoration. It is the default every visitor arrives in, it was
+ * previously unreachable and unnameable, and a cycle gives it a home at no extra width.
  *
- * The choice is per-browser and lives in `localStorage`. It is deliberately not a user setting on
- * the server: a student writing at night on their laptop and reviewing on a library machine in the
- * morning wants each device to keep its own answer.
+ * The choice is per-browser and lives in `localStorage`, deliberately not on the server: a student
+ * writing at night on a laptop and reviewing on a library machine in the morning wants each device
+ * to keep its own answer.
  */
 
-export type Theme = 'light' | 'dark';
+/** `system` means "no choice stamped" — `prefers-color-scheme` in `globals.css` decides. */
+export type Theme = 'light' | 'dark' | 'system';
 
 const KEY = 'tc-theme';
+
+/** The cycle. Light and dark first, because those are the two anyone is actually reaching for. */
+const ORDER: readonly Theme[] = ['light', 'dark', 'system'];
 
 /**
  * Applies the stored choice before first paint.
@@ -36,31 +43,32 @@ export function ThemeScript() {
 }
 
 export function useTheme(): [Theme, (next: Theme) => void] {
-  // Light until the browser tells us otherwise. The effect below corrects it on mount; rendering
-  // 'light' first matches the server, so there is no hydration mismatch.
-  const [theme, setThemeState] = useState<Theme>('light');
+  // `system` until the browser tells us otherwise: it is both the true default and what the server
+  // renders, so first paint matches and there is no hydration mismatch.
+  const [theme, setThemeState] = useState<Theme>('system');
 
   useEffect(() => {
     let stored: string | null = null;
     try {
       stored = localStorage.getItem(KEY);
     } catch {
-      // Site data blocked. The device preference below still applies for this page view.
+      // Site data blocked. The device preference still applies for this page view.
     }
-    if (stored === 'dark' || stored === 'light') {
-      setThemeState(stored);
-      return;
-    }
-    // Nothing chosen yet: show what the device resolved to, without stamping it. The page is
-    // already rendering that theme via `prefers-color-scheme`; this only makes the toggle agree.
-    setThemeState(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (stored === 'dark' || stored === 'light') setThemeState(stored);
   }, []);
 
   const setTheme = (next: Theme) => {
     setThemeState(next);
-    document.documentElement.setAttribute('data-theme', next);
+    if (next === 'system') {
+      // Removing the attribute is what hands control back to the media query. Setting
+      // `data-theme="system"` would match neither CSS block and render an unstyled root.
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', next);
+    }
     try {
-      localStorage.setItem(KEY, next);
+      if (next === 'system') localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, next);
     } catch {
       // The choice holds for this page view even when it cannot be stored.
     }
@@ -69,54 +77,63 @@ export function useTheme(): [Theme, (next: Theme) => void] {
   return [theme, setTheme];
 }
 
-const OPTIONS: ReadonlyArray<{ value: Theme; label: string; title: string }> = [
-  { value: 'light', label: 'Light', title: 'Light theme' },
-  { value: 'dark', label: 'Dark', title: 'Dark theme' },
-];
+const FACES: Record<Theme, { Icon: typeof Sun; label: string }> = {
+  light: { Icon: Sun, label: 'Light' },
+  dark: { Icon: Moon, label: 'Dark' },
+  system: { Icon: Monitor, label: 'System' },
+};
 
 /**
- * A two-way segmented control. Small enough for a top bar, explicit enough to need no legend.
+ * One button. Click it and the theme moves on one step.
  *
- * Built from real radio inputs rather than buttons carrying `role="radio"`: a native radio group
- * already gives arrow-key navigation and a correct announcement, and the visible control is the
- * label, so nothing has to be reimplemented.
+ * All three icons are rendered and only one is visible, rather than swapping a single element's
+ * icon. Swapping would mount a new node on every click, and a node that has just mounted cannot
+ * animate *from* anywhere — the transition would only ever play on the way out. Keeping all three
+ * mounted and moving them means both the outgoing and incoming icons are real elements that can
+ * be tweened past each other.
+ *
+ * The button announces the state it is *in* and the description says what pressing does, because
+ * a control labelled with its next state reads as its current one to a screen reader and gets the
+ * answer exactly backwards.
  */
 export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useTheme();
-  const name = useId();
+  const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length] ?? 'light';
 
   return (
-    <fieldset
+    <button
+      type="button"
+      onClick={() => setTheme(next)}
+      aria-label={`Colour theme: ${FACES[theme].label}. Switch to ${FACES[next].label}.`}
+      title={`${FACES[theme].label} — click for ${FACES[next].label}`}
       className={cn(
-        'inline-flex items-center gap-0 rounded-md border border-line bg-surface p-0.5',
+        'group relative inline-flex size-7 shrink-0 items-center justify-center overflow-hidden',
+        'rounded-md border border-line bg-surface text-muted',
+        'transition-colors hover:border-line-strong hover:bg-sunk hover:text-ink',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
         className,
       )}
     >
-      <legend className="sr-only">Colour theme</legend>
-      {OPTIONS.map((option) => {
-        const active = theme === option.value;
+      {ORDER.map((option) => {
+        const { Icon, label } = FACES[option];
+        const active = theme === option;
         return (
-          <label
-            key={option.value}
-            title={option.title}
+          <Icon
+            key={option}
+            aria-hidden="true"
+            data-face={label}
+            strokeWidth={1.75}
             className={cn(
-              'cursor-pointer rounded-sm px-2 py-0.5 text-[11px] font-semibold transition-colors',
-              'focus-within:outline focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-accent',
-              active ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink',
+              'absolute size-[15px] transition-all duration-300 ease-out',
+              // Out goes up and away, in arrives from below: a single direction of travel reads
+              // as one control advancing rather than two icons crossfading at random.
+              active
+                ? 'translate-y-0 rotate-0 scale-100 opacity-100'
+                : 'pointer-events-none translate-y-3 -rotate-90 scale-50 opacity-0',
             )}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={option.value}
-              checked={active}
-              onChange={() => setTheme(option.value)}
-              className="sr-only"
-            />
-            {option.label}
-          </label>
+          />
         );
       })}
-    </fieldset>
+    </button>
   );
 }
