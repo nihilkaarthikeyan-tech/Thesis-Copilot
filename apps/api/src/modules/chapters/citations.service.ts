@@ -26,6 +26,7 @@ import {
 import { shortReference } from '@tc/retrieval';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { type ReadingDepth, readingDepth } from './reading-depth.js';
 
 export type RenderedCitations = {
   style: string;
@@ -122,6 +123,47 @@ export class CitationsService {
         untagged: findings.filter((f) => f.kind === 'UNTAGGED').length,
       },
     };
+  }
+
+  /**
+   * How much of what this thesis cites has actually been read — see `reading-depth.ts`.
+   *
+   * Separate from `render` rather than folded into it: `render` runs on every chapter open and on
+   * every style switch, and this needs each source's grounding level and a document-wide citation
+   * count that the label pass does not otherwise collect.
+   */
+  async readingDepth(ownerId: string, documentId: string): Promise<ReadingDepth> {
+    await this.owned(ownerId, documentId);
+    const [chapters, sources] = await Promise.all([
+      this.prisma.chapter.findMany({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, content: true },
+      }),
+      this.prisma.source.findMany({
+        where: { documentId },
+        select: { id: true, title: true, authors: true, year: true, groundingLevel: true },
+      }),
+    ]);
+
+    // Counted from the documents, not from the `Citation` rows: the nodes in the prose are what a
+    // reader sees, and a row can outlive the node that made it.
+    const counts = new Map<string, number>();
+    for (const chapter of chapters) {
+      for (const node of citationNodesIn(chapter)) {
+        counts.set(node.sourceId, (counts.get(node.sourceId) ?? 0) + 1);
+      }
+    }
+
+    return readingDepth(
+      sources.map((source) => ({
+        sourceId: source.id,
+        shortRef: shortReference(source.authors, source.year, source.title) ?? 'Source',
+        title: source.title,
+        groundingLevel: source.groundingLevel,
+        citeCount: counts.get(source.id) ?? 0,
+      })),
+    );
   }
 
   /**

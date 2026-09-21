@@ -74,6 +74,7 @@ import { type Flag, FlagsPanel } from './FlagsPanel';
 import { FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { ScaffoldPanel } from './ScaffoldPanel';
+import { ShareButton } from './ShareButton';
 import { SourcePins } from './SourcePins';
 
 type ExportResult = { url: string; filename: string; bytes: number };
@@ -506,6 +507,7 @@ function ChapterEditor({
             Assist {assist ? `${assist.used}/${assist.cap}` : '–'} · Draft{' '}
             {draft ? `${draft.used}/${draft.cap}` : '–'}
           </span>
+          <ShareButton documentId={doc.id} />
           <ThemeToggle className="mr-1 hidden xl:inline-flex" />
           <Button variant="ghost" size="sm" onClick={() => setHowOpen(true)}>
             How suggestions work

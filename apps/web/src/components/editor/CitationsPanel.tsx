@@ -14,6 +14,7 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { ReadingDepth } from './ReadingDepth';
 
 export type Rendered = {
   style: string;
@@ -89,120 +90,125 @@ export function CitationsPanel({
   }
 
   return (
-    <section className="mt-4 border-t border-line pt-3" data-testid="citations-panel">
-      <label className="text-xs text-muted" htmlFor="citation-style">
-        Citation style
-      </label>
-      <select
-        id="citation-style"
-        data-testid="style-switcher"
-        disabled={busy || !data}
-        value={data?.style ?? ''}
-        onChange={(e) => void switchStyle(e.target.value)}
-        className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
-      >
-        {(data?.styles ?? []).map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.label}
-          </option>
-        ))}
-      </select>
-      {data?.styles.find((s) => s.id === data.style)?.note ? (
-        <p className="mt-1 text-xs text-muted">
-          {data.styles.find((s) => s.id === data.style)?.note}
-        </p>
-      ) : null}
-      {data ? (
-        <p className="mt-1 text-xs text-muted">
-          {data.styleFamily === 'numeric'
-            ? 'Numbered in the order your chapters cite them, across the whole thesis.'
-            : 'Author–date; the bibliography is alphabetical.'}
-        </p>
-      ) : null}
-
-      {error ? (
-        <p role="alert" className="mt-2 text-xs text-warn">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="mt-3 flex gap-1 text-xs">
-        {(
-          [
-            ['bibliography', `Bibliography ${data ? data.bibliography.length : ''}`],
-            ['checks', `Checks ${data ? data.findings.length : ''}`],
-            ['paste', 'Paste a reference'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`rounded px-2 py-1 ${tab === key ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'bibliography' ? (
-        data && data.bibliography.length > 0 ? (
-          <ol className="mt-3 space-y-2 text-xs" data-testid="bibliography">
-            {data.bibliography.map((entry) => (
-              <li key={entry.sourceId} className="text-ink">
-                {entry.text}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="mt-3 text-xs text-muted">
-            Nothing is cited yet. The bibliography lists what your chapters actually cite, never the
-            whole library.
+    <>
+      <section className="mt-4 border-t border-line pt-3" data-testid="citations-panel">
+        <label className="text-xs text-muted" htmlFor="citation-style">
+          Citation style
+        </label>
+        <select
+          id="citation-style"
+          data-testid="style-switcher"
+          disabled={busy || !data}
+          value={data?.style ?? ''}
+          onChange={(e) => void switchStyle(e.target.value)}
+          className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+        >
+          {(data?.styles ?? []).map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        {data?.styles.find((s) => s.id === data.style)?.note ? (
+          <p className="mt-1 text-xs text-muted">
+            {data.styles.find((s) => s.id === data.style)?.note}
           </p>
-        )
-      ) : null}
-
-      {tab === 'checks' ? (
-        data && data.findings.length > 0 ? (
-          <ul className="mt-3 space-y-2 text-xs" data-testid="citation-checks">
-            {data.findings.map((finding) => (
-              <li
-                key={`${finding.kind}-${finding.chapterId ?? ''}-${finding.from ?? finding.text ?? finding.message}`}
-                className="rounded-md border border-line bg-surface p-2"
-              >
-                <p className="font-medium">{KIND_LABEL[finding.kind] ?? finding.kind}</p>
-                <p className="mt-1 text-muted">{finding.message}</p>
-                {finding.chapterTitle ? (
-                  <p className="mt-1 text-muted">In {finding.chapterTitle}</p>
-                ) : null}
-                {finding.chapterId === chapterId && finding.from !== undefined && editor ? (
-                  <button
-                    type="button"
-                    className="mt-1 underline"
-                    onClick={() =>
-                      editor
-                        .chain()
-                        .focus()
-                        .setTextSelection({ from: finding.from ?? 0, to: finding.to ?? 0 })
-                        .run()
-                    }
-                  >
-                    Show me
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-xs text-muted">
-            Nothing mechanical to fix: every citation has its source, every source is cited, and
-            nothing that looks like a citation is sitting in the text untagged.
+        ) : null}
+        {data ? (
+          <p className="mt-1 text-xs text-muted">
+            {data.styleFamily === 'numeric'
+              ? 'Numbered in the order your chapters cite them, across the whole thesis.'
+              : 'Author–date; the bibliography is alphabetical.'}
           </p>
-        )
-      ) : null}
+        ) : null}
 
-      {tab === 'paste' ? <PasteParse documentId={documentId} onAdded={load} /> : null}
-    </section>
+        {error ? (
+          <p role="alert" className="mt-2 text-xs text-warn">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex gap-1 text-xs">
+          {(
+            [
+              ['bibliography', `Bibliography ${data ? data.bibliography.length : ''}`],
+              ['checks', `Checks ${data ? data.findings.length : ''}`],
+              ['paste', 'Paste a reference'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`rounded px-2 py-1 ${tab === key ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'bibliography' ? (
+          data && data.bibliography.length > 0 ? (
+            <ol className="mt-3 space-y-2 text-xs" data-testid="bibliography">
+              {data.bibliography.map((entry) => (
+                <li key={entry.sourceId} className="text-ink">
+                  {entry.text}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-3 text-xs text-muted">
+              Nothing is cited yet. The bibliography lists what your chapters actually cite, never
+              the whole library.
+            </p>
+          )
+        ) : null}
+
+        {tab === 'checks' ? (
+          data && data.findings.length > 0 ? (
+            <ul className="mt-3 space-y-2 text-xs" data-testid="citation-checks">
+              {data.findings.map((finding) => (
+                <li
+                  key={`${finding.kind}-${finding.chapterId ?? ''}-${finding.from ?? finding.text ?? finding.message}`}
+                  className="rounded-md border border-line bg-surface p-2"
+                >
+                  <p className="font-medium">{KIND_LABEL[finding.kind] ?? finding.kind}</p>
+                  <p className="mt-1 text-muted">{finding.message}</p>
+                  {finding.chapterTitle ? (
+                    <p className="mt-1 text-muted">In {finding.chapterTitle}</p>
+                  ) : null}
+                  {finding.chapterId === chapterId && finding.from !== undefined && editor ? (
+                    <button
+                      type="button"
+                      className="mt-1 underline"
+                      onClick={() =>
+                        editor
+                          .chain()
+                          .focus()
+                          .setTextSelection({ from: finding.from ?? 0, to: finding.to ?? 0 })
+                          .run()
+                      }
+                    >
+                      Show me
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs text-muted">
+              Nothing mechanical to fix: every citation has its source, every source is cited, and
+              nothing that looks like a citation is sitting in the text untagged.
+            </p>
+          )
+        ) : null}
+
+        {tab === 'paste' ? <PasteParse documentId={documentId} onAdded={load} /> : null}
+      </section>
+      {/* Below the bibliography on purpose: it is about the sources just listed, and it renders
+        nothing at all when there is nothing worth saying. */}
+      <ReadingDepth documentId={documentId} />
+    </>
   );
 }
 

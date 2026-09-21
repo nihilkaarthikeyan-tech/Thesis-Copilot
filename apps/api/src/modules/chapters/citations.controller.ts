@@ -58,6 +58,17 @@ export class DocumentCitationsController {
     return this.citations.pickable(user.id, documentId, q);
   }
 
+  /**
+   * How much of what this thesis cites has actually been read.
+   *
+   * Its own route, not part of the citations payload, because the editor asks for labels
+   * constantly and this is read once on a screen the student chooses to look at.
+   */
+  @Get('citations/reading-depth')
+  depth(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.citations.readingDepth(user.id, documentId);
+  }
+
   /** FR-5.2: global and instant — one column changes and the labels are recomputed. */
   @Put('citation-style')
   setStyle(
