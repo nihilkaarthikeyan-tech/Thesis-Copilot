@@ -15,6 +15,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { ReadinessBanner } from './ReadinessBanner';
 
 type Details = {
   studentName: string;
@@ -172,6 +173,11 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
       <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
         Prepare for submission
       </h1>
+
+      <ReadinessBanner
+        documentId={documentId}
+        refreshKey={compliance ? compliance.checks.length + (compliance.passed ? 1 : 0) : 0}
+      />
 
       {data.template.isExample ? (
         <p

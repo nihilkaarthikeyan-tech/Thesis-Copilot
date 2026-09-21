@@ -26,6 +26,14 @@ const thesisExportBody = z.object({
   overrideReason: z.string().trim().min(10).max(500).optional(),
 });
 
+/** A calendar date, or null to clear it. Shape checked here; meaning checked in the service. */
+const deadlineBody = z.object({
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+    .nullable(),
+});
+
 const usageBody = z.object({ format: z.enum(['docx', 'csv']).default('docx') });
 
 @Controller('documents/:id')
@@ -69,6 +77,26 @@ export class ExportController {
   @Get('compliance')
   compliance(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.thesis.check(user.id, documentId);
+  }
+
+  /** The checks joined to the deadline — what is left, and how long there is to do it. */
+  @Get('readiness')
+  readiness(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.thesis.readiness(user.id, documentId);
+  }
+
+  /** `{ deadline: 'YYYY-MM-DD' | null }` — the student telling us when it is due. */
+  @Put('deadline')
+  @HttpCode(200)
+  setDeadline(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = deadlineBody.safeParse(body);
+    if (!parsed.success)
+      throw new ValidationError('Use YYYY-MM-DD, or null to clear it.', parsed.error.issues);
+    return this.thesis.setDeadline(user.id, documentId, parsed.data.deadline);
   }
 
   /** The whole thesis. `.docx` always; `.pdf` only when the checklist passes or is overridden. */

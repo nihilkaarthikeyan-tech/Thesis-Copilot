@@ -1,0 +1,13 @@
+-- The date a thesis is due.
+--
+-- Ten compliance checks already decide whether a thesis *may* be submitted (Appendix D.3.3). What
+-- none of them could say is *when* it has to be, so a student saw a list of failures with no sense
+-- of whether that was a crisis or a Tuesday. This column is the missing half of that sentence.
+--
+-- `DATE`, not `TIMESTAMP`. A submission deadline is a day on a university calendar, not an
+-- instant: storing a timestamp would make "due today" depend on a timezone nobody involved uses,
+-- and would move the deadline for a student who travels.
+--
+-- Nullable, and stays nullable. Most students do not know the date when they start a thesis, and
+-- nothing in the product may require it -- the readiness screen simply says less without it.
+ALTER TABLE "Document" ADD COLUMN "submissionDeadline" DATE;

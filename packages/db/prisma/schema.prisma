@@ -193,6 +193,14 @@ model Document {
   field       String?
   language    String    @default("en")
   citationStyle String  @default("apa")
+  /**
+   * The date the thesis is due, if the student has told us.
+   *
+   * A date, not a timestamp: a submission deadline is a day in the student's own calendar, and
+   * storing an instant would make "due today" depend on a timezone the university does not use.
+   * Optional because most students do not know it when they start, and nothing may require it.
+   */
+  submissionDeadline DateTime? @db.Date
   institutionTemplateId String? @db.Uuid
   meta        Json?     // PRD §9.1/§15: { proposalChat?: Message[], thesisDetails?: {...} }
   memory      DocumentMemory?

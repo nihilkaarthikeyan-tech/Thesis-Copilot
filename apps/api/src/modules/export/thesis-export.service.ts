@@ -36,6 +36,7 @@ import { StorageService } from '../../common/storage.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 import { CitationsService } from '../chapters/citations.service.js';
 import { loadFigures } from './figure-bytes.js';
+import { type Readiness, readiness } from './readiness.js';
 
 export type TemplateView = {
   id: string;
@@ -79,6 +80,7 @@ export class ThesisExportService {
         meta: true,
         citationStyle: true,
         institutionTemplateId: true,
+        submissionDeadline: true,
       },
     });
     if (!document) throw new NotFoundError('That document');
@@ -190,6 +192,60 @@ export class ThesisExportService {
       actualPageSetup: pageSetupOf(spec),
     });
     return { ...result, templateName: view.name, isExample: view.isExample };
+  }
+
+  /**
+   * The compliance result joined to the deadline — "eight of ten, and you have eleven days".
+   *
+   * A read of `check` plus one column. It deliberately adds no new judgement about whether the
+   * thesis may be exported: `exportThesis` still owns that refusal, and a second opinion living
+   * here would be a second thing to keep in step with D.3.3.
+   */
+  async readiness(
+    ownerId: string,
+    documentId: string,
+  ): Promise<Readiness & { templateName: string }> {
+    const [result, document] = await Promise.all([
+      this.check(ownerId, documentId),
+      this.owned(ownerId, documentId),
+    ]);
+    return {
+      ...readiness({
+        checks: result.checks.map((c) => ({
+          check: c.check,
+          label: c.label,
+          passed: c.passed,
+          findingCount: c.findings.length,
+        })),
+        deadline: document.submissionDeadline,
+      }),
+      templateName: result.templateName,
+    };
+  }
+
+  /** The student telling us when it is due, or clearing it. */
+  async setDeadline(
+    ownerId: string,
+    documentId: string,
+    deadline: string | null,
+  ): Promise<{ submissionDeadline: string | null }> {
+    await this.owned(ownerId, documentId);
+    // Parsed as a UTC midnight so the stored DATE is the day the student typed, not the day
+    // before it in whatever timezone the server happens to run in.
+    const value = deadline ? new Date(`${deadline}T00:00:00Z`) : null;
+    if (deadline && Number.isNaN(value?.getTime())) {
+      throw new ValidationError('That is not a date we can read. Use YYYY-MM-DD.');
+    }
+    const updated = await this.prisma.document.update({
+      where: { id: documentId },
+      data: { submissionDeadline: value },
+      select: { submissionDeadline: true },
+    });
+    return {
+      submissionDeadline: updated.submissionDeadline
+        ? updated.submissionDeadline.toISOString().slice(0, 10)
+        : null,
+    };
   }
 
   /**
