@@ -80,14 +80,6 @@ jobs:
       redis:
         image: redis:7-alpine
         ports: ['6381:6379']
-      minio:
-        # MinIO retired their Docker Hub images in 2025 and docker.io/minio/minio 404s outright.
-        # quay.io is the maintained registry; same image, same tags.
-        image: quay.io/minio/minio:latest
-        env: { MINIO_ROOT_USER: tcadmin, MINIO_ROOT_PASSWORD: tc-secret-key }
-        ports: ['9002:9000']
-        options: >-
-          --health-cmd "mc ready local" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -95,6 +87,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
       - run: pnpm install --frozen-lockfile
+
+      # A step and not a `services:` entry, because a service container cannot be given a
+      # command. The MinIO image's entrypoint is `minio` with no default arguments, so as a
+      # service it printed its own usage text, exited, and failed the job before a line of ours
+      # ran. It had never started; nobody saw it because this job is `needs: checks` and checks
+      # was red for weeks. (MinIO also retired their Docker Hub images in 2025, hence quay.io.)
+      - name: object storage
+        run: |
+          docker run -d --name minio -p 9002:9000 \
+            -e MINIO_ROOT_USER=tcadmin -e MINIO_ROOT_PASSWORD=tc-secret-key \
+            quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:9002/minio/health/live && break
+            sleep 2
+          done
+          curl -fsS http://localhost:9002/minio/health/live
 
       - name: env for the mock provider
         # Real keys never enter CI. AI_PROVIDER=mock streams a canned suggestion (PRD §16 week 1).
