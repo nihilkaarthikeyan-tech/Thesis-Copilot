@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   // A canonical origin so the same page under a preview domain does not compete with itself,
   // and so relative URLs below resolve (GEO/AEO — see lib/site.ts).
   metadataBase: new URL(SITE_URL),
-  title: { default: SITE.name, template: '%s · ' + SITE.name },
+  title: { default: SITE.name, template: `%s · ${SITE.name}` },
   description: SITE.tagline,
   applicationName: SITE.name,
   alternates: { canonical: '/' },

@@ -28,9 +28,10 @@
  * the two are different origins. They happen to share a host in production, which is exactly the
  * kind of coincidence that hides a wrong default until it is on the internet.
  */
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://thesis.rademics.ai'
-).replace(/\/$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://thesis.rademics.ai').replace(
+  /\/$/,
+  '',
+);
 
 export const SITE = {
   name: 'Thesis Copilot',

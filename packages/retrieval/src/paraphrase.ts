@@ -193,10 +193,18 @@ export function buildIndex(chunks: readonly ChunkForMatch[]): Map<string, Set<nu
   return index;
 }
 
+/**
+ * No options parameter, deliberately.
+ *
+ * An earlier draft took `{ citedSourceIds }` and never read it — a parameter that promises
+ * filtering and silently does none is worse than no parameter at all, because a caller passing it
+ * would reasonably believe the sentences had been filtered. Whether a sentence is already
+ * attributed is `SentenceForMatch.hasCitation`, which the caller computes from the document where
+ * the citation nodes actually are.
+ */
 export function findParaphrases(
   sentences: readonly SentenceForMatch[],
   chunks: readonly ChunkForMatch[],
-  options: { citedSourceIds?: ReadonlySet<string> } = {},
 ): ParaphraseMatch[] {
   const index = buildIndex(chunks);
   const chunkWords = chunks.map((chunk) => words(chunk.text));
