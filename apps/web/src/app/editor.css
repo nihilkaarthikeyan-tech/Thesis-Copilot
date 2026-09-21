@@ -233,3 +233,25 @@
   margin-top: 0.375rem;
   text-decoration: underline;
 }
+
+/* Review highlights (ADR-0017). A supervisor's comment, drawn on the words it is about.
+   Deliberately an underline rather than a background: a chapter under review can carry a dozen
+   open comments at once, and a dozen highlighted blocks is an unreadable page. */
+.thesis-editor .review-anchor {
+  border-bottom: 2px solid rgba(180, 132, 25, 0.45);
+  cursor: pointer;
+}
+/* Something to accept: the same underline, in the accent, because there is an action waiting. */
+.thesis-editor .review-anchor-suggested {
+  border-bottom-color: rgba(47, 91, 234, 0.5);
+}
+/* The one open in the panel. This is the only one that gets a background, and it only ever
+   applies to one passage at a time. */
+.thesis-editor .review-anchor-active {
+  background: rgba(180, 132, 25, 0.12);
+  border-bottom-color: rgba(180, 132, 25, 0.9);
+}
+.thesis-editor .review-anchor-suggested.review-anchor-active {
+  background: rgba(47, 91, 234, 0.1);
+  border-bottom-color: rgba(47, 91, 234, 0.9);
+}

@@ -32,6 +32,7 @@ import {
 } from './nodes.js';
 import { Provenance } from './provenance.js';
 import { TableWithRef } from './ref-ids.js';
+import { ReviewHighlights, type ReviewHighlightsOptions } from './review.js';
 
 export type ThesisEditorOptions = {
   ghostText: Partial<GhostTextOptions> & Pick<GhostTextOptions, 'chapterId' | 'request'>;
@@ -44,6 +45,8 @@ export type ThesisEditorOptions = {
   resizableTables?: boolean;
   /** This chapter's number, for the "3.2" in "Figure 3.2". */
   chapterNumber?: number;
+  /** Supervisor comments drawn on the passages they are about (review.ts). */
+  review?: Partial<ReviewHighlightsOptions>;
 };
 
 export function thesisExtensions(options: ThesisEditorOptions): Extensions {
@@ -74,6 +77,7 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     DraftBlock.configure({ regenerateEnabled: false, ...options.draft }),
     Provenance,
     CommentAnchor,
+    ReviewHighlights.configure(options.review ?? {}),
     Placeholder.configure({
       placeholder: options.placeholder ?? 'Start writing. Ctrl+/ asks for a suggestion.',
     }),

@@ -63,4 +63,13 @@ export {
   wordCountByProvenance,
 } from './editor/provenance.js';
 export { newRefId, TableWithRef } from './editor/ref-ids.js';
+export {
+  collapse,
+  findPassage,
+  type ReviewAnchor,
+  ReviewHighlights,
+  type ReviewHighlightsOptions,
+  reviewHighlightsKey,
+  textIndexOf,
+} from './editor/review.js';
 export { blockText, CHARS_PER_TOKEN, contextAround, documentText } from './editor/text.js';

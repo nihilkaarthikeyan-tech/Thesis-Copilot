@@ -74,6 +74,7 @@ import { type Flag, FlagsPanel } from './FlagsPanel';
 import { FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { ParaphrasePanel } from './ParaphrasePanel';
+import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
 import { SourcePins } from './SourcePins';
@@ -179,8 +180,10 @@ function ChapterEditor({
   const [timing, setTiming] = useState<Timing | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
-  const [tab, setTab] = useState<'sources' | 'citations' | 'chat' | 'flags'>('sources');
+  const [tab, setTab] = useState<'sources' | 'citations' | 'chat' | 'flags' | 'review'>('sources');
   const [autoSuggest, setAutoSuggest] = useState(false);
+  /** The comment being read in the review tab; clicking its passage in the text selects it too. */
+  const [activeComment, setActiveComment] = useState<string | null>(null);
 
   // FR-4.6: automatic-suggest is per user and off by default (ADR-0006).
   useEffect(() => {
@@ -338,6 +341,13 @@ function ChapterEditor({
           },
         },
         imageUpload: uploadFigure,
+        // Clicking a highlighted passage opens its comment in the panel (review.ts).
+        review: {
+          onSelect: (commentId: string) => {
+            setTab('review');
+            setActiveComment(commentId);
+          },
+        },
         // Cross-references read "Figure 3.2"; this supplies the 3. The number lives on the
         // document's chapter list, not on the loaded chapter — `ChapterView` carries the content,
         // and a chapter does not know its own position in the thesis.
@@ -684,7 +694,7 @@ function ChapterEditor({
 
         <aside className="hidden w-72 shrink-0 border-l border-line bg-sunk lg:block">
           <div className="flex border-b border-line" role="tablist">
-            {(['sources', 'citations', 'chat', 'flags'] as const).map((t) => (
+            {(['sources', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -725,6 +735,20 @@ function ChapterEditor({
                     'noopener,noreferrer',
                   );
                 }}
+              />
+            ) : tab === 'review' ? (
+              <ReviewPanel
+                documentId={doc.id}
+                chapterId={chapter.id}
+                editor={editor}
+                activeId={activeComment}
+                onActiveChange={setActiveComment}
+                save={async () => {
+                  await autosaveRef.current?.flush();
+                }}
+                // The server rewrote the chapter; a reload is what the conflict banner does too,
+                // and the save above means there is nothing unsaved to lose by it.
+                onChapterChanged={() => window.location.reload()}
               />
             ) : (
               <>

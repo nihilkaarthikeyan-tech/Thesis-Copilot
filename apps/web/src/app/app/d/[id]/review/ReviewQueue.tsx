@@ -15,6 +15,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { diffKeys, diffWords } from '@/lib/diff';
 
 type Comment = {
   id: string;
@@ -46,41 +47,6 @@ const CLASS_LABEL: Record<string, string> = {
   CLARIFICATION: 'Clarification',
   MECHANICAL: 'Mechanical',
 };
-
-/** A word-level diff, the same shape the section-command toolbar shows. */
-function diffWords(
-  before: string,
-  after: string,
-): Array<{ text: string; op: 'same' | 'add' | 'del' }> {
-  const a = before.split(/(\s+)/);
-  const b = after.split(/(\s+)/);
-  const out: Array<{ text: string; op: 'same' | 'add' | 'del' }> = [];
-  let i = 0;
-  let j = 0;
-  while (i < a.length || j < b.length) {
-    if (i < a.length && j < b.length && a[i] === b[j]) {
-      out.push({ text: a[i] as string, op: 'same' });
-      i++;
-      j++;
-      continue;
-    }
-    // `a[i]` is undefined once the old text runs out, and there is then nothing to look for.
-    const nextMatch = i < a.length ? b.indexOf(a[i] as string, j) : -1;
-    if (nextMatch > -1 && nextMatch - j <= 8) {
-      for (let k = j; k < nextMatch; k++) out.push({ text: b[k] as string, op: 'add' });
-      j = nextMatch;
-      continue;
-    }
-    if (i < a.length) {
-      out.push({ text: a[i] as string, op: 'del' });
-      i++;
-    } else if (j < b.length) {
-      out.push({ text: b[j] as string, op: 'add' });
-      j++;
-    }
-  }
-  return out;
-}
 
 export function ReviewQueue({ documentId }: { documentId: string }) {
   const [comments, setComments] = useState<Comment[] | null>(null);
@@ -474,24 +440,22 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
                   <div className="mt-3 rounded-md border border-line bg-paper p-2 text-sm">
                     <p className="text-xs text-muted">Suggested revision</p>
                     <p className="mt-1">
-                      {diffWords(comment.currentText ?? '', comment.suggestedRevision).map(
-                        (part, k) => (
-                          <span
-                            // Positional within one rendered diff; the text repeats by nature.
-                            // biome-ignore lint/suspicious/noArrayIndexKey: positional diff render
-                            key={`${comment.id}-d${k}`}
-                            className={
-                              part.op === 'add'
-                                ? 'bg-accent/15'
-                                : part.op === 'del'
-                                  ? 'text-muted line-through'
-                                  : ''
-                            }
-                          >
-                            {part.text}
-                          </span>
-                        ),
-                      )}
+                      {diffKeys(
+                        diffWords(comment.currentText ?? '', comment.suggestedRevision),
+                      ).map(({ op, key }) => (
+                        <span
+                          key={`${comment.id}-${key}`}
+                          className={
+                            op.op === 'add'
+                              ? 'bg-accent/15'
+                              : op.op === 'del'
+                                ? 'text-muted line-through'
+                                : ''
+                          }
+                        >
+                          {op.text}
+                        </span>
+                      ))}
                     </p>
                   </div>
                 ) : null}

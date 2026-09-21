@@ -3198,3 +3198,81 @@ papers remain what settles it.
 A smoke-test account (`nihilkaarthikeyan+tcsmoke@gmail.com`) and its thesis, "Smoke test: barriers
 to rooftop solar adoption", with the generated outline intact — worth being able to open in the
 browser. Removing it is one `DELETE` against the account endpoint whenever it stops being useful.
+
+## The parity list, items 8 and 9 — 2026-09-21
+
+The last two entries on the owner's list. Both are in the editor, and both turned out to have a
+defect that was only visible on a rendered page.
+
+### 8. The setup checklist, and the fact it counts
+
+`GET /documents/:id/setup` and a component on the thesis list. Five steps — propose, gather,
+outline, write, prepare to submit — from rows that already exist, so it costs nothing and stays
+free whatever happens to the §11 ceiling.
+
+Two decisions about not becoming a nag. It is **built to be finished**: once every step is done
+the component renders nothing, no row of ticks and no congratulation, because a checklist that
+never completes is a permanent accusation. And the steps are **not ordered by force** — a student
+who writes before adding sources has done step 4 and not step 2, and it says exactly that.
+
+What a step *counts* went wrong twice, in the same way both times:
+
+1. The outline step counted `Chapter` rows. Every document is created with one placeholder chapter
+   so the editor has somewhere to land, so "build the chapter outline" was ticked the moment a
+   thesis was named.
+2. Counting `DocumentMemory.outline` instead only moved the lie. Saving the proposal writes what
+   FR-3.3 calls a one-node tree — the first chapter, mapped from the seed paper — and the E2E read
+   **2 of 5** straight after a proposal was saved.
+
+The fact is now the flattened outline tree with a threshold of *more than one node*: more than
+what the proposal seeds is the first structure the student chose. Neither of these was visible in
+a unit test, because a unit test is handed the facts rather than deriving them.
+
+While in there: the last rung of the next-action ladder claimed "the outline exists" in a sentence
+`decide()` has no outline to check.
+
+### 9. Review inside the editor (ADR-0017)
+
+The supervisor cycle shipped as a separate screen, which is right for working *through* a round of
+feedback and useless while you are rewriting the paragraph a comment is about. There is now a
+**Review** tab: the chapter's open comments, each drawn as an underline on the passage it refers
+to, with the suggested revision as a diff and Accept beside it.
+
+Appendix B.2 reserves a `commentAnchor` mark for exactly this, and it stays inert. ADR-0017 has
+the argument; the short version is that the server already re-finds every comment's passage from
+its `quotedText` on each read, and a stored mark is a second, weaker answer to the same question —
+one that has to be written on save, removed on resolve, and reconciled with the server when the
+two disagree. A decoration cannot be left behind.
+
+The range is found in the **browser**, not taken from `CommentView.anchor`. Those positions come
+from a walk that advances by text offsets while ProseMirror counts an inline atom as one position
+and its text as zero, so a sentence after a citation is off by one per citation — fine for
+scrolling, wrong for underlining — and they are computed from the *saved* chapter, so anything
+typed since the last autosave shifts them. `findPassage` searches the live document: the exact
+text, then the quote's opening 40 characters for a sentence whose end has been rewritten, and
+nothing below that. The server's position is still used for the one thing it is reliable for:
+picking which occurrence when the sentence appears twice.
+
+Both server actions on the panel **save first**. The server re-finds the passage in what it has
+stored, and what it has stored is two seconds behind the student on a good day; accepting against
+a stale chapter either misses the passage or applies the revision to a sentence that has moved.
+
+Three things the browser found that nothing else would have:
+
+- **The diff was unreadable in an 18rem column.** A near-total rewrite interleaves deletions and
+  insertions word by word, and the result reads as neither sentence —
+  "UptakeDrip ofIrrigation dripuptake irrigationvaries isbetween…". Above 40% of words changed the
+  panel now shows the two sentences instead. `diffWords` also stopped being two copies: it was
+  duplicated between the review queue and this panel, and a diff that disagrees with itself
+  between two screens is a bug nobody reports.
+- **A comment asking for a fact the thesis does not contain cannot be accepted** — A.14 returns
+  `[[NEEDS INPUT: …]]` and `ReviewService.accept` refuses it. Correct, and it failed the first E2E
+  run, which had asked the supervisor to "name the two districts".
+- The `.docx`-import case is real: a supervisor's quote arrives with its line breaks, so both
+  sides of the search are whitespace-collapsed.
+
+Evidence: `packages/ui/test/review.spec.ts` (13), `apps/web/test/diff.spec.ts` (14),
+`apps/api/test/setup-steps.spec.ts` (12), and three Playwright specs —
+`setup-checklist.spec.ts`, `review-panel.spec.ts` (two, one of which makes a real model call
+through the panel's own button, because a suggestion inserted by the test would not prove the
+button works).

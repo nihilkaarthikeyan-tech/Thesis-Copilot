@@ -43,16 +43,17 @@ were invisible to typecheck, lint and 1,200 passing tests.
 - [ ] **Re-sign expired figure URLs.** `GET /chapters/:id/figures/link` exists and nothing calls
       it. A chapter reopened after the signed URL expires will show broken images until someone
       does.
-- [ ] **An in-editor review mode.** `commentAnchor` is in the schema and explicitly inert. The
-      supervisor cycle lives on a separate screen; there is no track-changes view in the editor.
+- [x] **An in-editor review mode.** Done 2026-09-21: a Review tab, the supervisor's comments drawn
+      on the passages they are about, accept the suggested revision without leaving the chapter.
+      `commentAnchor` stays inert on purpose — ADR-0017 says why.
 
 ## Later — deliberately not started
 
 - [ ] **Typeset equations in the export.** They currently carry their LaTeX source through. Proper
       Office maths is LaTeX → MathML → OMML and `docx` has no OMML support, so this is a project.
-- [ ] **Onboarding checklist** ("complete setup 3/5"). We have first-run hints and a server-driven
-      "what next" recommendation, which is arguably better; a persistent checklist is a different
-      bet, not an obvious win.
+- [x] **Onboarding checklist** ("complete setup 3/5"). Built 2026-09-21 on the owner's list, and
+      built to disappear: it renders nothing once all five steps are done. The "what next"
+      recommendation stays, because it is the better thing for somebody who knows the product.
 - [ ] **Browser extension.** A separate product with its own store review. Not a feature of this
       codebase.
 - [ ] **Tutorials.** Video content, not code.
