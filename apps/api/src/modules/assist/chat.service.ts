@@ -35,11 +35,19 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
+import { passagesFromChapters } from './document-scope.js';
+
+export type ChatScope = 'library' | 'document';
 
 export type ChatInput = {
   documentId: string;
   message: string;
   filters?: ChatFilters;
+  /**
+   * Where the answer may come from. 'library' is the uploaded sources and the default; 'document'
+   * is the student's own chapters, which are passed directly rather than retrieved.
+   */
+  scope?: ChatScope;
 };
 
 export type ChatEvent =
@@ -135,12 +143,39 @@ export class ChatService {
     yield { event: 'start', data: { turn: history.length / 2 + 1 } };
 
     const startedAt = Date.now();
+    const scope: ChatScope = input.scope ?? 'library';
+
+    // The document scope answers from the student's own chapters, which are passed directly
+    // rather than retrieved: they change on every keystroke, so an index of them would be stale
+    // before it was written, and skipping the embedding call also skips the Voyage rate limit.
+    const ownChapters =
+      scope === 'document'
+        ? await this.prisma.chapter.findMany({
+            where: { documentId: input.documentId },
+            orderBy: { order: 'asc' },
+            select: { id: true, title: true, order: true, content: true },
+          })
+        : [];
+
     const [memory, retrieved] = await Promise.all([
       this.context.memoryBlock(chapter),
-      this.context.retrieve(chapter, input.message, 'CHAT'),
+      scope === 'document'
+        ? Promise.resolve({
+            passages: passagesFromChapters(ownChapters, input.message),
+            byKey: new Map(),
+            pinned: 0,
+            candidates: ownChapters.length,
+          })
+        : this.context.retrieve(chapter, input.message, 'CHAT'),
     ]);
     const filters = input.filters ?? {};
-    const passages = (await this.applyFilters(retrieved, filters)).slice(0, CHAT.topK);
+    // Source metadata filters (year, citation count, preprint) describe published work and have
+    // no meaning for the student's own chapters, so the document scope skips them rather than
+    // filtering every passage out on a missing `Source` row.
+    const passages =
+      scope === 'document'
+        ? retrieved.passages.slice(0, CHAT.topK)
+        : (await this.applyFilters(retrieved, filters)).slice(0, CHAT.topK);
 
     // The off-topic stop, before any provider call.
     //
@@ -155,7 +190,11 @@ export class ChatService {
     // than after retrieval because §10.2 requires the check and increment to precede any provider
     // call, and embedding the question is one — the same order every other metered action uses,
     // and the same refund the failure path below uses.
-    if (passages.length === 0 || isOffTopic(passages)) {
+    // `isOffTopic` is a cosine floor, and the document scope has no cosines — its passages are
+    // the student's own chapters, included because they asked about this document, not because a
+    // vector search ranked them. Running the floor here would either refuse everything or need a
+    // fabricated score; an empty document still refuses, which is the case that matters.
+    if (passages.length === 0 || (scope === 'library' && isOffTopic(passages))) {
       // Two different refusals, and the difference matters to the student. An empty set when
       // retrieval did find something means their own filters emptied it, and the fix is a control
       // on this screen; anything else means the question is not about their library.
@@ -178,7 +217,14 @@ export class ChatService {
       yield {
         event: 'done',
         data: {
-          text: filteredOut ? FILTERED_OUT_REPLY : OFF_TOPIC_REPLY,
+          text:
+            scope === 'document'
+              ? // A different refusal, because the fix is different: there is nothing to read,
+                // not nothing relevant.
+                'There is nothing written in this thesis yet for me to read. Write something first, or switch to Library to ask about your sources.'
+              : filteredOut
+                ? FILTERED_OUT_REPLY
+                : OFF_TOPIC_REPLY,
           outcome: filteredOut ? ('filtered-out' as const) : ('off-topic' as const),
           citations: [],
           passagesUsed: 0,

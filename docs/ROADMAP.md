@@ -1,0 +1,67 @@
+# ROADMAP — what the agent still has to build
+
+`docs/PENDING.md` is work **only a human can do**: keys, cards, credentials, fixture papers,
+judgement calls. This file is the other half — work the agent can do and has not done yet, kept
+here so it is not rediscovered by accident a third time.
+
+Started 2026-09-21, after a competitor audit found that an entire class of feature (the formatting
+toolbar) had been missing since the editor was built and nobody had noticed, because every test
+passed.
+
+**The rule this file exists to enforce:** a feature is not done when it is written, it is done when
+it has been driven in a browser *and* the artefact it produces has been opened. Both faults found
+on 2026-09-21 — equations missing from the `.docx`, figures missing from the whole-thesis export —
+were invisible to typecheck, lint and 1,200 passing tests.
+
+---
+
+## Now — parity gaps still open
+
+- [ ] **Verify the whole-thesis export end to end.** The chapter export is proven (table, both
+      equations, an embedded figure, zero placeholders). `thesisToDocx` got the same treatment in
+      the same commit and has **not** been run with a real figure. It is the file a student
+      actually submits, so it matters more than the one that is proven.
+- [ ] **JPEG and GIF figures through the real path.** PNG is proven end to end. The other two are
+      covered only by unit tests over synthetic headers, and `imageSize`'s JPEG walker is the most
+      intricate code in the export package.
+- [ ] **Drive the three chat scopes in a browser.** `document` and `web` are typechecked, unit
+      tested and unproven on a screen. The web scope in particular makes real outbound calls to
+      OpenAlex.
+- [ ] **Drive the `@` cite picker in a browser**, including the case that matters: pick a source,
+      then check the bibliography actually gains the entry after a save and re-render.
+
+## Next — things a student will hit
+
+- [ ] **A figure caption.** `ThesisImage` has a `caption` attribute, the exporters number figures
+      from the template (`Figure 3.2`), and nothing in the editor lets anyone type one. Same shape
+      of gap as the toolbar: the schema is ahead of the UI.
+- [ ] **Table header/caption controls.** Tables insert with a header row and there is no way to
+      toggle it, merge cells or caption the table, though `mergeCells`/`splitCell` exist in the
+      extension.
+- [ ] **Paste an image.** The toolbar has a file picker; pasting a screenshot — which is how
+      figures actually arrive — does nothing.
+- [ ] **Re-sign expired figure URLs.** `GET /chapters/:id/figures/link` exists and nothing calls
+      it. A chapter reopened after the signed URL expires will show broken images until someone
+      does.
+- [ ] **An in-editor review mode.** `commentAnchor` is in the schema and explicitly inert. The
+      supervisor cycle lives on a separate screen; there is no track-changes view in the editor.
+
+## Later — deliberately not started
+
+- [ ] **Typeset equations in the export.** They currently carry their LaTeX source through. Proper
+      Office maths is LaTeX → MathML → OMML and `docx` has no OMML support, so this is a project.
+- [ ] **Onboarding checklist** ("complete setup 3/5"). We have first-run hints and a server-driven
+      "what next" recommendation, which is arguably better; a persistent checklist is a different
+      bet, not an obvious win.
+- [ ] **Browser extension.** A separate product with its own store review. Not a feature of this
+      codebase.
+- [ ] **Tutorials.** Video content, not code.
+
+## Standing checks, easy to let slip
+
+- [ ] Run `pnpm ai:shakedown` after any change to a provider, a model id or a schema. It has not
+      run since the free-text gap was recorded in PENDING.
+- [ ] After editing any `packages/*`, rebuild it — the apps consume `dist`. Cost a 404 on
+      2026-09-21 when the figures route existed in source and not in the running API.
+- [ ] Never write a regex, a backtick or a backslash through a double-quoted bash string. Three
+      separate mangled files on 2026-09-21 alone; use the Write/Edit tools.

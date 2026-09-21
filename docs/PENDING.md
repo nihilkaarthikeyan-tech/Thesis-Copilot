@@ -322,19 +322,16 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
       through at least means the content is there and visibly an equation. Doing it properly is
       LaTeX → MathML → OMML, which is a project rather than a patch, and the `docx` package has no
       OMML support to build on.
-- [ ] **Decide about web search in chat.** The competitor offers "Web Ask" alongside a library
-      search. We deliberately do not, and it is not a small addition: PRD §10.6 says the model may
-      only cite passages present in the request, and everything not in the library is stripped and
-      counted as `HALLUCINATED_CITE`. A web answer has no passage to ground against and no source
-      to add to the bibliography, so this needs an ADR about what a web result *is* in a thesis
-      tool — and a metering decision, since it is an uncapped outbound call.
-- [ ] **A manual `@`-cite picker.** Citations can only be inserted today from the automatic
-      end-of-sentence suggestion. A student who wants to cite something deliberately, mid-sentence,
-      has no way to ask. Needs a small endpoint that renders a label for a not-yet-inserted
-      citation (numeric styles number by document position, so the label cannot be computed in the
-      browser).
-- [ ] **Chat scope.** Ours is library-only; the competitor also scopes to the current document.
-      "Current document" is cheap and well-defined, unlike web search.
+- [x] **Decided: web search returns candidate sources, not answers.** ADR-0016, 2026-09-21. The
+      owner chose option (c). A web hit is searched from OpenAlex (and Semantic Scholar when a key
+      exists), shown as a real work, and added through the same resolve path a pasted bibliography
+      uses — after which it is an ordinary indexed, citable source. No prose is generated and the
+      model is not called, so the scope is not metered.
+- [x] **A manual `@`-cite picker.** Built 2026-09-21. Typing `@` lists the library with live
+      citeproc labels; arrow keys and Enter insert. No model call, so it is free and cannot
+      hallucinate — a student can only pick a source they already have.
+- [x] **Chat scope.** Built 2026-09-21: Library / This thesis / Find papers. See ADR-0016 for why
+      the third one behaves differently from the competitor it answers.
 - [ ] **Not planned, and worth saying why:** a browser extension (a separate product with its own
       store review) and video tutorials (content, not code).
 

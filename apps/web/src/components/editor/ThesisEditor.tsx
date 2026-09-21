@@ -66,6 +66,7 @@ import { Kbd } from '../ui/primitives';
 import { ChatPanel } from './ChatPanel';
 import { CitationList } from './CitationList';
 import { CitationsPanel, type Rendered } from './CitationsPanel';
+import { CitePicker } from './CitePicker';
 import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
 import { DraftMode } from './DraftMode';
@@ -789,6 +790,10 @@ function ChapterEditor({
       />
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />
+
+      {/* Typing `@` cites deliberately; `CiteSuggestions` above offers one when a sentence ends.
+          Both insert the same node — the difference is who started it. */}
+      <CitePicker editor={editor} documentId={doc.id} />
 
       <DraftMode
         editor={editor}

@@ -23,6 +23,7 @@ import {
   STYLES,
   type StyleEntry,
 } from '@tc/citations';
+import { shortReference } from '@tc/retrieval';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 
@@ -120,6 +121,92 @@ export class CitationsService {
         unused: findings.filter((f) => f.kind === 'UNUSED').length,
         untagged: findings.filter((f) => f.kind === 'UNTAGGED').length,
       },
+    };
+  }
+
+  /**
+   * The library as a citable list, each entry with the label it would render as.
+   *
+   * For the editor's `@` picker (2026-09-21). Until it existed, a citation could only be inserted
+   * by accepting an automatic end-of-sentence suggestion — so a student who wanted to cite
+   * something *deliberately*, mid-sentence, had no way to ask, and the only route into the
+   * bibliography was one the model opened.
+   *
+   * The label has to be computed here rather than in the browser. In a numeric style
+   * ("[1]", "[2]") a citation's label is its position in the document, so it is not a property of
+   * the source at all — the browser has neither the other citations nor the CSL engine. The label
+   * this returns is what the new citation would read as *if appended last*; every other label
+   * settles when `render` next runs over the saved document, which the editor already does.
+   */
+  async pickable(
+    ownerId: string,
+    documentId: string,
+    query?: string,
+  ): Promise<{
+    style: string;
+    sources: Array<{
+      sourceId: string;
+      shortRef: string;
+      label: string;
+      title: string | null;
+      year: number | null;
+    }>;
+  }> {
+    const document = await this.owned(ownerId, documentId);
+    const sources = await this.prisma.source.findMany({
+      where: { documentId },
+      select: {
+        id: true,
+        title: true,
+        authors: true,
+        year: true,
+        venue: true,
+        doi: true,
+        cslJson: true,
+        isPreprint: true,
+        rawReference: true,
+      },
+      orderBy: [{ year: 'desc' }, { title: 'asc' }],
+    });
+
+    const needle = query?.trim().toLowerCase() ?? '';
+    const matches = needle
+      ? sources.filter((source) => {
+          const authors = Array.isArray(source.authors)
+            ? source.authors
+                .map((a) => {
+                  const author = a as { family?: string; literal?: string } | null;
+                  return `${author?.family ?? ''} ${author?.literal ?? ''}`;
+                })
+                .join(' ')
+            : '';
+          return `${source.title ?? ''} ${authors} ${source.year ?? ''}`
+            .toLowerCase()
+            .includes(needle);
+        })
+      : sources;
+
+    // One render per candidate would be one CSL engine run per keystroke. Instead every candidate
+    // is rendered in a single pass, each as its own citation, and the labels are read off by key.
+    const probes = matches.map((source, index) => ({ key: `pick-${index}`, sourceId: source.id }));
+    const rendered = renderCitations({
+      style: document.citationStyle,
+      sources: matches,
+      citations: probes.map((p) => ({ ...p, locator: null })),
+    });
+
+    return {
+      style: document.citationStyle,
+      sources: matches.map((source, index) => ({
+        sourceId: source.id,
+        shortRef: shortReference(source.authors, source.year, source.title) ?? 'Source',
+        label:
+          rendered.labels[`pick-${index}`] ??
+          shortReference(source.authors, source.year, source.title) ??
+          'Source',
+        title: source.title,
+        year: source.year,
+      })),
     };
   }
 

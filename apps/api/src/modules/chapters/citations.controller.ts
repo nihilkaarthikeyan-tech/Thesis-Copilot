@@ -6,7 +6,17 @@
  * mechanical findings. One endpoint, because they are one computation.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -33,6 +43,19 @@ export class DocumentCitationsController {
   @Get('citations')
   render(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.citations.render(user.id, documentId);
+  }
+
+  /**
+   * The library as a citable list for the editor's `@` picker, each entry with its live label.
+   *
+   * A GET with a query rather than a search endpoint: the list is one document's sources, which
+   * is tens of rows, and filtering them server-side keeps the label rendering in the one place
+   * that can do it correctly (a numeric style's label is a document position, not a property of
+   * the source).
+   */
+  @Get('citations/pick')
+  pick(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Query('q') q?: string) {
+    return this.citations.pickable(user.id, documentId, q);
   }
 
   /** FR-5.2: global and instant — one column changes and the labels are recomputed. */

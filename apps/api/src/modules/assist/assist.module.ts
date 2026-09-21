@@ -15,6 +15,7 @@ import { CommandService } from './command.service.js';
 import { ContextService } from './context.service.js';
 import { DraftController } from './draft.controller.js';
 import { DraftService } from './draft.service.js';
+import { WebScopeService } from './web-scope.service.js';
 
 @Module({
   imports: [UsageModule, FlagsModule],
@@ -22,6 +23,7 @@ import { DraftService } from './draft.service.js';
   providers: [
     AssistService,
     ChatService,
+    WebScopeService,
     CiteRoleService,
     CommandService,
     CiteService,

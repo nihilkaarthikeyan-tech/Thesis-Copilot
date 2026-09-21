@@ -28,10 +28,13 @@ import { ChatService } from './chat.service.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
 import { streamSse } from './sse.js';
+import { WebScopeService } from './web-scope.service.js';
 
 const chatBody = z.object({
   documentId: z.string().uuid(),
   message: z.string().trim().min(1).max(2_000),
+  /** Where the answer may come from. Defaults to the library, which is what it has always been. */
+  scope: z.enum(['library', 'document']).default('library'),
   filters: z
     .object({
       yearFrom: z.number().int().min(1800).max(2100).nullish(),
@@ -40,6 +43,11 @@ const chatBody = z.object({
       excludePreprints: z.boolean().optional(),
     })
     .optional(),
+});
+
+const webBody = z.object({
+  documentId: z.string().uuid(),
+  message: z.string().trim().min(3).max(500),
 });
 
 const commandBody = z.object({
@@ -78,6 +86,7 @@ export class ChatController {
     private readonly chat: ChatService,
     private readonly commands: CommandService,
     private readonly citeRoles: CiteRoleService,
+    private readonly web: WebScopeService,
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -93,6 +102,20 @@ export class ChatController {
     const parsed = chatBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Ask a question first', parsed.error.issues);
     await streamSse(request, reply, this.env, (signal) => this.chat.ask(user, parsed.data, signal));
+  }
+
+  /**
+   * ADR-0016: the web scope returns *candidate sources*, never a prose answer.
+   *
+   * Not SSE and not metered, because no model is called — this is a scholarly index search whose
+   * results become real sources through the ordinary resolve path.
+   */
+  @Post('chat/web')
+  @HttpCode(200)
+  async webSearch(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = webBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Ask a question first', parsed.error.issues);
+    return this.web.search(user.id, parsed.data.documentId, parsed.data.message);
   }
 
   @Get('chat/:documentId')
