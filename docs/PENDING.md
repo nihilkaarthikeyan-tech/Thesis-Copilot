@@ -343,6 +343,33 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
 ## Decisions and reviews
 
+- [ ] **A.4 refuses in the wrong words when the question is about the student's own draft.**
+      A prompt change, so it needs the owner: PRD §0.3 rule 6 says prompts are content, and
+      `packages/ai/prompts/chat.md` is a verbatim copy of Appendix A.4. The agent has not touched
+      it.
+
+      What happens, from a browser run on 2026-09-21. A chapter containing "Adoption of drip
+      irrigation ... The subsidy was announced in 2017." Chat, scope **This thesis**, question
+      "What have I written about the subsidy?". The answer:
+
+      > Your library does not contain enough on this. Try adding sources on: subsidy details in
+      > Chapter 1.
+
+      The passage was right there in the draft, and the library has nothing to do with this scope.
+      A.4's system block says "answer the student's question using only the provided passages from
+      their library" and gives that exact refusal sentence, which was written before the document
+      scope existed (ADR-0016, the same day). The model is obeying it.
+
+      **Proposed change, for approval:** make the two library-specific lines of A.4 take the scope
+      — "the provided passages" rather than "passages from their library", and a refusal worded
+      for whichever set was passed. Nothing else in the prompt changes. Alternatively a second
+      prompt file for the document scope, which needs an ADR like 0010 did.
+
+      Fixed in code meanwhile, because it is ours and not the prompt's: the chat panel no longer
+      prints "Add sources from the Discover tab, then ask again." under a refusal in the document
+      scope, where it is advice for a different question.
+
+
 - [ ] **Settle the price and the caps together.** `docs/COSTING.md` gives the cost side:
       ₹14.18 per fully active student, ₹299 charged, 95% margin. `docs/PRICING-REVIEW.md` reviews
       `RADemics_Thesis_Copilot_Pricing.docx` and its ₹349 / ₹2,999 proposal — but that review was

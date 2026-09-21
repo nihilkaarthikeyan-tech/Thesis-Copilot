@@ -252,7 +252,9 @@ test.describe('FR-4.9 — chat over the library', () => {
 
     await page.goto(`/app/d/${documentId}/write/${chapterId}`);
     await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-    await page.getByRole('button', { name: 'chat', exact: true }).click();
+    // `role="tab"`, not button: the panel strip is a real tablist, and an explicit role
+    // replaces the implicit one.
+    await page.getByRole('tab', { name: 'chat', exact: true }).click();
 
     const panel = page.getByTestId('chat-panel');
     await expect(panel).toBeVisible();

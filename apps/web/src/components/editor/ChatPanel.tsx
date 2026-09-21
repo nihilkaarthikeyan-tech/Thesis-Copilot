@@ -22,6 +22,8 @@ type Turn = {
   text: string;
   citations?: Citation[];
   outcome?: string;
+  /** The scope the question was asked in, which the advice under a refusal depends on. */
+  scope?: Scope;
 };
 
 type Filters = {
@@ -191,6 +193,7 @@ export function ChatPanel({
                 text: String(data.text ?? text),
                 citations: (data.citations as Citation[]) ?? [],
                 outcome: String(data.outcome ?? 'answered'),
+                scope,
               },
             ]);
             setStreaming('');
@@ -392,7 +395,10 @@ export function ChatPanel({
             ) : (
               turn.text
             )}
-            {turn.outcome === 'not-enough' ? (
+            {/* Only in the library scope. Telling a student to add sources is the fix when the
+                question was about their library, and no help at all when it was about their own
+                draft — see `docs/PENDING.md`, "A.4 refuses in the wrong words". */}
+            {turn.outcome === 'not-enough' && turn.scope !== 'document' ? (
               <p className="mt-2 text-xs text-muted">
                 Add sources from the Discover tab, then ask again.
               </p>

@@ -25,11 +25,16 @@ were invisible to typecheck, lint and 1,200 passing tests.
 - [x] **JPEG and GIF figures through the real path.** Done 2026-09-21, in the same spec, with 4x3
       files from a real encoder — so the aspect ratio in the `.docx` is the check that
       `imageSize`'s header walkers read real dimensions rather than a default.
-- [ ] **Drive the three chat scopes in a browser.** `document` and `web` are typechecked, unit
-      tested and unproven on a screen. The web scope in particular makes real outbound calls to
-      OpenAlex.
-- [ ] **Drive the `@` cite picker in a browser**, including the case that matters: pick a source,
-      then check the bibliography actually gains the entry after a save and re-render.
+- [x] **Drive the three chat scopes in a browser.** Done 2026-09-21,
+      `apps/web/e2e/chat-scopes.spec.ts`. `web` behaves as ADR-0016 says: real OpenAlex records, no
+      assistant turn, no model call. `document` found a live fault — A.4 refuses in *library*
+      words for a passage sitting in the draft. That is a prompt, so it is the owner's
+      (`docs/PENDING.md`); the advice underneath it was ours and is fixed.
+- [x] **Drive the `@` cite picker in a browser**, including the case that matters: pick a source,
+      then check the bibliography actually gains the entry after a save and re-render. Done
+      2026-09-21, in `proposal-sources.spec.ts` beside the library fixtures. It also turned up two
+      existing specs selecting the panel tabs by `role="button"`, which cannot match a
+      `role="tab"` element — neither had run far enough to find out.
 
 ## Next — things a student will hit
 

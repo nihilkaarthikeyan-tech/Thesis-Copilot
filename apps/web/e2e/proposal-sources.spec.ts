@@ -401,9 +401,77 @@ test.describe('Stage 4 citations', () => {
     expect(await after.getAttribute('data-source-id')).toBe(sourceId);
 
     // And the Citation row mirrors it (PHASES 3.5: "Citation rows upserted on save").
-    await page.getByRole('button', { name: 'citations' }).click();
+    // `role="tab"`, not button: the panel strip is a real tablist, and an explicit role replaces
+    // the implicit one, so `getByRole('button')` here never matched anything.
+    await page.getByRole('tab', { name: 'citations' }).click();
     const tab = page.getByRole('complementary').filter({ hasText: 'citations' });
     await expect(tab.getByRole('button', { name: /^1\./ })).toBeVisible({ timeout: 10_000 });
+  });
+
+  /**
+   * The `@` picker (2026-09-21). Typing `@` lists the library with live citeproc labels and Enter
+   * inserts the one you chose — no model call, so it is free and cannot hallucinate: a student can
+   * only pick a source they already have.
+   *
+   * The part worth a browser is the end of it. A citation node in the document is not a citation
+   * in the thesis until the bibliography has the entry, and that happens on a save and a re-render
+   * somewhere else entirely. So this picks a source and then goes and looks.
+   */
+  test('the @ picker cites a source from the library, and the bibliography gains the entry', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, request);
+    const id = await createThesis(page, `Picker E2E ${Date.now()}`);
+
+    await page.goto(`/app/d/${id}/proposal`);
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'seed.pdf',
+      mimeType: 'application/pdf',
+      buffer: ABSTRACTED_REFERENCES_PDF,
+    });
+    await expect(page.getByText('Read', { exact: true })).toBeVisible({ timeout: 120_000 });
+    await page.getByRole('button', { name: 'Continue to the editor' }).click();
+    await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+
+    const editor = page.locator('.thesis-editor');
+    await expect(editor).toBeVisible({ timeout: 20_000 });
+    // Wait for the library to finish resolving, or the picker has nothing to offer.
+    const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
+    await expect(panel.locator('input[type=checkbox]')).toHaveCount(2, { timeout: 120_000 });
+
+    await editor.locator('p').first().click();
+    await page.keyboard.type('Protein structure prediction has advanced quickly ');
+    await page.keyboard.type('@');
+
+    const picker = page.getByTestId('cite-picker');
+    await expect(picker).toBeVisible({ timeout: 10_000 });
+    const options = picker.getByTestId('cite-picker-option');
+    await expect(options).toHaveCount(2, { timeout: 10_000 });
+    // The label beside each one comes from citeproc, not from a placeholder.
+    await expect(options.first()).not.toContainText('(Source, n.d.)');
+
+    // Narrow it, then take it with the keyboard, which is how it is meant to be used.
+    await page.keyboard.type('Alpha');
+    await expect(options).toHaveCount(1, { timeout: 10_000 });
+    await page.keyboard.press('Enter');
+    await expect(picker).toHaveCount(0);
+
+    // The `@Alpha` the student typed is gone, replaced by a real node with real ids.
+    await expect(editor).not.toContainText('@Alpha');
+    const citation = editor.locator('span.citation');
+    await expect(citation).toHaveCount(1);
+    expect(await citation.getAttribute('data-source-id')).toMatch(/^[0-9a-f-]{36}$/);
+
+    await page.keyboard.press('Control+s');
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible({ timeout: 20_000 });
+
+    // The thing this test exists for: the bibliography, rendered from the saved document.
+    // `role="tab"`, not button — the panel strip is a real tablist.
+    await page.getByRole('tab', { name: 'citations' }).click();
+    const citations = page.getByRole('complementary').filter({ hasText: 'citations' });
+    await expect(citations.getByRole('button', { name: /^1\./ })).toBeVisible({ timeout: 20_000 });
+    await expect(citations).toContainText('AlphaFold', { timeout: 20_000 });
   });
 });
 
