@@ -81,7 +81,9 @@ jobs:
         image: redis:7-alpine
         ports: ['6381:6379']
       minio:
-        image: minio/minio:latest
+        # MinIO retired their Docker Hub images in 2025 and docker.io/minio/minio 404s outright.
+        # quay.io is the maintained registry; same image, same tags.
+        image: quay.io/minio/minio:latest
         env: { MINIO_ROOT_USER: tcadmin, MINIO_ROOT_PASSWORD: tc-secret-key }
         ports: ['9002:9000']
         options: >-

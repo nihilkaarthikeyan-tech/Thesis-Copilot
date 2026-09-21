@@ -51,7 +51,12 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await h.stop();
+  // `h?` and not `h`: when the boot fails — a container image that cannot be pulled, say — the
+  // teardown is the first thing to run, and `h` is undefined. Without the optional chain the
+  // suite reports "Cannot read properties of undefined (reading 'stop')" and the actual reason
+  // is somewhere above it. Every other spec already does this; this one was the exception, and
+  // it is what hid a Docker Hub 404 across three red CI runs.
+  await h?.stop();
 });
 
 describe('spend is read from what was actually logged', () => {

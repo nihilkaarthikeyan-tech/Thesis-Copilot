@@ -70,7 +70,11 @@ export async function startHarness(email: string): Promise<Harness> {
       .withPassword('tc')
       .start(),
     new RedisContainer('redis:7-alpine').start(),
-    new GenericContainer('minio/minio')
+    // MinIO retired their Docker Hub images in 2025: `docker.io/minio/minio` 404s on a runner
+    // that has never pulled it, which is every CI runner. The compose files were moved to
+    // quay.io on 2026-09-19 and these were missed, so CI has been red since. Same image, same
+    // tags, different host.
+    new GenericContainer('quay.io/minio/minio')
       .withCommand(['server', '/data'])
       .withEnvironment({ MINIO_ROOT_USER: 'tcadmin', MINIO_ROOT_PASSWORD: 'tc-secret-key' })
       .withExposedPorts(9000)
