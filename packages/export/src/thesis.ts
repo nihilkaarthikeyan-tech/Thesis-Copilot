@@ -190,6 +190,85 @@ function runsFrom(
 const textOf = (node: Node | undefined): string =>
   !node ? '' : node.type === 'text' ? (node.text ?? '') : (node.content ?? []).map(textOf).join('');
 
+/**
+ * The picture itself, or a visible placeholder where it should have been.
+ *
+ * Shared between the top-level `image` block and a table cell, because they diverged: the cell
+ * renderer flattened everything to inline runs, and an `image` has no runs, so a figure a student
+ * had put inside a table vanished from the submitted thesis with nothing in its place. The chapter
+ * exporter recurses into cells properly and did not have the bug, which is the worse version of
+ * having it — the two files disagreed about the same document.
+ *
+ * `key` is the stable storage path; `src` is a signed URL that has almost certainly expired by
+ * export time, kept only for documents written before figures carried keys.
+ */
+function figureParagraph(block: Node, input: ThesisExportInput): Paragraph {
+  const figureKey =
+    (typeof block.attrs?.key === 'string' && block.attrs.key) ||
+    (typeof block.attrs?.src === 'string' ? block.attrs.src : '');
+  const bytes = input.images?.[figureKey];
+  if (!bytes) {
+    // Named, so the gap is visible to the student rather than silent.
+    return centred(`[${String(block.attrs?.alt ?? 'figure')}]`, input.spec);
+  }
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [
+      new ImageRun({
+        type: bytes.type ?? 'png',
+        data: bytes.data,
+        transformation: { width: bytes.width, height: bytes.height },
+      }),
+    ],
+  });
+}
+
+/**
+ * A display equation, carried through as its LaTeX source in a monospace run.
+ *
+ * Not typeset maths — proper Office maths is LaTeX to MathML to OMML and `docx` has no OMML to
+ * build on. Shared between the chapter loop and a table cell, which rendered its contents as
+ * inline runs and so dropped an equation the same way it dropped a figure.
+ */
+function mathParagraph(block: Node, spec: TemplateSpec): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [
+      new TextRun({
+        text: String(block.attrs?.latex ?? ''),
+        font: 'Consolas',
+        size: pt(spec.font.sizePt),
+      }),
+    ],
+  });
+}
+
+/**
+ * One table cell's contents as block-level paragraphs.
+ *
+ * A cell holds `block+`, not inline content: two paragraphs, a list, a figure. Rendering it as a
+ * single run-stream ran two paragraphs together and dropped anything with no runs at all.
+ * A figure here gets no numbered caption — the table already carries one, and "Figure 3.2" under
+ * a cell would be numbering the wrong thing.
+ */
+function cellBlocks(cell: Node, input: ThesisExportInput, chapter: ThesisChapter): Paragraph[] {
+  const out: Paragraph[] = [];
+  for (const block of cell.content ?? []) {
+    if (block.type === 'image') {
+      out.push(figureParagraph(block, input));
+      continue;
+    }
+    if (block.type === 'mathBlock') {
+      out.push(mathParagraph(block, input.spec));
+      continue;
+    }
+    const runs = runsFrom(block.content ?? [], input, chapter);
+    if (runs.length > 0) out.push(new Paragraph({ children: runs }));
+  }
+  // `docx` requires at least one child; an empty cell is an empty paragraph.
+  return out.length > 0 ? out : [new Paragraph('')];
+}
+
 /** One chapter's blocks, with the template's heading styles and numbering. */
 function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<Paragraph | Table> {
   const { spec } = input;
@@ -327,22 +406,9 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
         break;
       }
 
-      case 'mathBlock': {
-        out.push(
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: spacingFor(spec),
-            children: [
-              new TextRun({
-                text: String(block.attrs?.latex ?? ''),
-                font: 'Consolas',
-                size: pt(spec.font.sizePt),
-              }),
-            ],
-          }),
-        );
+      case 'mathBlock':
+        out.push(mathParagraph(block, spec));
         break;
-      }
 
       case 'image': {
         counters.figure += 1;
@@ -353,24 +419,7 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
         // `key` is the stable storage path; `src` is a signed URL that has almost certainly
         // expired by export time, so it is only a fallback for documents written before figures
         // carried keys.
-        const figureKey =
-          (typeof block.attrs?.key === 'string' && block.attrs.key) ||
-          (typeof block.attrs?.src === 'string' ? block.attrs.src : '');
-        const bytes = input.images?.[figureKey];
-        const figure = bytes
-          ? new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new ImageRun({
-                  type: bytes.type ?? 'png',
-                  data: bytes.data,
-                  transformation: { width: bytes.width, height: bytes.height },
-                }),
-              ],
-            })
-          : // Still a named placeholder when the bytes could not be read, so the gap is visible
-            // to the student rather than silent.
-            centred(`[${String(block.attrs?.alt ?? 'figure')}]`, spec);
+        const figure = figureParagraph(block, input);
         const captionLine = centred(caption, spec, spec.font.sizePt - 1);
         out.push(
           ...(spec.captions.figure.position === 'above'
@@ -391,12 +440,7 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
           (row) =>
             new TableRow({
               children: (row.content ?? []).map(
-                (cell) =>
-                  new TableCell({
-                    children: [
-                      new Paragraph({ children: runsFrom(cell.content ?? [], input, chapter) }),
-                    ],
-                  }),
+                (cell) => new TableCell({ children: cellBlocks(cell, input, chapter) }),
               ),
             }),
         );

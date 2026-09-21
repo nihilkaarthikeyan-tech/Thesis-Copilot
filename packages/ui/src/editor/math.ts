@@ -5,6 +5,7 @@
 
 import { mergeAttributes, Node } from '@tiptap/core';
 import katex from 'katex';
+import { insertBlockWithCaretAfter } from './insert-block.js';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -102,8 +103,15 @@ export const MathBlock = Node.create({
     return {
       insertMathBlock:
         (latex) =>
-        ({ commands }) =>
-          commands.insertContent({ type: this.name, attrs: { latex } }),
+        ({ tr, dispatch, editor }) => {
+          const equation = editor.schema.nodes[this.name]?.create({ latex });
+          const paragraph = editor.schema.nodes.paragraph?.create();
+          if (!equation || !paragraph) return false;
+          if (!dispatch) return true;
+          // Not `insertContent`: a block atom inserted that way stays selected, and the next
+          // thing the student inserts replaces it. See `insert-block.ts`.
+          return insertBlockWithCaretAfter(tr, equation, paragraph);
+        },
     };
   },
 });

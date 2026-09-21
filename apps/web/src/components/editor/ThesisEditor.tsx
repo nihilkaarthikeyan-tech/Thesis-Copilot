@@ -341,6 +341,8 @@ function ChapterEditor({
           },
         },
         imageUpload: uploadFigure,
+        imageUploadError: (error: unknown) =>
+          setNotice(error instanceof Error ? error.message : 'That image could not be added.'),
         // Clicking a highlighted passage opens its comment in the panel (review.ts).
         review: {
           onSelect: (commentId: string) => {
@@ -385,25 +387,21 @@ function ChapterEditor({
    * `uploadImage` starts the upload and returns immediately — the node is inserted in a `.then`
    * inside the extension — so a failure surfaces here rather than as a silently missing picture.
    */
-  const insertFigure = useCallback(
-    (file: File) => {
-      if (!editorRef.current) return;
-      setNotice(null);
-      void uploadFigure(file)
-        .then(({ key, url }) => {
-          editorRef.current
-            ?.chain()
-            .focus()
-            .setImage({ src: url, alt: file.name })
-            .updateAttributes('image', { key, caption: null })
-            .run();
-        })
-        .catch((error: unknown) => {
-          setNotice(error instanceof Error ? error.message : 'That image could not be added.');
-        });
-    },
-    [uploadFigure],
-  );
+  /**
+   * The `uploadImage` command, and nothing else.
+   *
+   * This used to be a second copy of that command written inline, and the copy is what ran — so
+   * the one in `@tc/ui` was a file nobody had ever executed, and it quietly carried the fixes
+   * this one did not. Both bugs were in the copy: the figure was left *selected* after insertion,
+   * so clicking "Insert table" next replaced it and the picture vanished without a word; and the
+   * storage key was written by `updateAttributes`, which targets whatever the selection happens
+   * to be on, so a figure could reach the exporter with no key and become a placeholder in the
+   * submitted thesis.
+   */
+  const insertFigure = useCallback((file: File) => {
+    setNotice(null);
+    editorRef.current?.commands.uploadImage(file);
+  }, []);
 
   // Appendix B.7 autosave.
   useEffect(() => {

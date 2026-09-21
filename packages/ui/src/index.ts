@@ -45,10 +45,12 @@ export {
   type SuggestionOutcome,
   suggestionToFragment,
 } from './editor/ghost-text.js';
+export { insertBlockWithCaretAfter } from './editor/insert-block.js';
 export { MathBlock, MathInline } from './editor/math.js';
 export {
   CommentAnchor,
   type ImageUpload,
+  type ImageUploadError,
   NeedsSourceNote,
   ThesisHeading,
   ThesisImage,

@@ -9,6 +9,7 @@
 import { Mark, mergeAttributes, Node, textblockTypeInputRule } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import Image from '@tiptap/extension-image';
+import { insertBlockWithCaretAfter } from './insert-block.js';
 
 export const NeedsSourceNote = Node.create({
   name: 'needsSourceNote',
@@ -69,6 +70,14 @@ export const ThesisHeading = Heading.extend({
 
 export type ImageUpload = (file: File) => Promise<{ key: string; url: string }>;
 
+/**
+ * What to do when the upload fails — a rejected figure type, an expired session, MinIO down.
+ *
+ * Without it the command swallowed the rejection and the student saw nothing happen at all, which
+ * is why the app had grown its own copy of this whole command just to show a message.
+ */
+export type ImageUploadError = (error: unknown) => void;
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     thesisImage: {
@@ -80,6 +89,7 @@ declare module '@tiptap/core' {
 
 export const ThesisImage = Image.extend<{
   upload?: ImageUpload;
+  onUploadError?: ImageUploadError;
   inline: boolean;
   allowBase64: boolean;
   HTMLAttributes: Record<string, unknown>;
@@ -105,13 +115,33 @@ export const ThesisImage = Image.extend<{
         ({ editor }) => {
           const upload = this.options.upload;
           if (!upload) return false;
+          const onError = this.options.onUploadError;
           void upload(file).then(({ key, url }) => {
-            if (!editor.isDestroyed) {
-              editor.commands.setImage({ src: url, alt: caption ?? file.name });
-              // `key`/`caption` are set through updateAttributes on the inserted node.
-              editor.commands.updateAttributes('image', { key, caption: caption ?? null });
-            }
-          });
+            if (editor.isDestroyed) return;
+            editor
+              .chain()
+              .command(({ tr, dispatch }) => {
+                const image = editor.schema.nodes.image?.create({
+                  src: url,
+                  // Every attribute at insertion time, including `key`.
+                  //
+                  // This used to be `setImage` followed by `updateAttributes('image', { key })`,
+                  // and `updateAttributes` writes to the node *at the current selection* — so
+                  // whether a figure ever got its storage key depended on where the selection
+                  // landed. A figure with no key cannot be found at export time and becomes a
+                  // bracketed placeholder in the submitted thesis.
+                  alt: caption ?? file.name,
+                  key,
+                  caption: caption ?? null,
+                });
+                const paragraph = editor.schema.nodes.paragraph?.create();
+                if (!image || !paragraph) return false;
+                if (!dispatch) return true;
+
+                return insertBlockWithCaretAfter(tr, image, paragraph);
+              })
+              .run();
+          }, onError);
           return true;
         },
     };

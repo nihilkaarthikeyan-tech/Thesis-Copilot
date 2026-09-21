@@ -26,6 +26,7 @@ import { MathBlock, MathInline } from './math.js';
 import {
   CommentAnchor,
   type ImageUpload,
+  type ImageUploadError,
   NeedsSourceNote,
   ThesisHeading,
   ThesisImage,
@@ -40,6 +41,8 @@ export type ThesisEditorOptions = {
   /** The passage resolver behind the citation hover popover (PHASES 3.5). */
   citation?: CitationOptions;
   imageUpload?: ImageUpload;
+  /** Shown to the student when an upload fails; without it the failure is silent. */
+  imageUploadError?: ImageUploadError;
   placeholder?: string;
   /** Tables measure the DOM for column resizing; off in tests (jsdom has no layout). */
   resizableTables?: boolean;
@@ -68,7 +71,10 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     TableRow,
     TableHeader,
     TableCell,
-    ThesisImage.configure({ ...(options.imageUpload ? { upload: options.imageUpload } : {}) }),
+    ThesisImage.configure({
+      ...(options.imageUpload ? { upload: options.imageUpload } : {}),
+      ...(options.imageUploadError ? { onUploadError: options.imageUploadError } : {}),
+    }),
     CrossRef.configure({ chapterNumber: options.chapterNumber ?? 1 }),
     MathInline,
     MathBlock,

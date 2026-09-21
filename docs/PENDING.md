@@ -332,6 +332,12 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
       hallucinate — a student can only pick a source they already have.
 - [x] **Chat scope.** Built 2026-09-21: Library / This thesis / Find papers. See ADR-0016 for why
       the third one behaves differently from the competitor it answers.
+- [x] **In-editor review.** Built 2026-09-21. A Review tab draws the supervisor's comments on the
+      passages they are about and accepts a suggested revision without leaving the chapter.
+      ADR-0017 records why `commentAnchor` stays inert and the range is found in the browser.
+- [x] **A setup checklist.** Built 2026-09-21 and built to disappear — it renders nothing once all
+      five steps are done. Deriving "has an outline" honestly took two attempts; `docs/BUILD_LOG.md`
+      has the account.
 - [ ] **Not planned, and worth saying why:** a browser extension (a separate product with its own
       store review) and video tutorials (content, not code).
 
