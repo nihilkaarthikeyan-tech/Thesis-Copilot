@@ -17,13 +17,14 @@ were invisible to typecheck, lint and 1,200 passing tests.
 
 ## Now — parity gaps still open
 
-- [ ] **Verify the whole-thesis export end to end.** The chapter export is proven (table, both
-      equations, an embedded figure, zero placeholders). `thesisToDocx` got the same treatment in
-      the same commit and has **not** been run with a real figure. It is the file a student
-      actually submits, so it matters more than the one that is proven.
-- [ ] **JPEG and GIF figures through the real path.** PNG is proven end to end. The other two are
-      covered only by unit tests over synthetic headers, and `imageSize`'s JPEG walker is the most
-      intricate code in the export package.
+- [x] **Verify the whole-thesis export end to end.** Done 2026-09-21,
+      `apps/web/e2e/thesis-export.spec.ts`. Three faults, none of them in the export: inserting a
+      block deleted the block inserted before it, the app had its own copy of `uploadImage` so the
+      one in `@tc/ui` had never run, and a figure inside a table cell was dropped from the thesis
+      while the chapter export of the same document showed it.
+- [x] **JPEG and GIF figures through the real path.** Done 2026-09-21, in the same spec, with 4x3
+      files from a real encoder — so the aspect ratio in the `.docx` is the check that
+      `imageSize`'s header walkers read real dimensions rather than a default.
 - [ ] **Drive the three chat scopes in a browser.** `document` and `web` are typechecked, unit
       tested and unproven on a screen. The web scope in particular makes real outbound calls to
       OpenAlex.
