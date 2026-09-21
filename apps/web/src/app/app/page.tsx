@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
+import { SetupChecklist } from '@/components/SetupChecklist';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
 import {
@@ -272,6 +273,12 @@ export default function DocumentListPage() {
                       </div>
                       <div className="border-t border-line px-4 py-2">
                         <NextAction documentId={d.id} compact />
+                      </div>
+                      {/* Below the recommendation, and only until it is finished: the arc is for
+                          somebody who has not seen the product, and the next action is for
+                          everybody after that. */}
+                      <div className="px-4 pb-3">
+                        <SetupChecklist documentId={d.id} />
                       </div>
                     </Card>
                   </li>

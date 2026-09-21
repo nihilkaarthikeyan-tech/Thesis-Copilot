@@ -18,7 +18,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
-import { NextActionService } from './next-action.service.js';
+import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { ProgressService } from './progress.service.js';
 
 const languageBody = z.object({
@@ -93,6 +93,7 @@ export class DocumentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly nextActionService: NextActionService,
+    private readonly setupProgress: SetupProgressService,
     private readonly progressService: ProgressService,
   ) {}
 
@@ -178,6 +179,12 @@ export class DocumentsController {
    * FR-none: not a PRD requirement, but the answer to the question a student actually opens the
    * app with. Free — no model call, only counts already in the database.
    */
+  /** The five-step arc and how far through it this thesis is. Free; nothing is computed twice. */
+  @Get(':id/setup')
+  setup(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.setupProgress.forDocument(id, user.id);
+  }
+
   @Get(':id/next-action')
   async nextAction(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.nextActionService.forDocument(id, user.id);

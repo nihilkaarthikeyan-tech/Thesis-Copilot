@@ -19,8 +19,10 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { readOutline, walkOutline } from '@tc/types';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { type SetupProgress, setupSteps } from './setup-steps.js';
 
 export type NextActionKind =
   | 'outline'
@@ -233,8 +235,59 @@ export function decide(document: DocumentRow, counts: NextActionCounts): NextAct
   return {
     kind: 'clear',
     headline: 'Everything is set up. Nothing is written yet',
-    detail: 'Sources are in, the outline exists, and no one is waiting on you. Start anywhere.',
+    // No claim about the outline: `decide` is never told whether there is one, and a thesis can
+    // reach this rung with nothing but the single node saving the proposal leaves behind.
+    detail: 'Sources are in and no one is waiting on you. Start anywhere.',
     cta: first ? `Write ${first.title}` : 'Open the editor',
     href: first ? `/write/${first.id}` : '/outline',
   };
+}
+
+/**
+ * The five-step setup arc for one thesis — `setup-steps.ts`.
+ *
+ * Lives beside `NextAction` because they read almost the same document and answer adjacent
+ * questions: that one says what to do next, this one says how far through the whole thing you are.
+ * Keeping them in one service means one query rather than two nearly identical ones.
+ */
+@Injectable()
+export class SetupProgressService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async forDocument(documentId: string, ownerId: string): Promise<SetupProgress> {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerId },
+      select: {
+        id: true,
+        meta: true,
+        chapters: { select: { wordCount: true } },
+        sources: { select: { id: true } },
+        memory: { select: { scope: true, outline: true } },
+      },
+    });
+    if (!document) throw new NotFoundError('That thesis');
+
+    const scope = (document.memory?.scope ?? null) as { workingTitle?: string } | null;
+    const details = (document.meta as Record<string, unknown> | null)?.thesisDetails as
+      | Record<string, unknown>
+      | undefined;
+
+    return setupSteps(
+      {
+        hasProposal: Boolean(scope?.workingTitle?.trim()),
+        sources: document.sources.length,
+        outlineNodes: walkOutline(readOutline(document.memory?.outline)).length,
+        words: document.chapters.reduce((sum, c) => sum + c.wordCount, 0),
+        // "Filled in" means the fields a title page cannot be built without, not every optional
+        // one — an abstract and acknowledgements come much later than this checklist is about.
+        hasThesisDetails: Boolean(
+          typeof details?.institution === 'string' &&
+            details.institution.trim() &&
+            typeof details?.degree === 'string' &&
+            details.degree.trim(),
+        ),
+      },
+      document.id,
+    );
+  }
 }
