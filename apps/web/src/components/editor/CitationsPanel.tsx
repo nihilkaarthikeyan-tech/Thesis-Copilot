@@ -15,6 +15,7 @@ import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { ReadingDepth } from './ReadingDepth';
+import { ReferenceHealth } from './ReferenceHealth';
 
 export type Rendered = {
   style: string;
@@ -208,6 +209,8 @@ export function CitationsPanel({
       {/* Below the bibliography on purpose: it is about the sources just listed, and it renders
         nothing at all when there is nothing worth saying. */}
       <ReadingDepth documentId={documentId} />
+      {/* Both are about whether the bibliography is sound, so they sit together. */}
+      <ReferenceHealth documentId={documentId} />
     </>
   );
 }

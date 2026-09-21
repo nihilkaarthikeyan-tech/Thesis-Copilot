@@ -69,6 +69,12 @@ export class DocumentCitationsController {
     return this.citations.readingDepth(user.id, documentId);
   }
 
+  /** Retracted, stale, duplicated or unverified references. Free to run; nothing is changed. */
+  @Get('reference-health')
+  referenceHealth(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.citations.referenceHealth(user.id, documentId);
+  }
+
   /** FR-5.2: global and instant — one column changes and the labels are recomputed. */
   @Put('citation-style')
   setStyle(

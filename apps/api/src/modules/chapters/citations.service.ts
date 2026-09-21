@@ -17,9 +17,12 @@ import {
   type CitationFinding,
   citationNodesIn,
   isKnownStyle,
+  type ReferenceHealthFinding,
+  referenceHealthHeadline,
   renderCitations,
   resolveStyle,
   runCitationChecks,
+  runReferenceHealth,
   STYLES,
   type StyleEntry,
 } from '@tc/citations';
@@ -164,6 +167,63 @@ export class CitationsService {
         citeCount: counts.get(source.id) ?? 0,
       })),
     );
+  }
+
+  /**
+   * Whether the references themselves are any good — retracted, stale, duplicated, unverified.
+   *
+   * A sibling to `runCitationChecks`, not a replacement: that one asks whether the text and the
+   * library agree, this one asks whether the library is worth agreeing with. Pure logic over rows
+   * the indexer already wrote, so it costs nothing and needs no cap.
+   */
+  async referenceHealth(
+    ownerId: string,
+    documentId: string,
+  ): Promise<{ findings: ReferenceHealthFinding[]; headline: string | null; sources: number }> {
+    await this.owned(ownerId, documentId);
+    const [chapters, sources] = await Promise.all([
+      this.prisma.chapter.findMany({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, content: true },
+      }),
+      this.prisma.source.findMany({
+        where: { documentId },
+        select: {
+          id: true,
+          title: true,
+          doi: true,
+          year: true,
+          status: true,
+          isPreprint: true,
+          isRetracted: true,
+          authors: true,
+        },
+      }),
+    ]);
+
+    const counts = new Map<string, number>();
+    for (const chapter of chapters) {
+      for (const node of citationNodesIn(chapter)) {
+        counts.set(node.sourceId, (counts.get(node.sourceId) ?? 0) + 1);
+      }
+    }
+
+    const findings = runReferenceHealth(
+      sources.map((source) => ({
+        id: source.id,
+        title: source.title,
+        doi: source.doi,
+        year: source.year,
+        status: source.status,
+        isPreprint: source.isPreprint,
+        isRetracted: source.isRetracted,
+        shortRef: shortReference(source.authors, source.year, source.title) ?? 'Source',
+        citeCount: counts.get(source.id) ?? 0,
+      })),
+    );
+
+    return { findings, headline: referenceHealthHeadline(findings), sources: sources.length };
   }
 
   /**
