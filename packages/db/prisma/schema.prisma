@@ -461,6 +461,14 @@ model GuideShare {
   guideUserId String? @db.Uuid
   guide      User?    @relation(fields: [guideUserId], references: [id])
   token      String   @unique
+  /**
+   * When this guide last opened the thesis, so the progress view can say what moved since.
+   *
+   * Bumped only when the previous visit is more than `VISIT_WINDOW_MINUTES` old: a supervisor who
+   * refreshes while reading should keep seeing the same "changed since you last looked" list,
+   * not watch it empty itself underneath them.
+   */
+  lastViewedAt DateTime?
   createdAt  DateTime @default(now())
 }
 

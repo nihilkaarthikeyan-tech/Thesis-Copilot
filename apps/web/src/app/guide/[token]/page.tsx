@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { GuideProgress } from './GuideProgress';
 
 type GuideDocument = {
   documentId: string;
@@ -88,7 +89,9 @@ export default function GuidePage() {
     if (!chapterId || !document) return;
     try {
       const [view, list] = await Promise.all([
-        api<ChapterView>(`/chapters/${chapterId}`),
+        // The guide route, not the student's: /chapters/:id filters on ownership and answered
+        // 404 to every supervisor who ever opened a share.
+        api<ChapterView>(`/guide/documents/${document.documentId}/chapters/${chapterId}`),
         api<Comment[]>(`/documents/${document.documentId}/feedback/comments`),
       ]);
       setChapter(view);
@@ -169,17 +172,14 @@ export default function GuidePage() {
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-2 text-sm">
-        {document.chapters.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => setChapterId(c.id)}
-            className={`rounded-md px-3 py-1 ${c.id === chapterId ? 'bg-accent text-accent-ink font-semibold' : 'border border-line text-muted hover:border-line-strong hover:text-ink'}`}
-          >
-            {c.order}. {c.title}
-          </button>
-        ))}
+      {/* Replaces a plain row of chapter buttons. It picks chapters as that did, and also answers
+          the question a supervisor opens the page with: what has moved since I last read this? */}
+      <div className="mt-6">
+        <GuideProgress
+          documentId={document.documentId}
+          currentChapterId={chapterId}
+          onOpenChapter={setChapterId}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">

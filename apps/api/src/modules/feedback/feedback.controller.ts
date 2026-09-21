@@ -226,6 +226,40 @@ export class GuideController {
     return this.shares.accept(user, token);
   }
 
+  /**
+   * Where the thesis is up to, and what moved since this guide last looked.
+   *
+   * **A POST, because it records that you looked.** It was a GET for one draft and that was
+   * wrong: the call moves the visit marker, so a browser prefetch, a retry, or React's own
+   * double-invoked effect would each silently consume the "since you last looked" window and
+   * answer the second caller with "nothing has changed". A GET that mutates is a GET that lies
+   * the moment anything calls it twice.
+   *
+   * Deliberately carries no AI-usage figure: FR-8.6 makes that the student's disclosure to hand
+   * over, and putting it in a supervisor's dashboard by default would change what it means to
+   * invite them in.
+   */
+  @Post('documents/:documentId/progress')
+  @HttpCode(200)
+  progress(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
+    return this.shares.progressFor(user, documentId);
+  }
+
+  /**
+   * One chapter of a shared thesis, read-only.
+   *
+   * The guide page used `/chapters/:id` — the student's route, which filters on ownership — so it
+   * answered 404 to every supervisor. Nothing here is writable.
+   */
+  @Get('documents/:documentId/chapters/:chapterId')
+  chapter(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Param('chapterId') chapterId: string,
+  ) {
+    return this.shares.chapterFor(user, documentId, chapterId);
+  }
+
   @Get('documents/:documentId')
   document(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
     return this.shares.documentFor(user, documentId);

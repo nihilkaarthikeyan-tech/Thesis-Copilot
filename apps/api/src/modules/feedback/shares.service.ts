@@ -18,6 +18,7 @@ import { ENV } from '../../common/env.token.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { MAILER, type Mailer } from '../../common/mailer.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { type GuideProgress, guideProgress, shouldBumpVisit } from './guide-progress.js';
 
 export type ShareView = {
   id: string;
@@ -198,18 +199,103 @@ export class SharesService {
   }
 
   /**
+   * One chapter, read-only, for a guide who was shared the document.
+   *
+   * This did not exist, and its absence meant the guide feature had never worked end to end: the
+   * guide page fetched `/chapters/:id`, which filters on `document: { ownerId }` and so answered
+   * 404 to every supervisor who ever opened a share. They saw the title, the student's address,
+   * and "Loading…" for ever. Found 2026-09-21 by signing in as a guide in a browser — the share,
+   * comment and revoke paths all had tests, and none of them reads a chapter.
+   *
+   * A separate route rather than relaxing the student's: ownership and shared-with are different
+   * permissions, and the way to get this wrong is to weaken the check that protects every other
+   * chapter read in the product.
+   */
+  async chapterFor(
+    user: { id: string; email: string },
+    documentId: string,
+    chapterId: string,
+  ): Promise<{ id: string; title: string; content: unknown }> {
+    await this.assertShared(user, documentId);
+    const chapter = await this.prisma.chapter.findFirst({
+      // Scoped to the shared document, so a chapter id from someone else's thesis is a 404 here
+      // even for a legitimate guide of this one.
+      where: { id: chapterId, documentId },
+      select: { id: true, title: true, content: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+    return chapter;
+  }
+
+  /**
+   * Where the thesis is up to, and what moved since this guide last looked.
+   *
+   * The visit marker is read *before* it is written, so the answer describes the gap since the
+   * previous visit rather than since a moment ago — and it is only moved forward once the
+   * previous one has gone cold (`shouldBumpVisit`), so refreshing while reading does not empty
+   * the list underneath them.
+   */
+  async progressFor(
+    user: { id: string; email: string },
+    documentId: string,
+  ): Promise<GuideProgress> {
+    const share = await this.assertShared(user, documentId);
+
+    const [chapters, openComments] = await Promise.all([
+      this.prisma.chapter.findMany({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, order: true, wordCount: true, updatedAt: true },
+      }),
+      // This guide's own open comments, not every guide's: the number is "what have I asked for
+      // that has not been dealt with", and another supervisor's threads are not that.
+      this.prisma.comment.groupBy({
+        by: ['chapterId'],
+        where: { documentId, authorEmail: user.email, status: 'OPEN' },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const previousVisit = share.lastViewedAt;
+    const now = new Date();
+    if (shouldBumpVisit(previousVisit, now)) {
+      await this.prisma.guideShare.update({
+        where: { id: share.id },
+        data: { lastViewedAt: now },
+      });
+    }
+
+    return guideProgress({
+      chapters,
+      openCommentsByChapter: new Map(
+        openComments
+          .filter((row): row is typeof row & { chapterId: string } => row.chapterId !== null)
+          .map((row) => [row.chapterId, row._count._all]),
+      ),
+      lastViewedAt: previousVisit,
+      now,
+    });
+  }
+
+  /**
    * §12.1: a guide reaching anything they were not shared gets a 404, not a 403 — the same answer
    * a document that does not exist gives, so the ids leak nothing.
    */
-  async assertShared(user: { id: string; email: string }, documentId: string): Promise<void> {
+  async assertShared(
+    user: { id: string; email: string },
+    documentId: string,
+  ): Promise<{ id: string; lastViewedAt: Date | null }> {
     const share = await this.prisma.guideShare.findFirst({
       where: {
         documentId,
         OR: [{ guideUserId: user.id }, { guideEmail: user.email.toLowerCase() }],
       },
-      select: { id: true },
+      // Returns the row rather than void so `progressFor` does not have to fetch it twice. Every
+      // existing caller ignores the value and still gets the throw, which is what they wanted.
+      select: { id: true, lastViewedAt: true },
     });
     if (!share) throw new NotFoundError('That document');
+    return share;
   }
 
   /** Every document shared with this guide — the list their landing page shows. */
