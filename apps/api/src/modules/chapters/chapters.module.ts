@@ -9,6 +9,7 @@ import { DocumentCitationsController } from './citations.controller.js';
 import { CitationsService } from './citations.service.js';
 import { CiteParseService } from './cite-parse.service.js';
 import { FiguresService } from './figures.service.js';
+import { ParaphraseService } from './paraphrase.service.js';
 import { SnapshotsService } from './snapshots.service.js';
 
 @Module({
@@ -21,6 +22,7 @@ import { SnapshotsService } from './snapshots.service.js';
     CitationsService,
     CiteParseService,
     FiguresService,
+    ParaphraseService,
     QueueService,
     StorageService,
     SessionGuard,

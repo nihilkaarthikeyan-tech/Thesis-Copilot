@@ -50,6 +50,20 @@ export {
   type TextItem,
 } from './extract/index.js';
 export {
+  adviceFor,
+  buildIndex,
+  type ChunkForMatch,
+  contentWords,
+  findParaphrases,
+  longestCommonRun,
+  PARAPHRASE,
+  type ParaphraseMatch,
+  type SentenceForMatch,
+  SHINGLE,
+  shingles,
+  words,
+} from './paraphrase.js';
+export {
   type CandidateQuery,
   type ChapterChunkRow,
   type ChunkRow,

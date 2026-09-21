@@ -73,6 +73,7 @@ import { DraftMode } from './DraftMode';
 import { type Flag, FlagsPanel } from './FlagsPanel';
 import { FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
+import { ParaphrasePanel } from './ParaphrasePanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
 import { SourcePins } from './SourcePins';
@@ -714,12 +715,16 @@ function ChapterEditor({
                 }}
               />
             ) : (
-              <FlagsPanel
-                documentId={doc.id}
-                chapterId={chapter.id}
-                editor={editor}
-                onSuggestFix={suggestFix}
-              />
+              <>
+                <FlagsPanel
+                  documentId={doc.id}
+                  chapterId={chapter.id}
+                  editor={editor}
+                  onSuggestFix={suggestFix}
+                />
+                {/* Same tab, because both answer "what should I look at before I hand this in?" */}
+                <ParaphrasePanel chapterId={chapter.id} editor={editor} />
+              </>
             )}
           </div>
         </aside>

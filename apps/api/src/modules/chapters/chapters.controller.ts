@@ -17,6 +17,7 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { ChaptersService } from './chapters.service.js';
 import { FiguresService } from './figures.service.js';
+import { ParaphraseService } from './paraphrase.service.js';
 import { SNAPSHOT_REASONS } from './snapshots.service.js';
 
 const saveBody = z.object({
@@ -40,6 +41,7 @@ export class ChaptersController {
   constructor(
     private readonly chapters: ChaptersService,
     private readonly figures: FiguresService,
+    private readonly paraphrase: ParaphraseService,
   ) {}
 
   @Get('chapters/:id')
@@ -76,6 +78,17 @@ export class ChaptersController {
       throw new ValidationError('Unknown snapshot reason');
     }
     return this.chapters.snapshot(user.id, id, parsed.data.reason);
+  }
+
+  /**
+   * Where this chapter reuses a source's phrasing without citing it.
+   *
+   * A GET because it computes nothing that persists and costs nothing to repeat: no model call,
+   * no embedding, no cap.
+   */
+  @Get('chapters/:id/paraphrase')
+  paraphraseCheck(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.paraphrase.check(user.id, id);
   }
 
   @Get('documents/:id/versions')
