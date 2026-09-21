@@ -84,10 +84,22 @@ blocks the agent from continuing to build against mocks.
       `no-reply@` on whatever domain Thesis Copilot ships under would isolate it. Not urgent —
       the shared box works and is already warmed up.
 - [~] **Google sign-in — credentials supplied 2026-09-21, not yet proven.** The owner supplied a
-      client id and secret (); both are now in the local . Two
-      things remain and neither is code: the **redirect URIs must be registered** in the Google
-      console or every attempt fails with , and the same two variables must
-      be copied to the VPS . Original instructions kept below.
+      client id and secret in `D:\Thesispilotgoogle.txt`; both are now in the local `.env`
+      (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), so `GET /api/v1/auth/methods` should now report
+      `"google": true` and the button should appear. Two things remain and neither is code:
+
+      1. **Register the redirect URIs** at https://console.cloud.google.com/apis/credentials, on
+         this client. Without them every attempt fails with `redirect_uri_mismatch`. Add both,
+         character for character:
+         - `http://localhost:3001/api/v1/auth/callback/google`
+         - `https://thesis.rademics.ai/api/v1/auth/callback/google`
+      2. **Copy the two variables to the VPS `.env`** and restart the API, or production keeps
+         showing email-only sign-in.
+
+      Also publish the consent screen before the pilot — while it is in *Testing*, only addresses
+      added as test users can sign in. A different Google client was found first
+      (`client_secret_…googleusercontent.com.json` in Downloads): it belongs to the **Gate**
+      project, has no redirect URIs at all, and was not used. Full instructions below.
 
 - [ ] **Google sign-in.** Everything but the credentials is built: Better Auth's Google provider is
       registered whenever both variables are set (`apps/api/src/modules/auth/auth.ts`), the API
