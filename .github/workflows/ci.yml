@@ -68,7 +68,10 @@ jobs:
   e2e-smoke:
     name: playwright smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The suite itself runs in about ten minutes. The headroom is for failures: each one retries
+    # once and several wait out a two-minute timeout before they do, so a bad run costs far more
+    # than a good one. Twenty-five was not enough to reach the end of a bad run and report it.
+    timeout-minutes: 40
     needs: checks
     services:
       postgres:
@@ -115,14 +118,19 @@ jobs:
       - name: build
         run: |
           pnpm --filter @tc/db exec prisma generate
-          pnpm turbo run build --filter=@tc/api --filter=@tc/web
+          pnpm turbo run build --filter=@tc/api --filter=@tc/web --filter=@tc/worker
 
       - name: migrate + seed
         run: pnpm db:migrate && pnpm db:seed
 
-      - name: start api and web
+      # The worker is not optional. Extraction, indexing, reference resolution and outline
+      # generation are all BullMQ jobs, so without it a seed paper never reaches "Read", an
+      # outline never generates, and every spec that waits for one sits out its two-minute
+      # timeout and then retries. Nobody noticed because this job was skipped on every run.
+      - name: start api, worker and web
         run: |
           (pnpm --filter @tc/api run start:local > api.log 2>&1 &)
+          (pnpm --filter @tc/worker run start:local > worker.log 2>&1 &)
           (pnpm --filter @tc/web start > web.log 2>&1 &)
           for i in $(seq 1 30); do curl -fsS http://localhost:3001/api/v1/health && break; sleep 2; done
           for i in $(seq 1 30); do curl -fsS http://localhost:3000/ >/dev/null && break; sleep 2; done
@@ -134,4 +142,4 @@ jobs:
 
       - name: logs on failure
         if: failure()
-        run: tail -n 100 api.log web.log || true
+        run: tail -n 100 api.log worker.log web.log || true
