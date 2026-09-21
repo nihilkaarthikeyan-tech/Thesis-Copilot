@@ -3276,3 +3276,87 @@ Evidence: `packages/ui/test/review.spec.ts` (13), `apps/web/test/diff.spec.ts` (
 `setup-checklist.spec.ts`, `review-panel.spec.ts` (two, one of which makes a real model call
 through the panel's own button, because a suggestion inserted by the test would not prove the
 button works).
+
+## Driving it in a browser — 2026-09-21, second batch
+
+`docs/ROADMAP.md` opens with the rule this batch exists to obey: *a feature is not done when it
+is written, it is done when it has been driven in a browser and the artefact it produces has been
+opened.* Four things on its "Now" list had never been. Driving them found six faults, none of
+which any of the 1,400 passing tests could have found, and one of which had been red in CI for
+three commits.
+
+### CI had been failing since the first deploy, and not because of the code
+
+`docker.io/minio/minio` 404s: MinIO retired their Docker Hub images in 2025. Thirteen test files
+need a MinIO container and all thirteen failed to boot. The compose files had been moved to
+quay.io during the first real deploy, when the same 404 stopped the stack coming up; the test
+harness and the CI workflow were missed, and every local machine already had the image cached.
+
+It took three red runs to notice because `ceiling.spec.ts` tore down with `h.stop()` where every
+other spec has `h?.stop()`. A failed boot therefore surfaced as *"Cannot read properties of
+undefined (reading 'stop')"* — the last error printed and nothing to do with the first.
+
+Then one spec still failed with `503 Service Unavailable` from the Docker daemon: at the runner's
+core count, twelve Postgres/Redis/MinIO stacks were being asked for at once. `maxWorkers: 3`.
+
+### The submitted thesis: three faults, none of them in the exporter
+
+The chapter export was proven in the earlier batch. `thesisToDocx` — the file that actually goes
+to an examiner — had never been run with a real figure in it.
+
+- **Inserting a block deletes the block you inserted last.** Upload a figure, click "Insert
+  table", and the figure is gone: no message, nothing on screen. ProseMirror leaves a selectable
+  block *selected*, and the next insertion replaces the selection. Both inserters had their own
+  copy and both had it, in both orders — the figure ate the equation, the table ate the figure.
+
+  The position is the whole difficulty, because `replaceSelectionWith` may split the block the
+  caret was in. Two fixes went in and came out again. `TextSelection.near` is inherited from
+  `Selection.near`, whose `findFrom` returns a **NodeSelection** for a selectable node, so it put
+  the selection straight back on the picture. Arithmetic on `tr.selection.to`, or on
+  `tr.mapping.map(at, 1)`, lands at document level when the caret was in an empty paragraph and
+  *inside the second half of the split* when it was mid-sentence — so the figure case passed and
+  the equation case silently did not, which is the worst possible split between two callers of
+  the same helper. What works is finding the node itself: ProseMirror keeps the instance it was
+  given. One helper now, `packages/ui/src/editor/insert-block.ts`.
+
+- **The app had its own copy of `uploadImage`,** so the command in `@tc/ui` was a file nobody had
+  ever run — the third time that pattern has cost something here. The copy also set the storage
+  key through `updateAttributes`, which writes to whatever the selection is on, so a figure could
+  reach the exporter with no key and become a bracketed placeholder in the submitted thesis.
+
+- **A figure inside a table cell was dropped from the whole thesis** while the chapter export of
+  the same document showed it. `thesisToDocx` flattened each cell to inline runs and an image has
+  none. Two exporters disagreeing about one document is worse than either being wrong, because
+  whichever you check is the one that looks right.
+
+JPEG and GIF now go through the same path, with 4×3 files from a real encoder: the `wp:extent`
+ratio in the `.docx` is what proves `imageSize`'s header walkers read real dimensions rather than
+a default.
+
+One thing the browser run got wrong and the code got right: the missing display equation looked
+like a hole in `thesis.ts` and a `mathBlock` case was added for it. `thesis.ts` already had one —
+the equation was being destroyed in the editor before the save. The duplicate is gone and the
+test that pins it says so.
+
+### Chat scopes: the document scope refuses in the wrong words
+
+`web` behaves as ADR-0016 says — real OpenAlex records, an offer to add them, no assistant turn,
+no model call. `document` found a live fault. With *"The subsidy was announced in 2017."* in the
+chapter, asking "What have I written about the subsidy?" answers:
+
+> Your library does not contain enough on this. Try adding sources on: subsidy details in Chapter 1.
+
+A.4's system block says "answer the student's question using only the provided passages from their
+library" and supplies that exact refusal sentence. It was written before the document scope
+existed and the model is obeying it. Prompts are content, not code (§0.3 rule 6), so the change is
+the owner's; `docs/PENDING.md` carries the transcript and a proposal. What was ours is fixed: the
+panel no longer prints "Add sources from the Discover tab" under a refusal in a scope that never
+reads the library.
+
+### The `@` picker, and two selectors that could never match
+
+Picking a source inserts a real citation node and the bibliography gains the entry after a save.
+Writing it turned up two existing specs selecting the editor's panel tabs by `role="button"`; the
+strip is a real tablist and an explicit role replaces the implicit one, so those lines could never
+have matched. Neither spec had run far enough to find out — both stop earlier in a dev stack
+configured with real providers, because they assert the mock's canned text.
