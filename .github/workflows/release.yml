@@ -44,6 +44,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:latest
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SITE_URL=https://${{ secrets.DOMAIN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

@@ -15,10 +15,14 @@ RUN pnpm fetch
 
 FROM deps AS build
 ARG NEXT_PUBLIC_API_URL
+# The public origin of the site itself, for canonical URLs, robots.txt and sitemap.xml. It shares
+# a host with the API in production and is a different origin in development, so it is passed
+# separately rather than derived — deriving it put the API's port in the sitemap once already.
+ARG NEXT_PUBLIC_SITE_URL
 # NODE_ENV is deliberately NOT set here: pnpm install skips devDependencies under
 # NODE_ENV=production, and turbo, typescript, tailwind and next's own build tooling are devDeps.
 # It is applied to the `next build` line only. CI=true keeps pnpm non-interactive.
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} CI=true
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} CI=true
 COPY . .
 RUN pnpm install --offline --frozen-lockfile
 # Build the workspace packages the web app imports, then call next directly: the package's `build`

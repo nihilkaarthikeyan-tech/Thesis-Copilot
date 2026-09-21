@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Source_Sans_3, Spectral } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { ThemeScript } from '@/components/theme';
+import { SITE, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 /**
@@ -27,8 +28,23 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'Thesis Copilot', template: '%s · Thesis Copilot' },
-  description: 'An editor for university theses that only cites what it can show you.',
+  // A canonical origin so the same page under a preview domain does not compete with itself,
+  // and so relative URLs below resolve (GEO/AEO — see lib/site.ts).
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE.name, template: '%s · ' + SITE.name },
+  description: SITE.tagline,
+  applicationName: SITE.name,
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: SITE.name,
+    title: SITE.name,
+    description: SITE.tagline,
+    url: '/',
+    locale: 'en_IN',
+  },
+  twitter: { card: 'summary_large_image', title: SITE.name, description: SITE.tagline },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

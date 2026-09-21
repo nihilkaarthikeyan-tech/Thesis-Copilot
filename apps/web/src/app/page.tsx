@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
 import { Badge, Kbd } from '@/components/ui/primitives';
+import { FAQ, homeJsonLd } from '@/lib/site';
 
 /**
  * `/` — the marketing home (PRD §6.1, §12.3, PHASES v2 W11.3).
@@ -198,7 +199,32 @@ export default function HomePage() {
             <Link href="/sign-up">Start writing free</Link>
           </Button>
         </section>
+
+        {/* ------------------------------------------------------------ faq --
+            Real questions with answers short enough to quote whole.
+
+            This is the half of GEO/AEO that is not plumbing: an answer engine asked "can it
+            invent a citation?" will quote a sentence, so the page has to contain the sentence.
+            The same text is emitted as FAQPage JSON-LD below, and the two must stay identical —
+            marking up a claim the page does not make is how a site stops being trusted. */}
+        <section className="border-t border-line" id="faq">
+          <div className="mx-auto max-w-3xl px-6 py-14">
+            <h2 className="font-serif text-[22px] font-semibold text-ink">Questions people ask</h2>
+            <dl className="mt-6 grid gap-6">
+              {FAQ.map((item) => (
+                <div key={item.q}>
+                  <dt className="font-semibold text-ink">{item.q}</dt>
+                  <dd className="mt-1 text-[15px] leading-relaxed text-muted">{item.a}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
       </main>
+
+      {/* Structured data, last, so it can never delay the page rendering. */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON.stringify of our own constants. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: homeJsonLd() }} />
 
       {/* --------------------------------------------------------- footer -- */}
       <footer className="border-t border-line">
