@@ -21,6 +21,7 @@ import {
   COMMENT_CLASSES,
   classifySchema,
   mockClassifyResponse,
+  mockRevisionFor,
   NEEDS_INPUT_RE,
   postProcessRevision,
 } from '../src/builder/comment.js';
@@ -222,5 +223,54 @@ describe('A.13 — the classification mock', () => {
   it('only answers a CLASSIFY_COMMENT request', () => {
     expect(mockClassifyResponse.match({ action: 'ASSIST' })).toBe(false);
     expect(mockClassifyResponse.match({ action: 'CLASSIFY_COMMENT' })).toBe(true);
+  });
+});
+
+describe('mockRevisionFor — the two shapes a real A.14 answer takes', () => {
+  const requestFor = (cls: string, comment: string, target: string) => ({
+    messages: [
+      {
+        content: [
+          `<comment class="${cls}">${comment}</comment>`,
+          `<target>${target}</target>`,
+          '<context_before></context_before>',
+          '<context_after></context_after>',
+          '<passages>',
+          '</passages>',
+        ].join('\n'),
+      },
+    ],
+  });
+
+  const LONG =
+    'Uptake of drip irrigation is uneven across the two surveyed districts of Tamil Nadu.';
+
+  it('satisfies a mechanical comment from the passage itself', () => {
+    // The comments a real model can answer without new facts, and the reason this branch exists:
+    // with only the NEEDS INPUT shape, every accept path was unreachable under `AI_PROVIDER=mock`,
+    // which is how CI runs. `ReviewService.accept` refuses a revision carrying NEEDS INPUT.
+    const out = mockRevisionFor(requestFor('MECHANICAL', 'Tighten this sentence.', LONG));
+    expect(out).not.toContain('NEEDS INPUT');
+    expect(out).not.toBe(LONG);
+    // Nothing invented: every word was already the student's.
+    for (const word of out.replace(/[.!?]$/, '').split(/\s+/)) {
+      expect(LONG).toContain(word);
+    }
+  });
+
+  it('leaves a passage with nothing to tighten alone', () => {
+    const short = 'The pump is expensive.';
+    expect(mockRevisionFor(requestFor('MECHANICAL', 'Tighten this.', short))).toBe(short);
+  });
+
+  it('asks the student for what only they have, for anything else', () => {
+    const out = mockRevisionFor(requestFor('SUBSTANTIVE', 'Name the two districts.', LONG));
+    expect(out).toContain(LONG);
+    expect(out).toMatch(/\[\[NEEDS INPUT: .*Name the two districts/);
+  });
+
+  it('keeps clarification comments on the NEEDS INPUT path too', () => {
+    const out = mockRevisionFor(requestFor('CLARIFICATION', 'Which survey?', LONG));
+    expect(out).toContain('NEEDS INPUT');
   });
 });

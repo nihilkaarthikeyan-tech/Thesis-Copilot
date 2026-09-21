@@ -223,16 +223,40 @@ export const mockClassifyResponse = {
   },
 };
 
+/** Under this, a passage has nothing left to tighten and the mock returns it unchanged. */
+const MOCK_TIGHTEN_WORDS = 8;
+
 /**
- * A revision that changes the minimum: it keeps the target passage and appends a
- * `[[NEEDS INPUT]]` line, because a mock cannot know what the guide wanted. That is exactly what
- * A.14 tells a real model to do when it lacks the information, so the flow the student sees —
- * review, decide, supply what is missing — is the real one.
+ * A revision, shaped the way a real answer to A.14 is shaped — which depends on what was asked.
+ *
+ * A `MECHANICAL` comment ("tighten this", "the tense is wrong") asks for something the passage's
+ * own words can satisfy, so the mock returns a shortened version of the target. Nothing is
+ * invented: the result is a subset of what the student already wrote, which is the property the
+ * product actually cares about.
+ *
+ * Anything else keeps the target and appends a `[[NEEDS INPUT]]` line, because a mock cannot know
+ * what a supervisor meant by "name the two districts". That is what A.14 tells a real model to do
+ * when it lacks the information, and `ReviewService.accept` refuses to apply it — so the flow the
+ * student sees is the real one.
+ *
+ * Both halves matter for the tests. Returning only the second made every accept path
+ * unreachable under `AI_PROVIDER=mock`, which is how CI runs.
  */
 export function mockRevisionFor(req: { messages: ReadonlyArray<{ content: string }> }): string {
   const content = req.messages.at(-1)?.content ?? '';
   const target = /<target>([\s\S]*?)<\/target>/.exec(content)?.[1]?.trim() ?? '';
   const comment = /<comment[^>]*>([\s\S]*?)<\/comment>/.exec(content)?.[1]?.trim() ?? '';
+
+  if (/<comment[^>]*class="MECHANICAL"/.test(content)) {
+    const words = target.split(/\s+/).filter(Boolean);
+    if (words.length <= MOCK_TIGHTEN_WORDS) return target;
+    const tail = /[.!?]$/.exec(target)?.[0] ?? '';
+    return `${words
+      .slice(0, MOCK_TIGHTEN_WORDS)
+      .join(' ')
+      .replace(/[.,;:]$/, '')}${tail}`;
+  }
+
   const ask = comment.split(/\s+/).slice(0, 10).join(' ');
   return `${target}\n[[NEEDS INPUT: what the guide asked for — ${ask}]]`;
 }

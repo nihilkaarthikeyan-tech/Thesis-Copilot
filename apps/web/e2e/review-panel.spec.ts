@@ -51,7 +51,11 @@ test('a comment is drawn on its passage, and accepting the revision changes the 
       // Deliberately something the chapter's own words can satisfy. A comment asking for a fact
       // the thesis does not contain gets `[[NEEDS INPUT: …]]` back, and `ReviewService.accept`
       // refuses to apply it — correctly, and it would make this test about that instead.
-      body: 'Tighten this sentence; it is wordier than it needs to be.',
+      //
+      // It has to read as MECHANICAL to A.13, which is what decides whether A.14 may answer from
+      // the passage alone. Under `AI_PROVIDER=mock` — how CI runs — the classifier keys on the
+      // verbs a supervisor actually uses, and "tighten" on its own is not one of them.
+      body: 'The grammar here is off, and the sentence is wordier than it needs to be.',
       quotedText: SENTENCE,
     },
   });
