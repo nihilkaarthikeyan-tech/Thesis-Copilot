@@ -128,6 +128,19 @@ function runsFrom(
   const { spec } = input;
   const out: TextRun[] = [];
   for (const node of nodes) {
+    if (node.type === 'mathInline') {
+      // LaTeX source, not typeset maths — see `mathRun` in docx.ts for why, and note that the
+      // alternative here was the status quo, in which the equation was absent from the submitted
+      // thesis altogether.
+      out.push(
+        new TextRun({
+          text: String(node.attrs?.latex ?? ''),
+          font: 'Consolas',
+          size: pt(spec.font.sizePt),
+        }),
+      );
+      continue;
+    }
     if (node.type === 'citation') {
       const key = String(node.attrs?.key ?? '');
       out.push(
@@ -297,6 +310,23 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
             );
           }
         }
+        break;
+      }
+
+      case 'mathBlock': {
+        out.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: spacingFor(spec),
+            children: [
+              new TextRun({
+                text: String(block.attrs?.latex ?? ''),
+                font: 'Consolas',
+                size: pt(spec.font.sizePt),
+              }),
+            ],
+          }),
+        );
         break;
       }
 

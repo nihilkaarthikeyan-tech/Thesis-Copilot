@@ -78,6 +78,23 @@ const HEADING = {
   3: HeadingLevel.HEADING_3,
 } as const;
 
+/**
+ * An equation, as its LaTeX source in a monospace run.
+ *
+ * Not typeset. `docx` has no OMML support, and converting LaTeX to Office maths is a project in
+ * itself (LaTeX → MathML → OMML) rather than something to bolt on here.
+ *
+ * What this is *not* is silence. Until 2026-09-21 the exporters did not handle `mathInline` or
+ * `mathBlock` at all, so an equation a student had placed in the editor simply was not in the
+ * file they submitted — found by exporting a chapter and grepping the XML for it. Carrying the
+ * source through means the content is present, visible, and obviously an equation; a reader can
+ * see what was meant and the student can see it needs typesetting. `docs/PENDING.md` tracks doing
+ * it properly.
+ */
+function mathRun(node: PmNode): TextRun {
+  return new TextRun({ text: String(node.attrs?.latex ?? ''), font: 'Consolas' });
+}
+
 /** A citation renders as its label; an unresolved one is marked rather than silently dropped. */
 function citationLabel(node: PmNode, renderedMap: Record<string, string>): string {
   const key = typeof node.attrs?.key === 'string' ? node.attrs.key : '';
@@ -103,6 +120,10 @@ function runsFrom(nodes: readonly PmNode[], options: ExportOptions): TextRun[] {
     }
     if (node.type === 'hardBreak') {
       runs.push(new TextRun({ text: '', break: 1 }));
+      continue;
+    }
+    if (node.type === 'mathInline') {
+      runs.push(mathRun(node));
       continue;
     }
     if (typeof node.text !== 'string') continue;
@@ -198,6 +219,10 @@ function paragraphsFrom(
 
     case 'table':
       out.push(tableFrom(node, options));
+      break;
+
+    case 'mathBlock':
+      out.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [mathRun(node)] }));
       break;
 
     case 'image': {

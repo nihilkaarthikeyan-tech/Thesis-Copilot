@@ -69,6 +69,94 @@ function useEditorTick(editor: Editor | null): void {
   }, [editor]);
 }
 
+/**
+ * A one-field ask, inline, where `window.prompt` would otherwise go.
+ *
+ * `GuidedInput` already established this pattern for the Shift+→ instruction, for the reason
+ * written there: a native prompt steals focus from the document and blocks the whole page. The
+ * first draft of this toolbar used `window.prompt` for links and equations anyway, which
+ * contradicted a decision this codebase had already taken. This is the same idea, parameterised
+ * by what is being asked for, and kept local because the shape it needs — a starting value, and a
+ * caller that acts on the answer rather than awaiting a promise — differs from the guided one.
+ */
+type Ask = { label: string; hint: string; initial: string; onDone: (value: string | null) => void };
+
+function useInlinePrompt() {
+  const [ask, setAsk] = useState<Ask | null>(null);
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ask) inputRef.current?.focus();
+  }, [ask]);
+
+  const open = useCallback((next: Omit<Ask, 'onDone'> & { onDone: Ask['onDone'] }) => {
+    setValue(next.initial);
+    setAsk(next);
+  }, []);
+
+  const close = useCallback(
+    (result: string | null) => {
+      ask?.onDone(result);
+      setAsk(null);
+      setValue('');
+    },
+    [ask],
+  );
+
+  const element = ask ? (
+    // A plain div with an explicit Enter handler and a visible Apply button, rather than a
+    // `<form>` whose only affordance was implicit submission. Both routes are exercised and both
+    // work; the button exists because a control you can only operate by guessing at a keystroke
+    // is a control most people will not operate.
+    <div
+      data-testid="inline-prompt"
+      // Positioned against the toolbar, not the viewport. `fixed` was wrong twice over: the
+      // toolbar sets `backdrop-blur`, which makes it a containing block for fixed descendants —
+      // so the panel landed above the bar instead of where the class said — and anchoring to the
+      // button that opened it is the behaviour actually wanted.
+      className="absolute left-1/2 top-full z-40 mt-1 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 rounded-md border border-line bg-surface p-3 shadow-lg"
+    >
+      <label className="text-xs text-muted" htmlFor="inline-prompt-field">
+        {ask.label}
+      </label>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          id="inline-prompt-field"
+          ref={inputRef}
+          className="min-w-0 flex-1 rounded-md border border-line-strong bg-paper px-3 py-2 text-sm text-ink"
+          placeholder={ask.hint}
+          maxLength={500}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              close(null);
+            }
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              close(value.trim());
+            }
+          }}
+        />
+        <button
+          type="button"
+          data-testid="inline-prompt-apply"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => close(value.trim())}
+          className="shrink-0 rounded-md bg-accent px-3 py-2 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+        >
+          Apply
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-muted">Enter to apply · Esc to cancel</p>
+    </div>
+  ) : null;
+
+  return { open, element };
+}
+
 /** One icon button. `active` is the mark/node state, `disabled` is "the command cannot run here". */
 function Tool({
   label,
@@ -167,34 +255,43 @@ export function FormatToolbar({
   useEditorTick(editor);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const prompt = useInlinePrompt();
 
   const setLink = useCallback(() => {
     if (!editor) return;
-    const existing = (editor.getAttributes('link').href as string | undefined) ?? '';
-    const href = window.prompt('Link address', existing);
-    if (href === null) return;
-    if (href.trim() === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-    // Default to https rather than letting a bare "example.com" become a relative link inside the
-    // app, which is what the browser would otherwise resolve it to.
-    const url = /^[a-z][a-z0-9+.-]*:/i.test(href.trim()) ? href.trim() : `https://${href.trim()}`;
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-  }, [editor]);
+    prompt.open({
+      label: 'Link address',
+      hint: 'example.com/paper',
+      initial: (editor.getAttributes('link').href as string | undefined) ?? '',
+      onDone: (href) => {
+        if (href === null) return; // cancelled — leave the link as it was
+        if (href === '') {
+          editor.chain().focus().extendMarkRange('link').unsetLink().run();
+          return;
+        }
+        // Default to https rather than letting a bare "example.com" become a relative link inside
+        // the app, which is what the browser would otherwise resolve it to.
+        const url = /^[a-z][a-z0-9+.-]*:/i.test(href) ? href : `https://${href}`;
+        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+      },
+    });
+  }, [editor, prompt]);
 
   const insertMath = useCallback(
     (kind: 'inline' | 'block') => {
       if (!editor) return;
-      const latex = window.prompt(
-        kind === 'inline' ? 'Equation (LaTeX), e.g. E = mc^2' : 'Display equation (LaTeX)',
-        '',
-      );
-      if (!latex || latex.trim() === '') return;
-      if (kind === 'inline') editor.chain().focus().insertMathInline(latex.trim()).run();
-      else editor.chain().focus().insertMathBlock(latex.trim()).run();
+      prompt.open({
+        label: kind === 'inline' ? 'Equation (LaTeX)' : 'Display equation (LaTeX)',
+        hint: 'E = mc^2',
+        initial: '',
+        onDone: (latex) => {
+          if (!latex) return;
+          if (kind === 'inline') editor.chain().focus().insertMathInline(latex).run();
+          else editor.chain().focus().insertMathBlock(latex).run();
+        },
+      });
     },
-    [editor],
+    [editor, prompt],
   );
 
   if (!editor) return null;
@@ -208,6 +305,8 @@ export function FormatToolbar({
       aria-label="Formatting"
       className={cn(
         'sticky top-0 z-20 -mx-6 mb-4 border-b border-line bg-paper/95 px-6 py-1.5 backdrop-blur',
+        // `relative` so the inline prompt below anchors to this bar.
+        'relative',
         className,
       )}
     >
@@ -423,6 +522,7 @@ export function FormatToolbar({
           </>
         ) : null}
       </div>
+      {prompt.element}
     </div>
   );
 }

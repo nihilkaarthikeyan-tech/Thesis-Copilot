@@ -312,11 +312,16 @@ live word count that also shows the AI share. Following the figure through to th
 three separate faults that would each have silently dropped it from the submitted `.docx`; all
 fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
-- [ ] **Prove the toolbar in a browser.** Typecheck, lint and unit tests are clean and it has
-      **not** been driven in a real browser — the dev Docker stack was down when it was built, and
-      the hard-won rule in `CLAUDE.md` exists because four faults so far were invisible to every
-      other kind of test. Insert a table, an equation and a figure, export the chapter, and open
-      the `.docx`. Until that is done this feature is "written", not "working".
+- [x] **Prove the toolbar in a browser.** Done 2026-09-21. Signed in, inserted a 3x3 table, an
+      inline equation, a display equation and a figure, then exported the chapter and read the
+      .docx XML: one PNG in word/media, the table present, both equations present, and zero
+      [image] placeholders. It found two faults that no other test would have.
+- [ ] **Typeset equations properly in the export.** They currently go into the .docx as their
+      LaTeX source in a monospace run. That is a deliberate floor, not the finish: before
+      2026-09-21 an equation was simply absent from the submitted file, and carrying the source
+      through at least means the content is there and visibly an equation. Doing it properly is
+      LaTeX → MathML → OMML, which is a project rather than a patch, and the `docx` package has no
+      OMML support to build on.
 - [ ] **Decide about web search in chat.** The competitor offers "Web Ask" alongside a library
       search. We deliberately do not, and it is not a small addition: PRD §10.6 says the model may
       only cite passages present in the request, and everything not in the library is stripped and
