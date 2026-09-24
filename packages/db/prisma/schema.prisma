@@ -125,6 +125,7 @@ model User {
   aiCalls       AiCallLog[]
   subscription  Subscription?
   guideShares   GuideShare[]
+  savedPrompts  SavedPrompt[]
   // --- PRD §12.2 account deletion ---
   /**
    * When the student asked for their account to be erased, or null if they have not.
@@ -431,6 +432,24 @@ model AuditEvent {
   createdAt  DateTime @default(now())
   @@index([kind, createdAt])
   @@index([userId, createdAt])
+}
+
+/**
+ * ADR-0019: a question the student asks often, kept to reuse in chat by typing `/`.
+ *
+ * The student's own words, sent through chat exactly as if typed — not a system prompt, and it
+ * changes nothing about grounding or metering. Per user rather than per thesis, because the
+ * questions a student reuses ("what are the limitations of this method?") travel between theses.
+ */
+model SavedPrompt {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId])
 }
 
 model UsageLedger {

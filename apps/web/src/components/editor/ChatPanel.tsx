@@ -8,11 +8,13 @@
  * replies A.4 specifies are rendered as states with an action rather than as plain text.
  */
 
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
+import { matchPrompts, promptQuery, type SavedPrompt, suggestPromptTitle } from '@/lib/prompts';
 import { cn } from '@/lib/utils';
-import { MentionChips, MentionPicker, useChatMentions } from './ChatMentions';
+import { type Mention, MentionChips, MentionPicker, useChatMentions } from './ChatMentions';
+import { PromptPicker, SavePromptForm, useSavedPrompts } from './ChatPrompts';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -115,7 +117,28 @@ export function ChatPanel({
   // `@` names the papers a question is about. Library scope only: the draft and the web search
   // have no papers of their own to name.
   const mentions = useChatMentions(documentId, scope === 'library');
-  const typingMention = scope === 'library' ? mentionQuery(draft) : null;
+  // `/` brings back a saved prompt (ADR-0019), in any scope: it only fills the box.
+  const saved = useSavedPrompts();
+  const typingPrompt = promptQuery(draft);
+  const typingMention = typingPrompt === null && scope === 'library' ? mentionQuery(draft) : null;
+  const promptOptions = typingPrompt !== null ? matchPrompts(saved.prompts, typingPrompt) : [];
+  const mentionOptions = typingMention !== null ? mentions.candidates(typingMention) : [];
+  // Escape closes a picker until the text changes; typing anything opens it again.
+  const [dismissed, setDismissed] = useState(false);
+  const pickerOpen = !dismissed && (typingPrompt !== null || typingMention !== null);
+  const optionCount = typingPrompt !== null ? promptOptions.length : mentionOptions.length;
+  const [active, setActive] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: back to the top whenever the query changes
+  useEffect(() => {
+    setActive(0);
+  }, [typingPrompt, typingMention]);
+  const [savingPrompt, setSavingPrompt] = useState<{ editing: SavedPrompt | null } | null>(null);
+  const [promptNotice, setPromptNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!promptNotice) return;
+    const timer = setTimeout(() => setPromptNotice(null), 5_000);
+    return () => clearTimeout(timer);
+  }, [promptNotice]);
   const [webResults, setWebResults] = useState<WebResult[] | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
@@ -132,6 +155,7 @@ export function ChatPanel({
     setBusy(true);
     setError(null);
     setDraft('');
+    setSavingPrompt(null);
 
     // The web scope is not a conversation. It returns papers, so it does not join the thread,
     // does not stream, and costs no cap unit — there is no model call behind it.
@@ -254,6 +278,82 @@ export function ChatPanel({
       setAdding(null);
     }
   }
+
+  function pickMention(mention: Mention) {
+    mentions.add(mention);
+    // The `@query` was only ever a way to choose; it is not part of the question.
+    setDraft(dropMentionQuery);
+  }
+
+  /** A saved prompt goes into the box, not straight to the model: it can still be changed. */
+  function applyPrompt(prompt: SavedPrompt) {
+    setDraft(prompt.body);
+    setDismissed(false);
+  }
+
+  function editPrompt(prompt: SavedPrompt) {
+    setDraft(prompt.body);
+    setSavingPrompt({ editing: prompt });
+  }
+
+  async function deletePrompt(prompt: SavedPrompt) {
+    try {
+      await saved.remove(prompt.id);
+      setPromptNotice(`Deleted “${prompt.title}”.`);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'That prompt was not deleted.',
+      );
+    }
+  }
+
+  async function submitPrompt(title: string) {
+    const body = draft.trim();
+    if (!body) throw new Error('Type the prompt’s text in the box first.');
+    const editing = savingPrompt?.editing ?? null;
+    if (editing) {
+      await saved.update(editing.id, { title, body });
+      setPromptNotice(`Updated “${title}”.`);
+    } else {
+      await saved.save(title, body);
+      setPromptNotice(`Saved “${title}”. Type / to use it.`);
+    }
+    setSavingPrompt(null);
+  }
+
+  /** The arrow keys and Enter drive whichever picker is open; Escape closes it. */
+  function onBoxKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!pickerOpen) return;
+    if (event.key === 'ArrowDown' && optionCount > 0) {
+      event.preventDefault();
+      setActive((i) => (i + 1) % optionCount);
+    } else if (event.key === 'ArrowUp' && optionCount > 0) {
+      event.preventDefault();
+      setActive((i) => (i - 1 + optionCount) % optionCount);
+    } else if (event.key === 'Enter') {
+      const index = Math.min(active, optionCount - 1);
+      if (typingPrompt !== null) {
+        // Never send "/lim" as a question. Escape first to send text that starts with a slash.
+        event.preventDefault();
+        const prompt = promptOptions[index];
+        if (prompt) applyPrompt(prompt);
+      } else {
+        const mention = mentionOptions[index];
+        if (mention) {
+          event.preventDefault();
+          pickMention(mention);
+        }
+      }
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setDismissed(true);
+    }
+  }
+
+  const canSavePrompt =
+    draft.trim().length > 0 && typingPrompt === null && savingPrompt === null && !busy;
 
   async function saveFilters(next: Filters) {
     setFilters(next);
@@ -435,15 +535,22 @@ export function ChatPanel({
         <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />
       ) : null}
       <form onSubmit={ask} className="relative mt-2 flex gap-2 border-t border-line pt-2">
-        {typingMention !== null ? (
+        {pickerOpen && typingPrompt !== null ? (
+          <PromptPicker
+            options={promptOptions}
+            query={typingPrompt}
+            active={active}
+            onPick={applyPrompt}
+            onEdit={editPrompt}
+            onDelete={deletePrompt}
+          />
+        ) : null}
+        {pickerOpen && typingMention !== null ? (
           <MentionPicker
             query={typingMention}
-            candidates={mentions.candidates}
-            onPick={(mention) => {
-              mentions.add(mention);
-              // The `@query` was only ever a way to choose; it is not part of the question.
-              setDraft(dropMentionQuery);
-            }}
+            options={mentionOptions}
+            active={active}
+            onPick={pickMention}
           />
         ) : null}
         <label className="sr-only" htmlFor="chat-message">
@@ -454,12 +561,13 @@ export function ChatPanel({
           value={draft}
           disabled={busy}
           maxLength={2000}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={
-            scope === 'library' && mentions.hasLibrary
-              ? `${SCOPE_PLACEHOLDER[scope]}  (@ to name a paper)`
-              : SCOPE_PLACEHOLDER[scope]
-          }
+          autoComplete="off"
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setDismissed(false);
+          }}
+          onKeyDown={onBoxKeyDown}
+          placeholder={SCOPE_PLACEHOLDER[scope]}
           className="h-9 flex-1 rounded-md border border-line px-2 text-sm"
         />
         <button
@@ -470,6 +578,34 @@ export function ChatPanel({
           {busy ? '…' : 'Ask'}
         </button>
       </form>
+      {savingPrompt ? (
+        <SavePromptForm
+          key={savingPrompt.editing?.id ?? 'new'}
+          initialTitle={savingPrompt.editing?.title ?? suggestPromptTitle(draft)}
+          editing={savingPrompt.editing !== null}
+          onSubmit={submitPrompt}
+          onCancel={() => setSavingPrompt(null)}
+        />
+      ) : (
+        <div className="mt-1 flex min-h-6 items-center justify-between gap-2 px-1 text-[11px] text-faint">
+          <span data-testid="chat-box-hint" aria-live="polite">
+            {promptNotice ??
+              (scope === 'library' && mentions.hasLibrary
+                ? '@ names a paper · / uses a saved prompt'
+                : '/ uses a saved prompt')}
+          </span>
+          {canSavePrompt ? (
+            <button
+              type="button"
+              data-testid="save-prompt"
+              onClick={() => setSavingPrompt({ editing: null })}
+              className="shrink-0 text-muted underline hover:text-ink"
+            >
+              Save as prompt
+            </button>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

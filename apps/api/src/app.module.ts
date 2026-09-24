@@ -20,6 +20,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { InstitutionModule } from './modules/institution/institution.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
+import { PromptsModule } from './modules/prompts/prompts.module.js';
 import { SourcesModule } from './modules/sources/sources.module.js';
 import { UsageModule } from './modules/usage/usage.module.js';
 
@@ -63,6 +64,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     ChaptersModule,
     AssistModule,
     SourcesModule,
+    PromptsModule,
     MemoryModule,
     AdminModule,
     InstitutionModule,

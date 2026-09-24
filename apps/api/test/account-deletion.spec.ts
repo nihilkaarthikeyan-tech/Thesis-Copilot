@@ -130,6 +130,13 @@ async function seedWork(): Promise<string> {
   await h.prisma.usageLedger.create({
     data: { userId: h.userId, action: 'ASSIST', period: '2026-09', count: 1 },
   });
+  await h.prisma.savedPrompt.create({
+    data: {
+      userId: h.userId,
+      title: 'Limitations',
+      body: 'What limitations do the authors admit?',
+    },
+  });
 
   return document.id;
 }
@@ -255,6 +262,7 @@ describe('erasing', () => {
     expect(await h.prisma.documentVersion.count({ where: { documentId } })).toBe(0);
     expect(await h.prisma.aiCallLog.count({ where: { userId: h.userId } })).toBe(0);
     expect(await h.prisma.usageLedger.count({ where: { userId: h.userId } })).toBe(0);
+    expect(await h.prisma.savedPrompt.count({ where: { userId: h.userId } })).toBe(0);
 
     // Kept — §12.2's "billing records as required by law", and the proof it was asked for.
     expect(await h.prisma.subscription.count({ where: { userId: h.userId } })).toBe(1);

@@ -201,6 +201,8 @@ export class DeletionService {
       await tx.usageLedger.deleteMany({ where: { userId } });
       await tx.session.deleteMany({ where: { userId } });
       await tx.account.deleteMany({ where: { userId } });
+      // The student's own words (ADR-0019), not a billing record.
+      await tx.savedPrompt.deleteMany({ where: { userId } });
 
       // Kept: Subscription and AuditEvent. §12.2's "billing records as required by law", and the
       // proof that this erasure was asked for and carried out.

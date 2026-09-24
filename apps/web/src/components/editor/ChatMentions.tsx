@@ -13,7 +13,7 @@
  * the picker hiding it and the student wondering where their paper went.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { mentionLabel } from '@/lib/mentions';
 
@@ -107,14 +107,16 @@ export function MentionChips({
 
 export function MentionPicker({
   query,
-  candidates,
+  options,
+  active,
   onPick,
 }: {
   query: string;
-  candidates: (query: string) => Mention[];
+  options: readonly Mention[];
+  /** The option Enter would pick, moved with the arrow keys from the box. */
+  active: number;
   onPick: (mention: Mention) => void;
 }) {
-  const options = useMemo(() => candidates(query), [candidates, query]);
   return (
     <div
       data-testid="chat-mention-picker"
@@ -126,15 +128,18 @@ export function MentionPicker({
         </p>
       ) : (
         <ul className="grid list-none p-0">
-          {options.map((option) => (
+          {options.map((option, index) => (
             <li key={option.id}>
               <button
                 type="button"
                 data-testid="chat-mention-option"
+                aria-current={index === active ? 'true' : undefined}
                 // Keeps the focus in the box, so typing carries on after a pick.
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => onPick(option)}
-                className="w-full rounded px-2 py-1 text-left text-[13px] hover:bg-sunk"
+                className={`w-full rounded px-2 py-1 text-left text-[13px] hover:bg-sunk ${
+                  index === active ? 'bg-sunk' : ''
+                }`}
               >
                 {option.label}
                 {option.readable ? null : (
