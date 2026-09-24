@@ -64,7 +64,11 @@ const event = (
         status: over.status ?? 'active',
         plan_id: 'plan_test',
         current_start: over.current_start ?? 1_780_000_000,
-        current_end: over.current_end ?? 1_790_000_000,
+        // A period that is still running. This was the constant 1_790_000_000 (2026-09-21) and
+        // on 2026-09-24, three days of grace later, "a halted payment keeps the plan" started
+        // failing in CI and locally with no code change: the fixture had aged out of the grace
+        // period. A test about "still within the period" has to say so relative to today.
+        current_end: over.current_end ?? Math.floor(Date.now() / 1000) + 30 * 86_400,
         notes: null,
       },
     },
@@ -145,13 +149,14 @@ describe('the signature is the authentication', () => {
 
 describe('applying an event', () => {
   it('activates the subscription and moves the plan the cap check reads', async () => {
-    const response = await post(event('subscription.charged'));
+    const periodEnd = Math.floor(Date.now() / 1000) + 30 * 86_400;
+    const response = await post(event('subscription.charged', { current_end: periodEnd }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ ok: true, applied: true });
 
     const row = await subscription();
     expect(row.status).toBe('active');
-    expect(row.currentPeriodEnd.toISOString()).toBe(new Date(1_790_000_000 * 1000).toISOString());
+    expect(row.currentPeriodEnd.toISOString()).toBe(new Date(periodEnd * 1000).toISOString());
     expect(await plan()).toBe('STUDENT_MONTHLY');
   });
 

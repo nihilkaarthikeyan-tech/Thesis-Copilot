@@ -238,6 +238,10 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
 - **Gate a commit on lint's exit code, never through a pipe.** `pnpm lint | tail` returns
   `tail`'s status, and twice a failing lint reached a commit that way. Use
   `if pnpm lint > log 2>&1; then git commit …; fi`.
+- **A fixed date in a fixture is a test with an expiry.** `billing-webhook.spec.ts` defaulted a
+  period end to the constant 2026-09-21; three days of grace later every CI run went red with
+  no code change, and the browser job behind it stopped running. A fixture that means "still
+  in the future" must say so relative to `Date.now()`.
 - **Never write a regex through a Python heredoc.** `\b` in a Python string is a literal backspace
   byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
   matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a

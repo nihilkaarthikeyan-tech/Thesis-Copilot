@@ -38,17 +38,21 @@ were invisible to typecheck, lint and 1,200 passing tests.
 
 ## Next — things a student will hit
 
-- [ ] **A figure caption.** `ThesisImage` has a `caption` attribute, the exporters number figures
-      from the template (`Figure 3.2`), and nothing in the editor lets anyone type one. Same shape
-      of gap as the toolbar: the schema is ahead of the UI.
-- [ ] **Table header/caption controls.** Tables insert with a header row and there is no way to
-      toggle it, merge cells or caption the table, though `mergeCells`/`splitCell` exist in the
+- [x] **A figure caption.** Done 2026-09-24 (d1887a4): a Caption button on the toolbar for the
+      selected figure or the table the cursor is in, one caption rule for every exporter and the
+      compliance check (`packages/export/src/captions.ts`). Building it found that every
+      submitted thesis had been captioning figures with the uploaded file's name.
+- [ ] **Table header and merge controls.** The caption is done (above); there is still no way to
+      toggle the header row or merge cells, though `mergeCells`/`splitCell` exist in the
       extension.
 - [ ] **Paste an image.** The toolbar has a file picker; pasting a screenshot — which is how
       figures actually arrive — does nothing.
-- [ ] **Re-sign expired figure URLs.** `GET /chapters/:id/figures/link` exists and nothing calls
-      it. A chapter reopened after the signed URL expires will show broken images until someone
-      does.
+- [x] **Re-sign expired figure URLs.** Done 2026-09-24 (53179b2). It was worse than "until
+      someone does": every figure went blank fifteen minutes after it was added, for the student
+      and for the supervisor. The chapter read re-signs, and the image view asks for a fresh link
+      if the one it holds stops loading.
+- [x] **Charts.** Done 2026-09-24 (ADR-0027): bar or line, drawn from the student's numbers or
+      the table the cursor is in, a figure like any other, the numbers kept on it for editing.
 - [x] **An in-editor review mode.** Done 2026-09-21: a Review tab, the supervisor's comments drawn
       on the passages they are about, accept the suggested revision without leaving the chapter.
       `commentAnchor` stays inert on purpose — ADR-0017 says why.
