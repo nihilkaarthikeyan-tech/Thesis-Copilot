@@ -24,6 +24,12 @@ blocks the agent from continuing to build against mocks.
       **This is not the full answer.** It is 30 runs on three prompts, not the Appendix C.5 golden
       set, which is still blocked on the fixture papers. If the golden set contradicts it, the fast
       tier is one environment variable away from moving back.
+- [ ] **Review the citation-support prompt** (ADR-0023): `packages/ai/prompts/coh_support.md`, the
+      second prompt not taken from PRD Appendix A (the first is `cite_role.md`, ADR-0010). It decides
+      whether a cited passage supports, overstates, misrepresents or only weakly supports the
+      sentence citing it. If it reads right, add it to the PRD as A.12.5 so the file becomes a
+      verbatim copy like the others; if not, say what to change — the agent does not edit a prompt
+      on its own judgement (§0.3 rule 11).
 - [ ] **Amend the PRD for ADR-0011**: §7.2's AI SDK row (a second provider, and per-tier routing)
       and §13.3's variable list (`OPENAI_API_KEY`). Same kind of follow-up as ADR-0010's A.17.
 - [x] **Confirm the model prices** (§0.3 rule 4 — the agent must not guess a price). Done

@@ -47,6 +47,8 @@ const TYPE_LABEL: Record<string, string> = {
   TERM_DRIFT: 'Terms',
   CLAIM_CONTRADICTION: 'Contradictions',
   UNSUPPORTED_CLAIM: 'Unsupported',
+  // ADR-0023: whether the cited passage says what the sentence says it does.
+  CITATION_SUPPORT: 'Source support',
   OUTLINE_DRIFT: 'Scope',
 };
 

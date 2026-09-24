@@ -64,6 +64,9 @@ function fakes(
     sources?: Array<Record<string, unknown>>;
     existingFlags?: Array<{ id: string; status: string; fingerprint: string }>;
     answer?: (request: LlmRequest) => unknown;
+    /** ADR-0023: source chunks by id, and the rows the nearest-passage query returns. */
+    chunks?: Array<{ id: string; sourceId: string; text: string; page: number | null }>;
+    nearest?: Array<Record<string, unknown>>;
   } = {},
 ): Fakes {
   const requests: LlmRequest[] = [];
@@ -114,6 +117,11 @@ function fakes(
       },
       citation: { findMany: vi.fn(async () => options.citations ?? []) },
       source: { findMany: vi.fn(async () => options.sources ?? []) },
+      sourceChunk: {
+        findMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) =>
+          (options.chunks ?? []).filter((chunk) => where.id.in.includes(chunk.id)),
+        ),
+      },
       coherenceFlag: {
         findMany: vi.fn(async () => options.existingFlags ?? []),
         deleteMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) => {
@@ -142,7 +150,7 @@ function fakes(
       $executeRaw: vi.fn(async () => 0),
       $executeRawUnsafe: vi.fn(async () => 0),
       $queryRaw: vi.fn(async () => []),
-      $queryRawUnsafe: vi.fn(async () => []),
+      $queryRawUnsafe: vi.fn(async () => options.nearest ?? []),
       $transaction: vi.fn(async (fn: unknown) =>
         typeof fn === 'function' ? (fn as (c: unknown) => unknown)(deps.prisma) : fn,
       ),
@@ -490,5 +498,145 @@ describe('the budget guard (D.1.1 step 4)', () => {
     // A student who wrote a lot gets a smaller check, not a refusal and no answer at all.
     expect(result.reducedScope).toBe(true);
     expect(result.estimatedInr).toBeGreaterThan(0);
+  });
+});
+
+describe('the citation-support check (ADR-0023)', () => {
+  const PASSAGE =
+    'Upfront cost may explain part of the gap, although the survey could not separate cost from access to credit.';
+  const SOURCE = {
+    id: 'src-1',
+    title: 'Drip uptake',
+    doi: null,
+    isRetracted: false,
+    rawReference: null,
+    authors: [{ family: 'Kumar' }],
+    year: 2021,
+  };
+
+  /** One chapter whose one sentence cites `src-1`, with or without the passage it came from. */
+  const cited = (chunkId: string | null) => ({
+    id: 'ch-1',
+    title: 'Results',
+    order: 3,
+    changed: true,
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Results' }] },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Upfront cost always explains the whole adoption gap ' },
+            { type: 'citation', attrs: { key: 'k1', sourceId: 'src-1', chunkId } },
+            { type: 'text', text: '.' },
+          ],
+        },
+      ],
+    },
+  });
+
+  /** Answers the support call with `verdict` for every sentence it was sent; silence otherwise. */
+  const answering = (verdict: string, quote: string, extraId?: string) => (request: LlmRequest) => {
+    const text = request.messages.at(-1)?.content ?? '';
+    if (!text.includes('<support_check>')) return EMPTY_ANSWER;
+    const ids = [...text.matchAll(/<sentence id="([^"]+)">/g)].map((m) => m[1]);
+    return {
+      results: [
+        ...ids.map((sentenceId) => ({ sentenceId, verdict, why: 'the passage hedges it', quote })),
+        ...(extraId
+          ? [{ sentenceId: extraId, verdict: 'MISREPRESENTED', why: 'invented', quote: '' }]
+          : []),
+      ],
+    };
+  };
+
+  const supportFlags = (f: Fakes) => f.created.filter((flag) => flag.type === 'CITATION_SUPPORT');
+  const supportCalls = (f: Fakes) =>
+    f.requests.filter((r) => (r.messages.at(-1)?.content ?? '').includes('<support_check>'));
+
+  it('reads the passage a citation was made from, and flags an overstatement with its words', async () => {
+    const f = fakes({
+      chapters: [cited('chunk-1')],
+      sources: [SOURCE],
+      chunks: [{ id: 'chunk-1', sourceId: 'src-1', text: PASSAGE, page: 4 }],
+      answer: answering('OVERSTATED', 'Upfront cost may explain part of the gap'),
+    });
+    await runCoherence(JOB, f.deps);
+
+    const [call] = supportCalls(f);
+    expect(call?.tier).toBe('fast');
+    expect(call?.messages.at(-1)?.content).toContain(PASSAGE);
+    expect(call?.messages.at(-1)?.content).toContain('source="Kumar 2021" page="4"');
+    const [flag] = supportFlags(f);
+    expect(flag?.severity).toBe('WARN');
+    expect(String(flag?.description)).toContain('says more than the cited passage');
+    expect(String(flag?.description)).toContain('“Upfront cost may explain part of the gap”');
+  });
+
+  it('never shows a quote the passage does not contain, and softens the verdict without it', async () => {
+    const f = fakes({
+      chapters: [cited('chunk-1')],
+      sources: [SOURCE],
+      chunks: [{ id: 'chunk-1', sourceId: 'src-1', text: PASSAGE, page: 4 }],
+      answer: answering('MISREPRESENTED', 'Cost explains nothing at all'),
+    });
+    await runCoherence(JOB, f.deps);
+    const [flag] = supportFlags(f);
+    expect(flag?.severity).toBe('WARN');
+    expect(String(flag?.description)).not.toContain('Cost explains nothing');
+  });
+
+  it('finds the nearest passages of the cited source when the citation carries none', async () => {
+    const f = fakes({
+      chapters: [cited(null)],
+      sources: [SOURCE],
+      nearest: [
+        {
+          chunkId: 'chunk-9',
+          sourceId: 'src-1',
+          distance: 0.2,
+          subTheme: null,
+          groundingLevel: 'ABSTRACT',
+          text: PASSAGE,
+          page: null,
+          title: 'Drip uptake',
+          year: 2021,
+          authors: [{ family: 'Kumar' }],
+        },
+      ],
+      answer: answering('SUPPORTED', ''),
+    });
+    await runCoherence(JOB, f.deps);
+    expect(supportCalls(f)[0]?.messages.at(-1)?.content).toContain(PASSAGE);
+    // SUPPORTED is not a flag: there is nothing for the student to do.
+    expect(supportFlags(f)).toHaveLength(0);
+  });
+
+  it('skips a citation whose source has no text, rather than judging it against nothing', async () => {
+    const f = fakes({
+      chapters: [cited(null)],
+      sources: [SOURCE],
+      nearest: [],
+      answer: answering('MISREPRESENTED', ''),
+    });
+    await runCoherence(JOB, f.deps);
+    expect(supportCalls(f)).toHaveLength(0);
+    expect(supportFlags(f)).toHaveLength(0);
+  });
+
+  it('drops a verdict about a sentence it was never sent', async () => {
+    const f = fakes({
+      chapters: [cited('chunk-1')],
+      sources: [SOURCE],
+      chunks: [{ id: 'chunk-1', sourceId: 'src-1', text: PASSAGE, page: 4 }],
+      answer: answering('SUPPORTED', '', 'ch-1#s99'),
+    });
+    await runCoherence(JOB, f.deps);
+    expect(supportFlags(f)).toHaveLength(0);
+  });
+
+  it('counts its calls in the budget estimate', () => {
+    expect(estimateRun(1, 0, 60)).toBeGreaterThan(estimateRun(1, 0, 0));
   });
 });

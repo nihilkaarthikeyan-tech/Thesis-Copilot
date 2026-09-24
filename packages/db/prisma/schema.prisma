@@ -84,6 +84,7 @@ enum FlagType {
   UNSUPPORTED_CLAIM
   CITATION_INTEGRITY
   OUTLINE_DRIFT
+  CITATION_SUPPORT // ADR-0023: whether the cited passage supports what the sentence says
 }
 enum Severity {
   INFO

@@ -38,7 +38,7 @@ function findPromptsDir(from: string): string {
 
 export const PROMPTS_DIR = findPromptsDir(here);
 
-/** The 21 prompt files of Appendix A (PRD §10.5). */
+/** The 21 prompt files of Appendix A (PRD §10.5), and the two Appendix A lacks (ADR-0010, -0023). */
 export const PROMPT_NAMES = [
   '_preamble',
   '_memory',
@@ -61,9 +61,11 @@ export const PROMPT_NAMES = [
   'revise',
   'cite_parse',
   'xpaper',
-  // FR-5.6. The only prompt here that is not a verbatim copy of an Appendix A section, because
-  // Appendix A has none for it — see docs/ADR/0010-fr-5-6-prompt.md.
+  // FR-5.6. Not a verbatim copy of an Appendix A section, because Appendix A has none for it —
+  // see docs/ADR/0010-fr-5-6-prompt.md.
   'cite_role',
+  // The citation-support check, likewise with no Appendix A section — docs/ADR/0023.
+  'coh_support',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

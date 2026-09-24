@@ -27,6 +27,15 @@ export const COHERENCE = {
   neighboursPerClaim: 5,
   /** A.12.3: "Batch ≤ 40 sentences per call". */
   unsupportedBatch: 40,
+  /**
+   * ADR-0023: cited sentences per support-check call. Ten, not forty: each carries up to two
+   * passages of ~350 tokens, and a Fast call reading 7,000 tokens stays accurate.
+   */
+  supportBatch: 10,
+  /** ADR-0023: cited sentences checked per run, across all changed chapters; the rest wait. */
+  maxSupportChecks: 60,
+  /** ADR-0023: passages read per cited source — its own passage, or the two nearest the sentence. */
+  passagesPerCitation: 2,
   /** D.1.1's budget guard, in rupees. */
   budgetInr: 12,
   summaryWords: 150,
@@ -35,7 +44,7 @@ export const COHERENCE = {
 const strong = { tier: 'strong', temperature: 0 } as const;
 
 function request(
-  prompt: 'coh_term' | 'coh_claim' | 'coh_unsupported' | 'coh_outline',
+  prompt: 'coh_term' | 'coh_claim' | 'coh_unsupported' | 'coh_outline' | 'coh_support',
   user: string,
   opts: {
     tier?: 'fast' | 'strong';
@@ -249,6 +258,81 @@ export function buildUnsupportedRequest(input: {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Citation support — ADR-0023, the one coherence prompt not from Appendix A
+// ---------------------------------------------------------------------------------------------
+
+export const SUPPORT_VERDICTS = [
+  'SUPPORTED',
+  'WEAKLY_SUPPORTED',
+  'OVERSTATED',
+  'MISREPRESENTED',
+  'NOT_IN_PASSAGE',
+] as const;
+export type SupportVerdict = (typeof SUPPORT_VERDICTS)[number];
+
+export const supportSchema = z.object({
+  results: z
+    .array(
+      z.object({
+        sentenceId: z.string(),
+        verdict: z.enum(SUPPORT_VERDICTS),
+        why: z.string().max(300).default(''),
+        quote: z.string().max(600).default(''),
+      }),
+    )
+    .default([]),
+});
+export type SupportResult = z.infer<typeof supportSchema>;
+
+/** One cited sentence and the passages its citations point at. */
+export type SupportItem = {
+  sentenceId: string;
+  sentence: string;
+  passages: ReadonlyArray<{ shortRef: string; page?: number | null; text: string }>;
+};
+
+export function buildSupportRequest(input: {
+  items: readonly SupportItem[];
+  userId: string;
+  documentId: string;
+  signal?: AbortSignal;
+}): Omit<LlmRequest, 'schema'> {
+  const blocks = input.items
+    .slice(0, COHERENCE.supportBatch)
+    .map((item) =>
+      [
+        `<sentence id="${item.sentenceId}">${item.sentence}</sentence>`,
+        ...item.passages.map(
+          (p) =>
+            `<passage for="${item.sentenceId}" source="${p.shortRef}"${p.page ? ` page="${p.page}"` : ''}>${p.text}</passage>`,
+        ),
+      ].join('\n'),
+    );
+  return request('coh_support', `<support_check>\n${blocks.join('\n\n')}\n</support_check>`, {
+    tier: 'fast',
+    maxTokens: 1_500,
+    ...input,
+  });
+}
+
+/**
+ * The model's quote, if it really is in one of the passages, word for word.
+ *
+ * A verdict shown to a student as "the source says '…'" must be the source's words. A model asked
+ * to quote will sometimes paraphrase and wrap the paraphrase in quotation marks; that is dropped
+ * here rather than shown, and the flag is shown without it.
+ */
+export function verbatimQuote(
+  quote: string,
+  passages: ReadonlyArray<{ text: string }>,
+): string | null {
+  const normalise = (text: string) => text.replace(/\s+/g, ' ').trim();
+  const candidate = normalise(quote).replace(/^["'“‘]+|["'”’]+$/g, '');
+  if (candidate.length < 4) return null;
+  return passages.some((passage) => normalise(passage.text).includes(candidate)) ? candidate : null;
+}
+
+// ---------------------------------------------------------------------------------------------
 // A.12.4 OUTLINE_DRIFT
 // ---------------------------------------------------------------------------------------------
 
@@ -364,6 +448,65 @@ export const mockCoherenceResponse = {
           ? 'The summary does not mention every topic the scope note promised (mock).'
           : 'The chapter covers what its scope note promised (mock).',
       };
+    }
+
+    // ADR-0023 — each cited sentence against its passages. Only what is literally there: a figure
+    // the passages do not contain, certainty where the passage hedges, or no shared subject.
+    if (text.includes('<support_check>')) {
+      const results = [...text.matchAll(/<sentence id="([^"]+)">([\s\S]*?)<\/sentence>/g)].map(
+        ([, sentenceId, sentence]) => {
+          const passages = [
+            ...text.matchAll(
+              new RegExp(`<passage for="${sentenceId}"[^>]*>([\\s\\S]*?)</passage>`, 'g'),
+            ),
+          ].map((m) => m[1] ?? '');
+          const joined = passages.join(' ');
+          // A verbatim span to quote: the first sentence of a passage matching `pick`.
+          const quoteFrom = (pick: RegExp) => {
+            for (const passage of passages) {
+              const found = passage.split(/(?<=[.!?])\s+/).find((s) => pick.test(s));
+              if (found) return found.split(/\s+/).slice(0, 25).join(' ');
+            }
+            return '';
+          };
+          const figure = numbersIn(sentence ?? '').find(
+            (n) => numbersIn(joined).length > 0 && !numbersIn(joined).includes(n),
+          );
+          if (figure !== undefined) {
+            return {
+              sentenceId,
+              verdict: 'MISREPRESENTED',
+              why: `The passage gives a different figure from ${figure} (mock).`,
+              quote: quoteFrom(/\d/),
+            };
+          }
+          const certain = /\b(?:all|always|every|never|proves?|must)\b/i;
+          const hedged = /\b(?:may|might|some|suggests?|could|partly|in part)\b/i;
+          if (certain.test(sentence ?? '') && hedged.test(joined)) {
+            return {
+              sentenceId,
+              verdict: 'OVERSTATED',
+              why: 'The passage hedges what the sentence states outright (mock).',
+              quote: quoteFrom(hedged),
+            };
+          }
+          if (!sharesSubject(sentence ?? '', joined)) {
+            return {
+              sentenceId,
+              verdict: 'NOT_IN_PASSAGE',
+              why: 'The passages are about something else (mock).',
+              quote: '',
+            };
+          }
+          return {
+            sentenceId,
+            verdict: 'SUPPORTED',
+            why: 'The passage states it (mock).',
+            quote: '',
+          };
+        },
+      );
+      return { results };
     }
 
     // A.12.2 step 2 — claims against retrieved passages.

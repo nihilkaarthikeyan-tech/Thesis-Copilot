@@ -19,6 +19,7 @@ import {
   buildClaimsRequest,
   buildContradictionRequest,
   buildOutlineDriftRequest,
+  buildSupportRequest,
   buildTermDriftRequest,
   buildUnsupportedRequest,
   type ClaimWithPassages,
@@ -31,18 +32,24 @@ import {
   type LlmRequest,
   mightNeedSupport,
   outlineDriftSchema,
+  type SupportItem,
+  type SupportVerdict,
+  supportSchema,
   termDriftSchema,
   unsupportedSchema,
+  verbatimQuote,
 } from '@tc/ai';
 import { computeCallCost } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
 import {
   type ChapterSentence,
   chunkChapter,
+  findCandidates,
   findChapterNeighbours,
   type RawClient,
   replaceChapterChunks,
   sentencesOf,
+  shortReference,
 } from '@tc/retrieval';
 import type { CoherenceRunJob } from '@tc/types';
 import { readOutline } from '@tc/types';
@@ -80,7 +87,8 @@ type FlagDraft = {
     | 'CLAIM_CONTRADICTION'
     | 'UNSUPPORTED_CLAIM'
     | 'CITATION_INTEGRITY'
-    | 'OUTLINE_DRIFT';
+    | 'OUTLINE_DRIFT'
+    | 'CITATION_SUPPORT';
   severity: 'INFO' | 'WARN' | 'ERROR';
   description: string;
   relatedChapterId?: string | null;
@@ -197,8 +205,15 @@ export async function runCoherence(
   // D.1.1 step 2: related chapters — two glossary terms or one cited source in common.
   const related = relatedChapters(chapters, changed, glossary, citations);
 
-  // D.1.1 step 4: the budget guard runs before the first call.
-  const estimate = estimateRun(changed.length, Math.min(glossary.size, COHERENCE.maxTerms));
+  // D.1.1 step 4: the budget guard runs before the first call. Every citation in a changed
+  // chapter may be one support check (ADR-0023), so the estimate counts them, up to the bound.
+  const changedIds = new Set(changed.map((c) => c.id));
+  const citedInChanged = citations.filter((c) => changedIds.has(c.chapterId)).length;
+  const estimate = estimateRun(
+    changed.length,
+    Math.min(glossary.size, COHERENCE.maxTerms),
+    Math.min(citedInChanged, COHERENCE.maxSupportChecks),
+  );
   const reducedScope = estimate > COHERENCE.budgetInr;
   const maxClaims = reducedScope ? COHERENCE.reducedMaxClaims : COHERENCE.maxClaims;
   log({
@@ -435,6 +450,20 @@ export async function runCoherence(
     flags: drafts.length - beforeUnsupported,
   });
 
+  // ---- ADR-0023: CITATION_SUPPORT -------------------------------------------------------------
+  await progress('check-started', { type: 'CITATION_SUPPORT' });
+  const beforeSupport = drafts.length;
+  drafts.push(
+    ...(await citationSupport(deps, job, changed, sentences, counted, log, {
+      // Under D.1.1's reduced scope, half as many: the check is cheap, but not free.
+      max: reducedScope ? COHERENCE.maxSupportChecks / 2 : COHERENCE.maxSupportChecks,
+    })),
+  );
+  await progress('check-done', {
+    type: 'CITATION_SUPPORT',
+    flags: drafts.length - beforeSupport,
+  });
+
   // ---- B1.7: OUTLINE_DRIFT -------------------------------------------------------------------
   await progress('check-started', { type: 'OUTLINE_DRIFT' });
   const beforeOutline = drafts.length;
@@ -667,7 +696,14 @@ function readGlossary(value: unknown): Map<string, GlossaryEntry> {
 
 type Node = { type?: string; text?: string; attrs?: Record<string, unknown>; content?: Node[] };
 
-type CitationNode = { key: string; sourceId: string | null; from: number; to: number };
+type CitationNode = {
+  key: string;
+  sourceId: string | null;
+  /** The passage the citation was made from, when Assist or Draft made it (ADR-0023). */
+  chunkId: string | null;
+  from: number;
+  to: number;
+};
 
 /** Citation nodes with ProseMirror positions — the same walk `@tc/citations` uses. */
 function citationNodesOf(doc: unknown): CitationNode[] {
@@ -679,6 +715,7 @@ function citationNodesOf(doc: unknown): CitationNode[] {
       out.push({
         key: String(node.attrs?.key ?? ''),
         sourceId: (node.attrs?.sourceId as string | null) ?? null,
+        chunkId: (node.attrs?.chunkId as string | null) ?? null,
         from: pos,
         to: pos + 1,
       });
@@ -810,6 +847,190 @@ function locate(claim: string, sentences: readonly ChapterSentence[]): ChapterSe
   return contains ?? null;
 }
 
+/**
+ * ADR-0023: does the passage a sentence cites say what the sentence says it does?
+ *
+ * Every cited sentence in a changed chapter goes to the model with the passages its citations
+ * point at — the chunk the citation was made from when Assist or Draft made it, otherwise the
+ * source's chunks nearest the sentence. A source with no text cannot be checked and is skipped;
+ * judging a citation against nothing would be a guess. Only the verdicts that need the student
+ * are flags, and a quote is shown only if it is the passage's own words (`verbatimQuote`).
+ */
+async function citationSupport(
+  deps: CoherenceRunDeps,
+  job: CoherenceRunJob,
+  changed: readonly ChapterRow[],
+  sentences: ReadonlyMap<string, ChapterSentence[]>,
+  counted: { fast: number; strong: number },
+  log: (event: Record<string, unknown>) => void,
+  limits: { max: number },
+): Promise<FlagDraft[]> {
+  type Cited = {
+    chapterId: string;
+    at: ChapterSentence;
+    citations: Array<{ sourceId: string; chunkId: string | null }>;
+  };
+  const cited: Cited[] = [];
+  for (const chapter of changed) {
+    const nodes = citationNodesOf(chapter.content).filter((node) => node.sourceId);
+    for (const at of sentences.get(chapter.id) ?? []) {
+      if (!at.hasCitation) continue;
+      const inside = nodes.filter((node) => node.from >= at.from && node.from < at.to);
+      if (inside.length === 0) continue;
+      cited.push({
+        chapterId: chapter.id,
+        at,
+        citations: inside.map((node) => ({
+          sourceId: node.sourceId as string,
+          chunkId: node.chunkId,
+        })),
+      });
+    }
+  }
+  const toCheck = cited.slice(0, limits.max);
+  if (toCheck.length === 0) return [];
+
+  const chunkIds = [
+    ...new Set(toCheck.flatMap((c) => c.citations.map((x) => x.chunkId).filter(Boolean))),
+  ] as string[];
+  const [chunkRows, sourceRows] = await Promise.all([
+    chunkIds.length > 0
+      ? deps.prisma.sourceChunk.findMany({
+          where: { id: { in: chunkIds } },
+          select: { id: true, sourceId: true, text: true, page: true },
+        })
+      : Promise.resolve([]),
+    deps.prisma.source.findMany({
+      where: {
+        documentId: job.documentId,
+        id: { in: [...new Set(toCheck.flatMap((c) => c.citations.map((x) => x.sourceId)))] },
+      },
+      select: { id: true, authors: true, year: true, title: true },
+    }),
+  ]);
+  const chunkById = new Map(chunkRows.map((row) => [row.id, row]));
+  const shortRefOf = new Map(
+    sourceRows.map((s) => [s.id, shortReference(s.authors, s.year, s.title) ?? 'Source']),
+  );
+  const ownChunk = (citation: Cited['citations'][number]) => {
+    const row = citation.chunkId ? chunkById.get(citation.chunkId) : undefined;
+    return row && row.sourceId === citation.sourceId ? row : undefined;
+  };
+
+  // One embedding call for every sentence that needs its passages found rather than read.
+  const needNearest = toCheck.filter((c) => c.citations.some((x) => !ownChunk(x)));
+  const vectors =
+    needNearest.length > 0 ? await deps.embeddings.embed(needNearest.map((c) => c.at.text)) : [];
+  const vectorOf = new Map(needNearest.map((c, i) => [c.at.id, vectors[i]]));
+
+  const items: Array<SupportItem & { chapterId: string; at: ChapterSentence }> = [];
+  let unreadable = 0;
+  for (const c of toCheck) {
+    const passages: SupportItem['passages'][number][] = [];
+    for (const citation of c.citations) {
+      // A source removed from the library is CITATION_INTEGRITY's to report, not this check's.
+      const shortRef = shortRefOf.get(citation.sourceId);
+      if (!shortRef) continue;
+      const own = ownChunk(citation);
+      if (own) {
+        passages.push({ shortRef, page: own.page, text: own.text });
+        continue;
+      }
+      const vector = vectorOf.get(c.at.id);
+      if (!vector) continue;
+      const nearest = await findCandidates(deps.prisma as unknown as RawClient, vector, {
+        documentId: job.documentId,
+        pinnedSourceIds: [citation.sourceId],
+        limit: COHERENCE.passagesPerCitation,
+      });
+      passages.push(...nearest.map((n) => ({ shortRef, page: n.page, text: n.text })));
+    }
+    if (passages.length === 0) {
+      unreadable += 1;
+      continue;
+    }
+    items.push({
+      sentenceId: c.at.id,
+      sentence: c.at.text,
+      passages,
+      chapterId: c.chapterId,
+      at: c.at,
+    });
+  }
+
+  const out: FlagDraft[] = [];
+  for (const batch of chunksOf(items, COHERENCE.supportBatch)) {
+    const answer = await call(
+      deps,
+      job,
+      buildSupportRequest({ items: batch, userId: job.userId, documentId: job.documentId }),
+      supportSchema,
+      'fast',
+      counted,
+    );
+    if (!answer) continue;
+    const byId = new Map(batch.map((item) => [item.sentenceId, item]));
+    for (const result of answer.results) {
+      const item = byId.get(result.sentenceId);
+      // A verdict about a sentence we did not send is dropped, like an invented citation.
+      if (!item || result.verdict === 'SUPPORTED') continue;
+      const quote = verbatimQuote(result.quote, item.passages);
+      out.push({
+        chapterId: item.chapterId,
+        from: item.at.from,
+        to: item.at.to,
+        type: 'CITATION_SUPPORT',
+        ...supportFlagText(result.verdict, result.why, quote),
+        flaggedText: item.at.text,
+      });
+    }
+  }
+  log({
+    msg: 'citation support checked',
+    runId: job.runId,
+    checked: items.length,
+    unreadable,
+    waiting: cited.length - toCheck.length,
+  });
+  return out;
+}
+
+/**
+ * How each verdict reads, and how loud it is. A misrepresentation with the passage's own words to
+ * show for it is an error; without them it is a warning, because the student has only the
+ * model's word for it.
+ */
+export function supportFlagText(
+  verdict: Exclude<SupportVerdict, 'SUPPORTED'>,
+  why: string,
+  quote: string | null,
+): { severity: 'INFO' | 'WARN' | 'ERROR'; description: string } {
+  const because = why.trim() ? ` ${why.trim().replace(/\.?$/, '.')}` : '';
+  const says = quote ? ` The source says: “${quote}”` : '';
+  switch (verdict) {
+    case 'MISREPRESENTED':
+      return {
+        severity: quote ? 'ERROR' : 'WARN',
+        description: `The cited passage says something different.${because}${says}`,
+      };
+    case 'OVERSTATED':
+      return {
+        severity: 'WARN',
+        description: `This says more than the cited passage does.${because}${says}`,
+      };
+    case 'WEAKLY_SUPPORTED':
+      return {
+        severity: 'INFO',
+        description: `The cited passage is on this subject but does not say this.${because}${says}`,
+      };
+    case 'NOT_IN_PASSAGE':
+      return {
+        severity: 'INFO',
+        description: `The cited passage does not address this. The paper may say it elsewhere — check before relying on it.${because}`,
+      };
+  }
+}
+
 function chunksOf<T>(items: readonly T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
@@ -817,9 +1038,10 @@ function chunksOf<T>(items: readonly T[], size: number): T[][] {
 }
 
 /** D.1.1 step 4's estimate, from §11.2's unit costs. */
-export function estimateRun(changedChapters: number, terms: number): number {
+export function estimateRun(changedChapters: number, terms: number, citedSentences = 0): number {
   const strong = terms + changedChapters * 3; // term drift, two claim steps, outline drift
-  const fast = changedChapters * 3; // two unsupported batches + the summary
+  // Two unsupported batches and the summary per chapter, and the support checks (ADR-0023).
+  const fast = changedChapters * 3 + Math.ceil(citedSentences / COHERENCE.supportBatch);
   return Number((strong * ESTIMATE_INR.strong + fast * ESTIMATE_INR.fast).toFixed(2));
 }
 
