@@ -37,6 +37,7 @@ import {
   TextRun,
   WidthType,
 } from 'docx';
+import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
 
 export type ThesisChapter = {
   id: string;
@@ -427,10 +428,10 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
 
       case 'image': {
         counters.figure += 1;
-        const caption = renderLabel(spec.captions.figure.format, {
-          chapter: chapter.order,
-          n: counters.figure,
-        }).replace('{caption}', String(block.attrs?.alt ?? ''));
+        const caption = withCaption(
+          renderLabel(spec.captions.figure.format, { chapter: chapter.order, n: counters.figure }),
+          captionOf(block),
+        );
         // `key` is the stable storage path; `src` is a signed URL that has almost certainly
         // expired by export time, so it is only a fallback for documents written before figures
         // carried keys.
@@ -446,10 +447,10 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
 
       case 'table': {
         counters.table += 1;
-        const caption = renderLabel(spec.captions.table.format, {
-          chapter: chapter.order,
-          n: counters.table,
-        }).replace('{caption}', String(block.attrs?.caption ?? ''));
+        const caption = withCaption(
+          renderLabel(spec.captions.table.format, { chapter: chapter.order, n: counters.table }),
+          captionOf(block),
+        );
         const captionLine = centred(caption, spec, spec.font.sizePt - 1);
         const rows = (block.content ?? []).map(
           (row) =>
@@ -650,7 +651,10 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
 
   const chapters = [...input.chapters]
     .sort((a, b) => a.order - b.order)
-    .map((chapter) => ({ ...chapter, content: withoutPendingDrafts(chapter.content) }));
+    .map((chapter) => ({
+      ...chapter,
+      content: withCaptionsResolved(withoutPendingDrafts(chapter.content)),
+    }));
   const bodyChildren: Array<Paragraph | Table> = chapters.flatMap((chapter) =>
     chapterBlocks(chapter, input),
   );

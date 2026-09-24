@@ -22,6 +22,7 @@ import {
   TableRow,
   TextRun,
 } from 'docx';
+import { captionOf } from './captions.js';
 
 type PmMark = { type?: string; attrs?: Record<string, unknown> };
 type PmNode = {
@@ -279,12 +280,13 @@ function paragraphsFrom(
         // A missing image must not corrupt the file; the student sees where it was.
         out.push(new Paragraph({ children: [new TextRun({ text: '[image]', italics: true })] }));
       }
-      const alt = typeof node.attrs?.alt === 'string' ? node.attrs.alt : '';
-      if (alt) {
+      // The caption the student wrote, never the uploaded file's name.
+      const caption = captionOf(node);
+      if (caption) {
         out.push(
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: alt, italics: true, size: 20 })],
+            children: [new TextRun({ text: caption, italics: true, size: 20 })],
           }),
         );
       }

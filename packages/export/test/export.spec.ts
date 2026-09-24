@@ -157,11 +157,19 @@ describe('chapterToDocx (FR-8.1)', () => {
   it('survives a missing image rather than writing a broken file', async () => {
     const withImage = {
       type: 'doc',
-      content: [{ type: 'image', attrs: { src: 'images/gone.png', alt: 'A chart' } }],
+      content: [
+        {
+          type: 'image',
+          attrs: { src: 'images/gone.png', alt: 'gone.png', caption: 'A chart' },
+        },
+      ],
     };
     const buffer = await chapterToDocx(withImage, { title: 'Chapter' });
     expect(buffer.subarray(0, 2).toString()).toBe('PK');
+    // The placeholder, and the caption the student wrote — never the file name.
+    expect(documentXml(buffer)).toContain('[image]');
     expect(documentXml(buffer)).toContain('A chart');
+    expect(documentXml(buffer)).not.toContain('gone.png');
   });
 });
 

@@ -14,6 +14,7 @@
 
 import { formatRef, numberingMap } from '@tc/types';
 import katex from 'katex';
+import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
 import { renderLabel, type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
 type Node = {
@@ -209,10 +210,10 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
           break;
         }
         ctx.figureCount.n += 1;
-        const caption = renderLabel(spec.captions.figure.format, {
-          chapter: ctx.chapter,
-          n: ctx.figureCount.n,
-        }).replace('{caption}', String(node.attrs?.alt ?? ''));
+        const caption = withCaption(
+          renderLabel(spec.captions.figure.format, { chapter: ctx.chapter, n: ctx.figureCount.n }),
+          captionOf(node),
+        );
         const id = `fig-${ctx.chapter}-${ctx.figureCount.n}`;
         ctx.figures.push({ id, caption });
         const figcaption = `<figcaption>${escapeHtml(caption)}</figcaption>`;
@@ -224,10 +225,10 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
       }
       case 'table': {
         ctx.tableCount.n += 1;
-        const caption = renderLabel(spec.captions.table.format, {
-          chapter: ctx.chapter,
-          n: ctx.tableCount.n,
-        }).replace('{caption}', String(node.attrs?.caption ?? ''));
+        const caption = withCaption(
+          renderLabel(spec.captions.table.format, { chapter: ctx.chapter, n: ctx.tableCount.n }),
+          captionOf(node),
+        );
         const id = `tab-${ctx.chapter}-${ctx.tableCount.n}`;
         ctx.tables.push({ id, caption });
         const rows = (node.content ?? [])
@@ -382,7 +383,10 @@ export function thesisToHtml(input: HtmlExportInput): string {
   const { spec } = input;
   const chapters = [...input.chapters]
     .sort((a, b) => a.order - b.order)
-    .map((chapter) => ({ ...chapter, content: withoutPendingDrafts(chapter.content) }));
+    .map((chapter) => ({
+      ...chapter,
+      content: withCaptionsResolved(withoutPendingDrafts(chapter.content)),
+    }));
 
   const figures: ChapterContext['figures'] = [];
   const tables: ChapterContext['tables'] = [];

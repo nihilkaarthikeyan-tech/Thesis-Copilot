@@ -502,9 +502,10 @@ describe('the readers the checks are built on', () => {
         ],
       },
     });
+    // The caption's words, as the exporters print them after the template's own "Figure 1.1:".
     expect(rows).toEqual([
-      { kind: 'figure', caption: 'Figure 1.1: Drying curve', chapterTitle: 'Results' },
-      { kind: 'table', caption: 'Table 1.1: Moisture by season', chapterTitle: 'Results' },
+      { kind: 'figure', caption: 'Drying curve', chapterTitle: 'Results' },
+      { kind: 'table', caption: 'Moisture by season', chapterTitle: 'Results' },
     ]);
   });
 

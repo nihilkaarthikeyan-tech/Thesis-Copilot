@@ -111,7 +111,11 @@ const CONTENT = {
         },
       ],
     },
-    { type: 'image', attrs: { key: 'figures/b.png', refId: 'fig-b', alt: 'Adoption curve' } },
+    {
+      type: 'image',
+      // `alt` is the uploaded file's name, as the editor sets it; the caption is the student's.
+      attrs: { key: 'figures/b.png', refId: 'fig-b', alt: 'b.png', caption: 'Adoption curve' },
+    },
     {
       type: 'draftBlock',
       attrs: { draftId: 'd1', status: 'pending' },

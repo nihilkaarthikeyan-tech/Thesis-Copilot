@@ -14,6 +14,7 @@
  */
 
 import type { TemplateSpec, ThesisDetails } from '@tc/types';
+import { captionOf, withCaptionsResolved } from './captions.js';
 
 export type CheckId =
   | 'FRONT_MATTER'
@@ -111,26 +112,21 @@ export function headingsOf(chapter: ComplianceChapter): Heading[] {
   return out;
 }
 
-/** Images and tables, with the caption that follows or precedes them. */
+/**
+ * Images and tables with their captions — the node's own, or a caption-shaped paragraph beside
+ * it, exactly as the exporters read them (`withCaptionsResolved`). The check and the file it
+ * checks now agree on what a caption is; before, the check took any paragraph beginning "Figure"
+ * as one while the exporter printed the file name.
+ */
 export function figuresOf(chapter: ComplianceChapter): Figure[] {
   const out: Figure[] = [];
-  const textOf = (node: Node | undefined): string =>
-    !node
-      ? ''
-      : node.type === 'text'
-        ? (node.text ?? '')
-        : (node.content ?? []).map(textOf).join('');
-  const blocks = (chapter.content as Node | undefined)?.content ?? [];
-  blocks.forEach((block, index) => {
+  const resolved = withCaptionsResolved(chapter.content) as Node | undefined;
+  for (const block of resolved?.content ?? []) {
     const kind = block.type === 'image' ? 'figure' : block.type === 'table' ? 'table' : null;
-    if (!kind) return;
-    // A caption is an adjacent paragraph starting "Figure"/"Table", either side of the block.
-    const around = [blocks[index + 1], blocks[index - 1]];
-    const caption = around
-      .map((b) => (b && b.type === 'paragraph' ? textOf(b).trim() : ''))
-      .find((text) => /^(figure|table)\b/i.test(text));
-    out.push({ kind, caption: caption ?? null, chapterTitle: chapter.title });
-  });
+    if (!kind) continue;
+    const caption = captionOf(block);
+    out.push({ kind, caption: caption || null, chapterTitle: chapter.title });
+  }
   return out;
 }
 
@@ -290,18 +286,13 @@ export function runComplianceChecks(input: ComplianceInput): ComplianceResult {
   }
 
   // 6. Figures and tables: captioned, and referred to in the text.
-  // The captions are removed before the search below, because a caption reads "Figure 1.1:
-  // Drying curve" — the very phrase the search looks for. Counting it would let every captioned
-  // figure pass whether the prose mentions it or not: the check defeated by the thing it checks.
-  // The strings come from `figuresOf`, which knows which paragraphs are captions, rather than
-  // from a heuristic that would also eat a sentence legitimately beginning "Figure 1 shows…".
-  const captionText = new Set(figures.map((f) => f.caption).filter(Boolean) as string[]);
+  // The search runs over the text as the exporters print it, with every typed caption moved into
+  // its figure (`withCaptionsResolved`): a caption reads "Figure 1.1: Drying curve", the very
+  // phrase the search looks for, and counting it would let every captioned figure pass whether
+  // the prose mentions it or not — the check defeated by the thing it checks. A sentence that
+  // legitimately begins "Figure 1 shows…" is prose to `typedCaption` and stays in.
   const allText = chapters
-    .map((c) => {
-      let text = plainText(c);
-      for (const caption of captionText) text = text.split(caption).join(' ');
-      return text;
-    })
+    .map((c) => plainText({ ...c, content: withCaptionsResolved(c.content) }))
     .join(' ');
   for (const chapter of chapters) {
     for (const item of figuresOf(chapter)) {

@@ -278,6 +278,31 @@ export function FormatToolbar({
     });
   }, [editor, prompt]);
 
+  // The caption the exporters print as "Figure 3.1: …" or "Table 2.1: …". Until this existed a
+  // figure's caption was the uploaded file's name and a table's was nothing at all.
+  const setCaption = useCallback(() => {
+    if (!editor) return;
+    const kind = editor.isActive('image') ? 'image' : 'table';
+    const current = (editor.getAttributes(kind).caption as string | null | undefined) ?? '';
+    prompt.open({
+      label: kind === 'image' ? 'Figure caption' : 'Table caption',
+      hint: kind === 'image' ? 'Survey sites in the two districts' : 'Sample sizes by district',
+      initial: current,
+      onDone: (caption) => {
+        if (caption === null) return; // cancelled
+        editor
+          .chain()
+          .focus()
+          .updateAttributes(kind, {
+            caption: caption || null,
+            // The words a screen reader gets, in place of the file name.
+            ...(kind === 'image' && caption ? { alt: caption } : {}),
+          })
+          .run();
+      },
+    });
+  }, [editor, prompt]);
+
   const insertMath = useCallback(
     (kind: 'inline' | 'block') => {
       if (!editor) return;
@@ -509,7 +534,9 @@ export function FormatToolbar({
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+              // What the server accepts (`sniffImage`); offering WebP and SVG here only to refuse
+              // them on upload was a picker that lied.
+              accept="image/png,image/jpeg,image/gif"
               className="hidden"
               data-testid="figure-input"
               onChange={(e) => {
@@ -520,6 +547,13 @@ export function FormatToolbar({
               }}
             />
           </>
+        ) : null}
+
+        {/* A caption for the selected figure or the table the cursor is in. */}
+        {inTable || editor.isActive('image') ? (
+          <Tool label="Caption" testId="fmt-caption" onClick={setCaption}>
+            <span className="text-[11px] font-medium leading-none">Caption</span>
+          </Tool>
         ) : null}
 
         {/* Table editing only appears inside a table: eight controls that do nothing anywhere else

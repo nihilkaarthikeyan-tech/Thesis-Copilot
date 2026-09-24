@@ -167,13 +167,25 @@ test('a JPEG and a GIF survive the real upload and export path', async ({ page, 
     buffer: Buffer.from(JPEG_B64, 'base64'),
   });
   await expect(page.locator('.thesis-editor img')).toHaveCount(1, { timeout: 60_000 });
+  // The caption is the student's words, written through the toolbar. Before this existed the
+  // submitted thesis read "Figure 1.1: scan.jpg", and a test here said that was right.
+  await page.locator('.thesis-editor img').first().click();
+  await page.getByTestId('fmt-caption').click();
+  await page.getByTestId('inline-prompt').getByRole('textbox').fill('Scanned survey form');
+  await page.getByTestId('inline-prompt-apply').click();
 
+  // The caret is on the figure; the next figure goes after it.
+  await page.locator('.thesis-editor p').last().click();
   await page.locator('[data-testid=figure-input]').setInputFiles({
     name: 'chart.gif',
     mimeType: 'image/gif',
     buffer: Buffer.from(GIF_B64, 'base64'),
   });
   await expect(page.locator('.thesis-editor img')).toHaveCount(2, { timeout: 60_000 });
+  await page.locator('.thesis-editor img').nth(1).click();
+  await page.getByTestId('fmt-caption').click();
+  await page.getByTestId('inline-prompt').getByRole('textbox').fill('Adoption by district');
+  await page.getByTestId('inline-prompt-apply').click();
 
   await page.keyboard.press('Control+s');
   await expect(page.getByText('Saved', { exact: true })).toBeVisible({ timeout: 20_000 });
@@ -198,8 +210,11 @@ test('a JPEG and a GIF survive the real upload and export path', async ({ page, 
 
   expect(document).not.toContain('[scan.jpg]');
   expect(document).not.toContain('[chart.gif]');
-  expect(document).toContain('Figure 1.1: scan.jpg');
-  expect(document).toContain('Figure 1.2: chart.gif');
+  expect(document).toContain('Figure 1.1: Scanned survey form');
+  expect(document).toContain('Figure 1.2: Adoption by district');
+  // A file name is never a caption.
+  expect(document).not.toContain('scan.jpg');
+  expect(document).not.toContain('chart.gif');
 
   // Both are 4x3, so the aspect ratio is the check that the header walkers read real dimensions
   // rather than a default. `fitToColumn` scales to the text width and keeps the ratio.

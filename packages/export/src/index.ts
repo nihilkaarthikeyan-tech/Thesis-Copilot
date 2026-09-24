@@ -9,6 +9,7 @@ export {
   usageToDocx,
   type WordCounts,
 } from './ai-usage.js';
+export { captionOf, typedCaption, withCaption, withCaptionsResolved } from './captions.js';
 export {
   CHECK_LABELS,
   type CheckId,

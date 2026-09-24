@@ -33,6 +33,16 @@ export const TableWithRef = Table.extend({
         parseHTML: (element) => element.getAttribute('data-ref-id') ?? newRefId(),
         renderHTML: (attrs) => (attrs.refId ? { 'data-ref-id': attrs.refId } : {}),
       },
+      /**
+       * The caption every exporter prints as "Table 3.1: …". The exporters had read this
+       * attribute since the template engine existed; the node never had it, so every table in
+       * every submitted thesis was captioned "Table 3.1:" and nothing more.
+       */
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-caption'),
+        renderHTML: (attrs) => (attrs.caption ? { 'data-caption': attrs.caption } : {}),
+      },
     };
   },
 });

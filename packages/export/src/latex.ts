@@ -23,6 +23,7 @@
 
 import { numberingMap, type TemplateSpec } from '@tc/types';
 import JSZip from 'jszip';
+import { captionOf, withCaptionsResolved } from './captions.js';
 import { type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
 type Node = {
@@ -242,7 +243,7 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
         }
         ctx.figureCount.n += 1;
         const index = ctx.figureCount.n;
-        const caption = `\\caption{${escapeLatex(String(node.attrs?.alt ?? ''))}}`;
+        const caption = `\\caption{${escapeLatex(captionOf(node))}}`;
         const label = `\\label{${labelFor('figure', ctx.chapter, index)}}`;
         const lines =
           spec.captions.figure.position === 'above'
@@ -281,7 +282,7 @@ function table(node: Node, ctx: ChapterContext): string {
     (typeof node.attrs?.refId === 'string' && node.attrs.refId) ||
     (typeof node.attrs?.key === 'string' ? node.attrs.key : '');
   const index = ctx.numbers.get(refId)?.index;
-  const caption = `\\caption{${escapeLatex(String(node.attrs?.caption ?? ''))}}`;
+  const caption = `\\caption{${escapeLatex(captionOf(node))}}`;
   const label = index ? `\\label{${labelFor('table', ctx.chapter, index)}}` : '';
   const tabular = [
     `\\begin{tabularx}{\\linewidth}{|${'X|'.repeat(columns)}}`,
@@ -523,7 +524,10 @@ export function thesisToLatexFiles(input: LatexExportInput): LatexFile[] {
   const figures: LatexFile[] = [];
   const chapters = [...input.chapters]
     .sort((a, b) => a.order - b.order)
-    .map((chapter) => ({ ...chapter, content: withoutPendingDrafts(chapter.content) }));
+    .map((chapter) => ({
+      ...chapter,
+      content: withCaptionsResolved(withoutPendingDrafts(chapter.content)),
+    }));
 
   const body: string[] = [];
   for (const chapter of chapters) {
