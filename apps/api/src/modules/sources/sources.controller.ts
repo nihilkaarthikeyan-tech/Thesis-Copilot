@@ -5,10 +5,21 @@
  * size ceiling; the per-plan limit is enforced in `upload-rules.ts` (PRD §11.3, §12.1).
  */
 
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Plan } from '@tc/config';
 import { PLANS } from '@tc/config';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -17,6 +28,8 @@ import { SearchService } from './search.service.js';
 import { SourcesService, UploadRejected } from './sources.service.js';
 
 const refixBody = z.object({ doi: z.string().trim().min(3).max(200) });
+
+const exportFormat = z.enum(['bib', 'ris', 'csv']);
 
 const resolveBody = z.object({
   references: z
@@ -59,6 +72,27 @@ export class SourcesController {
   ) {
     const { filename, bytes } = await readUpload(request);
     return this.search.importBibliography(user.id, documentId, filename, Buffer.from(bytes));
+  }
+
+  /**
+   * The library as a download. A plain GET with `Content-Disposition`, so the screen can use an
+   * ordinary link: the session cookie goes with a top-level navigation, and nothing is stored or
+   * signed for a file that takes milliseconds to write.
+   */
+  @Get('documents/:id/sources/export')
+  async exportLibrary(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Query('format') format: string | undefined,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<string> {
+    const parsed = exportFormat.safeParse(format ?? 'bib');
+    if (!parsed.success) throw new ValidationError('Choose bib, ris or csv.', parsed.error.issues);
+    const file = await this.sources.exportLibrary(user.id, documentId, parsed.data);
+    reply.header('content-type', file.mimeType);
+    reply.header('content-disposition', `attachment; filename="${file.filename}"`);
+    reply.header('x-library-count', String(file.count));
+    return file.body;
   }
 
   @Post('documents/:id/seed-papers')

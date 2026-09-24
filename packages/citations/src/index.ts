@@ -10,6 +10,14 @@ export {
 } from './checks.js';
 export { type CslItem, type CslName, namesFrom, type SourceLike, toCslItem } from './csl.js';
 export {
+  citationKeys,
+  csvField,
+  exportLibrary,
+  type LibraryFile,
+  type LibraryFormat,
+  type LibrarySource,
+} from './library-export.js';
+export {
   normaliseTitle,
   type ReferenceHealthFinding,
   type ReferenceHealthKind,

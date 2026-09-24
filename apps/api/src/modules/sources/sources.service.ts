@@ -6,6 +6,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { exportLibrary, type LibraryFile, type LibraryFormat } from '@tc/citations';
 import type { Plan } from '@tc/config';
 import type { Prisma } from '@tc/db';
 import { jobId, jobKeyDigest } from '@tc/types';
@@ -214,6 +215,54 @@ export class SourcesService {
       },
     });
     return rows.map(({ fileKey, ...rest }) => ({ ...rest, hasFile: Boolean(fileKey) }));
+  }
+
+  /**
+   * The library as a `.bib`, `.ris` or `.csv` — the way out that import always implied.
+   *
+   * Ordered by when each source was added, and only by that: `citationKeys` gives a colliding key
+   * to whichever source claimed it first, so any other order would renumber `LeCun2015Deepb` into
+   * `LeCun2015Deep` between two exports and break a student's LaTeX. Every source is included,
+   * unresolved ones too, marked as such — a partial export would be a quiet way to lose references.
+   */
+  async exportLibrary(
+    ownerId: string,
+    documentId: string,
+    format: LibraryFormat,
+  ): Promise<LibraryFile & { filename: string; count: number }> {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerId },
+      select: { id: true, title: true },
+    });
+    if (!document) throw new NotFoundError('That document');
+    const sources = await this.prisma.source.findMany({
+      where: { documentId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        status: true,
+        title: true,
+        authors: true,
+        year: true,
+        venue: true,
+        doi: true,
+        cslJson: true,
+        isPreprint: true,
+        isRetracted: true,
+        rawReference: true,
+        citationCount: true,
+        groundingLevel: true,
+        oaStatus: true,
+      },
+    });
+    const file = exportLibrary(sources, format);
+    const slug =
+      document.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'thesis';
+    return { ...file, filename: `${slug}-library.${file.extension}`, count: sources.length };
   }
 
   /**

@@ -16,7 +16,7 @@ import type { CslAuthor } from '@tc/retrieval';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { API_URL, ApiError, api } from '@/lib/api';
 import { DiscoverPanel } from './DiscoverPanel';
 
 type Source = {
@@ -202,7 +202,34 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             {counts.unresolved > 0 ? ` · ${counts.unresolved} need a hand` : ''}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The way out. Plain links, so the browser downloads the file the server names: the
+              session cookie goes with a top-level navigation, and nothing has to be stored. */}
+          {counts.total > 0 ? (
+            <span
+              className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm"
+              data-testid="library-export"
+            >
+              <span className="text-muted">Export</span>
+              {(['bib', 'ris', 'csv'] as const).map((format) => (
+                <a
+                  key={format}
+                  href={`${API_URL}/api/v1/documents/${documentId}/sources/export?format=${format}`}
+                  className="font-semibold text-accent underline"
+                  data-testid={`library-export-${format}`}
+                  title={
+                    format === 'bib'
+                      ? 'BibTeX, for LaTeX and any reference manager'
+                      : format === 'ris'
+                        ? 'RIS, for Zotero, Mendeley and EndNote'
+                        : 'A spreadsheet of the whole library'
+                  }
+                >
+                  .{format}
+                </a>
+              ))}
+            </span>
+          ) : null}
           <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
             {importing ? 'Importing…' : 'Import .bib / .ris'}
             <input
