@@ -270,17 +270,22 @@ export const SUPPORT_VERDICTS = [
 ] as const;
 export type SupportVerdict = (typeof SUPPORT_VERDICTS)[number];
 
+/**
+ * Strict-mode compatible — no defaults, no length limits — so OpenAI holds `verdict` to the list.
+ * With defaults the call falls back to JSON mode, where nothing holds an enum, and one invented
+ * verdict would fail the whole batch of ten (ADR-0026 measured exactly that for proofreading).
+ * Lengths are enforced where the text is used: `supportFlagText` bounds the reason, and a quote
+ * is kept only if it is the passage's own words.
+ */
 export const supportSchema = z.object({
-  results: z
-    .array(
-      z.object({
-        sentenceId: z.string(),
-        verdict: z.enum(SUPPORT_VERDICTS),
-        why: z.string().max(300).default(''),
-        quote: z.string().max(600).default(''),
-      }),
-    )
-    .default([]),
+  results: z.array(
+    z.object({
+      sentenceId: z.string(),
+      verdict: z.enum(SUPPORT_VERDICTS),
+      why: z.string(),
+      quote: z.string(),
+    }),
+  ),
 });
 export type SupportResult = z.infer<typeof supportSchema>;
 

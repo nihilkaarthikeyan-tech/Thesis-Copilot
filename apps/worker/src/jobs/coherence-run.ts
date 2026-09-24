@@ -1005,7 +1005,8 @@ export function supportFlagText(
   why: string,
   quote: string | null,
 ): { severity: 'INFO' | 'WARN' | 'ERROR'; description: string } {
-  const because = why.trim() ? ` ${why.trim().replace(/\.?$/, '.')}` : '';
+  const reason = why.trim().slice(0, 300);
+  const because = reason ? ` ${reason.replace(/\.?$/, '.')}` : '';
   const says = quote ? ` The source says: “${quote}”` : '';
   switch (verdict) {
     case 'MISREPRESENTED':
