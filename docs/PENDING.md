@@ -246,6 +246,16 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       checks the VPS working tree out to the tag before running `deploy.sh`, and back to
       `.last_good_tag` if the deploy rolls back. It also calls `../scripts/deploy.sh` rather than an
       untracked symlink made by hand during the first deploy — so a fresh clone can now deploy.
+- [ ] **Turn on live co-authoring in production** (ADR-0028), in this order, after v0.1.5 is up:
+      1. Copy the host vhost (next item): it now has a `/collab/` location that passes the
+         WebSocket upgrade through. Without it every live session fails to connect and the
+         editor says "Connecting…" for ever.
+      2. The release brings a `collab` service (compose) — one instance of the API image with
+         `COLLAB_ENABLED=true`. Check it is healthy: `docker compose ps collab`.
+      3. Flip the `collaboration` flag on the admin page. Until then nothing changes for anyone:
+         the share panel does not offer "edit with me", and every editor stays on autosave.
+      4. Prove it: share a thesis with a second address ticking "edit with me, live", open the
+         chapter in two browsers, type in each. `apps/web/e2e/collab.spec.ts` is the same walk.
 - [ ] **Copy the host nginx vhost by hand when it changes.** Still yours on purpose: that file is
       shared with eight other sites and a bad one takes all nine down, so CI only *warns* when
       `infra/nginx/thesis.rademics.ai.conf` and `/etc/nginx/sites-available/thesis.rademics.ai` have

@@ -3465,3 +3465,30 @@ faults in what was already shipped:
 The chart's own browser test found the fourth: a chart made from a table was inserted into the
 table cell the cursor was in, where every exporter treats it as part of the table — no number,
 no caption. `insertFigure` now puts it after the table.
+
+### Real-time co-authoring — 2026-09-24
+
+The last gap-list item, and the one the PRD had deferred (B.1: "no Yjs in Phases 1–3"). ADR-0028
+records the departure and the shape: a `Y.Doc` mirror of the chapter in a room served by our own
+`y-protocols` WebSocket handler inside the API (about sixty lines of protocol; no Hocuspocus), the
+database still the source of truth through `ChaptersService.save`, a conflict closing the room
+with 4409 rather than merging, one `collab` instance in production because rooms live in memory,
+and a co-author role (`GuideShare.canEdit`) that gets the text and nothing that spends or reveals.
+Off by default, and live only for a document that has a co-author.
+
+Proven by `apps/api/test/collab.spec.ts` (two clients over a real socket; the store; every
+refusal) and `apps/web/e2e/collab.spec.ts` (two browsers, each seeing the other's words and
+cursor, the chapter carrying both). The browser test found three things:
+
+- **A share whose invitation e-mail failed was a 500 after the row was written.** Hostinger
+  rate-limited a burst of invitations; the student saw an error and a retry would have sent a
+  second mail. The answer now says `mailed: false` and the panel shows the link to send by hand.
+- **React's development double-invocation, twice.** A provider opened in a state initialiser left
+  a twin socket in the room (the initialiser runs twice); a provider destroyed in an effect
+  cleanup left the kept one deaf to local changes (the effect runs twice). Inert values in state,
+  the socket in the effect.
+- **TipTap ships the cursor's class names and no styles.** The name label was a coloured block
+  across the line until `editor.css` gave it a shape.
+
+Turning it on in production is the owner's: the host nginx needs the `/collab/` location, then
+the flag (`docs/PENDING.md`).
