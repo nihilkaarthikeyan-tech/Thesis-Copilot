@@ -10,7 +10,9 @@
 
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
 import { cn } from '@/lib/utils';
+import { MentionChips, MentionPicker, useChatMentions } from './ChatMentions';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -110,6 +112,10 @@ export function ChatPanel({
   // ADR-0016. 'library' is the grounded default and what this panel has always done; 'document'
   // answers from the student's own chapters, which are not citable and never enter a bibliography.
   const [scope, setScope] = useState<Scope>('library');
+  // `@` names the papers a question is about. Library scope only: the draft and the web search
+  // have no papers of their own to name.
+  const mentions = useChatMentions(documentId, scope === 'library');
+  const typingMention = scope === 'library' ? mentionQuery(draft) : null;
   const [webResults, setWebResults] = useState<WebResult[] | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
@@ -156,7 +162,15 @@ export function ChatPanel({
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
-        body: JSON.stringify({ documentId, message, filters, scope }),
+        body: JSON.stringify({
+          documentId,
+          message,
+          filters,
+          scope,
+          ...(scope === 'library' && mentions.mentions.length > 0
+            ? { sourceIds: mentions.mentions.map((m) => m.id) }
+            : {}),
+        }),
       });
       if (!response.ok || !response.body) {
         const problem = (await response.json().catch(() => null)) as {
@@ -417,7 +431,21 @@ export function ChatPanel({
         </p>
       ) : null}
 
-      <form onSubmit={ask} className="mt-2 flex gap-2 border-t border-line pt-2">
+      {scope === 'library' ? (
+        <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />
+      ) : null}
+      <form onSubmit={ask} className="relative mt-2 flex gap-2 border-t border-line pt-2">
+        {typingMention !== null ? (
+          <MentionPicker
+            query={typingMention}
+            candidates={mentions.candidates}
+            onPick={(mention) => {
+              mentions.add(mention);
+              // The `@query` was only ever a way to choose; it is not part of the question.
+              setDraft(dropMentionQuery);
+            }}
+          />
+        ) : null}
         <label className="sr-only" htmlFor="chat-message">
           {SCOPE_ASK_LABEL[scope]}
         </label>
@@ -427,7 +455,11 @@ export function ChatPanel({
           disabled={busy}
           maxLength={2000}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={SCOPE_PLACEHOLDER[scope]}
+          placeholder={
+            scope === 'library' && mentions.hasLibrary
+              ? `${SCOPE_PLACEHOLDER[scope]}  (@ to name a paper)`
+              : SCOPE_PLACEHOLDER[scope]
+          }
           className="h-9 flex-1 rounded-md border border-line px-2 text-sm"
         />
         <button

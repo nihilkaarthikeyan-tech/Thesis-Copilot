@@ -139,6 +139,14 @@ export async function retrievePassages(
   chapter: ContextChapter,
   queryFrom: string,
   action: RetrievalAction,
+  options: {
+    /**
+     * Search only these sources, instead of the chapter's pins — chat's `@` mention, where the
+     * student has said which papers the question is about. Still confined to this document by the
+     * query itself, so an id from anywhere else simply finds nothing.
+     */
+    sourceIds?: readonly string[];
+  } = {},
 ): Promise<RetrievalResult> {
   const [pins, memory] = await Promise.all([
     db.chapterSourcePin.findMany({ where: { chapterId: chapter.id }, select: { sourceId: true } }),
@@ -161,9 +169,10 @@ export async function retrievePassages(
   const [embedding] = await embed([queryText]);
   if (!embedding) return empty;
 
+  const named = options.sourceIds ?? [];
   const candidates = await findCandidates(db, embedding, {
     documentId: chapter.documentId,
-    pinnedSourceIds,
+    pinnedSourceIds: named.length > 0 ? [...named] : pinnedSourceIds,
   });
 
   const node = findOutlineNode(readOutline(memory?.outline), chapter.outlineNodeId);

@@ -25,6 +25,7 @@ export {
   chatUserMessage,
   FILTERED_OUT_REPLY,
   mockChatFor,
+  NAMED_EMPTY_REPLY,
   NOT_ENOUGH_PREFIX,
   OFF_TOPIC_REPLY,
   postProcessChat,

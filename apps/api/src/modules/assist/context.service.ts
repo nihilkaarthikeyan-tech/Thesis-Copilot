@@ -72,6 +72,7 @@ export class ContextService {
     chapter: ChapterForContext,
     queryFrom: string,
     action: RetrievalAction,
+    options: { sourceIds?: readonly string[] } = {},
   ): Promise<RetrievalResult> {
     return retrievePassages(
       this.db,
@@ -79,6 +80,7 @@ export class ContextService {
       chapter,
       queryFrom,
       action,
+      options,
     );
   }
 }

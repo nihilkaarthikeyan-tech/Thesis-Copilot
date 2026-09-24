@@ -124,12 +124,22 @@ export const FILTERED_OUT_REPLY =
   'Your filters left nothing to answer from. Widen the year range, or turn off the preprint and ' +
   'citation filters, and ask again.';
 
+/**
+ * When the student named papers with `@` and none of them has any text to read — a reference that
+ * was never resolved, or a PDF still being read. Different from the other two: the fix is not to
+ * rephrase or to widen a filter, but to give those papers something to read.
+ */
+export const NAMED_EMPTY_REPLY =
+  'The papers you named have no readable text yet, so there is nothing in them to answer from. ' +
+  'Upload their PDFs in Sources, or wait for them to finish being read, and ask again.';
+
 export type ChatOutcome =
   | 'answered'
   | 'not-enough'
   | 'writing-redirect'
   | 'off-topic'
-  | 'filtered-out';
+  | 'filtered-out'
+  | 'named-empty';
 
 export type ChatPostProcess = {
   text: string;

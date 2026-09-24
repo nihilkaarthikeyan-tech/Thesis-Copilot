@@ -15,6 +15,7 @@ import {
   type ChatFilters,
   type ChatTurn,
   FILTERED_OUT_REPLY,
+  NAMED_EMPTY_REPLY,
   OFF_TOPIC_REPLY,
   type Providers,
   postProcessChat,
@@ -48,6 +49,11 @@ export type ChatInput = {
    * is the student's own chapters, which are passed directly rather than retrieved.
    */
   scope?: ChatScope;
+  /**
+   * The papers the student named with `@`. The question is answered from these alone — not from
+   * the chapter's pins, and not from the rest of the library. Library scope only.
+   */
+  sourceIds?: string[];
 };
 
 export type ChatEvent =
@@ -166,7 +172,9 @@ export class ChatService {
             pinned: 0,
             candidates: ownChapters.length,
           })
-        : this.context.retrieve(chapter, input.message, 'CHAT'),
+        : this.context.retrieve(chapter, input.message, 'CHAT', {
+            sourceIds: input.sourceIds ?? [],
+          }),
     ]);
     const filters = input.filters ?? {};
     // Source metadata filters (year, citation count, preprint) describe published work and have
@@ -199,6 +207,9 @@ export class ChatService {
       // retrieval did find something means their own filters emptied it, and the fix is a control
       // on this screen; anything else means the question is not about their library.
       const filteredOut = passages.length === 0 && retrieved.passages.length > 0;
+      // Named papers with no text at all: neither off-topic nor filtered, and the fix is different.
+      const namedEmpty =
+        scope === 'library' && (input.sourceIds?.length ?? 0) > 0 && retrieved.candidates === 0;
       await this.usage.refund(user.id, 'CHAT');
       const latencyMs = Date.now() - startedAt;
       const best = passages.reduce((m, p) => Math.max(m, p.cosine), 0);
@@ -222,10 +233,16 @@ export class ChatService {
               ? // A different refusal, because the fix is different: there is nothing to read,
                 // not nothing relevant.
                 'There is nothing written in this thesis yet for me to read. Write something first, or switch to Library to ask about your sources.'
-              : filteredOut
-                ? FILTERED_OUT_REPLY
-                : OFF_TOPIC_REPLY,
-          outcome: filteredOut ? ('filtered-out' as const) : ('off-topic' as const),
+              : namedEmpty
+                ? NAMED_EMPTY_REPLY
+                : filteredOut
+                  ? FILTERED_OUT_REPLY
+                  : OFF_TOPIC_REPLY,
+          outcome: namedEmpty
+            ? ('named-empty' as const)
+            : filteredOut
+              ? ('filtered-out' as const)
+              : ('off-topic' as const),
           citations: [],
           passagesUsed: 0,
           latencyMs,

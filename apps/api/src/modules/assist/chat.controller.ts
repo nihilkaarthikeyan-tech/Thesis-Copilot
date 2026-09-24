@@ -35,6 +35,8 @@ const chatBody = z.object({
   message: z.string().trim().min(1).max(2_000),
   /** Where the answer may come from. Defaults to the library, which is what it has always been. */
   scope: z.enum(['library', 'document']).default('library'),
+  /** Papers named with `@`: the answer comes from these alone. Ten is more than a question needs. */
+  sourceIds: z.array(z.string().uuid()).max(10).optional(),
   filters: z
     .object({
       yearFrom: z.number().int().min(1800).max(2100).nullish(),
