@@ -30,6 +30,10 @@ export type ShareView = {
   acceptedAt: string | null;
   comments: number;
   url: string;
+  /** ADR-0028: may open a chapter in the live editor. */
+  canEdit: boolean;
+  /** On the answer to a new share: whether the invitation e-mail went. False means send the link. */
+  mailed?: boolean;
 };
 
 /** What a guide is allowed to see about a document they were shared (D.2.1). */
@@ -38,6 +42,10 @@ export type GuideDocumentView = {
   title: string;
   studentEmail: string;
   chapters: Array<{ id: string; title: string; order: number }>;
+  /** ADR-0028: this share lets its holder edit live, not only comment. */
+  canEdit: boolean;
+  /** The signed-in guide's own address — the name on their cursor. */
+  viewerEmail: string;
 };
 
 @Injectable()
@@ -83,6 +91,7 @@ export class SharesService {
       acceptedAt: share.guideUserId ? share.createdAt.toISOString() : null,
       comments: byEmail.get(share.guideEmail.toLowerCase()) ?? 0,
       url: this.url(share.token),
+      canEdit: share.canEdit,
     }));
   }
 
@@ -90,6 +99,7 @@ export class SharesService {
     owner: { id: string; email: string },
     documentId: string,
     guideEmail: string,
+    canEdit = false,
   ): Promise<ShareView> {
     const document = await this.ownedDocument(owner.id, documentId);
     const email = guideEmail.trim().toLowerCase();
@@ -100,31 +110,55 @@ export class SharesService {
     const existing = await this.prisma.guideShare.findFirst({
       where: { documentId, guideEmail: email },
     });
-    const share =
-      existing ??
-      (await this.prisma.guideShare.create({
-        data: { documentId, guideEmail: email, token: randomBytes(24).toString('base64url') },
-      }));
+    // Sharing again with the same address changes what they may do, in either direction.
+    const share = existing
+      ? existing.canEdit === canEdit
+        ? existing
+        : await this.prisma.guideShare.update({ where: { id: existing.id }, data: { canEdit } })
+      : await this.prisma.guideShare.create({
+          data: {
+            documentId,
+            guideEmail: email,
+            token: randomBytes(24).toString('base64url'),
+            canEdit,
+          },
+        });
 
-    await this.mailer.send({
-      to: [email],
-      subject: `${owner.email} has asked you to review a thesis chapter`,
-      text: [
-        `${owner.email} would like your comments on “${document.title}”.`,
-        '',
-        this.url(share.token),
-        '',
-        'The link asks you to sign in with this email address — we send you a six-digit code, there',
-        'is no password. You will see the thesis read-only and can comment on any passage.',
-        'You will not see anything else in their account.',
-      ].join('\n'),
-    });
-    this.logger.log({ documentId, guideEmail: email }, 'guide share sent');
+    // The share exists whether or not the mail goes. A provider rate limit (Hostinger's answered
+    // 451 to a burst of invitations on 2026-09-24) used to turn into a 500 here, after the row
+    // was written — the student saw an error, and the guide they retried got a second email.
+    // Now the answer says the mail did not go, and the panel offers the link to send by hand.
+    let mailed = true;
+    try {
+      await this.mailer.send({
+        to: [email],
+        subject: canEdit
+          ? `${owner.email} has invited you to write a thesis chapter with them`
+          : `${owner.email} has asked you to review a thesis chapter`,
+        text: [
+          canEdit
+            ? `${owner.email} would like to write “${document.title}” with you, live.`
+            : `${owner.email} would like your comments on “${document.title}”.`,
+          '',
+          this.url(share.token),
+          '',
+          'The link asks you to sign in with this email address — we send you a six-digit code, there',
+          canEdit
+            ? 'is no password. You can open a chapter and type alongside them, and comment on any passage.'
+            : 'is no password. You will see the thesis read-only and can comment on any passage.',
+          'You will not see anything else in their account.',
+        ].join('\n'),
+      });
+    } catch (error) {
+      mailed = false;
+      this.logger.warn({ err: error, documentId, guideEmail: email }, 'guide share mail failed');
+    }
+    this.logger.log({ documentId, guideEmail: email, canEdit, mailed }, 'guide share sent');
 
     const [view] = await this.list(owner.id, documentId).then((all) =>
       all.filter((s) => s.id === share.id),
     );
-    return view as ShareView;
+    return { ...(view as ShareView), mailed };
   }
 
   /** D.2.1: "The student can revoke a share; the guide's comments remain." */
@@ -180,7 +214,7 @@ export class SharesService {
     user: { id: string; email: string },
     documentId: string,
   ): Promise<GuideDocumentView> {
-    await this.assertShared(user, documentId);
+    const share = await this.assertShared(user, documentId);
     const document = await this.prisma.document.findUniqueOrThrow({
       where: { id: documentId },
       select: {
@@ -198,6 +232,8 @@ export class SharesService {
       title: document.title,
       studentEmail: document.owner.email,
       chapters: document.chapters,
+      canEdit: share.canEdit,
+      viewerEmail: user.email,
     };
   }
 
@@ -289,7 +325,7 @@ export class SharesService {
   async assertShared(
     user: { id: string; email: string },
     documentId: string,
-  ): Promise<{ id: string; lastViewedAt: Date | null }> {
+  ): Promise<{ id: string; lastViewedAt: Date | null; canEdit: boolean }> {
     const share = await this.prisma.guideShare.findFirst({
       where: {
         documentId,
@@ -297,7 +333,7 @@ export class SharesService {
       },
       // Returns the row rather than void so `progressFor` does not have to fetch it twice. Every
       // existing caller ignores the value and still gets the throw, which is what they wanted.
-      select: { id: true, lastViewedAt: true },
+      select: { id: true, lastViewedAt: true, canEdit: true },
     });
     if (!share) throw new NotFoundError('That document');
     return share;

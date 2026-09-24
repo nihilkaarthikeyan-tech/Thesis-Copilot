@@ -20,6 +20,8 @@ type GuideDocument = {
   title: string;
   studentEmail: string;
   chapters: Array<{ id: string; title: string; order: number }>;
+  /** ADR-0028: this share may also open a chapter in the live editor. */
+  canEdit: boolean;
 };
 
 type ChapterView = { id: string; title: string; content: unknown };
@@ -156,9 +158,19 @@ export default function GuidePage() {
           {document.title}
         </h1>
         <p className="mt-1 text-sm text-muted">
-          {document.studentEmail} asked for your comments. This is read-only — select a passage and
-          write what you think; the student sees each comment in their review queue.
+          {document.canEdit
+            ? `${document.studentEmail} invited you to write this with them. Comment here, or open a chapter to edit it live.`
+            : `${document.studentEmail} asked for your comments. This is read-only — select a passage and write what you think; the student sees each comment in their review queue.`}
         </p>
+        {document.canEdit && chapterId ? (
+          <Link
+            href={`/guide/${token}/write/${chapterId}`}
+            data-testid="guide-edit-live"
+            className="mt-2 inline-block rounded-md bg-accent px-3 py-1 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+          >
+            Edit this chapter live
+          </Link>
+        ) : null}
       </header>
 
       {error ? (

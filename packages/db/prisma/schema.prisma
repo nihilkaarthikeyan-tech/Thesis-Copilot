@@ -494,6 +494,11 @@ model GuideShare {
    * not watch it empty itself underneath them.
    */
   lastViewedAt DateTime?
+  /**
+   * ADR-0028: a co-author rather than a guide. May open a chapter in the live editor and type
+   * alongside the student; still no AI actions, uploads or exports, which stay the owner's.
+   */
+  canEdit    Boolean  @default(false)
   createdAt  DateTime @default(now())
 }
 

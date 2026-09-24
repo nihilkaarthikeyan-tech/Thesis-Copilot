@@ -12,6 +12,7 @@
  */
 
 import { Mark, mergeAttributes } from '@tiptap/core';
+import { isChangeOrigin } from '@tiptap/extension-collaboration';
 import type { Mark as PmMark, Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 
@@ -87,14 +88,17 @@ export const Provenance = Mark.create({
       new Plugin({
         key: provenancePluginKey,
         appendTransaction(transactions, _oldState, newState) {
-          const docChanged = transactions.some((t) => t.docChanged && !t.getMeta(SKIP_META));
+          // ADR-0028: a change that arrived from another person's editor carries their marks
+          // already; re-marking it here would call their words this editor's, on every peer.
+          const own = transactions.filter((t) => !t.getMeta(SKIP_META) && !isChangeOrigin(t));
+          const docChanged = own.some((t) => t.docChanged);
           if (!docChanged) return null;
 
           const tr = newState.tr;
           let changed = false;
 
-          for (const transaction of transactions) {
-            if (!transaction.docChanged || transaction.getMeta(SKIP_META)) continue;
+          for (const transaction of own) {
+            if (!transaction.docChanged) continue;
 
             // Map positions through the steps of *this* transaction. Steps are replayed against the
             // document as it was before each step, so `before` is rebuilt step by step.

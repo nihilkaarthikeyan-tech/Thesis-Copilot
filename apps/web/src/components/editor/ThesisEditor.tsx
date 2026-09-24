@@ -30,6 +30,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL, ApiError, api } from '@/lib/api';
+import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
 import { assistRequest } from '@/lib/sse';
 
 /** §6.2: the cap resets at 00:00 UTC on the 1st; shown in the student's own timezone. */
@@ -95,7 +96,14 @@ type ChapterMeta = {
   outlineNodeId: string;
   wordCount: number;
 };
-type DocumentDetail = { id: string; title: string; chapters: ChapterMeta[] };
+type DocumentDetail = {
+  id: string;
+  title: string;
+  chapters: ChapterMeta[];
+  /** ADR-0028: a co-author has been invited and live editing is on. */
+  liveEditing?: boolean;
+  ownerEmail?: string;
+};
 type ChapterView = {
   id: string;
   title: string;
@@ -123,6 +131,12 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
   const [chapter, setChapter] = useState<ChapterView | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * ADR-0028: with the `collaboration` flag on, the chapter is edited live — through the room,
+   * not autosave — and the student's own address names their cursor. Decided before the editor
+   * is built, because the extensions cannot change underneath it.
+   */
+  const [liveEmail, setLiveEmail] = useState<string | null | undefined>(undefined);
 
   const refreshUsage = useCallback(() => {
     api<Usage>('/usage/me')
@@ -140,6 +154,9 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
         if (cancelled) return;
         setDoc(d);
         setChapter(c);
+        // Live only when there is someone to write with: the document has a co-author and the
+        // feature is on (`liveEditing` is the server's answer to both).
+        setLiveEmail(d.liveEditing && d.ownerEmail ? d.ownerEmail : null);
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.problem.status === 401) router.replace('/sign-in');
@@ -164,11 +181,19 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
     );
   }
 
-  if (!doc || !chapter) {
+  if (!doc || !chapter || liveEmail === undefined) {
     return <p className="p-6 text-sm text-muted">Loading chapter…</p>;
   }
 
-  return <ChapterEditor doc={doc} chapter={chapter} usage={usage} onUsageChange={refreshUsage} />;
+  return (
+    <ChapterEditor
+      doc={doc}
+      chapter={chapter}
+      usage={usage}
+      onUsageChange={refreshUsage}
+      liveEmail={liveEmail}
+    />
+  );
 }
 
 function ChapterEditor({
@@ -176,12 +201,21 @@ function ChapterEditor({
   chapter,
   usage,
   onUsageChange,
+  liveEmail,
 }: {
   doc: DocumentDetail;
   chapter: ChapterView;
   usage: Usage | null;
   onUsageChange: () => void;
+  /** Set when the chapter is edited live (ADR-0028); null keeps autosave. */
+  liveEmail: string | null;
 }) {
+  const [live] = useState<LiveDoc | null>(() => (liveEmail ? createLiveDoc(liveEmail) : null));
+  const [liveState, setLiveState] = useState<{
+    synced: boolean;
+    online: boolean;
+    others: string[];
+  }>({ synced: false, online: true, others: [] });
   const [status, setStatus] = useState<AutosaveStatus>('idle');
   const [conflict, setConflict] = useState(false);
   const [timing, setTiming] = useState<Timing | null>(null);
@@ -377,6 +411,15 @@ function ChapterEditor({
           },
         },
         imageUpload: uploadFigure,
+        ...(live
+          ? {
+              collaboration: {
+                document: live.doc,
+                provider: { awareness: live.awareness },
+                user: live.user,
+              },
+            }
+          : {}),
         imageUploadError: (error: unknown) =>
           setNotice(error instanceof Error ? error.message : 'That image could not be added.'),
         // A figure's link lasts fifteen minutes and a chapter stays open for hours.
@@ -405,12 +448,14 @@ function ChapterEditor({
       guided.controller,
       autoSuggest,
       uploadFigure,
+      live,
     ],
   );
 
   const editor = useEditor({
     extensions,
-    content: chapter.content as never,
+    // Live, the text comes over the socket; setting it here too would put it in twice.
+    ...(live ? {} : { content: chapter.content as never }),
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -497,9 +542,44 @@ function ChapterEditor({
     [uploadFigure, chart],
   );
 
+  // ADR-0028: live, the room stores the chapter; here only the connection is watched, and
+  // Ctrl/Cmd+S still takes a snapshot of what the room has written.
+  useEffect(() => {
+    if (!editor || !live) return;
+    const provider = connectLive(chapter.id, live);
+    const onSync = (synced: boolean) => setLiveState((s) => ({ ...s, synced }));
+    const onStatus = ({ status: s }: { status: string }) =>
+      setLiveState((state) => ({ ...state, online: s === 'connected' }));
+    const onClose = (event: { code: number } | null) => {
+      if (event?.code === COLLAB_CLOSE.changedElsewhere) setConflict(true);
+    };
+    const onAwareness = () => setLiveState((s) => ({ ...s, others: othersIn(live) }));
+    provider.on('sync', onSync);
+    provider.on('status', onStatus);
+    provider.on('connection-close', onClose);
+    live.awareness.on('change', onAwareness);
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        api(`/chapters/${chapter.id}/snapshot`, {
+          method: 'POST',
+          body: JSON.stringify({ reason: 'MANUAL' }),
+        })
+          .then(() => setNotice('Snapshot saved'))
+          .catch(() => setNotice('Snapshot failed'));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      live.awareness.off('change', onAwareness);
+      provider.destroy();
+    };
+  }, [editor, live, chapter.id]);
+
   // Appendix B.7 autosave.
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || live) return;
     const autosave = createAutosave({
       editor,
       initialVersion: chapter.version,
@@ -551,7 +631,7 @@ function ChapterEditor({
       void autosave.flush();
       autosave.stop();
     };
-  }, [editor, chapter.id, chapter.version]);
+  }, [editor, live, chapter.id, chapter.version]);
 
   useEffect(() => {
     if (!notice) return;
@@ -613,7 +693,17 @@ function ChapterEditor({
               status === 'conflict' || status === 'error' ? 'font-semibold text-warn' : 'text-faint'
             }`}
           >
-            {STATUS_LABEL[status]}
+            {live
+              ? conflict
+                ? 'Changed elsewhere'
+                : !liveState.online
+                  ? 'Reconnecting…'
+                  : !liveState.synced
+                    ? 'Connecting…'
+                    : liveState.others.length === 0
+                      ? 'Live'
+                      : `Live with ${liveState.others.join(', ')}`
+              : STATUS_LABEL[status]}
           </span>
           <span
             data-testid="usage-meter"

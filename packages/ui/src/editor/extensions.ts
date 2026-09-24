@@ -9,6 +9,8 @@
  */
 
 import type { Extensions } from '@tiptap/core';
+import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Subscript from '@tiptap/extension-subscript';
@@ -18,6 +20,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
+import type { Doc as YDoc } from 'yjs';
 import { Citation, type CitationOptions } from './citation.js';
 import { CrossRef } from './cross-ref.js';
 import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
@@ -53,6 +56,16 @@ export type ThesisEditorOptions = {
   chapterNumber?: number;
   /** Supervisor comments drawn on the passages they are about (review.ts). */
   review?: Partial<ReviewHighlightsOptions>;
+  /**
+   * ADR-0028: edit live with others. The document then comes from the `Y.Doc`, not `content`,
+   * and the provider carries everyone's cursors.
+   */
+  collaboration?: {
+    document: YDoc;
+    /** A y-websocket `WebsocketProvider`, or anything with its `awareness`. */
+    provider: unknown;
+    user: { name: string; color: string };
+  };
 };
 
 export function thesisExtensions(options: ThesisEditorOptions): Extensions {
@@ -63,7 +76,18 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     StarterKit.configure({
       heading: false,
       // Provenance is our own mark; history is fine as ghost text never enters the document.
+      // Live (ADR-0028), Yjs keeps the history, so two people's undo stacks stay their own.
+      ...(options.collaboration ? { history: false } : {}),
     }),
+    ...(options.collaboration
+      ? [
+          Collaboration.configure({ document: options.collaboration.document }),
+          CollaborationCursor.configure({
+            provider: options.collaboration.provider,
+            user: options.collaboration.user,
+          }),
+        ]
+      : []),
     ThesisHeading,
     Underline,
     Superscript,

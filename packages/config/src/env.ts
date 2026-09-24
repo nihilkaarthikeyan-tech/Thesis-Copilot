@@ -134,6 +134,15 @@ export const envSchema = z
 
     // ---- Overrides / observability ----
     PRICING_OVERRIDE_JSON: optionalString,
+    /**
+     * ADR-0028: serve the live co-authoring WebSocket from this process. One instance only in
+     * production (`collab` in compose) — rooms live in memory, so two would split a chapter.
+     * Blank or unset is off; the `collaboration` feature flag still has to be on as well.
+     */
+    COLLAB_ENABLED: z
+      .string()
+      .optional()
+      .transform((v) => v === 'true' || v === '1'),
     SENTRY_DSN: optionalString,
 
     // ---- Seed ----

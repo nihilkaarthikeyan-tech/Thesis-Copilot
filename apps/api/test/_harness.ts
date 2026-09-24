@@ -125,6 +125,12 @@ export async function startHarness(email: string): Promise<Harness> {
   app.setGlobalPrefix('api/v1', { exclude: ['metrics'] });
   await registerPlugins(app, loadEnv());
   await app.listen(0, '127.0.0.1');
+  // ADR-0028: the same `upgrade` hook `main.ts` installs, so the live rooms are testable.
+  const { CollabService } = await import('../src/modules/collab/collab.service.js');
+  const collab = app.get(CollabService);
+  (app.getHttpServer() as import('node:http').Server).on('upgrade', (request, socket, head) =>
+    collab.handleUpgrade(request, socket, head),
+  );
 
   const address = app.getHttpServer().address() as { port: number };
   const baseUrl = `http://127.0.0.1:${address.port}`;

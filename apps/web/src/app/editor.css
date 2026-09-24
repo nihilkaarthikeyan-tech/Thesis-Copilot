@@ -255,3 +255,31 @@
   background: rgba(47, 91, 234, 0.1);
   border-bottom-color: rgba(47, 91, 234, 0.9);
 }
+
+/* ADR-0028: everyone else's caret and name in a live chapter. TipTap ships the class names and
+   no styles; without these the label is an unbounded coloured block across the line. */
+.thesis-editor .collaboration-cursor__caret {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 1px solid;
+  border-right: 1px solid;
+  word-break: normal;
+  pointer-events: none;
+}
+.thesis-editor .collaboration-cursor__label {
+  position: absolute;
+  top: -1.5em;
+  left: -1px;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px 3px 3px 0;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  color: #fff;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}

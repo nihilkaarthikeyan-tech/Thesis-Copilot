@@ -18,6 +18,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { ProgressService } from './progress.service.js';
 
@@ -63,6 +64,13 @@ export type DocumentDetail = DocumentSummary & {
   memory: { scope: unknown; outline: unknown; glossary: unknown } | null;
   /** PRD §9.1 "(meta)": the Path A conversation and cross-paper flags live here. */
   meta: unknown;
+  /**
+   * ADR-0028: the editor opens live — through the room, not autosave — only when there is
+   * someone to write with (a share with `canEdit`) and the feature is on.
+   */
+  liveEditing: boolean;
+  /** The owner's address, for the name on their cursor when the chapter is live. */
+  ownerEmail: string;
 };
 
 const summarySelect = {
@@ -95,6 +103,7 @@ export class DocumentsController {
     private readonly nextActionService: NextActionService,
     private readonly setupProgress: SetupProgressService,
     private readonly progressService: ProgressService,
+    private readonly flags: FlagsService,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -211,6 +220,7 @@ export class DocumentsController {
           orderBy: { order: 'asc' },
           select: { id: true, title: true, order: true, outlineNodeId: true, wordCount: true },
         },
+        shares: { where: { canEdit: true }, select: { id: true }, take: 1 },
       },
     });
 
@@ -221,6 +231,8 @@ export class DocumentsController {
       chapters: document.chapters,
       memory: document.memory,
       meta: document.meta,
+      liveEditing: document.shares.length > 0 && (await this.flags.isEnabled('collaboration')),
+      ownerEmail: user.email,
     };
   }
 }

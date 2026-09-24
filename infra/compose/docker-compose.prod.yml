@@ -68,6 +68,27 @@ services:
       timeout: 5s
       retries: 3
 
+  # ADR-0028: the live co-authoring rooms. The same image and command as `api`, with the
+  # WebSocket handler switched on, and exactly one replica: rooms live in memory, and two
+  # instances would each hold half of a chapter. `edge` sends `/collab/` here and nowhere else.
+  collab:
+    image: ghcr.io/${GHCR_ORG}/tc-api:${TAG}
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: .env
+    environment:
+      COLLAB_ENABLED: 'true'
+    command: ['node', 'apps/api/dist/main.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/api/v1/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   worker:
     image: ghcr.io/${GHCR_ORG}/tc-api:${TAG}
     restart: unless-stopped

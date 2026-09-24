@@ -27,6 +27,7 @@ type Share = {
   acceptedAt: string | null;
   comments: number;
   url: string;
+  canEdit: boolean;
 };
 
 export function ShareButton({ documentId }: { documentId: string }) {
@@ -36,10 +37,16 @@ export function ShareButton({ documentId }: { documentId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** ADR-0028: invite a co-author rather than a commenting guide. Offered only when live editing is on. */
+  const [canEdit, setCanEdit] = useState(false);
+  const [liveAvailable, setLiveAvailable] = useState(false);
 
   const load = useCallback(() => {
     api<Share[]>(`/documents/${documentId}/feedback/shares`)
       .then(setShares)
+      .catch(() => undefined);
+    api<Record<string, boolean>>('/flags')
+      .then((flags) => setLiveAvailable(flags.collaboration === true))
       .catch(() => undefined);
   }, [documentId]);
 
@@ -55,13 +62,17 @@ export function ShareButton({ documentId }: { documentId: string }) {
     setBusy(true);
     setError(null);
     try {
-      await api(`/documents/${documentId}/feedback/shares`, {
-        method: 'POST',
-        body: JSON.stringify({ guideEmail }),
-      });
+      const made = await api<Share & { mailed?: boolean }>(
+        `/documents/${documentId}/feedback/shares`,
+        { method: 'POST', body: JSON.stringify({ guideEmail, canEdit }) },
+      );
       setEmail('');
       setNotice(
-        `${guideEmail} can now open this thesis read-only by signing in with that address.`,
+        made.mailed === false
+          ? `The invitation could not be emailed just now. Send ${guideEmail} this link yourself: ${made.url}`
+          : canEdit
+            ? `${guideEmail} can now write this thesis with you, live, by signing in with that address.`
+            : `${guideEmail} can now open this thesis read-only by signing in with that address.`,
       );
       load();
     } catch (e) {
@@ -137,6 +148,21 @@ export function ShareButton({ documentId }: { documentId: string }) {
           <p className="mt-1 text-xs text-faint">
             They sign in with this address. There is no secret link to forward.
           </p>
+          {liveAvailable ? (
+            <label className="mt-2 flex items-start gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={canEdit}
+                onChange={(e) => setCanEdit(e.target.checked)}
+                data-testid="share-can-edit"
+                className="mt-0.5"
+              />
+              <span>
+                Let them <span className="text-ink">edit with me, live</span>. They can type in a
+                chapter alongside you; AI, uploads and exports stay yours.
+              </span>
+            </label>
+          ) : null}
 
           {error ? (
             <p role="alert" className="mt-2 text-xs text-warn">
@@ -156,6 +182,7 @@ export function ShareButton({ documentId }: { documentId: string }) {
                   <span className="min-w-0">
                     <span className="block truncate text-ink">{s.guideEmail}</span>
                     <span className="text-muted">
+                      {s.canEdit ? 'Co-author · ' : ''}
                       {s.acceptedAt ? 'Opened it' : 'Not opened yet'}
                       {s.comments > 0 ? ` · ${s.comments} comments` : ''}
                     </span>

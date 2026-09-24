@@ -6,6 +6,7 @@
  * problem-details, request id, Pino, `/metrics`, rate limiting.
  */
 
+import type { Server } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { loadEnv } from '@tc/config';
@@ -14,6 +15,7 @@ import { AppModule } from './app.module.js';
 import { buildFastify, registerPlugins } from './bootstrap.js';
 import { ProblemDetailsFilter } from './common/problem-details.filter.js';
 import { initSentry } from './common/sentry.js';
+import { COLLAB_PATH, CollabService } from './modules/collab/collab.service.js';
 
 async function bootstrap(): Promise<void> {
   // Throws and exits if anything required is missing or malformed.
@@ -56,6 +58,16 @@ async function bootstrap(): Promise<void> {
   await app.listen(port, '0.0.0.0');
 
   app.get(Logger).log(`API listening on http://0.0.0.0:${port}/api/v1`);
+
+  // ADR-0028: the live co-authoring rooms ride on this server's `upgrade` event. Fastify has no
+  // WebSocket handling of its own, so nothing else is listening for it.
+  if (env.COLLAB_ENABLED) {
+    const collab = app.get(CollabService);
+    (app.getHttpServer() as Server).on('upgrade', (request, socket, head) =>
+      collab.handleUpgrade(request, socket, head),
+    );
+    app.get(Logger).log(`Live editing at ws://0.0.0.0:${port}${COLLAB_PATH}:chapterId`);
+  }
 }
 
 bootstrap().catch((error: unknown) => {

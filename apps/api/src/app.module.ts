@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { CoherenceModule } from './modules/coherence/coherence.module.js';
+import { CollabModule } from './modules/collab/collab.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { ExportModule } from './modules/export/export.module.js';
 import { FeedbackModule } from './modules/feedback/feedback.module.js';
@@ -28,6 +29,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
   imports: [
     BillingModule,
     CoherenceModule,
+    CollabModule,
     FeedbackModule,
     LoggerModule.forRoot({
       pinoHttp: {

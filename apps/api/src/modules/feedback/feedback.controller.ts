@@ -28,7 +28,11 @@ import { FeedbackExportService } from './feedback-export.service.js';
 import { ReviewService } from './review.service.js';
 import { SharesService } from './shares.service.js';
 
-const shareBody = z.object({ guideEmail: z.string().trim().email().max(200) });
+const shareBody = z.object({
+  guideEmail: z.string().trim().email().max(200),
+  /** ADR-0028: a co-author who may type in the chapter live, rather than a commenting guide. */
+  canEdit: z.boolean().optional(),
+});
 
 const commentBody = z.object({
   chapterId: z.string().uuid().nullable().optional(),
@@ -78,7 +82,7 @@ export class FeedbackController {
   ) {
     const parsed = shareBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Enter your guide’s email', parsed.error.issues);
-    return this.shares.create(user, documentId, parsed.data.guideEmail);
+    return this.shares.create(user, documentId, parsed.data.guideEmail, parsed.data.canEdit);
   }
 
   @Delete('shares/:shareId')
