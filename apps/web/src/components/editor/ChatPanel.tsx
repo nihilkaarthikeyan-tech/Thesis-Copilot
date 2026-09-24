@@ -34,6 +34,7 @@ type Filters = {
   yearFrom?: number | null;
   yearTo?: number | null;
   minCitations?: number | null;
+  minJournalCitedness?: number | null;
   excludePreprints?: boolean;
 };
 
@@ -485,6 +486,29 @@ export function ChatPanel({
                 void saveFilters({
                   ...filters,
                   minCitations: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2">
+            <span>
+              Journal citedness at least
+              <span className="block text-[11px] text-faint">
+                OpenAlex's 2-year figure, the idea behind an impact factor. Sources without one are
+                left out.
+              </span>
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              data-testid="filter-journal-citedness"
+              className="w-20 rounded border border-line px-1"
+              value={filters.minJournalCitedness ?? ''}
+              onChange={(e) =>
+                void saveFilters({
+                  ...filters,
+                  minJournalCitedness: e.target.value ? Number(e.target.value) : null,
                 })
               }
             />

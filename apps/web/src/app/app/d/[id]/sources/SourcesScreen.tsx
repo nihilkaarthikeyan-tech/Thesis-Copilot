@@ -29,6 +29,7 @@ type Source = {
   doi: string | null;
   groundingLevel: 'NONE' | 'ABSTRACT' | 'FULL_TEXT' | string;
   citationCount: number | null;
+  venueCitedness: number | null;
   isPreprint: boolean;
   isRetracted: boolean;
   hasFile: boolean;
@@ -402,6 +403,11 @@ function SourceRow({
   ]
     .filter(Boolean)
     .join(' · ');
+  // ADR-0022. OpenAlex's figure, named as OpenAlex's — not Clarivate's Journal Impact Factor.
+  const citedness =
+    source.venueCitedness !== null && source.venueCitedness !== undefined
+      ? source.venueCitedness.toFixed(1)
+      : null;
 
   return (
     <li className="px-4 py-3">
@@ -411,7 +417,19 @@ function SourceRow({
           {authorLine(source.authors) ? (
             <p className="text-sm text-muted">{authorLine(source.authors)}</p>
           ) : null}
-          {meta ? <p className="text-xs text-muted">{meta}</p> : null}
+          {meta || citedness ? (
+            <p className="text-xs text-muted">
+              {meta}
+              {citedness ? (
+                <span
+                  data-testid="journal-citedness"
+                  title="The journal's 2-year mean citedness, from OpenAlex: citations last year to what it published in the two years before, per paper. It is the idea behind an impact factor, computed on OpenAlex's data — not Clarivate's Journal Impact Factor."
+                >
+                  {meta ? ' · ' : ''}journal citedness {citedness}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
 
           {source.isRetracted ? (
             <p className="mt-1 text-xs font-medium text-warn">

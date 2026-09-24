@@ -189,6 +189,7 @@ export {
   groundingLevelFor,
   type OpenAccessLocation,
   OpenAlexClient,
+  openalexSourceId,
   plainAbstract,
   RESOLUTION_THRESHOLD,
   type RelatedWork,

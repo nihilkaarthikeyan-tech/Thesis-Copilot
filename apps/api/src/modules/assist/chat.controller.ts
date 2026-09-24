@@ -42,6 +42,7 @@ const chatBody = z.object({
       yearFrom: z.number().int().min(1800).max(2100).nullish(),
       yearTo: z.number().int().min(1800).max(2100).nullish(),
       minCitations: z.number().int().min(0).max(100_000).nullish(),
+      minJournalCitedness: z.number().min(0).max(1_000).nullish(),
       excludePreprints: z.boolean().optional(),
     })
     .optional(),
@@ -76,6 +77,7 @@ const settingsBody = z.object({
       yearFrom: z.number().int().nullish(),
       yearTo: z.number().int().nullish(),
       minCitations: z.number().int().nullish(),
+      minJournalCitedness: z.number().min(0).max(1_000).nullish(),
       excludePreprints: z.boolean().optional(),
     })
     .optional(),

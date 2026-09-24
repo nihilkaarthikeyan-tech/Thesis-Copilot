@@ -48,6 +48,8 @@ type SourceRow = {
   isRetracted: boolean;
   cslJson: Record<string, unknown> | null;
   citationCount: number | null;
+  venueOpenalexId?: string | null;
+  venueCitedness?: number | null;
 };
 
 /** One fake `fetch` serving all three services, routed by URL substring. */
@@ -138,6 +140,89 @@ describe('runResolveReference', () => {
     expect(source.oaStatus).toBe('green');
     expect(source.citationCount).toBe(42);
     expect(indexed).toEqual([{ sourceId: 'src-1' }]);
+  });
+
+  it('stores the journal and its 2-year citedness, asking once per journal', async () => {
+    // ADR-0022. The work names its journal; the journal's own record carries the figure.
+    const table = [
+      { match: 'query.bibliographic', body: { message: { items: [crossrefItem] } } },
+      {
+        match: 'api.openalex.org/sources',
+        body: {
+          results: [
+            {
+              id: 'https://openalex.org/S175056054',
+              type: 'journal',
+              summary_stats: { '2yr_mean_citedness': 8.18 },
+            },
+          ],
+        },
+      },
+      {
+        match: 'api.openalex.org',
+        body: {
+          id: 'W1',
+          primary_location: {
+            source: { id: 'https://openalex.org/S175056054', display_name: 'Energy Policy' },
+          },
+        },
+      },
+      { match: 'api.unpaywall.org', body: { is_oa: false } },
+    ];
+    const first = fakeDeps(table);
+    await runResolveReference(job(), first.deps);
+    expect(first.source.venueOpenalexId).toBe('S175056054');
+    expect(first.source.venueCitedness).toBe(8.18);
+
+    // A second paper from the same journal is answered from the cache.
+    const second = fakeDeps(table);
+    await runResolveReference(job(), second.deps);
+    expect(second.calls.filter((url) => url.includes('/sources'))).toHaveLength(0);
+    expect(second.source.venueCitedness).toBe(8.18);
+  });
+
+  it('gives a preprint server no journal figure, although OpenAlex computes one', async () => {
+    const { deps, source } = fakeDeps([
+      { match: 'query.bibliographic', body: { message: { items: [crossrefItem] } } },
+      {
+        match: 'api.openalex.org/sources',
+        body: {
+          results: [
+            {
+              id: 'https://openalex.org/S4306400194',
+              type: 'repository',
+              summary_stats: { '2yr_mean_citedness': 0.17 },
+            },
+          ],
+        },
+      },
+      {
+        match: 'api.openalex.org',
+        body: {
+          id: 'W1',
+          primary_location: { source: { id: 'https://openalex.org/S4306400194' } },
+        },
+      },
+      { match: 'api.unpaywall.org', body: { is_oa: false } },
+    ]);
+    await runResolveReference(job(), deps);
+    expect(source.venueOpenalexId).toBe('S4306400194');
+    expect(source.venueCitedness).toBeNull();
+  });
+
+  it('keeps a journal OpenAlex has no figure for as unknown, never zero', async () => {
+    const { deps, source } = fakeDeps([
+      { match: 'query.bibliographic', body: { message: { items: [crossrefItem] } } },
+      { match: 'api.openalex.org/sources', body: { results: [{ id: 'https://openalex.org/S9' }] } },
+      {
+        match: 'api.openalex.org',
+        body: { id: 'W1', primary_location: { source: { id: 'https://openalex.org/S9' } } },
+      },
+      { match: 'api.unpaywall.org', body: { is_oa: false } },
+    ]);
+    await runResolveReference(job(), deps);
+    expect(source.venueOpenalexId).toBe('S9');
+    expect(source.venueCitedness).toBeNull();
   });
 
   it('claims abstract grounding only when there is an abstract', async () => {

@@ -293,6 +293,9 @@ model Source {
   citationCount  Int?
   isPreprint     Boolean  @default(false)
   isRetracted    Boolean  @default(false)
+  // --- ADR-0022: the journal's 2-year mean citedness, OpenAlex's impact-factor-style figure ---
+  venueOpenalexId String?  // OpenAlex source id, `S…`
+  venueCitedness  Float?   // null when OpenAlex has no figure for the journal, or none was looked up
   pins           ChapterSourcePin[]
   chunks         SourceChunk[]
   citations      Citation[]

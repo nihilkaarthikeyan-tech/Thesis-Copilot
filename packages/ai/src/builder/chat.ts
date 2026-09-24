@@ -29,6 +29,12 @@ export type ChatFilters = {
   yearFrom?: number | null;
   yearTo?: number | null;
   minCitations?: number | null;
+  /**
+   * ADR-0022: only sources from journals whose 2-year mean citedness (OpenAlex) is at least this.
+   * A source with no known figure — a preprint, a book, a journal OpenAlex does not score — does
+   * not pass: "at least 3" cannot be claimed of something unmeasured.
+   */
+  minJournalCitedness?: number | null;
   excludePreprints?: boolean;
 };
 
@@ -51,6 +57,7 @@ export function activeFilters(filters: ChatFilters): Record<string, unknown> {
   if (filters.yearFrom) out.yearFrom = filters.yearFrom;
   if (filters.yearTo) out.yearTo = filters.yearTo;
   if (filters.minCitations) out.minCitations = filters.minCitations;
+  if (filters.minJournalCitedness) out.minJournalCitedness = filters.minJournalCitedness;
   if (filters.excludePreprints) out.excludePreprints = true;
   return out;
 }
@@ -121,8 +128,8 @@ export const OFF_TOPIC_REPLY =
  * nothing relates to their question would send them off to find sources they already have.
  */
 export const FILTERED_OUT_REPLY =
-  'Your filters left nothing to answer from. Widen the year range, or turn off the preprint and ' +
-  'citation filters, and ask again.';
+  'Your filters left nothing to answer from. Widen the year range, or lower or turn off the ' +
+  'preprint, citation and journal filters, and ask again.';
 
 /**
  * When the student named papers with `@` and none of them has any text to read — a reference that

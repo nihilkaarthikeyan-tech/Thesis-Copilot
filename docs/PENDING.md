@@ -50,6 +50,11 @@ blocks the agent from continuing to build against mocks.
       field is new and the product calls OpenAlex on every search, resolution and gap check. Read
       openalex.org's pricing / API-key page and say whether we need a key or a budget line in
       `docs/COSTING.md`. The agent will not guess a price (§0.3 rule 4).
+- [ ] **After the next deploy, run `pnpm backfill:journals` once on the server** (ADR-0022). New
+      references get their journal's figure as they resolve; this fills it in for every source
+      resolved before. Safe to re-run. On 2026-09-24 against the dev database it matched 338 of
+      339 sources to a journal, 268 with a figure — the rest are in venues OpenAlex does not list
+      as journals, and are left unknown on purpose.
 - [ ] **Optional: an NCBI API key** (ADR-0020). PubMed search works without one at 3 requests a
       second, shared by the API and the worker. A free key from an NCBI account
       (ncbi.nlm.nih.gov → Account settings → API Key Management) raises that to 10: put it in

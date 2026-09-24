@@ -48,6 +48,8 @@ export type SourceView = {
   doi: string | null;
   groundingLevel: string;
   citationCount: number | null;
+  /** ADR-0022: the journal's 2-year mean citedness (OpenAlex); null when not known. */
+  venueCitedness: number | null;
   isPreprint: boolean;
   isRetracted: boolean;
   hasFile: boolean;
@@ -208,6 +210,7 @@ export class SourcesService {
         doi: true,
         groundingLevel: true,
         citationCount: true,
+        venueCitedness: true,
         isPreprint: true,
         isRetracted: true,
         fileKey: true,
@@ -376,6 +379,7 @@ export class SourcesService {
         doi: true,
         groundingLevel: true,
         citationCount: true,
+        venueCitedness: true,
         isPreprint: true,
         isRetracted: true,
         fileKey: true,

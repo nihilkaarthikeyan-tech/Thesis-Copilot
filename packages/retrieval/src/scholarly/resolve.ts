@@ -42,6 +42,8 @@ export type ResolvedSource = {
   /** How confident the match is; below RESOLUTION_THRESHOLD the caller stores UNRESOLVED. */
   score: number;
   via: 'crossref' | 'openalex' | 'arxiv' | null;
+  /** The journal, as OpenAlex's source id (`S…`), when OpenAlex knows the work — ADR-0022. */
+  venueOpenalexId?: string | null;
 };
 
 export const UNRESOLVED: ResolvedSource = {
@@ -175,13 +177,31 @@ type OpenAlexWork = {
   cited_by_count?: number;
   type?: string;
   authorships?: Array<{ author?: { display_name?: string } }>;
-  primary_location?: { source?: { display_name?: string } };
+  primary_location?: { source?: { id?: string; display_name?: string } };
   host_venue?: { display_name?: string };
   open_access?: { oa_status?: string };
   /** OpenAlex publishes abstracts only as a word -> positions map, for copyright reasons. */
   abstract_inverted_index?: Record<string, number[]>;
 };
 type OpenAlexResponse = { results?: OpenAlexWork[]; meta?: { count?: number } };
+
+type OpenAlexSource = {
+  id?: string;
+  /** `journal`, `repository`, `conference`, `ebook platform`, `book series`, … */
+  type?: string;
+  summary_stats?: { '2yr_mean_citedness'?: number | null } | null;
+};
+
+/** `https://openalex.org/S175056054` → `S175056054`; anything else → null. */
+export function openalexSourceId(id: string | null | undefined): string | null {
+  const match = /(S\d+)$/.exec(id ?? '');
+  return match?.[1] ?? null;
+}
+
+/** The journal a work appeared in, as OpenAlex's short source id. */
+function venueIdOf(work: OpenAlexWork): string | null {
+  return openalexSourceId(work.primary_location?.source?.id);
+}
 
 /** One related work for a gap check (FR-1.5): title, year, one line of abstract. */
 export type RelatedWork = {
@@ -243,6 +263,47 @@ export class OpenAlexClient {
   async byDoi(doi: string, signal?: AbortSignal): Promise<OpenAlexWork | null> {
     const url = `https://api.openalex.org/works/doi:${encodeURIComponent(doi)}?mailto=${encodeURIComponent(this.http.mailto)}`;
     return this.http.getJson<OpenAlexWork>(url, signal);
+  }
+
+  /**
+   * ADR-0022: each journal's 2-year mean citedness — OpenAlex's impact-factor-style figure
+   * (`summary_stats.2yr_mean_citedness`: last year's citations to the two years before it, per
+   * paper). Fifty journals a request, the most OpenAlex returns on one page. A journal it has no
+   * figure for maps to null, so "not known" is never read as zero.
+   *
+   * Journals only. OpenAlex computes the same figure for repositories and conference series —
+   * arXiv's is 0.17 — and a preprint server's average says nothing about a journal's standing, so
+   * a source from anything but a journal is "not known" here, not "0.17".
+   */
+  async journalCitedness(
+    sourceIds: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<Map<string, number | null>> {
+    const out = new Map<string, number | null>();
+    const ids = [...new Set(sourceIds.map(openalexSourceId).filter((id): id is string => !!id))];
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      const body = await this.http.getJson<{ results?: OpenAlexSource[] }>(
+        'https://api.openalex.org/sources?per-page=50&select=id,type,summary_stats' +
+          `&filter=${encodeURIComponent(`ids.openalex:${batch.join('|')}`)}` +
+          `&mailto=${encodeURIComponent(this.http.mailto)}`,
+        signal,
+      );
+      for (const id of batch) out.set(id, null);
+      for (const source of body?.results ?? []) {
+        const id = openalexSourceId(source.id);
+        const value = source.summary_stats?.['2yr_mean_citedness'];
+        if (
+          id &&
+          source.type === 'journal' &&
+          typeof value === 'number' &&
+          Number.isFinite(value)
+        ) {
+          out.set(id, value);
+        }
+      }
+    }
+    return out;
   }
 }
 
@@ -409,6 +470,7 @@ async function enrichFromOpenAlex(
     return {
       ...best,
       openalexId: work.id ?? null,
+      venueOpenalexId: venueIdOf(work),
       oaStatus: work.open_access?.oa_status ?? best.oaStatus,
       citationCount: work.cited_by_count ?? best.citationCount,
       abstract: best.abstract ?? abstractFromInvertedIndex(work.abstract_inverted_index),
@@ -454,6 +516,7 @@ export async function resolveByDoi(
       return {
         doi: normalised,
         openalexId: work.id ?? null,
+        venueOpenalexId: venueIdOf(work),
         title: work.title ?? work.display_name ?? null,
         authors: openAlexAuthors(work),
         year: work.publication_year ?? null,
@@ -531,6 +594,7 @@ export async function resolveReference(
     best = {
       doi: work.doi ? work.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//, '').toLowerCase() : null,
       openalexId: work.id ?? null,
+      venueOpenalexId: venueIdOf(work),
       title: candidate.title,
       authors: candidate.authors,
       year: candidate.year,

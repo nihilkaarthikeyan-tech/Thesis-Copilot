@@ -358,13 +358,14 @@ export class ChatService {
       Boolean(filters.yearFrom) ||
       Boolean(filters.yearTo) ||
       Boolean(filters.minCitations) ||
+      Boolean(filters.minJournalCitedness) ||
       Boolean(filters.excludePreprints);
     if (!active) return [...retrieved.passages];
 
     const sourceIds = [...new Set([...retrieved.byKey.values()].map((v) => v.sourceId))];
     const sources = await this.prisma.source.findMany({
       where: { id: { in: sourceIds } },
-      select: { id: true, year: true, citationCount: true, isPreprint: true },
+      select: { id: true, year: true, citationCount: true, venueCitedness: true, isPreprint: true },
     });
     const byId = new Map(sources.map((row) => [row.id, row]));
 
@@ -375,6 +376,13 @@ export class ChatService {
       if (filters.yearFrom && (info.year ?? 0) < filters.yearFrom) return false;
       if (filters.yearTo && (info.year ?? 9_999) > filters.yearTo) return false;
       if (filters.minCitations && (info.citationCount ?? 0) < filters.minCitations) return false;
+      // Unknown is not zero, and it is not "at least N" either: an unmeasured journal is left out.
+      if (
+        filters.minJournalCitedness &&
+        (info.venueCitedness === null || info.venueCitedness < filters.minJournalCitedness)
+      ) {
+        return false;
+      }
       if (filters.excludePreprints && info.isPreprint) return false;
       return true;
     });

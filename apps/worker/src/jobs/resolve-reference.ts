@@ -49,6 +49,26 @@ export type ResolveReferenceResult = {
   openAccess: boolean;
 };
 
+/**
+ * A journal's figure, cached for a day in this process. A library resolves dozens of references
+ * from the same handful of journals, and the figure moves once a year; asking OpenAlex once per
+ * journal rather than once per paper is the difference between two requests and forty.
+ */
+const CITEDNESS_TTL_MS = 24 * 60 * 60 * 1000;
+const citednessCache = new Map<string, { value: number | null; at: number }>();
+
+async function journalCitedness(
+  openalex: Pick<OpenAlexClient, 'journalCitedness'>,
+  venueId: string,
+  now = Date.now(),
+): Promise<number | null> {
+  const cached = citednessCache.get(venueId);
+  if (cached && now - cached.at < CITEDNESS_TTL_MS) return cached.value;
+  const value = (await openalex.journalCitedness([venueId])).get(venueId) ?? null;
+  citednessCache.set(venueId, { value, at: now });
+  return value;
+}
+
 export async function runResolveReference(
   job: ResolveReferenceJob,
   deps: ResolveReferenceDeps,
@@ -112,6 +132,17 @@ export async function runResolveReference(
     }
   }
 
+  // ADR-0022: the journal's 2-year mean citedness, when OpenAlex knows the journal. Best effort,
+  // like Unpaywall: a failed lookup leaves it unknown and loses nothing else.
+  let venueCitedness: number | null = null;
+  if (resolved.venueOpenalexId) {
+    try {
+      venueCitedness = await journalCitedness(deps.openalex, resolved.venueOpenalexId);
+    } catch (error) {
+      log({ msg: 'journal citedness lookup failed', sourceId: source.id, error: String(error) });
+    }
+  }
+
   const cslJson: Record<string, unknown> | null = resolved.cslJson
     ? { ...resolved.cslJson, ...(resolved.abstract ? { abstract: resolved.abstract } : {}) }
     : resolved.abstract
@@ -136,6 +167,8 @@ export async function runResolveReference(
       ...(resolved.citationCount !== null ? { citationCount: resolved.citationCount } : {}),
       isPreprint: resolved.isPreprint,
       isRetracted: resolved.isRetracted,
+      venueOpenalexId: resolved.venueOpenalexId ?? null,
+      venueCitedness,
       // Full text is only claimed once it has actually been fetched, by `index-source`; and
       // ABSTRACT only when there really is an abstract, not merely because a match was found.
       groundingLevel: groundingLevelFor(false, Boolean(resolved.abstract)),

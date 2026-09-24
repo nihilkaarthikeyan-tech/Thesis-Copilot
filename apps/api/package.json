@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "pilot:report": "dotenv -e ../../.env -- tsx scripts/pilot-report.ts",
+    "backfill:journals": "dotenv -e ../../.env -- tsx scripts/backfill-journal-citedness.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "start:local": "dotenv -e ../../.env -- node dist/main.js"
