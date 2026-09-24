@@ -128,6 +128,21 @@ function runsFrom(
   const { spec } = input;
   const out: TextRun[] = [];
   for (const node of nodes) {
+    // A pending AI draft is not part of the thesis, however deep it sits (see `chapterBlocks`).
+    if (node.type === 'draftBlock') continue;
+    if (node.type === 'needsSourceNote') {
+      // Only ever inside a pending draft, which is skipped above; if one is ever found outside
+      // it, it ships visible — hiding a gap is the one thing this product must never do.
+      out.push(
+        new TextRun({
+          text: `[NEEDS SOURCE: ${String(node.attrs?.text ?? '')}]`,
+          bold: true,
+          font: spec.font.body,
+          size: pt(spec.font.sizePt),
+        }),
+      );
+      continue;
+    }
     if (node.type === 'crossRef') {
       // Numbered per chapter, from the chapter's own document — the same source the editor reads,
       // so the submitted thesis says what the screen said.
@@ -450,6 +465,14 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
         break;
       }
 
+      case 'draftBlock':
+        // An AI draft the student has not accepted. Autosave keeps it in the chapter while it
+        // waits, and until 2026-09-24 this switch had no case for it, so the default below wrote
+        // its text into the thesis the student submits — AI output entering the thesis with no
+        // student action, which the chapter export (`docx.ts`) had always refused. Accepting a
+        // draft unwraps it into ordinary blocks, so nothing accepted is lost here.
+        break;
+
       default:
         if (block.content) {
           out.push(
@@ -596,6 +619,24 @@ function frontMatter(input: ThesisExportInput): Array<Paragraph | TableOfContent
   return out;
 }
 
+/**
+ * The chapter without any AI draft the student has not accepted, wherever it sits — a draft in a
+ * list or a table cell is as unaccepted as one at the top level. Numbering, cross-references and
+ * the text are all built from this, so a figure inside a pending draft neither prints nor takes a
+ * number from the figures after it. Exported for the LaTeX and HTML builders, which apply the
+ * same rule.
+ */
+export function withoutPendingDrafts(content: unknown): unknown {
+  const strip = (node: Node): Node =>
+    node.content
+      ? {
+          ...node,
+          content: node.content.filter((child) => child.type !== 'draftBlock').map(strip),
+        }
+      : node;
+  return content && typeof content === 'object' ? strip(content as Node) : content;
+}
+
 /** Builds the whole thesis as a `.docx`. */
 export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
   const { spec } = input;
@@ -607,7 +648,9 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
     right: convertMillimetersToTwip(spec.page.marginsMm.right),
   };
 
-  const chapters = [...input.chapters].sort((a, b) => a.order - b.order);
+  const chapters = [...input.chapters]
+    .sort((a, b) => a.order - b.order)
+    .map((chapter) => ({ ...chapter, content: withoutPendingDrafts(chapter.content) }));
   const bodyChildren: Array<Paragraph | Table> = chapters.flatMap((chapter) =>
     chapterBlocks(chapter, input),
   );

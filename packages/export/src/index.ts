@@ -36,4 +36,5 @@ export {
   type ThesisChapter,
   type ThesisExportInput,
   thesisToDocx,
+  withoutPendingDrafts,
 } from './thesis.js';
