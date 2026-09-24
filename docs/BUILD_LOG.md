@@ -3433,3 +3433,35 @@ and a Discover run can fail on Voyage's free-tier limit of 3 requests a minute (
 asks for a payment method on that account), and `outline-commands-chat.spec.ts`'s "offers
 nothing to apply when the rewrite came back unchanged" asserts the mock's answer, so it fails
 against real models and passes in CI.
+
+### Charts, and what building them found in the figures — 2026-09-24
+
+Charts (ADR-0027) are a canvas drawing of the numbers the student types — bar or line, a legend,
+nice ticks, a zero-based axis — uploaded through the ordinary figure path and inserted as an
+`image` node with the numbers kept on it, so the figure can be opened and redrawn. No model, no
+metered action, no library. With the cursor in a table the dialog opens on the table's numbers.
+
+Mapping how a figure travels from upload to export, before writing any of that, turned up three
+faults in what was already shipped:
+
+- **Every figure went blank fifteen minutes after it was added.** Its `src` is a URL signed for
+  fifteen minutes and saved into the chapter; the endpoint that mints a new one existed and
+  nothing called it. A link stored on 09-21 answered 403 on 09-24. The chapter read and the
+  supervisor's share view now re-sign every figure the document owns, and the editor's image
+  view asks for a fresh link once if the one it holds stops loading (53179b2).
+- **The exporter read whatever figure key a chapter named.** The key is client-written, so
+  anyone who learned another thesis's key could export that figure in their own. One rule now
+  (`ownsFigureKey`) for reads, exports and the link endpoint.
+- **A figure's caption was its file name, and a table's was nothing.** `alt` is the uploaded
+  file's name and every exporter printed it after "Figure 3.1:"; a browser test asserted
+  "Figure 1.1: scan.jpg" as correct. Tables read a `caption` attribute the node did not have. The
+  compliance check took any paragraph beginning "Figure" beside a figure as its caption, so a
+  student who typed one to satisfy the check got it printed twice. One helper
+  (`packages/export/src/captions.ts`) now answers for all four exporters and the check; the
+  toolbar has a Caption button for the selected figure or the table the cursor is in; and a
+  typed "Figure 2: Survey sites" paragraph is taken as that figure's caption and not printed
+  again (d1887a4).
+
+The chart's own browser test found the fourth: a chart made from a table was inserted into the
+table cell the cursor was in, where every exporter treats it as part of the table — no number,
+no caption. `insertFigure` now puts it after the table.

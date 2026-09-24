@@ -155,8 +155,9 @@ phone, `@` a paper and `/` saved prompts in chat, arXiv and PubMed, LaTeX and HT
 journal citedness, the citation-support check, the writing profile with guidance, and
 proofreading. Proofreading is the one that brushes §12.3: code, not the prompt, refuses any
 correction that puts a different word in (`correctionSize`). `docs/BUILD_LOG.md` → "The
-competitor gap list" has the faults it found in the shipped product. Charts and real-time
-co-authoring are the two items from that list not yet built.
+competitor gap list" has the faults it found in the shipped product. Charts followed the same
+day (ADR-0027: drawn on a canvas from the student's numbers, no model, stored as a figure with
+the numbers kept on it). Real-time co-authoring is the one item from that list not yet built.
 
 **A fully active student costs ₹14.18/month** against the ₹100 ceiling (₹7 of it hosting, ₹6.74
 AI). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
