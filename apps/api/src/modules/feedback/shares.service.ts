@@ -16,8 +16,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../common/errors.js';
+import { withFreshFigureLinks } from '../../common/figure-links.js';
 import { MAILER, type Mailer } from '../../common/mailer.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { StorageService } from '../../common/storage.service.js';
 import { type GuideProgress, guideProgress, shouldBumpVisit } from './guide-progress.js';
 
 export type ShareView = {
@@ -46,6 +48,7 @@ export class SharesService {
     private readonly prisma: PrismaService,
     @Inject(MAILER) private readonly mailer: Mailer,
     @Inject(ENV) private readonly env: Env,
+    private readonly storage: StorageService,
   ) {}
 
   private async ownedDocument(ownerId: string, documentId: string) {
@@ -224,6 +227,8 @@ export class SharesService {
       select: { id: true, title: true, content: true },
     });
     if (!chapter) throw new NotFoundError('That chapter');
+    // The guide sees the figures too, and the links stored with the chapter have long expired.
+    await withFreshFigureLinks(chapter.content, documentId, (key) => this.storage.signedUrl(key));
     return chapter;
   }
 

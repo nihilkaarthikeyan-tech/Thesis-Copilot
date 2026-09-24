@@ -16,6 +16,7 @@
 
 import type { Logger } from '@nestjs/common';
 import { fitToColumn, imageSize } from '@tc/export';
+import { ownsFigureKey } from '../../common/figure-links.js';
 import type { StorageService } from '../../common/storage.service.js';
 
 /** What `ExportOptions.images` wants, keyed by object-storage key. */
@@ -46,12 +47,25 @@ export function figureKeysIn(doc: unknown): string[] {
   return [...keys];
 }
 
+/**
+ * Only keys under the exported document's own prefix are read (`ownsFigureKey`): the key is part
+ * of what the client saved, and reading whatever it names would put another thesis's figure in
+ * this one's file for anyone who learned its key.
+ */
 export async function loadFigures(
   storage: StorageService,
   doc: unknown,
+  documentId: string,
   logger?: Logger,
 ): Promise<FigureBytes> {
-  const keys = figureKeysIn(doc);
+  const named = figureKeysIn(doc);
+  const keys = named.filter((key) => ownsFigureKey(documentId, key));
+  if (keys.length < named.length) {
+    logger?.warn(
+      { documentId, foreign: named.length - keys.length },
+      'figure keys outside this document were not read',
+    );
+  }
   if (keys.length === 0) return {};
 
   const images: FigureBytes = {};

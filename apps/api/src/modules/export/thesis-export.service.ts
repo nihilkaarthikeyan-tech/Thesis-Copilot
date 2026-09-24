@@ -351,7 +351,9 @@ export class ThesisExportService {
     const images = Object.assign(
       {},
       ...(await Promise.all(
-        chapters.map((chapter) => loadFigures(this.storage, chapter.content, this.logger)),
+        chapters.map((chapter) =>
+          loadFigures(this.storage, chapter.content, document.id, this.logger),
+        ),
       )),
     );
     const exportedOn = new Date().toISOString().slice(0, 10);

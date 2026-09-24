@@ -80,7 +80,7 @@ export class ExportService {
       renderedMap,
       bibliography,
       // Without this every figure the student inserted exports as the placeholder '[image]'.
-      images: await loadFigures(this.storage, chapter.content, this.logger),
+      images: await loadFigures(this.storage, chapter.content, chapter.documentId, this.logger),
       // Cross-reference numbers, from the same walk the editor uses.
       refTargets: numberingMap(chapter.content),
       numberHeadings: true,

@@ -375,6 +375,11 @@ function ChapterEditor({
         imageUpload: uploadFigure,
         imageUploadError: (error: unknown) =>
           setNotice(error instanceof Error ? error.message : 'That image could not be added.'),
+        // A figure's link lasts fifteen minutes and a chapter stays open for hours.
+        imageResolveUrl: (key: string) =>
+          api<{ url: string }>(
+            `/chapters/${chapter.id}/figures/link?key=${encodeURIComponent(key)}`,
+          ).then((r) => r.url),
         // Clicking a highlighted passage opens its comment in the panel (review.ts).
         review: {
           onSelect: (commentId: string) => {

@@ -78,6 +78,15 @@ export type ImageUpload = (file: File) => Promise<{ key: string; url: string }>;
  */
 export type ImageUploadError = (error: unknown) => void;
 
+/**
+ * A fresh link for a figure whose stored one no longer loads.
+ *
+ * The server re-signs every figure when a chapter is read, but a signed link lasts fifteen
+ * minutes and a chapter stays open for hours: an image redrawn after that (an undo, a paste)
+ * would ask for the old link again. The view asks for a new one once, and shows that.
+ */
+export type ImageResolveUrl = (key: string) => Promise<string>;
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     thesisImage: {
@@ -90,6 +99,7 @@ declare module '@tiptap/core' {
 export const ThesisImage = Image.extend<{
   upload?: ImageUpload;
   onUploadError?: ImageUploadError;
+  resolveUrl?: ImageResolveUrl;
   inline: boolean;
   allowBase64: boolean;
   HTMLAttributes: Record<string, unknown>;
@@ -105,6 +115,47 @@ export const ThesisImage = Image.extend<{
         default: null,
         renderHTML: (a) => (a.caption ? { 'data-caption': a.caption } : {}),
       },
+    };
+  },
+  addNodeView() {
+    const resolveUrl = this.options.resolveUrl;
+    return ({ node }) => {
+      const img = document.createElement('img');
+      let current = node;
+      // A link fetched for this figure's key, which outlives any re-render of the node.
+      let fresh: { key: string; url: string } | null = null;
+      let asked: string | null = null;
+      const draw = () => {
+        const key = typeof current.attrs.key === 'string' ? current.attrs.key : null;
+        const src = fresh && fresh.key === key ? fresh.url : String(current.attrs.src ?? '');
+        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+        img.alt = String(current.attrs.alt ?? '');
+        if (current.attrs.title) img.title = String(current.attrs.title);
+        if (key) img.dataset.key = key;
+        else delete img.dataset.key;
+      };
+      img.addEventListener('error', () => {
+        const key = typeof current.attrs.key === 'string' ? current.attrs.key : null;
+        if (!key || !resolveUrl || asked === key) return;
+        asked = key;
+        resolveUrl(key).then(
+          (url) => {
+            fresh = { key, url };
+            draw();
+          },
+          () => undefined,
+        );
+      });
+      draw();
+      return {
+        dom: img,
+        update: (updated) => {
+          if (updated.type !== current.type) return false;
+          current = updated;
+          draw();
+          return true;
+        },
+      };
     };
   },
   addCommands() {

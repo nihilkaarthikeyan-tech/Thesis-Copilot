@@ -49,6 +49,7 @@ export { insertBlockWithCaretAfter } from './editor/insert-block.js';
 export { MathBlock, MathInline } from './editor/math.js';
 export {
   CommentAnchor,
+  type ImageResolveUrl,
   type ImageUpload,
   type ImageUploadError,
   NeedsSourceNote,

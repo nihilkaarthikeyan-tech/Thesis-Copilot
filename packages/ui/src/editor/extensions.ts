@@ -25,6 +25,7 @@ import { GhostText, type GhostTextOptions } from './ghost-text.js';
 import { MathBlock, MathInline } from './math.js';
 import {
   CommentAnchor,
+  type ImageResolveUrl,
   type ImageUpload,
   type ImageUploadError,
   NeedsSourceNote,
@@ -43,6 +44,8 @@ export type ThesisEditorOptions = {
   imageUpload?: ImageUpload;
   /** Shown to the student when an upload fails; without it the failure is silent. */
   imageUploadError?: ImageUploadError;
+  /** A fresh link for a figure whose stored one has expired (`ImageResolveUrl`). */
+  imageResolveUrl?: ImageResolveUrl;
   placeholder?: string;
   /** Tables measure the DOM for column resizing; off in tests (jsdom has no layout). */
   resizableTables?: boolean;
@@ -74,6 +77,7 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     ThesisImage.configure({
       ...(options.imageUpload ? { upload: options.imageUpload } : {}),
       ...(options.imageUploadError ? { onUploadError: options.imageUploadError } : {}),
+      ...(options.imageResolveUrl ? { resolveUrl: options.imageResolveUrl } : {}),
     }),
     CrossRef.configure({ chapterNumber: options.chapterNumber ?? 1 }),
     MathInline,

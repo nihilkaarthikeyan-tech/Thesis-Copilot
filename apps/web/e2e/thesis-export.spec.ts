@@ -1,5 +1,6 @@
-import { deflateSync, inflateRawSync } from 'node:zlib';
+import { inflateRawSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
+import { tinyPng } from './_images.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -19,41 +20,6 @@ import { API_URL, establishSession, freshEmail } from './_session.js';
 const JPEG_B64 =
   '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAADAAQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDCooorzj7E/9k=';
 const GIF_B64 = 'R0lGODdhBAADAIAAAAAAAAAAACwAAAAABAADAAAICAABCBxIUGBAADs=';
-
-/** A 3x2 red PNG, hand-assembled: the smallest thing the exporter has to measure and embed. */
-function tinyPng(): Buffer {
-  const crc32 = (buf: Buffer): number => {
-    let c = ~0;
-    for (const byte of buf) {
-      c ^= byte;
-      for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xed_b8_83_20 & -(c & 1));
-    }
-    return ~c >>> 0;
-  };
-  const chunk = (type: string, data: Buffer): Buffer => {
-    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length);
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(body));
-    return Buffer.concat([length, body, crc]);
-  };
-
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(3, 0); // width
-  ihdr.writeUInt32BE(2, 4); // height
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 2; // colour type: truecolour
-  // Two rows of three red pixels, each row prefixed by its filter byte.
-  const row = Buffer.from([0x00, 0xff, 0x00, 0x00, 0xff, 0x00, 0x00, 0xff, 0x00, 0x00]);
-  const raw = Buffer.concat([row, row]);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
 
 /** `word/document.xml` out of a .docx, plus the names of everything in the archive. */
 function openDocx(bytes: Buffer): { names: string[]; document: string } {

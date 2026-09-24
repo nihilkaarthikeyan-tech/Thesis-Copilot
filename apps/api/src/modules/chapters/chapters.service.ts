@@ -9,7 +9,9 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@tc/db';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
+import { withFreshFigureLinks } from '../../common/figure-links.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { StorageService } from '../../common/storage.service.js';
 import { StyleService } from '../memory/style.service.js';
 import { citationsIn } from './citations.js';
 import { type SnapshotReason, SnapshotsService } from './snapshots.service.js';
@@ -76,6 +78,7 @@ export class ChaptersService {
     private readonly prisma: PrismaService,
     private readonly snapshots: SnapshotsService,
     private readonly style: StyleService,
+    private readonly storage: StorageService,
   ) {}
 
   async get(ownerId: string, chapterId: string): Promise<ChapterView> {
@@ -84,6 +87,10 @@ export class ChaptersService {
       select,
     });
     if (!chapter) throw new NotFoundError('That chapter');
+    // A figure's stored link lasts fifteen minutes; the one this read hands out is fresh.
+    await withFreshFigureLinks(chapter.content, chapter.documentId, (key) =>
+      this.storage.signedUrl(key),
+    );
     return this.view(chapter);
   }
 

@@ -20,6 +20,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
+import { ownsFigureKey } from '../../common/figure-links.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
 
@@ -171,11 +172,11 @@ export class FiguresService {
       select: { documentId: true },
     });
     if (!chapter) throw new NotFoundError('That chapter');
-    // The key is client-supplied, so it is checked against the path this chapter is allowed to
+    // The key is client-supplied, so it is checked against the path this document is allowed to
     // read rather than trusted. Without this, any key in the bucket would be signable by anyone.
-    if (!key.startsWith(`figures/${chapter.documentId}/${chapterId}/`)) {
-      throw new NotFoundError('That figure');
-    }
+    // The document, not the chapter: a figure moved to another chapter keeps its key, and the
+    // chapter read re-signs by the same rule (`withFreshFigureLinks`).
+    if (!ownsFigureKey(chapter.documentId, key)) throw new NotFoundError('That figure');
     if (!(await this.storage.exists(key))) throw new NotFoundError('That figure');
     return { url: await this.storage.signedUrl(key) };
   }
