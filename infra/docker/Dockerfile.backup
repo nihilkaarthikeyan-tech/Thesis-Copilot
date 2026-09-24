@@ -4,8 +4,9 @@
 
 FROM alpine:3.20
 RUN apk add --no-cache postgresql16-client bash curl tzdata
-# docker.io/minio/mc was retired in 2025; quay.io/minio/mc is the maintained registry now.
-COPY --from=quay.io/minio/mc:latest /usr/bin/mc /usr/local/bin/mc
+# ADR-0024: MinIO has withdrawn every public image — docker.io/minio/mc went in 2025 and
+# quay.io/minio/mc answers 401 since 2026-09-24. Chainguard's MinIO image carries mc.
+COPY --from=cgr.dev/chainguard/minio:latest /usr/bin/mc /usr/local/bin/mc
 WORKDIR /opt/backup
 COPY infra/scripts/backup.sh infra/scripts/restore.sh ./
 RUN chmod +x backup.sh restore.sh \
