@@ -30,6 +30,8 @@ const generateBody = z.object({ template: z.enum(TEMPLATES).optional() });
 const outlineBody = z.object({ outline: z.array(z.unknown()) });
 const glossaryBody = z.object({ glossary: z.record(z.string(), z.unknown()) });
 const deleteBody = z.object({ wordCount: z.number().int().min(0) });
+/** The service measures and screens it; this only bounds what is accepted at all. */
+const guidanceBody = z.object({ guidance: z.string().max(2_000) });
 
 @Controller('documents/:id')
 @UseGuards(SessionGuard)
@@ -50,6 +52,18 @@ export class OutlineController {
   @HttpCode(200)
   learnStyle(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.style.learn(user.id, documentId);
+  }
+
+  /** ADR-0025: the student's own note on their voice. An empty string clears it. */
+  @Put('style-profile/guidance')
+  setStyleGuidance(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = guidanceBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid guidance', parsed.error.issues);
+    return this.style.setGuidance(user.id, documentId, parsed.data.guidance);
   }
 
   /** Template, outline tree, chapters and glossary in one read — the outline screen's state. */

@@ -240,10 +240,14 @@ function readGlossary(value: unknown): Record<string, GlossaryEntry> {
   return out;
 }
 
-function readStyleProfile(value: unknown): StyleProfile | null {
+export function readStyleProfile(value: unknown): StyleProfile | null {
   if (!value || typeof value !== 'object') return null;
-  const v = value as Partial<StyleProfile>;
+  const v = value as Partial<StyleProfile> & { guidance?: unknown };
   if (typeof v.voiceNote !== 'string' || typeof v.avgSentenceLen !== 'number') return null;
+  // ADR-0025: the student's own note rides in A.0.1's existing `voiceNote` slot, after the
+  // model's reading of them, so the template stays verbatim. It needs a learned profile to ride
+  // in: the slot's other lines are measurements, and none are printed that were not measured.
+  const guidance = typeof v.guidance === 'string' ? v.guidance.trim() : '';
   return {
     avgSentenceLen: v.avgSentenceLen,
     register: typeof v.register === 'string' ? v.register : '',
@@ -251,6 +255,6 @@ function readStyleProfile(value: unknown): StyleProfile | null {
     transitions: Array.isArray(v.transitions)
       ? v.transitions.filter((t): t is string => typeof t === 'string')
       : [],
-    voiceNote: v.voiceNote,
+    voiceNote: guidance ? `${v.voiceNote}\nThe student asks: ${guidance}` : v.voiceNote,
   };
 }

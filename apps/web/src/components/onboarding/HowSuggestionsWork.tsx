@@ -12,8 +12,18 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { WritingProfile } from './WritingProfile';
 
-export function HowSuggestionsWork({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function HowSuggestionsWork({
+  open,
+  onClose,
+  documentId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Opened from a thesis: also show what the AI has learned about the student's writing. */
+  documentId?: string;
+}) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -85,6 +95,17 @@ export function HowSuggestionsWork({ open, onClose }: { open: boolean; onClose: 
           sources you pinned. They cannot cite a paper that is not in your library, and if they try,
           the citation is removed before you see it.
         </p>
+
+        {documentId ? (
+          <>
+            <h3 className="mt-5 font-medium">What it has learned about your writing</h3>
+            <p className="mt-2">
+              Suggestions follow your style, learned from what you wrote yourself, and anything you
+              add here.
+            </p>
+            <WritingProfile documentId={documentId} />
+          </>
+        ) : null}
 
         <h3 className="mt-5 font-medium">Verify every citation</h3>
         <p className="mt-2">

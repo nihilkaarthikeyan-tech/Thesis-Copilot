@@ -25,7 +25,26 @@ export type StyleStatus = {
   profile: unknown;
   /** ISO timestamp of the last successful inference, when there is one. */
   learnedAt: string | null;
+  /** The student's own note on their voice (ADR-0025), kept across every re-learn. */
+  guidance: string;
+  /** When "Re-learn my style" can next run — once a day, because it is a Strong-tier call. */
+  relearnAvailableAt: string | null;
 };
+
+/** ADR-0025: re-learning is a Strong call on the student's click, so it is rationed. */
+export const RELEARN_INTERVAL_MS = 24 * 60 * 60 * 1000;
+export const GUIDANCE_MAX_CHARS = 300;
+
+/**
+ * PRD §12.3: nothing in this product helps text pass as unassisted. Guidance is the student's own
+ * words to the model, so it is the one place they could ask for that; such a note is refused with
+ * the reason rather than stored. Narrow on purpose — "use 'detector' consistently" is fine in a
+ * physics thesis.
+ */
+const EVASION =
+  /\b(?:ai[- ]?(?:detect\w*|checkers?)|undetectable|turnitin|gptzero|zerogpt|humani[sz]\w*|bypass\w*|pass(?:es)? as human|sounds? (?:more )?human)\b/i;
+
+type StoredProfile = { learnedAt?: string; guidance?: string } & Record<string, unknown>;
 
 @Injectable()
 export class StyleService {
@@ -44,14 +63,55 @@ export class StyleService {
       where: { documentId },
       select: { styleProfile: true },
     });
-    const profile = memory?.styleProfile as { learnedAt?: string } | null;
+    const profile = memory?.styleProfile as StoredProfile | null;
+    return this.statusOf(humanWords, profile);
+  }
+
+  private statusOf(humanWords: number, profile: StoredProfile | null): StyleStatus {
+    const learnedAt = profile?.learnedAt ?? null;
     return {
       humanWords,
       thresholdWords: STYLE.thresholdWords,
       eligible: humanWords >= STYLE.thresholdWords,
-      profile: profile ?? null,
-      learnedAt: profile?.learnedAt ?? null,
+      // A profile that is only the student's guidance has not been learned yet.
+      profile: learnedAt ? profile : null,
+      learnedAt,
+      guidance: profile?.guidance ?? '',
+      relearnAvailableAt: learnedAt
+        ? new Date(Date.parse(learnedAt) + RELEARN_INTERVAL_MS).toISOString()
+        : null,
     };
+  }
+
+  /**
+   * ADR-0025: the student's own note on their voice — "British spelling", "call them farmers, not
+   * respondents". It rides in the style profile, which A.0.1 already renders into every prompt, and
+   * it survives re-learning: the model's reading of the student is replaced, their words are not.
+   */
+  async setGuidance(ownerId: string, documentId: string, guidance: string): Promise<StyleStatus> {
+    const note = guidance.replace(/\s+/g, ' ').trim();
+    if (note.length > GUIDANCE_MAX_CHARS) {
+      throw new ValidationError(`Keep it under ${GUIDANCE_MAX_CHARS} characters.`);
+    }
+    if (EVASION.test(note)) {
+      throw new ValidationError(
+        'Thesis Copilot does not help text pass AI detection or hide that it was assisted (PRD §12.3). Everything the AI writes is marked, and your usage log says so.',
+      );
+    }
+    const { humanWords } = await this.sample(ownerId, documentId);
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { styleProfile: true },
+    });
+    const profile: StoredProfile = {
+      ...((memory?.styleProfile as StoredProfile | null) ?? {}),
+      guidance: note,
+    };
+    await this.prisma.documentMemory.update({
+      where: { documentId },
+      data: { styleProfile: profile as never },
+    });
+    return this.statusOf(humanWords, profile);
   }
 
   /**
@@ -67,6 +127,20 @@ export class StyleService {
     }
     if (text.trim().length === 0) throw new ValidationError('There is no text of your own yet.');
 
+    const existing = (
+      await this.prisma.documentMemory.findUnique({
+        where: { documentId },
+        select: { styleProfile: true },
+      })
+    )?.styleProfile as StoredProfile | null;
+    // Once a day at most — the button is one click from a Strong-tier call (ADR-0025).
+    const lastLearned = existing?.learnedAt ? Date.parse(existing.learnedAt) : Number.NaN;
+    if (!force && Number.isFinite(lastLearned) && Date.now() - lastLearned < RELEARN_INTERVAL_MS) {
+      throw new ValidationError(
+        'Your style was learned in the last day. It can be re-learned once a day — write some more first.',
+      );
+    }
+
     const request = buildStyleRequest({ sample: text, userId: ownerId, documentId });
     const startedAt = Date.now();
     let modelId = this.providers.llm.modelIdFor('strong');
@@ -74,23 +148,19 @@ export class StyleService {
       const result = await this.providers.llm.complete({ ...request, schema: styleProfileSchema });
       modelId = result.modelId;
       await this.log(ownerId, documentId, modelId, result.usage, Date.now() - startedAt, true);
-      const profile = {
+      const profile: StoredProfile = {
         ...result.value,
         learnedAt: new Date().toISOString(),
         fromWords: humanWords,
+        // The student's own note outlives every re-learn.
+        ...(existing?.guidance ? { guidance: existing.guidance } : {}),
       };
       await this.prisma.documentMemory.update({
         where: { documentId },
         data: { styleProfile: profile as never },
       });
       this.logger.log({ documentId, humanWords, voice: profile.voice }, 'style profile learned');
-      return {
-        humanWords,
-        thresholdWords: STYLE.thresholdWords,
-        eligible: true,
-        profile,
-        learnedAt: profile.learnedAt,
-      };
+      return this.statusOf(humanWords, profile);
     } catch (error) {
       await this.log(ownerId, documentId, modelId, null, Date.now() - startedAt, false, error);
       throw error;
@@ -107,7 +177,8 @@ export class StyleService {
       where: { documentId },
       select: { styleProfile: true },
     });
-    if (memory?.styleProfile) return false;
+    // Learned already — not merely holding the student's guidance (ADR-0025).
+    if ((memory?.styleProfile as StoredProfile | null)?.learnedAt) return false;
     const { humanWords } = await this.sample(ownerId, documentId);
     if (humanWords < STYLE.thresholdWords) return false;
     try {

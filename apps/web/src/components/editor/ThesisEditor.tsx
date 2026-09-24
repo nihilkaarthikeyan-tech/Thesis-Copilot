@@ -968,7 +968,11 @@ function ChapterEditor({
       </nav>
 
       {guided.element}
-      <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} />
+      <HowSuggestionsWork
+        open={howOpen}
+        onClose={() => setHowOpen(false)}
+        documentId={doc.id}
+      />
       {historyOpen ? (
         <VersionHistory
           chapterId={chapter.id}
