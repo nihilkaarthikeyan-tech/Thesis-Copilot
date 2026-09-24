@@ -16,6 +16,7 @@ import { CommandService } from './command.service.js';
 import { ContextService } from './context.service.js';
 import { DraftController } from './draft.controller.js';
 import { DraftService } from './draft.service.js';
+import { ProofreadService } from './proofread.service.js';
 import { WebScopeService } from './web-scope.service.js';
 
 @Module({
@@ -30,6 +31,7 @@ import { WebScopeService } from './web-scope.service.js';
     CiteService,
     ContextService,
     DraftService,
+    ProofreadService,
     QueueService,
     RedisService,
     ScholarlyIndexes,

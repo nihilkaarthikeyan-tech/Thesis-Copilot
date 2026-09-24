@@ -27,6 +27,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { ChatService } from './chat.service.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
+import { ProofreadService } from './proofread.service.js';
 import { streamSse } from './sse.js';
 import { WebScopeService } from './web-scope.service.js';
 
@@ -51,6 +52,12 @@ const chatBody = z.object({
 const webBody = z.object({
   documentId: z.string().uuid(),
   message: z.string().trim().min(3).max(500),
+});
+
+const proofreadBody = z.object({
+  chapterId: z.string().uuid(),
+  /** Where a previous run stopped, for a chapter longer than one run reads. */
+  fromSentence: z.number().int().min(0).max(100_000).optional(),
 });
 
 const commandBody = z.object({
@@ -89,6 +96,7 @@ export class ChatController {
   constructor(
     private readonly chat: ChatService,
     private readonly commands: CommandService,
+    private readonly proofread: ProofreadService,
     private readonly citeRoles: CiteRoleService,
     private readonly web: WebScopeService,
     private readonly prisma: PrismaService,
@@ -131,6 +139,19 @@ export class ChatController {
   @HttpCode(200)
   clear(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
     return this.chat.clear(user.id, documentId);
+  }
+
+  /**
+   * ADR-0026: proofread one chapter. Corrections come back as data; the editor applies one only
+   * when the student accepts it. One `COMMAND` unit a run.
+   */
+  @Post('proofread')
+  @HttpCode(200)
+  proofreadChapter(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = proofreadBody.safeParse(body);
+    if (!parsed.success)
+      throw new ValidationError('Invalid proofread request', parsed.error.issues);
+    return this.proofread.run(user, parsed.data.chapterId, parsed.data.fromSentence ?? 0);
   }
 
   /** FR-4.8: `{ chapterId, selection, command }` → the rewrite and its diff. */

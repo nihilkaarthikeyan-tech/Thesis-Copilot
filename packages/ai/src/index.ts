@@ -187,6 +187,24 @@ export {
   stripUnknownCitations,
 } from './builder/postprocess.js';
 export {
+  buildProofreadRequest,
+  type Correction,
+  changedWords,
+  correctionSize,
+  kindOf,
+  mockProofreadResponse,
+  narrowCorrection,
+  PROOFREAD,
+  PROOFREAD_KINDS,
+  PROOFREAD_TOKENS_PER_WORD,
+  type ProofreadKind,
+  type ProofreadResult,
+  type ProofreadSentence,
+  postProcessProofread,
+  proofreadSchema,
+  splitCorrection,
+} from './builder/proofread.js';
+export {
   buildProposalRequest,
   clarifiedTopic,
   type GapCheckInput,

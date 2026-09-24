@@ -56,6 +56,8 @@ const AI_PATHS = [
   '/api/v1/citations/suggest',
   '/api/v1/draft/',
   '/api/v1/chat',
+  // ADR-0026: a burst of proofreading runs is shaped like any other AI call; the cap bounds cost.
+  '/api/v1/proofread',
 ];
 
 /**

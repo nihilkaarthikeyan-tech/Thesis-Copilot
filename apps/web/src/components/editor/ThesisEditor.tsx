@@ -75,6 +75,7 @@ import { type Flag, FlagsPanel } from './FlagsPanel';
 import { FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { ParaphrasePanel } from './ParaphrasePanel';
+import { ProofreadPanel } from './ProofreadPanel';
 import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
@@ -914,6 +915,14 @@ function ChapterEditor({
                   onSuggestFix={suggestFix}
                 />
                 {/* Same tab, because both answer "what should I look at before I hand this in?" */}
+                <ProofreadPanel
+                  chapterId={chapter.id}
+                  editor={editor}
+                  save={async () => {
+                    await autosaveRef.current?.flush();
+                  }}
+                  onUsageChange={onUsageChange}
+                />
                 <ParaphrasePanel chapterId={chapter.id} editor={editor} />
               </>
             )}

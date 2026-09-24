@@ -20,17 +20,17 @@ const extracted = extractPrompts(prd);
  * appendix has no prompt for (ADR-0010). It is named here rather than detected, so adding a second
  * hand-written prompt fails this file and has to be argued for.
  */
-const NOT_FROM_APPENDIX_A = ['cite_role', 'coh_support'] as const;
+const NOT_FROM_APPENDIX_A = ['cite_role', 'coh_support', 'proofread'] as const;
 
 const fromAppendixA = PROMPT_NAMES.filter(
   (n) => !(NOT_FROM_APPENDIX_A as readonly string[]).includes(n),
 );
 
 describe('Appendix A prompt files', () => {
-  it('there are 23 prompts, 21 of them copied from the PRD', () => {
-    expect(PROMPT_NAMES).toHaveLength(23);
+  it('there are 24 prompts, 21 of them copied from the PRD', () => {
+    expect(PROMPT_NAMES).toHaveLength(24);
     expect(fromAppendixA).toHaveLength(21);
-    expect(listPromptFiles()).toHaveLength(23);
+    expect(listPromptFiles()).toHaveLength(24);
   });
 
   it('the files on disk are exactly the ones §10.5 names', () => {
@@ -65,9 +65,9 @@ describe('Appendix A prompt files', () => {
 });
 
 describe('loadPrompt', () => {
-  it('loads all 23 without throwing', () => {
+  it('loads all 24 without throwing', () => {
     const all = loadAllPrompts();
-    expect(all.size).toBe(23);
+    expect(all.size).toBe(24);
   });
 
   it('gives _preamble the six shared rules from A.0', () => {

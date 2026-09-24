@@ -44,10 +44,12 @@ import {
   buildExtractionRequest,
   buildOutlineDriftRequest,
   buildOutlineRequest,
+  buildProofreadRequest,
   buildProposalRequest,
   buildQueriesRequest,
   buildSectionScopeRequest,
   buildStyleRequest,
+  buildSupportRequest,
   buildTermDriftRequest,
   buildThemesRequest,
   buildUnsupportedRequest,
@@ -63,9 +65,12 @@ import {
   parsedCitationSchema,
   parseProposalReply,
   postProcessDraft,
+  postProcessProofread,
+  proofreadSchema,
   queriesSchema,
   sectionScopeSchema,
   styleProfileSchema,
+  supportSchema,
   termDriftSchema,
   themesSchema,
   unsupportedSchema,
@@ -137,6 +142,20 @@ const CHAPTER_TEXT = [
 ].join(' ');
 
 const HUMAN_SAMPLE = `${CHAPTER_TEXT} ${CHAPTER_TEXT}`;
+
+/** A chapter's sentences with three planted mistakes — a misspelling, agreement, a doubled word. */
+const PROOFREAD_SENTENCES = [
+  {
+    id: 's1',
+    text: 'Household uptake remains below 4% despite the subsidy recieved by early adopters.',
+  },
+  { id: 's2', text: 'Trust in installer quality appear to matter at least as much as price.' },
+  { id: 's3', text: 'Subsidy disbursement delays compound the the problem for poorer households.' },
+  {
+    id: 's4',
+    text: 'A household that must finance the full amount for three months is unsubsidised.',
+  },
+];
 
 const EXTRACTION = {
   title: 'Household barriers to rooftop solar in rural Karnataka: a survey of 412 households',
@@ -230,6 +249,12 @@ type Case = {
    * failure with that reason; returning nothing is a pass.
    */
   readonly readStream?: (raw: string) => string | null;
+  /**
+   * For a structured path whose schema has defaults, a schema-valid object can still be an empty
+   * one: `{}` parses as "no corrections". Where emptiness is the failure, the case says so here.
+   * Returning a string is a failure with that reason.
+   */
+  readonly check?: (value: unknown) => string | null;
 };
 
 const cases: Case[] = [
@@ -490,6 +515,52 @@ const cases: Case[] = [
     schema: outlineDriftSchema,
   },
   {
+    name: 'coherence/support — does the cited passage say it',
+    site: 'apps/worker/.../coherence-run.ts (citationSupport)',
+    request: buildSupportRequest({
+      items: [
+        {
+          sentenceId: 's1',
+          sentence: 'Cost was the primary barrier for most non-adopters {{cite:S1#c1}}.',
+          passages: [{ shortRef: 'Kumar 2021', page: 4, text: PASSAGES[0]?.text ?? '' }],
+        },
+        {
+          sentenceId: 's2',
+          sentence: 'Price alone decided whether a household proceeded {{cite:S2#c1}}.',
+          passages: [{ shortRef: 'Devi and Rao 2022', page: 11, text: PASSAGES[1]?.text ?? '' }],
+        },
+      ],
+      userId: USER,
+      documentId: DOC,
+    }),
+    schema: supportSchema,
+    check: (value) =>
+      (value as { results: unknown[] }).results.length === 0 ? 'no verdict came back' : null,
+  },
+  {
+    name: 'proofread — spelling and grammar in a chapter',
+    site: 'apps/api/.../proofread.service.ts',
+    request: buildProofreadRequest({
+      sentences: PROOFREAD_SENTENCES,
+      language: 'en',
+      userId: USER,
+      documentId: DOC,
+    }),
+    schema: proofreadSchema,
+    // Three planted mistakes. The answer is not graded, but none found is how an empty or
+    // misshapen answer looks after the schema's defaults, and that is the failure to catch.
+    check: (value) => {
+      const { corrections, refused } = postProcessProofread(
+        value as Parameters<typeof postProcessProofread>[0],
+        PROOFREAD_SENTENCES,
+      );
+      if (corrections.length === 0) {
+        return `no correction survived (${refused} refused) for three planted mistakes`;
+      }
+      return null;
+    },
+  },
+  {
     name: 'extraction — read an uploaded paper',
     site: 'packages/ai/src/extraction.ts:237',
     request: buildExtractionRequest({
@@ -674,9 +745,14 @@ async function runStructured(
       schema: c.schema as z.ZodType<unknown>,
     });
     const ms = Date.now() - started;
+    const complaint = c.check?.(result.value) ?? null;
     return {
-      ok: true,
-      detail: preview(result.value),
+      ok: complaint === null,
+      detail:
+        complaint === null
+          ? preview(result.value)
+          : `${complaint}
+       got: ${preview(result.value, 300)}`,
       ms,
       costMicroInr: computeCallCost({
         tier: c.request.tier,

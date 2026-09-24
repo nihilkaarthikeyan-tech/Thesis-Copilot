@@ -152,6 +152,15 @@ describe('§12.1: another user’s resources answer 404, never 403', () => {
     expect(usage.status).toBe(404);
   });
 
+  it('cannot proofread A’s chapter, and is not charged for trying', async () => {
+    const response = await asB('/proofread', {
+      method: 'POST',
+      body: JSON.stringify({ chapterId }),
+    });
+    expect(response.status).toBe(404);
+    expect(await h.prisma.aiCallLog.count({ where: { documentId, action: 'COMMAND' } })).toBe(0);
+  });
+
   it('cannot use A’s chapter as grounding for a suggestion', async () => {
     const response = await asB('/citations/suggest', {
       method: 'POST',

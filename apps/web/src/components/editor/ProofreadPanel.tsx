@@ -1,0 +1,302 @@
+'use client';
+
+/**
+ * Spelling and grammar — ADR-0026.
+ *
+ * Reads the chapter for mistakes and lists each correction; nothing changes until the student
+ * accepts one, and then only that span does — "flag, don't fix", the rule every AI feature keeps.
+ *
+ * ## What this must never become
+ *
+ * PRD §12.3 bans humanise and detector-evasion tooling. A proofreader is the nearest honest thing
+ * to one, and the line is that a correction never puts a different word in: it fixes a spelling,
+ * a grammar word, punctuation or a doubled word, and the wording stays the student's. The server
+ * refuses anything else before it gets here (`correctionSize`), and this panel has no "rewrite"
+ * action to add one back.
+ *
+ * A correction is placed in the chapter as it is *now* (`locateSpan`), because the student may
+ * have typed since the run. One whose words are no longer there says so, and is not applied.
+ */
+
+import type { Editor } from '@tiptap/core';
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError, api } from '@/lib/api';
+import { locateSpan, type TextRun } from '@/lib/proofread';
+
+type Correction = {
+  sentenceId: string;
+  original: string;
+  replacement: string;
+  kind: 'spelling' | 'grammar' | 'punctuation' | 'agreement';
+  why: string;
+  sentence: string;
+  near: number;
+};
+
+type RunResult = {
+  corrections: Correction[];
+  checkedWords: number;
+  totalWords: number;
+  refused: number;
+  nextSentence: number | null;
+};
+
+const KIND_LABEL: Record<Correction['kind'], string> = {
+  spelling: 'Spelling',
+  grammar: 'Grammar',
+  punctuation: 'Punctuation',
+  agreement: 'Agreement',
+};
+
+const keyOf = (c: Pick<Correction, 'original' | 'replacement'>) =>
+  `${c.original}\u0000${c.replacement}`;
+
+/** Dismissed corrections, per chapter, in this browser: a deliberate spelling stays dismissed. */
+function readDismissed(chapterId: string): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(`tc.proofread.dismissed.${chapterId}`);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDismissed(chapterId: string, dismissed: Set<string>): void {
+  try {
+    window.localStorage.setItem(
+      `tc.proofread.dismissed.${chapterId}`,
+      JSON.stringify([...dismissed].slice(-200)),
+    );
+  } catch {
+    // Private windows and blocked storage: the dismissal lasts for this page only, which is fine.
+  }
+}
+
+/** The chapter's text as runs with positions, leaving out pending AI drafts (FR-4.10). */
+function textRuns(editor: Editor): TextRun[] {
+  const runs: TextRun[] = [];
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'draftBlock') return false;
+    if (node.isText && node.text) runs.push({ pos, text: node.text });
+    return true;
+  });
+  return runs;
+}
+
+export function ProofreadPanel({
+  chapterId,
+  editor,
+  save,
+  onUsageChange,
+}: {
+  chapterId: string;
+  editor: Editor | null;
+  /** Saves what is on screen first, so the chapter that is read is the one the student sees. */
+  save: () => Promise<void>;
+  onUsageChange: () => void;
+}) {
+  const [items, setItems] = useState<Correction[]>([]);
+  const [progress, setProgress] = useState<Omit<RunResult, 'corrections'> | null>(null);
+  const [checkedSoFar, setCheckedSoFar] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [moved, setMoved] = useState<Set<string>>(new Set());
+
+  // A different chapter is a different list.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the chapter changes
+  useEffect(() => {
+    setItems([]);
+    setProgress(null);
+    setCheckedSoFar(0);
+    setError(null);
+    setMoved(new Set());
+  }, [chapterId]);
+
+  const run = useCallback(
+    async (fromSentence: number) => {
+      setBusy(true);
+      setError(null);
+      try {
+        await save();
+        const result = await api<RunResult>('/proofread', {
+          method: 'POST',
+          body: JSON.stringify({ chapterId, ...(fromSentence > 0 ? { fromSentence } : {}) }),
+        });
+        onUsageChange();
+        const dismissed = readDismissed(chapterId);
+        const fresh = result.corrections.filter((c) => !dismissed.has(keyOf(c)));
+        setItems((current) => (fromSentence > 0 ? [...current, ...fresh] : fresh));
+        setCheckedSoFar((n) => (fromSentence > 0 ? n : 0) + result.checkedWords);
+        setProgress({
+          checkedWords: result.checkedWords,
+          totalWords: result.totalWords,
+          refused: result.refused,
+          nextSentence: result.nextSentence,
+        });
+        if (fromSentence === 0) setMoved(new Set());
+      } catch (e) {
+        setError(
+          e instanceof ApiError
+            ? (e.problem.detail ?? e.problem.title)
+            : 'The proofread did not run. Try again in a minute.',
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [chapterId, save, onUsageChange],
+  );
+
+  const idOf = (c: Correction) => `${c.sentenceId}:${keyOf(c)}`;
+
+  function place(c: Correction): { from: number; to: number } | null {
+    if (!editor) return null;
+    const span = locateSpan(textRuns(editor), c.original, c.near);
+    if (!span) setMoved((m) => new Set(m).add(idOf(c)));
+    return span;
+  }
+
+  function accept(c: Correction) {
+    if (!editor) return;
+    const span = place(c);
+    if (!span) return;
+    const end = span.from + c.replacement.length;
+    // `insertText` keeps the span's own marks, so bold stays bold. The words are the proofreader's
+    // now, so FR-4.11 provenance says COMMAND — through the extension's own command, which also
+    // stops the provenance plugin re-reading the edit as the student's typing.
+    let chain = editor
+      .chain()
+      .focus()
+      .command(({ tr, dispatch }) => {
+        if (dispatch) tr.insertText(c.replacement, span.from, span.to);
+        return true;
+      });
+    if (end > span.from) {
+      chain = chain.setProvenance(span.from, end, { kind: 'COMMAND', actionId: null });
+    }
+    chain.run();
+    setItems((list) => list.filter((x) => idOf(x) !== idOf(c)));
+  }
+
+  function dismiss(c: Correction) {
+    const dismissed = readDismissed(chapterId);
+    dismissed.add(keyOf(c));
+    writeDismissed(chapterId, dismissed);
+    setItems((list) => list.filter((x) => keyOf(x) !== keyOf(c)));
+  }
+
+  function show(c: Correction) {
+    const span = place(c);
+    if (span && editor) {
+      editor.chain().focus().setTextSelection(span).scrollIntoView().run();
+    }
+  }
+
+  const remaining = progress ? Math.max(0, progress.totalWords - checkedSoFar) : 0;
+
+  return (
+    <section className="mt-4 border-t border-line pt-3" data-testid="proofread-panel">
+      <p className="eyebrow">Spelling and grammar</p>
+      <p className="mt-1 text-xs text-muted">
+        Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown
+        to you, and nothing changes until you accept it. One command unit a run, up to 2,000 words.
+      </p>
+
+      <button
+        type="button"
+        disabled={busy || !editor}
+        onClick={() => void run(0)}
+        data-testid="proofread-run"
+        className="mt-2 rounded-md border border-line-strong bg-surface px-3 py-1 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+      >
+        {busy ? 'Reading…' : progress ? 'Proofread again' : 'Proofread this chapter'}
+      </button>
+
+      {error ? (
+        <p role="alert" className="mt-2 text-xs text-warn">
+          {error}
+        </p>
+      ) : null}
+
+      {progress ? (
+        <p className="mt-2 text-xs text-muted" data-testid="proofread-summary">
+          {items.length === 0
+            ? `No mistakes found in ${checkedSoFar.toLocaleString()} words.`
+            : `${items.length} correction${items.length === 1 ? '' : 's'} in ${checkedSoFar.toLocaleString()} words.`}
+          {progress.nextSentence !== null && remaining > 0 ? (
+            <>
+              {' '}
+              {remaining.toLocaleString()} words are still unread.{' '}
+              <button
+                type="button"
+                disabled={busy}
+                className="underline disabled:opacity-50"
+                data-testid="proofread-continue"
+                onClick={() => void run(progress.nextSentence ?? 0)}
+              >
+                Read the next part
+              </button>{' '}
+              (one more unit)
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <ul className="mt-2 grid list-none gap-2 p-0" data-testid="proofread-corrections">
+          {items.map((c) => {
+            const id = idOf(c);
+            const gone = moved.has(id);
+            return (
+              <li
+                key={id}
+                data-testid="proofread-correction"
+                className="rounded-md border border-line bg-surface p-2 text-xs"
+              >
+                <p className="font-medium text-ink">{KIND_LABEL[c.kind] ?? c.kind}</p>
+                <p className="mt-1">
+                  <del className="text-warn">{c.original}</del>
+                  {' → '}
+                  <ins className="font-semibold text-ok no-underline">{c.replacement}</ins>
+                </p>
+                {c.why ? <p className="mt-1 text-muted">{c.why}</p> : null}
+                <p className="mt-1 text-faint">
+                  {c.sentence.length > 160 ? `${c.sentence.slice(0, 160)}…` : c.sentence}
+                </p>
+                {gone ? (
+                  <p className="mt-1 text-warn" data-testid="proofread-moved">
+                    Those words are no longer there. Proofread again to check the new text.
+                  </p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={gone || !editor}
+                    className="underline disabled:opacity-50"
+                    data-testid="proofread-accept"
+                    onClick={() => accept(c)}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    className="underline"
+                    data-testid="proofread-dismiss"
+                    onClick={() => dismiss(c)}
+                  >
+                    Dismiss
+                  </button>
+                  {gone ? null : (
+                    <button type="button" className="underline" onClick={() => show(c)}>
+                      Show me
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
