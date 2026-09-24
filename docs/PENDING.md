@@ -56,6 +56,13 @@ blocks the agent from continuing to build against mocks.
       field is new and the product calls OpenAlex on every search, resolution and gap check. Read
       openalex.org's pricing / API-key page and say whether we need a key or a budget line in
       `docs/COSTING.md`. The agent will not guess a price (§0.3 rule 4).
+- [ ] **Before the next deploy: back up the MinIO volume** (ADR-0024). MinIO withdrew its public
+      images — quay.io now refuses anonymous pulls — so the next deploy switches storage to
+      Chainguard's build of MinIO (`cgr.dev/chainguard/minio`). Proven on the dev volume (same 651
+      objects before and after), but it is production's files: on the server,
+      `docker run --rm -v thesis-copilot_minio_data:/data -v $PWD:/backup alpine tar czf /backup/minio-$(date +%F).tgz -C /data .`
+      (check the volume's name with `docker volume ls`). **Without this change the next deploy
+      fails**: `deploy.sh` pulls every image, and the old one can no longer be pulled.
 - [ ] **After the next deploy, run `pnpm backfill:journals` once on the server** (ADR-0022). New
       references get their journal's figure as they resolve; this fills it in for every source
       resolved before. Safe to re-run. On 2026-09-24 against the dev database it matched 338 of

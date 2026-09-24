@@ -46,8 +46,11 @@ services:
       retries: 20
 
   minio:
-    # See the prod compose file's comment: Docker Hub's minio/minio 404s now (2025 retirement).
-    image: quay.io/minio/minio
+    # See the prod compose file's comment (ADR-0024): MinIO's own images are gone from Docker Hub
+    # and quay.io; this is Chainguard's build. Root, because existing dev volumes were written by
+    # the old image as root.
+    image: cgr.dev/chainguard/minio:latest
+    user: '0:0'
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:

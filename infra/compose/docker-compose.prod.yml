@@ -112,10 +112,14 @@ services:
       retries: 12
 
   minio:
-    # MinIO retired their Docker Hub images in 2025 -- docker.io/minio/minio 404s outright, found
-    # while running the first real deploy (2026-09-19). quay.io/minio is the maintained registry
-    # now; same images, same tags, just a different host.
-    image: quay.io/minio/minio
+    # ADR-0024. MinIO has withdrawn every public image: docker.io/minio/minio 404s (2025), and on
+    # 2026-09-24 quay.io/minio/minio began answering 401 to anonymous pulls. `deploy.sh` pulls
+    # every image, so the old reference would have failed the next deploy outright. This is
+    # Chainguard's maintained build of MinIO, public at its `latest` tag.
+    image: cgr.dev/chainguard/minio:latest
+    # The volume was written by the old image, which ran as root; this one defaults to uid 65532
+    # and could not read it. Root keeps the existing data exactly as readable as it was.
+    user: '0:0'
     restart: unless-stopped
     logging: *default-logging
     command: server /data --console-address ":9001"
