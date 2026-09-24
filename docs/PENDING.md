@@ -250,6 +250,17 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       shared with eight other sites and a bad one takes all nine down, so CI only *warns* when
       `infra/nginx/thesis.rademics.ai.conf` and `/etc/nginx/sites-available/thesis.rademics.ai` have
       drifted, and prints the diff. Copy it, run `nginx -t`, then `systemctl reload nginx`.
+- [ ] **Release v0.1.5 — production is on v0.1.4 and one live fault is serious.** Every figure a
+      student adds goes blank fifteen minutes later on production today (53179b2 fixes it: the
+      stored link was signed for fifteen minutes and nothing renewed it). The same release carries
+      the other 2026-09-24 fixes — a pending AI draft printed into the submitted thesis, raw
+      Crossref lines and "&amp;" in reference lists, file names as figure captions, Find papers
+      returning nothing for a question ending in "?" — and everything built against the
+      competitor list (ADRs 0018–0027). Two things first, both above: **back up the MinIO
+      volume** (the release switches the image, ADR-0024) and run `pnpm backfill:journals` after
+      the deploy. Then `git tag v0.1.5 && git push --tags`; `release.yml` does the rest and rolls
+      back to `.last_good_tag` if the health check fails. The agent does not tag a release: that
+      is the one deploy step that is yours.
 - [ ] **One-off: the VPS tree is behind the images it is running.** Checked 2026-09-20 — tree at
       `0916302`, containers on `v0.1.1`. The next tagged release now fixes this by itself; to do it
       sooner, on the VPS:
