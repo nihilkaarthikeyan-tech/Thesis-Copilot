@@ -197,6 +197,24 @@ function ChapterEditor({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   /**
+   * Below the widths where they fit beside the text, the chapter list and the tool panels open as
+   * drawers over it. Before this they were simply hidden, and a student on a phone or a small
+   * tablet lost sources, citations, chat, flags and review with no way to reach any of them.
+   */
+  const [drawer, setDrawer] = useState<'chapters' | 'panel' | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    if (!drawer && !moreOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDrawer(null);
+        setMoreOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawer, moreOpen]);
+  /**
    * Set when the page loaded straight after a restore: the id of the snapshot the restore wrote of
    * the text it replaced. Offering to put that back is what makes a restore safe to try.
    */
@@ -525,7 +543,7 @@ function ChapterEditor({
           </span>
           <span className="truncate text-muted">{chapter.title}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           <span
             data-testid="autosave-status"
             className={`px-1.5 text-[12px] ${
@@ -536,7 +554,7 @@ function ChapterEditor({
           </span>
           <span
             data-testid="usage-meter"
-            className="tnum mr-1 border-l border-line pl-3 text-[12px] text-muted"
+            className="tnum mr-1 whitespace-nowrap border-l border-line pl-3 text-[12px] text-muted"
           >
             Assist {assist ? `${assist.used}/${assist.cap}` : '–'} · Draft{' '}
             {draft ? `${draft.used}/${draft.cap}` : '–'}
@@ -551,12 +569,58 @@ function ChapterEditor({
           </Button>
           <ShareButton documentId={doc.id} />
           <ThemeToggle className="mr-1 hidden xl:inline-flex" />
-          <Button variant="ghost" size="sm" onClick={() => setHowOpen(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden md:inline-flex"
+            onClick={() => setHowOpen(true)}
+          >
             How suggestions work
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setFeedbackOpen((open) => !open)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden md:inline-flex"
+            onClick={() => setFeedbackOpen((open) => !open)}
+          >
             Feedback
           </Button>
+          {/* The same two, on a screen too narrow for them to sit in the bar. */}
+          <span className="relative md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={moreOpen}
+              data-testid="header-more"
+              onClick={() => setMoreOpen((open) => !open)}
+            >
+              More
+            </Button>
+            {moreOpen ? (
+              <span className="absolute right-0 top-full z-40 mt-1 grid w-52 rounded-md border border-line bg-surface p-1 shadow-lg">
+                <button
+                  type="button"
+                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setHowOpen(true);
+                  }}
+                >
+                  How suggestions work
+                </button>
+                <button
+                  type="button"
+                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setFeedbackOpen(true);
+                  }}
+                >
+                  Feedback
+                </button>
+              </span>
+            ) : null}
+          </span>
           {exported ? (
             <a
               href={exported.url}
@@ -686,7 +750,14 @@ function ChapterEditor({
       ) : null}
 
       <div className="flex flex-1">
-        <aside className="hidden w-56 shrink-0 border-r border-line bg-sunk px-3 py-4 md:block">
+        <aside
+          data-testid="chapter-rail"
+          className={`shrink-0 border-r border-line bg-sunk px-3 py-4 md:static md:z-auto md:block md:w-56 md:overflow-visible md:shadow-none ${
+            drawer === 'chapters'
+              ? 'fixed inset-y-0 left-0 z-40 w-[min(18rem,85vw)] overflow-y-auto shadow-2xl'
+              : 'hidden'
+          }`}
+        >
           <p className="mb-2 flex items-baseline justify-between gap-2">
             <span className="eyebrow">Chapters</span>
             <Link
@@ -720,12 +791,12 @@ function ChapterEditor({
           </ul>
         </aside>
 
-        <main className="flex-1 px-6 py-8">
+        {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}
+        <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
           <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
             This is your chapter. Write as you normally would; press <kbd>Ctrl+/</kbd> when you want
-            a suggestion, and <kbd>Tab</kbd> to keep it. Pin the sources it may cite in the panel on
-            the right.{' '}
+            a suggestion, and <kbd>Tab</kbd> to keep it. Pin the sources it may cite under Sources.{' '}
             <button type="button" className="underline" onClick={() => setHowOpen(true)}>
               How suggestions work (90 seconds)
             </button>
@@ -759,7 +830,24 @@ function ChapterEditor({
           </div>
         </main>
 
-        <aside className="hidden w-72 shrink-0 border-l border-line bg-sunk lg:block">
+        <aside
+          data-testid="tool-panel"
+          className={`shrink-0 border-l border-line bg-sunk lg:static lg:z-auto lg:block lg:w-72 lg:overflow-visible lg:shadow-none ${
+            drawer === 'panel'
+              ? 'fixed inset-y-0 right-0 z-40 w-[min(24rem,92vw)] overflow-y-auto shadow-2xl'
+              : 'hidden'
+          }`}
+        >
+          <div className="flex items-center justify-between border-b border-line px-3 py-2 lg:hidden">
+            <span className="eyebrow">Tools</span>
+            <button
+              type="button"
+              className="text-xs text-muted underline"
+              onClick={() => setDrawer(null)}
+            >
+              Close
+            </button>
+          </div>
           <div className="flex border-b border-line" role="tablist">
             {(['sources', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
               <button
@@ -832,6 +920,52 @@ function ChapterEditor({
           </div>
         </aside>
       </div>
+
+      {drawer ? (
+        <button
+          type="button"
+          aria-label="Close"
+          data-testid="drawer-backdrop"
+          className={`fixed inset-0 z-30 bg-ink/30 ${drawer === 'chapters' ? 'md:hidden' : 'lg:hidden'}`}
+          onClick={() => setDrawer(null)}
+        />
+      ) : null}
+
+      {/* Where the side panels are, on a screen too narrow to show them beside the text. */}
+      <nav
+        aria-label="Chapter and tools"
+        data-testid="mobile-bar"
+        className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-line bg-surface lg:hidden"
+      >
+        <button
+          type="button"
+          className="shrink-0 px-2.5 py-3 text-[12px] font-semibold text-ink md:hidden"
+          aria-expanded={drawer === 'chapters'}
+          onClick={() => setDrawer((open) => (open === 'chapters' ? null : 'chapters'))}
+        >
+          Chapters
+        </button>
+        {(['sources', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            data-testid={`mobile-${t}`}
+            className={`flex-1 shrink-0 px-2 py-3 text-[12px] capitalize ${
+              drawer === 'panel' && tab === t ? 'font-semibold text-accent' : 'text-muted'
+            }`}
+            onClick={() => {
+              if (drawer === 'panel' && tab === t) {
+                setDrawer(null);
+                return;
+              }
+              setTab(t);
+              setDrawer('panel');
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </nav>
 
       {guided.element}
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} />

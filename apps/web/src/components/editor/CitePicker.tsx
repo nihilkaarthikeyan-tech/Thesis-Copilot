@@ -188,7 +188,7 @@ export function CitePicker({
   return (
     <aside
       data-testid="cite-picker"
-      className="fixed bottom-24 left-1/2 z-40 w-[30rem] -translate-x-1/2 rounded-md border border-line bg-surface p-2 shadow-lg"
+      className="fixed bottom-24 left-1/2 z-40 w-[30rem] max-w-[92vw] -translate-x-1/2 rounded-md border border-line bg-surface p-2 shadow-lg"
     >
       <p className="px-1 pb-1 text-xs text-muted">
         {query === '' ? 'Cite a source from your library' : `Sources matching “${query}”`}

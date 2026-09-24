@@ -308,7 +308,9 @@ export function FormatToolbar({
       role="toolbar"
       aria-label="Formatting"
       className={cn(
-        'sticky top-0 z-20 -mx-6 mb-4 border-b border-line bg-paper/95 px-6 py-1.5 backdrop-blur',
+        // The negative margin cancels the page's own padding so the bar runs edge to edge; it has
+        // to match that padding at every width, or on a phone the bar is wider than the screen.
+        'sticky top-0 z-20 -mx-4 mb-4 border-b border-line bg-paper/95 px-4 py-1.5 backdrop-blur sm:-mx-6 sm:px-6',
         // `relative` so the inline prompt below anchors to this bar.
         'relative',
         className,

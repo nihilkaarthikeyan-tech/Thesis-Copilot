@@ -154,7 +154,7 @@ export function CommandToolbar({
   return (
     <aside
       data-testid="command-toolbar"
-      className="fixed bottom-4 left-1/2 z-30 w-[36rem] max-w-[92vw] -translate-x-1/2 rounded-md border border-line bg-surface p-3 shadow-lg"
+      className="fixed bottom-16 left-1/2 z-30 w-[36rem] max-w-[92vw] -translate-x-1/2 lg:bottom-4 rounded-md border border-line bg-surface p-3 shadow-lg"
     >
       {result ? (
         <>
