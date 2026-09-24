@@ -17,8 +17,11 @@ import { renderTemplateBlock, suggestTemplate, TEMPLATE_SPECS } from '@tc/config
 import type { OutlineNode } from '@tc/types';
 import { describe, expect, it } from 'vitest';
 import {
+  buildOutlineRequest,
   enforceTemplateShape,
+  mockOutlineResponse,
   normaliseOutline,
+  outlineRequestSchema,
   readOutlineResult,
   roleForChapter,
 } from '../src/builder/outline.js';
@@ -283,5 +286,29 @@ describe('FR-3.6 — per-section scope regeneration', () => {
         messages: [{ content: '<scope>…</scope>\n<template name="STEM">' }],
       }),
     ).toBe(false);
+  });
+});
+
+describe('the A.9 mock answers in the shape the real model is asked for', () => {
+  // The mock returned a bare array for months after `outlineRequestSchema` became `{ nodes }`, so
+  // under `AI_PROVIDER=mock` — how CI runs — every outline generation failed validation with
+  // "does not match the schema for action OUTLINE" and the tree never arrived. The real model was
+  // fine; only the stand-in had drifted. This pins the two together.
+  it('satisfies outlineRequestSchema', () => {
+    const request = buildOutlineRequest({
+      template: 'STEM_EMPIRICAL',
+      scope: {
+        workingTitle: 'Drip irrigation uptake among smallholders',
+        problemStatement: 'Uptake is uneven and the reason is not established.',
+        objectives: ['Measure uptake by district'],
+      },
+      userId: 'u1',
+      documentId: 'd1',
+    });
+    const answer = mockOutlineResponse.respond(request);
+    const parsed = outlineRequestSchema.safeParse(answer);
+    expect(parsed.success, JSON.stringify(parsed.error?.issues ?? [])).toBe(true);
+    // And it is a real tree, not an empty object that happens to validate.
+    expect(readOutlineResult(answer).length).toBeGreaterThan(1);
   });
 });

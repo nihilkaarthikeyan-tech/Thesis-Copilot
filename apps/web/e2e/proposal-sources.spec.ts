@@ -370,7 +370,9 @@ test.describe('Stage 4 citations', () => {
     await expect(ghost).toBeVisible({ timeout: 10_000 });
     await expect(ghost).toContainText('Evidence from rural Karnataka', { timeout: 10_000 });
     // Tab accepts what is shown; wait for the stream to finish so the whole suggestion lands.
-    await expect(page.getByTestId('dev-timing')).toContainText('shown', { timeout: 10_000 });
+    await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
+      timeout: 10_000,
+    });
 
     await page.keyboard.press('Tab');
     await expect(ghost).toHaveCount(0);

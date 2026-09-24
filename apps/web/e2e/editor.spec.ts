@@ -36,7 +36,7 @@ test('B.9 #9: suggestion streams, Tab accepts, text survives a reload with prove
   const ghost = editor.locator('span.ghost');
   await expect(ghost).toBeVisible({ timeout: 10_000 });
   await expect(ghost).toContainText('Evidence from rural Karnataka', { timeout: 10_000 });
-  await expect(page.getByTestId('dev-timing')).toContainText('shown');
+  await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible();
 
   // Tab → accepted as real text with ASSIST provenance; ghost widget gone; usage meter moved.
   await page.keyboard.press('Tab');

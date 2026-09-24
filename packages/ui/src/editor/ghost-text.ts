@@ -236,11 +236,18 @@ function buildDecorations(
           span.setAttribute('aria-live', 'polite');
           span.setAttribute('role', 'status');
           span.setAttribute('aria-label', 'suggestion available');
+          // `streaming` while tokens arrive, `shown` once the text is final. Tab is inert until
+          // then — accepting half a sentence would put half a sentence in the thesis — so this is
+          // the signal anything driving the editor has to wait for. It was only visible on a
+          // development-only overlay, which a production build (and so CI) does not render.
+          span.dataset.status = ghost.status;
           span.style.userSelect = 'none';
           span.textContent = ghost.text;
           return span;
         },
-        { side: 1, key: `ghost-${ghost.suggestionId}-${ghost.text.length}` },
+        // The status is in the key so the widget is redrawn when streaming ends, not only when
+        // the text grows; otherwise `data-status` would keep saying `streaming` for ever.
+        { side: 1, key: `ghost-${ghost.suggestionId}-${ghost.text.length}-${ghost.status}` },
       ),
     );
   }

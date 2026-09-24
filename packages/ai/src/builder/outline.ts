@@ -260,7 +260,11 @@ const THESIS_ADDITIONS: Array<{ title: string; scopeNote: string }> = [
  */
 export const mockOutlineResponse = {
   match: (req: { action: string }) => req.action === 'OUTLINE',
-  respond: (req: { messages: ReadonlyArray<{ content: string }> }): OutlineNode[] => {
+  // `{ nodes }`, not a bare array: the provider checks this against `outlineRequestSchema`, which
+  // became a single object when OpenAI refused the union (2026-09-14). The mock kept returning the
+  // old shape, so under `AI_PROVIDER=mock` — how CI runs — every outline generation failed schema
+  // validation and the tree never arrived. The real model had been fine all along.
+  respond: (req: { messages: ReadonlyArray<{ content: string }> }): { nodes: OutlineNode[] } => {
     const text = req.messages.at(-1)?.content ?? '';
     const templateName = /<template name="([^"]*)"/.exec(text)?.[1] ?? '';
     const chapterLines = [...text.matchAll(/^- (.+?) — (.+)$/gm)].map((m) => ({
@@ -325,6 +329,6 @@ export const mockOutlineResponse = {
       }
     }
     void templateName;
-    return nodes;
+    return { nodes };
   },
 };

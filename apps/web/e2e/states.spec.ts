@@ -48,7 +48,9 @@ test.describe('§6.2 states, forced through the mock', () => {
     await page.locator('.thesis-editor p').first().click();
     await page.keyboard.type('Prior studies in Karnataka found ');
     await page.keyboard.press('Control+/');
-    await expect(page.getByTestId('dev-timing')).toContainText('shown', { timeout: 15_000 });
+    await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Not an error: the suggestion arrived, and the hint says what would make the next one cited.
     await expect(page.getByTestId('notice')).toContainText('no sources to draw on');
@@ -115,7 +117,9 @@ test.describe('§6.2 states, forced through the mock', () => {
     const used = Number(/Assist (\d+)\/50/.exec((await meter.textContent()) ?? '')?.[1] ?? 0);
     for (let i = used; i < 50; i++) {
       await page.keyboard.press('Control+/');
-      await expect(page.getByTestId('dev-timing')).toContainText('shown', { timeout: 15_000 });
+      await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
+        timeout: 15_000,
+      });
       await page.keyboard.press('Escape');
       await expect(editor.locator('span.ghost')).toHaveCount(0);
     }

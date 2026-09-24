@@ -259,7 +259,9 @@ test.describe('FR-4.9 — chat over the library', () => {
     const panel = page.getByTestId('chat-panel');
     await expect(panel).toBeVisible();
     // The promise the panel makes, before anything is asked.
-    await expect(panel).toContainText('Answers come only from your library.');
+    // The promise, not the punctuation: the sentence grew a clause when the chat scopes arrived
+    // (ADR-0016) — "…from your library, and cite the passage they came from."
+    await expect(panel).toContainText('Answers come only from your library');
     await expect(panel).toContainText('use Assist or Draft in the editor');
 
     await panel

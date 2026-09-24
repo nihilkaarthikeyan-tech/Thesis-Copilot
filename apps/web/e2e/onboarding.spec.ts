@@ -137,7 +137,9 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   // Wait for the suggestion to settle before pressing Tab. `toBeVisible` passes on the first
   // streamed token, and Tab is deliberately inert until the text is final — accepting half a
   // sentence would put half a sentence in the thesis.
-  await expect(page.getByTestId('dev-timing')).toContainText('shown', { timeout: 15_000 });
+  await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
+    timeout: 15_000,
+  });
   await page.keyboard.press('Tab');
   await expect(page.locator('.thesis-editor span.ghost')).toHaveCount(0);
 
