@@ -12,6 +12,7 @@
 
 import { normalise, similarity } from '../text.js';
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
+import { openAlexSearchText } from './keywords.js';
 
 export const RESOLUTION_THRESHOLD = 0.85;
 export const CROSSREF_CANDIDATES = 3;
@@ -206,7 +207,7 @@ export class OpenAlexClient {
       '&mailto=' +
       encodeURIComponent(this.http.mailto) +
       '&search=' +
-      encodeURIComponent(reference);
+      encodeURIComponent(openAlexSearchText(reference));
     const body = await this.http.getJson<OpenAlexResponse>(url, signal);
     return body?.results ?? [];
   }
@@ -225,7 +226,7 @@ export class OpenAlexClient {
       '&mailto=' +
       encodeURIComponent(this.http.mailto) +
       '&search=' +
-      encodeURIComponent(topic);
+      encodeURIComponent(openAlexSearchText(topic));
     const body = await this.http.getJson<OpenAlexResponse>(url, signal);
     const works = (body?.results ?? []).map((work) => ({
       title: work.title ?? work.display_name ?? '',

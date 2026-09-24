@@ -27,6 +27,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import {
   type DiscoveredWork,
+  keywordsOf,
   mergeWorks,
   OpenAlexDiscovery,
   SemanticScholarClient,
@@ -84,12 +85,15 @@ export class WebScopeService {
     };
     const openalex = new OpenAlexDiscovery(options);
 
-    // The question goes to the index as typed. Rewriting it into keywords with the model was the
-    // obvious alternative and was rejected: it would make this a metered action, and OpenAlex's
-    // own relevance ranking already handles a natural-language query.
+    // Every index is sent the question's content words, not the question. Rewriting it with the
+    // model was rejected — it would make this a metered action — and sending it as typed was the
+    // original choice, until a live check (2026-09-24) put "What Will 5G Be?" first for "What does
+    // the literature say about rooftop solar adoption barriers?": OpenAlex ranks the question
+    // words too. `keywordsOf` drops them for nothing.
+    const searchText = keywordsOf(question, 8).join(' ') || question;
     const lists: DiscoveredWork[][] = [];
     try {
-      lists.push(await openalex.search(question, new Date(), signal));
+      lists.push(await openalex.search(searchText, new Date(), signal));
     } catch (error) {
       this.logger.warn({ err: error }, 'openalex search failed');
     }
@@ -97,7 +101,7 @@ export class WebScopeService {
     if (this.env.SEMANTIC_SCHOLAR_API_KEY) {
       try {
         const s2 = new SemanticScholarClient(this.env.SEMANTIC_SCHOLAR_API_KEY, options);
-        lists.push(await s2.search(question, new Date(), signal));
+        lists.push(await s2.search(searchText, new Date(), signal));
       } catch (error) {
         // Optional second source (docs/PENDING.md). A failure here must not empty the result.
         this.logger.warn({ err: error }, 'semantic scholar search failed');

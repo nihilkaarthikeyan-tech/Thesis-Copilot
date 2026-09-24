@@ -8,6 +8,7 @@
  */
 
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
+import { openAlexSearchText } from './keywords.js';
 import { abstractFromInvertedIndex } from './resolve.js';
 
 /** One paper as a search result, before it is a `SearchCandidate` row. */
@@ -110,7 +111,7 @@ export class OpenAlexDiscovery {
     const from = now.getUTCFullYear() - DISCOVER.yearsBack;
     const filter = encodeURIComponent(`type:${DISCOVER.types},from_publication_date:${from}-01-01`);
     const url = this.base(
-      `filter=${filter}&search=${encodeURIComponent(query)}`,
+      `filter=${filter}&search=${encodeURIComponent(openAlexSearchText(query))}`,
       DISCOVER.perQuery,
     );
     const body = await this.http.getJson<OpenAlexList>(url, signal);

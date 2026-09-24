@@ -155,6 +155,7 @@ export {
   ScholarlyError,
   ScholarlyHttp,
 } from './scholarly/http.js';
+export { keywordsOf, openAlexSearchText } from './scholarly/keywords.js';
 export {
   abstractFromInvertedIndex,
   CROSSREF_CANDIDATES,
