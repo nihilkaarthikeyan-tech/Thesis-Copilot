@@ -55,6 +55,10 @@ were invisible to typecheck, lint and 1,200 passing tests.
 
 ## Later — deliberately not started
 
+- [ ] **Footnotes, and with them the 720 footnote citation styles.** ADR-0018 lists them but will
+      not let them be chosen: a note style rendered inline prints a full reference mid-sentence.
+      Needs a footnote node in the editor and `w:footnote` in both exporters.
+
 - [ ] **Typeset equations in the export.** They currently carry their LaTeX source through. Proper
       Office maths is LaTeX → MathML → OMML and `docx` has no OMML support, so this is a project.
 - [x] **Onboarding checklist** ("complete setup 3/5"). Built 2026-09-21 on the owner's list, and

@@ -112,7 +112,8 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
 
   const styleId = ensureRegistered(style, stylesDir);
   const format = input.format ?? 'text';
-  const engine = config().engine(data, styleId, input.locale ?? 'en-US', format);
+  // A journal style can declare its own locale (a German journal's "Hrsg."); the caller's wins.
+  const engine = config().engine(data, styleId, input.locale ?? style.locale ?? 'en-US', format);
 
   const clusters = used.map((citation, index) => ({
     citationID: `c${index}`,

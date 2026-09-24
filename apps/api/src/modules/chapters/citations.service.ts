@@ -30,6 +30,7 @@ import { shortReference } from '@tc/retrieval';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { type ReadingDepth, readingDepth } from './reading-depth.js';
+import { StyleStoreService } from './style-store.service.js';
 
 export type RenderedCitations = {
   style: string;
@@ -45,7 +46,10 @@ export type RenderedCitations = {
 
 @Injectable()
 export class CitationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly styleStore: StyleStoreService,
+  ) {}
 
   private async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
@@ -96,6 +100,8 @@ export class CitationsService {
     });
     const locators = new Map(rows.map((r) => [r.nodeKey, r.locator]));
 
+    // A catalogue style's XML must be in this process before citeproc can use it (style-store).
+    await this.styleStore.ensure(resolveStyle(document.citationStyle).id);
     const rendered = renderCitations({
       style: document.citationStyle,
       sources,
@@ -293,6 +299,7 @@ export class CitationsService {
     // One render per candidate would be one CSL engine run per keystroke. Instead every candidate
     // is rendered in a single pass, each as its own citation, and the labels are read off by key.
     const probes = matches.map((source, index) => ({ key: `pick-${index}`, sourceId: source.id }));
+    await this.styleStore.ensure(resolveStyle(document.citationStyle).id);
     const rendered = renderCitations({
       style: document.citationStyle,
       sources: matches,
@@ -324,6 +331,10 @@ export class CitationsService {
     if (!isKnownStyle(style)) {
       throw new ValidationError(`Unknown citation style: ${style}`);
     }
+    // Fetched and stored *before* the switch is saved: if the download fails, the thesis keeps
+    // the style it had, and the student is told, rather than being left on a style that cannot
+    // render.
+    await this.styleStore.ensure(style);
     await this.prisma.document.update({
       where: { id: documentId },
       data: { citationStyle: style },

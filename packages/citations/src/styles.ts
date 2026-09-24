@@ -13,6 +13,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { type CatalogStyle, catalogStyle } from './catalog.js';
 
 export type StyleFamily = 'numeric' | 'author-date' | 'note';
 
@@ -22,10 +23,18 @@ export type StyleEntry = {
   /** What the student picks from a list. */
   readonly label: string;
   readonly family: StyleFamily;
-  /** File in `packages/citations/styles/`. */
-  readonly file: string;
+  /** File in `packages/citations/styles/`, for the styles this package ships. */
+  readonly file?: string;
   /** Shown under the label when the style needs a word of explanation. */
   readonly note?: string;
+  /**
+   * For a style from the catalogue: the independent CSL style whose XML renders it — itself, or,
+   * for a journal's dependent style, the parent it borrows. Its XML is fetched and registered by
+   * the API before anything renders with it (`registerStyleXml`).
+   */
+  readonly xmlId?: string;
+  /** The style's own default locale, when it declares one other than en-US. */
+  readonly locale?: string;
 };
 
 /**
@@ -135,17 +144,35 @@ export const DEFAULT_STYLE = 'apa';
 
 const byId = new Map(STYLES.map((s) => [s.id, s]));
 
+function fromCatalog(style: CatalogStyle): StyleEntry {
+  return {
+    id: style.id,
+    label: style.title,
+    family: style.family,
+    xmlId: style.xmlId,
+    ...(style.locale ? { locale: style.locale } : {}),
+    ...(style.parent ? { note: `Uses the rules of ${style.parent}.` } : {}),
+  };
+}
+
+/**
+ * A style by id: one of the twenty this package ships, or any selectable style in the catalogue.
+ * Null for an unknown id — and for a footnote style, which cannot be rendered correctly yet.
+ */
 export function findStyle(id: string): StyleEntry | null {
-  return byId.get(id) ?? null;
+  const bundled = byId.get(id);
+  if (bundled) return bundled;
+  const catalogued = catalogStyle(id, STYLES_DIR);
+  return catalogued?.selectable ? fromCatalog(catalogued) : null;
 }
 
 export function isKnownStyle(id: string): boolean {
-  return byId.has(id);
+  return findStyle(id) !== null;
 }
 
 /** The style to render with: the requested one, or the default when it is unknown. */
 export function resolveStyle(id: string | null | undefined): StyleEntry {
-  return (id && byId.get(id)) || (byId.get(DEFAULT_STYLE) as StyleEntry);
+  return (id && findStyle(id)) || (byId.get(DEFAULT_STYLE) as StyleEntry);
 }
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -163,13 +190,49 @@ function findStylesDir(from: string): string {
 
 export const STYLES_DIR = findStylesDir(here);
 
+/** CSL XML by independent style id — the shipped files once read, and fetched ones registered. */
 const xmlCache = new Map<string, string>();
+
+/** The independent CSL id whose XML renders an entry. */
+function xmlIdOf(entry: StyleEntry): string {
+  return entry.xmlId ?? entry.file?.replace(/\.csl$/, '') ?? entry.id;
+}
+
+/** Thrown when a catalogue style is rendered before the API has fetched and registered its XML. */
+export class StyleNotLoadedError extends Error {
+  constructor(readonly styleId: string) {
+    super(`The XML for citation style "${styleId}" has not been loaded.`);
+    this.name = 'StyleNotLoadedError';
+  }
+}
+
+/** Makes a fetched style renderable in this process. The caller has already checked the XML. */
+export function registerStyleXml(xmlId: string, xml: string): void {
+  xmlCache.set(xmlId, xml);
+}
+
+/**
+ * Whether rendering with this entry needs its XML fetched first: false for a shipped style, for a
+ * journal whose parent is one of them, and for anything already registered.
+ */
+export function needsStyleXml(entry: StyleEntry, dir: string = STYLES_DIR): boolean {
+  const xmlId = xmlIdOf(entry);
+  if (xmlCache.has(xmlId)) return false;
+  if (entry.file) return false;
+  return !existsSync(join(dir, `${xmlId}.csl`));
+}
 
 /** The CSL XML for a style, read once per process. */
 export function styleXml(entry: StyleEntry, dir: string = STYLES_DIR): string {
-  const cached = xmlCache.get(entry.id);
+  const xmlId = xmlIdOf(entry);
+  const cached = xmlCache.get(xmlId);
   if (cached) return cached;
-  const xml = readFileSync(join(dir, entry.file), 'utf8');
-  xmlCache.set(entry.id, xml);
+  // A shipped file — the style's own, or the parent a catalogued journal borrows. Hundreds of
+  // journals use one of the twenty (Elsevier Harvard, APA, Vancouver…) and need nothing fetched.
+  const file = entry.file ?? `${xmlId}.csl`;
+  const path = join(dir, file);
+  if (!existsSync(path)) throw new StyleNotLoadedError(entry.id);
+  const xml = readFileSync(path, 'utf8');
+  xmlCache.set(xmlId, xml);
   return xml;
 }

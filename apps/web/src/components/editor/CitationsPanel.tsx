@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { ReadingDepth } from './ReadingDepth';
 import { ReferenceHealth } from './ReferenceHealth';
+import { StyleSearch } from './StyleSearch';
 
 export type Rendered = {
   style: string;
@@ -104,12 +105,20 @@ export function CitationsPanel({
           onChange={(e) => void switchStyle(e.target.value)}
           className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
         >
+          {/* A style chosen from the search is not one of the twenty; without its own option the
+              dropdown would show the first entry instead of what is actually in use. */}
+          {data && !data.styles.some((s) => s.id === data.style) ? (
+            <option value={data.style}>{data.styleLabel}</option>
+          ) : null}
           {(data?.styles ?? []).map((s) => (
             <option key={s.id} value={s.id}>
               {s.label}
             </option>
           ))}
         </select>
+        {data ? (
+          <StyleSearch current={data.style} busy={busy} onChoose={(id) => void switchStyle(id)} />
+        ) : null}
         {data?.styles.find((s) => s.id === data.style)?.note ? (
           <p className="mt-1 text-xs text-muted">
             {data.styles.find((s) => s.id === data.style)?.note}

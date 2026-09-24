@@ -14,7 +14,7 @@
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { STYLES } from '@tc/citations';
+import { isKnownStyle } from '@tc/citations';
 import type { Env } from '@tc/config';
 import {
   type ComplianceResult,
@@ -35,6 +35,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 import { CitationsService } from '../chapters/citations.service.js';
+import { StyleStoreService } from '../chapters/style-store.service.js';
 import { loadFigures } from './figure-bytes.js';
 import { type Readiness, readiness } from './readiness.js';
 
@@ -68,6 +69,7 @@ export class ThesisExportService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly citations: CitationsService,
+    private readonly styleStore: StyleStoreService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -272,9 +274,14 @@ export class ThesisExportService {
 
     // FR-5.2: the bibliography and every label come from one citeproc pass over the whole
     // document, in the style the template demands rather than whatever the editor is showing.
-    const styleForExport = STYLES.some((s) => s.id === spec.bibliography.style)
+    // Any style in the catalogue, not only the twenty shipped: a university template can name the
+    // journal style its department follows.
+    const styleForExport = isKnownStyle(spec.bibliography.style)
       ? spec.bibliography.style
       : document.citationStyle;
+    // Loaded before the switch is written, so a failed download leaves the thesis on the style it
+    // had rather than on one that cannot render.
+    await this.styleStore.ensure(styleForExport);
     const previousStyle = document.citationStyle;
     if (styleForExport !== previousStyle) {
       await this.prisma.document.update({

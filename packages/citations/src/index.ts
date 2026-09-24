@@ -1,4 +1,11 @@
 export {
+  type CatalogStyle,
+  catalogSource,
+  catalogStyle,
+  searchCatalog,
+  selectableCount,
+} from './catalog.js';
+export {
   type ChapterDoc,
   type CheckInput,
   type CitationCheckKind,
@@ -38,10 +45,13 @@ export {
   DEFAULT_STYLE,
   findStyle,
   isKnownStyle,
+  needsStyleXml,
+  registerStyleXml,
   resolveStyle,
   STYLES,
   STYLES_DIR,
   type StyleEntry,
   type StyleFamily,
+  StyleNotLoadedError,
   styleXml,
 } from './styles.js';

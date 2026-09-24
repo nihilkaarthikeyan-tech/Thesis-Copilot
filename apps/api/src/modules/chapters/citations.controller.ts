@@ -24,7 +24,9 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { CitationsService } from './citations.service.js';
 import { CiteParseService } from './cite-parse.service.js';
 
-const styleBody = z.object({ style: z.string().trim().min(1).max(60) });
+// 160, not 60: 336 of the catalogue's journal style ids are longer than 60 characters (the longest
+// is 119), and the old limit refused them before the style was ever looked up.
+const styleBody = z.object({ style: z.string().trim().min(1).max(160) });
 const parseBody = z.object({ text: z.string().trim().min(4).max(20_000) });
 const acceptBody = z.object({
   reference: z.string().trim().min(4).max(1_000),
