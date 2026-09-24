@@ -329,7 +329,8 @@ describe('resolveReference', () => {
     expect(resolved.title).toBe('CO2 capture & storage');
     expect(resolved.venue).toBe('Green Energy & Environment');
     // The record citeproc formats keeps its markup: the subscript is typography, not noise.
-    expect((resolved.cslJson?.title as string[])[0]).toContain('<sub>2</sub>');
+    const storedTitle = resolved.cslJson?.title as string[] | undefined;
+    expect(storedTitle?.[0]).toContain('<sub>2</sub>');
   });
 
   it('keeps the Crossref match when the OpenAlex enrichment fails', async () => {
