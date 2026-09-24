@@ -16,7 +16,13 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 
 type Finding = {
-  kind: 'RETRACTED' | 'STALE_PREPRINT' | 'DUPLICATE' | 'UNRESOLVED' | 'NO_IDENTIFIER';
+  kind:
+    | 'RETRACTED'
+    | 'STALE_PREPRINT'
+    | 'DUPLICATE'
+    | 'UNRESOLVED'
+    | 'NO_IDENTIFIER'
+    | 'VENUE_CONCENTRATION';
   sourceId: string;
   shortRef: string;
   title: string | null;
@@ -32,6 +38,7 @@ const KIND_LABEL: Record<Finding['kind'], string> = {
   DUPLICATE: 'Listed twice',
   UNRESOLVED: 'Could not verify',
   NO_IDENTIFIER: 'No DOI',
+  VENUE_CONCENTRATION: 'One journal dominates',
 };
 
 const SEVERITY_TONE: Record<Finding['severity'], string> = {

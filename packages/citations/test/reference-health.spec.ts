@@ -181,3 +181,57 @@ describe('the headline', () => {
     expect(referenceHealthHeadline(found)).toContain('tidying');
   });
 });
+
+describe('one journal supplying too much of the reference list', () => {
+  const cited = (id: string, venue: string | null, citeCount = 1): SourceForHealth =>
+    source({ id, venue, citeCount, doi: `10.1/${id}` });
+
+  const bibliography = (fromOne: number, others: number, venue = 'Renewable Energy') => [
+    ...Array.from({ length: fromOne }, (_, i) => cited(`j${i}`, venue)),
+    ...Array.from({ length: others }, (_, i) => cited(`o${i}`, `Journal ${i}`)),
+  ];
+
+  const concentration = (list: SourceForHealth[]) =>
+    runReferenceHealth(list, NOW).filter((f) => f.kind === 'VENUE_CONCENTRATION');
+
+  it('flags a journal that supplies a third of a real bibliography', () => {
+    const [finding] = concentration(bibliography(6, 12));
+    expect(finding?.venue).toBe('Renewable Energy');
+    expect(finding?.sourceIds).toHaveLength(6);
+    expect(finding?.message).toContain('6 of your 18 cited references (33%)');
+    expect(finding?.severity).toBe('medium');
+  });
+
+  it('stays quiet about a draft too small to have a pattern', () => {
+    // Four of six is a lot, and it is also a draft.
+    expect(concentration(bibliography(4, 2))).toEqual([]);
+  });
+
+  it('needs enough references from the journal, not just a big share', () => {
+    expect(concentration(bibliography(4, 6))).toEqual([]);
+  });
+
+  it('needs a big share, not just enough references', () => {
+    expect(concentration(bibliography(5, 45))).toEqual([]);
+  });
+
+  it('only counts what is cited — a library can hold anything', () => {
+    const uncited = Array.from({ length: 30 }, (_, i) => cited(`u${i}`, 'Renewable Energy', 0));
+    expect(concentration([...uncited, ...bibliography(0, 12)])).toEqual([]);
+  });
+
+  it('treats "Nature" and "nature." as the same journal', () => {
+    const list = [
+      ...Array.from({ length: 3 }, (_, i) => cited(`a${i}`, 'Nature')),
+      ...Array.from({ length: 3 }, (_, i) => cited(`b${i}`, 'nature.')),
+      ...Array.from({ length: 8 }, (_, i) => cited(`c${i}`, `Journal ${i}`)),
+    ];
+    expect(concentration(list)[0]?.sourceIds).toHaveLength(6);
+  });
+
+  it('ignores a source with no journal rather than grouping the unknowns together', () => {
+    expect(concentration(bibliography(0, 2).concat(bibliography(8, 0, '').slice(0, 8)))).toEqual(
+      [],
+    );
+  });
+});

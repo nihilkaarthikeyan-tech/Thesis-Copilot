@@ -25,6 +25,7 @@ export {
   runReferenceHealth,
   type SourceForHealth,
   STALE_PREPRINT_YEARS,
+  VENUE_CONCENTRATION,
 } from './reference-health.js';
 export {
   type BibliographyEntry,

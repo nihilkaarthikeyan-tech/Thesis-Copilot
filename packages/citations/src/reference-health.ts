@@ -24,13 +24,18 @@ export type ReferenceHealthKind =
   | 'STALE_PREPRINT'
   | 'DUPLICATE'
   | 'UNRESOLVED'
-  | 'NO_IDENTIFIER';
+  | 'NO_IDENTIFIER'
+  | 'VENUE_CONCENTRATION';
 
 export type ReferenceHealthFinding = {
   kind: ReferenceHealthKind;
   sourceId: string;
   /** The other source, for a duplicate. */
   otherSourceId?: string;
+  /** Every source a whole-bibliography finding is about — the one journal's references. */
+  sourceIds?: string[];
+  /** The journal, for a venue-concentration finding. */
+  venue?: string;
   shortRef: string;
   title: string | null;
   message: string;
@@ -49,6 +54,8 @@ export type SourceForHealth = {
   shortRef: string;
   /** How many citation nodes point at it. An uncited problem is a smaller problem. */
   citeCount: number;
+  /** The journal or proceedings it appeared in, when resolution found one. */
+  venue?: string | null;
 };
 
 /**
@@ -59,6 +66,22 @@ export type SourceForHealth = {
  * preprint of a published paper is the specific thing a supervisor circles.
  */
 export const STALE_PREPRINT_YEARS = 2;
+
+/**
+ * When one journal is "too much" of a bibliography — judgement calls, named so they can be argued
+ * with rather than buried in a comparison.
+ *
+ *   - Only over **cited** sources: the reference list is what an examiner reads, and a library
+ *     full of one journal's papers that the thesis does not lean on is nobody's concern.
+ *   - Not below `minCited` references in all: a draft with six citations, four from one journal,
+ *     is a draft, not a pattern.
+ *   - A journal has to supply at least `minFromVenue` references *and* `share` of the list. Either
+ *     alone misfires — five of two hundred is nothing, and three of eight is noise.
+ *
+ * Thirty per cent is high. A thesis bibliography draws on dozens of venues; one journal providing
+ * nearly a third of it is the pattern that reads as narrow reading, or makes an examiner ask why.
+ */
+export const VENUE_CONCENTRATION = { minCited: 10, minFromVenue: 5, share: 0.3 } as const;
 
 /** Titles equal once case, punctuation and spacing stop counting. */
 export function normaliseTitle(title: string): string {
@@ -127,6 +150,7 @@ export function runReferenceHealth(
   }
 
   findings.push(...duplicatesIn(sources));
+  findings.push(...concentrationIn(sources));
 
   // High first, then by how much the thesis leans on the source: the ordering a student would
   // triage in.
@@ -204,4 +228,47 @@ export function referenceHealthHeadline(
     return `${high} ${high === 1 ? 'reference needs' : 'references need'} attention before anyone reads this — a retracted or unverifiable source is the first thing an examiner notices.`;
   }
   return `${findings.length} ${findings.length === 1 ? 'thing' : 'things'} worth tidying in your bibliography.`;
+}
+
+/**
+ * One journal supplying too much of the reference list.
+ *
+ * Reported, never judged: some fields genuinely publish mostly in one place, and a student writing
+ * about a single journal's debate should cite that journal. The finding says what the numbers are
+ * and what an examiner is likely to make of them, and leaves the rest to the student.
+ */
+function concentrationIn(sources: readonly SourceForHealth[]): ReferenceHealthFinding[] {
+  const cited = sources.filter((s) => s.citeCount > 0);
+  if (cited.length < VENUE_CONCENTRATION.minCited) return [];
+
+  const byVenue = new Map<string, { name: string; sources: SourceForHealth[] }>();
+  for (const source of cited) {
+    const name = source.venue?.trim();
+    if (!name) continue;
+    const key = normaliseTitle(name);
+    if (!key) continue;
+    const group = byVenue.get(key) ?? { name, sources: [] };
+    group.sources.push(source);
+    byVenue.set(key, group);
+  }
+
+  const findings: ReferenceHealthFinding[] = [];
+  for (const { name, sources: group } of byVenue.values()) {
+    const share = group.length / cited.length;
+    if (group.length < VENUE_CONCENTRATION.minFromVenue || share < VENUE_CONCENTRATION.share) {
+      continue;
+    }
+    const first = group[0] as SourceForHealth;
+    findings.push({
+      kind: 'VENUE_CONCENTRATION',
+      severity: 'medium',
+      sourceId: first.id,
+      sourceIds: group.map((s) => s.id),
+      venue: name,
+      shortRef: name,
+      title: null,
+      message: `${group.length} of your ${cited.length} cited references (${Math.round(share * 100)}%) are from ${name}. A reference list this concentrated can read as narrow reading, and an examiner may ask why. Check whether other journals cover the same ground — or, if your field really does publish mainly there, say so in your literature review.`,
+    });
+  }
+  return findings;
 }

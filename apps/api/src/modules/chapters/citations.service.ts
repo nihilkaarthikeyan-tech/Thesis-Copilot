@@ -198,6 +198,7 @@ export class CitationsService {
           isPreprint: true,
           isRetracted: true,
           authors: true,
+          venue: true,
         },
       }),
     ]);
@@ -220,6 +221,7 @@ export class CitationsService {
         isRetracted: source.isRetracted,
         shortRef: shortReference(source.authors, source.year, source.title) ?? 'Source',
         citeCount: counts.get(source.id) ?? 0,
+        venue: source.venue,
       })),
     );
 
