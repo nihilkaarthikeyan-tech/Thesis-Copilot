@@ -149,6 +149,15 @@ still in `.env` and still valid, but the owner asked that it stay unused, and no
 routes to it. Embeddings are Voyage `voyage-3` (1024-d). OTP mail goes out over Hostinger SMTP as
 `no-reply@rademics.ai`, proven by a delivered message.
 
+**The competitor gap list (2026-09-24, ADRs 0018–0026).** Built against Jenni.ai's feature set:
+version history, library export, one-journal concentration, all CSL styles, the editor on a
+phone, `@` a paper and `/` saved prompts in chat, arXiv and PubMed, LaTeX and HTML export,
+journal citedness, the citation-support check, the writing profile with guidance, and
+proofreading. Proofreading is the one that brushes §12.3: code, not the prompt, refuses any
+correction that puts a different word in (`correctionSize`). `docs/BUILD_LOG.md` → "The
+competitor gap list" has the faults it found in the shipped product. Charts and real-time
+co-authoring are the two items from that list not yet built.
+
 **A fully active student costs ₹14.18/month** against the ₹100 ceiling (₹7 of it hosting, ₹6.74
 AI). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
 ₹299. `pnpm ai:verify` reproduces it. The runtime hard stop at ₹100 of real spend is in
@@ -220,6 +229,14 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
 - **OpenAI's strict structured outputs refuses `.default()` and `z.tuple`,** and is also the only
   thing that makes a prompt saying "output only the sentence" return `{ text }`. The adapter tries
   strict and falls back on a schema rejection, which is free because it happens before generation.
+- **Only OpenAI's strict mode holds an enum, and one `.default()` turns strict mode off.** The
+  adapter falls back to JSON mode when strict refuses a schema, and in JSON mode the model names
+  its own values: proofreading's `kind` came back "doubling" and one bad label failed a whole
+  batch of forty sentences. Write a schema whose answer matters field by field without
+  `.default()` or `.max()`, and normalise anything open-ended in code (ADR-0026).
+- **Gate a commit on lint's exit code, never through a pipe.** `pnpm lint | tail` returns
+  `tail`'s status, and twice a failing lint reached a commit that way. Use
+  `if pnpm lint > log 2>&1; then git commit …; fi`.
 - **Never write a regex through a Python heredoc.** `\b` in a Python string is a literal backspace
   byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
   matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a

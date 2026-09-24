@@ -38,8 +38,15 @@ failure an examiner finds by opening the paper, and the one a student is least a
 
 Fast tier, inside the existing `COHERENCE` action and its cap (one run a month on the student
 plan) — no new metered action. Sixty sentences with two ~350-token passages each is about 45,000
-input tokens: ₹0.3 a run at §11.1's prices. D.1.1's pre-flight estimate counts the new calls, so
-the budget guard sees them before the first call is made.
+input tokens: ₹0.3 a run on the configured `gpt-5-nano`. D.1.1's pre-flight estimate counts the
+new calls (six Fast calls at §11.2's ₹0.3 each, ₹1.8), so the ₹12 budget guard sees them before
+the first call is made.
+
+*Corrected 2026-09-24:* this paragraph first said "₹0.3 a run at §11.1's prices". ₹0.3 is the
+configured model's price; at §11.1's reference Fast rate the same tokens are about ₹4–5. The run
+stays inside D.1.1's ₹12 guard either way, but Appendix E.2's budget prices a coherence run from
+§11.2's profile (₹5.87), which does not include these calls. `docs/PENDING.md` puts that to the
+owner rather than repricing the unit here.
 
 ## Rejected
 

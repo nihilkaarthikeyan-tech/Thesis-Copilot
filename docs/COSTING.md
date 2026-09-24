@@ -83,6 +83,13 @@ Autocomplete carries one extra adjustment: `assistCacheMissUplift = 1.12`. The c
 written once per session before it can be read cheaply, so the real average is about 12% above the
 cache-hit price. That is why the table below bills it at ₹0.0097 rather than ₹0.0087.
 
+**Two later actions ride on units already in this table** rather than adding lines to it.
+Proofreading (ADR-0026) is charged as one AI edit per run of up to 2,000 words: measured at
+₹0.25 for 5,004 words on `gpt-5-nano`, so about ₹0.10 a run, which is less than the AI-edit
+unit at the prices the budget actually uses — and at the E.2 reference prices, 2,000 words is
+sized to cost no more than the unit (a test holds it there). The citation-support check
+(ADR-0023) runs inside a coherence check, at about ₹0.3 more per run.
+
 ### Step 3 — multiply by the caps, then add the fixed costs
 
 Caps are per student per calendar month, from [`plans.ts`](../packages/config/src/plans.ts).

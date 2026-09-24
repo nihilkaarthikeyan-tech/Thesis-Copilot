@@ -3360,3 +3360,76 @@ Writing it turned up two existing specs selecting the editor's panel tabs by `ro
 strip is a real tablist and an explicit role replaces the implicit one, so those lines could never
 have matched. Neither spec had run far enough to find out — both stop earlier in a dev stack
 configured with real providers, because they assert the mock's canned text.
+
+## The competitor gap list — 2026-09-24
+
+The owner asked where the product stands against Jenni.ai and then to "build all of them". This
+batch is that list, in the order it was built: version history (restore, undo, provenance kept),
+library export (.bib/.ris/.csv), one journal dominating the reference list, all 10,143 CSL styles
+(ADR-0018), the editor on a phone, `@` a paper in chat, saved prompts on `/` (ADR-0019), arXiv
+and PubMed beside OpenAlex (ADR-0020), the thesis as LaTeX and as a web page (ADR-0021), each
+journal's 2-year citedness and a chat filter on it (ADR-0022), a check that a cited passage says
+what the sentence says (ADR-0023), the writing profile on a screen with the student's own
+guidance (ADR-0025), and proofreading (ADR-0026). Each was driven in a browser; the commit bodies
+say what was looked at.
+
+### Faults in the shipped product, found on the way
+
+None of these was caught by a test, and each was found by opening the artefact:
+
+- **A pending AI draft was written into the submitted thesis** — the whole-thesis `.docx`, and
+  so the PDF, printed a draft the student had never accepted (3bf6e99). The chapter export had
+  always skipped drafts; the export that is handed in did not.
+- **Every Crossref-resolved reference printed its raw line as its title**, with "In ()" where the
+  journal belonged (4ec9067). `cslJson` holds Crossref's own record, whose `title` is a list.
+- **"&amp;" in reference lists** wherever Crossref sent an escaped ampersand (1e57898), and
+  **"Zeyad Awwad" where APA wants "Awwad, Z."** for every OpenAlex author (246197f).
+- **Find papers returned nothing for a question ending in "?"** — OpenAlex answers `?` and `*`
+  with a 400 (8ee080c).
+- **MinIO's last public images went** (quay.io, 401) and CI failed at container start; the next
+  production deploy would have too (1613935, ADR-0024). `docs/PENDING.md` asks for a volume
+  backup before that deploy.
+
+### Proofreading met the real model three times before it worked
+
+The mock answers the way the code expects by construction, so everything passed until the Fast
+model was called:
+
+1. **It answered with whole sentences.** Asked for "the shortest span", `gpt-5-nano` returned
+   "The farmers recieved the subsidy late…" → "The farmers received…", and the size checks
+   refused both corrections as rewrites. The browser showed "No mistakes found". Fixed in code,
+   not the prompt: each answer is narrowed to the whole words that change.
+2. **It put three fixes in one answer**, and the narrowed span ran from the first to the last —
+   ten words, refused again. The answer is now split into one correction per change (a word-level
+   diff), and a split piece is labelled by what it does rather than borrowing the model's one
+   reason for all three.
+3. **It invented labels.** On a measured 5,000-word run, one batch in nine failed validation
+   because a correction's `kind` was "doubling". The schema had `.default()`s, so OpenAI's strict
+   mode refused it and the call fell back to JSON mode, where nothing constrains an enum. The
+   schema is now strict-compatible and `kind` is a string normalised in code. Re-measured: nine
+   of nine batches, 84 corrections, **₹0.25 for 5,004 words**.
+
+That measurement also sized the run. A run is charged as one `COMMAND` unit, and ADR-0008's rule
+is that a shared unit is priced for the most expensive thing drawing on it: at the reference
+prices the E.2 budget uses, one unit (₹1.41) pays for 2,000 words at the measured 2.52 tokens in
+and 1.11 out per word, not the 5,000 first written. A test in `proofread.spec.ts` now fails if
+the two drift apart. `docs/PENDING.md` puts the resulting allowance, 8,000 words a month, to the
+owner.
+
+Writing the size check properly also drew the §12.3 line in code: a correction may fix spelling,
+swap a grammar word for another of its kind, or add or remove punctuation, an article or a
+doubled word — never put a different word in. A synonym, an inserted "not", "more" for "less" are
+refused whatever the model calls them (`correctionSize`).
+
+### Process
+
+Twice this batch a formatting or lint failure reached a commit, because the lint step's output
+went through a pipe that returned the pipe's status, not lint's. Commits are now made only inside
+`if pnpm lint …; then … fi`. And once more a Python heredoc halved a backslash in a regex
+(`\p` arrived intact only because `\p` is not an escape Python knows).
+
+Not code faults, noted so nobody chases them: locally, the second of two quick chat questions
+and a Discover run can fail on Voyage's free-tier limit of 3 requests a minute (PENDING already
+asks for a payment method on that account), and `outline-commands-chat.spec.ts`'s "offers
+nothing to apply when the rewrite came back unchanged" asserts the mock's answer, so it fails
+against real models and passes in CI.

@@ -30,6 +30,12 @@ blocks the agent from continuing to build against mocks.
       sentence citing it. If it reads right, add it to the PRD as A.12.5 so the file becomes a
       verbatim copy like the others; if not, say what to change — the agent does not edit a prompt
       on its own judgement (§0.3 rule 11).
+- [ ] **Review the proofreading prompt** (ADR-0026): `packages/ai/prompts/proofread.md`, the third
+      prompt not from Appendix A. It asks for spelling, grammar, punctuation and agreement
+      corrections as the smallest span. The line against paraphrasing does not rest on it — code
+      refuses anything that puts a different word in (`correctionSize`) — but it is still content
+      and still yours. Same choice as above: add it to the PRD as an A.12 entry, or say what to
+      change.
 - [ ] **Amend the PRD for ADR-0011**: §7.2's AI SDK row (a second provider, and per-tier routing)
       and §13.3's variable list (`OPENAI_API_KEY`). Same kind of follow-up as ADR-0010's A.17.
 - [x] **Confirm the model prices** (§0.3 rule 4 — the agent must not guess a price). Done
@@ -420,6 +426,17 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
       reality: Outline 2,000 → 3,394, Style profile 400 → 1,018, Command 600 → 272.
       `docs/BUILD_LOG.md` → "Real-provider shakedown" has the whole table. §0.3 rule 3 keeps the
       agent out of the PRD's own numbers.
+- [ ] **The budget proof prices a coherence run without the citation-support check** (ADR-0023,
+      corrected 2026-09-24). The check adds up to six Fast calls, about 45,000 input tokens: ₹0.3
+      on `gpt-5-nano`, about ₹4–5 at the reference prices Appendix E.2's test uses. That test
+      prices a coherence run from §11.2's profile (₹5.87) and has ₹1.08 of headroom, so at
+      reference prices a student who runs coherence on a heavily cited chapter is budgeted a few
+      rupees short. It was already true in a smaller way: D.1.1 lets a run cost up to ₹12 before
+      it narrows itself, twice what §11.4 budgets. Nothing is at risk in real money (₹0.9 a run
+      all in); the question is whether the proof should price a run at D.1.1's ₹12 bound, which
+      needs room taken from another cap. Proofreading was sized to its unit instead (ADR-0026);
+      the same could be done here by lowering `maxSupportChecks` from 60, at the cost of fewer
+      sentences checked.
 - [ ] **`pnpm ai:shakedown` does not cover the free-text paths.** It runs 19 structured calls and 2
       stream-then-parse ones; a third shape exists and has no case — a plain `complete()` with no
       schema, which today is `buildChapterSummaryRequest` inside the coherence run. Noticed
@@ -581,6 +598,23 @@ The projection has moved a long way and every move was a defect or a decision, n
          before the number they paid for. That is a refund problem, not a cost problem.
 
       Nothing here is settled by the agent, and none of it blocks other work.
+
+- [ ] **Proofreading shares the AI-edits allowance, and four is not enough to use it** (ADR-0026).
+      One proofreading run reads 2,000 words for one `COMMAND` unit, the same unit section
+      commands, outline regeneration and "Suggest fix" draw on — four a month on STUDENT, two on
+      the trial. That is 8,000 words a month; a 50,000-word thesis needs **25 runs** to be
+      proofread once.
+
+      Measured 2026-09-24 on `gpt-5-nano`: 5,004 words took 9 calls, 12,578 input and 5,518
+      output tokens, **₹0.25** — so a whole thesis is about ₹2.50 at real prices. The run is
+      2,000 words, not more, because of the budget proof: at the reference prices the E.2 test
+      uses, the same tokens cost fourteen times as much, and 2,000 words is what one Commands unit
+      (₹1.41) pays for there. A test holds the run to the unit.
+
+      Two ways, both yours: raise `COMMAND` (the table above already shows 100 fits the money), or
+      give proofreading its own action and cap, priced in `packages/config/src/cost.ts` and paid
+      for in §11.4. Either is a small change once decided; the run size would then follow the new
+      unit.
 
 
 ## After the VERIFY batch (2026-09-07)
