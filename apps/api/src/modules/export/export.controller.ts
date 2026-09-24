@@ -22,7 +22,8 @@ const exportBody = z.object({
 
 const templateBody = z.object({ templateId: z.string().uuid() });
 const thesisExportBody = z.object({
-  format: z.enum(['docx', 'pdf']).default('docx'),
+  // `latex` and `html` are ADR-0021's working formats; only the PDF is compliance-gated.
+  format: z.enum(['docx', 'pdf', 'latex', 'html']).default('docx'),
   overrideReason: z.string().trim().min(10).max(500).optional(),
 });
 

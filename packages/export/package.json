@@ -28,6 +28,8 @@
   "dependencies": {
     "@tc/citations": "workspace:^",
     "@tc/types": "workspace:^",
-    "docx": "9.7.1"
+    "docx": "9.7.1",
+    "jszip": "3.10.1",
+    "katex": "0.18.5"
   }
 }

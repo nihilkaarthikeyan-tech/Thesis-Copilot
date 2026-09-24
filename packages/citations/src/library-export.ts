@@ -94,7 +94,7 @@ export function citationKeys(sources: readonly SourceLike[]): Map<string, string
   return keys;
 }
 
-function itemsFor(sources: readonly LibrarySource[]): CslItem[] {
+function itemsFor(sources: readonly LibrarySource[], statusNotes = true): CslItem[] {
   const keys = citationKeys(sources);
   return sources.map((source) => {
     const item = toCslItem(source);
@@ -103,6 +103,7 @@ function itemsFor(sources: readonly LibrarySource[]): CslItem[] {
     // identifier that means something. RIS writes `id` as its `ID` field.
     item.id = key;
     item['citation-key'] = key;
+    if (!statusNotes) return item;
     const note = source.status ? STATUS_NOTE[source.status] : undefined;
     if (note) item.note = note;
     if (source.isRetracted) item.note = 'RETRACTED — do not cite without saying so.';
@@ -185,17 +186,26 @@ function toCsv(sources: readonly LibrarySource[]): string {
 export function exportLibrary(
   sources: readonly LibrarySource[],
   format: LibraryFormat,
+  options: {
+    /**
+     * The notes that mark an unverified or retracted record. Right for a library file someone will
+     * sort through; wrong in a thesis's own `references.bib`, where biblatex would print them in
+     * the reference list — which the `.docx`, formatted by citeproc, never does.
+     */
+    statusNotes?: boolean;
+  } = {},
 ): LibraryFile {
+  const notes = options.statusNotes ?? true;
   switch (format) {
     case 'bib':
       return {
-        body: String(plugins.output.format('bibtex', itemsFor(sources), { format: 'text' })),
+        body: String(plugins.output.format('bibtex', itemsFor(sources, notes), { format: 'text' })),
         mimeType: 'application/x-bibtex; charset=utf-8',
         extension: 'bib',
       };
     case 'ris':
       return {
-        body: String(plugins.output.format('ris', itemsFor(sources), { format: 'text' })),
+        body: String(plugins.output.format('ris', itemsFor(sources, notes), { format: 'text' })),
         mimeType: 'application/x-research-info-systems; charset=utf-8',
         extension: 'ris',
       };

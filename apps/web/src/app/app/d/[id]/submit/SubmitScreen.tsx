@@ -63,6 +63,15 @@ const FIELDS: Array<{ key: keyof Details; label: string; hint?: string }> = [
   { key: 'declarationDate', label: 'Date on the declaration' },
 ];
 
+/** What to expect from each file, said once it is built. */
+const EXPORT_NOTICE: Record<'docx' | 'pdf' | 'latex' | 'html', string> = {
+  docx: 'Built. Word will offer to update the contents pages when you open it — say yes.',
+  pdf: 'Built. The contents pages were filled in during the conversion.',
+  latex:
+    'Built. Upload the .zip to Overleaf as a new project. Its reference list is formatted by biblatex, so it will not match the editor exactly — README.txt explains.',
+  html: 'Built. One file, figures included: open it in any browser, or send it on.',
+};
+
 export function SubmitScreen({ documentId }: { documentId: string }) {
   const [data, setData] = useState<DetailsResponse | null>(null);
   const [details, setDetails] = useState<Details | null>(null);
@@ -125,7 +134,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
     }
   }
 
-  async function exportThesis(format: 'docx' | 'pdf') {
+  async function exportThesis(format: 'docx' | 'pdf' | 'latex' | 'html') {
     setBusy(format);
     setError(null);
     try {
@@ -140,11 +149,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         },
       );
       setDownloads((prev) => [{ filename: result.filename, url: result.url }, ...prev].slice(0, 5));
-      setNotice(
-        format === 'docx'
-          ? 'Built. Word will offer to update the contents pages when you open it — say yes.'
-          : 'Built. The contents pages were filled in during the conversion.',
-      );
+      setNotice(EXPORT_NOTICE[format]);
       setShowOverride(false);
       setOverride('');
     } catch (e) {
@@ -342,6 +347,35 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           The .docx is always available, whatever the checks say — it is your writing. The PDF waits
           for the checks, because it is what you hand in.
         </p>
+        {/* ADR-0021. Working formats, like the .docx: not what is handed in, so never gated. */}
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-xs font-semibold text-ink">Other formats</p>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void exportThesis('latex')}
+              data-testid="export-latex"
+              className="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+            >
+              {busy === 'latex' ? 'Building…' : 'LaTeX project (.zip)'}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void exportThesis('html')}
+              data-testid="export-html"
+              className="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+            >
+              {busy === 'html' ? 'Building…' : 'Web page (.html)'}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            LaTeX: main.tex, references.bib and your figures, ready to upload to Overleaf; citations
+            are real \cite commands. Web page: one file with the figures inside it, for reading on a
+            phone or sharing.
+          </p>
+        </div>
 
         {showOverride ? (
           <div className="mt-3 rounded-md border border-warn/40 bg-warn/5 p-3 text-sm">

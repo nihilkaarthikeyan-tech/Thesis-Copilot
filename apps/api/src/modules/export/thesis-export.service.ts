@@ -14,7 +14,13 @@
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { isKnownStyle } from '@tc/citations';
+import {
+  citationKeys,
+  citationNodesIn,
+  exportLibrary,
+  isKnownStyle,
+  resolveStyle,
+} from '@tc/citations';
 import type { Env } from '@tc/config';
 import {
   type ComplianceResult,
@@ -22,6 +28,9 @@ import {
   runComplianceChecks,
   type ThesisChapter,
   thesisToDocx,
+  thesisToHtml,
+  thesisToLatexZip,
+  withoutPendingDrafts,
 } from '@tc/export';
 import {
   readTemplateSpec,
@@ -52,13 +61,26 @@ export type ThesisExportResult = {
   key: string;
   filename: string;
   bytes: number;
-  format: 'docx' | 'pdf';
+  format: ThesisExportFormat;
   compliance: ComplianceResult;
   /** Set when the PDF was produced despite failures, with the reason recorded. */
   overrideReason?: string;
 };
 
 /** D.3.2 step 5: "keep the last 5 exports per document". */
+/**
+ * `docx` and `pdf` are what a student submits; `latex` (a project .zip) and `html` (one page) are
+ * working formats (ADR-0021). Only the PDF is gated on the compliance checks.
+ */
+export type ThesisExportFormat = 'docx' | 'pdf' | 'latex' | 'html';
+
+const CONTENT_TYPES: Record<ThesisExportFormat, string> = {
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pdf: 'application/pdf',
+  latex: 'application/zip',
+  html: 'text/html; charset=utf-8',
+};
+
 const KEEP_EXPORTS = 5;
 
 @Injectable()
@@ -83,6 +105,7 @@ export class ThesisExportService {
         citationStyle: true,
         institutionTemplateId: true,
         submissionDeadline: true,
+        language: true,
       },
     });
     if (!document) throw new NotFoundError('That document');
@@ -257,7 +280,7 @@ export class ThesisExportService {
   async exportThesis(
     user: SessionUser,
     documentId: string,
-    format: 'docx' | 'pdf',
+    format: ThesisExportFormat,
     overrideReason?: string,
   ): Promise<ThesisExportResult> {
     const document = await this.owned(user.id, documentId);
@@ -322,27 +345,67 @@ export class ThesisExportService {
       renderedMap: rendered.labels,
     }));
 
-    const docx = await thesisToDocx({
-      spec,
-      details,
-      documentTitle: document.title,
-      chapters,
-      bibliography: rendered.bibliography.map((b) => b.text),
-      // Every chapter's figures in one map, keyed by storage path. Before this, a submitted
-      // thesis carried a correctly numbered caption under a bracketed placeholder — the caption
-      // machinery worked, and there was nothing above it.
-      images: Object.assign(
-        {},
-        ...(await Promise.all(
-          chapters.map((chapter) => loadFigures(this.storage, chapter.content, this.logger)),
-        )),
-      ),
-    });
-
+    // Every chapter's figures in one map, keyed by storage path. Before this, a submitted thesis
+    // carried a correctly numbered caption under a bracketed placeholder — the caption machinery
+    // worked, and there was nothing above it.
+    const images = Object.assign(
+      {},
+      ...(await Promise.all(
+        chapters.map((chapter) => loadFigures(this.storage, chapter.content, this.logger)),
+      )),
+    );
+    const exportedOn = new Date().toISOString().slice(0, 10);
     const base = slug(document.title);
-    const body = format === 'pdf' ? await this.toPdf(docx, `${base}.docx`) : docx;
-    const filename = `${base}.${format}`;
-    const stored = await this.store(documentId, filename, body);
+
+    let body: Buffer;
+    let filename: string;
+    if (format === 'latex') {
+      const style = resolveStyle(styleForExport);
+      body = await thesisToLatexZip({
+        spec,
+        details,
+        documentTitle: document.title,
+        chapters,
+        bibliography: rendered.bibliography.map((b) => b.text),
+        images,
+        ...(await this.latexCitations(documentId, chapterRows)),
+        // biblatex's nearest built-in style. A footnote style cannot be chosen here (ADR-0018).
+        bibStyle: style.family === 'numeric' ? 'numeric' : 'authoryear',
+        styleLabel: style.label,
+        exportedOn,
+      });
+      filename = `${base}-latex.zip`;
+    } else if (format === 'html') {
+      body = Buffer.from(
+        thesisToHtml({
+          spec,
+          details,
+          documentTitle: document.title,
+          chapters,
+          bibliography: rendered.bibliography,
+          citeSources: Object.fromEntries(
+            citedNodes(chapterRows).map((node) => [node.nodeKey, node.sourceId] as const),
+          ),
+          images,
+          language: document.language,
+          exportedOn,
+        }),
+        'utf8',
+      );
+      filename = `${base}.html`;
+    } else {
+      const docx = await thesisToDocx({
+        spec,
+        details,
+        documentTitle: document.title,
+        chapters,
+        bibliography: rendered.bibliography.map((b) => b.text),
+        images,
+      });
+      body = format === 'pdf' ? await this.toPdf(docx, `${base}.docx`) : docx;
+      filename = `${base}.${format}`;
+    }
+    const stored = await this.store(documentId, filename, body, CONTENT_TYPES[format]);
 
     if (format === 'pdf' && !compliance.passed && overrideReason?.trim()) {
       // D.3.3: the reason goes in the export log, so an override has an author and a date.
@@ -392,14 +455,62 @@ export class ThesisExportService {
     documentId: string,
     filename: string,
     body: Buffer,
+    contentType: string,
   ): Promise<{ url: string; key: string; filename: string; bytes: number }> {
     const key = `exports/${documentId}/thesis/${Date.now()}-${filename}`;
-    await this.storage.put(key, body, {
-      'content-type': filename.endsWith('.pdf')
-        ? 'application/pdf'
-        : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    });
+    await this.storage.put(key, body, { 'content-type': contentType });
     return { url: await this.storage.signedUrl(key), key, filename, bytes: body.length };
+  }
+
+  /**
+   * What `main.tex` cites with and `references.bib` holds: the cited sources only, keyed by
+   * `citationKeys` — the function `exportLibrary` keys the `.bib` with, over the same list in the
+   * same order, so every `\parencite` finds its entry.
+   */
+  private async latexCitations(
+    documentId: string,
+    chapterRows: ReadonlyArray<{ id: string; title: string; content: unknown }>,
+  ): Promise<{
+    citeKeys: Record<string, string>;
+    locators: Record<string, string | null>;
+    bibtex: string;
+  }> {
+    const nodes = citedNodes(chapterRows);
+    const cited = [...new Set(nodes.map((node) => node.sourceId).filter(Boolean))];
+    const [sources, rows] = await Promise.all([
+      this.prisma.source.findMany({
+        where: { documentId, id: { in: cited } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          title: true,
+          authors: true,
+          year: true,
+          venue: true,
+          doi: true,
+          cslJson: true,
+          isPreprint: true,
+          rawReference: true,
+        },
+      }),
+      this.prisma.citation.findMany({
+        where: { chapter: { documentId } },
+        select: { nodeKey: true, locator: true },
+      }),
+    ]);
+    const keys = citationKeys(sources);
+    const citeKeys: Record<string, string> = {};
+    for (const node of nodes) {
+      const key = keys.get(node.sourceId);
+      if (key) citeKeys[node.nodeKey] = key;
+    }
+    return {
+      citeKeys,
+      locators: Object.fromEntries(rows.map((row) => [row.nodeKey, row.locator])),
+      // Without the library file's "RETRACTED" and "Not identified" notes, which biblatex would
+      // print in the thesis's reference list; the editor's reference sweep is where those belong.
+      bibtex: exportLibrary(sources, 'bib', { statusNotes: false }).body,
+    };
   }
 
   /** D.3.2 step 5. Best-effort: a storage hiccup must not fail an export the student has. */
@@ -413,6 +524,13 @@ export class ThesisExportService {
       this.logger.warn({ err: error, documentId }, 'could not prune old exports');
     }
   }
+}
+
+/** Every citation in the thesis as exported — an unaccepted draft's citations are not in it. */
+function citedNodes(chapterRows: ReadonlyArray<{ id: string; title: string; content: unknown }>) {
+  return chapterRows.flatMap((chapter) =>
+    citationNodesIn({ ...chapter, content: withoutPendingDrafts(chapter.content) }),
+  );
 }
 
 function slug(text: string): string {

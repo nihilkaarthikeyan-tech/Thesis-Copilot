@@ -21,8 +21,16 @@ export {
   runComplianceChecks,
 } from './compliance.js';
 export { chapterToDocx, type ExportOptions } from './docx.js';
+export { escapeHtml, type HtmlExportInput, thesisToHtml } from './html.js';
 export { fitToColumn, imageSize, MAX_FIGURE_WIDTH_PT, type Pixels } from './image-size.js';
 export { type InvoiceInput, invoiceToDocx } from './invoice.js';
+export {
+  escapeLatex,
+  type LatexExportInput,
+  type LatexFile,
+  thesisToLatexFiles,
+  thesisToLatexZip,
+} from './latex.js';
 export {
   actionTaken,
   firstWords,
