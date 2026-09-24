@@ -8,7 +8,7 @@
  * that style does for a missing field.
  */
 
-export type CslName = { family?: string; given?: string; literal?: string };
+export type CslName = { family?: string; given?: string; suffix?: string; literal?: string };
 
 export type CslItem = {
   id: string;
@@ -144,13 +144,33 @@ function typeOf(source: SourceLike, stored: Record<string, unknown> | null): str
  * resolved source in the bibliography.
  */
 function firstText(value: unknown): string | undefined {
-  if (typeof value === 'string') return value.trim() || undefined;
+  if (typeof value === 'string') return decodeEntities(value.trim()) || undefined;
   if (Array.isArray(value)) {
     for (const entry of value) {
-      if (typeof entry === 'string' && entry.trim()) return entry.trim();
+      if (typeof entry === 'string' && entry.trim()) return decodeEntities(entry.trim());
     }
   }
   return undefined;
+}
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+/**
+ * Crossref sends titles and journal names HTML-escaped — "Green Energy &amp; Environment" — and
+ * citeproc prints an entity as the text it is, so every reference list carried "&amp;" until
+ * 2026-09-24. Decoded here, at the one door every text field comes through, so the records
+ * already stored render correctly too. Inline markup (`<i>`, `<sub>`) is left for citeproc, which
+ * formats it.
+ */
+export function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole, code: string) => {
+    if (code.startsWith('#')) {
+      const hex = code[1] === 'x' || code[1] === 'X';
+      const n = Number.parseInt(code.slice(hex ? 2 : 1), hex ? 16 : 10);
+      return Number.isInteger(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : whole;
+    }
+    return ENTITIES[code.toLowerCase()] ?? whole;
+  });
 }
 
 /** `Source.authors` is `[{ family, given }]` or a list of strings, depending on where it came from. */
@@ -167,15 +187,19 @@ export function namesFrom(authors: unknown): CslName[] {
         return given ? { family, given } : { literal: name };
       }
       if (entry && typeof entry === 'object') {
-        const { family, given, literal, name } = entry as Record<string, unknown>;
+        const { family, given, suffix, literal, name } = entry as Record<string, unknown>;
         if (typeof family === 'string' || typeof given === 'string') {
           return {
-            ...(typeof family === 'string' ? { family } : {}),
-            ...(typeof given === 'string' ? { given } : {}),
+            ...(typeof family === 'string' ? { family: decodeEntities(family) } : {}),
+            ...(typeof given === 'string' ? { given: decodeEntities(given) } : {}),
+            // "Jr." from the name splitter (`personName`); dropping it printed the wrong person.
+            ...(typeof suffix === 'string' && suffix ? { suffix } : {}),
           };
         }
         const flat = literal ?? name;
-        if (typeof flat === 'string' && flat.trim()) return { literal: flat.trim() };
+        if (typeof flat === 'string' && flat.trim()) {
+          return { literal: decodeEntities(flat.trim()) };
+        }
       }
       return null;
     })

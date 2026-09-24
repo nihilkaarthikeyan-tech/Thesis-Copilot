@@ -16,6 +16,15 @@ import { arxivIdFromDoi } from './arxiv-id.js';
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
 import { openAlexSearchText } from './keywords.js';
 import { personName } from './names.js';
+import { plainText } from './xml.js';
+
+/**
+ * A title or journal name as a reader sees it. Crossref and OpenAlex both send some HTML-escaped
+ * ("Energy &amp; Fuels") or with inline markup ("CO<sub>2</sub> capture"), and those were stored
+ * and shown as they came. The stored CSL record keeps the markup, which citeproc formats.
+ */
+const clean = (text: string | null | undefined): string | null =>
+  text ? plainText(text) || null : null;
 
 export const RESOLUTION_THRESHOLD = 0.85;
 export const CROSSREF_CANDIDATES = 3;
@@ -441,10 +450,10 @@ function fromCrossrefItem(item: CrossrefItem, score: number): ResolvedSource {
   return {
     doi: item.DOI ? item.DOI.toLowerCase() : null,
     openalexId: null,
-    title: item.title?.[0] ?? null,
+    title: clean(item.title?.[0]),
     authors: crossrefAuthors(item),
     year: crossrefYear(item),
-    venue: item['container-title']?.[0] ?? null,
+    venue: clean(item['container-title']?.[0]),
     type: item.type ?? null,
     cslJson: item as Record<string, unknown>,
     oaStatus: null,
@@ -517,10 +526,10 @@ export async function resolveByDoi(
         doi: normalised,
         openalexId: work.id ?? null,
         venueOpenalexId: venueIdOf(work),
-        title: work.title ?? work.display_name ?? null,
+        title: clean(work.title ?? work.display_name),
         authors: openAlexAuthors(work),
         year: work.publication_year ?? null,
-        venue: work.primary_location?.source?.display_name ?? work.host_venue?.display_name ?? null,
+        venue: clean(work.primary_location?.source?.display_name ?? work.host_venue?.display_name),
         type: work.type ?? null,
         cslJson: null,
         oaStatus: work.open_access?.oa_status ?? null,
@@ -568,7 +577,7 @@ export async function resolveReference(
   let best: ResolvedSource = { ...UNRESOLVED };
   for (const item of items) {
     const candidate = {
-      title: item.title?.[0] ?? null,
+      title: clean(item.title?.[0]),
       authors: crossrefAuthors(item),
       year: crossrefYear(item),
     };
@@ -585,7 +594,7 @@ export async function resolveReference(
   const works = await resolver.openalex.search(reference, 3, signal);
   for (const work of works) {
     const candidate = {
-      title: work.title ?? work.display_name ?? null,
+      title: clean(work.title ?? work.display_name),
       authors: openAlexAuthors(work),
       year: work.publication_year ?? null,
     };
@@ -598,7 +607,7 @@ export async function resolveReference(
       title: candidate.title,
       authors: candidate.authors,
       year: candidate.year,
-      venue: work.primary_location?.source?.display_name ?? work.host_venue?.display_name ?? null,
+      venue: clean(work.primary_location?.source?.display_name ?? work.host_venue?.display_name),
       type: work.type ?? null,
       cslJson: null,
       oaStatus: work.open_access?.oa_status ?? null,

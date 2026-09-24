@@ -127,3 +127,51 @@ describe('the bibliography entry a student submits', () => {
     expect(ieee).not.toContain('LeCun, Yann, Bengio');
   });
 });
+
+describe('text Crossref sends HTML-escaped', () => {
+  // The journal name as Crossref sends it for 10.1016/j.gee.* records; the title is an invented
+  // example of the two kinds of markup Crossref titles carry — an entity and an inline tag.
+  const escaped = {
+    id: 'gee',
+    title: null,
+    authors: [{ family: 'King', given: 'Martin Luther', suffix: 'Jr.' }],
+    year: 2023,
+    venue: null,
+    doi: '10.1016/j.gee.2023.01.001',
+    isPreprint: false,
+    rawReference: null,
+    cslJson: {
+      ...CROSSREF_WORK,
+      DOI: '10.1016/j.gee.2023.01.001',
+      title: ['Hydrogen storage &amp; <i>in situ</i> reuse'],
+      'container-title': ['Green Energy &amp; Environment'],
+      author: [{ family: 'King', given: 'Martin Luther', suffix: 'Jr.' }],
+    },
+  };
+
+  it('prints "&", never "&amp;", in the reference list', () => {
+    const [entry] = renderCitations({
+      style: 'apa',
+      sources: [escaped],
+      citations: [{ key: 'k1', sourceId: 'gee', locator: null }],
+    }).bibliography;
+    expect(entry?.text).toContain('Green Energy & Environment');
+    expect(entry?.text).toContain('Hydrogen storage & in situ reuse');
+    expect(entry?.text).not.toContain('&amp;');
+  });
+
+  it('keeps a name suffix, so "Jr." is not dropped from the author', () => {
+    const [entry] = renderCitations({
+      style: 'apa',
+      sources: [{ ...escaped, cslJson: null }],
+      citations: [{ key: 'k1', sourceId: 'gee', locator: null }],
+    }).bibliography;
+    expect(entry?.text).toContain('Jr.');
+  });
+
+  it('decodes numeric entities as well as named ones', () => {
+    expect(toCslItem({ ...escaped, cslJson: { title: ['Caf&#233; &#x26; bar'] } }).title).toBe(
+      'Café & bar',
+    );
+  });
+});

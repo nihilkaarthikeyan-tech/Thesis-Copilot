@@ -308,6 +308,30 @@ describe('resolveReference', () => {
     expect(resolved.isRetracted).toBe(true);
   });
 
+  it('stores the title and journal as a reader sees them, not as Crossref escaped them', async () => {
+    const { fn } = fakeFetch([
+      {
+        match: 'api.crossref.org/works/',
+        body: {
+          message: {
+            ...crossrefItem,
+            title: ['CO<sub>2</sub> capture &amp; storage'],
+            'container-title': ['Green Energy &amp; Environment'],
+          },
+        },
+      },
+      { match: 'api.openalex.org/works/doi:', body: {} },
+    ]);
+    const resolved = await resolveByDoi('10.1016/j.enpol.2021.112121', {
+      crossref: new CrossrefClient(options(fn)),
+      openalex: new OpenAlexClient(options(fn)),
+    });
+    expect(resolved.title).toBe('CO2 capture & storage');
+    expect(resolved.venue).toBe('Green Energy & Environment');
+    // The record citeproc formats keeps its markup: the subscript is typography, not noise.
+    expect((resolved.cslJson?.title as string[])[0]).toContain('<sub>2</sub>');
+  });
+
   it('keeps the Crossref match when the OpenAlex enrichment fails', async () => {
     const fn = vi.fn(async (url: string) => {
       if (url.includes('api.crossref.org'))

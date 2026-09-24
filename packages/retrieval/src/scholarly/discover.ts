@@ -10,6 +10,7 @@
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
 import { openAlexSearchText } from './keywords.js';
 import { abstractFromInvertedIndex } from './resolve.js';
+import { plainText } from './xml.js';
 
 /** One paper as a search result, before it is a `SearchCandidate` row. */
 export type DiscoveredWork = {
@@ -76,7 +77,7 @@ export const openalexShortId = (id: string | null | undefined): string | null =>
 };
 
 function fromOpenAlex(work: OpenAlexWork): DiscoveredWork | null {
-  const title = (work.title ?? work.display_name ?? '').trim();
+  const title = plainText(work.title ?? work.display_name);
   if (!title) return null;
   return {
     openalexId: openalexShortId(work.id),
@@ -84,7 +85,7 @@ function fromOpenAlex(work: OpenAlexWork): DiscoveredWork | null {
     title,
     abstract: abstractFromInvertedIndex(work.abstract_inverted_index) || null,
     year: work.publication_year ?? null,
-    venue: work.primary_location?.source?.display_name ?? null,
+    venue: plainText(work.primary_location?.source?.display_name) || null,
     citationCount: work.cited_by_count ?? null,
     isPreprint: work.type === 'preprint',
     oaStatus: work.open_access?.oa_status ?? null,
@@ -187,7 +188,7 @@ export class SemanticScholarClient {
     const body = await this.http.getJson<{ data?: S2Paper[] }>(url, signal);
     return (body?.data ?? [])
       .map((p): DiscoveredWork | null => {
-        const title = (p.title ?? '').trim();
+        const title = plainText(p.title);
         if (!title) return null;
         return {
           openalexId: null,
