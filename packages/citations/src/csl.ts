@@ -40,12 +40,117 @@ export type SourceLike = {
   rawReference?: string | null;
 };
 
+/**
+ * Crossref's type vocabulary → CSL's.
+ *
+ * `Source.cslJson` holds what the resolver received, and for a Crossref match that is Crossref's
+ * own `works` record, not CSL-JSON. The two agree on most fields and disagree on the ones that
+ * decide how a reference is printed: Crossref says `journal-article` where CSL says
+ * `article-journal`, and citeproc treats a type it does not know as nothing in particular — which
+ * printed every journal article in a thesis bibliography without its journal.
+ */
+const CROSSREF_TO_CSL: Record<string, string> = {
+  'journal-article': 'article-journal',
+  'proceedings-article': 'paper-conference',
+  'book-chapter': 'chapter',
+  'book-section': 'chapter',
+  'book-part': 'chapter',
+  'book-track': 'chapter',
+  'edited-book': 'book',
+  monograph: 'book',
+  'reference-book': 'book',
+  'book-set': 'book',
+  'book-series': 'book',
+  proceedings: 'book',
+  'posted-content': 'article',
+  dissertation: 'thesis',
+  'report-series': 'report',
+  'report-component': 'report',
+  'reference-entry': 'entry-encyclopedia',
+  'peer-review': 'review',
+  'journal-issue': 'article-journal',
+  journal: 'periodical',
+  component: 'article',
+  other: 'article',
+};
+
+/** CSL 1.0.2's types. A stored type already in this set is kept as it is. */
+const CSL_TYPES = new Set([
+  'article',
+  'article-journal',
+  'article-magazine',
+  'article-newspaper',
+  'bill',
+  'book',
+  'broadcast',
+  'chapter',
+  'classic',
+  'collection',
+  'dataset',
+  'document',
+  'entry',
+  'entry-dictionary',
+  'entry-encyclopedia',
+  'event',
+  'figure',
+  'graphic',
+  'hearing',
+  'interview',
+  'legal_case',
+  'legislation',
+  'manuscript',
+  'map',
+  'motion_picture',
+  'musical_score',
+  'pamphlet',
+  'paper-conference',
+  'patent',
+  'performance',
+  'periodical',
+  'personal_communication',
+  'post',
+  'post-weblog',
+  'regulation',
+  'report',
+  'review',
+  'review-book',
+  'software',
+  'song',
+  'speech',
+  'standard',
+  'thesis',
+  'treaty',
+  'webpage',
+]);
+
 /** CSL type from what is known. Everything scholarly here is an article unless it says otherwise. */
 function typeOf(source: SourceLike, stored: Record<string, unknown> | null): string {
   const type = stored?.type;
-  if (typeof type === 'string' && type.length > 0) return type;
+  if (typeof type === 'string' && type.length > 0) {
+    if (CSL_TYPES.has(type)) return type;
+    const mapped = CROSSREF_TO_CSL[type];
+    if (mapped) return mapped;
+  }
   if (source.isPreprint) return 'article';
   return source.venue ? 'article-journal' : 'document';
+}
+
+/**
+ * The text of a field that CSL wants as a string and Crossref sends as a list.
+ *
+ * Crossref's `title` is `["Deep learning"]` and its `container-title` is `["Nature"]`. Read as a
+ * string, those are neither, and `toCslItem` used to fall straight past them — and past the row's
+ * own correct `title` column — to the raw reference line, which then printed as the title of every
+ * resolved source in the bibliography.
+ */
+function firstText(value: unknown): string | undefined {
+  if (typeof value === 'string') return value.trim() || undefined;
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (typeof entry === 'string' && entry.trim()) return entry.trim();
+    }
+  }
+  return undefined;
 }
 
 /** `Source.authors` is `[{ family, given }]` or a list of strings, depending on where it came from. */
@@ -93,9 +198,24 @@ export function toCslItem(source: SourceLike): CslItem {
     type: typeOf(source, stored),
   };
 
-  const title = stored?.title ?? source.title;
-  if (typeof title === 'string' && title.trim()) item.title = title.trim();
-  else if (source.rawReference) item.title = source.rawReference.slice(0, 300);
+  // The stored title, then the row's own title column, and only then the raw reference line. The
+  // row column comes before the raw line because it is what resolution wrote *after* matching;
+  // the raw line is what the student's paper happened to say.
+  const baseTitle = firstText(stored?.title) ?? firstText(source.title);
+  // Crossref keeps a subtitle apart ("Deep learning" / "a review"). CSL has no field for it, and a
+  // title printed without it is a different title; joined the way every style guide shows one.
+  const subtitle = firstText(stored?.subtitle);
+  if (baseTitle) {
+    item.title =
+      subtitle && !baseTitle.toLowerCase().includes(subtitle.toLowerCase())
+        ? `${baseTitle}: ${subtitle}`
+        : baseTitle;
+  } else if (source.rawReference) {
+    item.title = source.rawReference.slice(0, 300);
+  } else {
+    delete item.title;
+  }
+  delete item.subtitle;
 
   const storedAuthors = namesFrom(stored?.author);
   const authors = storedAuthors.length > 0 ? storedAuthors : namesFrom(source.authors);
@@ -109,8 +229,14 @@ export function toCslItem(source: SourceLike): CslItem {
   if (typeof year === 'number' && Number.isFinite(year)) item.issued = { 'date-parts': [[year]] };
   else delete item.issued;
 
-  const venue = stored?.['container-title'] ?? source.venue;
-  if (typeof venue === 'string' && venue.trim()) item['container-title'] = venue.trim();
+  const venue = firstText(stored?.['container-title']) ?? firstText(source.venue);
+  if (venue) item['container-title'] = venue;
+  // Otherwise the spread above may have left Crossref's list here, which is not CSL.
+  else delete item['container-title'];
+
+  const shortVenue = firstText(stored?.['short-container-title']);
+  if (shortVenue) item['container-title-short'] = shortVenue;
+  delete item['short-container-title'];
 
   const doi = stored?.DOI ?? source.doi;
   if (typeof doi === 'string' && doi.trim()) item.DOI = doi.trim();

@@ -474,6 +474,12 @@ test.describe('Stage 4 citations', () => {
     const citations = page.getByRole('complementary').filter({ hasText: 'citations' });
     await expect(citations.getByRole('button', { name: /^1\./ })).toBeVisible({ timeout: 20_000 });
     await expect(citations).toContainText('AlphaFold', { timeout: 20_000 });
+    // And it is a real reference, not the raw line from the paper wearing a title. Crossref sends
+    // `title` and `container-title` as lists, and until 2026-09-24 the converter fell past them to
+    // the raw line — which also contains "AlphaFold", so the line above passed either way. The
+    // raw line reads "Pritzel, A. (2021)"; a rendered entry never does, and names the journal.
+    await expect(citations).not.toContainText('Pritzel, A. (2021)');
+    await expect(citations).toContainText('Nature');
   });
 });
 
