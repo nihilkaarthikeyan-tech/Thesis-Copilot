@@ -22,6 +22,8 @@ import {
 import { computeCallCost, type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
 import {
+  ARXIV,
+  ArxivClient,
   buildChapterMemory,
   type ContextChapter,
   type ContextClient,
@@ -30,8 +32,11 @@ import {
   extractDocument,
   OpenAlexClient,
   OpenAlexDiscovery,
+  PUBMED,
+  PubMedClient,
   retrievePassages,
   SemanticScholarClient,
+  sharedGate,
   UnpaywallClient,
 } from '@tc/retrieval';
 import {
@@ -179,6 +184,8 @@ async function main(): Promise<void> {
     });
   }
 
+  // Its own connection: the slot checks must never queue behind a BullMQ command.
+  const gateStore = connection.duplicate();
   const scholarly = {
     crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
     openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
@@ -192,6 +199,22 @@ async function main(): Promise<void> {
     semanticScholar: env.SEMANTIC_SCHOLAR_API_KEY
       ? new SemanticScholarClient(env.SEMANTIC_SCHOLAR_API_KEY, { mailto: env.OPENALEX_MAILTO })
       : null,
+    // ADR-0020. arXiv and NCBI count requests per operator, not per process, so this worker and
+    // the API take turns through one slot each in Redis rather than a limiter apiece.
+    arxiv: new ArxivClient({
+      mailto: env.OPENALEX_MAILTO,
+      gate: sharedGate('arxiv', gateStore, 'scholarly:slot:arxiv', ARXIV.intervalMs),
+    }),
+    pubmed: new PubMedClient({
+      mailto: env.OPENALEX_MAILTO,
+      apiKey: env.NCBI_API_KEY ?? null,
+      gate: sharedGate(
+        'pubmed',
+        gateStore,
+        'scholarly:slot:ncbi',
+        env.NCBI_API_KEY ? PUBMED.intervalMs.withKey : PUBMED.intervalMs.withoutKey,
+      ),
+    }),
   };
 
   const workers = [
@@ -441,6 +464,8 @@ async function main(): Promise<void> {
           embeddings: providers.embeddings,
           openalex: scholarly.discovery,
           semanticScholar: scholarly.semanticScholar,
+          pubmed: scholarly.pubmed,
+          arxiv: scholarly.arxiv,
           aiProvider: env.AI_PROVIDER,
           log: (event) => log({ jobId: job.id, ...event }),
         });

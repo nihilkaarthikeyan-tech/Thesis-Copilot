@@ -113,6 +113,15 @@ export {
   scoreRecall,
 } from './recall.js';
 export {
+  ARXIV,
+  ArxivClient,
+  type ArxivEntry,
+  arxivSearchQuery,
+  parseArxivFeed,
+  workFromArxiv,
+} from './scholarly/arxiv.js';
+export { arxivAbsUrl, arxivDoi, arxivIdFromDoi, arxivIdFromUrl } from './scholarly/arxiv-id.js';
+export {
   type BibEntry,
   type BibFormat,
   detectBibFormat,
@@ -130,6 +139,7 @@ export {
   cosine,
   DISCOVER,
   type DiscoveredWork,
+  interleave,
   mergeWorks,
   normaliseDoi,
   normaliseTitle,
@@ -154,8 +164,20 @@ export {
   type ScholarlyClientOptions,
   ScholarlyError,
   ScholarlyHttp,
+  type SharedGateOptions,
+  type SlotStore,
+  sharedGate,
 } from './scholarly/http.js';
 export { keywordsOf, openAlexSearchText } from './scholarly/keywords.js';
+export { personName } from './scholarly/names.js';
+export {
+  isNotASource,
+  PUBMED,
+  PubMedClient,
+  type PubmedRecord,
+  parsePubmedArticles,
+  workFromPubmed,
+} from './scholarly/pubmed.js';
 export {
   abstractFromInvertedIndex,
   CROSSREF_CANDIDATES,

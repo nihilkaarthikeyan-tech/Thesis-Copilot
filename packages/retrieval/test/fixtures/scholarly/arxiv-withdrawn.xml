@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/4YxlDaSWdy7JraHrTlLug9PO/jU</id>
+  <title>arXiv Query: search_query=co:withdrawn AND all:solar&amp;id_list=&amp;start=0&amp;max_results=2</title>
+  <updated>2026-09-24T12:09:49Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=co:withdrawn+AND+all:solar&amp;start=0&amp;max_results=2&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>2</opensearch:itemsPerPage>
+  <opensearch:totalResults>90</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2406.12619v3</id>
+    <title>Formation of the Supersonic Solar Wind: Parker's Theory Revisited</title>
+    <updated>2024-09-18T00:53:32Z</updated>
+    <link href="https://arxiv.org/abs/2406.12619v3" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2406.12619v3" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We examine and propose to fundamentally modify the classical theory of solar wind formation. To form a supersonic solar wind, the classical theory requires that a subsonic flow speed must start at a specific initial speed from the coronal base, called eigenspeed, go along a continuous eigenfunction, and reach the sonic point, which is where the flow speed equals the sonic speed, while the critical condition, which is where the effective driving force is zero, is satisfied. Any mismatch between the sonic point and critical condition distances results in either subsonic winds when the initial speed is below the eigenspeed, or no solar wind when the initial speed is above the eigenspeed. Because the critical condition is determined by the solar wind temperature profile, which depends on ionization process at the top of the chromosphere and the heating process around the coronal base but not by the processes at the sonic point, the required match between the two is generally not met and hence the momentum equation in the conventional theory encounters difficulty when the initial speed is above the eigenspeed. To resolve the difficulty, we propose a discontinuity between the sonic point and the critical condition to reach supersonic solar wind solutions. As a result, supersonic solar winds can be produced when the initial speed in the coronal base is greater than the eigenspeed. The critical solution or eigen function provided by the conventional solar wind model describes the condition that separates the supersonic solar winds from subsonic ones.</summary>
+    <category term="astro-ph.SR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-06-18T13:45:22Z</published>
+    <arxiv:comment>This manuscript has been withdrawn and is not published in any journals yet</arxiv:comment>
+    <arxiv:primary_category term="astro-ph.SR"/>
+    <author>
+      <name>Paul Song</name>
+    </author>
+    <author>
+      <name>Jiannan Tu</name>
+    </author>
+    <author>
+      <name>Stanley W. H. Cowley</name>
+    </author>
+    <author>
+      <name>Chi Wang</name>
+    </author>
+    <author>
+      <name>Hui Li</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1512.01868v2</id>
+    <title>A Numerical Investigation of the Recurrent High-speed Jets as a Possibility of Solar Wind Origin</title>
+    <updated>2016-08-23T04:34:14Z</updated>
+    <link href="https://arxiv.org/abs/1512.01868v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1512.01868v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>In the solar atmosphere, jets are prevalent and they are significant for the mass and energy transport. Here we conduct numerical simulations to investigate the mass and energy contributions of the recently observed high-speed jets to the solar wind. With a one-dimensional hydrodynamic solar wind model, the time-dependent pulses are imposed at the bottom to simulate the jets. The simulation results show that without other energy source, the injected plasmas are accelerated effectively to be a transonic wind with a substantial mass flux. The rapid acceleration occurs close to the Sun, and the resulting asymptotic speed, number density at 0.3 AU, as well as mass flux normalized to 1 AU are compatible with in situ observations. As a result of the high speed, the imposed pulses generate a train of shocks traveling upward. By tracing the motions of the injected plasma, it is found that these shocks heat and accelerate the injected plasmas successively step by step to push them upward and eventually allow them to escape. The parametric studies show that increasing the speed of the imposed pulses or their temperature gives a considerably faster, and hotter solar wind, while increasing their number density or decreasing their recurring period only bring a denser solar wind. These studies provide a possibility that the ubiquitous high-speed jets are a substantial mass and energy contributions to the solar wind.</summary>
+    <category term="astro-ph.SR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2015-12-07T01:08:43Z</published>
+    <arxiv:comment>The paper has been withdrawn as a result of its simplified numerical model</arxiv:comment>
+    <arxiv:primary_category term="astro-ph.SR"/>
+    <author>
+      <name>Liping Yang</name>
+    </author>
+    <author>
+      <name>Jiansen He</name>
+    </author>
+    <author>
+      <name>Hardi Peter</name>
+    </author>
+    <author>
+      <name>Chuanyi Tu</name>
+    </author>
+    <author>
+      <name>Lei Zhang</name>
+    </author>
+    <author>
+      <name>Eckart Marsch</name>
+    </author>
+    <author>
+      <name>Linghua Wang</name>
+    </author>
+    <author>
+      <name>Xueshang Feng</name>
+    </author>
+  </entry>
+</feed>

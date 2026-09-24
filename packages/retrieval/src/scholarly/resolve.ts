@@ -11,14 +11,17 @@
  */
 
 import { normalise, similarity } from '../text.js';
+import type { ArxivEntry } from './arxiv.js';
+import { arxivIdFromDoi } from './arxiv-id.js';
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
 import { openAlexSearchText } from './keywords.js';
+import { personName } from './names.js';
 
 export const RESOLUTION_THRESHOLD = 0.85;
 export const CROSSREF_CANDIDATES = 3;
 
 /** CSL-JSON author, as `Source.authors` stores it (PRD §8). */
-export type CslAuthor = { family?: string; given?: string; literal?: string };
+export type CslAuthor = { family?: string; given?: string; suffix?: string; literal?: string };
 
 export type ResolvedSource = {
   doi: string | null;
@@ -38,7 +41,7 @@ export type ResolvedSource = {
   abstract: string | null;
   /** How confident the match is; below RESOLUTION_THRESHOLD the caller stores UNRESOLVED. */
   score: number;
-  via: 'crossref' | 'openalex' | null;
+  via: 'crossref' | 'openalex' | 'arxiv' | null;
 };
 
 export const UNRESOLVED: ResolvedSource = {
@@ -273,8 +276,15 @@ export function abstractFromInvertedIndex(
   return text.length > 0 ? text : null;
 }
 
+/**
+ * OpenAlex gives each author as one display name. Split into family and given (`personName`) so a
+ * citation style can print "Awwad, Z." — a literal prints exactly as written.
+ */
 function openAlexAuthors(work: OpenAlexWork): CslAuthor[] {
-  return (work.authorships ?? []).map((a) => ({ literal: a.author?.display_name ?? '' }));
+  return (work.authorships ?? [])
+    .map((a) => a.author?.display_name?.trim() ?? '')
+    .filter(Boolean)
+    .map(personName);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -336,7 +346,34 @@ function bestSubstringSimilarity(haystack: string, needle: string): number {
 export type Resolver = {
   crossref: CrossrefClient;
   openalex: OpenAlexClient;
+  /**
+   * The last resort for an arXiv DOI (ADR-0020): Crossref never has one, and OpenAlex takes days
+   * or weeks to index a new e-print. Optional, because it needs the shared rate gate.
+   */
+  arxiv?: { byId(id: string, signal?: AbortSignal): Promise<ArxivEntry | null> } | null;
 };
+
+/** An e-print as a resolved source: arXiv's own metadata, which is CC0. */
+function fromArxivEntry(entry: ArxivEntry, doi: string): ResolvedSource {
+  return {
+    // Its journal DOI when the authors added one, which is the version worth citing.
+    doi: entry.doi ?? doi,
+    openalexId: null,
+    title: entry.title,
+    authors: entry.authors.map(personName),
+    year: entry.year,
+    venue: entry.doi ? entry.journalRef : 'arXiv',
+    type: entry.doi ? null : 'posted-content',
+    cslJson: null,
+    oaStatus: 'green',
+    citationCount: null,
+    isPreprint: entry.doi === null,
+    isRetracted: false,
+    abstract: entry.abstract,
+    score: 1,
+    via: 'arxiv',
+  };
+}
 
 /** Maps a Crossref record onto the shape the worker stores. Reads every field defensively. */
 function fromCrossrefItem(item: CrossrefItem, score: number): ResolvedSource {
@@ -434,6 +471,19 @@ export async function resolveByDoi(
     }
   } catch {
     // Both services failed. Reported as unresolved, not as a wrong guess.
+  }
+
+  // An e-print OpenAlex has not indexed yet: arXiv itself has it.
+  const arxivId = arxivIdFromDoi(normalised);
+  if (arxivId && resolver.arxiv) {
+    try {
+      const entry = await resolver.arxiv.byId(arxivId, signal);
+      // A withdrawn e-print still resolves — the student asked for it by DOI — and is marked the
+      // way a retraction is, so the reference sweep warns before it is cited.
+      if (entry) return { ...fromArxivEntry(entry, normalised), isRetracted: entry.withdrawn };
+    } catch {
+      // Reported as unresolved, like the two above.
+    }
   }
 
   return { ...UNRESOLVED };

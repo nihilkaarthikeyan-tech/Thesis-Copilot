@@ -65,6 +65,9 @@ function fakes(
     themesFail?: boolean;
     semanticScholar?: Work[] | null;
     openalexThrows?: boolean;
+    /** ADR-0020's two indexes, as search functions so a test can make one slow or failing. */
+    pubmed?: (q: string) => Promise<Work[]>;
+    arxiv?: (q: string) => Promise<Work[]>;
   } = {},
 ): Fakes {
   const requests: LlmRequest[] = [];
@@ -151,6 +154,8 @@ function fakes(
     semanticScholar: options.semanticScholar
       ? { search: vi.fn(async () => options.semanticScholar ?? []) }
       : null,
+    pubmed: options.pubmed ? { search: vi.fn(options.pubmed) } : null,
+    arxiv: options.arxiv ? { search: vi.fn(options.arxiv) } : null,
     aiProvider: 'mock' as const,
     log: () => undefined,
     now: () => new Date('2026-09-07T00:00:00.000Z'),
@@ -169,11 +174,13 @@ describe('discover', () => {
     expect(result.mode).toBe('discover');
     expect(result.candidates).toBe(3);
     expect(result.themes).toBe(1);
+    // One count per index searched (ADR-0020) — here only OpenAlex — and one per stage.
     expect(Object.keys(result.counts).sort()).toEqual([
       'fetched',
       'kept',
       'merged',
       'notInLibrary',
+      'openalex',
       'queries',
       'themes',
       'thin',
@@ -227,6 +234,64 @@ describe('discover', () => {
     // Two queries × two indexes = four lists; W2 appears twice and counts once.
     expect(result.counts.fetched).toBe(8);
     expect(result.counts.merged).toBe(3);
+  });
+
+  it('merges arXiv and PubMed in too, and counts what each found', async () => {
+    const f = fakes({
+      found: [work(1), work(2)],
+      // The same paper PubMed and OpenAlex both have, by DOI, and one only PubMed has.
+      pubmed: async () => [work(2, { openalexId: '' }), work(20, { openalexId: '' })],
+      arxiv: async () => [work(30, { openalexId: '', venue: 'arXiv', isPreprint: true })],
+    });
+    const result = await runSearchLiterature(JOB, f.deps);
+    expect(result.counts.openalex).toBe(4);
+    expect(result.counts.pubmed).toBe(4);
+    expect(result.counts.arxiv).toBe(2);
+    expect(result.counts.fetched).toBe(10);
+    // W1, W2, W20, W30 — W2 once, and OpenAlex's record of it, which came first.
+    expect(result.counts.merged).toBe(4);
+    const w2 = f.candidates.find((c) => c.doi === '10.1000/w2');
+    expect(w2?.openalexId).toBe('W2');
+  });
+
+  it('loses only an index that fails, never the run', async () => {
+    const f = fakes({
+      found: [work(1)],
+      arxiv: async () => {
+        throw new Error('arXiv: no request slot within 60000 ms');
+      },
+    });
+    const result = await runSearchLiterature(JOB, f.deps);
+    expect(result.counts.arxiv).toBe(0);
+    expect(result.counts.merged).toBe(1);
+    const runs = f.meta().searchRuns as Record<string, Record<string, unknown>>;
+    expect(runs['run-1']?.status).toBe('DONE');
+  });
+
+  it('runs the indexes side by side, so a slow one does not hold the others up', async () => {
+    // arXiv answers its first query only once OpenAlex has finished both of its own. Run one
+    // index after another, query by query, this would never finish.
+    let release: () => void = () => undefined;
+    const openalexDone = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let openalexCalls = 0;
+    const f = fakes({
+      found: [work(1)],
+      arxiv: async () => {
+        await openalexDone;
+        return [work(40, { openalexId: '' })];
+      },
+    });
+    const original = f.deps.openalex.search;
+    f.deps.openalex.search = vi.fn(async (...args: Parameters<typeof original>) => {
+      const found = await original(...args);
+      openalexCalls += 1;
+      if (openalexCalls === 2) release();
+      return found;
+    }) as typeof original;
+    const result = await runSearchLiterature(JOB, f.deps);
+    expect(result.counts.arxiv).toBe(2);
   });
 
   it('stores every candidate with the theme it was placed in', async () => {

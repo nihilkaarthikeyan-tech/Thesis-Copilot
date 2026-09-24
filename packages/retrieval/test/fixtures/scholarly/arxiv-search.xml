@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/v8Jrb4RRHcRCnEjrfAc2VNkMijc</id>
+  <title>arXiv Query: search_query=all:"rooftop solar" AND all:adoption&amp;id_list=&amp;start=0&amp;max_results=2</title>
+  <updated>2026-09-24T12:01:53Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:%22rooftop+solar%22+AND+all:adoption&amp;start=0&amp;max_results=2&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>2</opensearch:itemsPerPage>
+  <opensearch:totalResults>14</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2212.03516v2</id>
+    <title>Site Assessment and Layout Optimization for Rooftop Solar Energy Generation in Worldview-3 Imagery</title>
+    <updated>2023-02-28T19:56:16Z</updated>
+    <link href="https://arxiv.org/abs/2212.03516v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2212.03516v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>With the growth of residential rooftop PV adoption in recent decades, the problem of effective layout design has become increasingly important in recent years. Although a number of automated methods have been introduced, these tend to rely on simplifying assumptions and heuristics to improve computational tractability. We demonstrate a fully automated layout design pipeline that attempts to solve a more general formulation with greater geometric flexibility that accounts for shading losses. Our approach generates rooftop areas from satellite imagery and uses MINLP optimization to select panel positions, azimuth angles and tilt angles on an individual basis rather than imposing any predefined layouts. Our results demonstrate that shading plays a critical role in automated rooftop PV optimization and significantly changes the resulting layouts. Additionally, they suggest that, although several common heuristics are often effective, they may not be universally suitable due to complications resulting from geometric restrictions and shading losses. Finally, we evaluate a few specific heuristics from the literature and propose a potential new rule of thumb that may help improve rooftop solar energy potential when shading effects are considered.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2022-12-07T08:46:04Z</published>
+    <arxiv:comment>Final draft</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <arxiv:journal_ref>Remote Sensing (2023) Volume 15, Issue 5, 1356</arxiv:journal_ref>
+    <author>
+      <name>Zeyad Awwad</name>
+    </author>
+    <author>
+      <name>Abdulaziz Alharbi</name>
+    </author>
+    <author>
+      <name>Abdulelah H. Habib</name>
+    </author>
+    <author>
+      <name>Olivier L. de Weck</name>
+    </author>
+    <arxiv:doi>10.3390/rs15051356</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.3390/rs15051356" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2410.08098v1</id>
+    <title>A Generative AI Technique for Synthesizing a Digital Twin for U.S. Residential Solar Adoption and Generation</title>
+    <updated>2024-10-10T16:41:43Z</updated>
+    <link href="https://arxiv.org/abs/2410.08098v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2410.08098v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Residential rooftop solar adoption is considered crucial for reducing carbon emissions. The lack of photovoltaic (PV) data at a finer resolution (e.g., household, hourly levels) poses a significant roadblock to informed decision-making. We discuss a novel methodology to generate a highly granular, residential-scale realistic dataset for rooftop solar adoption across the contiguous United States. The data-driven methodology consists of: (i) integrated machine learning models to identify PV adopters, (ii) methods to augment the data using explainable AI techniques to glean insights about key features and their interactions, and (iii) methods to generate household-level hourly solar energy output using an analytical model. The resulting synthetic datasets are validated using real-world data and can serve as a digital twin for modeling downstream tasks. Finally, a policy-based case study utilizing the digital twin for Virginia demonstrated increased rooftop solar adoption with the 30\% Federal Solar Investment Tax Credit, especially in Low-to-Moderate-Income communities.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-10-10T16:41:43Z</published>
+    <arxiv:comment>41 pages including references and supplementary</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Aparna Kishore</name>
+    </author>
+    <author>
+      <name>Swapna Thorve</name>
+    </author>
+    <author>
+      <name>Madhav Marathe</name>
+    </author>
+  </entry>
+</feed>

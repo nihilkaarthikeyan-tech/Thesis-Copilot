@@ -104,6 +104,8 @@ export const envSchema = z
     UNPAYWALL_EMAIL: z.email('UNPAYWALL_EMAIL must be an email address'),
     SEMANTIC_SCHOLAR_API_KEY: optionalString,
     CORE_API_KEY: optionalString,
+    // ADR-0020: PubMed works without one at 3 requests/second; a free NCBI key raises it to 10.
+    NCBI_API_KEY: optionalString,
 
     // ---- Payments (Razorpay ships in Phase 2 week 11; unset until then) ----
     RAZORPAY_KEY_ID: optionalString,

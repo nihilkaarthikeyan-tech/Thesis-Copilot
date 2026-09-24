@@ -12,6 +12,7 @@
 
 import type { PrismaClient } from '@tc/db';
 import {
+  type ArxivClient,
   type CrossrefClient,
   groundingLevelFor,
   type OpenAlexClient,
@@ -27,6 +28,8 @@ export type ResolveReferenceDeps = {
   crossref: CrossrefClient;
   openalex: OpenAlexClient;
   unpaywall: UnpaywallClient;
+  /** ADR-0020: the fallback for an arXiv DOI that OpenAlex has not indexed yet. */
+  arxiv?: ArxivClient | null;
   /** Enqueues indexing once a source has something to index (FR-2.2, FR-2.4). */
   enqueueIndex: (input: {
     sourceId: string;
@@ -68,7 +71,7 @@ export async function runResolveReference(
     };
   }
 
-  const resolver = { crossref: deps.crossref, openalex: deps.openalex };
+  const resolver = { crossref: deps.crossref, openalex: deps.openalex, arxiv: deps.arxiv ?? null };
 
   // A DOI printed in the entry, or typed in by the student on the "Fix this reference" form, is
   // the answer already. Re-running the bibliographic search that failed the first time would only

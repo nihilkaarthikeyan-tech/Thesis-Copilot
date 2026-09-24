@@ -26,6 +26,7 @@ import {
   OpenAlexClient,
   RESOLUTION_THRESHOLD,
   type ResolvedSource,
+  type Resolver,
   resolveByDoi,
   resolveReference,
 } from '@tc/retrieval';
@@ -34,6 +35,7 @@ import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
+import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 
@@ -62,19 +64,22 @@ const MAX_LINES = 40;
 @Injectable()
 export class CiteParseService {
   private readonly logger = new Logger(CiteParseService.name);
-  private readonly resolver: { crossref: CrossrefClient; openalex: OpenAlexClient };
+  private readonly resolver: Resolver;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly queue: QueueService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
+    indexes: ScholarlyIndexes,
   ) {
     // The same resolver the library uses, so a pasted reference is scored by the same C.3 rules
     // as one extracted from a paper — a match here means what it means everywhere else.
     this.resolver = {
       crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
       openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
+      // ADR-0020: a pasted arXiv DOI for an e-print OpenAlex has not indexed yet.
+      arxiv: indexes.arxiv,
     };
   }
 

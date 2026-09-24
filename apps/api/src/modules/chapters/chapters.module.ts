@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { QueueService } from '../../common/queue.service.js';
+import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { MemoryModule } from '../memory/memory.module.js';
@@ -27,6 +28,7 @@ import { StyleStoreService } from './style-store.service.js';
     ParaphraseService,
     StyleStoreService,
     QueueService,
+    ScholarlyIndexes,
     StorageService,
     SessionGuard,
   ],

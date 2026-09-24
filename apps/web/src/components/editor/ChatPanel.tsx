@@ -81,6 +81,8 @@ type WebResult = {
   isPreprint: boolean;
   openAccess: boolean;
   inLibrary: boolean;
+  /** Which index found it: OpenAlex, Semantic Scholar, PubMed or arXiv (ADR-0020). */
+  via?: string;
   reference: { raw: string; doi?: string };
 };
 
@@ -421,19 +423,33 @@ export function ChatPanel({
               {result.abstract ? (
                 <p className="mt-1 line-clamp-3 text-xs text-muted">{result.abstract}</p>
               ) : null}
-              {result.inLibrary ? (
-                <p className="mt-2 text-xs text-ok">Already in your library</p>
-              ) : (
-                <button
-                  type="button"
-                  data-testid="web-add"
-                  disabled={adding === result.title}
-                  onClick={() => void addToLibrary(result)}
-                  className="mt-2 rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
-                >
-                  {adding === result.title ? 'Adding…' : 'Add to library'}
-                </button>
-              )}
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                {result.inLibrary ? (
+                  <p className="text-xs text-ok">Already in your library</p>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="web-add"
+                    disabled={adding === result.title}
+                    onClick={() => void addToLibrary(result)}
+                    className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+                  >
+                    {adding === result.title ? 'Adding…' : 'Add to library'}
+                  </button>
+                )}
+                {result.doi ? (
+                  // An arXiv DOI resolves to the abstract page, which is where arXiv asks
+                  // services to send people.
+                  <a
+                    href={`https://doi.org/${result.doi}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-muted underline hover:text-ink"
+                  >
+                    {result.doi.startsWith('10.48550/arxiv.') ? 'arXiv page' : 'View paper'}
+                  </a>
+                ) : null}
+              </div>
             </article>
           ))}
           <p className="px-1 text-xs text-faint">

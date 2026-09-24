@@ -27,10 +27,12 @@ import {
 import { computeCallCost } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
 import {
+  type ArxivClient,
   cosine,
   type DiscoveredWork,
   mergeWorks,
   type OpenAlexDiscovery,
+  type PubMedClient,
   type SemanticScholarClient,
 } from '@tc/retrieval';
 import type { SearchLiteratureJob } from '@tc/types';
@@ -49,6 +51,9 @@ export type SearchLiteratureDeps = {
   embeddings: EmbeddingProvider;
   openalex: OpenAlexDiscovery;
   semanticScholar?: SemanticScholarClient | null;
+  /** ADR-0020. Both optional, so a script or test that builds the deps by hand keeps working. */
+  pubmed?: PubMedClient | null;
+  arxiv?: ArxivClient | null;
   aiProvider: 'anthropic' | 'mock';
   log?: (event: Record<string, unknown>) => void;
   now?: () => Date;
@@ -286,22 +291,36 @@ async function discover(
   record.counts.queries = queries.length;
   log({ msg: 'search queries', runId: job.runId, queries });
 
-  // 2. Search each query, both indexes when available.
-  const lists: DiscoveredWork[][] = [];
-  for (const query of queries) {
-    try {
-      lists.push(await deps.openalex.search(query.q, now()));
-    } catch (error) {
-      log({ level: 40, msg: 'openalex query failed', q: query.q, error: String(error) });
-    }
-    if (deps.semanticScholar) {
-      try {
-        lists.push(await deps.semanticScholar.search(query.q, now()));
-      } catch (error) {
-        log({ level: 40, msg: 'semantic scholar query failed', q: query.q, error: String(error) });
+  // 2. Search each query in every index. The indexes run side by side, each working through the
+  //    queries in turn: arXiv allows one request every three seconds (ADR-0020), and run one
+  //    after another its wait would be added to everyone else's.
+  const indexes = [
+    { name: 'openalex', client: deps.openalex },
+    { name: 'semanticscholar', client: deps.semanticScholar },
+    { name: 'pubmed', client: deps.pubmed },
+    { name: 'arxiv', client: deps.arxiv },
+  ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
+  const perIndex = await Promise.all(
+    indexes.map(async ({ name, client }) => {
+      const found: DiscoveredWork[][] = [];
+      for (const query of queries) {
+        try {
+          found.push(await client.search(query.q, now()));
+        } catch (error) {
+          // One index failing loses its results, never the run.
+          log({ level: 40, msg: `${name} query failed`, q: query.q, error: String(error) });
+          found.push([]);
+        }
       }
-    }
-  }
+      record.counts[name] = found.reduce((n, list) => n + list.length, 0);
+      return found;
+    }),
+  );
+  // Query by query, OpenAlex first within each: `mergeWorks` keeps the first record it sees of a
+  // paper, and OpenAlex's is the one with a citation count and an open-access status.
+  const lists: DiscoveredWork[][] = queries.flatMap((_, q) =>
+    perIndex.map((found) => found[q] ?? []),
+  );
   record.counts.fetched = lists.reduce((n, l) => n + l.length, 0);
 
   // 3. Merge, drop what is already in the library.

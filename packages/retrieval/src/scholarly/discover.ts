@@ -23,7 +23,7 @@ export type DiscoveredWork = {
   isPreprint: boolean;
   oaStatus: string | null;
   /** Which index found it; kept for the per-stage log. */
-  via: 'openalex' | 'semanticscholar';
+  via: 'openalex' | 'semanticscholar' | 'arxiv' | 'pubmed';
 };
 
 export const DISCOVER = {
@@ -204,6 +204,23 @@ export class SemanticScholarClient {
       })
       .filter((w): w is DiscoveredWork => w !== null);
   }
+}
+
+/**
+ * Takes from each list in turn — first of each, then second of each — so that when only a few
+ * results are shown, every index that answered is in them. Concatenating would let the first
+ * index fill the page by itself.
+ */
+export function interleave<T>(lists: ReadonlyArray<readonly T[]>): T[] {
+  const out: T[] = [];
+  const longest = Math.max(0, ...lists.map((list) => list.length));
+  for (let i = 0; i < longest; i++) {
+    for (const list of lists) {
+      const item = list[i];
+      if (item !== undefined) out.push(item);
+    }
+  }
+  return out;
 }
 
 /**

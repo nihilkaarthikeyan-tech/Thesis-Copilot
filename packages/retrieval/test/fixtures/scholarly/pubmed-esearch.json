@@ -1,0 +1,17 @@
+{
+  "header": { "type": "esearch", "version": "0.3" },
+  "esearchresult": {
+    "count": "25",
+    "retmax": "3",
+    "retstart": "0",
+    "idlist": ["38778934", "41215947", "32678946"],
+    "translationset": [
+      { "from": "rooftop", "to": "\"rooftop\"[All Fields] OR \"rooftops\"[All Fields]" },
+      {
+        "from": "adoption",
+        "to": "\"adopt\"[All Fields] OR \"adoptability\"[All Fields] OR \"adoptable\"[All Fields] OR \"adopted\"[All Fields] OR \"adopter\"[All Fields] OR \"adopters\"[All Fields] OR \"adopting\"[All Fields] OR \"adoption\"[MeSH Terms] OR \"adoption\"[All Fields] OR \"adoptions\"[All Fields] OR \"adopts\"[All Fields]"
+      }
+    ],
+    "querytranslation": "(\"rooftop\"[All Fields] OR \"rooftops\"[All Fields]) AND \"solar\"[All Fields] AND (\"adopt\"[All Fields] OR \"adoptability\"[All Fields] OR \"adoptable\"[All Fields] OR \"adopted\"[All Fields] OR \"adopter\"[All Fields] OR \"adopters\"[All Fields] OR \"adopting\"[All Fields] OR \"adoption\"[MeSH Terms] OR \"adoption\"[All Fields] OR \"adoptions\"[All Fields] OR \"adopts\"[All Fields])"
+  }
+}

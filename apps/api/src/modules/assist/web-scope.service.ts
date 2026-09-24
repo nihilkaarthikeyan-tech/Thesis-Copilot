@@ -9,8 +9,9 @@
  *
  * So the owner chose the third option: **a web result is not an answer, it is a candidate source.**
  *
- * This searches the scholarly indexes the product already uses — OpenAlex and, when a key is
- * configured, Semantic Scholar — and returns *real works with real metadata*. No prose is
+ * This searches the scholarly indexes the product already uses — OpenAlex, PubMed and arXiv
+ * (ADR-0020) and, when a key is configured, Semantic Scholar — and returns *real works with real
+ * metadata*. No prose is
  * generated. The model is not called at all on this path, which also means the scope is not
  * metered: there is no provider spend to meter.
  *
@@ -27,6 +28,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import {
   type DiscoveredWork,
+  interleave,
   keywordsOf,
   mergeWorks,
   OpenAlexDiscovery,
@@ -35,6 +37,7 @@ import {
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 
 /** One candidate, with everything the panel needs to show it and to add it. */
 export type WebResult = {
@@ -48,11 +51,17 @@ export type WebResult = {
   openAccess: boolean;
   /** Already in this document's library — shown as such rather than offered again. */
   inLibrary: boolean;
+  /** Which index found it first. An arXiv result links to arXiv, as arXiv's terms ask. */
+  via: DiscoveredWork['via'];
   /** Exactly what `POST /sources/resolve` wants, so the client does not assemble it. */
   reference: { raw: string; doi?: string };
 };
 
-export const WEB_SCOPE = { maxResults: 8 } as const;
+export const WEB_SCOPE = {
+  maxResults: 8,
+  /** Per index. One slow index costs its own results, never the whole answer. */
+  timeoutMs: 12_000,
+} as const;
 
 /** A reference line good enough for the resolver to match on when there is no DOI. */
 export function referenceLineOf(work: DiscoveredWork): string {
@@ -65,6 +74,7 @@ export class WebScopeService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly indexes: ScholarlyIndexes,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -87,28 +97,40 @@ export class WebScopeService {
 
     // Every index is sent the question's content words, not the question. Rewriting it with the
     // model was rejected — it would make this a metered action — and sending it as typed was the
-    // original choice, until a live check (2026-09-24) put "What Will 5G Be?" first for "What does
-    // the literature say about rooftop solar adoption barriers?": OpenAlex ranks the question
-    // words too. `keywordsOf` drops them for nothing.
+    // original choice, until a live check (2026-09-24, ADR-0020) put "What Will 5G Be?" first for
+    // "What does the literature say about rooftop solar adoption barriers?": OpenAlex ranks the
+    // question words too. `keywordsOf` drops them for nothing.
     const searchText = keywordsOf(question, 8).join(' ') || question;
-    const lists: DiscoveredWork[][] = [];
-    try {
-      lists.push(await openalex.search(searchText, new Date(), signal));
-    } catch (error) {
-      this.logger.warn({ err: error }, 'openalex search failed');
-    }
+    const s2 = this.env.SEMANTIC_SCHOLAR_API_KEY
+      ? new SemanticScholarClient(this.env.SEMANTIC_SCHOLAR_API_KEY, options)
+      : null;
+    const clients = [
+      { name: 'openalex', client: openalex },
+      { name: 'semanticscholar', client: s2 },
+      { name: 'pubmed', client: this.indexes.pubmed },
+      { name: 'arxiv', client: this.indexes.arxiv },
+    ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
 
-    if (this.env.SEMANTIC_SCHOLAR_API_KEY) {
-      try {
-        const s2 = new SemanticScholarClient(this.env.SEMANTIC_SCHOLAR_API_KEY, options);
-        lists.push(await s2.search(searchText, new Date(), signal));
-      } catch (error) {
-        // Optional second source (docs/PENDING.md). A failure here must not empty the result.
-        this.logger.warn({ err: error }, 'semantic scholar search failed');
-      }
-    }
+    // All at once, each on its own clock: a failure or a timeout loses that index's results only.
+    const lists = await Promise.all(
+      clients.map(async ({ name, client }): Promise<DiscoveredWork[]> => {
+        const timeout = AbortSignal.timeout(WEB_SCOPE.timeoutMs);
+        try {
+          return await client.search(
+            searchText,
+            new Date(),
+            signal ? AbortSignal.any([signal, timeout]) : timeout,
+          );
+        } catch (error) {
+          this.logger.warn({ err: error, index: name }, 'web scope search failed');
+          return [];
+        }
+      }),
+    );
 
-    const works = mergeWorks(lists).slice(0, WEB_SCOPE.maxResults);
+    // Taken in turn, so each index that answered is on the page — eight results would otherwise
+    // be eight of OpenAlex's.
+    const works = mergeWorks([interleave(lists)]).slice(0, WEB_SCOPE.maxResults);
 
     // "Already yours" is worth knowing before adding: a student searching the literature will hit
     // their own seed papers constantly, and offering to add one again is how duplicates happen.
@@ -139,6 +161,7 @@ export class WebScopeService {
         inLibrary:
           (work.doi ? haveDoi.has(work.doi.toLowerCase()) : false) ||
           haveTitle.has(work.title.trim().toLowerCase()),
+        via: work.via,
         reference: {
           raw: referenceLineOf(work),
           ...(work.doi ? { doi: work.doi } : {}),

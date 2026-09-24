@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { QueueService } from '../../common/queue.service.js';
 import { RedisService } from '../../common/redis.service.js';
+import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { UsageModule } from '../usage/usage.module.js';
@@ -31,6 +32,7 @@ import { WebScopeService } from './web-scope.service.js';
     DraftService,
     QueueService,
     RedisService,
+    ScholarlyIndexes,
     SessionGuard,
   ],
   exports: [

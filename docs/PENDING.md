@@ -43,6 +43,23 @@ blocks the agent from continuing to build against mocks.
       question needs an embedding, so at 3 RPM the product is unusable with more than one student
       on it. The 200M free tokens still apply once a card is on file — this is about the rate
       limit, not the bill. dashboard.voyageai.com, billing page.
+      **Seen again 2026-09-24:** a real Discover run fetched 125 candidates and failed at the
+      embedding step with the same 429 — one run's candidates are more than 10K tokens.
+- [ ] **Check whether OpenAlex now bills.** Every OpenAlex response seen on 2026-09-24 carries
+      `"meta": { "cost_usd": 0.0001 }`. Nothing is charged to us today that we know of, but the
+      field is new and the product calls OpenAlex on every search, resolution and gap check. Read
+      openalex.org's pricing / API-key page and say whether we need a key or a budget line in
+      `docs/COSTING.md`. The agent will not guess a price (§0.3 rule 4).
+- [ ] **Optional: an NCBI API key** (ADR-0020). PubMed search works without one at 3 requests a
+      second, shared by the API and the worker. A free key from an NCBI account
+      (ncbi.nlm.nih.gov → Account settings → API Key Management) raises that to 10: put it in
+      `NCBI_API_KEY`.
+- [ ] **Confirm the arXiv-copy question** (ADR-0020). arXiv's API terms forbid storing and serving
+      e-prints unless their licence allows it, so the new arXiv search never downloads one. But the
+      existing full-text path can: when Unpaywall names an arXiv copy as a journal article's best
+      open-access location, `index-source` downloads it and `GET /sources/:id/file` serves it
+      back — to that one student, for their own thesis. That reads as the personal research use
+      arXiv's terms allow; if you want it stricter, the fix is one condition in `index-source`.
 - [x] **Voyage API key + embedding model.** Done 2026-09-08. `VOYAGE_API_KEY` is in `.env` with
       `EMBED_PROVIDER=voyage` and `AI_EMBED_MODEL=voyage-3`; `ai:verify` got 1024-d vectors back,
       matching `EMBED_DIMS` and the `vector(1024)` column.
