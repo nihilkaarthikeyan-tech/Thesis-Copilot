@@ -367,7 +367,9 @@ model DocumentVersion {
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   chapterId  String?  @db.Uuid
   snapshotKey String  // MinIO key (gzipped JSON)
-  reason     String   // AUTOSAVE | MANUAL | PRE_DRAFT_ACCEPT | PRE_REVISION
+  reason     String   // AUTOSAVE | MANUAL | PRE_DRAFT_ACCEPT | PRE_REVISION | PRE_RESTORE
+  /// Words in the chapter at this version; null for versions written before it was recorded.
+  wordCount  Int?
   createdAt  DateTime @default(now())
   @@index([documentId, createdAt])
 }

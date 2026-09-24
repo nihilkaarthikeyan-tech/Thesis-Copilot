@@ -64,6 +64,20 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       };
     }
 
+    // A malformed id in a path — `/versions/not-a-uuid` — reaches Postgres as an invalid UUID and
+    // comes back as Prisma's P2023. It was a 500 on every route that takes an id. It is a record
+    // that does not exist, and §12.1 already says how that reads: absent, not an error.
+    if (isMalformedIdError(exception)) {
+      return {
+        type: 'NOT_FOUND',
+        title: 'Not found',
+        status: HttpStatus.NOT_FOUND,
+        detail: 'Nothing exists at that address.',
+        instance: path,
+        requestId,
+      };
+    }
+
     return {
       type: 'INTERNAL_ERROR',
       title: 'Something went wrong',
@@ -73,4 +87,16 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       requestId,
     };
   }
+}
+
+/**
+ * Prisma's "inconsistent column data" — for an id column, a string that is not a UUID.
+ *
+ * Duck-typed rather than `instanceof Prisma.PrismaClientKnownRequestError`, so the filter does not
+ * pull the generated client into every place it is imported (tests construct it on its own).
+ */
+export function isMalformedIdError(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) return false;
+  const e = exception as { name?: unknown; code?: unknown };
+  return e.name === 'PrismaClientKnownRequestError' && e.code === 'P2023';
 }

@@ -1,0 +1,11 @@
+-- How long a chapter was at each saved version.
+--
+-- Version history lists every snapshot of a chapter, and a list of timestamps alone does not help
+-- anyone choose: "Tuesday 14:02" and "Tuesday 14:12" are indistinguishable until you open both.
+-- The word count is the cheapest thing that tells them apart ("3,410 words" against "1,120"), and
+-- reading it from the snapshot body would mean fetching and unzipping every object in the list.
+--
+-- Nullable, and null for every version written before this column: nothing here is backfilled,
+-- because the only way to know an old snapshot's length is to open it, and the list says so rather
+-- than guessing.
+ALTER TABLE "DocumentVersion" ADD COLUMN "wordCount" INTEGER;

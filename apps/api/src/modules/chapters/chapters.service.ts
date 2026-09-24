@@ -30,6 +30,31 @@ export type ChapterView = {
   updatedAt: string;
 };
 
+/** A row in the History panel. */
+export type VersionSummary = {
+  id: string;
+  reason: string;
+  /** Null for versions written before the length was recorded (migration 0015). */
+  wordCount: number | null;
+  createdAt: string;
+};
+
+export type VersionView = {
+  id: string;
+  chapterId: string | null;
+  reason: string;
+  wordCount: number;
+  createdAt: string;
+  content: unknown;
+};
+
+/**
+ * How far back the History panel lists. An AUTOSAVE is written at most every ten minutes of
+ * editing, so a hundred covers several weeks of steady work on one chapter; anything older is
+ * still in storage, just not in the list.
+ */
+export const VERSION_LIST_LIMIT = 100;
+
 const select = {
   id: true,
   documentId: true,
@@ -268,6 +293,120 @@ export class ChaptersService {
       select: { id: true, chapterId: true, reason: true, createdAt: true },
     });
     return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  }
+
+  /**
+   * One chapter's history, newest first — what the History panel lists.
+   *
+   * Metadata only, so the list stays one query however long the history is; a version's text is
+   * fetched when somebody opens it (`readVersion`), which is the only time anyone needs it.
+   */
+  async chapterVersions(ownerId: string, chapterId: string): Promise<VersionSummary[]> {
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: chapterId, document: { ownerId } },
+      select: { id: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+    const rows = await this.prisma.documentVersion.findMany({
+      where: { chapterId },
+      orderBy: { createdAt: 'desc' },
+      take: VERSION_LIST_LIMIT,
+      select: { id: true, reason: true, wordCount: true, createdAt: true },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      reason: r.reason,
+      wordCount: r.wordCount,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  /** A version's text, for the preview. Owner-scoped through the document, like everything. */
+  async readVersion(ownerId: string, versionId: string): Promise<VersionView> {
+    const row = await this.ownedVersion(ownerId, versionId);
+    const content = await this.snapshots.read(row.snapshotKey);
+    return {
+      id: row.id,
+      chapterId: row.chapterId,
+      reason: row.reason,
+      wordCount: row.wordCount ?? totalWords(wordCountsOf(content)),
+      createdAt: row.createdAt.toISOString(),
+      content,
+    };
+  }
+
+  /**
+   * Puts a version back as the chapter's text.
+   *
+   * The current text is snapshotted first, as `PRE_RESTORE`, so a restore is itself one click from
+   * undone — the same promise draft accept and scoped revision make. It is not optimistic-locked
+   * against `baseVersion`: the student is asking for that old text back on purpose, and whatever
+   * the chapter says now is exactly what the PRE_RESTORE snapshot preserves. The version still
+   * increments, so any other open tab gets its 409 and reloads rather than saving over the restore.
+   *
+   * Provenance comes back with the text. A sentence that was ASSIST when it was written is ASSIST
+   * again — the AI-usage log describes the thesis as it stands, and restoring an old paragraph
+   * does not make it the student's own.
+   */
+  async restoreVersion(
+    ownerId: string,
+    versionId: string,
+  ): Promise<{ chapterId: string; version: number; wordCount: number; undoVersionId: string }> {
+    const row = await this.ownedVersion(ownerId, versionId);
+    if (!row.chapterId) throw new ValidationError('That version is not of a chapter.');
+
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: row.chapterId, document: { ownerId } },
+      select: { id: true, documentId: true, content: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+
+    const restored = await this.snapshots.read(row.snapshotKey);
+    if (!looksLikeDoc(restored)) {
+      throw new ValidationError('That version could not be read back as a chapter.');
+    }
+    stripUnsafeKeys(restored);
+
+    const undo = await this.snapshots.write({
+      documentId: chapter.documentId,
+      chapterId: chapter.id,
+      content: chapter.content,
+      reason: 'PRE_RESTORE',
+    });
+
+    const counts = wordCountsOf(restored);
+    const wordCount = totalWords(counts);
+    const updated = await this.prisma.chapter.update({
+      where: { id: chapter.id },
+      data: {
+        content: restored as Prisma.InputJsonValue,
+        wordCount,
+        wordCounts: counts,
+        version: { increment: 1 },
+      },
+      select: { version: true },
+    });
+    // The restored text may cite different sources from the text it replaced.
+    await this.syncCitations(chapter.id, chapter.documentId, restored);
+
+    return { chapterId: chapter.id, version: updated.version, wordCount, undoVersionId: undo.id };
+  }
+
+  private async ownedVersion(ownerId: string, versionId: string) {
+    const row = await this.prisma.documentVersion.findFirst({
+      where: { id: versionId, document: { ownerId } },
+      select: {
+        id: true,
+        chapterId: true,
+        reason: true,
+        wordCount: true,
+        createdAt: true,
+        snapshotKey: true,
+      },
+    });
+    // Someone else's version reads as absent rather than forbidden (§12.1).
+    if (!row) throw new NotFoundError('That version');
+    return row;
   }
 
   private view(c: {

@@ -96,6 +96,28 @@ export class ChaptersController {
     return this.chapters.versions(user.id, id);
   }
 
+  /** The History panel's list for one chapter: metadata only, newest first. */
+  @Get('chapters/:id/versions')
+  chapterVersions(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.chapters.chapterVersions(user.id, id);
+  }
+
+  /** One version's text, for the preview. */
+  @Get('versions/:versionId')
+  readVersion(@CurrentUser() user: SessionUser, @Param('versionId') versionId: string) {
+    return this.chapters.readVersion(user.id, versionId);
+  }
+
+  /**
+   * Puts a version back. The current text is snapshotted first, so this is undoable — and the
+   * response names that snapshot, so the screen can offer the undo straight away.
+   */
+  @Post('versions/:versionId/restore')
+  @HttpCode(200)
+  restoreVersion(@CurrentUser() user: SessionUser, @Param('versionId') versionId: string) {
+    return this.chapters.restoreVersion(user.id, versionId);
+  }
+
   /**
    * A figure for this chapter — the editor's "Insert figure" button.
    *

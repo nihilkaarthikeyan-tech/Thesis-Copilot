@@ -19,6 +19,7 @@ import {
   getGhostState,
   type LocalDraft,
   thesisExtensions,
+  wordCountByProvenance,
 } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -78,6 +79,7 @@ import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
 import { SourcePins } from './SourcePins';
+import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 
 type ExportResult = { url: string; filename: string; bytes: number };
 
@@ -193,6 +195,17 @@ function ChapterEditor({
   }, []);
   const [howOpen, setHowOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  /**
+   * Set when the page loaded straight after a restore: the id of the snapshot the restore wrote of
+   * the text it replaced. Offering to put that back is what makes a restore safe to try.
+   */
+  const [undoVersionId, setUndoVersionId] = useState<string | null>(() =>
+    typeof window === 'undefined'
+      ? null
+      : new URL(window.location.href).searchParams.get(UNDO_PARAM),
+  );
+  const [undoing, setUndoing] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -528,6 +541,14 @@ function ChapterEditor({
             Assist {assist ? `${assist.used}/${assist.cap}` : '–'} · Draft{' '}
             {draft ? `${draft.used}/${draft.cap}` : '–'}
           </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="open-history"
+            onClick={() => setHistoryOpen(true)}
+          >
+            History
+          </Button>
           <ShareButton documentId={doc.id} />
           <ThemeToggle className="mr-1 hidden xl:inline-flex" />
           <Button variant="ghost" size="sm" onClick={() => setHowOpen(true)}>
@@ -584,6 +605,54 @@ function ChapterEditor({
           This chapter was changed elsewhere — reload to continue. Autosave is paused.{' '}
           <button type="button" className="underline" onClick={() => window.location.reload()}>
             Reload
+          </button>
+        </div>
+      ) : null}
+
+      {undoVersionId ? (
+        <div
+          role="status"
+          data-testid="restore-banner"
+          className="border-b border-line bg-accent-soft px-4 py-2 text-sm text-ink"
+        >
+          An older version of this chapter is back. What you had before is saved as a version.{' '}
+          <button
+            type="button"
+            className="font-semibold underline"
+            disabled={undoing}
+            onClick={() => {
+              // Undo is another restore — of the snapshot the first one wrote — and it writes its
+              // own PRE_RESTORE, so undoing the undo is possible too, from History.
+              setUndoing(true);
+              api(`/versions/${undoVersionId}/restore`, {
+                method: 'POST',
+                body: JSON.stringify({}),
+              })
+                .then(() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete(UNDO_PARAM);
+                  window.location.assign(url.toString());
+                })
+                .catch(() => {
+                  setUndoing(false);
+                  setNotice('The undo did not complete. The version is still in History.');
+                });
+            }}
+          >
+            {undoing ? 'Undoing…' : 'Undo'}
+          </button>{' '}
+          ·{' '}
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.delete(UNDO_PARAM);
+              window.history.replaceState(null, '', url.toString());
+              setUndoVersionId(null);
+            }}
+          >
+            Dismiss
           </button>
         </div>
       ) : null}
@@ -766,6 +835,20 @@ function ChapterEditor({
 
       {guided.element}
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} />
+      {historyOpen ? (
+        <VersionHistory
+          chapterId={chapter.id}
+          currentWords={
+            editor
+              ? Object.values(wordCountByProvenance(editor.state.doc)).reduce((a, b) => a + b, 0)
+              : chapter.wordCount
+          }
+          save={async () => {
+            await autosaveRef.current?.flush();
+          }}
+          onClose={() => setHistoryOpen(false)}
+        />
+      ) : null}
 
       {feedbackOpen ? (
         <form

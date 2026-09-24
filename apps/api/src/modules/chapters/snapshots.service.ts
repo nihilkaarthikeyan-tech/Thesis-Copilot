@@ -6,14 +6,22 @@
  * `DocumentVersion` row holds the key and the reason.
  */
 
-import { gzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import { Client as MinioClient } from 'minio';
 import { ENV } from '../../common/env.token.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { totalWords, wordCountsOf } from './word-counts.js';
 
-export const SNAPSHOT_REASONS = ['AUTOSAVE', 'MANUAL', 'PRE_DRAFT_ACCEPT', 'PRE_REVISION'] as const;
+export const SNAPSHOT_REASONS = [
+  'AUTOSAVE',
+  'MANUAL',
+  'PRE_DRAFT_ACCEPT',
+  'PRE_REVISION',
+  // Written before a restore overwrites the chapter, so a restore is itself one click from undone.
+  'PRE_RESTORE',
+] as const;
 export type SnapshotReason = (typeof SNAPSHOT_REASONS)[number];
 
 /** B.7: a periodic snapshot at most every ten minutes. */
@@ -58,6 +66,8 @@ export class SnapshotsService implements OnModuleInit {
     chapterId: string;
     content: unknown;
     reason: SnapshotReason;
+    /** The chapter's length at this version, so the history list can tell versions apart. */
+    wordCount?: number;
   }): Promise<{ id: string; snapshotKey: string; createdAt: Date }> {
     const key = `snapshots/${input.documentId}/${input.chapterId}/${Date.now()}-${input.reason.toLowerCase()}.json.gz`;
     const body = gzipSync(Buffer.from(JSON.stringify(input.content), 'utf8'));
@@ -73,6 +83,9 @@ export class SnapshotsService implements OnModuleInit {
         chapterId: input.chapterId,
         snapshotKey: key,
         reason: input.reason,
+        // Counted here rather than trusted to every caller: four places write snapshots, and a
+        // history list with a length on some rows and not others is a list nobody can compare.
+        wordCount: input.wordCount ?? totalWords(wordCountsOf(input.content)),
       },
       select: { id: true, snapshotKey: true, createdAt: true },
     });
@@ -83,6 +96,22 @@ export class SnapshotsService implements OnModuleInit {
     });
 
     return row;
+  }
+
+  /**
+   * A snapshot's body, as the ProseMirror document it was.
+   *
+   * Stored gzipped (`write` sets `Content-Encoding` as metadata, but MinIO hands back the bytes it
+   * was given, so nothing decompresses them on the way out). The magic-number check keeps an
+   * object written some other way readable rather than failing inside `gunzip`.
+   */
+  async read(key: string): Promise<unknown> {
+    const stream = await this.minio.getObject(this.bucket, key);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(chunk as Buffer);
+    const body = Buffer.concat(chunks);
+    const gzipped = body.length > 2 && body[0] === 0x1f && body[1] === 0x8b;
+    return JSON.parse((gzipped ? gunzipSync(body) : body).toString('utf8'));
   }
 
   /** B.7 rule: snapshot only if the last one is older than the interval (or there is none). */
