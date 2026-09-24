@@ -247,11 +247,14 @@ export function FormatToolbar({
   editor,
   className,
   onInsertImage,
+  onInsertChart,
 }: {
   editor: Editor | null;
   className?: string;
   /** Absent when the chapter cannot take an upload; the button is then hidden rather than dead. */
   onInsertImage?: (file: File) => void;
+  /** Opens the chart dialog (ADR-0027) — for a new chart, or the selected one to edit. */
+  onInsertChart?: () => void;
 }) {
   useEditorTick(editor);
 
@@ -323,6 +326,8 @@ export function FormatToolbar({
   if (!editor) return null;
 
   const inTable = editor.isActive('table');
+  // A figure that was drawn from numbers can be opened and redrawn (ADR-0027).
+  const chartSelected = editor.isActive('image') && Boolean(editor.getAttributes('image').chart);
   // Recomputed on every render, which `useEditorTick` already drives: inserting a figure has to
   // make it immediately referenceable, and renumber the references that exist.
   const refTargets = numberTargets(editor.getJSON());
@@ -547,6 +552,17 @@ export function FormatToolbar({
               }}
             />
           </>
+        ) : null}
+
+        {onInsertChart ? (
+          <Tool
+            label={chartSelected ? 'Edit chart' : 'Insert chart'}
+            testId="fmt-chart"
+            active={chartSelected}
+            onClick={onInsertChart}
+          >
+            <span className="text-[11px] font-medium leading-none">Chart</span>
+          </Tool>
         ) : null}
 
         {/* A caption for the selected figure or the table the cursor is in. */}

@@ -6,9 +6,10 @@
  *   - `image`: stores an object-storage key, never base64 (B.1); upload via a signed URL hook
  */
 
-import { Mark, mergeAttributes, Node, textblockTypeInputRule } from '@tiptap/core';
+import { findParentNode, Mark, mergeAttributes, Node, textblockTypeInputRule } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import Image from '@tiptap/extension-image';
+import { TextSelection } from '@tiptap/pm/state';
 import { insertBlockWithCaretAfter } from './insert-block.js';
 
 export const NeedsSourceNote = Node.create({
@@ -92,6 +93,14 @@ declare module '@tiptap/core' {
     thesisImage: {
       /** Uploads through `options.upload` (signed URL) and inserts the resulting node. */
       uploadImage: (file: File, caption?: string) => ReturnType;
+      /** Inserts a figure already uploaded — a chart drawn and stored by the caller (ADR-0027). */
+      insertFigure: (attrs: {
+        src: string;
+        key: string;
+        alt: string;
+        caption?: string | null;
+        chart?: unknown;
+      }) => ReturnType;
     };
   }
 }
@@ -114,6 +123,23 @@ export const ThesisImage = Image.extend<{
       caption: {
         default: null,
         renderHTML: (a) => (a.caption ? { 'data-caption': a.caption } : {}),
+      },
+      /**
+       * ADR-0027: the numbers and words a chart was drawn from, kept so it can be edited and drawn
+       * again. The picture is an ordinary figure (`key`, `src`); this is what made it.
+       */
+      chart: {
+        default: null,
+        parseHTML: (el) => {
+          const raw = el.getAttribute('data-chart');
+          if (!raw) return null;
+          try {
+            return JSON.parse(raw) as unknown;
+          } catch {
+            return null;
+          }
+        },
+        renderHTML: (a) => (a.chart ? { 'data-chart': JSON.stringify(a.chart) } : {}),
       },
     };
   },
@@ -161,6 +187,25 @@ export const ThesisImage = Image.extend<{
   addCommands() {
     return {
       ...this.parent?.(),
+      insertFigure:
+        (attrs) =>
+        ({ editor, tr, dispatch }) => {
+          const image = editor.schema.nodes.image?.create(attrs);
+          const paragraph = editor.schema.nodes.paragraph?.create();
+          if (!image || !paragraph) return false;
+          if (!dispatch) return true;
+          // A chart drawn from a table goes after the table, not into the cell the cursor was
+          // in: a figure inside a cell is part of the table to every exporter — no number, no
+          // caption — and the first browser test put one there.
+          const table = findParentNode((node) => node.type.name === 'table')(tr.selection);
+          if (table) {
+            const after = table.pos + table.node.nodeSize;
+            tr.insert(after, [image, paragraph]);
+            tr.setSelection(TextSelection.create(tr.doc, after + image.nodeSize + 1));
+            return true;
+          }
+          return insertBlockWithCaretAfter(tr, image, paragraph);
+        },
       uploadImage:
         (file, caption) =>
         ({ editor }) => {

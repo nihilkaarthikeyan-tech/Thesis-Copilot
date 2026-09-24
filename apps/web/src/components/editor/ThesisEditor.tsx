@@ -11,6 +11,7 @@
  * freezes saving and shows the reload banner. Ctrl/Cmd+S forces a save and a MANUAL snapshot.
  */
 
+import { type ChartSpec, chartSpecSchema } from '@tc/types';
 import {
   type Autosave,
   type AutosaveStatus,
@@ -18,6 +19,8 @@ import {
   createAutosave,
   getGhostState,
   type LocalDraft,
+  tableRowsAt,
+  tableToChartInput,
   thesisExtensions,
   wordCountByProvenance,
 } from '@tc/ui';
@@ -64,6 +67,7 @@ import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ThemeToggle } from '../theme';
 import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
+import { ChartDialog } from './ChartDialog';
 import { ChatPanel } from './ChatPanel';
 import { CitationList } from './CitationList';
 import { CitationsPanel, type Rendered } from './CitationsPanel';
@@ -439,6 +443,59 @@ function ChapterEditor({
     setNotice(null);
     editorRef.current?.commands.uploadImage(file);
   }, []);
+
+  /**
+   * ADR-0027: a chart from the student's numbers. Opens on the selected chart to edit it, on the
+   * table the cursor is in with its numbers already filled, or empty.
+   */
+  const [chart, setChart] = useState<{ initial: ChartSpec | null; replacing: boolean } | null>(
+    null,
+  );
+  const openChart = useCallback(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    setNotice(null);
+    const existing = ed.isActive('image')
+      ? chartSpecSchema.safeParse(ed.getAttributes('image').chart)
+      : null;
+    if (existing?.success) {
+      setChart({ initial: existing.data, replacing: true });
+      return;
+    }
+    const rows = tableRowsAt(ed);
+    const fromTable = rows ? tableToChartInput(rows) : null;
+    setChart({
+      initial: fromTable
+        ? {
+            type: 'bar',
+            title: '',
+            xLabel: fromTable.xLabel,
+            yLabel: '',
+            categories: fromTable.categories,
+            series: fromTable.series,
+          }
+        : null,
+      replacing: false,
+    });
+  }, []);
+  const insertChart = useCallback(
+    async (spec: ChartSpec, png: Blob) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      // The same upload path as a picture, so every export and the link renewal treat it as one.
+      const { key, url } = await uploadFigure(new File([png], 'chart.png', { type: 'image/png' }));
+      const attrs = {
+        src: url,
+        key,
+        alt: spec.title || 'Chart',
+        caption: spec.title || null,
+        chart: spec,
+      };
+      if (chart?.replacing) ed.chain().focus().updateAttributes('image', attrs).run();
+      else ed.chain().focus().insertFigure(attrs).run();
+    },
+    [uploadFigure, chart],
+  );
 
   // Appendix B.7 autosave.
   useEffect(() => {
@@ -816,7 +873,7 @@ function ChapterEditor({
               {notice}
             </p>
           ) : null}
-          <FormatToolbar editor={editor} onInsertImage={insertFigure} />
+          <FormatToolbar editor={editor} onInsertImage={insertFigure} onInsertChart={openChart} />
           <EditorContent editor={editor} />
           <div className="mx-auto mt-8 flex max-w-[72ch] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[11.5px] text-faint">
             {[
@@ -983,6 +1040,13 @@ function ChapterEditor({
 
       {guided.element}
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} documentId={doc.id} />
+      <ChartDialog
+        open={chart !== null}
+        initial={chart?.initial ?? null}
+        replacing={chart?.replacing ?? false}
+        onClose={() => setChart(null)}
+        onInsert={insertChart}
+      />
       {historyOpen ? (
         <VersionHistory
           chapterId={chapter.id}

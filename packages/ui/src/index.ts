@@ -1,4 +1,14 @@
 export {
+  CHART_PALETTE,
+  type ChartInput,
+  drawChart,
+  formatTick,
+  niceTicks,
+  parseCell,
+  tableRowsAt,
+  tableToChartInput,
+} from './charts/index.js';
+export {
   type Autosave,
   type AutosaveOptions,
   type AutosaveStatus,

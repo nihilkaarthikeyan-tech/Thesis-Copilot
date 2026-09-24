@@ -1,4 +1,11 @@
 export {
+  CHART_LIMITS,
+  CHART_TYPES,
+  type ChartSpec,
+  type ChartType,
+  chartSpecSchema,
+} from './chart.js';
+export {
   formatRef,
   kindOfNode,
   type NumberedTarget,
