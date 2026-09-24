@@ -17,9 +17,10 @@ test('a topic becomes an editable proposal skeleton through a three-question con
   test.setTimeout(120_000);
   await signInAs(page, request);
 
-  // The chooser (6.3): both paths, one line each.
+  // The chooser (6.3): both paths, one line each. The list's header button has read "Start from a
+  // paper" since the design-system pass (761a449); it opens the same chooser, which offers both.
   await page.goto('/app');
-  await page.getByRole('link', { name: /New thesis/ }).click();
+  await page.getByRole('link', { name: 'Start from a paper' }).click();
   await expect(page.getByRole('heading', { name: 'Where does this thesis start?' })).toBeVisible();
   await expect(
     page.getByText('Upload it; the proposal, glossary and starting library'),
