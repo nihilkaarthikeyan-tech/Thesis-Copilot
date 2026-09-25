@@ -3537,3 +3537,56 @@ once the socket has delivered a document long enough to hold the range).
 Proven by `apps/api/test/citation-report.spec.ts` (ranking, dedup, stale positions),
 `authz.spec.ts` (another user's report is a 404) and `apps/web/e2e/citation-report.spec.ts` (from
 the Submit screen to the report to the selected sentence).
+
+### Viva preparation — 2026-09-25
+
+ADR-0030. `/app/d/:id/viva`: up to eight questions an examiner could ask, each about a paragraph
+of the student's own prose (spread evenly across chapters; pending AI drafts never read), and
+feedback on a typed answer — verdict, what worked, what an examiner would miss, up to two
+quotations from the thesis, the likely follow-up. A new metered action, `VIVA` (migration 0021,
+with the `VivaQuestion` table), 30 a month on paid plans and 3 on the trial.
+
+The one decision that was not mine: at the PRD's reference prices the six §11.3 rows already cost
+₹98.92, so no viva allowance could be checked against ₹100 there. The owner chose its own
+allowance, with the whole budget judged at the production models (₹14.18 → ₹25.34); the PRD's own
+table is still checked at its reference prices on its own. ADR-0030 and `cost-model.spec.ts`.
+
+Code, not the prompt, holds the two rules: a question naming a paragraph that was never sent is
+dropped (and counted as `HALLUCINATED_CITE`), and a quotation is shown only if it is in the named
+paragraph word for word. The student's answer cannot close the tag it sits in.
+
+Two things found on the way:
+- **The duplicate-question check compared a–z only**, so every question in a Hindi or Tamil
+  thesis would have collapsed into the first. It compares letters of any script now; a test pins it.
+- **`TaskStop` on the dev API and worker left their node processes alive** (the dotenv-cli
+  wrappers survived), which would have failed `prisma generate` with EPERM. Killed by wrapper path,
+  as the hard-won rule says.
+
+Proven: `packages/ai/test/viva.spec.ts` (grounding, quotations, tag escaping, the mock),
+`apps/api/test/viva.spec.ts` (the cap test: one unit each, 429 at the cap with no call, nothing
+charged for a thesis too short; the chapter untouched), `authz.spec.ts` (another student's viva is
+a 404, uncharged), `apps/web/e2e/viva.spec.ts` against the real `gpt-5-mini` — from the Submit
+screen to feedback that caught the selection bias in the sample and quoted two of the student's
+own sentences exactly. `pnpm --filter @tc/ai shakedown viva`: 2/2, ₹0.11 a question set, ₹0.08 a
+feedback.
+
+### The supervisor's live progress view — 2026-09-25
+
+The progress panel on the guide page (2026-09-21) was a snapshot taken when the page opened. Now:
+
+- **It refreshes every minute** while the page is in front of the supervisor, through a new
+  `GET /guide/documents/:id/progress` that never records a visit. The POST that opens the page
+  still does. The GET takes `since` — the visit the page was opened against — because by the
+  first refresh the POST has moved the stored marker to "just now", and without it every refresh
+  would have reported nothing changed: the exact failure the 2026-09-21 design was built to avoid.
+- **"Writing now"**: a chapter saved in the last five minutes is marked.
+- **Words, week by week**: eight weeks from the word counts `DocumentVersion` already records per
+  autosaved version; this week from the chapters as they are. A week whose versions predate word
+  counts is drawn pale and said to be incomplete rather than drawn as a fall.
+
+Still no AI-usage figure, on purpose (the 2026-09-21 reasoning stands). The chapter text open in
+the reading pane is not swapped under the supervisor; the "new" mark tells them to reopen it.
+
+Proven by `apps/api/test/guide-progress.spec.ts` (writing now, Monday-UTC weeks, the history, the
+partial week) and `apps/web/e2e/guide-live.spec.ts` (the student saves while the supervisor
+watches; the page's clock is run forward a minute; the chapter joins "changed").

@@ -20,6 +20,12 @@
 /** A refresh should not clear "changed since you last looked". Half an hour of reading is one visit. */
 export const VISIT_WINDOW_MINUTES = 30;
 
+/** A chapter saved this recently is being written now (2026-09-25). Autosave runs every few seconds. */
+export const ACTIVE_NOW_MINUTES = 5;
+
+/** Weeks of history in the words-over-time line. */
+export const HISTORY_WEEKS = 8;
+
 export type ChapterProgress = {
   id: string;
   title: string;
@@ -32,6 +38,19 @@ export type ChapterProgress = {
   /** Comments this guide has left on the chapter that the student has not resolved. */
   openComments: number;
   started: boolean;
+  /** Saved in the last `ACTIVE_NOW_MINUTES`: the student is writing it now. */
+  activeNow: boolean;
+};
+
+/** Words in the whole thesis at the end of one week (Monday 00:00 UTC to Monday). */
+export type WeekWords = {
+  weekStart: string;
+  words: number;
+  /**
+   * Some chapter's count at that time is not known — its versions from then predate word counts
+   * being recorded — so this is a lower bound, and the page says so rather than drawing a dip.
+   */
+  partial: boolean;
 };
 
 export type GuideProgress = {
@@ -44,6 +63,10 @@ export type GuideProgress = {
   changedCount: number;
   openComments: number;
   headline: string;
+  /** The last `HISTORY_WEEKS` weeks, oldest first; the last is this week so far. */
+  weekly: WeekWords[];
+  /** The latest save to any chapter, or null if nothing has been written. */
+  lastActiveAt: string | null;
 };
 
 export type ChapterRow = {
@@ -71,9 +94,11 @@ export function guideProgress(input: {
   /** Open comment counts by chapter id, for this guide only. */
   openCommentsByChapter: ReadonlyMap<string, number>;
   lastViewedAt: Date | null;
-  /** True when the chapter row has never been saved — `updatedAt` equals its creation. */
+  /** Saved versions with their word counts, for the words-over-time line. */
+  versions?: readonly VersionRow[];
   now?: Date;
 }): GuideProgress {
+  const now = input.now ?? new Date();
   const chapters: ChapterProgress[] = input.chapters.map((chapter) => {
     const started = chapter.wordCount > 0;
     return {
@@ -89,8 +114,16 @@ export function guideProgress(input: {
       ),
       openComments: input.openCommentsByChapter.get(chapter.id) ?? 0,
       started,
+      activeNow:
+        started && now.getTime() - chapter.updatedAt.getTime() <= ACTIVE_NOW_MINUTES * 60_000,
     };
   });
+  const lastActive = input.chapters
+    .filter((c) => c.wordCount > 0)
+    .reduce<Date | null>(
+      (latest, c) => (!latest || c.updatedAt > latest ? c.updatedAt : latest),
+      null,
+    );
 
   const totalWords = chapters.reduce((sum, c) => sum + c.words, 0);
   const chaptersStarted = chapters.filter((c) => c.started).length;
@@ -113,7 +146,68 @@ export function guideProgress(input: {
       openComments,
       firstVisit: !input.lastViewedAt,
     }),
+    weekly: weeklyWords(input.chapters, input.versions ?? [], now),
+    lastActiveAt: lastActive ? lastActive.toISOString() : null,
   };
+}
+
+export type VersionRow = { chapterId: string; wordCount: number | null; createdAt: Date };
+
+const DAY = 24 * 60 * 60_000;
+
+/** Monday 00:00 UTC of the week `date` falls in. */
+export function weekStartOf(date: Date): Date {
+  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const sinceMonday = (day.getUTCDay() + 6) % 7;
+  return new Date(day.getTime() - sinceMonday * DAY);
+}
+
+/**
+ * The thesis's length at the end of each of the last `HISTORY_WEEKS` weeks, from the versions
+ * autosave already keeps — each records its chapter's words. The current week is the chapters as
+ * they are now. Nothing is estimated: a chapter with no counted version by a week's end counts as
+ * nothing written, unless it had uncounted versions by then, in which case the week is marked
+ * `partial` instead of showing a fall that did not happen.
+ */
+export function weeklyWords(
+  chapters: readonly ChapterRow[],
+  versions: readonly VersionRow[],
+  now: Date,
+  weeks = HISTORY_WEEKS,
+): WeekWords[] {
+  const thisWeek = weekStartOf(now);
+  const byChapter = new Map<string, VersionRow[]>();
+  for (const version of [...versions].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+  )) {
+    const list = byChapter.get(version.chapterId) ?? [];
+    list.push(version);
+    byChapter.set(version.chapterId, list);
+  }
+
+  const out: WeekWords[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = new Date(thisWeek.getTime() - i * 7 * DAY);
+    if (i === 0) {
+      out.push({
+        weekStart: start.toISOString(),
+        words: chapters.reduce((sum, c) => sum + c.wordCount, 0),
+        partial: false,
+      });
+      continue;
+    }
+    const end = new Date(start.getTime() + 7 * DAY);
+    let words = 0;
+    let partial = false;
+    for (const list of byChapter.values()) {
+      const upToEnd = list.filter((v) => v.createdAt < end);
+      const counted = upToEnd.filter((v) => v.wordCount !== null).at(-1);
+      if (counted) words += counted.wordCount ?? 0;
+      else if (upToEnd.length > 0) partial = true;
+    }
+    out.push({ weekStart: start.toISOString(), words, partial });
+  }
+  return out;
 }
 
 const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;

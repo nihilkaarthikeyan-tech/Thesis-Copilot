@@ -94,5 +94,9 @@ were invisible to typecheck, lint and 1,200 passing tests.
 - [x] **A pre-submission citation report.** Done 2026-09-25: `/app/d/:id/citations`, linked from
       the Submit screen and the editor's Citations panel. Every finding of the five existing
       citation checks on one page, worst first, each linking to its sentence. Reads only.
-- [ ] **Viva preparation.** Questions an examiner could ask about this thesis, answered from it.
-- [ ] **A live progress view for the supervisor.**
+- [x] **Viva preparation.** Done 2026-09-25 (ADR-0030): `/app/d/:id/viva`. Up to eight examiner
+      questions about paragraphs across the chapters, and feedback on each typed answer — what
+      worked, what is missing, the thesis's own words. Its own allowance, 30 a month.
+- [x] **A live progress view for the supervisor.** Done 2026-09-25: the guide page's progress
+      panel re-reads every minute without recording a visit, marks the chapter being written
+      now, and draws words week by week from the counts autosave already keeps.

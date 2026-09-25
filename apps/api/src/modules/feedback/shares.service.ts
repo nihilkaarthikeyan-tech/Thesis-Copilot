@@ -20,7 +20,12 @@ import { withFreshFigureLinks } from '../../common/figure-links.js';
 import { MAILER, type Mailer } from '../../common/mailer.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
-import { type GuideProgress, guideProgress, shouldBumpVisit } from './guide-progress.js';
+import {
+  type GuideProgress,
+  guideProgress,
+  HISTORY_WEEKS,
+  shouldBumpVisit,
+} from './guide-progress.js';
 
 export type ShareView = {
   id: string;
@@ -279,10 +284,11 @@ export class SharesService {
   async progressFor(
     user: { id: string; email: string },
     documentId: string,
+    options: { recordVisit?: boolean; since?: Date } = {},
   ): Promise<GuideProgress> {
     const share = await this.assertShared(user, documentId);
 
-    const [chapters, openComments] = await Promise.all([
+    const [chapters, openComments, versions] = await Promise.all([
       this.prisma.chapter.findMany({
         where: { documentId },
         orderBy: { order: 'asc' },
@@ -295,11 +301,20 @@ export class SharesService {
         where: { documentId, authorEmail: user.email, status: 'OPEN' },
         _count: { _all: true },
       }),
+      // The words-over-time line: the counts autosave already records, over the weeks shown.
+      this.prisma.documentVersion.findMany({
+        where: {
+          documentId,
+          chapterId: { not: null },
+          createdAt: { gte: new Date(Date.now() - (HISTORY_WEEKS + 1) * 7 * 24 * 60 * 60_000) },
+        },
+        select: { chapterId: true, wordCount: true, createdAt: true },
+      }),
     ]);
 
-    const previousVisit = share.lastViewedAt;
+    const previousVisit = options.since ?? share.lastViewedAt;
     const now = new Date();
-    if (shouldBumpVisit(previousVisit, now)) {
+    if (options.recordVisit !== false && shouldBumpVisit(previousVisit, now)) {
       await this.prisma.guideShare.update({
         where: { id: share.id },
         data: { lastViewedAt: now },
@@ -314,6 +329,7 @@ export class SharesService {
           .map((row) => [row.chapterId, row._count._all]),
       ),
       lastViewedAt: previousVisit,
+      versions: versions.filter((v): v is typeof v & { chapterId: string } => v.chapterId !== null),
       now,
     });
   }

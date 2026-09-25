@@ -10,8 +10,11 @@ import { describe, expect, it } from 'vitest';
 import {
   type ChapterRow,
   guideProgress,
+  HISTORY_WEEKS,
   shouldBumpVisit,
   VISIT_WINDOW_MINUTES,
+  weeklyWords,
+  weekStartOf,
 } from '../src/modules/feedback/guide-progress.js';
 
 const NOW = new Date('2026-09-21T12:00:00Z');
@@ -136,5 +139,66 @@ describe('the sentence a supervisor reads', () => {
     });
     expect(p.headline).toContain('1 comment of yours');
     expect(p.headline).not.toContain('1 comments');
+  });
+});
+
+describe('the live view (2026-09-25)', () => {
+  it('marks a chapter saved in the last few minutes as being written now', () => {
+    const p = guideProgress({
+      chapters: [
+        chapter({ id: 'c1', updatedAt: minutesAgo(2) }),
+        chapter({ id: 'c2', updatedAt: minutesAgo(40) }),
+        chapter({ id: 'c3', wordCount: 0, updatedAt: minutesAgo(1) }),
+      ],
+      openCommentsByChapter: new Map(),
+      lastViewedAt: minutesAgo(120),
+      now: NOW,
+    });
+    expect(p.chapters.map((c) => c.activeNow)).toEqual([true, false, false]);
+    expect(p.lastActiveAt).toBe(minutesAgo(2).toISOString());
+  });
+
+  it('weeks start on Monday, UTC', () => {
+    expect(weekStartOf(new Date('2026-09-24T18:00:00Z')).toISOString()).toBe(
+      '2026-09-21T00:00:00.000Z',
+    );
+    expect(weekStartOf(new Date('2026-09-27T23:59:00Z')).toISOString()).toBe(
+      '2026-09-21T00:00:00.000Z',
+    );
+  });
+
+  it('draws words over time from the counts autosave recorded, this week from now', () => {
+    const daysAgo = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60_000);
+    const weeks = weeklyWords(
+      [chapter({ id: 'c1', wordCount: 3000 }), chapter({ id: 'c2', wordCount: 500 })],
+      [
+        { chapterId: 'c1', wordCount: 800, createdAt: daysAgo(20) },
+        { chapterId: 'c1', wordCount: 1500, createdAt: daysAgo(10) },
+        { chapterId: 'c1', wordCount: 2000, createdAt: daysAgo(3) },
+        { chapterId: 'c2', wordCount: 200, createdAt: daysAgo(3) },
+      ],
+      NOW,
+    );
+    expect(weeks).toHaveLength(HISTORY_WEEKS);
+    expect(weeks.at(-1)).toEqual({
+      weekStart: '2026-09-21T00:00:00.000Z',
+      words: 3500,
+      partial: false,
+    });
+    // The week before this one ended with c1 at 2,000 and c2 at 200.
+    expect(weeks.at(-2)?.words).toBe(2200);
+    expect(weeks.at(-3)?.words).toBe(1500);
+    expect(weeks.at(-4)?.words).toBe(800);
+    expect(weeks[0]?.words).toBe(0);
+  });
+
+  it('marks a week partial rather than inventing a fall, when a count was never recorded', () => {
+    const daysAgo = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60_000);
+    const weeks = weeklyWords(
+      [chapter({ id: 'c1', wordCount: 3000 })],
+      [{ chapterId: 'c1', wordCount: null, createdAt: daysAgo(3) }],
+      NOW,
+    );
+    expect(weeks.at(-2)).toMatchObject({ words: 0, partial: true });
   });
 });

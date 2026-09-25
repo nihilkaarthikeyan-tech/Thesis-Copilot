@@ -14,6 +14,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -247,6 +248,28 @@ export class GuideController {
   @HttpCode(200)
   progress(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
     return this.shares.progressFor(user, documentId);
+  }
+
+  /**
+   * The same view, read while the page stays open (2026-09-25: the live progress view). A GET
+   * that really is one: it never moves the visit marker, so a panel refreshing every minute
+   * cannot empty "changed since you last looked" underneath the supervisor reading it.
+   *
+   * `since` is the previous visit the page was opened against. By the time the page refreshes,
+   * the POST has moved the stored marker to "just now", so without it every refresh would compare
+   * against the moment the page opened and report nothing as changed.
+   */
+  @Get('documents/:documentId/progress')
+  progressNow(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Query('since') since?: string,
+  ) {
+    const at = since ? new Date(since) : null;
+    return this.shares.progressFor(user, documentId, {
+      recordVisit: false,
+      ...(at && !Number.isNaN(at.getTime()) && at.getTime() <= Date.now() ? { since: at } : {}),
+    });
   }
 
   /**
