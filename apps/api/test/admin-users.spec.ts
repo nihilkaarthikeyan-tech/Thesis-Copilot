@@ -185,6 +185,52 @@ describe('PUT /admin/users/:id/plan', () => {
   });
 });
 
+describe('making someone an admin (2026-09-25)', () => {
+  it('promotes a user, logs who did it, and can take it back', async () => {
+    const promoted = await h.api(`/admin/users/${studentId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role: 'SUPERADMIN' }),
+    });
+    expect(promoted.status).toBe(200);
+    expect((await h.prisma.user.findUniqueOrThrow({ where: { id: studentId } })).role).toBe(
+      'SUPERADMIN',
+    );
+    const audit = await h.prisma.auditEvent.findFirst({
+      where: { userId: studentId, kind: 'ROLE_CHANGED' },
+    });
+    expect(audit?.actorId).toBe(h.userId);
+    expect(audit?.detail).toEqual({ from: 'STUDENT', to: 'SUPERADMIN' });
+
+    const back = await h.api(`/admin/users/${studentId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role: 'STUDENT' }),
+    });
+    expect(back.status).toBe(200);
+    expect((await h.prisma.user.findUniqueOrThrow({ where: { id: studentId } })).role).toBe(
+      'STUDENT',
+    );
+  });
+
+  it('will not let the admin remove their own access', async () => {
+    const response = await h.api(`/admin/users/${h.userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role: 'STUDENT' }),
+    });
+    expect(response.status).toBe(400);
+    expect((await h.prisma.user.findUniqueOrThrow({ where: { id: h.userId } })).role).toBe(
+      'SUPERADMIN',
+    );
+  });
+
+  it('refuses a role that is not handed out here', async () => {
+    const response = await h.api(`/admin/users/${studentId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role: 'GUIDE' }),
+    });
+    expect(response.status).toBe(400);
+  });
+});
+
 describe('a cap refusal leaves an audit row (ADR-0004)', () => {
   it('is counted on the admin’s per-user page', async () => {
     // The harness user's own thesis, with the DRAFT cap already spent: the next draft is refused

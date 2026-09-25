@@ -193,23 +193,31 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
   readonly modelId: string;
   private readonly apiKey: string;
   private readonly endpoint: string;
+  private readonly doFetch: typeof fetch;
 
   constructor(options: {
     apiKey: string;
     model: string;
     dims: number;
     endpoint?: string;
+    /** Injected by the adapter test, so the request body is asserted without a network. */
+    fetch?: typeof fetch;
   }) {
     this.apiKey = options.apiKey;
     this.modelId = options.model;
     this.dims = options.dims;
     this.endpoint = options.endpoint ?? 'https://api.voyageai.com/v1/embeddings';
+    this.doFetch = options.fetch ?? ((input, init) => fetch(input, init));
   }
 
   async embed(texts: readonly string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
+    return (await this.embedWithUsage(texts)).vectors;
+  }
 
-    const response = await fetch(this.endpoint, {
+  async embedWithUsage(texts: readonly string[]): Promise<{ vectors: number[][]; tokens: number }> {
+    if (texts.length === 0) return { vectors: [], tokens: 0 };
+
+    const response = await this.doFetch(this.endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -225,8 +233,13 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
       );
     }
 
-    const body = (await response.json()) as { data?: Array<{ embedding: number[] }> };
+    const body = (await response.json()) as {
+      data?: Array<{ embedding: number[] }>;
+      usage?: { total_tokens?: number };
+    };
     const vectors = (body.data ?? []).map((d) => d.embedding);
+    // What Voyage bills for, as Voyage reports it (§11.5: never an estimate).
+    const tokens = Number(body.usage?.total_tokens ?? 0);
 
     for (const vector of vectors) {
       if (vector.length !== this.dims) {
@@ -243,6 +256,6 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
       }
     }
 
-    return vectors;
+    return { vectors, tokens };
   }
 }

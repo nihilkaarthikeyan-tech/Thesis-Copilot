@@ -60,7 +60,12 @@ function fakeDeps(options: { passages?: boolean; fail?: boolean } = {}) {
       },
       complete: vi.fn(),
     },
-    embeddings: { dims: 1024, modelId: 'mock-embed', embed: vi.fn(async () => [[]]) },
+    embeddings: {
+      dims: 1024,
+      modelId: 'mock-embed',
+      embed: vi.fn(async () => [[]]),
+      embedWithUsage: vi.fn(async () => ({ vectors: [[]], tokens: 0 })),
+    },
     memoryBlock: vi.fn(async () => '<document_memory></document_memory>'),
     retrieve: vi.fn(async () => ({
       passages: options.passages === false ? [] : [PASSAGE],

@@ -75,6 +75,13 @@ blocks the agent from continuing to build against mocks.
       settings, send it; the code already sends it on every OpenAlex request (`ScholarlyHttp`,
       tested). No budget line yet: at launch scale the free tier covers it, and the day it does
       not, OpenAlex answers with a clear error rather than a bill.
+- [ ] **Admin access for the manager / HR (2026-09-25).** Built: `PUT /admin/users/:id/role` and a
+      Role control on `/admin/users/:id`. There are no passwords in this product; the credential
+      is the email address plus the code it receives. The owner's own address is already the
+      superadmin on production (`SEED_ADMIN_EMAIL`). To let a second person in: they sign in once
+      at thesis.rademics.ai with their email (that creates the account), then the owner opens
+      Admin → Users → their page → Role → SUPERADMIN. Logged as ROLE_CHANGED; a superadmin cannot
+      remove their own role. INSTITUTION_ADMIN is for a university's seat manager, not for staff.
 - [ ] **Add a payment method to the Voyage account** (also listed under AI above). Price read off
       docs.voyageai.com on 2026-09-25: `voyage-3` is **USD 0.06 per million tokens**, pay-as-you-go,
       no minimum — about ₹1.60 to make a 30-paper library searchable, under ₹5 per active student

@@ -16,6 +16,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { inr, type UserRow, when } from '../shared';
 
+/** The roles an admin may hand out — the same list `PUT /admin/users/:id/role` accepts. */
+const ASSIGNABLE_ROLES = ['STUDENT', 'INSTITUTION_ADMIN', 'SUPERADMIN'] as const;
+
 type UserDetail = UserRow & {
   documentList: Array<{ id: string; title: string; updatedAt: string; chapters: number }>;
   capExceeded: number;
@@ -65,6 +68,19 @@ export default function AdminUserPage() {
       load();
     } catch (e) {
       setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Reset failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setRole(role: string) {
+    setBusy(true);
+    try {
+      await api(`/admin/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) });
+      setNotice(`Role set to ${role}. It applies from their next page load.`);
+      load();
+    } catch (e) {
+      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Change failed.');
     } finally {
       setBusy(false);
     }
@@ -169,6 +185,32 @@ export default function AdminUserPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="rounded-md border border-line bg-surface p-4 text-sm">
+              <p className="text-xs text-muted">Role</p>
+              <p className="mt-2 font-mono">{user.role}</p>
+              <label className="mt-3 block text-xs text-muted" htmlFor="role">
+                Change role (logged)
+              </label>
+              <select
+                id="role"
+                data-testid="admin-role"
+                disabled={busy || user.role === 'GUIDE'}
+                value={user.role}
+                onChange={(e) => void setRole(e.target.value)}
+                className="mt-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                {(user.role === 'GUIDE' ? ['GUIDE'] : ASSIGNABLE_ROLES).map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-muted">
+                SUPERADMIN sees every screen here. INSTITUTION_ADMIN manages one institution&rsquo;s
+                seats. A GUIDE is set by a student&rsquo;s share, not here.
+              </p>
             </div>
           </section>
 

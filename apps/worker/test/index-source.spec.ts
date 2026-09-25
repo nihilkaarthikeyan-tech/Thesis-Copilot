@@ -119,7 +119,15 @@ function fakeDeps(
         embedCalls.push([...texts]);
         return texts.map(() => embedding());
       }),
+      // Through `embed`, so a test that overrides or counts `embed` still sees every call.
+      async embedWithUsage(texts: readonly string[]) {
+        return {
+          vectors: await this.embed(texts),
+          tokens: texts.reduce((n, t) => n + Math.ceil(t.length / 4), 0),
+        };
+      },
     },
+    logEmbed: vi.fn(async () => undefined),
     unpaywall,
     core,
     getObject: vi.fn(async (key: string) => stored.get(key) ?? PDF),
@@ -374,5 +382,24 @@ describe('the CORE fallback (FR-2.2)', () => {
 
     expect(result.groundingLevel).toBe('ABSTRACT');
     expect(result.fullTextFailure).toBe('no-location');
+  });
+});
+
+describe('the embedding is logged as spend (2026-09-25)', () => {
+  it('records one EMBED call for the source with the tokens the provider billed', async () => {
+    const { deps } = fakeDeps({ oaPdfUrl: 'https://repo.example.org/p.pdf' });
+    const data = job();
+    await runIndexSource(data, deps);
+    expect(deps.logEmbed).toHaveBeenCalledTimes(1);
+    const call = (deps.logEmbed as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+      userId: string;
+      documentId: string;
+      tokens: number;
+      ok: boolean;
+    };
+    expect(call.userId).toBe(data.userId);
+    expect(call.documentId).toBe(data.documentId);
+    expect(call.ok).toBe(true);
+    expect(call.tokens).toBeGreaterThan(0);
   });
 });

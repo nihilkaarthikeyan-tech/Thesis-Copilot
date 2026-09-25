@@ -43,6 +43,20 @@ export type IndexSourceDeps = {
   /** PDF bytes to text with page and section spans; the same extractor the seed papers use. */
   extract: (bytes: Buffer) => Promise<ExtractedDocument>;
   log?: (event: Record<string, unknown>) => void;
+  /**
+   * Records one EMBED call row for the whole source (2026-09-25): the tokens Voyage billed, so
+   * the per-user ceiling (§11) and the cost alerts (§14) count embedding like every other spend.
+   */
+  logEmbed?: (call: EmbedCall) => Promise<void>;
+};
+
+export type EmbedCall = {
+  userId: string;
+  documentId: string;
+  tokens: number;
+  latencyMs: number;
+  ok: boolean;
+  error?: string;
 };
 
 export type IndexSourceResult = {
@@ -175,9 +189,32 @@ export async function runIndexSource(
   });
 
   const vectors: number[][] = [];
-  for (const batch of batched(chunks, EMBED_BATCH)) {
-    vectors.push(...(await deps.embeddings.embed(batch.map((chunk) => chunk.text))));
+  let tokens = 0;
+  const embedStarted = Date.now();
+  try {
+    for (const batch of batched(chunks, EMBED_BATCH)) {
+      const counted = await deps.embeddings.embedWithUsage(batch.map((chunk) => chunk.text));
+      vectors.push(...counted.vectors);
+      tokens += counted.tokens;
+    }
+  } catch (error) {
+    await deps.logEmbed?.({
+      userId: job.userId,
+      documentId: job.documentId,
+      tokens,
+      latencyMs: Date.now() - embedStarted,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
+  await deps.logEmbed?.({
+    userId: job.userId,
+    documentId: job.documentId,
+    tokens,
+    latencyMs: Date.now() - embedStarted,
+    ok: true,
+  });
   if (vectors.length !== chunks.length) {
     throw new Error(`embedding count ${vectors.length} does not match ${chunks.length} chunks`);
   }

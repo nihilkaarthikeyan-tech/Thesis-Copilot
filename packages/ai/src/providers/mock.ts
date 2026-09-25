@@ -201,6 +201,12 @@ export class MockEmbeddingProvider implements EmbeddingProvider {
     return texts.map((text) => this.vectorFor(text));
   }
 
+  /** Tokens by the ~4-characters rule: enough for a row to land with a real-looking count. */
+  async embedWithUsage(texts: readonly string[]): Promise<{ vectors: number[][]; tokens: number }> {
+    const vectors = await this.embed(texts);
+    return { vectors, tokens: texts.reduce((sum, text) => sum + Math.ceil(text.length / 4), 0) };
+  }
+
   private vectorFor(text: string): number[] {
     // xorshift32 seeded from the text, so the vector is stable across runs and processes.
     let seed = 2166136261;

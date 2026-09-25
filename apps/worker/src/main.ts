@@ -19,7 +19,7 @@ import {
   mockThemesResponse,
   type Providers,
 } from '@tc/ai';
-import { computeCallCost, type Env, loadEnv } from '@tc/config';
+import { computeCallCost, computeEmbeddingCost, type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
 import {
   ARXIV,
@@ -140,6 +140,40 @@ function storageFor(env: Env): {
     },
   };
 }
+
+/**
+ * One AiCallLog row per bulk embedding (2026-09-25): the tokens Voyage reported, priced by
+ * `computeEmbeddingCost`, so `UsageService`'s ₹100 ceiling and the §14 alerts include it. The
+ * mock logs zero cost but the row still lands, as every other action does.
+ */
+const logEmbed =
+  (prisma: PrismaClient, env: Env) =>
+  async (call: {
+    userId: string;
+    documentId: string;
+    tokens: number;
+    latencyMs: number;
+    ok: boolean;
+    error?: string;
+  }) => {
+    const cost = call.ok && env.EMBED_PROVIDER !== 'mock' ? computeEmbeddingCost(call.tokens) : 0;
+    await prisma.aiCallLog.create({
+      data: {
+        userId: call.userId,
+        documentId: call.documentId,
+        action: 'EMBED',
+        model: env.AI_EMBED_MODEL,
+        inputTokens: call.tokens,
+        cachedInputTokens: 0,
+        cacheWriteTokens: 0,
+        outputTokens: 0,
+        costMicroInr: BigInt(cost),
+        latencyMs: call.latencyMs,
+        ok: call.ok,
+        error: call.error ?? null,
+      },
+    });
+  };
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -295,6 +329,7 @@ async function main(): Promise<void> {
           getObject: (key) => storage.get(key),
           putObject: (key, body) => storage.put(key, body),
           extract: (bytes) => extractDocument(bytes, 'pdf'),
+          logEmbed: logEmbed(prisma, env),
           log: (event) => log({ jobId: job.id, ...event }),
         });
         return result;
@@ -416,6 +451,7 @@ async function main(): Promise<void> {
             prisma,
             llm: providers.llm,
             embeddings: providers.embeddings,
+            logEmbed: logEmbed(prisma, env),
             aiProvider: env.AI_PROVIDER,
             // D.1.1 step 3: the sidebar watches the run through the API's SSE endpoint, which
             // subscribes to this channel — the same shape the draft stream uses.

@@ -144,6 +144,10 @@ function fakes(
       // A vector per text; the first component falls with position, so the ranking is stable and
       // the job's own ordering is what is under test rather than a random embedding.
       embed: vi.fn(async (texts: string[]) => texts.map((_, i) => [1 - i / 100, 0.1, 0.1])),
+      embedWithUsage: vi.fn(async (texts: string[]) => ({
+        vectors: texts.map((_, i) => [1 - i / 100, 0.1, 0.1]),
+        tokens: texts.length,
+      })),
     },
     openalex: {
       search: vi.fn(async () => {

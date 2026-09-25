@@ -11,7 +11,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { type AiAction, METERED_ACTIONS, PLAN_LIMITS, PLANS, type Plan } from '@tc/config';
-import { NotFoundError } from '../../common/errors.js';
+import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { periodFor } from '../usage/usage.service.js';
 
@@ -259,6 +259,36 @@ export class UsersService {
       }),
     ]);
     return { plan };
+  }
+
+  /**
+   * Changes a user's role, logged with who did it. An admin cannot take their own superadmin
+   * role away: with one administrator that would lock everyone out of the admin screens, and the
+   * database is the only way back in.
+   */
+  async setRole(
+    actorId: string,
+    userId: string,
+    role: 'STUDENT' | 'INSTITUTION_ADMIN' | 'SUPERADMIN',
+  ): Promise<{ role: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user) throw new NotFoundError('That user');
+    if (actorId === userId && user.role === 'SUPERADMIN' && role !== 'SUPERADMIN') {
+      throw new ValidationError(
+        'You cannot remove your own admin access. Ask another superadmin to do it.',
+      );
+    }
+    if (user.role === role) return { role };
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { role } }),
+      this.prisma.auditEvent.create({
+        data: { kind: 'ROLE_CHANGED', userId, actorId, detail: { from: user.role, to: role } },
+      }),
+    ]);
+    return { role };
   }
 }
 

@@ -3653,3 +3653,24 @@ it is silently wrong. So three things, in order, each now a command:
   `rank.spec.ts` now pins both models' populations.
 
 Production gets the same three steps at the next release, inside the thesis site's containers.
+
+### Admin roles, and embedding counted as spend — 2026-09-25
+
+Two things the owner asked for on the day of the `voyage-4` switch.
+
+- **Making someone an admin.** Until now the only superadmin was the one the seed made from
+  `SEED_ADMIN_EMAIL`; a second administrator had no way in short of editing the database.
+  `PUT /admin/users/:id/role` (SUPERADMIN only; STUDENT, INSTITUTION_ADMIN or SUPERADMIN — GUIDE
+  stays the share flow's to set) and a Role control on the admin's user page. Logged as
+  `ROLE_CHANGED` with the actor; an admin cannot remove their own superadmin role, because with
+  one administrator that locks everyone out. `admin-users.spec.ts` (three cases) and
+  `apps/web/e2e/admin-role.spec.ts`.
+- **A guard for Voyage spend.** Embedding was the one AI spend the product could not see: the
+  ₹100 ceiling (`UsageService.consume`) and the §14 alerts read `AiCallLog`, and nothing wrote an
+  `EMBED` row. Now `EmbeddingProvider.embedWithUsage` returns the tokens Voyage reports billing
+  (§11.5: never an estimate), the two bulk sites — `index-source`, one row per paper, and the
+  coherence run's chapter re-embedding, one row per run — log it priced by
+  `computeEmbeddingCost`, and the ceiling and alerts include it with no change of their own. Query
+  embeddings (a chat question, a citation suggestion: 20–50 tokens, ≈₹0.0002) are still unlogged;
+  the per-student bound on those is the action caps. The Voyage adapter gained an injected `fetch`
+  and its first test (`voyage.spec.ts`), per the hard-won rule about adapters nobody has run.

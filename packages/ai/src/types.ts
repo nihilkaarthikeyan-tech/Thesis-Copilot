@@ -77,6 +77,12 @@ export interface LlmProvider {
 /** PRD §10.2. */
 export interface EmbeddingProvider {
   embed(texts: readonly string[]): Promise<number[][]>;
+  /**
+   * The same, with the tokens the provider reports having billed (2026-09-25). §11.5 prices from
+   * actual usage, never an estimate, and until this existed embedding was the one AI spend the
+   * per-user ceiling and the §14 alerts could not see.
+   */
+  embedWithUsage(texts: readonly string[]): Promise<{ vectors: number[][]; tokens: number }>;
   readonly dims: number;
   readonly modelId: string;
 }

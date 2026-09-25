@@ -56,6 +56,15 @@ import { readOutline } from '@tc/types';
 import type { ZodType } from 'zod';
 
 export type CoherenceRunDeps = {
+  /** One EMBED call row for the run's chapter re-embedding (2026-09-25); see index-source. */
+  logEmbed?: (call: {
+    userId: string;
+    documentId: string;
+    tokens: number;
+    latencyMs: number;
+    ok: boolean;
+    error?: string;
+  }) => Promise<void>;
   prisma: PrismaClient;
   llm: LlmProvider;
   embeddings: EmbeddingProvider;
@@ -238,13 +247,17 @@ export async function runCoherence(
 
   // ---- B1.1: re-chunk and re-embed the changed chapters -------------------------------------
   await progress('check-started', { type: 'INDEX' });
+  let embedTokens = 0;
+  const embedStarted = Date.now();
   for (const chapter of changed) {
     const chunks = chunkChapter(chapter.content);
     if (chunks.length === 0) {
       await replaceChapterChunks(deps.prisma as unknown as RawClient, chapter.id, []);
       continue;
     }
-    const vectors = await deps.embeddings.embed(chunks.map((c) => c.text));
+    const counted = await deps.embeddings.embedWithUsage(chunks.map((c) => c.text));
+    embedTokens += counted.tokens;
+    const vectors = counted.vectors;
     await replaceChapterChunks(
       deps.prisma as unknown as RawClient,
       chapter.id,
@@ -257,6 +270,15 @@ export async function runCoherence(
         embedding: vectors[i] ?? [],
       })),
     );
+  }
+  if (embedTokens > 0) {
+    await deps.logEmbed?.({
+      userId: job.userId,
+      documentId: job.documentId,
+      tokens: embedTokens,
+      latencyMs: Date.now() - embedStarted,
+      ok: true,
+    });
   }
   await progress('check-done', { type: 'INDEX', flags: 0 });
 

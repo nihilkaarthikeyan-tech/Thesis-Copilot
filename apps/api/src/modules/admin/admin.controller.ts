@@ -37,6 +37,12 @@ const usersQuery = z.object({
 
 const flagBody = z.object({ enabled: z.boolean() });
 const planBody = z.object({ plan: z.enum(PLANS) });
+/**
+ * The roles an admin may hand out (2026-09-25). GUIDE is not one of them: the share flow sets it
+ * on the person a student invites, and nothing else should.
+ */
+export const ASSIGNABLE_ROLES = ['STUDENT', 'INSTITUTION_ADMIN', 'SUPERADMIN'] as const;
+const roleBody = z.object({ role: z.enum(ASSIGNABLE_ROLES) });
 const feedbackBody = z.object({
   documentId: z.string().uuid(),
   message: z.string().trim().min(1).max(4_000),
@@ -82,6 +88,19 @@ export class AdminController {
     const parsed = planBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid plan', parsed.error.issues);
     return this.users.setPlan(admin.id, id, parsed.data.plan);
+  }
+
+  /**
+   * Make someone an admin, or stop them being one (2026-09-25). Until this existed the only
+   * superadmin was the one the seed made from `SEED_ADMIN_EMAIL`, so a second administrator —
+   * the owner's manager, an HR admin — had no way in short of editing the database.
+   */
+  @Put('users/:id/role')
+  @UseGuards(SessionGuard, SuperadminGuard)
+  setRole(@CurrentUser() admin: SessionUser, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = roleBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid role', parsed.error.issues);
+    return this.users.setRole(admin.id, id, parsed.data.role);
   }
 
   /**

@@ -161,7 +161,15 @@ function fakes(
       embed: vi.fn(async (texts: string[]) =>
         texts.map(() => Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.1)),
       ),
+      // Through `embed`, so the test that counts re-embedding still sees it.
+      async embedWithUsage(texts: string[]) {
+        return {
+          vectors: await this.embed(texts),
+          tokens: texts.reduce((n, t) => n + Math.ceil(t.length / 4), 0),
+        };
+      },
     },
+    logEmbed: vi.fn(async () => undefined),
     aiProvider: 'mock' as const,
     log: () => undefined,
     onProgress: (event: { type: string; data: Record<string, unknown> }) => {
@@ -638,5 +646,22 @@ describe('the citation-support check (ADR-0023)', () => {
 
   it('counts its calls in the budget estimate', () => {
     expect(estimateRun(1, 0, 60)).toBeGreaterThan(estimateRun(1, 0, 0));
+  });
+});
+
+describe('the chapter re-embedding is logged as spend (2026-09-25)', () => {
+  it('records one EMBED call for the run with the tokens the provider billed', async () => {
+    const f = fakes({
+      chapters: [
+        { id: 'ch-1', title: 'Introduction', order: 1, sentences: CHAPTER_TEXT, changed: true },
+      ],
+    });
+    await runCoherence(JOB, f.deps);
+    const logEmbed = (f.deps as unknown as { logEmbed: ReturnType<typeof vi.fn> }).logEmbed;
+    expect(logEmbed).toHaveBeenCalledTimes(1);
+    const call = logEmbed.mock.calls[0]?.[0] as { userId: string; tokens: number; ok: boolean };
+    expect(call.userId).toBe(JOB.userId);
+    expect(call.ok).toBe(true);
+    expect(call.tokens).toBeGreaterThan(0);
   });
 });
