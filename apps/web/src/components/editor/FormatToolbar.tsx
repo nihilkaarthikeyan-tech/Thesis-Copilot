@@ -596,6 +596,33 @@ export function FormatToolbar({
             >
               <span className="text-[12px] leading-none">→+</span>
             </Tool>
+            {/* Merge needs two or more cells selected (drag across them); split needs a merged
+                cell. Shown only when they would do something, like the rest of this group. */}
+            {editor.can().mergeCells() ? (
+              <Tool
+                label="Merge cells"
+                testId="fmt-merge-cells"
+                onClick={() => editor.chain().focus().mergeCells().run()}
+              >
+                <span className="text-[11px] font-medium leading-none">Merge</span>
+              </Tool>
+            ) : null}
+            {editor.can().splitCell() ? (
+              <Tool
+                label="Split cell"
+                testId="fmt-split-cell"
+                onClick={() => editor.chain().focus().splitCell().run()}
+              >
+                <span className="text-[11px] font-medium leading-none">Split</span>
+              </Tool>
+            ) : null}
+            <Tool
+              label="Header row"
+              testId="fmt-header-row"
+              onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+            >
+              <span className="text-[11px] font-medium leading-none">Header</span>
+            </Tool>
             <Tool label="Delete row" onClick={() => editor.chain().focus().deleteRow().run()}>
               <span className="text-[12px] leading-none">⌫R</span>
             </Tool>

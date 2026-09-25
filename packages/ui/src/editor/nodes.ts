@@ -9,7 +9,7 @@
 import { findParentNode, Mark, mergeAttributes, Node, textblockTypeInputRule } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import Image from '@tiptap/extension-image';
-import { TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { insertBlockWithCaretAfter } from './insert-block.js';
 
 export const NeedsSourceNote = Node.create({
@@ -143,6 +143,46 @@ export const ThesisImage = Image.extend<{
       },
     };
   },
+  /**
+   * A pasted or dropped picture becomes a figure (2026-09-25). Screenshots are how figures
+   * actually arrive, and until this the only way in was the file picker: pasting one did nothing.
+   * The same upload and the same format rules as the picker, so a WebP pasted from a browser gets
+   * the same "save it as PNG" answer rather than a silent nothing. Without an upload handler — a
+   * co-author's editor, whose uploads would land in someone else's account — pictures are left to
+   * the default, which ignores them.
+   */
+  addProseMirrorPlugins() {
+    const upload = this.options.upload;
+    if (!upload) return this.parent?.() ?? [];
+    const editor = this.editor;
+    const imagesIn = (files: FileList | null | undefined) =>
+      [...(files ?? [])].filter((file) => file.type.startsWith('image/'));
+    return [
+      ...(this.parent?.() ?? []),
+      new Plugin({
+        key: new PluginKey('figurePaste'),
+        props: {
+          handlePaste: (_view, event) => {
+            const files = imagesIn(event.clipboardData?.files);
+            if (files.length === 0) return false;
+            event.preventDefault();
+            for (const file of files) editor.commands.uploadImage(file);
+            return true;
+          },
+          handleDrop: (view, event) => {
+            const files = imagesIn((event as DragEvent).dataTransfer?.files);
+            if (files.length === 0) return false;
+            event.preventDefault();
+            const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+            if (at) editor.commands.setTextSelection(at.pos);
+            for (const file of files) editor.commands.uploadImage(file);
+            return true;
+          },
+        },
+      }),
+    ];
+  },
+
   addNodeView() {
     const resolveUrl = this.options.resolveUrl;
     return ({ node }) => {

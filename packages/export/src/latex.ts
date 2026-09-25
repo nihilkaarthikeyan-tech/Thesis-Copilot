@@ -24,6 +24,7 @@
 import { numberingMap, type TemplateSpec } from '@tc/types';
 import JSZip from 'jszip';
 import { captionOf, withCaptionsResolved } from './captions.js';
+import { gridOf, ruleUnder } from './table-grid.js';
 import { type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
 type Node = {
@@ -267,15 +268,34 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
 
 function table(node: Node, ctx: ChapterContext): string {
   const { spec } = ctx.input;
-  const rows = node.content ?? [];
-  const columns = Math.max(1, ...rows.map((row) => (row.content ?? []).length));
-  const body = rows.map((row) => {
-    const cells = (row.content ?? []).map((cell) => {
-      const text = blocks(cell.content ?? [], ctx, true).join(' \\par ');
-      return cell.type === 'tableHeader' && text ? `\\textbf{${text}}` : text;
-    });
-    while (cells.length < columns) cells.push('');
-    return `${cells.join(' & ')} \\\\ \\hline`;
+  // Laid out on its real grid so a merged cell keeps every other column where it belongs.
+  const grid = gridOf(node);
+  const { columns } = grid;
+  // A wide cell spans several `X` columns; `p{}` of their joint width lets its text wrap.
+  const wide = (span: number) => `|p{\\dimexpr\\linewidth*${span}/${columns}-2\\tabcolsep\\relax}|`;
+  const body = grid.rows.map((row, r) => {
+    const cells: string[] = [];
+    for (const slot of row) {
+      if (slot.kind === 'right') continue;
+      if (slot.kind === 'empty') {
+        cells.push('');
+        continue;
+      }
+      if (slot.kind === 'below') {
+        // The rows a tall cell reaches into still name its columns, empty.
+        if (slot.lead)
+          cells.push(
+            slot.colspan > 1 ? `\\multicolumn{${slot.colspan}}{${wide(slot.colspan)}}{}` : '',
+          );
+        continue;
+      }
+      const text = blocks(slot.cell.content ?? [], ctx, true).join(' \\par ');
+      let out = slot.cell.type === 'tableHeader' && text ? `\\textbf{${text}}` : text;
+      if (slot.rowspan > 1) out = `\\multirow{${slot.rowspan}}{=}{${out}}`;
+      if (slot.colspan > 1) out = `\\multicolumn{${slot.colspan}}{${wide(slot.colspan)}}{${out}}`;
+      cells.push(out);
+    }
+    return `${cells.join(' & ')} \\\\ ${ruleUnder(grid, r)}`;
   });
   // The index the editor gave this table, so `\ref` and the caption agree with the screen.
   const refId =
@@ -505,6 +525,7 @@ function preamble(input: LatexExportInput): string[] {
     '\\usepackage{amsmath,amssymb}',
     '\\usepackage{graphicx}',
     '\\usepackage{tabularx}',
+    '\\usepackage{multirow}',
     '\\usepackage[normalem]{ulem}',
     '\\usepackage{titlesec}',
     `\\titleformat{\\chapter}[display]{\\normalfont${chapter.bold ? '\\bfseries' : ''}\\Large${align}}{${chapterLabel}}{1em}{${chapter.caps ? '\\MakeUppercase' : ''}}`,

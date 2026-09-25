@@ -15,6 +15,7 @@
 import { formatRef, numberingMap } from '@tc/types';
 import katex from 'katex';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
+import { spanOf } from './table-grid.js';
 import { renderLabel, type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
 type Node = {
@@ -236,7 +237,9 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
             const cells = (row.content ?? [])
               .map((cell) => {
                 const tag = cell.type === 'tableHeader' ? 'th' : 'td';
-                return `<${tag}>${blocks(cell.content ?? [], ctx, true).trim()}</${tag}>`;
+                const { colspan, rowspan } = spanOf(cell);
+                const spans = `${colspan > 1 ? ` colspan="${colspan}"` : ''}${rowspan > 1 ? ` rowspan="${rowspan}"` : ''}`;
+                return `<${tag}${spans}>${blocks(cell.content ?? [], ctx, true).trim()}</${tag}>`;
               })
               .join('');
             return `<tr>${cells}</tr>`;

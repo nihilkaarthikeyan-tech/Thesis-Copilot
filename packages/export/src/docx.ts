@@ -23,6 +23,7 @@ import {
   TextRun,
 } from 'docx';
 import { captionOf } from './captions.js';
+import { docxSpans } from './table-grid.js';
 
 type PmMark = { type?: string; attrs?: Record<string, unknown> };
 type PmNode = {
@@ -315,7 +316,11 @@ function tableFrom(node: PmNode, options: ExportOptions): Table {
           (item): item is Paragraph => item instanceof Paragraph,
         ),
       );
-      return new TableCell({ children: blocks.length > 0 ? blocks : [new Paragraph('')] });
+      return new TableCell({
+        children: blocks.length > 0 ? blocks : [new Paragraph('')],
+        // Word fills the continuation cells of a tall cell itself.
+        ...docxSpans(cell),
+      });
     });
     return new TableRow({
       children: cells.length > 0 ? cells : [new TableCell({ children: [new Paragraph('')] })],

@@ -38,6 +38,7 @@ import {
   WidthType,
 } from 'docx';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
+import { docxSpans } from './table-grid.js';
 
 export type ThesisChapter = {
   id: string;
@@ -456,7 +457,8 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
           (row) =>
             new TableRow({
               children: (row.content ?? []).map(
-                (cell) => new TableCell({ children: cellBlocks(cell, input, chapter) }),
+                (cell) =>
+                  new TableCell({ children: cellBlocks(cell, input, chapter), ...docxSpans(cell) }),
               ),
             }),
         );
