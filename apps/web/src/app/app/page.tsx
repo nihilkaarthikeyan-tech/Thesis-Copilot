@@ -30,7 +30,7 @@ import {
   PageHeader,
 } from '@/components/ui/primitives';
 import { ApiError, api } from '@/lib/api';
-import { signOut } from '@/lib/auth-client';
+import { signOut, useSession } from '@/lib/auth-client';
 
 type DocumentSummary = {
   id: string;
@@ -57,6 +57,9 @@ const ENTRY_PATHS = [
 
 export default function DocumentListPage() {
   const router = useRouter();
+  const session = useSession();
+  // The admin screens are SUPERADMIN-only; the link is the only way a student home says so.
+  const isAdmin = (session.data?.user as { role?: string } | undefined)?.role === 'SUPERADMIN';
   const [documents, setDocuments] = useState<DocumentSummary[] | null>(null);
   const [title, setTitle] = useState('');
   const [entryPath, setEntryPath] = useState<'A_TOPIC' | 'B_PAPER'>('B_PAPER');
@@ -118,6 +121,13 @@ export default function DocumentListPage() {
           </Link>
           <nav className="flex items-center gap-1">
             <ThemeToggle className="mr-1 hidden sm:inline-flex" />
+            {isAdmin ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/admin" data-testid="admin-link">
+                  Admin
+                </Link>
+              </Button>
+            ) : null}
             <Button asChild variant="ghost" size="sm">
               <Link href="/app/settings">Settings</Link>
             </Button>

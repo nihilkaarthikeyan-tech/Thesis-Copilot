@@ -3674,3 +3674,20 @@ Two things the owner asked for on the day of the `voyage-4` switch.
   embeddings (a chat question, a citation suggestion: 20–50 tokens, ≈₹0.0002) are still unlogged;
   the per-student bound on those is the action caps. The Voyage adapter gained an injected `fetch`
   and its first test (`voyage.spec.ts`), per the hard-won rule about adapters nobody has run.
+
+### Three faults found by the owner signing in — 2026-09-25
+
+- **Google sign-in: `account_not_linked`.** The keys were set and Google sent a valid login back;
+  Better Auth 1.7 refused to attach it to the account the emailed code had created. Fixed with
+  `account.accountLinking = { enabled: true, trustedProviders: ['google'] }`; the library's own
+  gate that refuses to link into an *unverified* local account stays on, and accounts made by the
+  emailed code are verified (checked in the dev database), so the owner's is.
+- **The owner was a student on production.** `deploy.sh` runs migrations, not the seed, and the
+  seed ran before `SEED_ADMIN_EMAIL` held their address. The seed is idempotent and runs at the
+  next release. The home page now shows an Admin link to superadmins; there was none anywhere.
+- **A student's proposal turn could take two minutes.** OpenAlex paused anonymous search that
+  afternoon with `503` and `Retry-After: 60`, and `ScholarlyHttp` honoured it twice inside a
+  request the student was waiting on. That is also what failed CI's `path-a` smoke. The retry wait
+  is now cut short by the caller's signal, and the proposal's gap check passes an 8-second
+  timeout; a background job with no signal still waits politely. `http-retry.spec.ts` pins both.
+  The real fix for search itself is the free OpenAlex key (`docs/PENDING.md`, now urgent).

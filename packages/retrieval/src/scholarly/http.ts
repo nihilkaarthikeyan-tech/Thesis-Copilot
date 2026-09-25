@@ -117,6 +117,27 @@ export class ScholarlyHttp {
     return response ? response.text() : null;
   }
 
+  /**
+   * A retry wait that the caller's signal can cut short. OpenAlex's 503 (2026-09-25) carries
+   * `Retry-After: 60`, and honouring it twice held a student's proposal turn for two minutes; a
+   * request-bound caller passes a timeout and gets its error in seconds, a background job
+   * (no signal) still waits politely.
+   */
+  private async pause(ms: number, signal?: AbortSignal): Promise<void> {
+    if (!signal) return this.sleep(ms);
+    if (signal.aborted) return;
+    let onAbort: (() => void) | undefined;
+    const aborted = new Promise<void>((resolve) => {
+      onAbort = () => resolve();
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+      await Promise.race([this.sleep(ms), aborted]);
+    } finally {
+      if (onAbort) signal.removeEventListener('abort', onAbort);
+    }
+  }
+
   private async get(url: string, accept: string, signal?: AbortSignal): Promise<Response | null> {
     let lastError: ScholarlyError | null = null;
     // Added here, the one place every request passes, so no URL builder can forget it. Errors
@@ -141,7 +162,7 @@ export class ScholarlyHttp {
           null,
           cause instanceof Error ? cause.message : String(cause),
         );
-        if (attempt < this.attempts) await this.sleep(2 ** (attempt - 1) * 500);
+        if (attempt < this.attempts) await this.pause(2 ** (attempt - 1) * 500, signal);
         continue;
       }
 
@@ -151,10 +172,11 @@ export class ScholarlyHttp {
         lastError = new ScholarlyError(this.service, response.status, `HTTP ${response.status}`);
         if (attempt < this.attempts && retryable(response.status)) {
           const retryAfter = Number(response.headers.get('retry-after'));
-          await this.sleep(
+          await this.pause(
             Number.isFinite(retryAfter) && retryAfter > 0
               ? retryAfter * 1000
               : 2 ** (attempt - 1) * 500,
+            signal,
           );
           continue;
         }

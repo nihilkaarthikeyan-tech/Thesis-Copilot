@@ -67,7 +67,13 @@ blocks the agent from continuing to build against mocks.
       limit, not the bill. dashboard.voyageai.com, billing page.
       **Seen again 2026-09-24:** a real Discover run fetched 125 candidates and failed at the
       embedding step with the same 429 — one run's candidates are more than 10K tokens.
-- [ ] **Get the free OpenAlex API key and put it in the VPS `.env` as `OPENALEX_API_KEY`.**
+- [ ] **Get the free OpenAlex API key and put it in the VPS `.env` as `OPENALEX_API_KEY`. Now
+      urgent:** on the afternoon of 2026-09-25 OpenAlex answered every *anonymous* search with
+      `503 "Anonymous search is paused while the search cluster recovers … use a free API key"`.
+      Until the key is set, paper search, the proposal's related-works check and reference
+      resolution on the live site fail whenever OpenAlex does that. Also put the key in the
+      GitHub repository secrets for CI (the browser job drives the proposal against live OpenAlex).
+      Originally:
       Read off help.openalex.org on 2026-09-25: OpenAlex now meters its API by cost. Without a key
       the whole site gets **$0.10 a day** — about 100 searches — and with the free key **$1 a
       day** (≈1,000 searches; single-paper lookups by DOI are free, list queries $0.10 per 1,000).
@@ -75,6 +81,16 @@ blocks the agent from continuing to build against mocks.
       settings, send it; the code already sends it on every OpenAlex request (`ScholarlyHttp`,
       tested). No budget line yet: at launch scale the free tier covers it, and the day it does
       not, OpenAlex answers with a clear error rather than a bill.
+- [ ] **The owner's own account is not superadmin on production (2026-09-25).** Signing in with
+      nihilkaarthikeyan@gmail.com opened a student home. `deploy.sh` runs migrations, not the seed,
+      and the seed (which promotes `SEED_ADMIN_EMAIL`) ran before that variable held this address.
+      The agent runs the seed on the VPS at the next release — idempotent upserts only: the
+      superadmin role, the four feature flags, the example template — and the home page now shows
+      an **Admin** link to superadmins.
+- [ ] **Google sign-in refused the owner with `account_not_linked` (2026-09-25).** The Google keys
+      were set and working; the sign-in library would not attach a Google login to the account the
+      emailed code had already created. Fixed in code (`accountLinking: { enabled, trustedProviders:
+      ['google'] }`, Better Auth's own verified-email gate left on); live at the next release.
 - [ ] **Admin access for the manager / HR (2026-09-25).** Built: `PUT /admin/users/:id/role` and a
       Role control on `/admin/users/:id`. There are no passwords in this product; the credential
       is the email address plus the code it receives. The owner's own address is already the

@@ -179,7 +179,13 @@ export class ProposalService {
   /** FR-1.5: an early OpenAlex look at the clarified topic. A failure here is not the student's. */
   private async gapCheck(topic: string): Promise<NonNullable<ProposalChat['gapCheck']>> {
     try {
-      const result = await this.openalex.searchTopic(topic, PROPOSAL.gapCheckWorks);
+      // Bounded: the student is waiting on this turn. When OpenAlex is degraded it answers 503
+      // with `Retry-After: 60` (2026-09-25), and without the limit the turn took two minutes.
+      const result = await this.openalex.searchTopic(
+        topic,
+        PROPOSAL.gapCheckWorks,
+        AbortSignal.timeout(8_000),
+      );
       return { count: result.count, works: result.works };
     } catch (error) {
       this.logger.warn({ err: error, topic }, 'gap check failed; continuing without it');

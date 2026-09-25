@@ -33,6 +33,11 @@ test('the superadmin changes a user’s role from their page, and it is logged',
   const student = list.rows.find((row) => row.email === studentEmail);
   if (!student) throw new Error('the new student is not on the first page of users');
 
+  // The home page tells an admin where the admin screens are; a student never sees the link.
+  await page.goto('/app');
+  await expect(page.getByTestId('admin-link')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('admin-link')).toHaveAttribute('href', '/admin');
+
   await page.goto(`/admin/users/${student.id}`);
   const role = page.getByTestId('admin-role');
   await expect(role).toHaveValue('STUDENT', { timeout: 30_000 });
