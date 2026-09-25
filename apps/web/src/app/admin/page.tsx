@@ -15,8 +15,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { actionName } from '@/lib/action-names';
+import { isSessionGone, signInUrlFor, useAdminGate } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
-import { signOut, useSession } from '@/lib/auth-client';
+import { signOut } from '@/lib/auth-client';
 
 type CostModel = {
   verified: boolean;
@@ -93,8 +94,8 @@ const inr = (value: number) => `₹${value.toFixed(2)}`;
 
 export default function AdminPage() {
   const router = useRouter();
-  const session = useSession();
-  const signedInAs = session.data?.user.email ?? null;
+  const gate = useAdminGate();
+  const signedInAs = gate.signedInAs;
   const [model, setModel] = useState<CostModel | null>(null);
   const [costs, setCosts] = useState<Costs | null>(null);
   const [budget, setBudget] = useState<Budget | null>(null);
@@ -115,6 +116,7 @@ export default function AdminPage() {
       setError(e instanceof ApiError ? e.problem.title : 'Could not reach the API.');
       return;
     }
+    if (gate.state !== 'admin') return;
     try {
       const [c, t, f] = await Promise.all([
         api<Costs>('/admin/costs'),
@@ -131,18 +133,20 @@ export default function AdminPage() {
       setTelemetry(t);
       setFlags(f);
     } catch (e) {
-      // 401/403: the banner still shows, the numbers do not. That is the intended split.
-      if (e instanceof ApiError && (e.problem.status === 401 || e.problem.status === 403)) {
+      if (isSessionGone(e)) {
+        router.replace(signInUrlFor('/admin'));
+      } else if (e instanceof ApiError && e.problem.status === 403) {
         setForbidden(true);
       } else {
         setError(e instanceof Error ? e.message : 'Could not load the dashboards.');
       }
     }
-  }, []);
+  }, [gate.state, router]);
 
   useEffect(() => {
+    if (gate.state === 'loading' || gate.state === 'anonymous') return;
     void load();
-  }, [load]);
+  }, [load, gate.state]);
 
   async function toggle(flag: Flag) {
     setBusyFlag(flag.key);
@@ -187,13 +191,15 @@ export default function AdminPage() {
                 Signed in as {signedInAs}
               </span>
             ) : null}
-            <button
-              type="button"
-              className="rounded-md border border-line-strong px-2 py-1 text-xs font-semibold text-ink hover:bg-sunk"
-              onClick={() => signOut().then(() => router.replace('/sign-in'))}
-            >
-              Sign out
-            </button>
+            {signedInAs ? (
+              <button
+                type="button"
+                className="rounded-md border border-line-strong px-2 py-1 text-xs font-semibold text-ink hover:bg-sunk"
+                onClick={() => signOut().then(() => router.replace('/sign-in'))}
+              >
+                Sign out
+              </button>
+            ) : null}
           </nav>
         </div>
       </header>
@@ -231,14 +237,18 @@ export default function AdminPage() {
           </p>
         ) : null}
 
-        {forbidden ? (
-          <p className="mt-4 text-sm text-muted">
-            These screens are for administrators.{' '}
-            <Link href="/sign-in" className="underline">
-              Sign in
+        {forbidden || gate.state === 'not-admin' ? (
+          <p className="mt-4 text-sm text-muted" data-testid="admin-not-admin">
+            You are signed in as {signedInAs ?? 'a student'}, which is not an administrator’s
+            account. These screens are for administrators;{' '}
+            <Link href="/app" className="underline">
+              your theses
             </Link>{' '}
-            with an administrator’s address to see them.
+            are this way.
           </p>
+        ) : null}
+        {gate.state === 'loading' || gate.state === 'anonymous' ? (
+          <p className="mt-4 text-sm text-muted">Checking who you are…</p>
         ) : null}
 
         {model ? (

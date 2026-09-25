@@ -21,6 +21,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
 import { Hint, Input, Kbd, Label } from '@/components/ui/primitives';
+import { safeNext } from '@/lib/admin-gate';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 
@@ -58,6 +59,13 @@ export default function SignInPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [google, setGoogle] = useState(false);
+  // Where to go after signing in: `?next=/admin` when a protected page sent the visitor here.
+  // Read from the address in an effect rather than `useSearchParams`, which needs a Suspense
+  // boundary for a statically rendered page.
+  const [next, setNext] = useState('/app');
+  useEffect(() => {
+    setNext(safeNext(new URL(window.location.href).searchParams.get('next')));
+  }, []);
 
   useEffect(() => {
     api<{ emailOtp: boolean; google: boolean }>('/auth/methods')
@@ -88,7 +96,7 @@ export default function SignInPage() {
       setError(result.error.message ?? 'That code did not work. Ask for a new one.');
       return;
     }
-    router.push('/app');
+    router.push(next);
   }
 
   return (
@@ -243,7 +251,7 @@ export default function SignInPage() {
                   size="lg"
                   className="w-full"
                   onClick={() =>
-                    authClient.signIn.social({ provider: 'google', callbackURL: '/app' })
+                    authClient.signIn.social({ provider: 'google', callbackURL: next })
                   }
                 >
                   <GoogleMark />

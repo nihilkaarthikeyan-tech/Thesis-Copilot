@@ -8,12 +8,16 @@
  */
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { actionName } from '@/lib/action-names';
+import { isSessionGone, signInUrlFor, useAdminGate } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
 import { inr, type UserRow, when } from './shared';
 
 export default function AdminUsersPage() {
+  const router = useRouter();
+  useAdminGate();
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +28,11 @@ export default function AdminUsersPage() {
         setUsers(page.rows);
         setTotal(page.total);
       })
-      .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.problem.title : 'Could not load the users.'),
-      );
-  }, []);
+      .catch((e: unknown) => {
+        if (isSessionGone(e)) router.replace(signInUrlFor('/admin/users'));
+        else setError(e instanceof ApiError ? e.problem.title : 'Could not load the users.');
+      });
+  }, [router]);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">

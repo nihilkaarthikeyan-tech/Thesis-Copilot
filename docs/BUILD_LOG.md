@@ -3750,3 +3750,15 @@ screen names the features in words (`apps/web/src/lib/action-names.ts`: Autocomp
 sections, Citation suggestions, Chat with papers, AI edits, Consistency check, Viva preparation…)
 with the code in small type beside it, and the token columns sit behind "Show the token detail".
 The same names reach the user pages and the reset-caps notice.
+
+### Signed out on the admin screen — 2026-09-25
+
+The owner pressed Sign out on the new admin header, reloaded, and got a half page: the public
+cost block, a "Sign in" link inside a sentence, and a Sign out button for a session that no longer
+existed — and read it as "the admin was never built properly". The live log shows exactly that
+sequence (`/auth/sign-out` 200, then every admin request 401). `useAdminGate`
+(`apps/web/src/lib/admin-gate.ts`) now decides the same way on every admin page: signed out →
+`/sign-in?next=<here>` and back afterwards (the sign-in page honours a same-site `next`, for the
+emailed code and for Google); signed in but not an administrator → a sentence naming the account
+and pointing home; a session that ends under the page → back to sign-in rather than a broken page.
+`admin-access.spec.ts` drives both paths.

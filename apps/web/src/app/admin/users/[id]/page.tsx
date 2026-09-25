@@ -11,9 +11,10 @@
  */
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { actionName } from '@/lib/action-names';
+import { isSessionGone, signInUrlFor, useAdminGate } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
 import { inr, type UserRow, when } from '../shared';
 
@@ -35,6 +36,8 @@ const PLANS = ['FREE_TRIAL', 'STUDENT_MONTHLY', 'STUDENT_ANNUAL', 'INSTITUTION_S
 
 export default function AdminUserPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  useAdminGate();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -43,10 +46,11 @@ export default function AdminUserPage() {
   const load = useCallback(() => {
     api<UserDetail>(`/admin/users/${id}`)
       .then(setUser)
-      .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.problem.title : 'Could not load the user.'),
-      );
-  }, [id]);
+      .catch((e: unknown) => {
+        if (isSessionGone(e)) router.replace(signInUrlFor(`/admin/users/${id}`));
+        else setError(e instanceof ApiError ? e.problem.title : 'Could not load the user.');
+      });
+  }, [id, router]);
 
   useEffect(() => {
     load();
