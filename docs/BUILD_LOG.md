@@ -3590,3 +3590,26 @@ the reading pane is not swapped under the supervisor; the "new" mark tells them 
 Proven by `apps/api/test/guide-progress.spec.ts` (writing now, Monday-UTC weeks, the history, the
 partial week) and `apps/web/e2e/guide-live.spec.ts` (the student saves while the supervisor
 watches; the page's clock is run forward a minute; the chapter joins "changed").
+
+### The Chrome add-on — 2026-09-25
+
+ADR-0031, `apps/extension`. The owner's manager set matching Jenni.ai as the bar, and the add-on
+was the last item on Jenni's list that is code. One click on a journal article page, PubMed or
+arXiv: a small window shows the paper, the student's theses and **Add to library**.
+
+It needed no server change. An extension calling a host it holds permission for is not subject to
+CORS, and Chrome sends that host's cookies, so the student's own session on the site carries the
+request — the browser test proves both against the dev stack before anything is claimed. The
+paper goes in through the library's own resolve route, so lookup, full text, indexing and caps are
+unchanged. It reads only the address and the publisher's `<meta>` tags, and only on the tab the
+student clicked (`activeTab`): the fixture page in the test carries a second DOI in its reference
+tags and its text, and the add-on takes the article's own.
+
+Found on the way: the reference line for a long author list read "et al.." — a unit test had been
+written to paper over it before the code was fixed.
+
+Proven by `apps/extension/test/paper.spec.ts` (10: tags, DOIs in addresses, arXiv written the
+library's way, pages that are not papers) and `apps/web/e2e/extension.spec.ts` (the add-on loaded
+into Chromium: adds once, remembers the thesis, refuses the duplicate, says so for a news page and
+for a signed-out student). Publishing it needs the owner's Chrome Web Store account; `STORE.md`
+has the listing ready.

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Thesis Copilot</title>
+  <rect width="128" height="128" rx="28" fill="#33507a"/>
+  <path d="M38 20h38l20 20v64a6 6 0 0 1-6 6H38a6 6 0 0 1-6-6V26a6 6 0 0 1 6-6z" fill="#fdfdfc"/>
+  <path d="M76 20v14a6 6 0 0 0 6 6h14z" fill="#c9cec3"/>
+  <path d="M58 52h12v16h16v12H70v16H58V80H42V68h16z" fill="#33507a"/>
+</svg>

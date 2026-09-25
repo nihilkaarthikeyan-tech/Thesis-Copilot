@@ -69,8 +69,9 @@ were invisible to typecheck, lint and 1,200 passing tests.
 - [x] **Onboarding checklist** ("complete setup 3/5"). Built 2026-09-21 on the owner's list, and
       built to disappear: it renders nothing once all five steps are done. The "what next"
       recommendation stays, because it is the better thing for somebody who knows the product.
-- [ ] **Browser extension.** A separate product with its own store review. Not a feature of this
-      codebase.
+- [x] **Browser extension.** Built 2026-09-25 (ADR-0031, `apps/extension`) once the owner's
+      manager set Jenni parity as the bar: one click on an article page adds the paper to a
+      thesis library. Publishing it is the owner's (`docs/PENDING.md`).
 - [ ] **Tutorials.** Video content, not code.
 
 ## Standing checks, easy to let slip

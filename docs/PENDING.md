@@ -429,8 +429,16 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 - [x] **A setup checklist.** Built 2026-09-21 and built to disappear — it renders nothing once all
       five steps are done. Deriving "has an outline" honestly took two attempts; `docs/BUILD_LOG.md`
       has the account.
-- [ ] **Not planned, and worth saying why:** a browser extension (a separate product with its own
-      store review) and video tutorials (content, not code).
+- [ ] **Publish the Chrome add-on** (ADR-0031 — built and tested 2026-09-25, `apps/extension`).
+      Try it first: build it, then `chrome://extensions` → Developer mode → Load unpacked →
+      `apps/extension/dist` (steps in `apps/extension/README.md`). To publish: create a Chrome Web
+      Store developer account in your name (Google charges a one-time registration fee; the agent
+      cannot pay or create accounts), zip `dist`, and paste the listing, permission reasons and
+      privacy answers from `apps/extension/STORE.md`. Take two screenshots in a real Chrome
+      window. Google reviews it before it is listed. The privacy page's add-on section goes live
+      with the next release.
+- [ ] **Video tutorials** — content, not code, so still yours: a two-minute recording of each of
+      the main screens would do.
 
 ## Decisions and reviews
 

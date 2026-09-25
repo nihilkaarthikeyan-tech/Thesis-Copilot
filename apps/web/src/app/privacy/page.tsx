@@ -48,6 +48,18 @@ export default function PrivacyPage() {
       </p>
 
       <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+        The Chrome add-on
+      </h2>
+      <p className="mt-2 text-muted">
+        It reads a page only when you click its button, and then only the page&rsquo;s address and
+        the tags publishers put on it to describe the article — its title, authors, journal, year
+        and DOI. Never the page&rsquo;s text, never another tab, never your browsing history. When
+        you choose <em>Add to library</em>, it sends that reference to your thesis, using the
+        sign-in you already have on this site. The one thing it keeps in your browser is which
+        thesis you added to last.
+      </p>
+
+      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
         What we log
       </h2>
       <p className="mt-2 text-muted">

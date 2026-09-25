@@ -1,0 +1,22 @@
+{
+  "name": "@tc/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Thesis Copilot for Chrome: add the paper on the page to a thesis library (ADR-0031).",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --target development --out dist-dev",
+    "icons": "node scripts/icons.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@tc/retrieval": "workspace:*",
+    "@types/chrome": "0.3.0",
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}
