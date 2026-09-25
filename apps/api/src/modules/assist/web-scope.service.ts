@@ -93,7 +93,10 @@ export class WebScopeService {
     const options = {
       mailto: this.env.OPENALEX_MAILTO ?? this.env.CROSSREF_MAILTO ?? '',
     };
-    const openalex = new OpenAlexDiscovery(options);
+    const openalex = new OpenAlexDiscovery({
+      ...options,
+      ...(this.env.OPENALEX_API_KEY ? { apiKey: this.env.OPENALEX_API_KEY } : {}),
+    });
 
     // Every index is sent the question's content words, not the question. Rewriting it with the
     // model was rejected — it would make this a metered action — and sending it as typed was the

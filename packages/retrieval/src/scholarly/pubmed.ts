@@ -137,15 +137,15 @@ export class PubMedClient {
   private readonly http: ScholarlyHttp;
   private readonly identity: string;
 
-  constructor(options: ScholarlyClientOptions & { apiKey?: string | null }) {
+  constructor(options: ScholarlyClientOptions) {
     const interval = options.apiKey ? PUBMED.intervalMs.withKey : PUBMED.intervalMs.withoutKey;
+    // `ScholarlyHttp` adds `api_key` to every request itself (the shared mechanism OpenAlex's key
+    // uses too), so it is not written into the identity string as well.
     this.http = new ScholarlyHttp('pubmed', {
       ...options,
       requestsPerSecond: options.requestsPerSecond ?? 1000 / interval,
     });
-    this.identity =
-      `tool=${PUBMED.tool}&email=${encodeURIComponent(options.mailto)}` +
-      (options.apiKey ? `&api_key=${encodeURIComponent(options.apiKey)}` : '');
+    this.identity = `tool=${PUBMED.tool}&email=${encodeURIComponent(options.mailto)}`;
   }
 
   /** Up to ten recent records for a query, best match first, retractions and notices left out. */

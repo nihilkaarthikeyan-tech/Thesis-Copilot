@@ -21,6 +21,14 @@ export type ScholarlyClientOptions = {
   sleep?: (ms: number) => Promise<void>;
   userAgent?: string;
   /**
+   * Sent as the `api_key` query parameter on every request — the name both OpenAlex and NCBI
+   * use. OpenAlex (2026) meters its API by cost: a caller without a key gets $0.10 of use a day,
+   * about a hundred searches for the whole site, against a keyed caller's free $1
+   * (`OPENALEX_API_KEY`). NCBI's raises PubMed's rate (`NCBI_API_KEY`, ADR-0020). Null and the
+   * empty string both mean "none".
+   */
+  apiKey?: string | null;
+  /**
    * Waits for permission to send one request, in place of the in-process limiter — for a service
    * whose limit is per operator rather than per process (arXiv, NCBI). See `sharedGate`.
    */
@@ -77,12 +85,14 @@ export class ScholarlyHttp {
   private readonly attempts: number;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly userAgent: string;
+  private readonly apiKey: string | undefined;
 
   constructor(
     private readonly service: string,
     options: ScholarlyClientOptions,
   ) {
     this.mailto = options.mailto;
+    this.apiKey = options.apiKey || undefined;
     this.doFetch = options.fetch ?? ((url, init) => fetch(url, init));
     this.sleep = options.sleep ?? defaultSleep;
     this.attempts = options.attempts ?? DEFAULT_ATTEMPTS;
@@ -109,6 +119,11 @@ export class ScholarlyHttp {
 
   private async get(url: string, accept: string, signal?: AbortSignal): Promise<Response | null> {
     let lastError: ScholarlyError | null = null;
+    // Added here, the one place every request passes, so no URL builder can forget it. Errors
+    // carry the service and status only, so the key never reaches a log.
+    const target = this.apiKey
+      ? `${url}${url.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(this.apiKey)}`
+      : url;
 
     for (let attempt = 1; attempt <= this.attempts; attempt++) {
       await this.acquire();
@@ -116,7 +131,7 @@ export class ScholarlyHttp {
 
       let response: Response;
       try {
-        response = await this.doFetch(url, {
+        response = await this.doFetch(target, {
           headers: { accept, 'user-agent': this.userAgent },
           ...(signal ? { signal } : {}),
         });

@@ -8,6 +8,11 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > The short answer and the Step 3 table below include it. The sensitivity sections further down
 > were computed before it: add ₹11.16 to their per-student figures. Measured on the real models, a
 > question set costs ₹0.11 and one answer's feedback ₹0.08, so ₹0.37 a use is a ceiling.
+>
+> **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
+> calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
+> ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.
+> Every figure below is updated for it.
 
 Every figure below comes out of `packages/config` — the same code the product bills with. Nothing
 here is typed in by hand. Reproduce all of it with:
@@ -22,21 +27,21 @@ pnpm ai:verify
 
 | | |
 |---|---|
-| **What one student costs us to serve** | **₹25.34 per month, worst case** |
+| **What one student costs us to serve** | **₹25.60 per month, worst case** |
 | **What we charge** | ₹299/month or ₹2,499/year (in the code today) |
-| **Gross profit per student per month** | **₹273.66** |
-| **Gross margin** | **92%** |
-| Our own hard ceiling | ₹100/user/month — we are ₹74.66 under it |
+| **Gross profit per student per month** | **₹273.40** |
+| **Gross margin** | **91%** |
+| Our own hard ceiling | ₹100/user/month — we are ₹74.40 under it |
 
 "Worst case" means a student who uses **every** unit of their monthly allowance, every month. Most
-will not come close. So ₹25.34 is the ceiling on what one student can cost, not an average.
+will not come close. So ₹25.60 is the ceiling on what one student can cost, not an average.
 
-On the annual plan (₹2,499 for 12 months = ₹208/month) the same student costs ₹25.34, leaving
-**₹182.91/month, an 88% margin**.
+On the annual plan (₹2,499 for 12 months = ₹208/month) the same student costs ₹25.60, leaving
+**₹182.65/month, an 88% margin**.
 
 ---
 
-## How the ₹25.34 is calculated
+## How the ₹25.60 is calculated
 
 There are three kinds of cost, and they are added up in `computeMonthlyBudget`
 ([`packages/config/src/cost.ts`](../packages/config/src/cost.ts)).
@@ -65,7 +70,7 @@ provider's own pricing page on 2026-09-13:
 |---|---|---|---|
 | `gpt-5-nano` (fast tier) | 0.05 | 0.40 | 0.1× |
 | `gpt-5-mini` (strong tier) | 0.25 | 2.00 | 0.1× |
-| `voyage-3` (embeddings) | 0.02 | — | — |
+| `voyage-3` (embeddings) | 0.06 | — | — |
 
 ### Step 2 — what each *action* costs
 
@@ -111,9 +116,9 @@ Caps are per student per calendar month, from [`plans.ts`](../packages/config/sr
 | AI edits | 4 × 0.1566 | 0.63 |
 | Coherence | 1 × 0.5873 | 0.59 |
 | Viva preparation (ADR-0030) | 30 × 0.3719 | 11.16 |
-| One-time ops, amortised over 4 months | | 0.44 |
+| One-time ops, amortised over 4 months | | 0.70 |
 | Hosting share (at 500 active users) | | 7.00 |
-| **TOTAL** | | **25.34** |
+| **TOTAL** | | **25.60** |
 
 **Free trial (14 days):**
 
@@ -133,10 +138,10 @@ whether or not the seat is filled. The AI a trial user can consume is ₹1.69.
 
 ### The two fixed lines, explained
 
-**One-time ops — ₹0.44/month.** When a student starts, we do a few things once: read and structure
+**One-time ops — ₹0.70/month.** When a student starts, we do a few things once: read and structure
 their uploaded papers (₹0.61), generate the chapter outline (₹0.48), build their style profile
-(₹0.13), and embed a ~30-paper library for search (₹0.52). That is ₹1.74 once, spread over the four
-months a thesis typically takes — ₹0.44 a month.
+(₹0.13), and embed a ~30-paper library for search (₹1.57). That is ₹2.79 once, spread over the four
+months a thesis typically takes — ₹0.70 a month.
 
 **Hosting share — ₹7.00/month.** The whole server, backups and object storage is budgeted at
 ₹3,500/month. Split across an assumed 500 active users that is ₹7 each. **This is the number most

@@ -188,14 +188,20 @@ async function main(): Promise<void> {
   const gateStore = connection.duplicate();
   const scholarly = {
     crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
-    openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
+    openalex: new OpenAlexClient({
+      mailto: env.OPENALEX_MAILTO,
+      ...(env.OPENALEX_API_KEY ? { apiKey: env.OPENALEX_API_KEY } : {}),
+    }),
     unpaywall: new UnpaywallClient({ mailto: env.UNPAYWALL_EMAIL }),
     // FR-2.2's full-text fallback; the key is optional (PRD §13.3), so without it there is no client.
     core: env.CORE_API_KEY
       ? new CoreClient(env.CORE_API_KEY, { mailto: env.UNPAYWALL_EMAIL })
       : null,
     // FR-2.5 discovery: OpenAlex primary, Semantic Scholar only when a key exists (PRD 13.3).
-    discovery: new OpenAlexDiscovery({ mailto: env.OPENALEX_MAILTO }),
+    discovery: new OpenAlexDiscovery({
+      mailto: env.OPENALEX_MAILTO,
+      ...(env.OPENALEX_API_KEY ? { apiKey: env.OPENALEX_API_KEY } : {}),
+    }),
     semanticScholar: env.SEMANTIC_SCHOLAR_API_KEY
       ? new SemanticScholarClient(env.SEMANTIC_SCHOLAR_API_KEY, { mailto: env.OPENALEX_MAILTO })
       : null,

@@ -42,7 +42,14 @@ export const SITE = {
 } as const;
 
 /** The public pages. Anything not here is either behind sign-in or has no business being indexed. */
-export const PUBLIC_ROUTES = ['/', '/pricing', '/privacy', '/refunds'] as const;
+export const PUBLIC_ROUTES = [
+  '/',
+  '/pricing',
+  '/privacy',
+  '/refunds',
+  '/terms',
+  '/contact',
+] as const;
 
 /**
  * Questions people actually ask an answer engine before buying something like this, with answers

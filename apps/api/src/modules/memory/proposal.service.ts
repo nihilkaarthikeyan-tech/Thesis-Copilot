@@ -94,7 +94,10 @@ export class ProposalService {
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {
-    this.openalex = new OpenAlexClient({ mailto: env.OPENALEX_MAILTO });
+    this.openalex = new OpenAlexClient({
+      mailto: env.OPENALEX_MAILTO,
+      ...(env.OPENALEX_API_KEY ? { apiKey: env.OPENALEX_API_KEY } : {}),
+    });
   }
 
   async get(user: SessionUser, documentId: string): Promise<ProposalView> {

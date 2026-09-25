@@ -172,6 +172,10 @@ export default function PricingPage() {
             <Link href="/refunds" className="underline">
               Refund policy
             </Link>
+            ,{' '}
+            <Link href="/terms" className="underline">
+              terms
+            </Link>
             .
           </dd>
         </div>

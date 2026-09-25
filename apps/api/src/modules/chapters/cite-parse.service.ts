@@ -77,7 +77,10 @@ export class CiteParseService {
     // as one extracted from a paper — a match here means what it means everywhere else.
     this.resolver = {
       crossref: new CrossrefClient({ mailto: env.CROSSREF_MAILTO }),
-      openalex: new OpenAlexClient({ mailto: env.OPENALEX_MAILTO }),
+      openalex: new OpenAlexClient({
+        mailto: env.OPENALEX_MAILTO,
+        ...(env.OPENALEX_API_KEY ? { apiKey: env.OPENALEX_API_KEY } : {}),
+      }),
       // ADR-0020: a pasted arXiv DOI for an e-print OpenAlex has not indexed yet.
       arxiv: indexes.arxiv,
     };

@@ -100,6 +100,9 @@ export const envSchema = z
 
     // ---- Scholarly APIs ----
     OPENALEX_MAILTO: z.email('OPENALEX_MAILTO must be an email address'),
+    // OpenAlex meters its API (2026): without a key the whole site gets $0.10 of use a day, about
+    // a hundred searches; the free key raises that to $1. Optional so the app still starts.
+    OPENALEX_API_KEY: optionalString,
     CROSSREF_MAILTO: z.email('CROSSREF_MAILTO must be an email address'),
     UNPAYWALL_EMAIL: z.email('UNPAYWALL_EMAIL must be an email address'),
     SEMANTIC_SCHOLAR_API_KEY: optionalString,

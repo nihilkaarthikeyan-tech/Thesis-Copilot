@@ -103,7 +103,9 @@ const MODEL_PRICES: Record<string, ModelPrice> = {
 export const DEFAULT_PRICING: Pricing = {
   models: MODEL_PRICES,
   tiers: { fast: FAST, strong: STRONG },
-  embeddingPerM: 0.02,
+  // `voyage-3`, read off docs.voyageai.com/docs/pricing on 2026-09-25: USD 0.06 per million tokens,
+  // listed now among Voyage's older models, with no free tokens. PRD §11.1 priced it at 0.02.
+  embeddingPerM: 0.06,
   inrPerUsd: 87,
   hostingInrPerMonth: 3500,
   assumedActiveUsersForHostingShare: 500,

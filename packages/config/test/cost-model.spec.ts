@@ -197,8 +197,10 @@ describe('§11.2 — derived unit costs vs the PRD table', () => {
     });
   }
 
-  it('embedding a ~30-paper library derives ₹0.522 (PRD prints ₹0.50)', () => {
-    expect(microToInr(computeEmbeddingCost(300_000))).toBeCloseTo(0.522, 4);
+  it('embedding a ~30-paper library derives ₹1.566 (PRD prints ₹0.50)', () => {
+    // Voyage's published price for `voyage-3` is USD 0.06/M (2026-09-25); §11.1 had 0.02, which
+    // gave ₹0.522. The guard did its job: a real price change had to be written down here.
+    expect(microToInr(computeEmbeddingCost(300_000))).toBeCloseTo(1.566, 4);
   });
 });
 

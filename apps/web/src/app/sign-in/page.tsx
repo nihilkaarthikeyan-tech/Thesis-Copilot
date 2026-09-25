@@ -261,7 +261,11 @@ export default function SignInPage() {
             </p>
 
             <p className="mt-4 text-[12.5px] leading-relaxed text-faint">
-              By continuing you accept how we handle your text —{' '}
+              By continuing you accept our{' '}
+              <Link href="/terms" className="underline underline-offset-2 hover:text-muted">
+                terms
+              </Link>{' '}
+              and how we handle your text —{' '}
               <Link href="/privacy" className="underline underline-offset-2 hover:text-muted">
                 read that first
               </Link>

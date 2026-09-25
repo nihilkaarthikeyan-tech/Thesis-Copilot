@@ -17,7 +17,10 @@ const mailto = process.env.OPENALEX_MAILTO;
 if (!mailto) throw new Error('OPENALEX_MAILTO is not set');
 
 const prisma = new PrismaClient();
-const openalex = new OpenAlexClient({ mailto });
+const openalex = new OpenAlexClient({
+  mailto,
+  ...(process.env.OPENALEX_API_KEY ? { apiKey: process.env.OPENALEX_API_KEY } : {}),
+});
 
 async function main(): Promise<void> {
   const sources = await prisma.source.findMany({

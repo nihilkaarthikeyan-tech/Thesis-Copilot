@@ -3613,3 +3613,23 @@ library's way, pages that are not papers) and `apps/web/e2e/extension.spec.ts` (
 into Chromium: adds once, remembers the thesis, refuses the duplicate, says so for a news page and
 for a signed-out student). Publishing it needs the owner's Chrome Web Store account; `STORE.md`
 has the listing ready.
+
+### Launch readiness — 2026-09-25
+
+The owner asked what stands between here and a 1 October launch. Built the same day:
+
+- **OpenAlex's API key.** OpenAlex meters its API by cost now (help.openalex.org, read
+  2026-09-25): $0.10 a day without a key, $1 with the free one. `OPENALEX_API_KEY` is optional in
+  `env.ts` and added in `ScholarlyHttp.get`, the one place every OpenAlex request passes, so no
+  URL builder can forget it and the key never reaches a log. `openalex-key.spec.ts` pins that it
+  reaches every kind of request and that nothing changes when unset. Getting the key is the
+  owner's (PENDING).
+- **Voyage's real price.** `voyage-3` lists at $0.06/M tokens, not §11.1's 0.02. `pricing.ts` and
+  the pinned test were corrected with the source and date; a fully active student is ₹25.60, was
+  ₹25.34. The guard test did what it is for.
+- **Terms and Contact pages** (`/terms`, `/contact`), which Razorpay's approval reads. The Terms
+  print the prices, trial and reminder from the tables billing charges by, so they cannot disagree
+  with a charge; every other promise in them is one the code keeps. Company details live in
+  `lib/company.ts`, all `null` until the owner supplies them, and the pages say "To be added."
+  rather than print a guess. Linked from the footer, sign-in and pricing; in the sitemap.
+  `legal-pages.spec.ts` drives both.

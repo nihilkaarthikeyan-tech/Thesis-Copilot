@@ -240,6 +240,12 @@ export default function HomePage() {
             <Link href="/refunds" className="hover:text-ink">
               Refunds
             </Link>
+            <Link href="/terms" className="hover:text-ink">
+              Terms
+            </Link>
+            <Link href="/contact" className="hover:text-ink">
+              Contact
+            </Link>
             <Link href="/app" className="hover:text-ink">
               Your theses
             </Link>

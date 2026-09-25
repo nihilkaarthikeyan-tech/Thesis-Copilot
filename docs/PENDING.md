@@ -67,11 +67,27 @@ blocks the agent from continuing to build against mocks.
       limit, not the bill. dashboard.voyageai.com, billing page.
       **Seen again 2026-09-24:** a real Discover run fetched 125 candidates and failed at the
       embedding step with the same 429 — one run's candidates are more than 10K tokens.
-- [ ] **Check whether OpenAlex now bills.** Every OpenAlex response seen on 2026-09-24 carries
-      `"meta": { "cost_usd": 0.0001 }`. Nothing is charged to us today that we know of, but the
-      field is new and the product calls OpenAlex on every search, resolution and gap check. Read
-      openalex.org's pricing / API-key page and say whether we need a key or a budget line in
-      `docs/COSTING.md`. The agent will not guess a price (§0.3 rule 4).
+- [ ] **Get the free OpenAlex API key and put it in the VPS `.env` as `OPENALEX_API_KEY`.**
+      Read off help.openalex.org on 2026-09-25: OpenAlex now meters its API by cost. Without a key
+      the whole site gets **$0.10 a day** — about 100 searches — and with the free key **$1 a
+      day** (≈1,000 searches; single-paper lookups by DOI are free, list queries $0.10 per 1,000).
+      Beyond that, prepaid in $1 steps. Sign up at openalex.org, create a key in the account
+      settings, send it; the code already sends it on every OpenAlex request (`ScholarlyHttp`,
+      tested). No budget line yet: at launch scale the free tier covers it, and the day it does
+      not, OpenAlex answers with a clear error rather than a bill.
+- [ ] **Add a payment method to the Voyage account** (also listed under AI above). Price read off
+      docs.voyageai.com on 2026-09-25: `voyage-3` is **USD 0.06 per million tokens**, pay-as-you-go,
+      no minimum — about ₹1.60 to make a 30-paper library searchable, under ₹5 per active student
+      a month. `docs/COSTING.md` and `pricing.ts` now carry 0.06 (they had §11.1's 0.02).
+      Optional switch: `voyage-4` costs the same and gives 200M free tokens (≈650 libraries);
+      cheapest to do while the live site has almost no papers, since every stored paper would be
+      re-embedded. Say the word.
+- [ ] **Fill in the company details for the Terms and Contact pages** (`apps/web/src/lib/company.ts`,
+      2026-09-25): legal name, registered address, a support email a person reads, a phone number,
+      and the city for jurisdiction. Every one is `null` today and the pages print "To be added."
+      — nothing is invented. Razorpay's approval reads these pages, so they must be real before
+      the Razorpay application. Then approve the Terms (`/terms`) themselves: drafted in plain
+      words from what the code does, and they are your contract with the student.
 - [x] **Done 2026-09-25, before v0.1.5: back up the MinIO volume** (ADR-0024). The files and a
       full database dump are on the server in `/root/backups/pre-v0.1.5/` (`minio_data.tar.gz`,
       `postgres.dump`); MinIO now runs Chainguard's image and reports healthy. Delete the backups
