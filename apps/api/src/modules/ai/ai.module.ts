@@ -24,6 +24,8 @@ import {
   mockRevisionFor,
   mockSectionScopeResponse,
   mockStyleResponse,
+  mockVivaFeedbackResponse,
+  mockVivaQuestionsResponse,
   type Providers,
 } from '@tc/ai';
 import type { Env } from '@tc/config';
@@ -80,6 +82,9 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 mockCiteRoleResponse,
                 // ADR-0026: proofreading is metered as COMMAND too; matched by `<proofread>`.
                 mockProofreadResponse,
+                // ADR-0030: viva preparation, its own action; matched by its outer tag.
+                mockVivaQuestionsResponse,
+                mockVivaFeedbackResponse,
                 mockCommandResponse,
                 mockStyleResponse,
                 {

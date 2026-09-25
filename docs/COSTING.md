@@ -3,6 +3,12 @@
 Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on the fast tier,
 `gpt-5-mini` on the strong tier, `voyage-3` for embeddings (ADR-0011).
 
+> **2026-09-25 — viva preparation (ADR-0030).** A seventh allowance, 30 viva uses a month on the
+> paid plans, adds up to ₹11.16 (30 × ₹0.3719) and takes the worst case from ₹14.18 to **₹25.34**.
+> The short answer and the Step 3 table below include it. The sensitivity sections further down
+> were computed before it: add ₹11.16 to their per-student figures. Measured on the real models, a
+> question set costs ₹0.11 and one answer's feedback ₹0.08, so ₹0.37 a use is a ceiling.
+
 Every figure below comes out of `packages/config` — the same code the product bills with. Nothing
 here is typed in by hand. Reproduce all of it with:
 
@@ -16,21 +22,21 @@ pnpm ai:verify
 
 | | |
 |---|---|
-| **What one student costs us to serve** | **₹14.18 per month, worst case** |
+| **What one student costs us to serve** | **₹25.34 per month, worst case** |
 | **What we charge** | ₹299/month or ₹2,499/year (in the code today) |
-| **Gross profit per student per month** | **₹284.82** |
-| **Gross margin** | **95%** |
-| Our own hard ceiling | ₹100/user/month — we are ₹85.82 under it |
+| **Gross profit per student per month** | **₹273.66** |
+| **Gross margin** | **92%** |
+| Our own hard ceiling | ₹100/user/month — we are ₹74.66 under it |
 
 "Worst case" means a student who uses **every** unit of their monthly allowance, every month. Most
-will not come close. So ₹14.18 is the ceiling on what one student can cost, not an average.
+will not come close. So ₹25.34 is the ceiling on what one student can cost, not an average.
 
-On the annual plan (₹2,499 for 12 months = ₹208/month) the same student costs ₹14.18, leaving
-**₹193.99/month, a 93% margin**.
+On the annual plan (₹2,499 for 12 months = ₹208/month) the same student costs ₹25.34, leaving
+**₹182.91/month, an 88% margin**.
 
 ---
 
-## How the ₹14.18 is calculated
+## How the ₹25.34 is calculated
 
 There are three kinds of cost, and they are added up in `computeMonthlyBudget`
 ([`packages/config/src/cost.ts`](../packages/config/src/cost.ts)).
@@ -104,9 +110,10 @@ Caps are per student per calendar month, from [`plans.ts`](../packages/config/sr
 | Chat | 15 × 0.0296 | 0.44 |
 | AI edits | 4 × 0.1566 | 0.63 |
 | Coherence | 1 × 0.5873 | 0.59 |
+| Viva preparation (ADR-0030) | 30 × 0.3719 | 11.16 |
 | One-time ops, amortised over 4 months | | 0.44 |
 | Hosting share (at 500 active users) | | 7.00 |
-| **TOTAL** | | **14.18** |
+| **TOTAL** | | **25.34** |
 
 **Free trial (14 days):**
 

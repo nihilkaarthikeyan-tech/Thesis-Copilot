@@ -25,6 +25,8 @@ export const AI_ACTIONS = [
   // under. Both are once-per-document Strong calls, bounded like EXTRACT (§11.4), not capped.
   'PROPOSAL',
   'CROSS_PAPER',
+  // ADR-0030: viva preparation — a question set, or feedback on one typed answer.
+  'VIVA',
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -34,6 +36,18 @@ export type AiAction = (typeof AI_ACTIONS)[number];
  * reached, before any provider call is made (§11.5).
  */
 export const METERED_ACTIONS = [
+  'ASSIST',
+  'DRAFT',
+  'CITE',
+  'CHAT',
+  'COMMAND',
+  'COHERENCE',
+  // ADR-0030. Not in §11.3: its cap is set there, and priced at the configured models.
+  'VIVA',
+] as const satisfies readonly AiAction[];
+
+/** The six §11.3 rows — what the PRD's own budget table (§11.4) prices. */
+export const PRD_METERED_ACTIONS = [
   'ASSIST',
   'DRAFT',
   'CITE',

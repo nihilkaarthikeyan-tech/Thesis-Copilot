@@ -36,6 +36,16 @@ blocks the agent from continuing to build against mocks.
       refuses anything that puts a different word in (`correctionSize`) — but it is still content
       and still yours. Same choice as above: add it to the PRD as an A.12 entry, or say what to
       change.
+- [ ] **Review the two viva prompts** (ADR-0030): `packages/ai/prompts/viva_questions.md` and
+      `viva_feedback.md`, the fourth and fifth not from Appendix A. The first writes examiner
+      questions about paragraphs of the student's thesis; the second judges a typed answer and
+      must never write the answer for them. Code already drops a question about an unsent
+      paragraph and any quotation that is not the thesis's own words. Same choice as above: add
+      them to the PRD as A.12 entries, or say what to change.
+- [ ] **Know this before moving the strong tier back to Claude** (ADR-0030): the ₹100 check now
+      judges the whole budget at the configured models. Viva's 30 uses a month cost ₹11.16 on
+      `gpt-5-mini` and would cost ₹98.66 on Sonnet, so its cap must come down first.
+      `pnpm ai:verify` prints the budget for whatever `.env` configures.
 - [ ] **Amend the PRD for ADR-0011**: §7.2's AI SDK row (a second provider, and per-tier routing)
       and §13.3's variable list (`OPENAI_API_KEY`). Same kind of follow-up as ADR-0010's A.17.
 - [x] **Confirm the model prices** (§0.3 rule 4 — the agent must not guess a price). Done

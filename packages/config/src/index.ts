@@ -4,6 +4,7 @@ export {
   isMetered,
   METERED_ACTIONS,
   type MeteredAction,
+  PRD_METERED_ACTIONS,
   type Tier,
   UNMETERED_ACTIONS,
   type UnmeteredAction,

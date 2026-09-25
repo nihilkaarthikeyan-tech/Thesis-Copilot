@@ -87,6 +87,7 @@ describe('§12.1: another user’s resources answer 404, never 403', () => {
     ['document versions', '/documents/{d}/versions'],
     ['sources', '/documents/{d}/sources'],
     ['citation report', '/documents/{d}/citation-report'],
+    ['viva questions', '/documents/{d}/viva'],
     ['seed papers', '/documents/{d}/seed-papers'],
     ['one seed paper', '/documents/{d}/seed-papers/{sp}'],
     ['source file', '/sources/{s}/file'],
@@ -160,6 +161,35 @@ describe('§12.1: another user’s resources answer 404, never 403', () => {
     });
     expect(response.status).toBe(404);
     expect(await h.prisma.aiCallLog.count({ where: { documentId, action: 'COMMAND' } })).toBe(0);
+  });
+
+  it('cannot ask viva questions about A’s thesis or answer A’s, and is not charged', async () => {
+    const asked = await asB(`/viva/${documentId}/questions`, { method: 'POST', body: '{}' });
+    expect(asked.status).toBe(404);
+
+    const question = await h.prisma.vivaQuestion.create({
+      data: {
+        documentId,
+        setId: documentId,
+        order: 0,
+        kind: 'method',
+        question: 'Why this sample?',
+        probing: 'Sampling.',
+        chapterId,
+        passage: 'A passage.',
+        from: 1,
+        to: 10,
+      },
+    });
+    const answered = await asB(`/viva/questions/${question.id}/answer`, {
+      method: 'POST',
+      body: JSON.stringify({ answer: 'An answer typed by somebody else entirely.' }),
+    });
+    expect(answered.status).toBe(404);
+    expect(await h.prisma.aiCallLog.count({ where: { documentId, action: 'VIVA' } })).toBe(0);
+    expect(
+      (await h.prisma.vivaQuestion.findUniqueOrThrow({ where: { id: question.id } })).answer,
+    ).toBeNull();
   });
 
   it('cannot use A’s chapter as grounding for a suggestion', async () => {

@@ -269,6 +269,26 @@ export {
 } from './builder/themes.js';
 export { approxTokens, CHARS_PER_TOKEN, headByTokens, tailByTokens } from './builder/tokens.js';
 export {
+  buildVivaFeedbackRequest,
+  buildVivaQuestionsRequest,
+  mockVivaFeedbackResponse,
+  mockVivaQuestionsResponse,
+  postProcessVivaFeedback,
+  postProcessVivaQuestions,
+  VIVA,
+  VIVA_KINDS,
+  VIVA_VERDICTS,
+  type VivaFeedback,
+  type VivaFeedbackResult,
+  type VivaKind,
+  type VivaPassage,
+  type VivaQuestionDraft,
+  type VivaQuestionsResult,
+  type VivaVerdict,
+  vivaFeedbackSchema,
+  vivaQuestionsSchema,
+} from './builder/viva.js';
+export {
   buildCrossPaperRequest,
   type CrossPaperInput,
   type CrossPaperResult,

@@ -53,6 +53,8 @@ import {
   buildTermDriftRequest,
   buildThemesRequest,
   buildUnsupportedRequest,
+  buildVivaFeedbackRequest,
+  buildVivaQuestionsRequest,
   citeResultSchema,
   claimsSchema,
   classifySchema,
@@ -66,6 +68,8 @@ import {
   parseProposalReply,
   postProcessDraft,
   postProcessProofread,
+  postProcessVivaFeedback,
+  postProcessVivaQuestions,
   proofreadSchema,
   queriesSchema,
   sectionScopeSchema,
@@ -74,6 +78,9 @@ import {
   termDriftSchema,
   themesSchema,
   unsupportedSchema,
+  type VivaPassage,
+  vivaFeedbackSchema,
+  vivaQuestionsSchema,
 } from '../src/index.js';
 import { REASONING_HEADROOM } from '../src/providers/openai.js';
 import type { LlmProvider, LlmRequest } from '../src/types.js';
@@ -154,6 +161,21 @@ const PROOFREAD_SENTENCES = [
   {
     id: 's4',
     text: 'A household that must finance the full amount for three months is unsubsidised.',
+  },
+];
+
+/** Three passages of a thesis for the viva cases — the chapter above, cut as the API cuts it. */
+const VIVA_PASSAGES: VivaPassage[] = [
+  { id: 'p1', chapterTitle: 'Barriers to adoption', text: CHAPTER_TEXT },
+  {
+    id: 'p2',
+    chapterTitle: 'Method',
+    text: 'Forty-two households in three districts were interviewed between March and June 2021, chosen from installer enquiry lists so that each had considered rooftop solar. Twenty had installed a system and twenty-two had not. Interviews were coded for the reasons given for proceeding or stopping.',
+  },
+  {
+    id: 'p3',
+    chapterTitle: 'Conclusion',
+    text: 'The evidence here suggests that the subsidy is necessary but not sufficient. A local service presence and faster disbursement would likely do more for adoption than a larger subsidy, though the sample is small and drawn from enquirers only.',
   },
 ];
 
@@ -558,6 +580,50 @@ const cases: Case[] = [
         return `no correction survived (${refused} refused) for three planted mistakes`;
       }
       return null;
+    },
+  },
+  {
+    name: 'viva — questions an examiner could ask about the thesis',
+    site: 'apps/api/.../viva.service.ts',
+    request: buildVivaQuestionsRequest({
+      title: SCOPE.workingTitle,
+      passages: VIVA_PASSAGES,
+      userId: USER,
+      documentId: DOC,
+    }),
+    schema: vivaQuestionsSchema,
+    // Every question must name a passage that was sent; none surviving is the failure to catch.
+    check: (value) => {
+      const { questions, dropped } = postProcessVivaQuestions(
+        value as Parameters<typeof postProcessVivaQuestions>[0],
+        new Set(VIVA_PASSAGES.map((p) => p.id)),
+      );
+      return questions.length === 0 ? `no question survived (${dropped} named no passage)` : null;
+    },
+  },
+  {
+    name: 'viva — feedback on a typed answer',
+    site: 'apps/api/.../viva.service.ts',
+    request: buildVivaFeedbackRequest({
+      question:
+        'Why interview only households that had already enquired, and what does that cost you?',
+      probing: 'Whether the student sees the selection bias in the sample.',
+      passages: VIVA_PASSAGES.slice(1),
+      answer:
+        'We used the installer lists because they were available and the households had at least considered solar, so they could talk about why they stopped. I suppose it means we do not hear from people who never thought about it.',
+      userId: USER,
+      documentId: DOC,
+    }),
+    schema: vivaFeedbackSchema,
+    check: (value) => {
+      const feedback = postProcessVivaFeedback(
+        value as Parameters<typeof postProcessVivaFeedback>[0],
+        VIVA_PASSAGES.slice(1),
+      );
+      if (feedback.gaps.length === 0 && feedback.strengths.length === 0) {
+        return 'feedback came back empty';
+      }
+      return feedback.followUp ? null : 'no follow-up question';
     },
   },
   {

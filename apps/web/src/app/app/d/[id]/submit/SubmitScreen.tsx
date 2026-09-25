@@ -285,7 +285,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
       </section>
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
-        <h2 className="eyebrow">Citations</h2>
+        <h2 className="eyebrow">Citations and the viva</h2>
         <p className="mt-1 text-sm">
           Every weak citation in the thesis on one page — retracted papers, sources that do not say
           what the sentence claims, citations typed as plain text.{' '}
@@ -295,6 +295,17 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
             data-testid="open-citation-report"
           >
             Open the citation report →
+          </Link>
+        </p>
+        <p className="mt-2 text-sm">
+          Then the defence: questions an examiner could ask about your thesis, with feedback on your
+          answers.{' '}
+          <Link
+            href={`/app/d/${documentId}/viva`}
+            className="font-semibold text-accent hover:underline"
+            data-testid="open-viva"
+          >
+            Prepare for your viva →
           </Link>
         </p>
       </section>

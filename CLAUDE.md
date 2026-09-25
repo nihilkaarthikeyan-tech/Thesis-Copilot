@@ -163,8 +163,8 @@ co-author, off by default and live only for a document with a co-author). The wh
 built; production needs the v0.1.5 release and, for co-authoring, the host nginx `/collab/`
 location and the flag — both in `docs/PENDING.md`.
 
-**A fully active student costs ₹14.18/month** against the ₹100 ceiling (₹7 of it hosting, ₹6.74
-AI). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
+**A fully active student costs ₹25.34/month** against the ₹100 ceiling (₹7 of it hosting; viva
+preparation, ADR-0030, is ₹11.16 of the rest). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
 ₹299. `pnpm ai:verify` reproduces it. The runtime hard stop at ₹100 of real spend is in
 `UsageService.consume`.
 

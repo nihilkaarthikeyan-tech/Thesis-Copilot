@@ -58,6 +58,8 @@ const AI_PATHS = [
   '/api/v1/chat',
   // ADR-0026: a burst of proofreading runs is shaped like any other AI call; the cap bounds cost.
   '/api/v1/proofread',
+  // ADR-0030: a question set or an answer's feedback. The page's own read is under /documents.
+  '/api/v1/viva/',
 ];
 
 /**

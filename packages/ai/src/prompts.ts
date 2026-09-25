@@ -38,7 +38,7 @@ function findPromptsDir(from: string): string {
 
 export const PROMPTS_DIR = findPromptsDir(here);
 
-/** The 21 prompt files of Appendix A (PRD §10.5), and three it lacks (ADR-0010, -0023, -0026). */
+/** The 21 prompt files of Appendix A (PRD §10.5), and five it lacks (ADR-0010, -0023, -0026, -0030). */
 export const PROMPT_NAMES = [
   '_preamble',
   '_memory',
@@ -68,6 +68,9 @@ export const PROMPT_NAMES = [
   'coh_support',
   // Proofreading, likewise — docs/ADR/0026.
   'proofread',
+  // Viva preparation, likewise — docs/ADR/0030.
+  'viva_questions',
+  'viva_feedback',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

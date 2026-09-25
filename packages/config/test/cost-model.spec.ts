@@ -11,6 +11,7 @@ import {
   type AiAction,
   isMetered,
   METERED_ACTIONS,
+  PRD_METERED_ACTIONS,
   UNMETERED_ACTIONS,
 } from '../src/actions.js';
 import {
@@ -24,9 +25,19 @@ import {
 import { capFor, PLAN_LIMITS, PLANS } from '../src/plans.js';
 import { applyPricingOverride, DEFAULT_PRICING, parsePricingOverride } from '../src/pricing.js';
 
+/**
+ * The models production runs (ADR-0011: `AI_FAST_MODEL` / `AI_STRONG_MODEL` in the server's
+ * `.env`). `pnpm ai:verify` checks the same ceiling against whatever is actually configured.
+ */
+const PRODUCTION_MODELS = { fast: 'gpt-5-nano', strong: 'gpt-5-mini' } as const;
+
 describe('Appendix E.2 — cost self-check', () => {
-  it('the fully active STUDENT budget stays within the ₹100 ceiling', () => {
-    const budget = computeMonthlyBudget('STUDENT_MONTHLY');
+  // ADR-0030, the owner's decision (2026-09-25): the PRD's own table — its six §11.3 rows at its
+  // reference prices — stays within ₹100 on its own; and the whole budget, every metered action
+  // included, stays within ₹100 at the models production runs. At the reference prices the six
+  // rows already came to ₹98.92, so nothing could be added and still be checked there.
+  it('the PRD’s own STUDENT table stays within the ₹100 ceiling at its reference prices', () => {
+    const budget = computeMonthlyBudget('STUDENT_MONTHLY', { actions: PRD_METERED_ACTIONS });
 
     // Printed so the §11.4 table appears in CI output and can be pasted into the build log.
     console.log(`\n${formatBudget(budget)}\n`);
@@ -35,10 +46,26 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(budget.totalInr).toBeLessThanOrEqual(100);
   });
 
-  it('STUDENT_ANNUAL and INSTITUTION_SEAT are within the ceiling too', () => {
+  it('the whole STUDENT budget, viva included, stays within ₹100 at the production models', () => {
+    const budget = computeMonthlyBudget('STUDENT_MONTHLY', { models: PRODUCTION_MODELS });
+    console.log(`\n${formatBudget(budget)}\n`);
+    expect(budget.lines.map((line) => line.label)).toContain('Viva preparation');
+    expect(budget.withinCeiling).toBe(true);
+  });
+
+  it('STUDENT_ANNUAL and INSTITUTION_SEAT are within the ceiling too, on both bases', () => {
     for (const plan of ['STUDENT_ANNUAL', 'INSTITUTION_SEAT'] as const) {
-      expect(computeMonthlyBudget(plan).totalInr, plan).toBeLessThanOrEqual(100);
+      const prd = computeMonthlyBudget(plan, { actions: PRD_METERED_ACTIONS });
+      expect(prd.totalInr, plan).toBeLessThanOrEqual(100);
+      const production = computeMonthlyBudget(plan, { models: PRODUCTION_MODELS });
+      expect(production.totalInr, plan).toBeLessThanOrEqual(100);
     }
+  });
+
+  it('viva is what the reference prices cannot carry — the reason for the two bases', () => {
+    // If this ever fails, everything fits at the reference prices again and ADR-0030's split
+    // can be revisited.
+    expect(computeMonthlyBudget('STUDENT_MONTHLY').totalInr).toBeGreaterThan(100);
   });
 
   it('FREE_TRIAL costs less than a paid plan', () => {
@@ -87,6 +114,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       CHAT: 5,
       COMMAND: 2,
       COHERENCE: 0,
+      // ADR-0030: not a §11.3 row.
+      VIVA: 3,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
     expect(PLAN_LIMITS.FREE_TRIAL.libraryPdfs).toBe(10);
@@ -108,6 +137,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       // under the ₹100 ceiling. The ceiling test below is what caught it.
       COMMAND: 4,
       COHERENCE: 1,
+      // ADR-0030: not a §11.3 row.
+      VIVA: 30,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);

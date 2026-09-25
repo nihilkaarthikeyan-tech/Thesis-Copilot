@@ -77,6 +77,7 @@ enum AiAction {
   EMBED
   PROPOSAL      // ADR-0005: Path A conversation (A.6)
   CROSS_PAPER   // ADR-0005: multi-paper consistency pass (A.16)
+  VIVA          // ADR-0030: viva preparation — a question set, or feedback on one answer
 }
 enum FlagType {
   TERM_DRIFT
@@ -210,6 +211,7 @@ model Document {
   sources     Source[]
   seedPapers  SeedPaper[]
   flags       CoherenceFlag[]
+  vivaQuestions VivaQuestion[]
   comments    Comment[]
   shares      GuideShare[]
   versions    DocumentVersion[]
@@ -541,6 +543,32 @@ model CoherenceFlag {
   createdAt   DateTime @default(now())
   @@index([documentId, status])
   @@index([documentId, fingerprint])
+}
+
+/// ADR-0030: a question an examiner could ask about this thesis, the passage it is about, and the
+/// student's typed answer with the feedback on it. Nothing here ever enters the thesis.
+model VivaQuestion {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId  String    @db.Uuid
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  /// One generation's questions share a set id; the page shows the latest set.
+  setId       String    @db.Uuid
+  order       Int
+  kind        String
+  question    String
+  /// What the examiner is testing with it, for the student's preparation.
+  probing     String
+  chapterId   String    @db.Uuid
+  /// The passage the question is about, as it read when the question was asked.
+  passage     String
+  from        Int
+  to          Int
+  answer      String?
+  /// { verdict, strengths[], gaps[], thesisSays[{ quote }], followUp }
+  feedback    Json?
+  answeredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  @@index([documentId, setId])
 }
 
 model InstitutionTemplate {

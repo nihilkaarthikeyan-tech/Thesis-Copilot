@@ -104,6 +104,8 @@ export default function DocumentListPage() {
     { href: `/app/d/${id}/outline`, label: 'Outline' },
     { href: `/app/d/${id}/review`, label: 'Review' },
     { href: `/app/d/${id}/submit`, label: 'Submit' },
+    // ADR-0030: after submission comes the defence.
+    { href: `/app/d/${id}/viva`, label: 'Viva' },
     { href: `/app/d/${id}/write/${firstChapterId ?? 'none'}`, label: 'Write' },
   ];
 

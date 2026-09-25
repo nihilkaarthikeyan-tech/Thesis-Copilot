@@ -25,6 +25,7 @@ import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { PromptsModule } from './modules/prompts/prompts.module.js';
 import { SourcesModule } from './modules/sources/sources.module.js';
 import { UsageModule } from './modules/usage/usage.module.js';
+import { VivaModule } from './modules/viva/viva.module.js';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     MemoryModule,
     AdminModule,
     InstitutionModule,
+    VivaModule,
   ],
 })
 export class AppModule {}

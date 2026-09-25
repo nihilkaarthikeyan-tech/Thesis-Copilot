@@ -92,6 +92,9 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
   // priced for the more expensive thing that draws on it.
   COMMAND: { tier: 'strong', inputTokens: 2_000, cachedInputTokens: 4_000, outputTokens: 600 },
   COHERENCE: { tier: 'strong', inputTokens: 15_000, cachedInputTokens: 0, outputTokens: 1_500 },
+  // ADR-0030. Priced for the larger of its two calls, a question set: about twenty passages of the
+  // thesis in, eight questions out. Feedback on one answer is smaller on both sides.
+  VIVA: { tier: 'strong', inputTokens: 5_000, cachedInputTokens: 1_000, outputTokens: 1_500 },
 };
 
 /** One-time per-document operations, amortised over 4 months in PRD §11.4. */
@@ -163,6 +166,11 @@ export type BudgetOptions = {
    * the environment and the number moves when the configuration does.
    */
   readonly models?: { readonly fast?: string; readonly strong?: string };
+  /**
+   * Only these metered lines. For reproducing the PRD's own §11.4 table, which prices the six
+   * §11.3 rows at its reference prices (ADR-0030); omitted, every metered action is charged.
+   */
+  readonly actions?: readonly MeteredAction[];
 };
 
 function profileCost(
@@ -214,18 +222,21 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
       ['Chat', 'CHAT'],
       ['Commands', 'COMMAND'],
       ['Coherence', 'COHERENCE'],
+      ['Viva preparation', 'VIVA'],
     ] as const
-  ).map(([label, action]) => {
-    const count = caps[action];
-    const unitMicroInr = unitFor(action);
-    return {
-      label,
-      kind: 'capped' as const,
-      count,
-      unitMicroInr,
-      totalMicroInr: count * unitMicroInr,
-    };
-  });
+  )
+    .filter(([, action]) => !options.actions || options.actions.includes(action))
+    .map(([label, action]) => {
+      const count = caps[action];
+      const unitMicroInr = unitFor(action);
+      return {
+        label,
+        kind: 'capped' as const,
+        count,
+        unitMicroInr,
+        totalMicroInr: count * unitMicroInr,
+      };
+    });
 
   const oneTimeMicro =
     profileCost(ONE_TIME_PROFILES.EXTRACT, pricing, options.models) +
