@@ -138,7 +138,9 @@ describe('pageText', () => {
   });
 });
 
-describe('extractPdf against a real PDF', () => {
+// The first case here loads pdf.js cold, which took longer than vitest's default 5 s on a busy CI
+// runner (2026-09-25); the cases themselves are milliseconds once it is loaded.
+describe('extractPdf against a real PDF', { timeout: 30_000 }, () => {
   it('extracts each page separately', async () => {
     const pdf = buildPdf([
       singleColumnPage(['Page one line A', 'Page one line B']),
