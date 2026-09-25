@@ -341,6 +341,12 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.9, 2026-09-25** (tag on `e6dac1d`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.9/`): the admin gate — a signed-out visit to `/admin` goes to
+      sign-in and comes back (`?next=`), a signed-in student is told plainly, a session that
+      ends under the page goes back to sign-in. Proven on the live site in a browser after the
+      deploy: `/admin` signed out → `/sign-in?next=%2Fadmin`, no Sign out button; anonymous
+      `/api/v1/admin/*` → 401.
 - [x] **Released v0.1.8, 2026-09-25** (tag on `4b056e4`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.8/`): plain feature names on the admin screens, token detail behind
       a toggle.

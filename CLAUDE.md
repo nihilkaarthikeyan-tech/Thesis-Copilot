@@ -142,11 +142,12 @@ locked out — that would be a takeover feature.
 footnotes and the ~700 note citation styles (ADR-0029), equations as real Word equations (with our
 own `tc-gotenberg` image, because the stock one drew them blank), a pre-submission citation report,
 viva preparation (ADR-0030, its own `VIVA` allowance) and a live progress view for supervisors.
-**Released as v0.1.5, v0.1.6, v0.1.7 and v0.1.8 on 2026-09-25**, at the owner's go-ahead, with backups
-taken first (`/root/backups/pre-v0.1.5/`, `pre-v0.1.6/` on the VPS). v0.1.6 also moved embeddings
+**Released as v0.1.5 through v0.1.9 on 2026-09-25**, at the owner's go-ahead, with a backup
+taken first each time (`/root/backups/pre-vX/` on the VPS). v0.1.6 also moved embeddings
 to `voyage-4` (ADR-0032), fixed Google sign-in linking, added admin role management and a
 site-wide budget (₹2,000, editable in Admin, alerts to `ALERT_EMAILS`), and an admin screen
-written for its owner.
+written for its owner; v0.1.9 gates the admin screens (`apps/web/src/lib/admin-gate.ts`): a
+signed-out visitor goes to sign-in and comes back, a student is told plainly.
 The agent releases only when asked.
 
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
