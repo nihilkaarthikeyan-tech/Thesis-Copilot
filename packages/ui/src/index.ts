@@ -41,6 +41,7 @@ export {
   pendingDraft,
 } from './editor/draft-block.js';
 export { type ThesisEditorOptions, thesisExtensions } from './editor/extensions.js';
+export { FOOTNOTE_MAX, Footnote } from './editor/footnote.js';
 export {
   type GhostEvent,
   type GhostRequestPayload,

@@ -24,6 +24,7 @@ import type { Doc as YDoc } from 'yjs';
 import { Citation, type CitationOptions } from './citation.js';
 import { CrossRef } from './cross-ref.js';
 import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
+import { Footnote } from './footnote.js';
 import { GhostText, type GhostTextOptions } from './ghost-text.js';
 import { MathBlock, MathInline } from './math.js';
 import {
@@ -104,6 +105,7 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
       ...(options.imageResolveUrl ? { resolveUrl: options.imageResolveUrl } : {}),
     }),
     CrossRef.configure({ chapterNumber: options.chapterNumber ?? 1 }),
+    Footnote,
     MathInline,
     MathBlock,
     Citation.configure(options.citation ?? {}),

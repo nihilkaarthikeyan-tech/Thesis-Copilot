@@ -21,6 +21,7 @@ import {
   convertMillimetersToTwip,
   Document,
   Footer,
+  type FootnoteReferenceRun,
   HeadingLevel,
   ImageRun,
   LevelFormat,
@@ -38,6 +39,7 @@ import {
   WidthType,
 } from 'docx';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
+import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
 
 export type ThesisChapter = {
@@ -126,12 +128,17 @@ function runsFrom(
   nodes: readonly Node[],
   input: ThesisExportInput,
   chapter: ThesisChapter,
-): TextRun[] {
+): Array<TextRun | FootnoteReferenceRun> {
   const { spec } = input;
-  const out: TextRun[] = [];
+  const out: Array<TextRun | FootnoteReferenceRun> = [];
   for (const node of nodes) {
     // A pending AI draft is not part of the thesis, however deep it sits (see `chapterBlocks`).
     if (node.type === 'draftBlock') continue;
+    if (node.type === 'footnote') {
+      // A real Word footnote, numbered by Word through the whole thesis (footnotes.ts).
+      out.push(footnoteRun(input, node, { name: spec.font.body, size: pt(spec.font.sizePt - 2) }));
+      continue;
+    }
     if (node.type === 'needsSourceNote') {
       // Only ever inside a pending draft, which is skipped above; if one is ever found outside
       // it, it ships visible — hiding a gap is the one thing this product must never do.
@@ -715,6 +722,8 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
   });
 
   const document = new Document({
+    // Collected while the body above was built (footnotes.ts).
+    footnotes: notesFor(input).entries,
     numbering: {
       config: [
         {

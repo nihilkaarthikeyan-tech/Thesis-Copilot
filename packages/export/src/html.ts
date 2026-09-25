@@ -15,6 +15,7 @@
 import { formatRef, numberingMap } from '@tc/types';
 import katex from 'katex';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
+import { footnoteText } from './footnotes.js';
 import { spanOf } from './table-grid.js';
 import { renderLabel, type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
@@ -77,6 +78,9 @@ type ChapterContext = {
   /** For the lists of figures and tables. */
   figures: Array<{ id: string; caption: string }>;
   tables: Array<{ id: string; caption: string }>;
+  /** Footnotes: numbered across the thesis, listed per chapter. */
+  noteCount: { n: number };
+  notes: Array<{ n: number; text: string }>;
 };
 
 function inline(nodes: readonly Node[], ctx: ChapterContext): string {
@@ -132,6 +136,14 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
       case 'needsSourceNote':
         out += `<strong class="missing">[NEEDS SOURCE: ${escapeHtml(String(node.attrs?.text ?? ''))}]</strong>`;
         break;
+      case 'footnote': {
+        // Numbered through the whole thesis; the notes are listed at the end of their chapter.
+        ctx.noteCount.n += 1;
+        const n = ctx.noteCount.n;
+        ctx.notes.push({ n, text: footnoteText(node) });
+        out += `<sup class="footnote-ref"><a href="#fn-${n}" id="fnref-${n}">${n}</a></sup>`;
+        break;
+      }
       case 'hardBreak':
         out += '<br>';
         break;
@@ -280,6 +292,7 @@ h3 { font-size: 1.05rem; margin-top: 1.5rem; }
 figure { margin: 1.5rem 0; text-align: center; }
 figure img { max-width: 100%; height: auto; }
 figcaption { font-size: 0.9rem; color: #444; margin: 0.4rem 0; }
+ol.footnotes { font-size: 0.85rem; color: #333; border-top: 1px solid #ccc; margin-top: 2rem; padding-top: 0.5rem; }
 table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 th, td { border: 1px solid #bbb; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
 blockquote { margin: 1rem 0; padding-left: 1rem; border-left: 3px solid #ccc; color: #333; }
@@ -393,6 +406,7 @@ export function thesisToHtml(input: HtmlExportInput): string {
 
   const figures: ChapterContext['figures'] = [];
   const tables: ChapterContext['tables'] = [];
+  const noteCount = { n: 0 };
   const toc: string[] = [];
   let body = '';
 
@@ -412,15 +426,26 @@ export function thesisToHtml(input: HtmlExportInput): string {
       heading: { h2: 0, h3: 0 },
       figures,
       tables,
+      noteCount,
+      notes: [],
     };
     const inner = blocks(content?.content ?? [], ctx);
     const label = renderLabel(spec.headings.chapter.label, { n: chapter.order });
     const id = `chapter-${chapter.order}`;
     toc.push(`<li><a href="#${id}">${escapeHtml(label)} — ${escapeHtml(title)}</a></li>`);
+    const notes =
+      ctx.notes.length > 0
+        ? `<ol class="footnotes">${ctx.notes
+            .map(
+              (note) =>
+                `<li value="${note.n}" id="fn-${note.n}">${escapeHtml(note.text)} <a href="#fnref-${note.n}" aria-label="Back to the text">↩</a></li>`,
+            )
+            .join('')}</ol>\n`
+        : '';
     body += `<section class="chapter" id="${id}">
 <p class="chapter-label">${escapeHtml(label)}</p>
 <h1>${escapeHtml(title)}</h1>
-${inner}</section>\n`;
+${inner}${notes}</section>\n`;
   }
 
   if (input.bibliography.length > 0) {

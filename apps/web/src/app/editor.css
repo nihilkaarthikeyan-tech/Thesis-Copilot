@@ -283,3 +283,25 @@
   user-select: none;
   pointer-events: none;
 }
+
+/* Footnotes (2026-09-25): a CSS counter in document order numbers them, so inserting one before
+   another renumbers every later note with no code. The exports number them the same way. */
+.thesis-editor {
+  counter-reset: footnote;
+}
+.thesis-editor sup.footnote-ref {
+  counter-increment: footnote;
+  cursor: pointer;
+  color: var(--color-accent);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 0 0.1em;
+}
+.thesis-editor sup.footnote-ref::after {
+  content: counter(footnote);
+}
+.thesis-editor sup.footnote-ref.ProseMirror-selectednode {
+  outline: 2px solid var(--color-accent);
+  border-radius: 2px;
+}

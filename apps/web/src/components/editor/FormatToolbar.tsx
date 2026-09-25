@@ -306,6 +306,22 @@ export function FormatToolbar({
     });
   }, [editor, prompt]);
 
+  /** A footnote at the caret, or the selected one's words changed (2026-09-25). */
+  const footnote = useCallback(() => {
+    if (!editor) return;
+    const editing = editor.isActive('footnote');
+    prompt.open({
+      label: editing ? 'Footnote' : 'New footnote',
+      hint: 'The survey was run before the 2020 subsidy change.',
+      initial: editing ? String(editor.getAttributes('footnote').text ?? '') : '',
+      onDone: (text) => {
+        if (!text) return; // cancelled, or nothing to say
+        if (editing) editor.chain().focus().setFootnoteText(text).run();
+        else editor.chain().focus().insertFootnote(text).run();
+      },
+    });
+  }, [editor, prompt]);
+
   const insertMath = useCallback(
     (kind: 'inline' | 'block') => {
       if (!editor) return;
@@ -516,6 +532,14 @@ export function FormatToolbar({
         </Tool>
         <Tool label="Display equation" onClick={() => insertMath('block')}>
           <span className="text-[13px] font-semibold leading-none">Σ⁺</span>
+        </Tool>
+        <Tool
+          label={editor.isActive('footnote') ? 'Edit footnote' : 'Footnote'}
+          testId="fmt-footnote"
+          active={editor.isActive('footnote')}
+          onClick={footnote}
+        >
+          <span className="text-[12px] font-semibold leading-none">¹</span>
         </Tool>
 
         {onInsertImage ? (

@@ -24,6 +24,7 @@
 import { numberingMap, type TemplateSpec } from '@tc/types';
 import JSZip from 'jszip';
 import { captionOf, withCaptionsResolved } from './captions.js';
+import { footnoteText } from './footnotes.js';
 import { gridOf, ruleUnder } from './table-grid.js';
 import { type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
@@ -157,6 +158,9 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
       }
       case 'needsSourceNote':
         out += `\\textbf{[NEEDS SOURCE: ${escapeLatex(String(node.attrs?.text ?? ''))}]}`;
+        break;
+      case 'footnote':
+        out += `\\footnote{${escapeLatex(footnoteText(node))}}`;
         break;
       case 'hardBreak':
         out += '\\newline{}';
@@ -526,6 +530,8 @@ function preamble(input: LatexExportInput): string[] {
     '\\usepackage{graphicx}',
     '\\usepackage{tabularx}',
     '\\usepackage{multirow}',
+    // Footnotes number through the whole thesis, as Word and the web page number them.
+    '\\counterwithout{footnote}{chapter}',
     '\\usepackage[normalem]{ulem}',
     '\\usepackage{titlesec}',
     `\\titleformat{\\chapter}[display]{\\normalfont${chapter.bold ? '\\bfseries' : ''}\\Large${align}}{${chapterLabel}}{1em}{${chapter.caps ? '\\MakeUppercase' : ''}}`,

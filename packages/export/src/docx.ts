@@ -13,6 +13,7 @@ import { formatRef, type NumberedTarget } from '@tc/types';
 import {
   AlignmentType,
   Document,
+  type FootnoteReferenceRun,
   HeadingLevel,
   ImageRun,
   Packer,
@@ -23,6 +24,7 @@ import {
   TextRun,
 } from 'docx';
 import { captionOf } from './captions.js';
+import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
 
 type PmMark = { type?: string; attrs?: Record<string, unknown> };
@@ -112,11 +114,18 @@ function citationLabel(node: PmNode, renderedMap: Record<string, string>): strin
   return renderedMap[key] ?? '(source missing)';
 }
 
-function runsFrom(nodes: readonly PmNode[], options: ExportOptions): TextRun[] {
-  const runs: TextRun[] = [];
+function runsFrom(
+  nodes: readonly PmNode[],
+  options: ExportOptions,
+): Array<TextRun | FootnoteReferenceRun> {
+  const runs: Array<TextRun | FootnoteReferenceRun> = [];
   const renderedMap = options.renderedMap ?? {};
 
   for (const node of nodes) {
+    if (node.type === 'footnote') {
+      runs.push(footnoteRun(options, node));
+      continue;
+    }
     if (node.type === 'citation') {
       runs.push(new TextRun({ text: citationLabel(node, renderedMap) }));
       continue;
@@ -369,6 +378,7 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
   }
 
   const document = new Document({
+    footnotes: notesFor(options).entries,
     numbering: {
       config: [
         {
