@@ -72,14 +72,18 @@ blocks the agent from continuing to build against mocks.
       field is new and the product calls OpenAlex on every search, resolution and gap check. Read
       openalex.org's pricing / API-key page and say whether we need a key or a budget line in
       `docs/COSTING.md`. The agent will not guess a price (§0.3 rule 4).
-- [ ] **Before the next deploy: back up the MinIO volume** (ADR-0024). MinIO withdrew its public
+- [x] **Done 2026-09-25, before v0.1.5: back up the MinIO volume** (ADR-0024). The files and a
+      full database dump are on the server in `/root/backups/pre-v0.1.5/` (`minio_data.tar.gz`,
+      `postgres.dump`); MinIO now runs Chainguard's image and reports healthy. Delete the backups
+      once you are happy. Kept for the record: MinIO withdrew its public
       images — quay.io now refuses anonymous pulls — so the next deploy switches storage to
       Chainguard's build of MinIO (`cgr.dev/chainguard/minio`). Proven on the dev volume (same 651
       objects before and after), but it is production's files: on the server,
       `docker run --rm -v thesis-copilot_minio_data:/data -v $PWD:/backup alpine tar czf /backup/minio-$(date +%F).tgz -C /data .`
       (check the volume's name with `docker volume ls`). **Without this change the next deploy
       fails**: `deploy.sh` pulls every image, and the old one can no longer be pulled.
-- [ ] **After the next deploy, run `pnpm backfill:journals` once on the server** (ADR-0022). New
+- [x] **Done 2026-09-25, after v0.1.5: `backfill:journals` ran on the server** (ADR-0022) — no
+      source on production needed it (0 of 0). Kept for the record: New
       references get their journal's figure as they resolve; this fills it in for every source
       resolved before. Safe to re-run. On 2026-09-24 against the dev database it matched 338 of
       339 sources to a journal, 268 with a figure — the rest are in venues OpenAlex does not list
@@ -270,7 +274,8 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       shared with eight other sites and a bad one takes all nine down, so CI only *warns* when
       `infra/nginx/thesis.rademics.ai.conf` and `/etc/nginx/sites-available/thesis.rademics.ai` have
       drifted, and prints the diff. Copy it, run `nginx -t`, then `systemctl reload nginx`.
-- [ ] **Release v0.1.5 — production is on v0.1.4 and one live fault is serious.** Every figure a
+- [x] **Released v0.1.5, 2026-09-25, at the owner's go-ahead** (tag on `40d3b7d`, CI green;
+      migrations 0015–0021 applied; all 13 services healthy). The item as it stood: Every figure a
       student adds goes blank fifteen minutes later on production today (53179b2 fixes it: the
       stored link was signed for fifteen minutes and nothing renewed it). The same release carries
       the other 2026-09-24 fixes — a pending AI draft printed into the submitted thesis, raw

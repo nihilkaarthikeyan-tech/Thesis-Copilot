@@ -142,7 +142,8 @@ locked out — that would be a takeover feature.
 footnotes and the ~700 note citation styles (ADR-0029), equations as real Word equations (with our
 own `tc-gotenberg` image, because the stock one drew them blank), a pre-submission citation report,
 viva preparation (ADR-0030, its own `VIVA` allowance) and a live progress view for supervisors.
-All unreleased: production is still v0.1.4 and the owner tags v0.1.5.
+**Released as v0.1.5 on 2026-09-25**, at the owner's go-ahead, with a MinIO and database backup
+taken first (`/root/backups/pre-v0.1.5/` on the VPS). The agent releases only when asked.
 
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
