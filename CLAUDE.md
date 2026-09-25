@@ -138,6 +138,12 @@ OTP goes to the **new** address, and the service around it warns the old one (de
 audits both, and refuses while a deletion is pending. Deliberately no route for someone *already*
 locked out — that would be a takeover feature.
 
+**The second Jenni list is built too** (2026-09-25): pasted screenshots, merged table cells,
+footnotes and the ~700 note citation styles (ADR-0029), equations as real Word equations (with our
+own `tc-gotenberg` image, because the stock one drew them blank), a pre-submission citation report,
+viva preparation (ADR-0030, its own `VIVA` allowance) and a live progress view for supervisors.
+All unreleased: production is still v0.1.4 and the owner tags v0.1.5.
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.

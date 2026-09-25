@@ -277,7 +277,8 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       Crossref lines and "&amp;" in reference lists, file names as figure captions, Find papers
       returning nothing for a question ending in "?" — and everything built against the
       competitor list (ADRs 0018–0029: co-authoring, pasted screenshots, merged table cells,
-      footnotes and note citation styles, typeset equations). **This release builds a fourth
+      footnotes and note citation styles, typeset equations, the citation report, viva preparation
+      with its database migration `0021_viva_prep`, and the supervisor's live progress view). **This release builds a fourth
       image, `tc-gotenberg`** (Gotenberg with LibreOffice Math, `infra/docker/Dockerfile.gotenberg`),
       and prod Compose now pulls it instead of the stock `gotenberg/gotenberg:8`; the first
       build takes a few minutes longer because it installs one LibreOffice package. Two things first, both above: **back up the MinIO
