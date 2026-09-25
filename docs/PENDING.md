@@ -260,9 +260,9 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       checks the VPS working tree out to the tag before running `deploy.sh`, and back to
       `.last_good_tag` if the deploy rolls back. It also calls `../scripts/deploy.sh` rather than an
       untracked symlink made by hand during the first deploy — so a fresh clone can now deploy.
-- [ ] **Turn on live co-authoring in production** (ADR-0028) — **the owner decided on 2026-09-25 to
-      leave it off**: the server hosts many other projects and the step below edits nginx, which
-      they all share. Nothing was changed. If it is ever wanted, in this order:
+- [ ] **Turn on live co-authoring in production** (ADR-0028) — **stopped on 2026-09-25 before any
+      change and left off until the owner says otherwise**: the server hosts many other projects
+      and the step below edits nginx, which they all share. If it is ever wanted, in this order:
       1. **Add** the `/collab/` location block from `infra/nginx/thesis.rademics.ai.conf` to the
          live `/etc/nginx/sites-available/thesis.rademics.ai`, above `location /`. Do **not** copy
          the file over: see the next item. Without the block every live session fails to connect
