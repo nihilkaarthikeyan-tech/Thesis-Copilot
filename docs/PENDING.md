@@ -298,7 +298,8 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       the deploy. Then `git tag v0.1.5 && git push --tags`; `release.yml` does the rest and rolls
       back to `.last_good_tag` if the health check fails. The agent does not tag a release: that
       is the one deploy step that is yours.
-- [ ] **One-off: the VPS tree is behind the images it is running.** Checked 2026-09-20 — tree at
+- [x] **Fixed by the v0.1.5 release (2026-09-25): the VPS tree is at `v0.1.5`, matching its
+      images.** The item as it stood: checked 2026-09-20 — tree at
       `0916302`, containers on `v0.1.1`. The next tagged release now fixes this by itself; to do it
       sooner, on the VPS:
       `cd ~/thesis-copilot && git fetch --tags && git checkout --force v0.1.1`.
@@ -405,7 +406,8 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
       inline equation, a display equation and a figure, then exported the chapter and read the
       .docx XML: one PNG in word/media, the table present, both equations present, and zero
       [image] placeholders. It found two faults that no other test would have.
-- [ ] **Typeset equations properly in the export.** They currently go into the .docx as their
+- [x] **Done 2026-09-25 (5cda268): equations are real Word equations** in the `.docx` and the PDF
+      (matrices still print as LaTeX). The item as it stood: they went into the .docx as their
       LaTeX source in a monospace run. That is a deliberate floor, not the finish: before
       2026-09-21 an equation was simply absent from the submitted file, and carrying the source
       through at least means the content is there and visibly an equation. Doing it properly is
@@ -460,7 +462,8 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
 
 - [ ] **Settle the price and the caps together.** `docs/COSTING.md` gives the cost side:
-      ₹14.18 per fully active student, ₹299 charged, 95% margin. `docs/PRICING-REVIEW.md` reviews
+      ₹25.34 per fully active student since viva preparation (ADR-0030; ₹14.18 before it), ₹299
+      charged, 92% margin. `docs/PRICING-REVIEW.md` reviews
       `RADemics_Thesis_Copilot_Pricing.docx` and its ₹349 / ₹2,999 proposal — but that review was
       written on Haiku + Sonnet, and §1 and §4 of it are superseded by the OpenAI move; the
       addendum and §"The caps are now far tighter" below carry the current numbers. The code still
