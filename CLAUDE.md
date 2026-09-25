@@ -45,7 +45,7 @@ and push per week, keep `docs/PENDING.md` current for anything only a human can 
 | Object storage | MinIO (S3 API) |
 | Auth | Better Auth (email OTP + Google) |
 | AI SDK | Vercel AI SDK (`ai`) + `@ai-sdk/openai` + `@ai-sdk/anthropic`, behind `packages/ai`; vendor per tier from the model id (ADR-0011) |
-| Embeddings | Voyage `voyage-3` (1024-d); dimension is a config constant |
+| Embeddings | Voyage `voyage-4` (1024-d, ADR-0032); dimension is a config constant |
 | Citations | `@citation-js/core` + `plugin-csl` |
 | Export | `docx` → Gotenberg for PDF |
 | Parsing | `unpdf` (PDF), `mammoth` (DOCX), GROBID optional behind a flag |
@@ -153,7 +153,8 @@ refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines
 is derived per tier from the model id (ADR-0011, `packages/ai/src/providers/routing.ts`). Today
 `AI_FAST_MODEL=gpt-5-nano` and `AI_STRONG_MODEL=gpt-5-mini` — both OpenAI. The Anthropic key is
 still in `.env` and still valid, but the owner asked that it stay unused, and no configured model
-routes to it. Embeddings are Voyage `voyage-3` (1024-d). OTP mail goes out over Hostinger SMTP as
+routes to it. Embeddings are Voyage `voyage-4` (1024-d; ADR-0032 — a model switch needs
+`pnpm ai:reembed`, or every stored vector is silently wrong). OTP mail goes out over Hostinger SMTP as
 `no-reply@rademics.ai`, proven by a delivered message.
 
 **The competitor gap list (2026-09-24, ADRs 0018–0026).** Built against Jenni.ai's feature set:

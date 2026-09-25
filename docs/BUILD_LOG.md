@@ -3633,3 +3633,23 @@ The owner asked what stands between here and a 1 October launch. Built the same 
   `lib/company.ts`, all `null` until the owner supplies them, and the pages say "To be added."
   rather than print a guess. Linked from the footer, sign-in and pricing; in the sitemap.
   `legal-pages.spec.ts` drives both.
+
+### Embeddings to `voyage-4` — 2026-09-25
+
+ADR-0032, at the owner's "yes". The model name is the only configuration that changes — same
+1024 dimensions, same request, same price, and 200M free tokens — but a model switch is not a
+configuration change: every stored vector was made by `voyage-3`, and a `voyage-4` query against
+it is silently wrong. So three things, in order, each now a command:
+
+- `pnpm ai:verify` — Voyage accepts `voyage-4` and returns 1024-d vectors. It did.
+- `pnpm ai:reembed` (new) — every `SourceChunk` and `ChapterChunk` re-embedded in place. Its first
+  run met the 3-requests-a-minute limit of an account with no payment method, before a single
+  row was changed; the script now waits the limit out, since production has the same limit until
+  the card is added.
+- `pnpm --filter @tc/ai floor` (new) — the measurement behind `RELEVANCE_FLOOR`, which was placed
+  by hand on `voyage-3` and never kept as a script. On `voyage-4` the on-topic questions score
+  0.529–0.771, the in-subject-but-absent ones 0.384–0.473, the off-topic ones 0.099–0.232 ("what's
+  the weather in Chennai" 0.232, the poem 0.099). 0.30 sits inside the gap and stays.
+  `rank.spec.ts` now pins both models' populations.
+
+Production gets the same three steps at the next release, inside the thesis site's containers.

@@ -19,7 +19,8 @@
     "ai:shakedown": "pnpm --filter @tc/ai shakedown",
     "db:check": "pnpm --filter @tc/db check",
     "pilot:report": "pnpm --filter @tc/api pilot:report",
-    "backfill:journals": "pnpm --filter @tc/api backfill:journals"
+    "backfill:journals": "pnpm --filter @tc/api backfill:journals",
+    "ai:reembed": "pnpm --filter @tc/api reembed"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",

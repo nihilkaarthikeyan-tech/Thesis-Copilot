@@ -1,7 +1,7 @@
 # What one student costs us, what we charge, what is left
 
 Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on the fast tier,
-`gpt-5-mini` on the strong tier, `voyage-3` for embeddings (ADR-0011).
+`gpt-5-mini` on the strong tier, `voyage-4` for embeddings (ADR-0011, ADR-0032).
 
 > **2026-09-25 — viva preparation (ADR-0030).** A seventh allowance, 30 viva uses a month on the
 > paid plans, adds up to ₹11.16 (30 × ₹0.3719) and takes the worst case from ₹14.18 to **₹25.34**.
@@ -12,7 +12,9 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.
-> Every figure below is updated for it.
+> Every figure below is updated for it. Later the same day the model moved to `voyage-4`
+> (ADR-0032): the same price, and the first 200M tokens free — so in practice the embedding line
+> is ₹0 until roughly the 650th library.
 
 Every figure below comes out of `packages/config` — the same code the product bills with. Nothing
 here is typed in by hand. Reproduce all of it with:
@@ -70,7 +72,7 @@ provider's own pricing page on 2026-09-13:
 |---|---|---|---|
 | `gpt-5-nano` (fast tier) | 0.05 | 0.40 | 0.1× |
 | `gpt-5-mini` (strong tier) | 0.25 | 2.00 | 0.1× |
-| `voyage-3` (embeddings) | 0.06 | — | — |
+| `voyage-4` (embeddings) | 0.06 | — | — |
 
 ### Step 2 — what each *action* costs
 

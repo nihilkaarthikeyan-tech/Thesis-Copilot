@@ -168,44 +168,56 @@ describe('stripUnknownCitations (§10.6)', () => {
 });
 
 describe('the relevance floor — what stops chat being a general chatbot', () => {
-  // The cosines below are the ones actually measured against voyage-3 on 2026-09-14, four library
-  // passages on one subject and fifteen questions. See RELEVANCE_FLOOR for the full table. They
-  // are recorded here so a change to the floor has to argue with the measurement.
+  // The cosines below are the ones actually measured: four library passages on one subject and
+  // fifteen questions, against voyage-3 on 2026-09-14 (by hand) and against voyage-4 on
+  // 2026-09-25 (`pnpm --filter @tc/ai floor`, ADR-0032). They are recorded here so a change to
+  // the floor, or of the model, has to argue with the measurement.
   const MEASURED = {
-    onTopic: [0.595, 0.499, 0.396, 0.36, 0.345],
-    nearby: [0.427, 0.381, 0.302],
-    offTopic: [0.254, 0.117, 0.091, 0.07, 0.061, 0.048, 0.003],
-  };
+    'voyage-3': {
+      onTopic: [0.595, 0.499, 0.396, 0.36, 0.345],
+      nearby: [0.427, 0.381, 0.302],
+      offTopic: [0.254, 0.117, 0.091, 0.07, 0.061, 0.048, 0.003],
+    },
+    'voyage-4': {
+      onTopic: [0.771, 0.665, 0.658, 0.615, 0.529],
+      nearby: [0.473, 0.452, 0.384],
+      offTopic: [0.232, 0.205, 0.166, 0.154, 0.152, 0.106, 0.099],
+    },
+  } as const;
 
   const at = (cosine: number) => [{ cosine }];
 
-  it('lets every question that was actually about the library through', () => {
-    for (const cosine of MEASURED.onTopic) {
-      expect(isOffTopic(at(cosine)), `on-topic ${cosine}`).toBe(false);
-    }
-  });
+  for (const [model, measured] of Object.entries(MEASURED)) {
+    it(`${model}: lets every question that was actually about the library through`, () => {
+      for (const cosine of measured.onTopic) {
+        expect(isOffTopic(at(cosine)), `on-topic ${cosine}`).toBe(false);
+      }
+    });
 
-  it('refuses every question that was not', () => {
-    for (const cosine of MEASURED.offTopic) {
-      expect(isOffTopic(at(cosine)), `off-topic ${cosine}`).toBe(true);
-    }
-  });
+    it(`${model}: refuses every question that was not`, () => {
+      for (const cosine of measured.offTopic) {
+        expect(isOffTopic(at(cosine)), `off-topic ${cosine}`).toBe(true);
+      }
+    });
 
-  it('sits in the gap between the two, with room on both sides', () => {
-    const highestOffTopic = Math.max(...MEASURED.offTopic);
-    const lowestOnTopic = Math.min(...MEASURED.onTopic);
+    it(`${model}: sits in the gap between the two, with room on both sides`, () => {
+      const highestOffTopic = Math.max(...measured.offTopic);
+      const lowestOnTopic = Math.min(...measured.onTopic);
 
-    expect(highestOffTopic).toBeLessThan(RELEVANCE_FLOOR);
-    expect(lowestOnTopic).toBeGreaterThan(RELEVANCE_FLOOR);
-  });
+      expect(highestOffTopic).toBeLessThan(RELEVANCE_FLOOR);
+      expect(lowestOnTopic).toBeGreaterThan(RELEVANCE_FLOOR);
+    });
+  }
 
   it('lets a fair question the library cannot answer reach the model', () => {
     // The middle population. "How does net metering work in India?" is a real question about the
     // subject that these sources do not cover, and the useful reply is A.4's "try adding sources
     // on: …", which only the model can write because naming the missing topic is the point. The
     // floor is not a test of whether the answer is in there.
-    for (const cosine of MEASURED.nearby) {
-      expect(isOffTopic(at(cosine)), `nearby ${cosine}`).toBe(false);
+    for (const [model, measured] of Object.entries(MEASURED)) {
+      for (const cosine of measured.nearby) {
+        expect(isOffTopic(at(cosine)), `${model} nearby ${cosine}`).toBe(false);
+      }
     }
   });
 

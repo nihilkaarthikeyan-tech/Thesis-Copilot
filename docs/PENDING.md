@@ -79,9 +79,11 @@ blocks the agent from continuing to build against mocks.
       docs.voyageai.com on 2026-09-25: `voyage-3` is **USD 0.06 per million tokens**, pay-as-you-go,
       no minimum — about ₹1.60 to make a 30-paper library searchable, under ₹5 per active student
       a month. `docs/COSTING.md` and `pricing.ts` now carry 0.06 (they had §11.1's 0.02).
-      Optional switch: `voyage-4` costs the same and gives 200M free tokens (≈650 libraries);
-      cheapest to do while the live site has almost no papers, since every stored paper would be
-      re-embedded. Say the word.
+      **Switched to `voyage-4` on 2026-09-25 at your "yes" (ADR-0032)** — same price, 200M free
+      tokens. Done locally (verified, re-embedded, floor re-measured); production gets it at the
+      next release: `AI_EMBED_MODEL=voyage-4` in the VPS `.env`, deploy, `pnpm ai:reembed` in the
+      api container — all inside the thesis site's own containers. The card is still needed: the
+      3-requests-a-minute limit stopped the local re-embed until the script learned to wait.
 - [ ] **Fill in the company details for the Terms and Contact pages** (`apps/web/src/lib/company.ts`,
       2026-09-25): legal name, registered address, a support email a person reads, a phone number,
       and the city for jurisdiction. Every one is `null` today and the pages print "To be added."
