@@ -3691,3 +3691,16 @@ Two things the owner asked for on the day of the `voyage-4` switch.
   is now cut short by the caller's signal, and the proposal's gap check passes an 8-second
   timeout; a background job with no signal still waits politely. `http-retry.spec.ts` pins both.
   The real fix for search itself is the free OpenAlex key (`docs/PENDING.md`, now urgent).
+
+### A site-wide monthly AI budget — 2026-09-25
+
+The owner, adding a card to Voyage, asked for a limit "so that we are very safe". The product
+had one hard stop, ₹100 per student per month, and no bound on the *sum*: a thousand students
+within their own ceilings is a bill nobody agreed to. `PLATFORM_MONTHLY_CEILING_INR` (optional)
+is that bound: `UsageService.consume` sums every user's successful `AiCallLog` cost for the
+month, cached for a minute, and refuses every metered call once it is reached — its own reason
+(`platform`), its own audit kind and its own error, whose sentence tells the student it is not
+their allowance. `platform-ceiling.spec.ts` proves the sum crosses on another user's spend,
+that a failed call is not counted, and what the endpoint answers. On the Voyage side the guard
+is structural: prepaid credit with auto-recharge off, which is the only kind of limit that
+cannot be exceeded.

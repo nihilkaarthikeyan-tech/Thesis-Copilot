@@ -98,7 +98,20 @@ blocks the agent from continuing to build against mocks.
       at thesis.rademics.ai with their email (that creates the account), then the owner opens
       Admin → Users → their page → Role → SUPERADMIN. Logged as ROLE_CHANGED; a superadmin cannot
       remove their own role. INSTITUTION_ADMIN is for a university's seat manager, not for staff.
-- [ ] **Add a payment method to the Voyage account** (also listed under AI above). Price read off
+- [ ] **Set the site-wide monthly AI budget** (`PLATFORM_MONTHLY_CEILING_INR` in the VPS `.env`,
+      2026-09-25, the owner's "so that we are very safe"). Rupees for the whole site per calendar
+      month; once every user's successful AI spend adds up to it, every AI call is refused with
+      `PLATFORM_CEILING_EXCEEDED` ("AI features paused for this month… not your allowance")
+      until the 1st, and the refusal is audited. Summed at most once a minute, so the overshoot
+      is bounded to a minute of calls. Unset means no site-wide stop (the per-student ₹100 one
+      always applies). A number: at ₹25.60 per fully active student, ₹5,000 covers ~195 such
+      students; for the trial, ₹2,000. Restart api/worker after setting it (`docker compose up
+      -d api worker` in `infra/compose`, thesis-copilot only).
+- [x] **Voyage payment method added by the owner (2026-09-25):** $5 prepaid credit, auto-recharge
+      off (so Voyage can never charge the card unasked), the $10 budget *alert* on the org that
+      owns our key — proven by six calls in a minute all answering 200. The card cannot be
+      debited beyond the credit already bought.
+- [ ] **Add a payment method to the Voyage account** (also listed under AI above) — done above. Price read off
       docs.voyageai.com on 2026-09-25: `voyage-3` is **USD 0.06 per million tokens**, pay-as-you-go,
       no minimum — about ₹1.60 to make a 30-paper library searchable, under ₹5 per active student
       a month. `docs/COSTING.md` and `pricing.ts` now carry 0.06 (they had §11.1's 0.02).

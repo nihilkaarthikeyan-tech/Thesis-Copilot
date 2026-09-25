@@ -97,6 +97,12 @@ export const envSchema = z
     AI_EMBED_MODEL: requiredString('AI_EMBED_MODEL'),
     // Dimension is a config constant and must match `vector(N)` in schema.prisma (PRD §7.2).
     EMBED_DIMS: z.coerce.number().int().positive().default(1024),
+    /**
+     * The whole site's AI spend for a calendar month, in rupees, after which every metered call
+     * is refused until the 1st (2026-09-25, the owner's guard). Unset means no site-wide stop;
+     * the per-user ₹100 ceiling (§11) always applies.
+     */
+    PLATFORM_MONTHLY_CEILING_INR: optionalNumber,
 
     // ---- Scholarly APIs ----
     OPENALEX_MAILTO: z.email('OPENALEX_MAILTO must be an email address'),

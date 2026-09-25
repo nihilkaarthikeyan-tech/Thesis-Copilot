@@ -69,6 +69,24 @@ export class CeilingExceededError extends AppError {
 }
 
 /**
+ * The site-wide monthly AI budget is spent (`PLATFORM_MONTHLY_CEILING_INR`, 2026-09-25). Not the
+ * student's doing, and the sentence says so.
+ */
+export class PlatformCeilingExceededError extends AppError {
+  constructor(action: string, spentInr: number, ceilingInr: number, resetsAt: Date) {
+    super(
+      'PLATFORM_CEILING_EXCEEDED',
+      'AI features paused for this month',
+      HttpStatus.TOO_MANY_REQUESTS,
+      "The service's AI budget for this month has been used up, so AI features are paused until " +
+        'the 1st. Writing, editing, sharing and exporting all still work. This is not your ' +
+        'allowance; the administrator has been alerted.',
+      { action, spentInr, ceilingInr, resetsAt: resetsAt.toISOString() },
+    );
+  }
+}
+
+/**
  * PRD §12.1: "every document/chapter/source query is scoped by ownerId or an active GuideShare. No
  * object is fetched by id alone." An object the caller may not see is reported as absent, so the
  * API never confirms that an id exists to someone without access.

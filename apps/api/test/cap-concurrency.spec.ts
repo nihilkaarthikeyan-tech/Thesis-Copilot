@@ -78,7 +78,8 @@ beforeAll(async () => {
   prisma = new PrismaClient({ datasources: { db: { url: container.getConnectionUri() } } });
   await prisma.$connect();
 
-  usage = new UsageService(prisma as never);
+  // No site-wide ceiling here: this file proves the per-user counter, and nothing else.
+  usage = new UsageService(prisma as never, { PLATFORM_MONTHLY_CEILING_INR: undefined } as never);
 }, 180_000);
 
 afterAll(async () => {
