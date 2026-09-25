@@ -1,0 +1,205 @@
+/**
+ * The pre-submission citation report (2026-09-25): every weak citation in the thesis on one page.
+ *
+ * Nothing here is a new check. Five already existed, each on its own panel, and a student had to
+ * open all five the week before submission to know where they stood: the mechanical checks
+ * (a citation to nothing, a citation typed as plain text, a source nothing cites), reference
+ * health (retracted, unresolved, duplicated…), reading depth (cited, never read), and the
+ * coherence run's support check and uncited claims. This gathers them, drops the overlap and
+ * ranks them — what must be fixed before a reader sees it first.
+ *
+ * Pure: the service fetches, this decides. It never invents a problem — every item is one of
+ * those checks' own findings, in that check's own words.
+ */
+
+import type { CitationFinding, ReferenceHealthFinding } from '@tc/citations';
+import type { ReadingDepth } from '../chapters/reading-depth.js';
+import type { FlagView } from '../coherence/coherence.service.js';
+
+export type ReportSeverity = 'high' | 'medium' | 'low';
+
+export type ReportItem = {
+  key: string;
+  severity: ReportSeverity;
+  /** Which existing check found it. */
+  check: 'citations' | 'references' | 'reading' | 'support';
+  kind: string;
+  /** A few words naming the problem, for the list. */
+  title: string;
+  /** The check's own sentence, addressed to the student. */
+  message: string;
+  chapterId?: string;
+  chapterTitle?: string;
+  /** Where in the chapter — only when the position is still true of the saved text. */
+  from?: number;
+  to?: number;
+  sourceId?: string;
+  shortRef?: string;
+};
+
+export type CitationReport = {
+  headline: string;
+  counts: { high: number; medium: number; low: number; total: number };
+  citations: number;
+  sources: number;
+  /**
+   * The support check is the one part that costs a run. `lastRunAt` null means it has never run,
+   * so the report cannot say whether the sources support the sentences — and says so.
+   */
+  supportCheck: { lastRunAt: string | null; outOfDate: boolean };
+  items: ReportItem[];
+};
+
+export type ReportInput = {
+  citations: { findings: CitationFinding[]; counts: { citations: number; sources: number } };
+  health: ReferenceHealthFinding[];
+  depth: Pick<ReadingDepth, 'atRisk' | 'unread'>;
+  flags: { flags: FlagView[]; lastRunAt: string | null };
+};
+
+const MECHANICAL: Record<CitationFinding['kind'], { severity: ReportSeverity; title: string }> = {
+  ORPHAN: { severity: 'high', title: 'Citation with no source' },
+  UNTAGGED: { severity: 'medium', title: 'Citation typed as plain text' },
+  UNUSED: { severity: 'low', title: 'In the library, never cited' },
+};
+
+const HEALTH_TITLE: Record<ReferenceHealthFinding['kind'], string> = {
+  RETRACTED: 'Retracted paper',
+  STALE_PREPRINT: 'Old preprint',
+  DUPLICATE: 'Same reference twice',
+  UNRESOLVED: 'Not found in any index',
+  NO_IDENTIFIER: 'No DOI',
+  VENUE_CONCENTRATION: 'One journal dominates',
+};
+
+const FLAG_SEVERITY: Record<string, ReportSeverity> = {
+  ERROR: 'high',
+  WARN: 'medium',
+  INFO: 'low',
+};
+
+/** ADR-0023's verdicts arrive as severities: ERROR misrepresents, WARN overstates. */
+const SUPPORT_TITLE: Record<ReportSeverity, string> = {
+  high: 'The source says something else',
+  medium: 'Claims more than the source',
+  low: 'Weakly supported',
+};
+
+const RANK: Record<ReportSeverity, number> = { high: 0, medium: 1, low: 2 };
+const CHECK_RANK: Record<ReportItem['check'], number> = {
+  citations: 0,
+  support: 1,
+  references: 2,
+  reading: 3,
+};
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+export function buildCitationReport(input: ReportInput): CitationReport {
+  const items: ReportItem[] = [];
+
+  input.citations.findings.forEach((finding, i) => {
+    const rule = MECHANICAL[finding.kind];
+    items.push({
+      key: `citations-${finding.kind}-${i}`,
+      severity: rule.severity,
+      check: 'citations',
+      kind: finding.kind,
+      title: rule.title,
+      message: finding.message,
+      ...(finding.chapterId ? { chapterId: finding.chapterId } : {}),
+      ...(finding.chapterTitle ? { chapterTitle: finding.chapterTitle } : {}),
+      ...(finding.from !== undefined && finding.to !== undefined
+        ? { from: finding.from, to: finding.to }
+        : {}),
+      ...(finding.sourceId ? { sourceId: finding.sourceId } : {}),
+    });
+  });
+
+  input.health.forEach((finding, i) => {
+    items.push({
+      key: `references-${finding.kind}-${i}`,
+      severity: finding.severity,
+      check: 'references',
+      kind: finding.kind,
+      title: HEALTH_TITLE[finding.kind],
+      message: finding.message,
+      sourceId: finding.sourceId,
+      shortRef: finding.shortRef,
+    });
+  });
+
+  // Reading depth names sources, not sentences: "cited, never read" is a risk to every claim
+  // resting on it. Weighted below the checks that point at a definite fault.
+  for (const source of input.depth.unread) {
+    items.push({
+      key: `reading-unread-${source.sourceId}`,
+      severity: 'medium',
+      check: 'reading',
+      kind: 'UNREAD',
+      title: 'Cited, never read',
+      message: `You cite ${source.shortRef} ${plural(source.citeCount, 'time')}, and nothing of it — not even the abstract — was ever retrieved, so no check could compare your sentences with it. Add the PDF to your library.`,
+      sourceId: source.sourceId,
+      shortRef: source.shortRef,
+    });
+  }
+  for (const source of input.depth.atRisk) {
+    items.push({
+      key: `reading-abstract-${source.sourceId}`,
+      severity: 'low',
+      check: 'reading',
+      kind: 'ABSTRACT_ONLY',
+      title: 'Cited often, read only in abstract',
+      message: `You cite ${source.shortRef} ${plural(source.citeCount, 'time')}, and only its abstract has been read. Add the PDF so the claims resting on it can be checked against the paper itself.`,
+      sourceId: source.sourceId,
+      shortRef: source.shortRef,
+    });
+  }
+
+  // From the coherence run, only what is about citations and is still open. Its
+  // CITATION_INTEGRITY flags are left out on purpose: they are the mechanical checks above as of
+  // the last run, and the ones above are as of now.
+  for (const flag of input.flags.flags) {
+    if (flag.status !== 'OPEN') continue;
+    if (flag.type !== 'CITATION_SUPPORT' && flag.type !== 'UNSUPPORTED_CLAIM') continue;
+    const severity = FLAG_SEVERITY[flag.severity] ?? 'low';
+    items.push({
+      key: `support-${flag.id}`,
+      severity,
+      check: 'support',
+      kind: flag.type,
+      title:
+        flag.type === 'CITATION_SUPPORT' ? SUPPORT_TITLE[severity] : 'A claim with no citation',
+      message: flag.description,
+      chapterId: flag.chapterId,
+      chapterTitle: flag.chapterTitle,
+      ...(flag.positionTrusted ? { from: flag.from, to: flag.to } : {}),
+    });
+  }
+
+  // Stable: within a severity, the order each check already reads in.
+  items.sort(
+    (a, b) => RANK[a.severity] - RANK[b.severity] || CHECK_RANK[a.check] - CHECK_RANK[b.check],
+  );
+
+  const counts = { high: 0, medium: 0, low: 0, total: items.length };
+  for (const item of items) counts[item.severity] += 1;
+
+  const parts = [
+    counts.high ? `${counts.high} to fix before anyone reads it` : null,
+    counts.medium ? `${counts.medium} worth fixing` : null,
+    counts.low ? `${counts.low} minor` : null,
+  ].filter(Boolean);
+
+  return {
+    headline: parts.length > 0 ? `${parts.join(', ')}.` : 'No citation problems found.',
+    counts,
+    citations: input.citations.counts.citations,
+    sources: input.citations.counts.sources,
+    supportCheck: {
+      lastRunAt: input.flags.lastRunAt,
+      outOfDate: input.flags.flags.some((flag) => flag.status === 'OPEN' && !flag.positionTrusted),
+    },
+    items,
+  };
+}

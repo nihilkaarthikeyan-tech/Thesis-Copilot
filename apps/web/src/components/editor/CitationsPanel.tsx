@@ -12,6 +12,7 @@
  */
 
 import type { Editor } from '@tiptap/core';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { ReadingDepth } from './ReadingDepth';
@@ -222,6 +223,13 @@ export function CitationsPanel({
       <ReadingDepth documentId={documentId} />
       {/* Both are about whether the bibliography is sound, so they sit together. */}
       <ReferenceHealth documentId={documentId} />
+      <Link
+        href={`/app/d/${documentId}/citations`}
+        className="mt-3 block px-1 text-xs text-accent hover:underline"
+        data-testid="citations-open-report"
+      >
+        Every citation problem in the thesis, on one page →
+      </Link>
     </>
   );
 }

@@ -88,3 +88,11 @@ were invisible to typecheck, lint and 1,200 passing tests.
       2026-09-21 when the figures route existed in source and not in the running API.
 - [ ] Never write a regex, a backtick or a backslash through a double-quoted bash string. Three
       separate mangled files on 2026-09-21 alone; use the Write/Edit tools.
+
+## Ahead of Jenni — 2026-09-25
+
+- [x] **A pre-submission citation report.** Done 2026-09-25: `/app/d/:id/citations`, linked from
+      the Submit screen and the editor's Citations panel. Every finding of the five existing
+      citation checks on one page, worst first, each linking to its sentence. Reads only.
+- [ ] **Viva preparation.** Questions an examiner could ask about this thesis, answered from it.
+- [ ] **A live progress view for the supervisor.**

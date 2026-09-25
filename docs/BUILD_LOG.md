@@ -3519,3 +3519,21 @@ Four editor and export gaps, built in this order:
     converter is now our image (`infra/docker/Dockerfile.gotenberg`, one `apt-get install
     libreoffice-math`), built by `release.yml` as `tc-gotenberg` and by dev Compose locally.
     Checked: fractions, sums with bounds, roots and accents typeset in the PDF.
+
+### The citation report — 2026-09-25
+
+`GET /documents/:id/citation-report` and `/app/d/:id/citations`. No new check: the mechanical
+citation checks, reference health, reading depth and the coherence run's `CITATION_SUPPORT` and
+`UNSUPPORTED_CLAIM` flags, gathered and ranked into "fix before anyone reads it", "worth fixing"
+and "minor". The run's `CITATION_INTEGRITY` flags are left out — they are the mechanical checks
+as of the last run, and the report has them as of now. A flag whose chapter has changed since the
+run keeps its chapter but loses its position, so the link never selects the wrong sentence. The
+page never starts a coherence run; when none has happened it says the support check has not run,
+rather than letting "no problems" stand for more than it means.
+
+A report item opens the chapter at `?from=&to=`, which the editor now selects on load (and, live,
+once the socket has delivered a document long enough to hold the range).
+
+Proven by `apps/api/test/citation-report.spec.ts` (ranking, dedup, stale positions),
+`authz.spec.ts` (another user's report is a 404) and `apps/web/e2e/citation-report.spec.ts` (from
+the Submit screen to the report to the selected sentence).

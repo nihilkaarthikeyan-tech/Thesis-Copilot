@@ -11,6 +11,7 @@ import { AssistModule } from './modules/assist/assist.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { ChaptersModule } from './modules/chapters/chapters.module.js';
+import { CitationReportModule } from './modules/citation-report/citation-report.module.js';
 import { CoherenceModule } from './modules/coherence/coherence.module.js';
 import { CollabModule } from './modules/collab/collab.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
@@ -64,6 +65,7 @@ import { UsageModule } from './modules/usage/usage.module.js';
     ExportModule,
     AiModule,
     ChaptersModule,
+    CitationReportModule,
     AssistModule,
     SourcesModule,
     PromptsModule,

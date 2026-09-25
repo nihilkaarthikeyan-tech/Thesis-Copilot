@@ -285,6 +285,21 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
       </section>
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <h2 className="eyebrow">Citations</h2>
+        <p className="mt-1 text-sm">
+          Every weak citation in the thesis on one page — retracted papers, sources that do not say
+          what the sentence claims, citations typed as plain text.{' '}
+          <Link
+            href={`/app/d/${documentId}/citations`}
+            className="font-semibold text-accent hover:underline"
+            data-testid="open-citation-report"
+          >
+            Open the citation report →
+          </Link>
+        </p>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <h2 className="eyebrow">
           Formatting checks{' '}
           {compliance ? (

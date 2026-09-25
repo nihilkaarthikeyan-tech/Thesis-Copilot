@@ -86,6 +86,7 @@ describe('§12.1: another user’s resources answer 404, never 403', () => {
     ['chapter pins', '/chapters/{c}/pins'],
     ['document versions', '/documents/{d}/versions'],
     ['sources', '/documents/{d}/sources'],
+    ['citation report', '/documents/{d}/citation-report'],
     ['seed papers', '/documents/{d}/seed-papers'],
     ['one seed paper', '/documents/{d}/seed-papers/{sp}'],
     ['source file', '/sources/{s}/file'],

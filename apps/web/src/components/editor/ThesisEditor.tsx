@@ -468,6 +468,32 @@ function ChapterEditor({
   editorRef.current = editor;
 
   /**
+   * The citation report links a problem as `?from=&to=`: select it once the chapter is in. Live,
+   * the text arrives over the socket after the editor exists, so it waits for a document long
+   * enough to hold the range rather than giving up on the empty one.
+   */
+  useEffect(() => {
+    if (!editor || typeof window === 'undefined') return;
+    const params = new URL(window.location.href).searchParams;
+    const from = Number(params.get('from'));
+    const to = Number(params.get('to'));
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) return;
+    const select = () => {
+      if (to > editor.state.doc.content.size) return false;
+      editor.chain().focus().setTextSelection({ from, to }).scrollIntoView().run();
+      return true;
+    };
+    if (select()) return;
+    const onUpdate = () => {
+      if (select()) editor.off('update', onUpdate);
+    };
+    editor.on('update', onUpdate);
+    return () => {
+      editor.off('update', onUpdate);
+    };
+  }, [editor]);
+
+  /**
    * The toolbar's side of "Insert figure".
    *
    * `uploadImage` starts the upload and returns immediately — the node is inserted in a `.then`
