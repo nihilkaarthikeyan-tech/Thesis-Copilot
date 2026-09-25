@@ -47,7 +47,25 @@ export type FoundCitationNode = {
   sourceId: string;
   from: number;
   to: number;
+  /**
+   * Its place among the chapter's notes — the student's own footnotes and its citations, counted
+   * together in document order, from 1. In a note style every citation is a footnote, so this is
+   * the footnote it becomes (plus the notes of the chapters before, which the caller adds).
+   */
+  noteOrdinal: number;
 };
+
+/** How many notes a chapter holds in a note style: its footnotes plus its citations. */
+export function notesIn(chapter: ChapterDoc): number {
+  let n = 0;
+  const walk = (node: Node | undefined): void => {
+    if (!node) return;
+    if (node.type === 'footnote' || (node.type === 'citation' && node.attrs?.key)) n++;
+    for (const child of node.content ?? []) walk(child);
+  };
+  for (const child of (chapter.content as Node | undefined)?.content ?? []) walk(child);
+  return n;
+}
 
 /**
  * Every `citation` node in a chapter, with its ProseMirror position.
@@ -58,14 +76,21 @@ export type FoundCitationNode = {
  */
 export function citationNodesIn(chapter: ChapterDoc): FoundCitationNode[] {
   const out: FoundCitationNode[] = [];
+  let notes = 0;
   const walk = (node: Node | undefined, pos: number): number => {
     if (!node) return pos;
     if (node.type === 'text') return pos + (node.text?.length ?? 0);
+    if (node.type === 'footnote') {
+      notes++;
+      return pos + 1;
+    }
     if (node.type === 'citation') {
       const key = String(node.attrs?.key ?? '');
       const sourceId = String(node.attrs?.sourceId ?? '');
       if (key) {
+        notes++;
         out.push({
+          noteOrdinal: notes,
           chapterId: chapter.id,
           chapterTitle: chapter.title,
           nodeKey: key,

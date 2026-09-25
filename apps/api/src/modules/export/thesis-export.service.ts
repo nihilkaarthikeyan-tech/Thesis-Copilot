@@ -371,8 +371,12 @@ export class ThesisExportService {
         bibliography: rendered.bibliography.map((b) => b.text),
         images,
         ...(await this.latexCitations(documentId, chapterRows)),
-        // biblatex's nearest built-in style. A footnote style cannot be chosen here (ADR-0018).
-        bibStyle: style.family === 'numeric' ? 'numeric' : 'authoryear',
+        // biblatex's nearest built-in style; a note style's is `verbose-ibid` (ADR-0029).
+        bibStyle: rendered.noteStyle
+          ? 'verbose-ibid'
+          : style.family === 'numeric'
+            ? 'numeric'
+            : 'authoryear',
         styleLabel: style.label,
         exportedOn,
       });
@@ -391,6 +395,7 @@ export class ThesisExportService {
           images,
           language: document.language,
           exportedOn,
+          noteStyle: rendered.noteStyle,
         }),
         'utf8',
       );
@@ -403,6 +408,7 @@ export class ThesisExportService {
         chapters,
         bibliography: rendered.bibliography.map((b) => b.text),
         images,
+        noteStyle: rendered.noteStyle,
       });
       body = format === 'pdf' ? await this.toPdf(docx, `${base}.docx`) : docx;
       filename = `${base}.${format}`;

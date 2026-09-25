@@ -73,6 +73,11 @@ export type ThesisExportInput = {
     string,
     { data: Uint8Array; width: number; height: number; type?: 'png' | 'jpg' | 'gif' }
   >;
+  /**
+   * ADR-0029: the citation style is a note style. Every citation is then a footnote holding the
+   * note citeproc wrote (`renderedMap`), not an in-text label.
+   */
+  noteStyle?: boolean;
 };
 
 type Node = {
@@ -176,6 +181,18 @@ function runsFrom(
           font: 'Consolas',
           size: pt(spec.font.sizePt),
         }),
+      );
+      continue;
+    }
+    if (node.type === 'citation' && input.noteStyle) {
+      // A note style: the citation is a Word footnote holding the note citeproc wrote.
+      const key = String(node.attrs?.key ?? '');
+      out.push(
+        footnoteRun(
+          input,
+          { attrs: { text: chapter.renderedMap[key] ?? '(source missing)' } },
+          { name: spec.font.body, size: pt(spec.font.sizePt - 2) },
+        ),
       );
       continue;
     }

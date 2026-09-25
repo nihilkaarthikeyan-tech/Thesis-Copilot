@@ -11,9 +11,8 @@
  * its own name). The result says so, because it is the rules — not the name — that decide how the
  * bibliography will look.
  *
- * Footnote styles appear in results but cannot be chosen. The editor has no footnotes, and a note
- * style rendered inline prints a full reference in the middle of a sentence; saying that in the
- * list is better than a student searching "Chicago notes" and finding nothing.
+ * Footnote styles can be chosen since the editor has footnotes (ADR-0029): each citation then
+ * becomes a numbered note, in the editor and in every export.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -133,12 +132,14 @@ export function StyleSearch({
                     </span>
                     <span className="block text-[11px] text-muted">
                       {!style.selectable
-                        ? 'Footnote style — not available yet: it needs footnotes, which the editor does not have.'
-                        : style.parent
-                          ? `${style.family === 'numeric' ? 'Numbered' : 'Author–date'} · uses the rules of ${style.parent}`
-                          : style.family === 'numeric'
-                            ? 'Numbered'
-                            : 'Author–date'}
+                        ? 'Not available.'
+                        : style.family === 'note'
+                          ? 'Footnotes — each citation becomes a numbered note'
+                          : style.parent
+                            ? `${style.family === 'numeric' ? 'Numbered' : 'Author–date'} · uses the rules of ${style.parent}`
+                            : style.family === 'numeric'
+                              ? 'Numbered'
+                              : 'Author–date'}
                     </span>
                   </button>
                 </li>

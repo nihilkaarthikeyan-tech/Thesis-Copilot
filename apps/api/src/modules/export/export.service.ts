@@ -85,6 +85,7 @@ export class ExportService {
       refTargets: numberingMap(chapter.content),
       numberHeadings: true,
       chapterNumber: chapter.order,
+      noteStyle: rendered.noteStyle,
     });
 
     const safeTitle = slug(chapter.title);

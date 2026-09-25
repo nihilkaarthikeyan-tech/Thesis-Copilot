@@ -1,7 +1,7 @@
 # ADR-0018 — ten thousand citation styles, fetched once from the CSL repository
 
 **Date:** 2026-09-24
-**Status:** Accepted
+**Status:** Accepted — footnote styles made selectable by ADR-0029
 **Extends:** FR-5.2 (citation styles), which the build met with twenty shipped styles.
 
 ## What prompted it

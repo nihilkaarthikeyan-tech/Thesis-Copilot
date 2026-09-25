@@ -12,6 +12,7 @@ export {
   type CitationFinding,
   citationNodesIn,
   type FoundCitationNode,
+  notesIn,
   runCitationChecks,
   untaggedCitationsIn,
 } from './checks.js';
@@ -37,6 +38,7 @@ export {
 export {
   type BibliographyEntry,
   type CitationRef,
+  isNoteStyle,
   type RenderInput,
   type RenderResult,
   renderCitations,

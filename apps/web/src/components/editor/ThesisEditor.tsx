@@ -644,7 +644,11 @@ function ChapterEditor({
    * live in the extension's storage, and `setCitationStyle` dispatches a re-render transaction.
    */
   const applyRendered = useCallback((rendered: Rendered) => {
-    editorRef.current?.commands.setCitationStyle(rendered.style, rendered.labels);
+    editorRef.current?.commands.setCitationStyle(
+      rendered.style,
+      rendered.labels,
+      rendered.noteStyle === true,
+    );
   }, []);
 
   /**

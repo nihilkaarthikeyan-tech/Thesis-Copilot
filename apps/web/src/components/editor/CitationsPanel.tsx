@@ -24,6 +24,8 @@ export type Rendered = {
   styleFamily: 'numeric' | 'author-date' | 'note';
   styles: Array<{ id: string; label: string; family: string; note?: string }>;
   labels: Record<string, string>;
+  /** ADR-0029: citations are footnotes in this style. */
+  noteStyle?: boolean;
   bibliography: Array<{ sourceId: string; text: string }>;
   findings: Array<{
     kind: 'ORPHAN' | 'UNUSED' | 'UNTAGGED';

@@ -40,13 +40,13 @@ describe('the catalogue', () => {
     expect(style?.selectable).toBe(true);
   });
 
-  it('lists footnote styles but will not let them be chosen', () => {
-    // The editor has no footnotes; a note style rendered inline is wrong for the style.
+  it('lists footnote styles, and lets them be chosen now the editor has footnotes', () => {
+    // ADR-0029 reverses ADR-0018's refusal: citations in a note style become footnotes.
     const notes =
       catalogStyle('chicago-notes-bibliography', STYLES_DIR) ??
       catalogStyle('chicago-fullnote-bibliography', STYLES_DIR);
     expect(notes?.family).toBe('note');
-    expect(notes?.selectable).toBe(false);
+    expect(notes?.selectable).toBe(true);
   });
 });
 
@@ -126,13 +126,18 @@ describe('rendering a catalogue style', () => {
     expect(entry && styleXml(entry)).toContain('xbiblio');
   });
 
-  it('refuses a footnote style, and falls back to the default only through resolveStyle', () => {
+  it('knows a footnote style as a style of its own (ADR-0029)', () => {
     const notes =
       catalogStyle('chicago-notes-bibliography', STYLES_DIR)?.id ??
       (catalogStyle('chicago-fullnote-bibliography', STYLES_DIR)?.id as string);
-    expect(findStyle(notes)).toBeNull();
-    expect(isKnownStyle(notes)).toBe(false);
-    expect(resolveStyle(notes).id).toBe('apa');
+    expect(findStyle(notes)?.id).toBe(notes);
+    expect(isKnownStyle(notes)).toBe(true);
+    expect(resolveStyle(notes).id).toBe(notes);
+  });
+
+  it('still falls back to the default for an id that is no style at all', () => {
+    expect(isKnownStyle('not-a-style')).toBe(false);
+    expect(resolveStyle('not-a-style').id).toBe('apa');
   });
 
   it('still knows the twenty shipped styles by their short ids', () => {

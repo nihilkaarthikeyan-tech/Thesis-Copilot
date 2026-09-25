@@ -44,7 +44,8 @@ export type LatexExportInput = ThesisExportInput & {
   /** The cited sources as BibTeX, keyed as `citeKeys` names them. */
   bibtex: string;
   /** biblatex's nearest built-in style to the thesis's own. */
-  bibStyle: 'authoryear' | 'numeric';
+  /** `verbose-ibid` for a note style (ADR-0029): every citation a `\footcite`. */
+  bibStyle: 'authoryear' | 'numeric' | 'verbose-ibid';
   /** The style the editor uses, named in the note at the top of `main.tex`. */
   styleLabel: string;
   /** `YYYY-MM-DD`, for the header comment. */
@@ -138,7 +139,13 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
         }
         const locator = ctx.input.locators?.[key];
         const post = locator ? `[${escapeLatex(locator)}]` : '';
-        const command = node.attrs?.role === 'narrative' ? 'textcite' : 'parencite';
+        // A note style puts every citation in a footnote; biblatex's verbose style writes it.
+        const command =
+          ctx.input.bibStyle === 'verbose-ibid'
+            ? 'footcite'
+            : node.attrs?.role === 'narrative'
+              ? 'textcite'
+              : 'parencite';
         out += `\\${command}${post}{${bibKey}}`;
         break;
       }

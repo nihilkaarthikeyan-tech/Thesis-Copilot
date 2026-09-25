@@ -61,6 +61,8 @@ export type ExportOptions = {
   numberHeadings?: boolean;
   /** The chapter's position in the thesis, so its headings number from it. Defaults to 1. */
   chapterNumber?: number;
+  /** ADR-0029: a note style — each citation is a footnote holding its note (`renderedMap`). */
+  noteStyle?: boolean;
   /**
    * Figure and table numbers by `refId`, for resolving cross-references.
    *
@@ -124,6 +126,11 @@ function runsFrom(
   for (const node of nodes) {
     if (node.type === 'footnote') {
       runs.push(footnoteRun(options, node));
+      continue;
+    }
+    if (node.type === 'citation' && options.noteStyle) {
+      // ADR-0029: in a note style the citation is a footnote holding its note.
+      runs.push(footnoteRun(options, { attrs: { text: citationLabel(node, renderedMap) } }));
       continue;
     }
     if (node.type === 'citation') {

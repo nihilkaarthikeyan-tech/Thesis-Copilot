@@ -108,6 +108,14 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
       case 'citation': {
         const key = String(node.attrs?.key ?? '');
         const label = ctx.renderedMap[key];
+        if (ctx.input.noteStyle) {
+          // ADR-0029: a note style's citation is a footnote holding its note.
+          ctx.noteCount.n += 1;
+          const n = ctx.noteCount.n;
+          ctx.notes.push({ n, text: label ?? '(source missing)' });
+          out += `<sup class="footnote-ref"><a href="#fn-${n}" id="fnref-${n}">${n}</a></sup>`;
+          break;
+        }
         if (!label) {
           out += '<strong class="missing">(source missing)</strong>';
           break;

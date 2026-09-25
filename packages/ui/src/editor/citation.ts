@@ -50,6 +50,11 @@ export type CitationStorage = {
   removedSourceIds: Set<string>;
   /** Placeholder metadata for the hover popover shell (title/year) until Phase 2. */
   meta: Record<string, { title?: string; year?: number }>;
+  /**
+   * ADR-0029: a note style. A citation then shows as a footnote number — counted with the
+   * student's own footnotes — and `renderedMap` holds the note's text, shown on hover.
+   */
+  noteStyle: boolean;
 };
 
 export const CITATIONS_RERENDER = 'citationsRerender';
@@ -59,7 +64,11 @@ declare module '@tiptap/core' {
     citation: {
       insertCitation: (attrs: Partial<CitationAttrs> & { sourceId: string | null }) => ReturnType;
       /** Swap style / labels and re-render every citation without touching the document. */
-      setCitationStyle: (style: string, renderedMap: Record<string, string>) => ReturnType;
+      setCitationStyle: (
+        style: string,
+        renderedMap: Record<string, string>,
+        noteStyle?: boolean,
+      ) => ReturnType;
       markSourceRemoved: (sourceId: string) => ReturnType;
     };
   }
@@ -108,7 +117,13 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
   draggable: false,
 
   addStorage() {
-    return { style: 'apa', renderedMap: {}, removedSourceIds: new Set<string>(), meta: {} };
+    return {
+      style: 'apa',
+      renderedMap: {},
+      removedSourceIds: new Set<string>(),
+      meta: {},
+      noteStyle: false,
+    };
   },
 
   addAttributes() {
@@ -269,13 +284,18 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         else dom.removeAttribute('data-source-id');
         if (a.chunkId) dom.setAttribute('data-chunk-id', a.chunkId);
         else dom.removeAttribute('data-chunk-id');
-        dom.textContent = labelFor(current, storage);
+        // A note style shows a footnote number (a CSS counter shared with the student's own
+        // footnotes, editor.css) and keeps the note itself for the hover.
+        dom.classList.toggle('citation--note', storage.noteStyle);
+        dom.textContent = storage.noteStyle ? '' : labelFor(current, storage);
         const removed = a.sourceId === null || storage.removedSourceIds.has(a.sourceId);
         dom.classList.toggle('citation--removed', removed);
         const meta = a.sourceId ? storage.meta[a.sourceId] : undefined;
         dom.title = removed
           ? 'Source removed — click to fix or delete'
-          : [meta?.title, meta?.year].filter(Boolean).join(', ') || 'Citation';
+          : storage.noteStyle
+            ? (storage.renderedMap[a.key] ?? 'Citation')
+            : [meta?.title, meta?.year].filter(Boolean).join(', ') || 'Citation';
       };
       render();
 
@@ -335,10 +355,11 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           }),
 
       setCitationStyle:
-        (style, renderedMap) =>
+        (style, renderedMap, noteStyle = false) =>
         ({ tr, dispatch }) => {
           this.storage.style = style;
           this.storage.renderedMap = renderedMap;
+          this.storage.noteStyle = noteStyle;
           if (dispatch) tr.setMeta(CITATIONS_RERENDER, true);
           return true;
         },

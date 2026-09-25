@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { docxEntry } from './_docx.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -75,6 +76,8 @@ test('a style is found by search, fetched if it does not ship, and renders the b
             content: [
               { type: 'text', text: 'Deep networks learn representations ' },
               { type: 'citation', attrs: { key: 'c1', sourceId } },
+              { type: 'text', text: ', and transfer them across tasks' },
+              { type: 'citation', attrs: { key: 'c2', sourceId } },
               { type: 'text', text: '.' },
             ],
           },
@@ -122,10 +125,45 @@ test('a style is found by search, fetched if it does not ship, and renders the b
   await expect(panel).toContainText('Bengio, Y. and Hinton, G., 2015', { timeout: 20_000 });
   await expect(panel).not.toContainText('LeCun, Y., Bengio, Y., & Hinton, G. (2015)');
 
-  // Footnote styles are listed, and say why they cannot be chosen.
-  await search.getByRole('searchbox').fill('chicago notes');
-  const notes = search.getByTestId('style-result').filter({ hasText: 'Chicago' }).first();
+  // Footnote styles can be chosen (ADR-0029): each citation becomes a numbered note — in the
+  // editor, and as a real Word footnote in the export.
+  await search.getByRole('searchbox').fill('chicago notes bibliography');
+  const notes = search
+    .getByTestId('style-result')
+    .filter({ hasText: 'notes and bibliography' })
+    .first();
   await expect(notes).toBeVisible({ timeout: 20_000 });
-  await expect(notes).toBeDisabled();
-  await expect(notes).toContainText('Footnote style');
+  await expect(notes).toBeEnabled();
+  await expect(notes).toContainText('Footnotes');
+  await notes.click();
+  await expect(panel.getByTestId('style-switcher')).toHaveValue(/chicago/, { timeout: 30_000 });
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+
+  const cites = page.locator('.thesis-editor .citation.citation--note');
+  await expect(cites).toHaveCount(2, { timeout: 20_000 });
+  // The note itself is on hover: the full reference first, then a shorter one for the same source.
+  await expect(cites.first()).toHaveAttribute('title', /LeCun/);
+  const first = (await cites.first().getAttribute('title')) ?? '';
+  const second = (await cites.nth(1).getAttribute('title')) ?? '';
+  expect(second.length).toBeLessThan(first.length);
+  await page
+    .locator('.thesis-editor p')
+    .first()
+    .screenshot({ path: 'test-results/note-style.png' });
+
+  // The chapter export, which keeps the thesis's own style. The whole-thesis export switches to
+  // the university template's style (D.3), and the example template's is APA.
+  const exported = await request.post(`${API_URL}/api/v1/documents/${doc.id}/export`, {
+    headers: { cookie },
+    data: { chapterId: doc.firstChapterId, format: 'docx' },
+  });
+  expect(exported.ok(), `export: ${exported.status()}`).toBe(true);
+  const { url } = (await exported.json()) as { url: string };
+  const bytes = Buffer.from(await (await request.get(url)).body());
+  const body = docxEntry(bytes, 'word/document.xml');
+  const footnotes = docxEntry(bytes, 'word/footnotes.xml');
+  expect(body.match(/<w:footnoteReference w:id="\d+"\/>/g)).toHaveLength(2);
+  expect(footnotes).toContain('LeCun');
+  // Not also printed in the running text.
+  expect(body).not.toContain('Deep Learning,');
 });

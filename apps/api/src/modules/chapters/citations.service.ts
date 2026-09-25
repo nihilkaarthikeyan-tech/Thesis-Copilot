@@ -17,6 +17,7 @@ import {
   type CitationFinding,
   citationNodesIn,
   isKnownStyle,
+  notesIn,
   type ReferenceHealthFinding,
   referenceHealthHeadline,
   renderCitations,
@@ -37,8 +38,10 @@ export type RenderedCitations = {
   styleLabel: string;
   styleFamily: StyleEntry['family'];
   styles: ReadonlyArray<{ id: string; label: string; family: string; note?: string }>;
-  /** `nodeKey` → the label the editor renders. */
+  /** `nodeKey` → the label the editor renders; in a note style, the note's text. */
   labels: Record<string, string>;
+  /** ADR-0029: citations are footnotes — the editor shows a note number, exports write notes. */
+  noteStyle: boolean;
   bibliography: BibliographyEntry[];
   findings: CitationFinding[];
   counts: { citations: number; sources: number; orphans: number; unused: number; untagged: number };
@@ -85,13 +88,19 @@ export class CitationsService {
       }),
     ]);
 
-    // Document order: chapters in outline order, citations in ProseMirror position order.
-    const ordered = chapters.flatMap((chapter) =>
-      citationNodesIn(chapter).map((node) => ({
+    // Document order: chapters in outline order, citations in ProseMirror position order. Each
+    // carries the footnote it would be in a note style, counted through the thesis with the
+    // student's own footnotes (ADR-0029) — an in-text style ignores it.
+    let notesBefore = 0;
+    const ordered = chapters.flatMap((chapter) => {
+      const nodes = citationNodesIn(chapter).map((node) => ({
         key: node.nodeKey,
         sourceId: node.sourceId,
-      })),
-    );
+        noteIndex: notesBefore + node.noteOrdinal,
+      }));
+      notesBefore += notesIn(chapter);
+      return nodes;
+    });
 
     // Locators live on the `Citation` rows, not on the node attrs the walker reads.
     const rows = await this.prisma.citation.findMany({
@@ -122,6 +131,7 @@ export class CitationsService {
         ...(s.note ? { note: s.note } : {}),
       })),
       labels: rendered.labels,
+      noteStyle: rendered.noteStyle,
       bibliography: rendered.bibliography,
       findings,
       counts: {

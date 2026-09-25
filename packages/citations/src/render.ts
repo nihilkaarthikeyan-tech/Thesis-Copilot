@@ -29,6 +29,12 @@ export type CitationRef = {
   locator?: string | null;
   prefix?: string | null;
   suffix?: string | null;
+  /**
+   * The footnote this citation sits in, counted through the thesis with the student's own notes.
+   * Only a note style reads it: it is how citeproc knows to write the short form, or "Ibid.",
+   * for a source the previous note already cited. Absent, each citation is its own next note.
+   */
+  noteIndex?: number;
 };
 
 export type RenderInput = {
@@ -51,6 +57,12 @@ export type RenderResult = {
   bibliography: BibliographyEntry[];
   /** Cited sources that are not in `sources` — an orphaned citation node (B.5). */
   missingSourceIds: string[];
+  /**
+   * A note style (Chicago notes, OSCOLA…): every citation is a footnote, and `labels` holds the
+   * note's text rather than an in-text label. The editor then shows a note number, and every
+   * exporter writes the citation as a footnote (ADR-0029).
+   */
+  noteStyle: boolean;
 };
 
 type CiteprocEngine = {
@@ -98,11 +110,15 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     else missing.add(citation.sourceId);
   }
 
+  const styleId = ensureRegistered(style, stylesDir);
+  const noteStyle = isNoteStyle(style, stylesDir);
+
   const empty: RenderResult = {
     style,
     labels: {},
     bibliography: [],
     missingSourceIds: [...missing],
+    noteStyle,
   };
   if (used.length === 0) return empty;
 
@@ -110,7 +126,6 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
   const citedIds = new Set(used.map((c) => c.sourceId));
   const data = [...citedIds].map((id) => toCslItem(known.get(id) as SourceLike));
 
-  const styleId = ensureRegistered(style, stylesDir);
   const format = input.format ?? 'text';
   // A journal style can declare its own locale (a German journal's "Hrsg."); the caller's wins.
   const engine = config().engine(data, styleId, input.locale ?? style.locale ?? 'en-US', format);
@@ -125,7 +140,8 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
         ...(citation.suffix ? { suffix: citation.suffix } : {}),
       },
     ],
-    properties: { noteIndex: 0 },
+    // In-text styles ignore it; a note style needs each citation's own footnote number.
+    properties: { noteIndex: noteStyle ? (citation.noteIndex ?? index + 1) : 0 },
   }));
 
   const rendered = engine.rebuildProcessorState(clusters, format, []);
@@ -142,5 +158,18 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     text: clean(text),
   }));
 
-  return { style, labels, bibliography, missingSourceIds: [...missing] };
+  return { style, labels, bibliography, missingSourceIds: [...missing], noteStyle };
+}
+
+const noteStyles = new Map<string, boolean>();
+
+/** Whether a style writes its citations as footnotes: CSL says so in `class="note"`. */
+export function isNoteStyle(style: StyleEntry, stylesDir?: string): boolean {
+  const known = noteStyles.get(style.id);
+  if (known !== undefined) return known;
+  const xml = styleXml(style, stylesDir);
+  const head = /<style\b[^>]*>/.exec(xml)?.[0] ?? '';
+  const note = /\bclass\s*=\s*["']note["']/.test(head);
+  noteStyles.set(style.id, note);
+  return note;
 }

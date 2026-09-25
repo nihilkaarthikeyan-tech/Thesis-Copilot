@@ -63,7 +63,10 @@ export type CatalogStyle = {
   /** Set for a dependent: a journal's name over another style's rules. */
   parent?: string;
   locale?: string;
-  /** False for footnote styles, which need footnotes the editor does not have. */
+  /**
+   * Every style is selectable since the editor has footnotes (ADR-0029). Kept on the record so the
+   * API's shape does not change; a style could still be withheld for another reason one day.
+   */
   selectable: boolean;
 };
 
@@ -98,7 +101,7 @@ function load(stylesDir: string) {
       xmlId: record.p ?? record.id,
       ...(record.p ? { parent: record.p } : {}),
       ...(record.l ? { locale: record.l } : {}),
-      selectable: format !== 'note',
+      selectable: true,
     });
   }
   loaded = { catalog, byId: new Map(all.map((s) => [s.id, s])), all };
@@ -119,7 +122,7 @@ export function catalogStyle(id: string, stylesDir: string): CatalogStyle | null
   return load(stylesDir).byId.get(id) ?? null;
 }
 
-/** How many styles a student can actually choose — the catalogue less the footnote styles. */
+/** How many styles a student can actually choose — all of them, since ADR-0029. */
 export function selectableCount(stylesDir: string): number {
   return load(stylesDir).all.filter((s) => s.selectable).length;
 }
