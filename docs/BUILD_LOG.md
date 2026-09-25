@@ -3741,3 +3741,12 @@ words (the switches have names and one-line explanations); the banner says what 
 product's own terms; and the cost model is priced at `AI_FAST_MODEL` / `AI_STRONG_MODEL`, as
 `pnpm ai:verify` does. `admin-role.spec.ts` drives the header and refuses "PRD §" and "PHASES"
 on the page.
+
+### Plain names on the admin screens — 2026-09-25
+
+The owner, reading the cost table: "I don't understand anything, it's not reliable and user
+friendly". The rows were the call log's action codes and four token columns. Now every admin
+screen names the features in words (`apps/web/src/lib/action-names.ts`: Autocomplete, Drafted
+sections, Citation suggestions, Chat with papers, AI edits, Consistency check, Viva preparation…)
+with the code in small type beside it, and the token columns sit behind "Show the token detail".
+The same names reach the user pages and the reset-caps notice.

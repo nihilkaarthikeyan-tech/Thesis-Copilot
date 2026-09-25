@@ -9,6 +9,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { actionName } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 import { inr, type UserRow, when } from './shared';
 
@@ -80,7 +81,7 @@ export default function AdminUsersPage() {
                     <td className="px-3 py-2 text-xs">
                       {u.usage
                         .filter((x) => x.cap > 0 || x.used > 0)
-                        .map((x) => `${x.action} ${x.used}/${x.cap}`)
+                        .map((x) => `${actionName(x.action)} ${x.used}/${x.cap}`)
                         .join(' · ')}
                     </td>
                     <td className={`px-3 py-2 ${u.costInr > 100 ? 'text-warn' : ''}`}>

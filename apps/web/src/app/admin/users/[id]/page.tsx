@@ -13,6 +13,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { actionName } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 import { inr, type UserRow, when } from '../shared';
 
@@ -63,7 +64,7 @@ export default function AdminUserPage() {
       setNotice(
         result.reset.length === 0
           ? 'Nothing to reset: every counter was already at zero.'
-          : `Reset: ${result.reset.map((r) => `${r.action} was ${r.was}`).join(', ')}.`,
+          : `Reset: ${result.reset.map((r) => `${actionName(r.action)} was ${r.was}`).join(', ')}.`,
       );
       load();
     } catch (e) {
@@ -141,7 +142,7 @@ export default function AdminUserPage() {
                   .filter((x) => x.cap > 0 || x.used > 0)
                   .map((x) => (
                     <li key={x.action} className="flex justify-between">
-                      <span>{x.action}</span>
+                      <span>{actionName(x.action)}</span>
                       <span className={x.used >= x.cap && x.cap > 0 ? 'text-warn' : ''}>
                         {x.used} / {x.cap}
                       </span>

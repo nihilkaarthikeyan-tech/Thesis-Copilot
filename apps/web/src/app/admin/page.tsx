@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { actionName } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 import { signOut, useSession } from '@/lib/auth-client';
 
@@ -105,6 +106,7 @@ export default function AdminPage() {
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyFlag, setBusyFlag] = useState<string | null>(null);
+  const [showTokens, setShowTokens] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -350,7 +352,15 @@ export default function AdminPage() {
               What the AI cost this month
             </h2>
             <p className="mt-1 text-xs text-muted">
-              From {costs.from.slice(0, 10)} to {costs.to.slice(0, 10)}, read from the call log.
+              From {costs.from.slice(0, 10)} to {costs.to.slice(0, 10)}, read from the call log.{' '}
+              <button
+                type="button"
+                data-testid="toggle-tokens"
+                onClick={() => setShowTokens((v) => !v)}
+                className="underline"
+              >
+                {showTokens ? 'Hide the token detail' : 'Show the token detail'}
+              </button>
               {costs.totalInr === 0 && costs.rows.some((r) => r.calls > 0)
                 ? ' Cost is ₹0 because the provider is the mock; calls and tokens are real, the price is not.'
                 : ''}
@@ -373,32 +383,43 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-muted">
                   <tr>
-                    <th className="px-3 py-2">Action</th>
-                    <th className="px-3 py-2">Calls</th>
+                    <th className="px-3 py-2">Feature</th>
+                    <th className="px-3 py-2">Uses</th>
                     <th className="px-3 py-2">Failed</th>
-                    <th className="px-3 py-2">Input</th>
-                    <th className="px-3 py-2">Cached</th>
-                    <th className="px-3 py-2">Output</th>
-                    <th className="px-3 py-2">Cache hit</th>
+                    {showTokens ? (
+                      <>
+                        <th className="px-3 py-2">Tokens in</th>
+                        <th className="px-3 py-2">Tokens cached</th>
+                        <th className="px-3 py-2">Tokens out</th>
+                        <th className="px-3 py-2">Cache hit</th>
+                      </>
+                    ) : null}
                     <th className="px-3 py-2">Cost</th>
                   </tr>
                 </thead>
                 <tbody>
                   {costs.rows.map((row) => (
                     <tr key={row.action} className="border-t border-line">
-                      <td className="px-3 py-2 font-medium">{row.action}</td>
+                      <td className="px-3 py-2 font-medium">
+                        {actionName(row.action)}{' '}
+                        <span className="font-mono text-[11px] text-faint">{row.action}</span>
+                      </td>
                       <td className="px-3 py-2">{row.calls}</td>
                       <td className={`px-3 py-2 ${row.failed > 0 ? 'text-warn' : ''}`}>
                         {row.failed}
                       </td>
-                      <td className="px-3 py-2">{row.inputTokens.toLocaleString()}</td>
-                      <td className="px-3 py-2">{row.cachedInputTokens.toLocaleString()}</td>
-                      <td className="px-3 py-2">{row.outputTokens.toLocaleString()}</td>
-                      <td
-                        className={`px-3 py-2 ${row.action === 'ASSIST' && row.calls > 0 && row.cacheHitRate < 70 ? 'text-warn' : ''}`}
-                      >
-                        {row.calls > 0 ? `${row.cacheHitRate}%` : '–'}
-                      </td>
+                      {showTokens ? (
+                        <>
+                          <td className="px-3 py-2">{row.inputTokens.toLocaleString()}</td>
+                          <td className="px-3 py-2">{row.cachedInputTokens.toLocaleString()}</td>
+                          <td className="px-3 py-2">{row.outputTokens.toLocaleString()}</td>
+                          <td
+                            className={`px-3 py-2 ${row.action === 'ASSIST' && row.calls > 0 && row.cacheHitRate < 70 ? 'text-warn' : ''}`}
+                          >
+                            {row.calls > 0 ? `${row.cacheHitRate}%` : '–'}
+                          </td>
+                        </>
+                      ) : null}
                       <td className="px-3 py-2">{inr(row.costInr)}</td>
                     </tr>
                   ))}
@@ -422,7 +443,7 @@ export default function AdminPage() {
                   <ul className="mt-1 space-y-1">
                     {telemetry.acceptance.map((a) => (
                       <li key={a.action} className="flex justify-between">
-                        <span>{a.action}</span>
+                        <span>{actionName(a.action)}</span>
                         <span>
                           {a.accepted} of {a.shown} kept · {a.rate}%
                         </span>
@@ -443,7 +464,7 @@ export default function AdminPage() {
                   </li>
                   {Object.entries(telemetry.avgLatencyMs).map(([action, ms]) => (
                     <li key={action} className="flex justify-between">
-                      <span>Average wait, {action}</span>
+                      <span>Average wait, {actionName(action).toLowerCase()}</span>
                       <span>{ms} ms</span>
                     </li>
                   ))}
