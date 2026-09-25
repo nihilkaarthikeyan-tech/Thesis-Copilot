@@ -260,20 +260,27 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       checks the VPS working tree out to the tag before running `deploy.sh`, and back to
       `.last_good_tag` if the deploy rolls back. It also calls `../scripts/deploy.sh` rather than an
       untracked symlink made by hand during the first deploy — so a fresh clone can now deploy.
-- [ ] **Turn on live co-authoring in production** (ADR-0028), in this order, after v0.1.5 is up:
-      1. Copy the host vhost (next item): it now has a `/collab/` location that passes the
-         WebSocket upgrade through. Without it every live session fails to connect and the
-         editor says "Connecting…" for ever.
+- [ ] **Turn on live co-authoring in production** (ADR-0028) — **the owner decided on 2026-09-25 to
+      leave it off**: the server hosts many other projects and the step below edits nginx, which
+      they all share. Nothing was changed. If it is ever wanted, in this order:
+      1. **Add** the `/collab/` location block from `infra/nginx/thesis.rademics.ai.conf` to the
+         live `/etc/nginx/sites-available/thesis.rademics.ai`, above `location /`. Do **not** copy
+         the file over: see the next item. Without the block every live session fails to connect
+         and the editor says "Connecting…" for ever.
       2. The release brings a `collab` service (compose) — one instance of the API image with
          `COLLAB_ENABLED=true`. Check it is healthy: `docker compose ps collab`.
       3. Flip the `collaboration` flag on the admin page. Until then nothing changes for anyone:
          the share panel does not offer "edit with me", and every editor stays on autosave.
       4. Prove it: share a thesis with a second address ticking "edit with me, live", open the
          chapter in two browsers, type in each. `apps/web/e2e/collab.spec.ts` is the same walk.
-- [ ] **Copy the host nginx vhost by hand when it changes.** Still yours on purpose: that file is
-      shared with eight other sites and a bad one takes all nine down, so CI only *warns* when
-      `infra/nginx/thesis.rademics.ai.conf` and `/etc/nginx/sites-available/thesis.rademics.ai` have
-      drifted, and prints the diff. Copy it, run `nginx -t`, then `systemctl reload nginx`.
+- [ ] **Never copy the repo's nginx vhost over the live one — edit the live file by hand.** Found
+      2026-09-25 by diffing the two before touching anything: the live file carries the lines
+      Certbot added when it issued the certificate (`listen 443 ssl`, the certificate paths, and
+      the port-80 redirect block), and the repo's copy has none of them. Copying it over would
+      have taken HTTPS off thesis.rademics.ai. The same nginx serves every other site on the
+      server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
+      only if that passes. CI's drift warning will always fire because of the Certbot lines;
+      read its diff for anything *besides* them.
 - [x] **Released v0.1.5, 2026-09-25, at the owner's go-ahead** (tag on `40d3b7d`, CI green;
       migrations 0015–0021 applied; all 13 services healthy). The item as it stood: Every figure a
       student adds goes blank fifteen minutes later on production today (53179b2 fixes it: the
