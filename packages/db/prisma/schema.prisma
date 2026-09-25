@@ -585,6 +585,14 @@ model FeatureFlag {
   updatedAt DateTime @updatedAt
 }
 
+/// A number the admin screen sets (2026-09-25): `platformMonthlyCeilingInr`, the site-wide monthly
+/// AI budget in rupees, or `off`. Read by the API's PlatformBudgetService and the worker.
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // ---------------------------------------------------------------------------------------------
 // Better Auth tables — NOT in PRD §8. See docs/ADR/0002-better-auth-tables.md.
 //

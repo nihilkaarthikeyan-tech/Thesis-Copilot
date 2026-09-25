@@ -47,6 +47,8 @@ export const SEARCH = {
 
 export type SearchLiteratureDeps = {
   prisma: PrismaClient;
+  /** Throws when the site's monthly AI budget is reached (2026-09-25): nothing is embedded. */
+  assertBudget?: () => Promise<void>;
   llm: LlmProvider;
   embeddings: EmbeddingProvider;
   openalex: OpenAlexDiscovery;
@@ -333,6 +335,7 @@ async function discover(
   const scopeText = `${scope.workingTitle}. ${scope.problemStatement} ${scope.objectives.join(' ')}`;
   const texts = fresh.map((w) => `${w.title}. ${w.abstract ?? ''}`.slice(0, 2_000));
   const vectors: number[][] = [];
+  await deps.assertBudget?.();
   const [scopeVector] = await deps.embeddings.embed([scopeText]);
   for (let i = 0; i < texts.length; i += SEARCH.embedBatch) {
     vectors.push(...(await deps.embeddings.embed(texts.slice(i, i + SEARCH.embedBatch))));

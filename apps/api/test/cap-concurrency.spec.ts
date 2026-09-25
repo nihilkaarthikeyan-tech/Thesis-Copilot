@@ -79,7 +79,10 @@ beforeAll(async () => {
   await prisma.$connect();
 
   // No site-wide ceiling here: this file proves the per-user counter, and nothing else.
-  usage = new UsageService(prisma as never, { PLATFORM_MONTHLY_CEILING_INR: undefined } as never);
+  const noBudget = {
+    status: async () => ({ reached: false, ceilingInr: null, spentInr: 0 }),
+  } as never;
+  usage = new UsageService(prisma as never, noBudget);
 }, 180_000);
 
 afterAll(async () => {

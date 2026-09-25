@@ -34,6 +34,16 @@ type CostRow = {
   cacheHitRate: number;
 };
 
+type Budget = {
+  ceilingInr: number | null;
+  source: 'admin' | 'env' | 'none';
+  spentInr: number;
+  period: string;
+  resetsAt: string;
+  reached: boolean;
+  warning: boolean;
+};
+
 type Costs = {
   from: string;
   to: string;
@@ -68,6 +78,10 @@ const inr = (value: number) => `₹${value.toFixed(2)}`;
 export default function AdminPage() {
   const [model, setModel] = useState<CostModel | null>(null);
   const [costs, setCosts] = useState<Costs | null>(null);
+  const [budget, setBudget] = useState<Budget | null>(null);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [budgetBusy, setBudgetBusy] = useState(false);
+  const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
   const [flags, setFlags] = useState<Flag[] | null>(null);
   const [forbidden, setForbidden] = useState(false);
@@ -87,6 +101,12 @@ export default function AdminPage() {
         api<Telemetry>('/admin/telemetry'),
         api<Flag[]>('/admin/flags'),
       ]);
+      api<Budget>('/admin/platform-budget')
+        .then((b) => {
+          setBudget(b);
+          setBudgetInput(b.ceilingInr === null ? '' : String(b.ceilingInr));
+        })
+        .catch(() => undefined);
       setCosts(c);
       setTelemetry(t);
       setFlags(f);
@@ -171,6 +191,87 @@ export default function AdminPage() {
             <dt className="text-muted">Within ceiling</dt>
             <dd>{model.withinCeiling ? 'Yes' : 'No'}</dd>
           </dl>
+        </section>
+      ) : null}
+
+      {budget ? (
+        <section className="mt-8" data-testid="platform-budget">
+          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            Site-wide AI budget
+          </h2>
+          <p className="mt-1 text-xs text-muted">
+            One number for the whole site per calendar month. At it, every AI call is refused and
+            the paper indexing pauses until the 1st; you are emailed at 80% and at the stop. The
+            per-student ₹100 limit applies regardless.
+          </p>
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 rounded-md border border-line bg-surface p-4 text-sm md:grid-cols-4">
+            <dt className="text-muted">Spent in {budget.period}</dt>
+            <dd className={budget.reached ? 'text-warn' : budget.warning ? 'text-warn' : ''}>
+              {inr(budget.spentInr)}
+            </dd>
+            <dt className="text-muted">Budget</dt>
+            <dd data-testid="platform-budget-ceiling">
+              {budget.ceilingInr === null ? 'Off' : `${inr(budget.ceilingInr)} / month`}
+              {budget.source === 'env' ? ' (from the server settings)' : ''}
+            </dd>
+            <dt className="text-muted">Status</dt>
+            <dd>{budget.reached ? 'REACHED — AI paused' : budget.warning ? 'Past 80%' : 'OK'}</dd>
+            <dt className="text-muted">Resets</dt>
+            <dd>{budget.resetsAt.slice(0, 10)}</dd>
+          </dl>
+          <form
+            className="mt-3 flex flex-wrap items-end gap-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setBudgetBusy(true);
+              setBudgetNotice(null);
+              try {
+                const value = budgetInput.trim() === '' ? null : Number(budgetInput);
+                const next = await api<Budget>('/admin/platform-budget', {
+                  method: 'PUT',
+                  body: JSON.stringify({ ceilingInr: value }),
+                });
+                setBudget(next);
+                setBudgetNotice(
+                  next.ceilingInr === null
+                    ? 'Site-wide budget switched off. Logged.'
+                    : `Site-wide budget set to ${inr(next.ceilingInr)} a month. Logged.`,
+                );
+              } catch (e) {
+                setBudgetNotice(
+                  e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not save.',
+                );
+              } finally {
+                setBudgetBusy(false);
+              }
+            }}
+          >
+            <label className="text-xs text-muted" htmlFor="platform-budget-inr">
+              Budget in rupees per month (blank = off)
+              <input
+                id="platform-budget-inr"
+                data-testid="platform-budget-input"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={budgetInput}
+                onChange={(e) => setBudgetInput(e.target.value)}
+                className="mt-1 block w-40 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={budgetBusy}
+              data-testid="platform-budget-save"
+              className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+            >
+              {budgetBusy ? 'Saving…' : 'Save budget'}
+            </button>
+            {budgetNotice ? (
+              <span role="status" data-testid="platform-budget-notice" className="text-xs">
+                {budgetNotice}
+              </span>
+            ) : null}
+          </form>
         </section>
       ) : null}
 

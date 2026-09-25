@@ -38,6 +38,19 @@ test('the superadmin changes a user’s role from their page, and it is logged',
   await expect(page.getByTestId('admin-link')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('admin-link')).toHaveAttribute('href', '/admin');
 
+  // The site-wide AI budget is set from the admin home (2026-09-25), and the change is logged.
+  await page.goto('/admin');
+  const budgetInput = page.getByTestId('platform-budget-input');
+  await expect(budgetInput).toBeVisible({ timeout: 30_000 });
+  await budgetInput.fill('2000');
+  await page.getByTestId('platform-budget-save').click();
+  await expect(page.getByTestId('platform-budget-notice')).toContainText('set to ₹2000.00 a month');
+  await expect(page.getByTestId('platform-budget-ceiling')).toContainText('₹2000.00 / month');
+  // Back off, so the dev database is left as it was found.
+  await budgetInput.fill('');
+  await page.getByTestId('platform-budget-save').click();
+  await expect(page.getByTestId('platform-budget-notice')).toContainText('switched off');
+
   await page.goto(`/admin/users/${student.id}`);
   const role = page.getByTestId('admin-role');
   await expect(role).toHaveValue('STUDENT', { timeout: 30_000 });

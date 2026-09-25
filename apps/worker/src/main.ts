@@ -65,6 +65,7 @@ import {
   runResolveReference,
 } from './jobs/resolve-reference.js';
 import { runSearchLiterature } from './jobs/search-literature.js';
+import { assertPlatformBudget } from './platform-budget.js';
 import {
   DEFAULT_JOB_OPTIONS,
   QUEUE_COHERENCE,
@@ -330,6 +331,7 @@ async function main(): Promise<void> {
           putObject: (key, body) => storage.put(key, body),
           extract: (bytes) => extractDocument(bytes, 'pdf'),
           logEmbed: logEmbed(prisma, env),
+          assertBudget: assertPlatformBudget(prisma, env),
           log: (event) => log({ jobId: job.id, ...event }),
         });
         return result;
@@ -502,6 +504,7 @@ async function main(): Promise<void> {
       async (job: Job<SearchLiteratureJob>) => {
         const result = await runSearchLiterature(job.data, {
           prisma,
+          assertBudget: assertPlatformBudget(prisma, env),
           llm: providers.llm,
           embeddings: providers.embeddings,
           openalex: scholarly.discovery,

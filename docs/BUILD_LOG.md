@@ -3704,3 +3704,24 @@ their allowance. `platform-ceiling.spec.ts` proves the sum crosses on another us
 that a failed call is not counted, and what the endpoint answers. On the Voyage side the guard
 is structural: prepaid credit with auto-recharge off, which is the only kind of limit that
 cannot be exceeded.
+
+### The budget, as the owner wanted it — 2026-09-25
+
+"Set the site limit to 2000 rupees, and in the admin I can change it; once it hits this limit
+Voyage must stop working, and a mail must be sent." Four things, built on the ceiling from the
+same afternoon:
+
+- **Editable in Admin.** A `PlatformSetting` row (migration 0022) the admin home writes; the
+  environment variable is the fallback. `PlatformBudgetService` is the one reader, cached a
+  minute, and `UsageService`, the alerts and the admin screen all ask it. Changes are logged as
+  `PLATFORM_BUDGET_CHANGED`.
+- **Voyage stops too.** The metered calls were already refused; the worker's paper indexing and
+  literature search spend on embeddings without a metered allowance, so both now ask the same
+  question (`apps/worker/src/platform-budget.ts`) before their first embedding call and fail
+  with a sentence that says why. `index-source.spec` pins that nothing is embedded or written.
+- **A mail.** Two new §14 alert kinds, `PLATFORM_BUDGET_WARNING` at 80% and
+  `PLATFORM_BUDGET_REACHED`, emailed once each per breach to the seed admin and to
+  `ALERT_EMAILS` (new; the owner named a second inbox). `platform-ceiling.spec` proves the
+  recipients, the once, and that a malformed address in the list is ignored.
+- **₹2,000** goes into the VPS `.env` at the next release, so it holds from the first second;
+  the admin screen can change it after that without a deploy.

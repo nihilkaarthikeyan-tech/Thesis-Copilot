@@ -98,6 +98,12 @@ blocks the agent from continuing to build against mocks.
       at thesis.rademics.ai with their email (that creates the account), then the owner opens
       Admin → Users → their page → Role → SUPERADMIN. Logged as ROLE_CHANGED; a superadmin cannot
       remove their own role. INSTITUTION_ADMIN is for a university's seat manager, not for staff.
+- [x] **Site-wide monthly AI budget: ₹2,000, decided by the owner 2026-09-25** — set in the VPS
+      `.env` as the fallback at the v0.1.7 release, and editable from Admin → "Site-wide AI
+      budget" (the admin's number wins over the file). Alerts go to `SEED_ADMIN_EMAIL` and
+      `ALERT_EMAILS=editor.publicationmart@gmail.com` at 80% and at the stop. At the stop every
+      AI call is refused and paper indexing / literature search pause (the worker asks the same
+      question before it spends). The item as it stood:
 - [ ] **Set the site-wide monthly AI budget** (`PLATFORM_MONTHLY_CEILING_INR` in the VPS `.env`,
       2026-09-25, the owner's "so that we are very safe"). Rupees for the whole site per calendar
       month; once every user's successful AI spend adds up to it, every AI call is refused with

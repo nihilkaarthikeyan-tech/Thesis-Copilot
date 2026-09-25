@@ -19,25 +19,21 @@
  * no row — which is the refusal. Two requests can never both see the last remaining unit.
  */
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   capFor,
-  type Env,
   type MeteredAction,
   MONTHLY_CEILING_INR,
   MONTHLY_CEILING_MICRO_INR,
   type Plan,
 } from '@tc/config';
-import { ENV } from '../../common/env.token.js';
 import {
   CapExceededError,
   CeilingExceededError,
   PlatformCeilingExceededError,
 } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
-
-/** How long one site-wide spend figure is trusted before it is re-summed. */
-const PLATFORM_SPEND_CACHE_MS = 60_000;
+import { PlatformBudgetService } from './platform-budget.service.js';
 
 /**
  * Why a refusal happened. The student sees a different sentence for each, because they mean
@@ -74,11 +70,9 @@ export function resetsAtFor(now: Date = new Date()): Date {
 
 @Injectable()
 export class UsageService {
-  private platformSpend: { period: string; micro: bigint; at: number } | null = null;
-
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(ENV) private readonly env: Env,
+    private readonly budget: PlatformBudgetService,
   ) {}
 
   /**
@@ -111,20 +105,17 @@ export class UsageService {
     // The site-wide budget (2026-09-25, the owner's guard): the sum over every user, so no
     // number of students within their own ceilings can add up to a bill nobody agreed to. Summed
     // at most once a minute, which bounds the overshoot to a minute of calls.
-    const platformCeilingInr = this.env.PLATFORM_MONTHLY_CEILING_INR;
-    if (platformCeilingInr !== undefined) {
-      const platformMicro = await this.platformSpentThisPeriod(now);
-      if (platformMicro >= BigInt(platformCeilingInr) * 1_000_000n) {
-        await this.audit(userId, plan, action, cap, 'platform');
-        return {
-          ok: false,
-          reason: 'platform',
-          cap,
-          resetsAt: resetsAtFor(now),
-          spentInr: Math.round(Number(platformMicro) / 10_000) / 100,
-          platformCeilingInr,
-        };
-      }
+    const budget = await this.budget.status(now);
+    if (budget.reached && budget.ceilingInr !== null) {
+      await this.audit(userId, plan, action, cap, 'platform');
+      return {
+        ok: false,
+        reason: 'platform',
+        cap,
+        resetsAt: resetsAtFor(now),
+        spentInr: budget.spentInr,
+        platformCeilingInr: budget.ceilingInr,
+      };
     }
 
     const spentMicro = await this.spentThisPeriod(userId, now);
@@ -184,23 +175,6 @@ export class UsageService {
         detail: { action, plan, cap, reason },
       },
     });
-  }
-
-  /** Every user's successful spend this period, in micro-rupees; cached for a minute. */
-  async platformSpentThisPeriod(now: Date = new Date()): Promise<bigint> {
-    const period = periodFor(now);
-    const cached = this.platformSpend;
-    if (cached && cached.period === period && now.getTime() - cached.at < PLATFORM_SPEND_CACHE_MS) {
-      return cached.micro;
-    }
-    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const sum = await this.prisma.aiCallLog.aggregate({
-      where: { ok: true, createdAt: { gte: from, lt: resetsAtFor(now) } },
-      _sum: { costMicroInr: true },
-    });
-    const micro = sum._sum.costMicroInr ?? 0n;
-    this.platformSpend = { period, micro, at: now.getTime() };
-    return micro;
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsModule } from '../flags/flags.module.js';
+import { UsageModule } from '../usage/usage.module.js';
 import { AdminController, FeedbackController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
 import { AlertsScheduler } from './alerts.scheduler.js';
@@ -10,7 +11,7 @@ import { SuperadminGuard } from './superadmin.guard.js';
 import { UsersService } from './users.service.js';
 
 @Module({
-  imports: [FlagsModule],
+  imports: [FlagsModule, UsageModule],
   controllers: [AdminController, FeedbackController],
   providers: [
     AdminService,

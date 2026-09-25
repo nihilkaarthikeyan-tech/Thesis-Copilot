@@ -23,6 +23,7 @@ import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsService } from '../flags/flags.service.js';
+import { PlatformBudgetService } from '../usage/platform-budget.service.js';
 import { AdminService } from './admin.service.js';
 import { AlertsService } from './alerts.service.js';
 import { FeedbackService } from './feedback.service.js';
@@ -43,6 +44,7 @@ const planBody = z.object({ plan: z.enum(PLANS) });
  */
 export const ASSIGNABLE_ROLES = ['STUDENT', 'INSTITUTION_ADMIN', 'SUPERADMIN'] as const;
 const roleBody = z.object({ role: z.enum(ASSIGNABLE_ROLES) });
+const budgetBody = z.object({ ceilingInr: z.number().int().min(1).nullable() });
 const feedbackBody = z.object({
   documentId: z.string().uuid(),
   message: z.string().trim().min(1).max(4_000),
@@ -53,6 +55,7 @@ const feedbackBody = z.object({
 export class AdminController {
   constructor(
     private readonly flags: FlagsService,
+    private readonly budget: PlatformBudgetService,
     private readonly admin: AdminService,
     private readonly alerts: AlertsService,
     private readonly users: UsersService,
@@ -156,6 +159,24 @@ export class AdminController {
   @UseGuards(SessionGuard, SuperadminGuard)
   evaluateAlerts() {
     return this.alerts.evaluate();
+  }
+
+  /** The site-wide monthly AI budget (2026-09-25): spend so far against the number, and its source. */
+  @Get('platform-budget')
+  @UseGuards(SessionGuard, SuperadminGuard)
+  platformBudget() {
+    return this.budget.status();
+  }
+
+  /** Sets it (null switches the site-wide stop off). Logged as PLATFORM_BUDGET_CHANGED. */
+  @Put('platform-budget')
+  @UseGuards(SessionGuard, SuperadminGuard)
+  setPlatformBudget(@CurrentUser() admin: SessionUser, @Body() body: unknown) {
+    const parsed = budgetBody.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError('A whole number of rupees, or null for off', parsed.error.issues);
+    }
+    return this.budget.setCeiling(admin.id, parsed.data.ceilingInr);
   }
 
   @Get('flags')

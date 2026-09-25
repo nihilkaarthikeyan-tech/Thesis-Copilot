@@ -17,6 +17,7 @@ import type { Env } from '@tc/config';
 import { ENV } from '../../common/env.token.js';
 import { MAILER, type Mailer } from '../../common/mailer.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { PlatformBudgetService } from '../usage/platform-budget.service.js';
 
 /** §11.5 and §14 thresholds. Named so a test reads the same number the code does. */
 export const ALERT = {
@@ -41,6 +42,8 @@ export type AlertKind =
   | 'USER_COST'
   | 'USER_APPROACHING'
   | 'PLATFORM_AVERAGE'
+  | 'PLATFORM_BUDGET_WARNING'
+  | 'PLATFORM_BUDGET_REACHED'
   | 'JOB_FAILURES'
   | 'TTFB_P95';
 
@@ -58,11 +61,22 @@ export class AlertsService {
     private readonly prisma: PrismaService,
     @Inject(MAILER) private readonly mailer: Mailer,
     @Inject(ENV) private readonly env: Env,
+    private readonly budget: PlatformBudgetService,
   ) {}
+
+  /** The seed admin, plus `ALERT_EMAILS` (2026-09-25: the owner asked for a second inbox). */
+  recipients(): string[] {
+    const extra = (this.env.ALERT_EMAILS ?? '')
+      .split(',')
+      .map((address) => address.trim())
+      .filter((address) => address.includes('@'));
+    return [...new Set([this.env.SEED_ADMIN_EMAIL, ...extra])];
+  }
 
   /** Runs every condition; returns what breached. Emails new breaches, clears resolved ones. */
   async evaluate(now = new Date()): Promise<Breach[]> {
     const breaches = [
+      ...(await this.budgetBreaches(now)),
       ...(await this.costBreaches(now)),
       ...(await this.jobFailureBreach(now)),
       ...(await this.ttfbBreach(now)),
@@ -79,7 +93,7 @@ export class AlertsService {
     const fresh = breaches.filter((b) => !this.open.has(b.kind));
     if (fresh.length > 0) {
       await this.mailer.send({
-        to: [this.env.SEED_ADMIN_EMAIL],
+        to: this.recipients(),
         subject: `Thesis Copilot alert: ${fresh.map((b) => b.kind).join(', ')}`,
         text: fresh
           .map((b) => `${b.kind}: ${b.detail} (${b.value} against a threshold of ${b.threshold})`)
@@ -89,6 +103,36 @@ export class AlertsService {
     }
 
     return breaches;
+  }
+
+  /**
+   * The site-wide monthly budget (2026-09-25): a warning at 80%, and the stop itself. Each is
+   * emailed once and then stays open until the month turns or the number is raised.
+   */
+  private async budgetBreaches(now: Date): Promise<Breach[]> {
+    const budget = await this.budget.status(now);
+    if (budget.ceilingInr === null) return [];
+    if (budget.reached) {
+      return [
+        {
+          kind: 'PLATFORM_BUDGET_REACHED',
+          detail: `The site's AI budget for ${budget.period} is reached: ₹${budget.spentInr.toFixed(2)} of ₹${budget.ceilingInr}. Every AI call is refused until the 1st, or until the budget is raised in Admin.`,
+          value: budget.spentInr,
+          threshold: budget.ceilingInr,
+        },
+      ];
+    }
+    if (budget.warning) {
+      return [
+        {
+          kind: 'PLATFORM_BUDGET_WARNING',
+          detail: `The site has used ₹${budget.spentInr.toFixed(2)} of its ₹${budget.ceilingInr} AI budget for ${budget.period}. AI features stop at the budget.`,
+          value: budget.spentInr,
+          threshold: Math.round(budget.ceilingInr * 0.8),
+        },
+      ];
+    }
+    return [];
   }
 
   /** §11.5: month-to-date, per user and platform-wide. */

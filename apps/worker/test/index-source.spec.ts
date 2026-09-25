@@ -403,3 +403,16 @@ describe('the embedding is logged as spend (2026-09-25)', () => {
     expect(call.tokens).toBeGreaterThan(0);
   });
 });
+
+describe('the site-wide AI budget (2026-09-25)', () => {
+  it('indexes nothing once the budget is reached, and says why', async () => {
+    const { deps, embedCalls, inserted } = fakeDeps({ oaPdfUrl: 'https://repo.example.org/p.pdf' });
+    deps.assertBudget = vi.fn(async () => {
+      throw new Error("The site's AI budget for this month is reached");
+    });
+    await expect(runIndexSource(job(), deps)).rejects.toThrow(/budget for this month is reached/);
+    expect(embedCalls).toHaveLength(0);
+    expect(inserted).toHaveLength(0);
+    expect(deps.logEmbed).not.toHaveBeenCalled();
+  });
+});

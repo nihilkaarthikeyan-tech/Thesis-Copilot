@@ -103,6 +103,8 @@ export const envSchema = z
      * the per-user ₹100 ceiling (§11) always applies.
      */
     PLATFORM_MONTHLY_CEILING_INR: optionalNumber,
+    /** Extra addresses the §14 alert emails go to, comma-separated; the seed admin always does. */
+    ALERT_EMAILS: optionalString,
 
     // ---- Scholarly APIs ----
     OPENALEX_MAILTO: z.email('OPENALEX_MAILTO must be an email address'),

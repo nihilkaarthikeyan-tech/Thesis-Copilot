@@ -48,6 +48,8 @@ export type IndexSourceDeps = {
    * the per-user ceiling (§11) and the cost alerts (§14) count embedding like every other spend.
    */
   logEmbed?: (call: EmbedCall) => Promise<void>;
+  /** Throws when the site's monthly AI budget is reached (2026-09-25): nothing is embedded. */
+  assertBudget?: () => Promise<void>;
 };
 
 export type EmbedCall = {
@@ -188,6 +190,7 @@ export async function runIndexSource(
     ...(sections ? { sections } : {}),
   });
 
+  await deps.assertBudget?.();
   const vectors: number[][] = [];
   let tokens = 0;
   const embedStarted = Date.now();
