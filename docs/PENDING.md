@@ -81,13 +81,13 @@ blocks the agent from continuing to build against mocks.
       settings, send it; the code already sends it on every OpenAlex request (`ScholarlyHttp`,
       tested). No budget line yet: at launch scale the free tier covers it, and the day it does
       not, OpenAlex answers with a clear error rather than a bill.
-- [ ] **The owner's own account is not superadmin on production (2026-09-25).** Signing in with
+- [x] **Fixed with v0.1.6 (2026-09-25, seed run on the VPS): the owner's account is superadmin on production.** Was: Signing in with
       nihilkaarthikeyan@gmail.com opened a student home. `deploy.sh` runs migrations, not the seed,
       and the seed (which promotes `SEED_ADMIN_EMAIL`) ran before that variable held this address.
       The agent runs the seed on the VPS at the next release — idempotent upserts only: the
       superadmin role, the four feature flags, the example template — and the home page now shows
       an **Admin** link to superadmins.
-- [ ] **Google sign-in refused the owner with `account_not_linked` (2026-09-25).** The Google keys
+- [x] **Live in v0.1.6 (2026-09-25): Google sign-in links to the existing account.** Was: The Google keys
       were set and working; the sign-in library would not attach a Google login to the account the
       emailed code had already created. Fixed in code (`accountLinking: { enabled, trustedProviders:
       ['google'] }`, Better Auth's own verified-email gate left on); live at the next release.
@@ -335,6 +335,13 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.6, 2026-09-25, at the owner's go-ahead** (tag on `7b1aaa6`, CI green; a
+      `pg_dump` first in `/root/backups/pre-v0.1.6/`; `AI_EMBED_MODEL=voyage-4` set in the VPS
+      `.env` (backup `.env.bak-pre-v0.1.6`); the seed run; nothing to re-embed — production held no
+      chunks). Carries: voyage-4, Google account linking, admin roles + Admin link, embedding
+      counted as spend, Terms and Contact, the OpenAlex key support, the bounded gap check, the
+      Chrome add-on's privacy section. Not yet in it: the site-wide budget (2c06124, awaiting the
+      owner's number) — next release.
 - [x] **Released v0.1.5, 2026-09-25, at the owner's go-ahead** (tag on `40d3b7d`, CI green;
       migrations 0015–0021 applied; all 13 services healthy). The item as it stood: Every figure a
       student adds goes blank fifteen minutes later on production today (53179b2 fixes it: the
