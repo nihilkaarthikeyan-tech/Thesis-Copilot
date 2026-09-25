@@ -210,6 +210,12 @@ describe('§12.1: the AI endpoints are rate limited', () => {
     // A sentence the claim heuristic declines: passes the rate-limit hook, never reaches the
     // provider or the cap, so the sixty-plus calls cost nothing but the counter.
     const body = JSON.stringify({ chapterId, sentence: 'This section examines cost barriers.' });
+    // The limiter's window is the clock minute (`checkRateLimit`). A loop that straddles a minute
+    // boundary starts the count again halfway and never reaches the limit — which is what failed
+    // CI on 2026-09-25 (`first429` stayed -1). So start with the window at least 20 s from ending.
+    const windowMs = AI_RATE_LIMIT.windowSeconds * 1000;
+    const left = windowMs - (Date.now() % windowMs);
+    if (left < 20_000) await new Promise((resolve) => setTimeout(resolve, left + 250));
     let first429 = -1;
     let retryAfter: string | null = null;
     for (let i = 0; i < AI_RATE_LIMIT.max + 5; i++) {
