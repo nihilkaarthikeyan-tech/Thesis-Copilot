@@ -266,7 +266,11 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       the other 2026-09-24 fixes — a pending AI draft printed into the submitted thesis, raw
       Crossref lines and "&amp;" in reference lists, file names as figure captions, Find papers
       returning nothing for a question ending in "?" — and everything built against the
-      competitor list (ADRs 0018–0027). Two things first, both above: **back up the MinIO
+      competitor list (ADRs 0018–0029: co-authoring, pasted screenshots, merged table cells,
+      footnotes and note citation styles, typeset equations). **This release builds a fourth
+      image, `tc-gotenberg`** (Gotenberg with LibreOffice Math, `infra/docker/Dockerfile.gotenberg`),
+      and prod Compose now pulls it instead of the stock `gotenberg/gotenberg:8`; the first
+      build takes a few minutes longer because it installs one LibreOffice package. Two things first, both above: **back up the MinIO
       volume** (the release switches the image, ADR-0024) and run `pnpm backfill:journals` after
       the deploy. Then `git tag v0.1.5 && git push --tags`; `release.yml` does the rest and rolls
       back to `.last_good_tag` if the health check fails. The agent does not tag a release: that

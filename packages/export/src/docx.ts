@@ -22,10 +22,12 @@ import {
   TableCell,
   TableRow,
   TextRun,
+  Math as WordMath,
 } from 'docx';
 import { captionOf } from './captions.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
+import { latexToWordMath } from './word-math.js';
 
 type PmMark = { type?: string; attrs?: Record<string, unknown> };
 type PmNode = {
@@ -94,20 +96,16 @@ const HEADING = {
 } as const;
 
 /**
- * An equation, as its LaTeX source in a monospace run.
+ * An equation, as a Word equation (2026-09-25, `word-math.ts`).
  *
- * Not typeset. `docx` has no OMML support, and converting LaTeX to Office maths is a project in
- * itself (LaTeX → MathML → OMML) rather than something to bolt on here.
- *
- * What this is *not* is silence. Until 2026-09-21 the exporters did not handle `mathInline` or
- * `mathBlock` at all, so an equation a student had placed in the editor simply was not in the
- * file they submitted — found by exporting a chapter and grepping the XML for it. Carrying the
- * source through means the content is present, visible, and obviously an equation; a reader can
- * see what was meant and the student can see it needs typesetting. `docs/PENDING.md` tracks doing
- * it properly.
+ * Until then it was the LaTeX source in a monospace run, which was at least not silence: until
+ * 2026-09-21 an equation was not in the exported file at all. Anything `latexToWordMath` cannot
+ * map faithfully — a matrix, invalid LaTeX — still falls back to that source, visibly untypeset.
  */
-function mathRun(node: PmNode): TextRun {
-  return new TextRun({ text: String(node.attrs?.latex ?? ''), font: 'Consolas' });
+function mathRun(node: PmNode, display = false): TextRun | WordMath {
+  const latex = String(node.attrs?.latex ?? '');
+  const math = latexToWordMath(latex, display);
+  return math ? new WordMath({ children: math }) : new TextRun({ text: latex, font: 'Consolas' });
 }
 
 /** A citation renders as its label; an unresolved one is marked rather than silently dropped. */
@@ -119,8 +117,8 @@ function citationLabel(node: PmNode, renderedMap: Record<string, string>): strin
 function runsFrom(
   nodes: readonly PmNode[],
   options: ExportOptions,
-): Array<TextRun | FootnoteReferenceRun> {
-  const runs: Array<TextRun | FootnoteReferenceRun> = [];
+): Array<TextRun | FootnoteReferenceRun | WordMath> {
+  const runs: Array<TextRun | FootnoteReferenceRun | WordMath> = [];
   const renderedMap = options.renderedMap ?? {};
 
   for (const node of nodes) {
@@ -262,7 +260,7 @@ function paragraphsFrom(
       break;
 
     case 'mathBlock':
-      out.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [mathRun(node)] }));
+      out.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [mathRun(node, true)] }));
       break;
 
     case 'image': {

@@ -42,11 +42,10 @@ were invisible to typecheck, lint and 1,200 passing tests.
       selected figure or the table the cursor is in, one caption rule for every exporter and the
       compliance check (`packages/export/src/captions.ts`). Building it found that every
       submitted thesis had been captioning figures with the uploaded file's name.
-- [ ] **Table header and merge controls.** The caption is done (above); there is still no way to
-      toggle the header row or merge cells, though `mergeCells`/`splitCell` exist in the
-      extension.
-- [ ] **Paste an image.** The toolbar has a file picker; pasting a screenshot — which is how
-      figures actually arrive — does nothing.
+- [x] **Table header and merge controls.** Done 2026-09-25 (1790666): Merge, Split and Header
+      row on the toolbar, and a merged cell stays merged in `.docx`, PDF, LaTeX and HTML.
+- [x] **Paste an image.** Done 2026-09-25 (1790666): a pasted or dropped screenshot uploads and
+      lands as a figure.
 - [x] **Re-sign expired figure URLs.** Done 2026-09-24 (53179b2). It was worse than "until
       someone does": every figure went blank fifteen minutes after it was added, for the student
       and for the supervisor. The chapter read re-signs, and the image view asks for a fresh link
@@ -59,12 +58,14 @@ were invisible to typecheck, lint and 1,200 passing tests.
 
 ## Later — deliberately not started
 
-- [ ] **Footnotes, and with them the 720 footnote citation styles.** ADR-0018 lists them but will
-      not let them be chosen: a note style rendered inline prints a full reference mid-sentence.
-      Needs a footnote node in the editor and `w:footnote` in both exporters.
+- [x] **Footnotes, and with them the 720 footnote citation styles.** Done 2026-09-25 (ADR-0029,
+      e815b86 and 564fd2a): a footnote node, real Word footnotes, `ootnote` in LaTeX, and note
+      styles numbered through the whole thesis with "Ibid." where it belongs.
 
-- [ ] **Typeset equations in the export.** They currently carry their LaTeX source through. Proper
-      Office maths is LaTeX → MathML → OMML and `docx` has no OMML support, so this is a project.
+- [x] **Typeset equations in the export.** Done 2026-09-25: LaTeX → KaTeX's MathML → `docx`'s
+      maths builders, so a fraction is a fraction in Word and in the PDF. Matrices and aligned
+      blocks still print as their LaTeX. The PDF needed our own Gotenberg image (`tc-gotenberg`):
+      the stock one has no LibreOffice Math and drew every equation as blank space.
 - [x] **Onboarding checklist** ("complete setup 3/5"). Built 2026-09-21 on the owner's list, and
       built to disappear: it renders nothing once all five steps are done. The "what next"
       recommendation stays, because it is the better thing for somebody who knows the product.

@@ -3492,3 +3492,30 @@ cursor, the chapter carrying both). The browser test found three things:
 
 Turning it on in production is the owner's: the host nginx needs the `/collab/` location, then
 the flag (`docs/PENDING.md`).
+
+### The Jenni gap, second list — 2026-09-25
+
+Four editor and export gaps, built in this order:
+
+- **Pasting a screenshot** (1790666). The image node handles paste and drop itself and uploads
+  through the same path as the file picker. Only active in an editor that can upload.
+- **Merge, split, header row** (1790666). The toolbar buttons were two lines each; the work was
+  the exporters. `table-grid.ts` turns a table with spans into a grid every exporter reads, so a
+  merged cell is `gridSpan`/`vMerge` in Word, `\multicolumn`/`\multirow` in LaTeX (compiled in
+  TeX Live and checked by eye) and `colspan`/`rowspan` in HTML.
+- **Footnotes and note citation styles** (e815b86, 564fd2a, ADR-0029). A footnote node; real
+  `w:footnote` entries; `\footnote` in LaTeX; per-chapter note lists in HTML. With footnotes in
+  place the ~700 CSL note styles are selectable: citeproc gets a `noteIndex` counted through the
+  thesis, the student's own notes included, so "Ibid." never reaches across a note it should not.
+- **Equations as Word equations** (this commit). `word-math.ts` asks KaTeX for MathML and maps it
+  onto `docx`'s fraction, radical, script and limit builders; anything with no faithful mapping
+  (matrices, aligned environments) prints its LaTeX as before. Two faults found on the way, both
+  only by converting a real file and looking at the PDF:
+  - KaTeX's macron (U+02C9) inside an over-limit made LibreOffice fail the **whole** conversion
+    with a 500. A one-letter accent is now the letter plus a combining mark (x̄), which is also how
+    Word writes it; a wider bar uses the overline character.
+  - The stock `gotenberg/gotenberg:8` image has no LibreOffice Math (`libsmlo.so` absent), so
+    every equation in the PDF was **blank space** — worse than the LaTeX it replaced. The PDF
+    converter is now our image (`infra/docker/Dockerfile.gotenberg`, one `apt-get install
+    libreoffice-math`), built by `release.yml` as `tc-gotenberg` and by dev Compose locally.
+    Checked: fractions, sums with bounds, roots and accents typeset in the PDF.

@@ -120,8 +120,11 @@ test('the whole thesis exports with its figure, table and equation intact', asyn
   // The table survived.
   expect(document).toContain('<w:tbl>');
 
-  // The equation is in there, in whatever form this build carries it (LaTeX source today).
-  expect(document).toContain('E = mc');
+  // The equation is in there as a Word equation (2026-09-25), with c² built as a superscript
+  // rather than printed as its LaTeX source.
+  expect(document).toContain('<m:oMath>');
+  expect(document).toContain('<m:sSup>');
+  expect(document).not.toContain('mc^2');
 
   // And the thesis-level furniture the chapter export does not produce.
   expect(document).toContain('TOC');

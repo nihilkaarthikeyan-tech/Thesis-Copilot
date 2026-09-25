@@ -37,10 +37,12 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  Math as WordMath,
 } from 'docx';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
+import { latexToWordMath } from './word-math.js';
 
 export type ThesisChapter = {
   id: string;
@@ -133,9 +135,9 @@ function runsFrom(
   nodes: readonly Node[],
   input: ThesisExportInput,
   chapter: ThesisChapter,
-): Array<TextRun | FootnoteReferenceRun> {
+): Array<TextRun | FootnoteReferenceRun | WordMath> {
   const { spec } = input;
-  const out: Array<TextRun | FootnoteReferenceRun> = [];
+  const out: Array<TextRun | FootnoteReferenceRun | WordMath> = [];
   for (const node of nodes) {
     // A pending AI draft is not part of the thesis, however deep it sits (see `chapterBlocks`).
     if (node.type === 'draftBlock') continue;
@@ -172,16 +174,7 @@ function runsFrom(
       continue;
     }
     if (node.type === 'mathInline') {
-      // LaTeX source, not typeset maths — see `mathRun` in docx.ts for why, and note that the
-      // alternative here was the status quo, in which the equation was absent from the submitted
-      // thesis altogether.
-      out.push(
-        new TextRun({
-          text: String(node.attrs?.latex ?? ''),
-          font: 'Consolas',
-          size: pt(spec.font.sizePt),
-        }),
-      );
+      out.push(mathOrSource(node, spec, false));
       continue;
     }
     if (node.type === 'citation' && input.noteStyle) {
@@ -271,17 +264,21 @@ function figureParagraph(block: Node, input: ThesisExportInput): Paragraph {
  * build on. Shared between the chapter loop and a table cell, which rendered its contents as
  * inline runs and so dropped an equation the same way it dropped a figure.
  */
+/** A display equation, typeset as a Word equation where it can be (`word-math.ts`). */
 function mathParagraph(block: Node, spec: TemplateSpec): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    children: [
-      new TextRun({
-        text: String(block.attrs?.latex ?? ''),
-        font: 'Consolas',
-        size: pt(spec.font.sizePt),
-      }),
-    ],
+    children: [mathOrSource(block, spec, true)],
   });
+}
+
+/** Word maths for an equation, or its LaTeX source when it cannot be typeset faithfully. */
+function mathOrSource(node: Node, spec: TemplateSpec, display: boolean): TextRun | WordMath {
+  const latex = String(node.attrs?.latex ?? '');
+  const math = latexToWordMath(latex, display);
+  return math
+    ? new WordMath({ children: math })
+    : new TextRun({ text: latex, font: 'Consolas', size: pt(spec.font.sizePt) });
 }
 
 /**

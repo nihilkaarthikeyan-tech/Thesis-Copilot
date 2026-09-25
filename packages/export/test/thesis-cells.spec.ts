@@ -158,7 +158,7 @@ describe('a figure inside a table cell', () => {
 });
 
 describe('a display equation', () => {
-  it('reaches the whole-thesis file, as its LaTeX source', async () => {
+  it('reaches the whole-thesis file, as a Word equation', async () => {
     // The chapter loop has always handled this; the test is here because a browser run showed an
     // equation missing from the exported thesis and the exporter was the first place anyone
     // looked. It was not the exporter — the editor was destroying the node before the save, see
@@ -179,7 +179,9 @@ describe('a display equation', () => {
         bibliography: [],
       }),
     );
-    expect(xml).toContain('E = mc^2');
+    // As a Word equation since 2026-09-25, not its LaTeX source.
+    expect(xml).toContain('<m:oMath>');
+    expect(xml).toContain('<m:sSup>');
   });
 
   it('reaches it from inside a table cell too', async () => {
@@ -212,7 +214,8 @@ describe('a display equation', () => {
         bibliography: [],
       }),
     );
-    expect(xml).toContain('a^2 + b^2 = c^2');
+    expect(xml).toContain('<m:oMath>');
+    expect((xml.match(/<m:sSup>/g) ?? []).length).toBe(3);
   });
 });
 

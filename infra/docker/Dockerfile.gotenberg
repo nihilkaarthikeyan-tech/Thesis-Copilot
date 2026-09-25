@@ -1,0 +1,12 @@
+# PDF conversion — Gotenberg 8 with LibreOffice's Math module added (2026-09-25).
+#
+# The stock image ships LibreOffice Writer without Math, so every equation in a .docx converted
+# to PDF came out blank: the OMML imports as a formula object nobody can draw. Word renders the
+# same file correctly, which is why nothing caught it until a PDF was looked at. The package is
+# pinned to the backports suite the image's own Writer comes from, so the versions match.
+FROM gotenberg/gotenberg:8
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends -t trixie-backports libreoffice-math \
+ && rm -rf /var/lib/apt/lists/*
+USER gotenberg

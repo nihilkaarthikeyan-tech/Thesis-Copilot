@@ -68,8 +68,12 @@ services:
       retries: 20
 
   gotenberg:
-    # PDF export (PRD §7.2). Not used until Phase 3, but part of the dev stack per §13.6.
-    image: gotenberg/gotenberg:8
+    # PDF export (PRD §7.2), with LibreOffice Math added so equations are drawn
+    # (infra/docker/Dockerfile.gotenberg).
+    build:
+      context: ../docker
+      dockerfile: Dockerfile.gotenberg
+    image: tc-gotenberg:dev
     restart: unless-stopped
     ports:
       - '3002:3000'

@@ -157,7 +157,9 @@ services:
       retries: 12
 
   gotenberg:
-    image: gotenberg/gotenberg:8
+    # Our build of Gotenberg 8 with LibreOffice Math (infra/docker/Dockerfile.gotenberg): the stock
+    # image has no Math module and draws every equation in a PDF as nothing.
+    image: ghcr.io/${GHCR_ORG}/tc-gotenberg:${TAG}
     restart: unless-stopped
     logging: *default-logging
 
