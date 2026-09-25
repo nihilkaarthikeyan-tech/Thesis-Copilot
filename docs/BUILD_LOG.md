@@ -3725,3 +3725,19 @@ same afternoon:
   recipients, the once, and that a malformed address in the list is ignored.
 - **₹2,000** goes into the VPS `.env` at the next release, so it holds from the first second;
   the admin screen can change it after that without a deploy.
+
+### The admin screen, seen by its owner — 2026-09-25
+
+The owner opened `/admin` from a remembered session and asked why it "wasn't authenticated". It
+was — every admin endpoint answers 401 without a session, checked again from outside — but the
+page never said who was signed in or offered a way out, so a remembered session looked like no
+session. It also read like an engineer's checklist ("PRD §11", "PHASES 5.9", a banner telling
+the owner to run a command), and its headline number was wrong: `/admin/cost-model` priced the
+budget by tier, i.e. at the PRD's reference prices, and showed ₹197.84 and "within ceiling: No"
+where the real answer at the configured models is ₹25.60 and "Yes".
+
+Now: a header with the signed-in address, Users, Your theses and Sign out; every label in plain
+words (the switches have names and one-line explanations); the banner says what to do in the
+product's own terms; and the cost model is priced at `AI_FAST_MODEL` / `AI_STRONG_MODEL`, as
+`pnpm ai:verify` does. `admin-role.spec.ts` drives the header and refuses "PRD §" and "PHASES"
+on the page.

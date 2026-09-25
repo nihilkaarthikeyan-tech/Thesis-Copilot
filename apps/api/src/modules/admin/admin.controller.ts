@@ -11,14 +11,16 @@ import {
   Controller,
   Get,
   HttpCode,
+  Inject,
   Param,
   Post,
   Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { computeMonthlyBudget, PLANS } from '@tc/config';
+import { computeMonthlyBudget, type Env, PLANS } from '@tc/config';
 import { z } from 'zod';
+import { ENV } from '../../common/env.token.js';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
@@ -59,6 +61,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly alerts: AlertsService,
     private readonly users: UsersService,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   /** PHASES 5.9: every pilot student's usage on one screen — a page at a time. */
@@ -119,7 +122,12 @@ export class AdminController {
     withinCeiling: boolean;
   }> {
     const verified = await this.flags.isEnabled('costModelVerified');
-    const budget = computeMonthlyBudget('STUDENT_MONTHLY');
+    // Priced at the models this deployment runs (ADR-0011, ADR-0030), as `pnpm ai:verify` does.
+    // Priced by tier alone it showed the PRD's reference-price figure, ₹197.84 and "within
+    // ceiling: No", on an admin screen whose real answer is ₹25.60 and "Yes" (2026-09-25).
+    const budget = computeMonthlyBudget('STUDENT_MONTHLY', {
+      models: { fast: this.env.AI_FAST_MODEL, strong: this.env.AI_STRONG_MODEL },
+    });
 
     return {
       verified,

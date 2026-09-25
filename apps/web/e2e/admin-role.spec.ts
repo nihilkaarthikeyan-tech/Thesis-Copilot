@@ -38,8 +38,18 @@ test('the superadmin changes a user’s role from their page, and it is logged',
   await expect(page.getByTestId('admin-link')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('admin-link')).toHaveAttribute('href', '/admin');
 
-  // The site-wide AI budget is set from the admin home (2026-09-25), and the change is logged.
+  // The admin home says who is signed in and how to leave (2026-09-25: the owner opened it from a
+  // remembered session and could not tell they were signed in at all).
   await page.goto('/admin');
+  await expect(page.getByTestId('admin-signed-in')).toContainText(ADMIN_EMAIL, { timeout: 30_000 });
+  await expect(
+    page.getByTestId('admin-nav').getByRole('button', { name: 'Sign out' }),
+  ).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('PRD §');
+  await expect(page.locator('main')).not.toContainText('PHASES');
+  await page.screenshot({ path: 'test-results/admin-home.png', fullPage: true });
+
+  // The site-wide AI budget is set from the admin home (2026-09-25), and the change is logged.
   const budgetInput = page.getByTestId('platform-budget-input');
   await expect(budgetInput).toBeVisible({ timeout: 30_000 });
   await budgetInput.fill('2000');
