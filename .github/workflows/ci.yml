@@ -115,6 +115,9 @@ jobs:
           sed -i -E 's/^AUTH_SECRET=.*/AUTH_SECRET=ci-only-secret-0123456789abcdef0123456789/' .env
           sed -i -E 's/^AI_PROVIDER=.*/AI_PROVIDER=mock/; s/^EMBED_PROVIDER=.*/EMBED_PROVIDER=mock/' .env
           sed -i -E 's/^AI_FAST_MODEL=.*/AI_FAST_MODEL=mock-fast/; s/^AI_STRONG_MODEL=.*/AI_STRONG_MODEL=mock-strong/; s/^AI_EMBED_MODEL=.*/AI_EMBED_MODEL=mock-embed/' .env
+          # Seventy-odd browser tests each mint an account from this one address; the PRD's twenty
+          # sign-ins a minute (the production default) had the suite refusing its own sign-ins.
+          echo 'AUTH_RATE_LIMIT_PER_MINUTE=600' >> .env
 
       - name: build
         run: |

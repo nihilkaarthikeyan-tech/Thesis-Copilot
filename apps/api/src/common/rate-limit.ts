@@ -35,6 +35,14 @@ export type RateLimitVerdict = {
 export const AUTH_RATE_LIMIT: RateLimitRule = { max: 20, windowSeconds: 60 };
 
 /**
+ * The rule in force: the PRD's twenty unless `AUTH_RATE_LIMIT_PER_MINUTE` says otherwise, which
+ * only a test environment does (see `packages/config`). Production never sets it.
+ */
+export function authRateLimit(env: { AUTH_RATE_LIMIT_PER_MINUTE?: number }): RateLimitRule {
+  return { ...AUTH_RATE_LIMIT, max: env.AUTH_RATE_LIMIT_PER_MINUTE ?? AUTH_RATE_LIMIT.max };
+}
+
+/**
  * PRD §12.1 also limits the AI endpoints. This is a per-user burst guard, not the monthly cap:
  * the cap (§11.3) says how much a student gets, this says how fast they may ask for it. Sixty a
  * minute is far above any human typing rate and far below what a runaway client would send.

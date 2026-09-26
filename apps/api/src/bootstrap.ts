@@ -17,7 +17,7 @@ import type {
   RawServerDefault,
 } from 'fastify';
 import { Redis } from 'ioredis';
-import { AI_RATE_LIMIT, AUTH_RATE_LIMIT, checkRateLimit } from './common/rate-limit.js';
+import { AI_RATE_LIMIT, authRateLimit, checkRateLimit } from './common/rate-limit.js';
 
 /**
  * The fully instantiated Fastify instance. The cookie plugin augments exactly this instantiation
@@ -85,12 +85,17 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
     // Swallowed on purpose: checkRateLimit fails open, and /health reports Redis separately.
   });
 
+  const authRule = authRateLimit(env);
   fastify.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith(AUTH_PATH)) return;
+    // The dev sink (`/auth/dev/last-otp`, `last-link`) is a lookup, not a sign-in attempt, and
+    // does not exist in production. Counting it made a refused lookup answer with a 429 body the
+    // test then read as "no code" — the shape of CI's failure on 2026-09-26.
+    if (request.url.startsWith(`${AUTH_PATH}dev/`)) return;
 
     // Per user when signed in, per IP otherwise (PRD §12.1).
     const identity = (request as { user?: { id?: string } }).user?.id ?? request.ip;
-    const verdict = await checkRateLimit(redis, 'auth', identity, AUTH_RATE_LIMIT);
+    const verdict = await checkRateLimit(redis, 'auth', identity, authRule);
     if (verdict.allowed) return;
 
     reply

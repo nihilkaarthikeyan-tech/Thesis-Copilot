@@ -103,6 +103,12 @@ export const envSchema = z
      * the per-user ₹100 ceiling (§11) always applies.
      */
     PLATFORM_MONTHLY_CEILING_INR: optionalNumber,
+    /**
+     * Sign-in attempts allowed per minute per IP (PRD §12.1 says twenty, and twenty is the
+     * default). Only a test environment sets this: CI's browser suite mints an account per test
+     * from one address and had started refusing its own sign-ins. Production leaves it unset.
+     */
+    AUTH_RATE_LIMIT_PER_MINUTE: optionalNumber,
     /** Extra addresses the §14 alert emails go to, comma-separated; the seed admin always does. */
     ALERT_EMAILS: optionalString,
 

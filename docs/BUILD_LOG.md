@@ -3793,3 +3793,14 @@ What building it found:
 Also today: the owner's free OpenAlex key (`$1/day` of API budget, about a thousand searches,
 nothing to pay) went into the VPS `.env` as `OPENALEX_API_KEY`; API and worker containers were
 restarted alone, the other sites untouched.
+
+### CI refused its own sign-ins — 2026-09-26
+
+The password commit's browser job failed on `editor.spec.ts`, which has nothing to do with
+passwords: the OTP request was answered 429, and the retry's dev-sink lookup (also under
+`/auth/`, so also counted) came back as a 429 body the helper read as "no code". Seventy-odd
+tests each minting an account from one runner address had been living at the edge of the PRD's
+twenty sign-ins a minute for weeks (`_session.ts` waits out the limiter, which is why it showed
+as slowness rather than failure); three more tests tipped it. Two changes, neither touching
+production: the dev sink is a lookup and no longer counts, and `AUTH_RATE_LIMIT_PER_MINUTE`
+(default twenty, set to 600 only in CI's `.env`) lets a test environment say so.
