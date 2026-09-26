@@ -67,7 +67,13 @@ blocks the agent from continuing to build against mocks.
       limit, not the bill. dashboard.voyageai.com, billing page.
       **Seen again 2026-09-24:** a real Discover run fetched 125 candidates and failed at the
       embedding step with the same 429 — one run's candidates are more than 10K tokens.
-- [ ] **Get the free OpenAlex API key and put it in the VPS `.env` as `OPENALEX_API_KEY`. Now
+- [x] **Done 2026-09-26: the owner's free OpenAlex key is in the VPS `.env` as
+      `OPENALEX_API_KEY`** (tested against the API first — 200; API and worker containers
+      restarted alone; `key-present-in-container` confirmed). The free plan is $1/day of API
+      budget, about a thousand searches, nothing to pay; prepaid top-ups in $1 steps exist if a
+      day ever runs out. CI stays anonymous on purpose — its rule is that no real key enters it —
+      and the 8-second timeout plus abortable retry from 2026-09-25 keeps a 503 from stalling the
+      browser job. Was: **Get the free OpenAlex API key and put it in the VPS `.env`. Now
       urgent:** on the afternoon of 2026-09-25 OpenAlex answered every *anonymous* search with
       `503 "Anonymous search is paused while the search cluster recovers … use a free API key"`.
       Until the key is set, paper search, the proposal's related-works check and reference

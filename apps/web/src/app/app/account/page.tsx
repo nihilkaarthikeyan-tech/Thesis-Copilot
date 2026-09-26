@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/auth-client';
+import { passwordProblem } from '@/lib/password';
 
 type Billing = {
   plan: string;
@@ -80,6 +81,14 @@ export default function AccountPage() {
   const [signedOut, setSignedOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // ADR-0033. `null` until the API has said whether a password exists.
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  const [pwStage, setPwStage] = useState<'idle' | 'set' | 'change'>('idle');
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwRepeat, setPwRepeat] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwNotice, setPwNotice] = useState<string | null>(null);
 
   const session = useSession();
   // The confirm response is the authority once the change lands: the session's copy is a snapshot
@@ -101,7 +110,54 @@ export default function AccountPage() {
     api<Deletion>('/account/deletion')
       .then(setDeletion)
       .catch(() => undefined);
+    api<{ hasPassword: boolean }>('/account/password')
+      .then((s) => setHasPassword(s.hasPassword))
+      .catch(() => undefined);
   }, []);
+
+  function resetPasswordForm() {
+    setPwStage('idle');
+    setPwCurrent('');
+    setPwNew('');
+    setPwRepeat('');
+    setPwError(null);
+  }
+
+  async function savePassword() {
+    const problem = passwordProblem(pwNew, pwRepeat);
+    if (problem) {
+      setPwError(problem);
+      return;
+    }
+    setBusy(true);
+    setPwError(null);
+    setPwNotice(null);
+    try {
+      if (pwStage === 'set') {
+        await api<{ ok: true }>('/account/password', {
+          method: 'POST',
+          body: JSON.stringify({ newPassword: pwNew }),
+        });
+        setPwNotice('Your password is set. You can sign in with it or with an emailed code.');
+      } else {
+        await api<{ ok: true }>('/account/password/change', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+        });
+        setPwNotice('Your password is changed, and every other device has been signed out.');
+      }
+      setHasPassword(true);
+      resetPasswordForm();
+    } catch (e) {
+      setPwError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not save the password. Try again.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(load, [load]);
 
@@ -433,9 +489,9 @@ export default function AccountPage() {
         {emailStage === 'idle' ? (
           <>
             <p className="mt-2 text-sm text-muted">
-              There is no password on this account — the code we email you is how you get in. So
-              changing this address changes how you sign in. Move it before you lose access to a
-              university mailbox.
+              {hasPassword
+                ? 'The code we email you and your password both belong to this address, so changing it changes how you sign in. Move it before you lose access to a university mailbox.'
+                : 'There is no password on this account — the code we email you is how you get in. So changing this address changes how you sign in. Move it before you lose access to a university mailbox.'}
             </p>
             <button
               type="button"
@@ -524,6 +580,126 @@ export default function AccountPage() {
             </div>
           </div>
         )}
+      </section>
+
+      <section
+        className="mt-6 rounded-md border border-line bg-surface p-4"
+        data-testid="password-card"
+      >
+        <h2 className="eyebrow">Password</h2>
+        {hasPassword === null ? (
+          <p className="mt-2 text-sm text-muted">Checking…</p>
+        ) : pwStage === 'idle' ? (
+          <>
+            <p className="mt-2 text-sm text-muted" data-testid="password-status">
+              {hasPassword
+                ? 'You can sign in with your password or with an emailed code.'
+                : 'This account has no password: the code we email you is how you sign in, and that keeps working. Add a password if you would rather type one.'}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setPwNotice(null);
+                  setPwStage(hasPassword ? 'change' : 'set');
+                }}
+                data-testid={hasPassword ? 'change-password' : 'add-password'}
+                className="w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk sm:w-auto"
+              >
+                {hasPassword ? 'Change password' : 'Add a password'}
+              </button>
+              {hasPassword ? (
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-muted underline underline-offset-2 hover:text-ink"
+                >
+                  Forgotten it? Reset by email
+                </Link>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <div className="mt-3 rounded-md border border-line p-3 text-sm">
+            {pwStage === 'change' ? (
+              <>
+                <label htmlFor="pw-current" className="block text-xs text-muted">
+                  Current password
+                </label>
+                <input
+                  id="pw-current"
+                  type="password"
+                  autoComplete="current-password"
+                  value={pwCurrent}
+                  onChange={(e) => setPwCurrent(e.target.value)}
+                  data-testid="pw-current"
+                  className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
+                />
+              </>
+            ) : null}
+            <label htmlFor="pw-new" className="mt-3 block text-xs text-muted">
+              New password — at least 10 characters; a short sentence is ideal
+            </label>
+            <input
+              id="pw-new"
+              type="password"
+              autoComplete="new-password"
+              value={pwNew}
+              onChange={(e) => setPwNew(e.target.value)}
+              data-testid="pw-new"
+              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
+            />
+            <label htmlFor="pw-repeat" className="mt-3 block text-xs text-muted">
+              The same again
+            </label>
+            <input
+              id="pw-repeat"
+              type="password"
+              autoComplete="new-password"
+              value={pwRepeat}
+              onChange={(e) => setPwRepeat(e.target.value)}
+              data-testid="pw-repeat"
+              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
+            />
+            {pwStage === 'change' ? (
+              <p className="mt-2 text-muted">
+                Every other device is signed out when the password changes.
+              </p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  pwNew === '' ||
+                  pwRepeat === '' ||
+                  (pwStage === 'change' && pwCurrent === '')
+                }
+                onClick={() => void savePassword()}
+                data-testid="save-password"
+                className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
+              >
+                {busy ? 'Saving…' : pwStage === 'set' ? 'Save password' : 'Change password'}
+              </button>
+              <button
+                type="button"
+                onClick={resetPasswordForm}
+                className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Never mind
+              </button>
+            </div>
+          </div>
+        )}
+        {pwError ? (
+          <p role="alert" className="mt-3 text-sm text-danger" data-testid="password-error">
+            {pwError}
+          </p>
+        ) : null}
+        {pwNotice ? (
+          <p role="status" className="mt-3 text-sm" data-testid="password-notice">
+            {pwNotice}
+          </p>
+        ) : null}
       </section>
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">

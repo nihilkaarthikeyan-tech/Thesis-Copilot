@@ -1,0 +1,48 @@
+'use client';
+
+/**
+ * The frame around the small account screens that live outside `/app` — forgot password and
+ * reset password (ADR-0033). The same header as sign-in, one narrow column, no marketing.
+ */
+
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { ThemeToggle } from '@/components/theme';
+import { Hint } from '@/components/ui/primitives';
+
+export function AuthShell({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
+          <Link href="/" className="font-serif text-[17px] font-semibold tracking-tight">
+            Thesis Copilot
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/sign-in" className="text-[13px] text-muted hover:text-ink">
+              Sign in
+            </Link>
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-14">
+        <div className="mx-auto w-full max-w-[24rem]">
+          <h1 className="text-balance font-serif text-[30px] font-semibold leading-tight">
+            {title}
+          </h1>
+          {hint ? <Hint className="mt-2 text-[14px]">{hint}</Hint> : null}
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}

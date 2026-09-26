@@ -3762,3 +3762,34 @@ sequence (`/auth/sign-out` 200, then every admin request 401). `useAdminGate`
 emailed code and for Google); signed in but not an administrator → a sentence naming the account
 and pointing home; a session that ends under the page → back to sign-in rather than a broken page.
 `admin-access.spec.ts` drives both paths.
+
+### A password, for those who want one — 2026-09-26
+
+The owner's manager asked why the sign-in was "email only" and where the password and reset were.
+The reasons for the code were given (nothing to forget, nothing to leak, the inbox proved every
+time) and the owner asked for the password regardless. ADR-0033: the code stays the default and
+keeps working for every account; a password is added under Account, chosen at sign-up (the
+emailed link then confirms the address and signs the student in), or set by the reset link — which
+also serves "I never set one". Length is the only rule; a reset revokes every session and a change
+every other one; each writes an audit row and emails the address.
+
+What building it found:
+
+- **A server-side `changePassword` signs the caller out.** The library revokes *all* sessions and
+  hands the caller a fresh cookie in `set-cookie`; made from our controller, that header stopped at
+  the API and the person who had just changed their password was signed out. The service now asks
+  for the headers back (`returnHeaders: true`) and the controller forwards the cookie.
+- **A password sign-in on an unconfirmed address re-sends the link with `/` as the return
+  address** unless the sign-in body carries `callbackURL`; the sign-in screen passes its own
+  origin plus `next`, or the link would have landed on the API root in development.
+- **The dev sink's lookups count against the sign-in rate limit** (`/auth/dev/*` is under
+  `/auth/`), and a suite of eleven HTTP tests ran out of the twenty a minute: the tests read links
+  from the console mailer instead.
+- **Local development sends real mail** (Hostinger SMTP is in `.env`), so every `@example.com`
+  address the suites use is refused with 554 by the mail host — harmless, logged as an error —
+  and when the mail host was unreachable for a minute the awaited OTP send hung a sign-in for the
+  whole of Playwright's timeout. Not a product fault; noted so the next person does not chase it.
+
+Also today: the owner's free OpenAlex key (`$1/day` of API budget, about a thousand searches,
+nothing to pay) went into the VPS `.env` as `OPENALEX_API_KEY`; API and worker containers were
+restarted alone, the other sites untouched.

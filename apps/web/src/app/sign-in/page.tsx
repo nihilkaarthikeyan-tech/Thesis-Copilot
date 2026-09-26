@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Sign in / sign up — email OTP (PRD §7.2), with Google when it is configured.
+ * Sign in / sign up — email OTP (PRD §7.2), with Google when it is configured, and a password
+ * for an account that set one (ADR-0033).
  *
  * Mechanically identical to `/sign-up`: with an email code the first use of an address creates the
  * account, so either page will do either job, and both say so. The two exist because the person
@@ -24,8 +25,11 @@ import { Hint, Input, Kbd, Label } from '@/components/ui/primitives';
 import { safeNext } from '@/lib/admin-gate';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
+import { passwordSignInProblem } from '@/lib/password';
 
 type Step = 'email' | 'code';
+/** The emailed code is the default; a password is for an account that set one. */
+type Mode = 'code' | 'password';
 
 /** Google's mark. Inline because the CSP allows no external images and it must not be recoloured. */
 function GoogleMark() {
@@ -59,17 +63,25 @@ export default function SignInPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [google, setGoogle] = useState(false);
+  const [mode, setMode] = useState<Mode>('code');
+  const [password, setPassword] = useState('');
+  const [passwordOn, setPasswordOn] = useState(true);
   // Where to go after signing in: `?next=/admin` when a protected page sent the visitor here.
   // Read from the address in an effect rather than `useSearchParams`, which needs a Suspense
-  // boundary for a statically rendered page.
+  // boundary for a statically rendered page. `?mode=password` is what the reset page links to.
   const [next, setNext] = useState('/app');
   useEffect(() => {
-    setNext(safeNext(new URL(window.location.href).searchParams.get('next')));
+    const params = new URL(window.location.href).searchParams;
+    setNext(safeNext(params.get('next')));
+    if (params.get('mode') === 'password') setMode('password');
   }, []);
 
   useEffect(() => {
-    api<{ emailOtp: boolean; google: boolean }>('/auth/methods')
-      .then((m) => setGoogle(m.google))
+    api<{ emailOtp: boolean; password?: boolean; google: boolean }>('/auth/methods')
+      .then((m) => {
+        setGoogle(m.google);
+        setPasswordOn(m.password !== false);
+      })
       .catch(() => setGoogle(false));
   }, []);
 
@@ -97,6 +109,30 @@ export default function SignInPage() {
       return;
     }
     router.push(next);
+  }
+
+  async function signInWithPassword(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    // The return address rides along so that, for an address never confirmed, the link the
+    // library re-sends lands back in the product and not on the API's root.
+    const result = await authClient.signIn.email({
+      email,
+      password,
+      callbackURL: `${window.location.origin}${next}`,
+    });
+    setBusy(false);
+    if (result.error) {
+      setError(passwordSignInProblem(result.error.code, result.error.message));
+      return;
+    }
+    router.push(next);
+  }
+
+  function switchMode(to: Mode) {
+    setMode(to);
+    setError(null);
   }
 
   return (
@@ -165,12 +201,69 @@ export default function SignInPage() {
               {step === 'email' ? 'Sign in or create an account' : 'Check your email'}
             </h1>
             <Hint className="mt-2 text-[14px]">
-              {step === 'email'
-                ? 'No password. We email you a six-digit code that works for ten minutes — and if this address is new, that first code creates your account.'
-                : 'The code works for ten minutes. It may take a moment to arrive.'}
+              {step === 'code'
+                ? 'The code works for ten minutes. It may take a moment to arrive.'
+                : mode === 'password'
+                  ? 'Sign in with the password you set under Account. No password yet? Email yourself a code instead, or use “Forgot your password?” to make one.'
+                  : 'We email you a six-digit code that works for ten minutes — and if this address is new, that first code creates your account. No password needed; add one later if you prefer.'}
             </Hint>
 
-            {step === 'email' ? (
+            {step === 'email' && mode === 'password' ? (
+              <form onSubmit={signInWithPassword} className="mt-7 flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">University or personal email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="username"
+                    autoFocus
+                    required
+                    className="h-11"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@university.edu"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link
+                      href="/forgot-password"
+                      className="text-[12.5px] text-muted underline underline-offset-2 hover:text-ink"
+                      data-testid="forgot-password"
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    className="h-11"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={busy || email.length === 0 || password.length === 0}
+                >
+                  {busy ? 'Signing in…' : 'Sign in'}
+                </Button>
+                <button
+                  type="button"
+                  data-testid="mode-code"
+                  className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+                  onClick={() => switchMode('code')}
+                >
+                  Email me a code instead
+                </button>
+              </form>
+            ) : step === 'email' ? (
               <form onSubmit={sendCode} className="mt-7 flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="email">University or personal email</Label>
@@ -190,6 +283,16 @@ export default function SignInPage() {
                 <Button type="submit" size="lg" disabled={busy || email.length === 0}>
                   {busy ? 'Sending…' : 'Email me a code'}
                 </Button>
+                {passwordOn ? (
+                  <button
+                    type="button"
+                    data-testid="mode-password"
+                    className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+                    onClick={() => switchMode('password')}
+                  >
+                    Use a password instead
+                  </button>
+                ) : null}
               </form>
             ) : (
               <form onSubmit={verifyCode} className="mt-7 flex flex-col gap-3">
@@ -264,8 +367,10 @@ export default function SignInPage() {
               New here?{' '}
               <Link href="/sign-up" className="font-semibold text-accent hover:underline">
                 Create an account
-              </Link>{' '}
-              — or just enter your address above; the first code creates it.
+              </Link>
+              {mode === 'password'
+                ? ' — with an emailed code or a password of your choosing.'
+                : ' — or just enter your address above; the first code creates it.'}
             </p>
 
             <p className="mt-4 text-[12.5px] leading-relaxed text-faint">

@@ -23,8 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Hint, Input, Label } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
+import { PASSWORD_MIN_LENGTH, passwordProblem } from '@/lib/password';
 
-type Step = 'email' | 'code';
+type Step = 'email' | 'code' | 'link';
 
 /** PRD §11.6's free-trial row, spelled out. Numbers from `packages/config` FREE_TRIAL caps. */
 const TRIAL = [
@@ -65,12 +66,45 @@ export default function SignUpPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [google, setGoogle] = useState(false);
+  // ADR-0033: the code is the default; a password sign-up confirms the address by link instead.
+  const [mode, setMode] = useState<'code' | 'password'>('code');
+  const [passwordOn, setPasswordOn] = useState(true);
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
-    api<{ emailOtp: boolean; google: boolean }>('/auth/methods')
-      .then((m) => setGoogle(m.google))
+    api<{ emailOtp: boolean; password?: boolean; google: boolean }>('/auth/methods')
+      .then((m) => {
+        setGoogle(m.google);
+        setPasswordOn(m.password !== false);
+      })
       .catch(() => setGoogle(false));
   }, []);
+
+  async function createWithPassword(event: FormEvent) {
+    event.preventDefault();
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    // The library answers the same way for a new address and a taken one, and sends the link
+    // only to the new one — so this screen cannot be used to learn who has an account.
+    const result = await authClient.signUp.email({
+      name: name.trim(),
+      email,
+      password,
+      callbackURL: `${window.location.origin}/app`,
+    });
+    setBusy(false);
+    if (result.error) {
+      setError(result.error.message ?? 'Could not create the account. Try again.');
+      return;
+    }
+    setStep('link');
+  }
 
   async function sendCode(event: FormEvent) {
     event.preventDefault();
@@ -153,12 +187,105 @@ export default function SignUpPage() {
               {step === 'email' ? 'Create your account' : 'Check your email'}
             </h1>
             <Hint className="mt-2 text-[14px]">
-              {step === 'email'
-                ? 'Enter your email and we send a six-digit code. That code creates the account — there is no password to choose or forget.'
-                : 'The code works for ten minutes. It may take a moment to arrive.'}
+              {step === 'code'
+                ? 'The code works for ten minutes. It may take a moment to arrive.'
+                : step === 'link'
+                  ? 'Open the link we sent to confirm the address. That signs you in; it works for 24 hours.'
+                  : mode === 'password'
+                    ? 'Choose a password now; we email you a link to confirm the address before the first sign-in. An emailed code will always work too.'
+                    : 'Enter your email and we send a six-digit code. That code creates the account — no password to choose, and you can add one later.'}
             </Hint>
 
-            {step === 'email' ? (
+            {step === 'link' ? (
+              <div
+                className="mt-7 flex flex-col gap-3 text-[13.5px] text-muted"
+                data-testid="signup-link-sent"
+              >
+                <p className="rounded-md border border-line bg-sunk px-3 py-2">
+                  Sent to <strong className="font-semibold text-ink">{email}</strong>
+                </p>
+                <p>
+                  Nothing there after a minute? Check spam, or{' '}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2 hover:text-ink"
+                    onClick={() => {
+                      setStep('email');
+                      setMode('code');
+                      setError(null);
+                    }}
+                  >
+                    create the account with a code instead
+                  </button>
+                  .
+                </p>
+              </div>
+            ) : step === 'email' && mode === 'password' ? (
+              <form onSubmit={createWithPassword} className="mt-7 flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="name">Your name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    autoComplete="name"
+                    required
+                    className="h-11"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="As your guide knows you"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">University or personal email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="username"
+                    required
+                    className="h-11"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@university.edu"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={PASSWORD_MIN_LENGTH}
+                    className="h-11"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <Hint>At least {PASSWORD_MIN_LENGTH} characters. A short sentence is ideal.</Hint>
+                </div>
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={
+                    busy || email.length === 0 || password.length === 0 || name.trim() === ''
+                  }
+                >
+                  {busy ? 'Creating…' : 'Create my account'}
+                </Button>
+                <button
+                  type="button"
+                  data-testid="mode-code"
+                  className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+                  onClick={() => {
+                    setMode('code');
+                    setError(null);
+                  }}
+                >
+                  Use an emailed code instead — no password
+                </button>
+              </form>
+            ) : step === 'email' ? (
               <form onSubmit={sendCode} className="mt-7 flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="email">University or personal email</Label>
@@ -180,6 +307,19 @@ export default function SignUpPage() {
                 <Button type="submit" size="lg" disabled={busy || email.length === 0}>
                   {busy ? 'Sending…' : 'Create my account'}
                 </Button>
+                {passwordOn ? (
+                  <button
+                    type="button"
+                    data-testid="mode-password"
+                    className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+                    onClick={() => {
+                      setMode('password');
+                      setError(null);
+                    }}
+                  >
+                    I would rather choose a password
+                  </button>
+                ) : null}
               </form>
             ) : (
               <form onSubmit={verifyCode} className="mt-7 flex flex-col gap-3">

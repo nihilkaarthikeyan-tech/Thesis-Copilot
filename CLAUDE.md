@@ -128,8 +128,10 @@ saying anything is "done", audit the PRD's FR lines, not the phase plan; the own
 **Account deletion exists** (2026-09-14, PRD §12.2). `DELETE /account` marks the row and signs
 every device out; `DeletionScheduler` erases seven days later; the student can cancel in between.
 The `User` row survives stripped so the billing records §12.2 requires still have something to
-point at. There are no passwords anywhere in this product — sign-in is an emailed code, so "forgot
-password" does not apply, and the OTP is the email verification.
+point at. Sign-in is an emailed code by default and the OTP is the email verification; since
+2026-09-26 (ADR-0033) an account *may* also have a password — added under Account, chosen at
+sign-up (a link then confirms the address), or set by the reset link at `/forgot-password`, which
+also serves someone who never set one. A reset revokes every session.
 
 **A student can move the account to another address** (2026-09-20, ADR-0015). Because the address
 *is* the credential here, "change my email" is how someone keeps a thesis after a university

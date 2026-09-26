@@ -1,6 +1,7 @@
 /**
  * Better Auth configuration — PRD §7.2 (Better Auth, email OTP + Google, session cookies, role
- * claims) and §12.1 (Secure, HttpOnly, SameSite=Lax cookies).
+ * claims), §12.1 (Secure, HttpOnly, SameSite=Lax cookies) and ADR-0033 (an optional password,
+ * with a link-based reset, added at the owner's request on 2026-09-26).
  *
  * Google is configured only when both credentials are present. PHASES PHASE-0 allows Google to be
  * stubbed until keys exist; email OTP alone is enough to sign in, so a missing Google key disables
@@ -14,7 +15,7 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
 import { ConsoleMailer, type Mail, type Mailer } from '../../common/mailer.js';
 import { claimInstitutionInvite } from '../institution/claim-invite.js';
-import { rememberDevOtp } from './dev-otp.js';
+import { rememberDevLink, rememberDevOtp } from './dev-otp.js';
 
 export type SendOtp = (input: { email: string; otp: string; type: string }) => Promise<void>;
 
@@ -71,10 +72,148 @@ export function otpSenderFor(mailer: Mailer): SendOtp {
   };
 }
 
-export function createAuth(env: Env, prisma: PrismaClient, sendOtp: SendOtp = consoleOtp) {
+/* ------------------------------------------------------------------ passwords (ADR-0033) -- */
+
+/** Password rules. Length is the only rule that survives contact with real users (NIST 800-63B). */
+export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 128;
+/** How long a reset link works. */
+export const RESET_LINK_MINUTES = 60;
+/** How long the "confirm your email" link after a password sign-up works. */
+export const VERIFY_LINK_HOURS = 24;
+
+export type LinkKind = 'verify-email' | 'reset-password';
+export type SendLinkMail = (input: { email: string; kind: LinkKind; mail: Mail }) => Promise<void>;
+
+/** After a password sign-up: the link that confirms the address and signs the student in. */
+export function verifyEmailMail(input: { email: string; url: string }): Mail {
+  return {
+    to: [input.email],
+    subject: 'Confirm your email for Thesis Copilot',
+    text:
+      `Open this link to confirm your address and sign in to Thesis Copilot:
+
+    ${input.url}
+
+` +
+      `It works for ${VERIFY_LINK_HOURS} hours. If you did not create an account, ignore this ` +
+      'email — nothing happens without the link.',
+  };
+}
+
+/** The reset link. It goes only to an address that has an account; the endpoint says nothing either way. */
+export function resetPasswordMail(input: { email: string; url: string }): Mail {
+  return {
+    to: [input.email],
+    subject: 'Reset your Thesis Copilot password',
+    text:
+      `Someone asked to reset the password on your Thesis Copilot account. Open this link to ` +
+      `choose a new one:
+
+    ${input.url}
+
+` +
+      `It works for ${RESET_LINK_MINUTES} minutes and once only. If you did not ask for it, ` +
+      'ignore this email — your password has not changed, and signing in with an emailed code ' +
+      'always works too.',
+  };
+}
+
+/** Sent after a password is set, changed or reset, so a takeover is noticed by its victim. */
+export function passwordChangedMail(input: { email: string; appUrl: string; how: string }): Mail {
+  return {
+    to: [input.email],
+    subject: 'Your Thesis Copilot password was changed',
+    text:
+      `The password on your Thesis Copilot account was just ${input.how}.
+
+` +
+      `If that was you, there is nothing to do.
+
+` +
+      `If it was NOT you, reset it now at ${input.appUrl}/forgot-password — the link we send ` +
+      'signs every other device out — and reply to this email so we can help.',
+  };
+}
+
+const consoleLinkMail: SendLinkMail = async ({ email, kind, mail }) => {
+  console.log(`[auth] ${kind} link for ${email}: ${mail.text}`);
+  if (process.env.NODE_ENV !== 'production') rememberDevLink(email, kind, mail);
+};
+
+/**
+ * Link mails (verify, reset) through the configured mailer — the console one included, so a test
+ * can read what was sent. Outside production the dev sink also remembers the link, so the
+ * Playwright suite can follow it without a mailbox — the same arrangement the one-time code has.
+ */
+export function linkMailSenderFor(mailer: Mailer): SendLinkMail {
+  return async (input) => {
+    if (process.env.NODE_ENV !== 'production') rememberDevLink(input.email, input.kind, input.mail);
+    await mailer.send(input.mail);
+  };
+}
+
+export function createAuth(
+  env: Env,
+  prisma: PrismaClient,
+  sendOtp: SendOtp = consoleOtp,
+  sendLink: SendLinkMail = consoleLinkMail,
+  /** Where the "password changed" notice goes out; the console mailer when nothing is configured. */
+  mailer: Mailer = new ConsoleMailer(),
+) {
   const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return betterAuth({
+    /**
+     * ADR-0033. Sign-in stays the emailed code by default; a password is something a student may
+     * add. A password sign-up must confirm the address by link before the first sign-in
+     * (`requireEmailVerification`), because with a code the inbox is proved by construction and
+     * a password must not become the one way in that never proved anything. A reset signs every
+     * other device out.
+     */
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: PASSWORD_MIN_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
+      requireEmailVerification: true,
+      autoSignIn: false,
+      revokeSessionsOnPasswordReset: true,
+      resetPasswordTokenExpiresIn: RESET_LINK_MINUTES * 60,
+      async sendResetPassword({ user, url }) {
+        await sendLink({
+          email: user.email,
+          kind: 'reset-password',
+          mail: resetPasswordMail({ email: user.email, url }),
+        });
+      },
+      async onPasswordReset({ user }) {
+        await prisma.auditEvent.create({
+          data: { kind: 'PASSWORD_RESET', userId: user.id },
+        });
+        try {
+          await mailer.send(
+            passwordChangedMail({ email: user.email, appUrl: env.APP_URL, how: 'reset by link' }),
+          );
+        } catch (error) {
+          console.error('[auth] could not send the password-changed notice', error);
+        }
+      },
+    },
+    emailVerification: {
+      expiresIn: VERIFY_LINK_HOURS * 60 * 60,
+      // Clicking the link is the sign-in; a second form after it would only lose people.
+      autoSignInAfterVerification: true,
+      // A password sign-in on an unconfirmed address sends the link again instead of a dead end.
+      sendOnSignIn: true,
+      async sendVerificationEmail({ user, url }) {
+        await sendLink({
+          email: user.email,
+          kind: 'verify-email',
+          mail: verifyEmailMail({ email: user.email, url }),
+        });
+      },
+    },
+
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
     secret: env.AUTH_SECRET,
     baseURL: env.API_URL,

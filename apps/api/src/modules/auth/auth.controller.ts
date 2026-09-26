@@ -23,8 +23,8 @@ export class AuthController {
 
   /** Lets the web app render only the sign-in methods that are actually configured. */
   @Get('methods')
-  methods(): { emailOtp: boolean; google: boolean } {
-    return { emailOtp: true, google: isGoogleConfigured(this.env) };
+  methods(): { emailOtp: boolean; password: boolean; google: boolean } {
+    return { emailOtp: true, password: true, google: isGoogleConfigured(this.env) };
   }
 
   @All('*')
