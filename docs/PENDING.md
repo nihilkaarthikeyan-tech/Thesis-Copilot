@@ -347,6 +347,14 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.10, 2026-09-26** (tag on `5a720e3`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.10/`): the optional password with forgot and reset (ADR-0033), the
+      CI-only sign-in rate-limit headroom. Verified live: every container on v0.1.10 and healthy,
+      `/auth/methods` says `password: true`, `/forgot-password` and `/reset-password` 200, the
+      dev sink 404 in production, anonymous `POST /account/password` 401, and the password
+      sign-in screen seen in a browser. Not yet done by a human: a real sign-up with a password
+      through to the emailed link on the live site (mail goes out over Hostinger SMTP; the code
+      path is the same one the OTP already uses).
 - [x] **Released v0.1.9, 2026-09-25** (tag on `e6dac1d`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.9/`): the admin gate — a signed-out visit to `/admin` goes to
       sign-in and comes back (`?next=`), a signed-in student is told plainly, a session that
