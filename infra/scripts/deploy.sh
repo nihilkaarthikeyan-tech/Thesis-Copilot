@@ -57,6 +57,18 @@ ${COMPOSE} run --rm --no-deps api \
   || rollback
 
 ${COMPOSE} up -d --remove-orphans
+
+# `edge.conf` is bind-mounted as a single file. The checkout that brought a new version replaced
+# the file, and a single-file mount keeps showing the container the *old* one, so a routing change
+# never took effect and compose saw no reason to recreate `edge`. Recreate it when, and only when,
+# what it is running differs from the file in the tree — a second of downtime on the rare deploy
+# that changes routing, none otherwise (2026-09-28).
+if ! docker compose -f docker-compose.prod.yml exec -T edge cat /etc/nginx/conf.d/default.conf \
+  | cmp -s - edge.conf; then
+  echo "[deploy] edge.conf changed: recreating edge"
+  ${COMPOSE} up -d --no-deps --force-recreate edge
+fi
+
 echo "[deploy] waiting for ${HEALTH_URL}"
 health_ok || rollback
 

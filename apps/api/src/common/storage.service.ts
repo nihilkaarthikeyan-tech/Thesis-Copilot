@@ -17,19 +17,29 @@ export const SIGNED_URL_TTL_SECONDS = 15 * 60;
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   private readonly client: MinioClient;
+  /**
+   * Signs the links a browser opens. The same credentials as `client`, but the host a browser can
+   * reach (`S3_PUBLIC_URL`) — a presigned URL's signature covers its host, so it must be signed
+   * for the one it will be requested at. With the region set, signing makes no network call.
+   */
+  private readonly signer: MinioClient;
   readonly bucket: string;
 
   constructor(@Inject(ENV) env: Env) {
-    const endpoint = new URL(env.S3_ENDPOINT);
     this.bucket = env.S3_BUCKET;
-    this.client = new MinioClient({
-      endPoint: endpoint.hostname,
-      port: Number(endpoint.port) || (endpoint.protocol === 'https:' ? 443 : 80),
-      useSSL: endpoint.protocol === 'https:',
-      accessKey: env.S3_ACCESS_KEY,
-      secretKey: env.S3_SECRET_KEY,
-      region: env.S3_REGION,
-    });
+    const clientFor = (base: string) => {
+      const endpoint = new URL(base);
+      return new MinioClient({
+        endPoint: endpoint.hostname,
+        port: Number(endpoint.port) || (endpoint.protocol === 'https:' ? 443 : 80),
+        useSSL: endpoint.protocol === 'https:',
+        accessKey: env.S3_ACCESS_KEY,
+        secretKey: env.S3_SECRET_KEY,
+        region: env.S3_REGION,
+      });
+    };
+    this.client = clientFor(env.S3_ENDPOINT);
+    this.signer = env.S3_PUBLIC_URL ? clientFor(env.S3_PUBLIC_URL) : this.client;
   }
 
   async onModuleInit(): Promise<void> {
@@ -92,6 +102,6 @@ export class StorageService implements OnModuleInit {
    * The link is generated only after the caller's ownership has been checked (§12.1).
    */
   async signedUrl(key: string, ttlSeconds = SIGNED_URL_TTL_SECONDS): Promise<string> {
-    return this.client.presignedGetObject(this.bucket, key, ttlSeconds);
+    return this.signer.presignedGetObject(this.bucket, key, ttlSeconds);
   }
 }

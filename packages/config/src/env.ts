@@ -60,6 +60,17 @@ export const envSchema = z
     S3_SECRET_KEY: requiredString('S3_SECRET_KEY'),
     S3_BUCKET: requiredString('S3_BUCKET'),
     S3_REGION: z.string().trim().min(1).default('us-east-1'),
+    /**
+     * Where a browser reaches the bucket, when that is not `S3_ENDPOINT` (2026-09-28). Production
+     * talks to MinIO as `http://minio:9000`, a name that exists only inside the Compose network,
+     * and every download, figure and "Open PDF" link was signed for it — so none of them opened.
+     * Set to the site's own origin; the stack's `edge` proxy forwards `/<bucket>/` to MinIO.
+     * Unset, links are signed for `S3_ENDPOINT`, which is right wherever the browser can reach it.
+     */
+    S3_PUBLIC_URL: optionalString.refine(
+      (v) => v === undefined || URL.canParse(v),
+      'S3_PUBLIC_URL must be a valid URL',
+    ),
 
     // ---- Auth ----
     AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
