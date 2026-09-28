@@ -1105,9 +1105,6 @@
   font-size: 14px;
   color: var(--mk-muted);
 }
-.mk .mk-credit a {
-  color: inherit;
-}
 
 /* ---------------------------------------------------------------- auth split */
 .mk.mk-auth {

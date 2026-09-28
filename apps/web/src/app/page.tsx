@@ -39,8 +39,10 @@ import { cn } from '@/lib/utils';
  * the code enforces, or a number read from `@tc/config`, so the page cannot promise what the
  * product does not do. The integrity position (§12.3) has its own section, not a footer link.
  *
- * Photographs are from Unsplash (free licence), self-hosted under `public/landing/`; the
- * photographers are credited in the footer.
+ * Photographs are from Unsplash, self-hosted under `public/landing/`. The Unsplash licence needs
+ * no attribution, and the owner did not want one on the page (2026-09-28). For the record:
+ * Sweet Life (4NRgZmVb7bc), Dollar Gill (Kyoshy7BJIQ), litoon dev (9LwA7kToz9g), Sanket Mishra
+ * (9i2t23J7HnE); sign-in Shantanu Kumar (NaVcHdClY7A), sign-up Praveen Gupta (YhfxJpa_Ch0).
  */
 
 export const metadata = {
@@ -90,13 +92,6 @@ const PLAN_ROWS: ReadonlyArray<{ label: string; free: string; student: string }>
     student: STUDENT.export === 'FULL' ? 'Complete' : 'Chapters only',
   },
 ];
-
-const PHOTO_CREDITS = [
-  { who: 'Sweet Life', href: 'https://unsplash.com/photos/4NRgZmVb7bc' },
-  { who: 'Dollar Gill', href: 'https://unsplash.com/photos/Kyoshy7BJIQ' },
-  { who: 'litoon dev', href: 'https://unsplash.com/photos/9LwA7kToz9g' },
-  { who: 'Sanket Mishra', href: 'https://unsplash.com/photos/9i2t23J7HnE' },
-] as const;
 
 export default function HomePage() {
   const annualMonthly = Math.round(PRICING.STUDENT_ANNUAL.priceInr / 12);
@@ -636,17 +631,6 @@ export default function HomePage() {
           <div className="mk-foot-bot">
             <span>
               © {new Date().getFullYear()} {COMPANY.legalName ?? 'Thesis Copilot'}
-            </span>
-            <span className="mk-credit">
-              Photos on Unsplash by{' '}
-              {PHOTO_CREDITS.map((c, i) => (
-                <span key={c.who}>
-                  <a href={c.href} rel="noopener" target="_blank">
-                    {c.who}
-                  </a>
-                  {i < PHOTO_CREDITS.length - 1 ? ', ' : ''}
-                </span>
-              ))}
             </span>
           </div>
         </div>
