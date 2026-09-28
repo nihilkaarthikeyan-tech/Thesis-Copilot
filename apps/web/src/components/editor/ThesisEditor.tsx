@@ -745,8 +745,12 @@ function ChapterEditor({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2">
-        <div className="flex min-w-0 items-baseline gap-2 text-[13px]">
+      {/* One line from `lg` up (2026-09-28): the header used to wrap when its right side grew —
+          the save status going from "Saved" to "Unsaved changes" or "Saving…" — which pushed the
+          whole page down a line under the student's pointer. A click that started on a button
+          ended on whatever moved there, and was lost. The title truncates instead. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 lg:flex-nowrap">
+        <div className="flex min-w-0 flex-1 items-baseline gap-2 text-[13px]">
           <Link href="/app" className="shrink-0 text-muted hover:text-accent">
             Theses
           </Link>
@@ -759,10 +763,11 @@ function ChapterEditor({
           </span>
           <span className="truncate text-muted">{chapter.title}</span>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1 lg:shrink-0 lg:flex-nowrap">
           <span
             data-testid="autosave-status"
-            className={`px-1.5 text-[12px] ${
+            // A fixed width, so "Saved" becoming "Unsaved changes" does not shift the buttons.
+            className={`inline-block min-w-[7.5rem] whitespace-nowrap px-1.5 text-right text-[12px] ${
               status === 'conflict' || status === 'error' ? 'font-semibold text-warn' : 'text-faint'
             }`}
           >

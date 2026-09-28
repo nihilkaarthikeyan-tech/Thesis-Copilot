@@ -144,40 +144,11 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   await expect(page.locator('.thesis-editor span.ghost')).toHaveCount(0);
 
   await editorHint.getByRole('button', { name: 'Got it' }).click();
-  // The dismissal is what the student sees before anything else happens.
-  try {
-    await expect(editorHint).toHaveCount(0);
-  } catch (error) {
-    // TEMPORARY (2026-09-28): in CI only, since the one-look change, this click leaves the hint
-    // on screen. Record what the page looks like to the button, then fail as before.
-    const facts = await page.evaluate(() => {
-      const hint = document.querySelector('[data-testid="hint-editor"]');
-      const button = hint?.querySelector('button.shrink-0') as HTMLElement | null;
-      const box = button?.getBoundingClientRect();
-      const at = box
-        ? document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
-        : null;
-      return {
-        stored: localStorage.getItem('tc.hint.editor'),
-        react: button ? Object.keys(button).filter((k) => k.startsWith('__react')) : null,
-        inert: Boolean(button?.closest('[inert]')),
-        pointerEvents: button ? getComputedStyle(button).pointerEvents : null,
-        box: box ? [box.x, box.y, box.width, box.height] : null,
-        atPoint: at?.outerHTML.slice(0, 200) ?? null,
-        atIsButton: at === button,
-        active: document.activeElement?.outerHTML.slice(0, 160) ?? null,
-        hints: document.querySelectorAll('[data-testid="hint-editor"]').length,
-      };
-    });
-    await page.evaluate(() =>
-      (
-        document.querySelector('[data-testid="hint-editor"] button.shrink-0') as HTMLElement | null
-      )?.click(),
-    );
-    const afterDomClick = await editorHint.count();
-    console.log('ONBOARDING-DIAG', JSON.stringify({ ...facts, afterDomClick }));
-    throw error;
-  }
+  // The dismissal is what the student sees before anything else happens. In CI this once failed
+  // every run: pressing the button moved focus out of the editor, the save status lengthened, the
+  // header wrapped to two lines and pushed the page down, so the release landed off the button and
+  // no click happened. The header no longer wraps at laptop widths (ThesisEditor, 2026-09-28).
+  await expect(editorHint).toHaveCount(0);
   await page.reload();
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('hint-editor')).toHaveCount(0);

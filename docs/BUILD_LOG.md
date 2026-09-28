@@ -3886,3 +3886,14 @@ bind mount had kept showing nginx the old file after every checkout.
 
 CI also gained a trace upload: the onboarding spec failed twice on 90f0888 in CI and passes five
 times in five locally, and its trace had died with the runner.
+
+The onboarding spec that failed in CI after the one-look change was a real defect, not flakiness.
+Diagnostics recorded in CI showed the "Got it" button under the pointer, focused, wired to React —
+and a scripted `.click()` dismissed the hint — but a real mouse click did not. Pressing the button
+blurred the editor, the save status grew from "Saved" to "Unsaved changes"/"Saving…", and in the
+bolder Satoshi header that no longer fit on one line at 1280 px: the header wrapped, the page moved
+down a line between mouse-down and mouse-up, and the browser saw no click. Any student clicking
+anything just after typing could lose a click the same way. The editor header now stays on one
+line from `lg` (the title truncates) and the status has a fixed width; its height is 45 px for
+every status text at 1024, 1280 and 1440. My first theory (a reload racing the click) was wrong,
+and the spec's new wait for the hint to disappear is what proved it.
