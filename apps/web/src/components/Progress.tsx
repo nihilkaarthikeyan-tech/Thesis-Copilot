@@ -179,7 +179,7 @@ function Stat({
       <div className="eyebrow">{label}</div>
       <div
         className={cn(
-          'tnum mt-1 font-serif text-[21px] font-semibold leading-none',
+          'tnum mt-1 text-[21px] font-bold leading-none',
           tone === 'warn' ? 'text-warn' : 'text-ink',
         )}
       >

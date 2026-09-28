@@ -175,7 +175,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </Link>{' '}
         / Submit
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Prepare for submission
       </h1>
 

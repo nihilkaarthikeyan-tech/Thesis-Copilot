@@ -119,7 +119,7 @@ export default function DocumentListPage() {
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
+            className="inline-flex items-center gap-2 text-[16px] font-bold tracking-tight"
           >
             <LogoMark size={22} />
             Thesis Copilot
@@ -258,7 +258,7 @@ export default function DocumentListPage() {
                         <div className="min-w-0">
                           <Link
                             href={`/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`}
-                            className="font-serif text-[16px] font-semibold text-ink hover:text-accent"
+                            className="text-[16px] font-bold text-ink hover:text-accent"
                           >
                             {d.title}
                           </Link>

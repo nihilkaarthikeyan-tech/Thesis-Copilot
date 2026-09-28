@@ -28,7 +28,7 @@ export default function ContactPage() {
         </Link>{' '}
         / Contact
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[30px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Contact us
       </h1>
       <p className="mt-4 text-muted">
@@ -56,7 +56,7 @@ export default function ContactPage() {
         ))}
       </dl>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         Quicker than writing
       </h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">

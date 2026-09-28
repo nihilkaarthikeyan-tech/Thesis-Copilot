@@ -3,32 +3,28 @@
 /*
  * The public pages — landing, sign-in, sign-up (landing round 7, approved 2026-09-28).
  *
- * Scoped under `.mk` so none of it reaches the product. The product stays on Paper & Ink
- * (globals.css); these pages are the front door and are allowed their own voice: Satoshi for
- * everything, one cobalt accent, 10px controls and 18–28px cards and photos. Spectral appears
- * only inside the product fragments, because it is what the student's thesis is set in.
- *
- * The shared primitives (Button, Input, Label) are re-themed rather than forked: `.mk` redefines
- * the `--color-*`, `--radius-*` and `--font-sans` variables they already read, so the sign-in
- * form keeps its own components and simply looks like the page around it.
+ * Layout only. Since 2026-09-28 the colours, corners and typeface are the product's own
+ * (`app/globals.css`): the `--mk-*` names below alias those tokens, so the front door and the app
+ * behind it cannot drift apart again. The few values here with no product equivalent — the dark
+ * guide band, the highlighter yellow, the body-copy grey — are the only ones set by hand.
  */
 
 .mk {
-  --mk-bg: #ffffff;
-  --mk-surface: #f3f5f8;
-  --mk-surface-2: #e8edf3;
-  --mk-card: #ffffff;
-  --mk-ink: #0f1724;
+  --mk-bg: var(--color-surface);
+  --mk-surface: var(--color-paper);
+  --mk-surface-2: var(--color-sunk);
+  --mk-card: var(--color-surface);
+  --mk-ink: var(--color-ink);
   --mk-body: #3b4657;
-  --mk-muted: #6b7688;
-  --mk-line: #e1e6ed;
-  --mk-accent: #2743c4;
-  --mk-accent-hover: #1b2f8f;
-  --mk-accent-soft: #eaeffd;
-  --mk-on-accent: #ffffff;
-  --mk-ok: #1d7a4b;
-  --mk-ok-soft: #e5f3eb;
-  --mk-warn: #b4541f;
+  --mk-muted: var(--color-muted);
+  --mk-line: var(--color-line);
+  --mk-accent: var(--color-accent);
+  --mk-accent-hover: var(--color-accent-hover);
+  --mk-accent-soft: var(--color-accent-soft);
+  --mk-on-accent: var(--color-accent-ink);
+  --mk-ok: var(--color-ok);
+  --mk-ok-soft: var(--color-ok-soft);
+  --mk-warn: var(--color-warn);
   --mk-mark: #fff1bf;
   --mk-band: #0f1724;
   --mk-band-ink: #ffffff;
@@ -38,26 +34,7 @@
   --mk-hi-btn: #ffffff;
   --mk-hi-btn-ink: #0f1724;
   --mk-shadow: 0 1px 2px rgb(15 23 36 / 0.05), 0 12px 32px -12px rgb(15 23 36 / 0.18);
-  --mk-thesis: var(--font-spectral), Georgia, serif;
-
-  /* Re-theme the shared primitives used inside these pages. */
-  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --color-paper: var(--mk-bg);
-  --color-surface: var(--mk-card);
-  --color-sunk: var(--mk-surface);
-  --color-ink: var(--mk-ink);
-  --color-muted: var(--mk-muted);
-  --color-faint: #8a94a5;
-  --color-line: var(--mk-line);
-  --color-line-strong: #cbd3de;
-  --color-accent: var(--mk-accent);
-  --color-accent-hover: var(--mk-accent-hover);
-  --color-accent-soft: var(--mk-accent-soft);
-  --color-accent-ink: var(--mk-on-accent);
-  --color-ok: var(--mk-ok);
-  --color-ok-soft: var(--mk-ok-soft);
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --mk-thesis: var(--font-serif);
 
   background: var(--mk-bg);
   color: var(--mk-ink);
@@ -67,63 +44,36 @@
   overflow-x: clip;
 }
 
+/* In dark the page ground is the product's darkest surface and panels sit one step above it. */
 :root[data-theme="dark"] .mk {
-  --mk-bg: #0c111b;
-  --mk-surface: #141b28;
+  --mk-bg: var(--color-paper);
+  --mk-surface: var(--color-surface);
   --mk-surface-2: #1d2636;
-  --mk-card: #141b28;
-  --mk-ink: #edf1f7;
   --mk-body: #b9c2d0;
-  --mk-muted: #8995a8;
-  --mk-line: #243044;
-  --mk-accent: #7c95ff;
-  --mk-accent-hover: #9cb0ff;
-  --mk-accent-soft: #1a2445;
-  --mk-on-accent: #0c111b;
-  --mk-ok: #56c28e;
-  --mk-ok-soft: #12281d;
-  --mk-warn: #e39a6b;
   --mk-mark: #4a3f14;
   --mk-band: #141b28;
   --mk-band-ink: #edf1f7;
   --mk-band-body: #b9c2d0;
-  --mk-band-accent: #9fb2f5;
   --mk-band-line: #243044;
   --mk-hi-btn: #edf1f7;
   --mk-hi-btn-ink: #0c111b;
   --mk-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 36px -14px rgb(0 0 0 / 0.6);
-  --color-faint: #6f7a8c;
-  --color-line-strong: #33415a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .mk {
-    --mk-bg: #0c111b;
-    --mk-surface: #141b28;
+    --mk-bg: var(--color-paper);
+    --mk-surface: var(--color-surface);
     --mk-surface-2: #1d2636;
-    --mk-card: #141b28;
-    --mk-ink: #edf1f7;
     --mk-body: #b9c2d0;
-    --mk-muted: #8995a8;
-    --mk-line: #243044;
-    --mk-accent: #7c95ff;
-    --mk-accent-hover: #9cb0ff;
-    --mk-accent-soft: #1a2445;
-    --mk-on-accent: #0c111b;
-    --mk-ok: #56c28e;
-    --mk-ok-soft: #12281d;
-    --mk-warn: #e39a6b;
     --mk-mark: #4a3f14;
     --mk-band: #141b28;
     --mk-band-ink: #edf1f7;
     --mk-band-body: #b9c2d0;
-    --mk-band-accent: #9fb2f5;
     --mk-band-line: #243044;
     --mk-hi-btn: #edf1f7;
     --mk-hi-btn-ink: #0c111b;
     --mk-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 36px -14px rgb(0 0 0 / 0.6);
-    --color-faint: #6f7a8c;
-    --color-line-strong: #33415a;
   }
 }
 

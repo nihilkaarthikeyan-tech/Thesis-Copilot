@@ -217,7 +217,7 @@ export function ChartDialog({
         className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-md border border-line bg-surface p-5 text-sm shadow-lg"
       >
         <div className="flex items-baseline justify-between">
-          <h2 id="chart-title" className="font-serif text-lg">
+          <h2 id="chart-title" className="text-lg font-bold">
             {replacing ? 'Edit chart' : 'Insert a chart'}
           </h2>
           <button type="button" className="text-xs text-muted underline" onClick={onClose}>

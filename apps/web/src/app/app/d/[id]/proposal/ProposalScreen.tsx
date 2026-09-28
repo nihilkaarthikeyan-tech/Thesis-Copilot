@@ -205,7 +205,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
         <span>Proposal</span>
       </nav>
 
-      <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+      <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
         {pathA
           ? 'Turn your topic into a thesis proposal'
           : 'Turn your paper into a thesis proposal'}
@@ -431,7 +431,7 @@ function GapChecklist({
 }) {
   return (
     <aside className="rounded-md border border-line bg-paper p-5">
-      <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
         What a thesis needs that this paper does not have
       </h2>
       <p className="mt-1 text-xs text-muted">Tick these off as you go. Nothing here blocks you.</p>

@@ -753,7 +753,7 @@ function ChapterEditor({
           <span className="shrink-0 text-faint" aria-hidden="true">
             /
           </span>
-          <span className="truncate font-serif font-semibold text-ink">{doc.title}</span>
+          <span className="truncate font-semibold text-ink">{doc.title}</span>
           <span className="shrink-0 text-faint" aria-hidden="true">
             /
           </span>

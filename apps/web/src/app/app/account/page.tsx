@@ -290,7 +290,7 @@ export default function AccountPage() {
         </Link>{' '}
         / Account
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Account
       </h1>
 
@@ -364,9 +364,7 @@ export default function AccountPage() {
 
       {billing && (billing.plan === 'FREE_TRIAL' || billing.cancelAtPeriodEnd) ? (
         <section className="mt-6">
-          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-            Plans
-          </h2>
+          <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">Plans</h2>
           {billing.unavailableReason ? (
             <p className="mt-2 text-sm text-muted">
               {billing.unavailableReason} During the pilot your allowances are set by hand — email

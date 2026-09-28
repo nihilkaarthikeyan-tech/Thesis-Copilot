@@ -274,7 +274,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
         </Link>{' '}
         / Review
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Feedback
       </h1>
 
@@ -385,7 +385,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
 
       <section className="mt-6" ref={listRef}>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+          <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
             {open.length} to answer
             {comments && comments.length > open.length
               ? ` · ${comments.length - open.length} done`

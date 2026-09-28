@@ -171,7 +171,7 @@ export default function AdminPage() {
           <div className="flex items-baseline gap-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
+              className="inline-flex items-center gap-2 text-[16px] font-bold tracking-tight"
             >
               <LogoMark size={22} />
               Thesis Copilot
@@ -222,7 +222,7 @@ export default function AdminPage() {
           </div>
         ) : null}
 
-        <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
           Admin
         </h1>
         {flags ? (
@@ -258,7 +258,7 @@ export default function AdminPage() {
 
         {model ? (
           <section className="mt-8">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
               What one student can cost us
             </h2>
             <p className="mt-1 text-xs text-muted">
@@ -280,7 +280,7 @@ export default function AdminPage() {
 
         {budget ? (
           <section className="mt-8" data-testid="platform-budget">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
               Site-wide AI budget
             </h2>
             <p className="mt-1 text-xs text-muted">
@@ -363,7 +363,7 @@ export default function AdminPage() {
 
         {costs ? (
           <section className="mt-8" data-testid="admin-costs">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
               What the AI cost this month
             </h2>
             <p className="mt-1 text-xs text-muted">
@@ -446,7 +446,7 @@ export default function AdminPage() {
 
         {telemetry ? (
           <section className="mt-8" data-testid="admin-telemetry">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
               What students did with it
             </h2>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -491,7 +491,7 @@ export default function AdminPage() {
 
         {flags ? (
           <section className="mt-8" data-testid="admin-flags">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
               Feature switches
             </h2>
             <p className="mt-1 text-xs text-muted">

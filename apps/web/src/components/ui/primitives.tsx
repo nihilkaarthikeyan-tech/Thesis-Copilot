@@ -62,7 +62,7 @@ export function CardHeader({
       )}
     >
       <div className="min-w-0">
-        <h2 className="font-serif text-[15px] font-semibold leading-snug text-ink">{title}</h2>
+        <h2 className="text-[15px] font-bold leading-snug text-ink">{title}</h2>
         {hint ? <p className="mt-0.5 text-[13px] text-muted">{hint}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
@@ -193,7 +193,7 @@ export function PageHeader({
   return (
     <header className={cn('flex flex-wrap items-end justify-between gap-4', className)}>
       <div className="min-w-0">
-        <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
           {title}
         </h1>
         {lede ? <p className="mt-1.5 max-w-[62ch] text-[14px] text-muted">{lede}</p> : null}
@@ -220,7 +220,7 @@ export function Empty({
 }) {
   return (
     <div className="rounded-md border border-dashed border-line px-5 py-8 text-center">
-      <p className="font-serif text-[15px] text-ink">{title}</p>
+      <p className="text-[15px] font-semibold text-ink">{title}</p>
       {children ? (
         <p className="mx-auto mt-1 max-w-[46ch] text-[13px] text-muted">{children}</p>
       ) : null}

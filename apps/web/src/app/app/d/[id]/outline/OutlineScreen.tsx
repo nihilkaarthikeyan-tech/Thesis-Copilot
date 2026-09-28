@@ -329,7 +329,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
         <span>Outline</span>
       </nav>
 
-      <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+      <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Outline
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">

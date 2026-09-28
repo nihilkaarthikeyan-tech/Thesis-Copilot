@@ -18,13 +18,11 @@ export default function RefundsPage() {
         </Link>{' '}
         / Refunds
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[30px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Refunds
       </h1>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-        Cancelling
-      </h2>
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">Cancelling</h2>
       <p className="mt-2 text-muted">
         Open Account and press Cancel. One click, on any device, at any time. Your subscription
         stops renewing; you keep everything you have paid for until that period ends. We email you a
@@ -32,7 +30,7 @@ export default function RefundsPage() {
         you.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         Refunds we give without argument
       </h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
@@ -45,7 +43,7 @@ export default function RefundsPage() {
         <li>The service was unusable for more than 48 hours in a period, for reasons our end.</li>
       </ul>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         Refunds we do not give
       </h2>
       <p className="mt-2 text-muted">
@@ -54,9 +52,7 @@ export default function RefundsPage() {
         period is never charged.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-        How
-      </h2>
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">How</h2>
       <p className="mt-2 text-muted">
         Email us from the address on your account and say what happened. We reply within two working
         days. Approved refunds go back to the card or UPI account that paid, through Razorpay, and

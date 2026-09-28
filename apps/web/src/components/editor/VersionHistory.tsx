@@ -150,7 +150,7 @@ export function VersionHistory({
       <div className="relative flex h-full w-full max-w-4xl flex-col border-l border-line bg-surface shadow-2xl sm:flex-row">
         <section className="flex max-h-[40vh] w-full shrink-0 flex-col border-b border-line sm:max-h-none sm:w-72 sm:border-r sm:border-b-0">
           <header className="flex items-center justify-between border-b border-line px-4 py-3">
-            <h2 className="font-serif text-[16px] font-semibold">History</h2>
+            <h2 className="text-[16px] font-bold">History</h2>
             <button type="button" className="text-xs text-muted underline" onClick={onClose}>
               Close
             </button>

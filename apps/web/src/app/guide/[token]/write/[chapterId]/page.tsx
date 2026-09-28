@@ -84,7 +84,7 @@ export default function CoAuthorPage() {
           </Link>{' '}
           · writing with {document.studentEmail}
         </p>
-        <h1 className="mt-1 font-serif text-[24px] font-semibold leading-tight text-ink">
+        <h1 className="mt-1 text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink">
           {chapter.title}
         </h1>
       </header>

@@ -154,7 +154,7 @@ export default function GuidePage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <header>
-        <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+        <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
           {document.title}
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -205,7 +205,7 @@ export default function GuidePage() {
         >
           {chapter ? (
             <>
-              <h2 className="text-balance font-serif text-[21px] font-semibold leading-snug text-ink">
+              <h2 className="text-balance text-[20px] font-bold leading-snug tracking-[-0.01em] text-ink">
                 {chapter.title}
               </h2>
               {paragraphsOf(chapter.content).map((text, i) => (

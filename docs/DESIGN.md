@@ -1,5 +1,9 @@
 # Paper & Ink — the Thesis Copilot design system
 
+**2026-09-28: the palette, typeface and corners below are superseded by ADR-0034** (one look for
+the landing pages and the product: Satoshi, cobalt, 6/10/14px, navy dark). The principles —
+nothing competes with the student's text, `--ghost` only for unaccepted AI output — still hold.
+
 Status: adopted 2026-09-08. Implemented in `apps/web/src/app/globals.css`,
 `apps/web/src/components/ui/primitives.tsx` and `apps/web/src/components/theme.tsx`.
 

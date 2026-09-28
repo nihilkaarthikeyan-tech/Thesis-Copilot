@@ -47,7 +47,7 @@ export function HowSuggestionsWork({
         className="max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-md border border-line bg-surface p-6 text-sm shadow-lg"
       >
         <div className="flex items-baseline justify-between">
-          <h2 id="how-title" className="font-serif text-lg">
+          <h2 id="how-title" className="text-lg font-bold">
             How suggestions work
           </h2>
           <button

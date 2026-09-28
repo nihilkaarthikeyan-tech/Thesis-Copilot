@@ -3842,3 +3842,16 @@ trial** (`PLAN_LIMITS.FREE_TRIAL.trialDays`, and the terms say so), not "no end 
 Word export is chapters only (`BODY_ONLY`). The page now reads plan numbers from `@tc/config`, so
 it cannot drift from what the cap check enforces. The FAQ still renders `FAQ` from `lib/site.ts`,
 the same list the JSON-LD emits, and the §12.3 line ("No detector evasion") stays on the page.
+
+### One look for the whole product — 2026-09-28 (ADR-0034)
+
+The owner found that the redesigned public pages and the product behind them looked like two
+products. The product's tokens now carry the public pages' palette (Satoshi, cobalt, 6/10/14px,
+navy dark) and `marketing.css` aliases them rather than keeping a copy. Headings in 31 files moved
+off Spectral; Spectral stays only for the student's own text. The editor's remaining hard-coded
+colours moved onto tokens, which fixed a dark-mode fault nobody had reported: citations were
+dark blue on near-black. Approved from a before/after PDF of twelve real screens first.
+
+Locally, three Playwright specs failed and none because of this change: two assert the mock
+provider's canned text while this machine's `.env` runs the real models, and the password spec
+passed on its own (the run had spent the sign-in rate limit). CI runs all three on the mock.

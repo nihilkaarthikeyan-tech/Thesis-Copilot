@@ -53,7 +53,7 @@
 .thesis-editor pre {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
-  background: #f3f4f6;
+  background: var(--color-sunk);
   padding: 0.75em 1em;
   border-radius: 6px;
   overflow-x: auto;
@@ -69,7 +69,7 @@
   vertical-align: top;
 }
 .thesis-editor th {
-  background: #f7f7f5;
+  background: var(--color-sunk);
   font-weight: 600;
 }
 .thesis-editor img {
@@ -113,7 +113,7 @@
 }
 @keyframes ghost-accept-fade {
   from {
-    background-color: rgba(47, 91, 234, 0.18);
+    background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
   }
   to {
     background-color: transparent;
@@ -130,8 +130,8 @@
   display: inline;
   padding: 0 0.15em;
   border-radius: 3px;
-  background: rgba(47, 91, 234, 0.08);
-  color: #1f3fae;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
   cursor: default;
   white-space: nowrap;
 }
@@ -140,8 +140,8 @@
 }
 .thesis-editor .citation--removed {
   background: transparent;
-  color: #b91c1c;
-  text-decoration: underline dashed #b91c1c;
+  color: var(--color-danger);
+  text-decoration: underline dashed var(--color-danger);
   text-underline-offset: 3px;
 }
 
@@ -150,8 +150,8 @@
   position: relative;
   margin: 1.2em 0;
   padding: 0.75em 1em 0.75em 1.1em;
-  border-left: 4px solid #c9a227;
-  background: rgba(201, 162, 39, 0.08);
+  border-left: 4px solid var(--color-warn);
+  background: var(--color-warn-soft);
   border-radius: 0 6px 6px 0;
 }
 .thesis-editor .draft-block__header {
@@ -161,16 +161,17 @@
   gap: 0.75rem;
   font-family: var(--font-sans);
   font-size: 0.8rem;
-  color: #7a5c0e;
+  color: var(--color-warn);
   margin-bottom: 0.5em;
 }
 .thesis-editor .draft-block__actions button {
   font: inherit;
   padding: 0.15em 0.6em;
   margin-left: 0.35rem;
-  border: 1px solid rgba(122, 92, 14, 0.35);
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--color-warn) 35%, transparent);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-ink);
   cursor: pointer;
 }
 .thesis-editor .draft-block__actions button:disabled {
@@ -182,8 +183,8 @@
 .thesis-editor .needs-source-note {
   font-family: var(--font-sans);
   font-size: 0.85em;
-  color: #92400e;
-  background: #fef3c7;
+  color: var(--color-warn);
+  background: var(--color-warn-soft);
   padding: 0 0.3em;
   border-radius: 3px;
 }
@@ -200,29 +201,29 @@
 /* Provenance is invisible by default; the AI-usage view (FR-8.6) can reveal it. */
 .thesis-editor[data-show-provenance="true"] [data-provenance="ASSIST"],
 .thesis-editor[data-show-provenance="true"] [data-provenance="DRAFT"] {
-  background: rgba(47, 91, 234, 0.08);
+  background: var(--color-accent-soft);
 }
 .thesis-editor[data-show-provenance="true"] [data-provenance="HUMAN_EDITED"] {
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--color-ok-soft);
 }
 
 /* Citation hover popover — PHASES 3.5. Positioning is set by the NodeView; this is appearance. */
 .thesis-editor .citation-popover {
   margin-top: 0.25rem;
   padding: 0.5rem 0.625rem;
-  border: 1px solid var(--color-line, #e5e2da);
-  border-radius: 0.375rem;
-  background: #fff;
-  box-shadow: 0 6px 20px rgba(20, 20, 20, 0.12);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: 0 6px 20px rgb(15 23 36 / 0.14);
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: var(--color-ink, #1a1a1a);
+  color: var(--color-ink);
   cursor: default;
 }
 .thesis-editor .citation-popover__ref {
   display: block;
   font-size: 0.75rem;
-  color: var(--color-muted, #6b6b6b);
+  color: var(--color-muted);
 }
 .thesis-editor .citation-popover__text {
   display: block;
@@ -238,22 +239,22 @@
    Deliberately an underline rather than a background: a chapter under review can carry a dozen
    open comments at once, and a dozen highlighted blocks is an unreadable page. */
 .thesis-editor .review-anchor {
-  border-bottom: 2px solid rgba(180, 132, 25, 0.45);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-warn) 45%, transparent);
   cursor: pointer;
 }
 /* Something to accept: the same underline, in the accent, because there is an action waiting. */
 .thesis-editor .review-anchor-suggested {
-  border-bottom-color: rgba(47, 91, 234, 0.5);
+  border-bottom-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
 }
 /* The one open in the panel. This is the only one that gets a background, and it only ever
    applies to one passage at a time. */
 .thesis-editor .review-anchor-active {
-  background: rgba(180, 132, 25, 0.12);
-  border-bottom-color: rgba(180, 132, 25, 0.9);
+  background: var(--color-warn-soft);
+  border-bottom-color: var(--color-warn);
 }
 .thesis-editor .review-anchor-suggested.review-anchor-active {
-  background: rgba(47, 91, 234, 0.1);
-  border-bottom-color: rgba(47, 91, 234, 0.9);
+  background: var(--color-accent-soft);
+  border-bottom-color: var(--color-accent);
 }
 
 /* ADR-0028: everyone else's caret and name in a live chapter. TipTap ships the class names and

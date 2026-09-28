@@ -18,11 +18,11 @@ export default function PrivacyPage() {
         </Link>{' '}
         / Privacy
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[30px] font-bold leading-tight tracking-[-0.02em] text-ink">
         What we do with your text
       </h1>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         We do not train on it
       </h2>
       <p className="mt-2 text-muted">
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         for us, or anyone else, to go back and read.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         What is sent, and when
       </h2>
       <p className="mt-2 text-muted">
@@ -47,7 +47,7 @@ export default function PrivacyPage() {
         suggest-without-asking, and then only after you pause.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         The Chrome add-on
       </h2>
       <p className="mt-2 text-muted">
@@ -59,9 +59,7 @@ export default function PrivacyPage() {
         thesis you added to last.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-        What we log
-      </h2>
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">What we log</h2>
       <p className="mt-2 text-muted">
         Every AI call is recorded with its model, its token counts, its cost and how long it took —
         this is how the monthly allowance is counted and how we keep the price honest. The request
@@ -69,7 +67,7 @@ export default function PrivacyPage() {
         thesis text.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         Who can see it
       </h2>
       <p className="mt-2 text-muted">
@@ -79,7 +77,7 @@ export default function PrivacyPage() {
         chapters.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         Where it lives
       </h2>
       <p className="mt-2 text-muted">
@@ -87,9 +85,7 @@ export default function PrivacyPage() {
         transit. Backups are taken nightly and kept for 30 days.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-        Leaving
-      </h2>
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">Leaving</h2>
       <p className="mt-2 text-muted">
         Export any chapter as .docx or PDF at any time, with or without a subscription — do that
         first, because the rest of this is final.
@@ -109,9 +105,7 @@ export default function PrivacyPage() {
         deletion was asked for and carried out. Neither contains anything you wrote.
       </p>
 
-      <h2 className="mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-        Integrity
-      </h2>
+      <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">Integrity</h2>
       <p className="mt-2 text-muted">
         We do not build “humanising” or detector-evasion features and we will not. What the AI wrote
         stays marked as such in your document, and the AI-usage log is yours to export and disclose.

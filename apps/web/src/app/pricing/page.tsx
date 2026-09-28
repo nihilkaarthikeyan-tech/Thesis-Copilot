@@ -39,7 +39,7 @@ export default function PricingPage() {
         </Link>{' '}
         / Pricing
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[30px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Pricing
       </h1>
       <p className="mt-3 max-w-xl text-muted">
@@ -66,7 +66,7 @@ export default function PricingPage() {
         ))}
       </section>
 
-      <h2 className="mt-10 text-balance font-serif text-[21px] font-semibold leading-snug text-ink">
+      <h2 className="mt-10 text-balance text-[20px] font-bold leading-snug tracking-[-0.01em] text-ink">
         What you can do each month
       </h2>
       <p className="mt-1 text-sm text-muted">
@@ -124,7 +124,7 @@ export default function PricingPage() {
         </table>
       </div>
 
-      <h2 className="mt-10 text-balance font-serif text-[21px] font-semibold leading-snug text-ink">
+      <h2 className="mt-10 text-balance text-[20px] font-bold leading-snug tracking-[-0.01em] text-ink">
         Where we stand on integrity
       </h2>
       <p className="mt-2">No “humanise” feature. No detector evasion. Ever, at any price.</p>
@@ -136,7 +136,7 @@ export default function PricingPage() {
         what was retrieved and put in front of it.
       </p>
 
-      <h2 className="mt-10 text-balance font-serif text-[21px] font-semibold leading-snug text-ink">
+      <h2 className="mt-10 text-balance text-[20px] font-bold leading-snug tracking-[-0.01em] text-ink">
         Questions people actually ask
       </h2>
       <dl className="mt-3 space-y-4">

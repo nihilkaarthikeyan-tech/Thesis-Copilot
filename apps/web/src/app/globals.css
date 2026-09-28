@@ -4,68 +4,72 @@
 @import "tailwindcss";
 
 /*
- * Paper & Ink — the Thesis Copilot design system. Full specification in `docs/DESIGN.md`.
+ * The Thesis Copilot design system — one system for every screen (2026-09-28).
  *
- * The product is a writing instrument for a document someone will be examined on, so the surface
- * stays quiet and the student's own prose is the loudest thing on screen. Two rules follow from
- * that and explain most of what is below:
+ * Until this date the public pages (landing, sign-in, sign-up) and the product itself were two
+ * designs: Satoshi, cobalt and soft corners outside; Source Sans, slate and 3px corners inside, with
+ * a different dark mode. A student crossed from one to the other at the moment of signing in. The
+ * tokens below are now the public pages' palette, so both halves read as one product, and
+ * `components/marketing/marketing.css` uses the same values.
  *
- *   1. Nothing competes with body text. One accent, used for action and for citation marks and
- *      almost nowhere else; rules are hairlines; shadows are absent in light and near-absent in
- *      dark; radii are 3px, not 12px.
+ * Two rules still explain most of what is below:
+ *
+ *   1. Nothing competes with the student's text. One accent, used for action and for citation
+ *      marks and almost nowhere else; rules are hairlines; shadows stay rare.
  *   2. AI output never looks like the student's own writing. `--ghost` is the one colour reserved
  *      for text the model proposed and the student has not accepted (PRD §6.2, §12.3).
  *
  * Theming: every colour is a variable declared here in `@theme`, so Tailwind's utilities compile
  * to `var(--color-…)` and a runtime override of the variable re-themes the whole app. Dark is a
- * considered palette, not an inversion — it keeps the light theme's cool-sage neutral bias and
- * lifts the accent so it stays legible on a dark ground.
+ * considered palette, not an inversion: a deep navy ground with the accent lifted so it stays
+ * legible, the same ground the public pages use.
  */
 
 @theme {
   /* ---- Type -------------------------------------------------------------- */
-  /* Loaded by `next/font` in layout.tsx, which sets these two variables. */
+  /* Loaded in layout.tsx. Satoshi for every screen; Spectral only for the thesis text itself. */
   --font-serif: var(--font-spectral), Charter, "Iowan Old Style", Georgia, serif;
-  --font-sans: var(--font-source-sans), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
 
   /* ---- Surfaces ---------------------------------------------------------- */
-  --color-paper: #f5f6f4;
-  --color-surface: #fdfdfc;
-  --color-sunk: #eceee9;
+  --color-paper: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-sunk: #eef1f5;
 
   /* ---- Text -------------------------------------------------------------- */
-  --color-ink: #1c1e1b;
-  --color-muted: #666b63;
-  --color-faint: #979c93;
+  --color-ink: #0f1724;
+  --color-muted: #5b6678;
+  --color-faint: #7b8597;
 
   /* ---- Lines ------------------------------------------------------------- */
-  --color-line: #dfe2db;
-  --color-line-strong: #c9cec3;
+  --color-line: #e1e6ed;
+  --color-line-strong: #cbd3de;
 
   /* ---- Accent ------------------------------------------------------------ */
-  --color-accent: #33507a;
-  --color-accent-hover: #294167;
-  --color-accent-soft: #e7ecf3;
+  --color-accent: #2743c4;
+  --color-accent-hover: #1b2f8f;
+  --color-accent-soft: #eaeffd;
   --color-accent-ink: #ffffff;
 
   /* ---- AI ---------------------------------------------------------------- */
   /* Unaccepted model output. Never used for anything the student wrote. */
-  --color-ghost: #a5aaa0;
-  --color-draft: #f1f3ee;
+  --color-ghost: #8a93a3;
+  --color-draft: #f1f4f9;
 
   /* ---- Semantic ---------------------------------------------------------- */
-  --color-ok: #3f6b4a;
-  --color-ok-soft: #e8efe9;
-  --color-warn: #8a6a1f;
-  --color-warn-soft: #f6efdd;
-  --color-danger: #9b3b33;
-  --color-danger-soft: #f6e9e7;
+  --color-ok: #1d7a4b;
+  --color-ok-soft: #e5f3eb;
+  --color-warn: #92600e;
+  --color-warn-soft: #fbf1dc;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
 
   /* ---- Shape ------------------------------------------------------------- */
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 5px;
+  /* The public pages' corners: small chips 6px, controls 10px, panels 14px. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 
   /* ---- Measure ----------------------------------------------------------- */
   /* PRD §6.2: the writing column is 72ch. */
@@ -81,62 +85,62 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-paper: #171917;
-    --color-surface: #1e211e;
-    --color-sunk: #121412;
+    --color-paper: #0c111b;
+    --color-surface: #141b28;
+    --color-sunk: #0a0e16;
 
-    --color-ink: #e7e9e4;
-    --color-muted: #9ba098;
-    --color-faint: #6e736b;
+    --color-ink: #edf1f7;
+    --color-muted: #a3adbd;
+    --color-faint: #758196;
 
-    --color-line: #2c302b;
-    --color-line-strong: #3d423b;
+    --color-line: #243044;
+    --color-line-strong: #34425c;
 
-    --color-accent: #8faad4;
-    --color-accent-hover: #a5bce0;
-    --color-accent-soft: #232a33;
-    --color-accent-ink: #14171c;
+    --color-accent: #8ea2ff;
+    --color-accent-hover: #aebcff;
+    --color-accent-soft: #1c2748;
+    --color-accent-ink: #0c111b;
 
-    --color-ghost: #6e736b;
-    --color-draft: #22251f;
+    --color-ghost: #6e7a8e;
+    --color-draft: #182033;
 
-    --color-ok: #7fae8b;
-    --color-ok-soft: #1d2620;
-    --color-warn: #c8a457;
-    --color-warn-soft: #27231a;
-    --color-danger: #d18b83;
-    --color-danger-soft: #2a1e1c;
+    --color-ok: #5ccf95;
+    --color-ok-soft: #10281c;
+    --color-warn: #e7b35d;
+    --color-warn-soft: #2a2315;
+    --color-danger: #f19187;
+    --color-danger-soft: #2d1715;
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --color-paper: #171917;
-  --color-surface: #1e211e;
-  --color-sunk: #121412;
+  --color-paper: #0c111b;
+  --color-surface: #141b28;
+  --color-sunk: #0a0e16;
 
-  --color-ink: #e7e9e4;
-  --color-muted: #9ba098;
-  --color-faint: #6e736b;
+  --color-ink: #edf1f7;
+  --color-muted: #a3adbd;
+  --color-faint: #758196;
 
-  --color-line: #2c302b;
-  --color-line-strong: #3d423b;
+  --color-line: #243044;
+  --color-line-strong: #34425c;
 
-  --color-accent: #8faad4;
-  --color-accent-hover: #a5bce0;
-  --color-accent-soft: #232a33;
-  --color-accent-ink: #14171c;
+  --color-accent: #8ea2ff;
+  --color-accent-hover: #aebcff;
+  --color-accent-soft: #1c2748;
+  --color-accent-ink: #0c111b;
 
-  --color-ghost: #6e736b;
-  --color-draft: #22251f;
+  --color-ghost: #6e7a8e;
+  --color-draft: #182033;
 
-  --color-ok: #7fae8b;
-  --color-ok-soft: #1d2620;
-  --color-warn: #c8a457;
-  --color-warn-soft: #27231a;
-  --color-danger: #d18b83;
-  --color-danger-soft: #2a1e1c;
+  --color-ok: #5ccf95;
+  --color-ok-soft: #10281c;
+  --color-warn: #e7b35d;
+  --color-warn-soft: #2a2315;
+  --color-danger: #f19187;
+  --color-danger-soft: #2d1715;
 
   color-scheme: dark;
 }

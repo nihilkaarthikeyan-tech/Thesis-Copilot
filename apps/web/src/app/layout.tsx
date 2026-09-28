@@ -1,29 +1,24 @@
 import type { Metadata } from 'next';
-import { Source_Sans_3, Spectral } from 'next/font/google';
+import { Spectral } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { satoshi } from '@/components/marketing/fonts';
 import { ThemeScript } from '@/components/theme';
 import { SITE, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 /**
- * Paper & Ink pairs a serif for prose with a sans for the interface (docs/DESIGN.md).
+ * One typeface system for the whole product (2026-09-28): the public pages and the app used to
+ * look like two different products — Satoshi and cobalt outside, Source Sans and slate inside.
  *
- * Spectral is the writing face: it is what the student's own thesis is set in, so the editor reads
- * like a manuscript rather than a form. Source Sans 3 carries the chrome — menus, labels, meters —
- * and never appears inside the writing column.
+ * Satoshi carries every screen: headings, menus, labels, meters. Spectral is kept for one job
+ * only, the student's own writing — the editor's page, a chapter a guide reads, a quoted passage —
+ * so a thesis still reads like a manuscript and never like a form.
  */
 const spectral = Spectral({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   variable: '--font-spectral',
-  display: 'swap',
-});
-
-const sourceSans = Source_Sans_3({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-source-sans',
   display: 'swap',
 });
 
@@ -49,11 +44,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${spectral.variable} ${sourceSans.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${spectral.variable} ${satoshi.variable}`} suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>

@@ -4,14 +4,15 @@ import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * The one button. Paper & Ink (docs/DESIGN.md): 3px radius, no shadow, one accent.
+ * The one button, the same on the public pages and in the product (2026-09-28): the shared
+ * radius, bold Satoshi, no shadow, one accent.
  *
  * `primary` is reserved for the single action a screen exists to perform — one per view. Anything
  * a student might do alongside it is `secondary` or `ghost`, so the eye is never asked to choose
  * between two equally loud controls.
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-sans font-semibold transition-colors disabled:pointer-events-none disabled:opacity-45',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-sans font-bold transition-colors disabled:pointer-events-none disabled:opacity-45',
   {
     variants: {
       variant: {

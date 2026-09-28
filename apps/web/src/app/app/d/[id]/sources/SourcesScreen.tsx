@@ -194,7 +194,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
 
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
-          <h1 className="text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+          <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
             Sources
           </h1>
           <p className="mt-1 text-sm text-muted">

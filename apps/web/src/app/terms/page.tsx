@@ -13,7 +13,7 @@ import { COMPANY, operatorName } from '@/lib/company';
 
 export const metadata = { title: 'Terms — Thesis Copilot' };
 
-const H2 = 'mt-8 text-balance font-serif text-[17px] font-semibold leading-snug text-ink';
+const H2 = 'mt-8 text-balance text-[17px] font-bold leading-snug text-ink';
 
 export default function TermsPage() {
   const monthly = PRICING.STUDENT_MONTHLY.priceInr.toLocaleString('en-IN');
@@ -28,7 +28,7 @@ export default function TermsPage() {
         </Link>{' '}
         / Terms
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[30px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[30px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Terms of service
       </h1>
       <p className="mt-4 text-muted">

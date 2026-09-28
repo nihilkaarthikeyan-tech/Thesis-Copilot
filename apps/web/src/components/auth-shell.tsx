@@ -26,7 +26,7 @@ export function AuthShell({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 font-serif text-[17px] font-semibold tracking-tight"
+            className="inline-flex items-center gap-2 text-[17px] font-bold tracking-tight"
           >
             <LogoMark size={24} />
             Thesis Copilot
@@ -41,7 +41,7 @@ export function AuthShell({
       </header>
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-14">
         <div className="mx-auto w-full max-w-[24rem]">
-          <h1 className="text-balance font-serif text-[30px] font-semibold leading-tight">
+          <h1 className="text-balance text-[30px] font-bold leading-tight tracking-[-0.02em]">
             {title}
           </h1>
           {hint ? <Hint className="mt-2 text-[14px]">{hint}</Hint> : null}

@@ -43,7 +43,7 @@ export function CrossPaperFlags({ documentId, flags }: { documentId: string; fla
 
   return (
     <section className="mt-8" data-testid="cross-paper">
-      <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+      <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
         Across your papers
       </h2>
       <p className="mt-1 text-sm text-muted">

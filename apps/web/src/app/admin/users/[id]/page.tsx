@@ -130,7 +130,7 @@ export default function AdminUserPage() {
 
       {user ? (
         <>
-          <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+          <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
             {user.email}
           </h1>
           <p className="text-sm text-muted">
@@ -220,9 +220,7 @@ export default function AdminUserPage() {
           </section>
 
           <section className="mt-8">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
-              Theses
-            </h2>
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">Theses</h2>
             {user.documentList.length === 0 ? (
               <p className="mt-2 text-sm text-muted">None yet.</p>
             ) : (
@@ -240,7 +238,7 @@ export default function AdminUserPage() {
           </section>
 
           <section className="mt-8">
-            <h2 className="text-balance font-serif text-[17px] font-semibold leading-snug text-ink">
+            <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
               Recent admin actions and feedback
             </h2>
             {user.recentEvents.length === 0 ? (

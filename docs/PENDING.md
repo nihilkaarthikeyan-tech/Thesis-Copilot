@@ -97,6 +97,15 @@ blocks the agent from continuing to build against mocks.
       were set and working; the sign-in library would not attach a Google login to the account the
       emailed code had already created. Fixed in code (`accountLinking: { enabled, trustedProviders:
       ['google'] }`, Better Auth's own verified-email gate left on); live at the next release.
+- [x] **Done 2026-09-28: the superadmin is now `editor.publicationmart@gmail.com` only**, at the
+      owner's instruction. That account was created and verified by the owner's own Google sign-in;
+      then, after a `pg_dump` (`/root/backups/pre-admin-swap-2026-09-28/`), one transaction set it
+      to SUPERADMIN and `nihilkaarthikeyan@gmail.com` to STUDENT (not deleted — its data stays),
+      each with a `ROLE_CHANGED` audit row marked as done by the agent. The VPS `.env` now has
+      `SEED_ADMIN_EMAIL=editor.publicationmart@gmail.com` (so alerts and feedback mail go there)
+      and `ALERT_EMAILS=nihilkaarthikeyan@gmail.com` as the backup inbox; the old file is
+      `.env.bak-2026-09-28-admin-swap`. The owner sets the password themselves under Account →
+      Password. The item as it stood:
 - [ ] **Admin access for the manager / HR (2026-09-25).** Built: `PUT /admin/users/:id/role` and a
       Role control on `/admin/users/:id`. There are no passwords in this product; the credential
       is the email address plus the code it receives. The owner's own address is already the

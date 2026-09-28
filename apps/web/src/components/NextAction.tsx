@@ -106,7 +106,7 @@ export function NextAction({
         <p className="eyebrow">Next</p>
         <p
           className={cn(
-            'mt-1 text-balance font-serif text-[16px] font-semibold leading-snug',
+            'mt-1 text-balance text-[16px] font-bold leading-snug',
             attention ? 'text-warn' : 'text-ink',
           )}
         >

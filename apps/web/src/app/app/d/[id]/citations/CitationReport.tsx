@@ -122,7 +122,7 @@ export function CitationReport({ documentId }: { documentId: string }) {
         </Link>{' '}
         / Citation report
       </nav>
-      <h1 className="mt-2 text-balance font-serif text-[27px] font-semibold leading-tight text-ink">
+      <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
         Citation report
         {doc ? <span className="block text-base text-muted">{doc.title}</span> : null}
       </h1>
