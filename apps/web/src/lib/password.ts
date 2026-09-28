@@ -25,8 +25,9 @@ export function passwordSignInProblem(code: string | undefined, fallback?: strin
   switch (code) {
     case 'INVALID_EMAIL_OR_PASSWORD':
       return (
-        'That email and password do not match. If you have never set a password on this ' +
-        'account, email yourself a code instead — or use “Forgot your password?” to make one.'
+        'That email and password do not match. Signed up with Google? Use “Continue with ' +
+        'Google”. Never set a password? Email yourself a code instead, or use “Forgot your ' +
+        'password?” to make one.'
       );
     case 'EMAIL_NOT_VERIFIED':
       return (

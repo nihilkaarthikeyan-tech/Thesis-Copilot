@@ -119,6 +119,37 @@ export function resetPasswordMail(input: { email: string; url: string }): Mail {
   };
 }
 
+/**
+ * Sent when someone signs up with an address that already has an account (2026-09-28).
+ *
+ * The sign-up screen answers the same way for a new address and a taken one, so it cannot be used
+ * to learn who has an account. Before this mail, that meant the real owner — typically someone
+ * who first came in with Google and later tried a password — saw "Check your email" and then
+ * nothing at all. The screen still says nothing; the inbox, which only the owner reads, says why.
+ */
+export function existingAccountMail(input: { email: string; appUrl: string }): Mail {
+  return {
+    to: [input.email],
+    subject: 'You already have a Thesis Copilot account',
+    text:
+      `Someone, probably you, just tried to create a Thesis Copilot account with this address. ` +
+      `You already have one, so no new account was made.
+
+` +
+      `To sign in, use Continue with Google or email yourself a code:
+
+    ${input.appUrl}/sign-in
+
+` +
+      `To sign in with a password, set one here (this works even if you have never had one):
+
+    ${input.appUrl}/forgot-password
+
+` +
+      'If this was not you, ignore this email. Nothing on your account has changed.',
+  };
+}
+
 /** Sent after a password is set, changed or reset, so a takeover is noticed by its victim. */
 export function passwordChangedMail(input: { email: string; appUrl: string; how: string }): Mail {
   return {
@@ -185,6 +216,21 @@ export function createAuth(
           kind: 'reset-password',
           mail: resetPasswordMail({ email: user.email, url }),
         });
+      },
+      /**
+       * A sign-up with a taken address makes nothing and says nothing on screen (above); the
+       * owner is told by email instead. A failure to send is logged, never surfaced, so the
+       * response stays identical to a new address's.
+       */
+      async onExistingUserSignUp({ user }) {
+        const mail = existingAccountMail({ email: user.email, appUrl: env.APP_URL });
+        if (process.env.NODE_ENV !== 'production')
+          rememberDevLink(user.email, 'existing-account', mail);
+        try {
+          await mailer.send(mail);
+        } catch (error) {
+          console.error('[auth] could not send the existing-account notice', error);
+        }
       },
       async onPasswordReset({ user }) {
         await prisma.auditEvent.create({

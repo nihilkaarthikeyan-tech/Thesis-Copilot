@@ -235,6 +235,34 @@ describe('a sign-up with a password', () => {
     expect(verified.emailVerified).toBe(true);
     expect((await signInWithPassword(NEW, PASSWORD)).status).toBe(200);
   });
+
+  // 2026-09-28: the owner signed in with Google, then tried to sign up with a password, saw
+  // "Check your email" and received nothing. The screen must still not say the address is taken;
+  // the owner's inbox must say what happened and how to get in.
+  it('with a taken address answers like a new one, makes nothing, and tells the owner by email', async () => {
+    const before = await h.prisma.user.count({ where: { email: EMAIL } });
+    mailer().sent.length = 0;
+
+    const response = await h.api('/auth/sign-up/email', {
+      method: 'POST',
+      headers: anonymous,
+      body: json({ name: 'Someone', email: EMAIL, password: SECOND, callbackURL: `${APP}/app` }),
+    });
+    expect(response.status).toBe(200);
+    expect(sessionCookie(response), 'a taken address signs nobody in').toBeNull();
+    expect(await h.prisma.user.count({ where: { email: EMAIL } })).toBe(before);
+
+    // Better Auth may run the hook after answering (`runInBackgroundOrAwait`).
+    const findNotice = () => mailer().sent.find((m) => m.to.includes(EMAIL));
+    await expect.poll(findNotice, { timeout: 5_000 }).toBeTruthy();
+    const notice = findNotice();
+    expect(notice?.subject).toBe('You already have a Thesis Copilot account');
+    expect(notice?.text).toContain(`${APP}/sign-in`);
+    expect(notice?.text).toContain(`${APP}/forgot-password`);
+    expect(notice?.text, 'no verification link: it must not sign anyone in').not.toContain(
+      'verify-email',
+    );
+  });
 });
 
 describe('forgot password', () => {

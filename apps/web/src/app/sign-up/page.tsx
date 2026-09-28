@@ -163,7 +163,7 @@ export default function SignUpPage() {
         {step === 'code'
           ? 'The code works for ten minutes. It may take a moment to arrive.'
           : step === 'link'
-            ? 'Open the link we sent to confirm the address. That signs you in; it works for 24 hours.'
+            ? 'Open the link we sent to confirm the address. That signs you in; it works for 24 hours. If this address already has an account, the email tells you how to sign in instead.'
             : mode === 'password'
               ? 'Choose a password now; we email you a link to confirm the address before the first sign-in. An emailed code will always work too.'
               : 'Enter your email and we send a six-digit code. That code creates the account — no password to choose, and you can add one later.'}
