@@ -23,6 +23,28 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@tc/worker", "dev"],
       "port": 3099
+    },
+    {
+      "name": "api-mock",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@tc/api", "dev"],
+      "port": 3001,
+      "env": {
+        "AI_PROVIDER": "mock",
+        "EMBED_PROVIDER": "mock",
+        "AUTH_RATE_LIMIT_PER_MINUTE": "600"
+      }
+    },
+    {
+      "name": "worker-mock",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@tc/worker", "dev"],
+      "port": 3099,
+      "env": {
+        "AI_PROVIDER": "mock",
+        "EMBED_PROVIDER": "mock",
+        "AUTH_RATE_LIMIT_PER_MINUTE": "600"
+      }
     }
   ]
 }

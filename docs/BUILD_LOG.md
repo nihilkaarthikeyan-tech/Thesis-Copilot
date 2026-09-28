@@ -3855,3 +3855,34 @@ dark blue on near-black. Approved from a before/after PDF of twelve real screens
 Locally, three Playwright specs failed and none because of this change: two assert the mock
 provider's canned text while this machine's `.env` runs the real models, and the password spec
 passed on its own (the run had spent the sign-in rate limit). CI runs all three on the mock.
+
+### Rate limits, pagination, a CSP — and downloads that never opened — 2026-09-28
+
+The owner asked whether the basics were there. An audit said: input validation yes (every body
+through zod), errors yes (typed, RFC 9457), security headers mostly — but three gaps, all fixed:
+
+- **Rate limiting** covered only sign-in and the AI routes. Now every API request counts against
+  600 a minute, and uploads (30), searches and DOI lookups (20) and exports (10) against a tighter
+  second limit (`common/rate-limit.ts`, `classifyRequest`). Signed-in requests count per session
+  (the cookie, hashed) instead of per IP, so a campus behind one address is not one student; the
+  AI limit moved to the same identity. `authz.spec` proves the search limit end to end.
+- **Pagination**: comments were loaded whole and re-anchored on every read — now filtered to what
+  each screen shows (`?status=OPEN`, `?chapterId=`) with a `counts` route for the queue heading;
+  version history pages past the old hard stop at 100 (`?before=`, "Show older versions"); Admin →
+  Users and the institution roll page with a shared `Pager`; pending invites only; caps on search
+  runs, `status=ALL` flags, a guide's theses and the `@` picker; the latency alert asks Postgres
+  for one row instead of loading the window.
+- **CSP** from `next.config.ts` on every page. Scripts still allow `'unsafe-inline'` (Next's
+  bootstrap and the theme script); a nonce-based policy would make every page dynamic, so it is a
+  deliberate follow-up, not an oversight. Checked on twenty routes: no violations.
+
+Found on the way, and worse than any of the three: **every download link on production was signed
+for `http://minio:9000`** — exports, figures, invoices, "Open PDF" — a Compose-network name no
+browser can resolve. Invisible in development and CI, where the browser reaches MinIO directly. A
+probe signed on the VPS printed `link origin: http://minio:9000`. `S3_PUBLIC_URL` now signs them
+for the site's origin, `edge` forwards `/thesis-copilot/` to MinIO (GET/HEAD only, Host kept so
+the signature holds), and `deploy.sh` recreates `edge` when `edge.conf` changed — a single-file
+bind mount had kept showing nginx the old file after every checkout.
+
+CI also gained a trace upload: the onboarding spec failed twice on 90f0888 in CI and passes five
+times in five locally, and its trace had died with the runner.
