@@ -207,19 +207,6 @@
   color: var(--mk-ink);
   text-decoration: none;
 }
-.mk .mk-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--mk-ink);
-  color: var(--mk-bg);
-  display: grid;
-  place-items: center;
-}
-.mk .mk-mark svg {
-  width: 16px;
-  height: 16px;
-}
 
 /* --------------------------------------------------------------------- nav */
 .mk .mk-nav {

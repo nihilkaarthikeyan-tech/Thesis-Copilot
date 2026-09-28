@@ -1,0 +1,1 @@
+Thesis Copilot: a thesis editor that only cites papers you've read.

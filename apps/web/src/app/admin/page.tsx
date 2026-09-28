@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { LogoMark } from '@/components/LogoMark';
 import { actionName } from '@/lib/action-names';
 import { isSessionGone, signInUrlFor, useAdminGate } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
@@ -168,7 +169,11 @@ export default function AdminPage() {
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-baseline gap-2">
-            <Link href="/" className="font-serif text-[16px] font-semibold tracking-tight">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
+            >
+              <LogoMark size={22} />
               Thesis Copilot
             </Link>
             <span className="text-faint" aria-hidden="true">

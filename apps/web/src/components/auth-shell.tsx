@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { LogoMark } from '@/components/LogoMark';
 import { ThemeToggle } from '@/components/theme';
 import { Hint } from '@/components/ui/primitives';
 
@@ -23,7 +24,11 @@ export function AuthShell({
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-          <Link href="/" className="font-serif text-[17px] font-semibold tracking-tight">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 font-serif text-[17px] font-semibold tracking-tight"
+          >
+            <LogoMark size={24} />
             Thesis Copilot
           </Link>
           <div className="flex items-center gap-3">

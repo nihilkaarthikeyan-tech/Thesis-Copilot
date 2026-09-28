@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { LogoMark } from '@/components/LogoMark';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { SetupChecklist } from '@/components/SetupChecklist';
@@ -116,7 +117,11 @@ export default function DocumentListPage() {
     <div className="min-h-dvh">
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/" className="font-serif text-[16px] font-semibold tracking-tight">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
+          >
+            <LogoMark size={22} />
             Thesis Copilot
           </Link>
           <nav className="flex items-center gap-1">

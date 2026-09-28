@@ -149,6 +149,29 @@
   color-scheme: light;
 }
 
+/* ---------------------------------------------------------------- logo ---- */
+/* The mark (components/LogoMark.tsx) is an ink tile in light and a light tile in dark, so it
+   never sinks into a dark page. Same three states as the rest of the theme. */
+:root {
+  --logo-tile: #0f1724;
+  --logo-glyph: #ffffff;
+  --logo-dot: #8fa3ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --logo-tile: #edf1f7;
+    --logo-glyph: #0f1724;
+    --logo-dot: #2743c4;
+  }
+}
+
+:root[data-theme="dark"] {
+  --logo-tile: #edf1f7;
+  --logo-glyph: #0f1724;
+  --logo-dot: #2743c4;
+}
+
 /* ---------------------------------------------------------------- base ---- */
 
 body {
