@@ -10,7 +10,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AI_RATE_LIMIT } from '../src/common/rate-limit.js';
+import { AI_RATE_LIMIT, HEAVY_RATE_LIMITS } from '../src/common/rate-limit.js';
 import { type Harness, startHarness } from './_harness.js';
 
 let h: Harness;
@@ -244,5 +244,36 @@ describe('§12.1: the AI endpoints are rate limited', () => {
       }),
     });
     expect(response.status).not.toBe(429);
+  });
+});
+
+// 2026-09-28: the expensive routes have their own, tighter limit on top of the general one.
+describe('uploads, searches and exports are rate limited', () => {
+  it(`answers 429 after ${HEAVY_RATE_LIMITS.search.max} searches in a minute, and says why`, async () => {
+    // An invalid mode fails validation at once — no job, no call to an outside index — but the
+    // limiter has already counted it, which is what is under test.
+    const body = JSON.stringify({ mode: 'nope' });
+    const windowMs = HEAVY_RATE_LIMITS.search.windowSeconds * 1000;
+    const left = windowMs - (Date.now() % windowMs);
+    if (left < 20_000) await new Promise((resolve) => setTimeout(resolve, left + 250));
+
+    let first429 = -1;
+    let detail = '';
+    for (let i = 0; i < HEAVY_RATE_LIMITS.search.max + 3; i++) {
+      const response = await h.api(`/documents/${documentId}/search`, { method: 'POST', body });
+      if (response.status === 429) {
+        first429 = i;
+        const problem = (await response.json()) as { type: string; detail: string };
+        expect(problem.type).toBe('RATE_LIMITED');
+        detail = problem.detail;
+        break;
+      }
+      expect(response.status).toBe(400);
+    }
+    expect(first429).toBe(HEAVY_RATE_LIMITS.search.max);
+    expect(detail).toContain('Too many searches');
+
+    // Only searches are refused: the same student can still read their thesis.
+    expect((await h.api(`/documents/${documentId}`)).status).toBe(200);
   });
 });

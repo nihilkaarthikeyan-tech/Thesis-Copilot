@@ -12,12 +12,23 @@ import type { Env } from '@tc/config';
 import type {
   FastifyBaseLogger,
   FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
   FastifyServerOptions,
   FastifyTypeProviderDefault,
   RawServerDefault,
 } from 'fastify';
 import { Redis } from 'ioredis';
-import { AI_RATE_LIMIT, authRateLimit, checkRateLimit } from './common/rate-limit.js';
+import {
+  AI_RATE_LIMIT,
+  authRateLimit,
+  checkRateLimit,
+  classifyRequest,
+  GENERAL_RATE_LIMIT,
+  HEAVY_RATE_LIMITS,
+  type RateLimitVerdict,
+  rateIdentity,
+} from './common/rate-limit.js';
 
 /**
  * The fully instantiated Fastify instance. The cookie plugin augments exactly this instantiation
@@ -112,13 +123,13 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
       });
   });
 
-  // PRD §12.1 / PHASES 5.4: the AI endpoints get a per-user burst limit too. The session guard has
-  // not run yet at onRequest, so this is per IP; the monthly cap (per user) is enforced inside
-  // each handler, before any provider call.
+  // PRD §12.1 / PHASES 5.4: the AI endpoints get a per-user burst limit too, keyed on the session
+  // cookie (the guard has not run yet at onRequest); the monthly cap (per user) is enforced
+  // inside each handler, before any provider call.
   fastify.addHook('onRequest', async (request, reply) => {
     if (!AI_PATHS.some((prefix) => request.url.startsWith(prefix))) return;
 
-    const identity = (request as { user?: { id?: string } }).user?.id ?? request.ip;
+    const identity = rateIdentity(request.headers.cookie, request.ip);
     const verdict = await checkRateLimit(redis, 'ai', identity, AI_RATE_LIMIT);
     if (verdict.allowed) return;
 
@@ -134,6 +145,46 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
         instance: request.url,
         requestId: request.id,
       });
+  });
+
+  // 2026-09-28: every other API request is limited too, and the expensive ones twice — the
+  // general rule and a tighter one for uploads, searches and exports (common/rate-limit.ts).
+  const refuse = (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    verdict: RateLimitVerdict,
+    what: string,
+  ) =>
+    reply
+      .status(429)
+      .header('retry-after', String(verdict.retryAfter))
+      .type('application/problem+json')
+      .send({
+        type: 'RATE_LIMITED',
+        title: 'Too many requests',
+        status: 429,
+        detail: `Too many ${what} in a minute. Try again in ${verdict.retryAfter} seconds.`,
+        instance: request.url,
+        requestId: request.id,
+      });
+  fastify.addHook('onRequest', async (request, reply) => {
+    const kind = classifyRequest(request.method, request.url);
+    if (!kind) return;
+    const identity = rateIdentity(request.headers.cookie, request.ip);
+
+    const general = await checkRateLimit(redis, 'api', identity, GENERAL_RATE_LIMIT);
+    if (!general.allowed) return refuse(request, reply, general, 'requests');
+
+    if (kind.heavy) {
+      const heavy = await checkRateLimit(
+        redis,
+        kind.heavy,
+        identity,
+        HEAVY_RATE_LIMITS[kind.heavy],
+      );
+      const what = { upload: 'uploads', search: 'searches', export: 'exports' }[kind.heavy];
+      if (!heavy.allowed) return refuse(request, reply, heavy, what);
+    }
   });
 
   fastify.addHook('onSend', async (request, reply, payload) => {

@@ -8,7 +8,15 @@
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AUTH_RATE_LIMIT, checkRateLimit, type RateLimitRule } from '../src/common/rate-limit.js';
+import {
+  AUTH_RATE_LIMIT,
+  checkRateLimit,
+  classifyRequest,
+  GENERAL_RATE_LIMIT,
+  HEAVY_RATE_LIMITS,
+  type RateLimitRule,
+  rateIdentity,
+} from '../src/common/rate-limit.js';
 
 let container: StartedRedisContainer;
 let redis: Redis;
@@ -110,5 +118,82 @@ describe('checkRateLimit', () => {
 
   it('uses the 20-per-minute rule the PRD asks for on auth', () => {
     expect(AUTH_RATE_LIMIT).toEqual({ max: 20, windowSeconds: 60 });
+  });
+});
+
+// 2026-09-28: every API request is limited, and uploads, searches and exports twice.
+describe('classifyRequest', () => {
+  const doc = '01a0e1cc-36a3-7f94-aa95-291b768b9092';
+
+  it('limits every API call with the general rule', () => {
+    expect(classifyRequest('GET', `/api/v1/documents/${doc}`)).toEqual({
+      general: true,
+      heavy: null,
+    });
+    expect(classifyRequest('PUT', '/api/v1/chapters/x?draft=1')).toEqual({
+      general: true,
+      heavy: null,
+    });
+  });
+
+  it('leaves out the health check, metrics, sign-in and anything outside the API', () => {
+    expect(classifyRequest('GET', '/api/v1/health')).toBeNull();
+    expect(classifyRequest('GET', '/api/v1/metrics')).toBeNull();
+    expect(classifyRequest('POST', '/api/v1/auth/sign-in/email')).toBeNull();
+    expect(classifyRequest('GET', '/collab/room')).toBeNull();
+  });
+
+  it('adds the tighter rule to uploads, searches and exports', () => {
+    expect(classifyRequest('POST', `/api/v1/documents/${doc}/sources/upload`)?.heavy).toBe(
+      'upload',
+    );
+    expect(classifyRequest('POST', '/api/v1/chapters/c1/figures')?.heavy).toBe('upload');
+    expect(
+      classifyRequest('POST', `/api/v1/documents/${doc}/feedback/comments/import-docx`)?.heavy,
+    ).toBe('upload');
+    expect(classifyRequest('POST', `/api/v1/documents/${doc}/search`)?.heavy).toBe('search');
+    expect(classifyRequest('POST', `/api/v1/documents/${doc}/sources/resolve`)?.heavy).toBe(
+      'search',
+    );
+    expect(classifyRequest('POST', `/api/v1/documents/${doc}/export`)?.heavy).toBe('export');
+    expect(classifyRequest('POST', `/api/v1/documents/${doc}/export/thesis`)?.heavy).toBe('export');
+    expect(classifyRequest('GET', `/api/v1/documents/${doc}/sources/export`)?.heavy).toBe('export');
+  });
+
+  it('does not count reading a search, or picking from it, as a new search', () => {
+    expect(classifyRequest('GET', `/api/v1/documents/${doc}/search`)?.heavy).toBeNull();
+    expect(classifyRequest('GET', `/api/v1/documents/${doc}/search/run-1`)?.heavy).toBeNull();
+    expect(
+      classifyRequest('POST', `/api/v1/documents/${doc}/search/run-1/select`)?.heavy,
+    ).toBeNull();
+  });
+
+  it('keeps the heavy rules tighter than the general one', () => {
+    for (const rule of Object.values(HEAVY_RATE_LIMITS)) {
+      expect(rule.max).toBeLessThan(GENERAL_RATE_LIMIT.max);
+    }
+  });
+});
+
+describe('rateIdentity', () => {
+  it('counts a signed-in student by their session, whatever address they share', () => {
+    const a = rateIdentity('better-auth.session_token=tokA.sigA', '10.0.0.1');
+    const b = rateIdentity('better-auth.session_token=tokB.sigB', '10.0.0.1');
+    expect(a).not.toBe(b);
+    expect(a.startsWith('s:')).toBe(true);
+  });
+
+  it('reads the production (__Secure-) cookie, and never stores the token itself', () => {
+    const id = rateIdentity(
+      'x=1; __Secure-better-auth.session_token=secret123.sig; y=2',
+      '1.1.1.1',
+    );
+    expect(id).toBe(rateIdentity('better-auth.session_token=secret123.other', '9.9.9.9'));
+    expect(id).not.toContain('secret123');
+  });
+
+  it('falls back to the address for a visitor with no session', () => {
+    expect(rateIdentity(undefined, '1.2.3.4')).toBe('ip:1.2.3.4');
+    expect(rateIdentity('theme=dark', '1.2.3.4')).toBe('ip:1.2.3.4');
   });
 });
