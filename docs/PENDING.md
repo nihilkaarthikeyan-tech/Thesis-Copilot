@@ -356,6 +356,17 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.15, 2026-09-29** (tag on `83e36c7`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.15/`; VPS `.env` gained `S3_PUBLIC_URL=https://thesis.rademics.ai`,
+      old file `.env.bak-pre-v0.1.15`): one look for landing and product (ADR-0034), rate limits on
+      every request, pagination and caps, a CSP, the editor header that no longer wraps, the footer
+      without photo credits — and working download links. Verified live: every container on
+      v0.1.15, `edge` recreated with the `/thesis-copilot/` route, the CSP header served, a probe
+      file signed as the app signs downloads opened from outside with 200 while a bad signature
+      and a PUT through the proxy got 403 (probe removed), anonymous `/admin/users` 401.
+- [x] **Released v0.1.14, 2026-09-28** (tag on `3b151d7`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.14/`): a sign-up with an address that already has an account emails
+      its owner how to sign in instead of sending nothing (`onExistingUserSignUp`).
 - [x] **Released v0.1.13, 2026-09-28** (tag on `8861570`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.13/`): the logo (option D, the owner's choice from a PDF of four),
       the favicon — the site had none — the Apple and manifest icons, and a 1200×630 link preview.

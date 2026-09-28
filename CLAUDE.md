@@ -144,7 +144,7 @@ locked out — that would be a takeover feature.
 footnotes and the ~700 note citation styles (ADR-0029), equations as real Word equations (with our
 own `tc-gotenberg` image, because the stock one drew them blank), a pre-submission citation report,
 viva preparation (ADR-0030, its own `VIVA` allowance) and a live progress view for supervisors.
-**Released as v0.1.5 through v0.1.9 on 2026-09-25, v0.1.10 (passwords, ADR-0033) on 2026-09-26, v0.1.11 (Google sign-in double-press fix) v0.1.12 (redesigned landing, sign-in and sign-up; `components/marketing/`) and v0.1.13 (logo `components/LogoMark.tsx`, favicon and icons in `src/app/`) on 2026-09-28**, at the owner's go-ahead, with a backup
+**Released as v0.1.5 through v0.1.9 on 2026-09-25, v0.1.10 (passwords, ADR-0033) on 2026-09-26, v0.1.11 (Google sign-in double-press fix) v0.1.12 (redesigned landing, sign-in and sign-up; `components/marketing/`) v0.1.13 (logo `components/LogoMark.tsx`, favicon and icons in `src/app/`) and v0.1.14 (existing-account email) on 2026-09-28, and v0.1.15 (one look ADR-0034, rate limits, pagination, CSP, `S3_PUBLIC_URL` download links) on 2026-09-29**, at the owner's go-ahead, with a backup
 taken first each time (`/root/backups/pre-vX/` on the VPS). v0.1.6 also moved embeddings
 to `voyage-4` (ADR-0032), fixed Google sign-in linking, added admin role management and a
 site-wide budget (₹2,000, editable in Admin, alerts to `ALERT_EMAILS`), and an admin screen
@@ -261,6 +261,12 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
   period end to the constant 2026-09-21; three days of grace later every CI run went red with
   no code change, and the browser job behind it stopped running. A fixture that means "still
   in the future" must say so relative to `Date.now()`.
+- **A presigned link is only as reachable as the host it was signed for.** Production MinIO is
+  `http://minio:9000`, a Compose-network name, and every download, figure and "Open PDF" link was
+  signed for it until 2026-09-29 — invisible in dev and CI, where the browser reaches MinIO. Links
+  are signed for `S3_PUBLIC_URL` and `edge` forwards `/thesis-copilot/`; test a link from outside.
+- **A single-file bind mount keeps the old file after a checkout.** `edge.conf` changes never
+  reached nginx; `deploy.sh` now recreates `edge` when the file differs.
 - **Never write a regex through a Python heredoc.** `\b` in a Python string is a literal backspace
   byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
   matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a
