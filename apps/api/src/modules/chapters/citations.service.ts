@@ -33,6 +33,9 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { type ReadingDepth, readingDepth } from './reading-depth.js';
 import { StyleStoreService } from './style-store.service.js';
 
+/** The most sources the `@` citation picker offers at once. */
+const PICKER_MAX = 50;
+
 export type RenderedCitations = {
   style: string;
   styleLabel: string;
@@ -290,7 +293,9 @@ export class CitationsService {
     });
 
     const needle = query?.trim().toLowerCase() ?? '';
-    const matches = needle
+    // A picker shows a short list; rendering every source in a large library on each keystroke
+    // (an empty query matched them all) cost one CSL pass per row (2026-09-28).
+    const matched = needle
       ? sources.filter((source) => {
           const authors = Array.isArray(source.authors)
             ? source.authors
@@ -305,6 +310,7 @@ export class CitationsService {
             .includes(needle);
         })
       : sources;
+    const matches = matched.slice(0, PICKER_MAX);
 
     // One render per candidate would be one CSL engine run per keystroke. Instead every candidate
     // is rendered in a single pass, each as its own citation, and the labels are read off by key.

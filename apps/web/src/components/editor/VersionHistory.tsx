@@ -38,6 +38,9 @@ type VersionView = Omit<VersionSummary, 'wordCount'> & {
 
 type Restored = { chapterId: string; version: number; wordCount: number; undoVersionId: string };
 
+/** Versions per page — the server's `VERSION_LIST_LIMIT`. */
+const VERSION_PAGE = 100;
+
 /** The query parameter a reload carries so the editor can offer to undo a restore. */
 export const UNDO_PARAM = 'restoredFrom';
 
@@ -63,14 +66,37 @@ export function VersionHistory({
   const [confirming, setConfirming] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The server sends VERSION_PAGE at a time; a full page means there may be older ones.
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   useEffect(() => {
     api<VersionSummary[]>(`/chapters/${chapterId}/versions`)
-      .then(setVersions)
+      .then((page) => {
+        setVersions(page);
+        setHasOlder(page.length === VERSION_PAGE);
+      })
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.problem.title : 'Could not load the history.'),
       );
   }, [chapterId]);
+
+  async function loadOlder() {
+    const last = versions?.at(-1);
+    if (!last) return;
+    setLoadingOlder(true);
+    try {
+      const page = await api<VersionSummary[]>(
+        `/chapters/${chapterId}/versions?before=${encodeURIComponent(last.id)}`,
+      );
+      setVersions((current) => [...(current ?? []), ...page]);
+      setHasOlder(page.length === VERSION_PAGE);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.problem.title : 'Could not load older versions.');
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   // Escape closes, as every other overlay in the editor does.
   useEffect(() => {
@@ -212,6 +238,17 @@ export function VersionHistory({
                 </div>
               ))
             )}
+            {hasOlder ? (
+              <button
+                type="button"
+                data-testid="versions-older"
+                disabled={loadingOlder}
+                onClick={() => void loadOlder()}
+                className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs font-semibold text-accent hover:bg-sunk disabled:opacity-50"
+              >
+                {loadingOlder ? 'Loading…' : 'Show older versions'}
+              </button>
+            ) : null}
           </div>
         </section>
 

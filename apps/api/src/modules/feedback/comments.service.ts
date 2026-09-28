@@ -59,6 +59,12 @@ export type CommentView = {
 /** D.2.4's ordering: chapter order, then class, then position. */
 const CLASS_ORDER: Record<string, number> = { SUBSTANTIVE: 0, CLARIFICATION: 1, MECHANICAL: 2 };
 
+/** Which comments a screen needs: the open ones (review queue, editor highlights) or one chapter's. */
+export type CommentListFilter = { status?: 'OPEN' | 'ALL'; chapterId?: string };
+
+/** The most comments one read returns — far above a real review, a ceiling on the pathological. */
+export const COMMENT_LIST_MAX = 500;
+
 @Injectable()
 export class CommentsService {
   private readonly logger = new Logger(CommentsService.name);
@@ -188,12 +194,28 @@ export class CommentsService {
    * continuously; computing it once at creation would be a snapshot that is wrong by the time
    * anyone looks.
    */
-  async list(user: SessionUser, documentId: string): Promise<CommentView[]> {
+  async list(
+    user: SessionUser,
+    documentId: string,
+    filter: CommentListFilter = {},
+  ): Promise<CommentView[]> {
     await this.access(user, documentId);
+    // 2026-09-28: comments are never deleted, so "every comment ever" grew with each review round
+    // and was re-anchored in full on every read. Each screen now asks for what it shows — the
+    // open ones, or one chapter's — and a ceiling bounds the rest (newest kept).
+    const where = {
+      documentId,
+      ...(filter.status === 'OPEN' ? { status: 'OPEN' as const } : {}),
+      ...(filter.chapterId ? { chapterId: filter.chapterId } : {}),
+    };
     const [comments, chapters] = await Promise.all([
-      this.prisma.comment.findMany({ where: { documentId }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.comment.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: COMMENT_LIST_MAX,
+      }),
       this.prisma.chapter.findMany({
-        where: { documentId },
+        where: { documentId, ...(filter.chapterId ? { id: filter.chapterId } : {}) },
         orderBy: { order: 'asc' },
         select: { id: true, title: true, order: true, content: true },
       }),
@@ -245,6 +267,23 @@ export class CommentsService {
         (CLASS_ORDER[a.class ?? ''] ?? 3) - (CLASS_ORDER[b.class ?? ''] ?? 3) ||
         (a.anchor?.from ?? 0) - (b.anchor?.from ?? 0),
     );
+  }
+
+  /** How many are open and how many are answered — the review queue's heading, without the rows. */
+  async counts(user: SessionUser, documentId: string): Promise<{ open: number; done: number }> {
+    await this.access(user, documentId);
+    const groups = await this.prisma.comment.groupBy({
+      by: ['status'],
+      where: { documentId },
+      _count: { _all: true },
+    });
+    let open = 0;
+    let done = 0;
+    for (const g of groups) {
+      if (g.status === 'OPEN') open += g._count._all;
+      else done += g._count._all;
+    }
+    return { open, done };
   }
 
   /**

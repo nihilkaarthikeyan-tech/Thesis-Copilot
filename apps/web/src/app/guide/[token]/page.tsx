@@ -94,7 +94,9 @@ export default function GuidePage() {
         // The guide route, not the student's: /chapters/:id filters on ownership and answered
         // 404 to every supervisor who ever opened a share.
         api<ChapterView>(`/guide/documents/${document.documentId}/chapters/${chapterId}`),
-        api<Comment[]>(`/documents/${document.documentId}/feedback/comments`),
+        api<Comment[]>(
+          `/documents/${document.documentId}/feedback/comments?chapterId=${chapterId}`,
+        ),
       ]);
       setChapter(view);
       setComments(list);

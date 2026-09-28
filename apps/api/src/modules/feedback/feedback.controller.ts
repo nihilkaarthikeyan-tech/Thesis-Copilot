@@ -55,6 +55,10 @@ const pasteBody = z.object({
 const acceptBody = z.object({ revision: z.string().trim().max(20_000).optional() });
 
 const exportBody = z.object({ format: z.enum(['docx', 'pdf']).default('docx') });
+const commentListQuery = z.object({
+  status: z.enum(['OPEN', 'ALL']).optional(),
+  chapterId: z.string().uuid().optional(),
+});
 
 @Controller('documents/:id/feedback')
 @UseGuards(SessionGuard)
@@ -97,9 +101,17 @@ export class FeedbackController {
 
   // ---- comments (student or guide) ------------------------------------------------------------
 
+  /** `?status=OPEN` for what is waiting, `?chapterId=` for one chapter; both optional. */
   @Get('comments')
-  list(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
-    return this.comments.list(user, documentId);
+  list(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Query() query: unknown) {
+    const parsed = commentListQuery.safeParse(query ?? {});
+    if (!parsed.success) throw new ValidationError('Invalid comment filter', parsed.error.issues);
+    return this.comments.list(user, documentId, parsed.data);
+  }
+
+  @Get('comments/counts')
+  counts(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.comments.counts(user, documentId);
   }
 
   @Post('comments')

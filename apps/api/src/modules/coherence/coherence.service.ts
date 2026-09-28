@@ -22,6 +22,8 @@ import { refusal, UsageService } from '../usage/usage.service.js';
 
 /** D.1.1: the autosave hook may start a run at most this often. */
 export const AUTOSAVE_INTERVAL_MS = 15 * 60_000;
+/** The most flags one read returns; the list is most severe first, so nothing urgent is cut. */
+const COHERENCE_FLAGS_MAX = 500;
 
 export type CoherenceRunView = {
   runId: string;
@@ -203,6 +205,8 @@ export class CoherenceService {
       this.prisma.coherenceFlag.findMany({
         where: { documentId, ...(status === 'OPEN' ? { status: 'OPEN' } : {}) },
         orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+        // Ignored and resolved flags are kept, so `ALL` only grows; bounded like any list (2026-09-28).
+        take: COHERENCE_FLAGS_MAX,
       }),
       this.prisma.chapter.findMany({
         where: { documentId },

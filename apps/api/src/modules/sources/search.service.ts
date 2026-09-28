@@ -66,6 +66,8 @@ type RunRecord = {
 };
 
 const THIN_BELOW = 4;
+/** Searches shown in the run switcher, newest first. Older runs stay stored. */
+const SEARCH_RUNS_LISTED = 20;
 
 @Injectable()
 export class SearchService {
@@ -131,9 +133,10 @@ export class SearchService {
   /** The most recent runs, newest first, for the Discover tab's list. */
   async list(ownerId: string, documentId: string): Promise<RunRecord[]> {
     const document = await this.ownedDocument(ownerId, documentId);
-    return Object.values(this.runs(document.meta)).sort((a, b) =>
-      b.startedAt.localeCompare(a.startedAt),
-    );
+    // Every run stays in the document's history; the switcher shows the recent ones (2026-09-28).
+    return Object.values(this.runs(document.meta))
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+      .slice(0, SEARCH_RUNS_LISTED);
   }
 
   /** `GET /documents/:id/search/:runId` — candidates grouped by theme, thin themes flagged. */

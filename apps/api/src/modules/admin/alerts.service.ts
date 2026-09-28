@@ -207,13 +207,19 @@ export class AlertsService {
    */
   private async ttfbBreach(now: Date): Promise<Breach[]> {
     const since = new Date(now.getTime() - ALERT.windowMinutes * 60_000);
-    const rows = await this.prisma.aiCallLog.findMany({
-      where: { action: 'ASSIST', ok: true, createdAt: { gte: since, lte: now } },
+    // The database counts and picks the one row, rather than every call in the window coming back
+    // to be sorted here — a window that grows with traffic (2026-09-28). Same index as before.
+    const where = { action: 'ASSIST' as const, ok: true, createdAt: { gte: since, lte: now } };
+    const count = await this.prisma.aiCallLog.count({ where });
+    if (count === 0) return [];
+    const [row] = await this.prisma.aiCallLog.findMany({
+      where,
+      orderBy: { latencyMs: 'asc' },
+      skip: Math.min(count - 1, Math.floor(count * 0.95)),
+      take: 1,
       select: { latencyMs: true },
     });
-    if (rows.length === 0) return [];
-    const sorted = rows.map((r) => r.latencyMs).sort((a, b) => a - b);
-    const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] ?? 0;
+    const p95 = row?.latencyMs ?? 0;
     if (p95 <= ALERT.ttfbP95Ms) return [];
     return [
       {

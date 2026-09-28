@@ -51,6 +51,8 @@ const CLASS_LABEL: Record<string, string> = {
 export function ReviewQueue({ documentId }: { documentId: string }) {
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [shares, setShares] = useState<Share[]>([]);
+  // Answered comments are only counted here, never listed, so they are not fetched (2026-09-28).
+  const [done, setDone] = useState(0);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +65,14 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [list, shareList] = await Promise.all([
-        api<Comment[]>(`/documents/${documentId}/feedback/comments`),
+      const [list, shareList, counts] = await Promise.all([
+        api<Comment[]>(`/documents/${documentId}/feedback/comments?status=OPEN`),
         api<Share[]>(`/documents/${documentId}/feedback/shares`),
+        api<{ open: number; done: number }>(`/documents/${documentId}/feedback/comments/counts`),
       ]);
       setComments(list);
       setShares(shareList);
+      setDone(counts.done);
     } catch (e) {
       setError(e instanceof ApiError ? e.problem.title : 'Could not load the comments.');
     }
@@ -387,9 +391,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
             {open.length} to answer
-            {comments && comments.length > open.length
-              ? ` · ${comments.length - open.length} done`
-              : ''}
+            {done > 0 ? ` · ${done} done` : ''}
           </h2>
           <div className="flex gap-3 text-xs">
             <button type="button" className="underline" onClick={() => void completeRound()}>

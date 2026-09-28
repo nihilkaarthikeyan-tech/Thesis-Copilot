@@ -10,20 +10,25 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Pager } from '@/components/ui/pager';
 import { actionName } from '@/lib/action-names';
 import { isSessionGone, signInUrlFor, useAdminGate } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
 import { inr, type UserRow, when } from './shared';
+
+/** Students per page; the API's default and within its 200 maximum. */
+const PAGE = 50;
 
 export default function AdminUsersPage() {
   const router = useRouter();
   useAdminGate();
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<{ rows: UserRow[]; total: number }>('/admin/users')
+    api<{ rows: UserRow[]; total: number }>(`/admin/users?limit=${PAGE}&offset=${offset}`)
       .then((page) => {
         setUsers(page.rows);
         setTotal(page.total);
@@ -32,7 +37,7 @@ export default function AdminUsersPage() {
         if (isSessionGone(e)) router.replace(signInUrlFor('/admin/users'));
         else setError(e instanceof ApiError ? e.problem.title : 'Could not load the users.');
       });
-  }, [router]);
+  }, [router, offset]);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -52,11 +57,8 @@ export default function AdminUsersPage() {
       ) : null}
       {users ? (
         <>
-          {/* The list is a page now, so saying how many of how many is not decoration. */}
           <p className="mt-4 text-[12.5px] text-muted">
-            {total > users.length
-              ? `Showing the ${users.length} newest of ${total} students.`
-              : `${total} ${total === 1 ? 'student' : 'students'}.`}
+            {`${total} ${total === 1 ? 'student' : 'students'}, newest first.`}
           </p>
           <div className="mt-2 overflow-x-auto rounded-md border border-line bg-surface">
             <table className="w-full text-sm" data-testid="admin-users">
@@ -98,6 +100,7 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+          <Pager offset={offset} limit={PAGE} total={total} onChange={setOffset} noun="students" />
         </>
       ) : !error ? (
         <p className="mt-6 text-sm text-muted">Loading…</p>

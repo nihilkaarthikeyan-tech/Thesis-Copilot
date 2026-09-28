@@ -287,6 +287,7 @@ export class ChaptersService {
   async versions(
     ownerId: string,
     documentId: string,
+    before?: string,
   ): Promise<Array<{ id: string; chapterId: string | null; reason: string; createdAt: string }>> {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
@@ -295,7 +296,8 @@ export class ChaptersService {
     if (!document) throw new NotFoundError('That document');
     const rows = await this.prisma.documentVersion.findMany({
       where: { documentId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(before ? { cursor: { id: before }, skip: 1 } : {}),
       take: 200,
       select: { id: true, chapterId: true, reason: true, createdAt: true },
     });
@@ -308,15 +310,22 @@ export class ChaptersService {
    * Metadata only, so the list stays one query however long the history is; a version's text is
    * fetched when somebody opens it (`readVersion`), which is the only time anyone needs it.
    */
-  async chapterVersions(ownerId: string, chapterId: string): Promise<VersionSummary[]> {
+  async chapterVersions(
+    ownerId: string,
+    chapterId: string,
+    before?: string,
+  ): Promise<VersionSummary[]> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId } },
       select: { id: true },
     });
     if (!chapter) throw new NotFoundError('That chapter');
+    // A page of VERSION_LIST_LIMIT, then the next from `before` (the last id the panel shows).
+    // Until 2026-09-28 the list simply stopped at the hundredth and anything older was unreachable.
     const rows = await this.prisma.documentVersion.findMany({
       where: { chapterId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(before ? { cursor: { id: before }, skip: 1 } : {}),
       take: VERSION_LIST_LIMIT,
       select: { id: true, reason: true, wordCount: true, createdAt: true },
     });

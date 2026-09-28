@@ -18,6 +18,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
@@ -25,7 +26,7 @@ import { ValidationError } from '../../common/errors.js';
 import { SuperadminGuard } from '../admin/superadmin.guard.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
-import { InstitutionService } from './institution.service.js';
+import { InstitutionService, USAGE_PAGE_DEFAULT, USAGE_PAGE_MAX } from './institution.service.js';
 
 const createBody = z.object({
   name: z.string().trim().min(1, 'Name the institution').max(200),
@@ -36,6 +37,11 @@ const createBody = z.object({
   seatPriceInr: z.number().int().min(0).max(100_000).default(0),
   billingPeriod: z.enum(['monthly', 'yearly']).default('yearly'),
   billingEmail: z.string().trim().email().optional(),
+});
+
+const usagePage = z.object({
+  limit: z.coerce.number().int().min(1).max(USAGE_PAGE_MAX).default(USAGE_PAGE_DEFAULT),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 const inviteBody = z.object({
@@ -67,9 +73,13 @@ export class InstitutionController {
     return this.institutions.view(await this.institutions.forAdmin(user));
   }
 
+  /** `?status=PENDING` for the ones still holding a seat; the full history otherwise. */
   @Get('institutions/me/invites')
-  async invites(@CurrentUser() user: SessionUser) {
-    return this.institutions.invites(await this.institutions.forAdmin(user));
+  async invites(@CurrentUser() user: SessionUser, @Query('status') status?: string) {
+    if (status !== undefined && status !== 'PENDING') {
+      throw new ValidationError('status may only be PENDING');
+    }
+    return this.institutions.invites(await this.institutions.forAdmin(user), status === 'PENDING');
   }
 
   @Post('institutions/me/invites')
@@ -88,8 +98,15 @@ export class InstitutionController {
 
   /** Per-student usage. Counts and costs — never a title or a word of anyone's thesis (§12.2). */
   @Get('institutions/me/usage')
-  async usage(@CurrentUser() user: SessionUser) {
-    return this.institutions.usage(await this.institutions.forAdmin(user));
+  async usage(@CurrentUser() user: SessionUser, @Query() query: unknown) {
+    const parsed = usagePage.safeParse(query ?? {});
+    if (!parsed.success) throw new ValidationError('Invalid page', parsed.error.issues);
+    return this.institutions.usage(await this.institutions.forAdmin(user), new Date(), parsed.data);
+  }
+
+  @Get('institutions/me/usage/count')
+  async usageCount(@CurrentUser() user: SessionUser) {
+    return this.institutions.studentCount(await this.institutions.forAdmin(user));
   }
 
   @Delete('institutions/me/students/:userId')

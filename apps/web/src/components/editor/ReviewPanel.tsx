@@ -89,12 +89,17 @@ export function ReviewPanel({
 
   const load = useCallback(async () => {
     try {
-      setComments(await api<ReviewComment[]>(`/documents/${documentId}/feedback/comments`));
+      // Only what this panel draws: the open comments on this chapter (2026-09-28).
+      setComments(
+        await api<ReviewComment[]>(
+          `/documents/${documentId}/feedback/comments?status=OPEN&chapterId=${chapterId}`,
+        ),
+      );
       setError(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.problem.title : 'Could not load the comments.');
     }
-  }, [documentId]);
+  }, [documentId, chapterId]);
 
   useEffect(() => {
     void load();

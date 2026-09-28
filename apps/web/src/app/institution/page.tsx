@@ -14,6 +14,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Pager } from '@/components/ui/pager';
 import { ApiError, api } from '@/lib/api';
 
 type Seats = {
@@ -59,10 +60,15 @@ type Student = {
 const when = (value: string | null): string =>
   value ? new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
 
+/** Students per page of the usage table. */
+const STUDENT_PAGE = 100;
+
 export default function InstitutionPage() {
   const [institution, setInstitution] = useState<Institution | null>(null);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [studentTotal, setStudentTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [email, setEmail] = useState('');
   const [period, setPeriod] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -72,14 +78,17 @@ export default function InstitutionPage() {
 
   const load = useCallback(async () => {
     try {
-      const [row, inviteRows, usage] = await Promise.all([
+      // Pending invites only, and one page of the roll (2026-09-28): both lists only grow.
+      const [row, inviteRows, usage, count] = await Promise.all([
         api<Institution>('/institutions/me'),
-        api<Invite[]>('/institutions/me/invites'),
-        api<Student[]>('/institutions/me/usage'),
+        api<Invite[]>('/institutions/me/invites?status=PENDING'),
+        api<Student[]>(`/institutions/me/usage?limit=${STUDENT_PAGE}&offset=${offset}`),
+        api<{ total: number }>('/institutions/me/usage/count'),
       ]);
       setInstitution(row);
       setInvites(inviteRows);
       setStudents(usage);
+      setStudentTotal(count.total);
       setPeriod(
         (current) =>
           current ||
@@ -94,7 +103,7 @@ export default function InstitutionPage() {
           : 'Could not load this institution.',
       );
     }
-  }, []);
+  }, [offset]);
 
   useEffect(() => {
     void load();
@@ -323,6 +332,13 @@ export default function InstitutionPage() {
                 ))}
               </tbody>
             </table>
+            <Pager
+              offset={offset}
+              limit={STUDENT_PAGE}
+              total={studentTotal}
+              onChange={setOffset}
+              noun="students"
+            />
           </div>
         )}
       </section>

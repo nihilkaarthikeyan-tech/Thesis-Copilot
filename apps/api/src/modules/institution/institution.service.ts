@@ -29,6 +29,11 @@ import { claimInstitutionInvite } from './claim-invite.js';
 
 /** How long an unaccepted invite holds its seat. Long enough for a semester's paperwork. */
 const INVITE_DAYS = 30;
+/** The most invites one read returns, newest first. */
+const INVITE_LIST_MAX = 500;
+/** Students per page of the usage table, and the most one request may ask for. */
+export const USAGE_PAGE_DEFAULT = 100;
+export const USAGE_PAGE_MAX = 200;
 
 const toInr = (microInr: bigint | number): number => Math.round(Number(microInr) / 10_000) / 100;
 
@@ -214,12 +219,18 @@ export class InstitutionService {
     };
   }
 
-  async invites(institutionId: string): Promise<InviteRow[]> {
-    const rows = await this.prisma.institutionInvite.findMany({
-      where: { institutionId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async invites(institutionId: string, onlyPending = false): Promise<InviteRow[]> {
     const now = new Date();
+    // Accepted, revoked and expired invites are kept as history, so the full list only grows;
+    // the admin screen asks for the pending ones, and a ceiling bounds the rest (2026-09-28).
+    const rows = await this.prisma.institutionInvite.findMany({
+      where: {
+        institutionId,
+        ...(onlyPending ? { acceptedAt: null, revokedAt: null, expiresAt: { gt: now } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: INVITE_LIST_MAX,
+    });
     return rows.map((row) => ({
       id: row.id,
       email: row.email,
@@ -353,11 +364,27 @@ export class InstitutionService {
    * Per-student usage for this period. Counts and costs only — this view exists so a department
    * can see whether its seats are being used, not what anyone wrote (§12.2).
    */
-  async usage(institutionId: string, now: Date = new Date()): Promise<StudentUsageRow[]> {
+  /** How many students are on the roll — the usage table's page count. */
+  async studentCount(institutionId: string): Promise<{ total: number }> {
+    return { total: await this.prisma.user.count({ where: { institutionId, role: 'STUDENT' } }) };
+  }
+
+  /**
+   * One page of the roll, alphabetical by address (2026-09-28). A department can have thousands
+   * of seats; the whole roll, with a cost and a last-seen lookup per student, was one request.
+   */
+  async usage(
+    institutionId: string,
+    now: Date = new Date(),
+    page: { limit: number; offset: number } = { limit: USAGE_PAGE_DEFAULT, offset: 0 },
+  ): Promise<StudentUsageRow[]> {
     const period = periodFor(now);
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const users = await this.prisma.user.findMany({
       where: { institutionId, role: 'STUDENT' },
+      orderBy: [{ email: 'asc' }, { id: 'asc' }],
+      take: page.limit,
+      skip: page.offset,
       select: {
         id: true,
         email: true,
@@ -386,23 +413,21 @@ export class InstitutionService {
     const costByUser = new Map(costs.map((c) => [c.userId, c._sum.costMicroInr ?? 0n]));
     const lastByUser = new Map(lastCalls.map((c) => [c.userId, c._max.createdAt]));
 
-    return users
-      .map((u) => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        plan: u.plan,
-        joinedAt: u.createdAt,
-        lastActiveAt: lastByUser.get(u.id) ?? null,
-        documents: u._count.documents,
-        costInr: toInr(costByUser.get(u.id) ?? 0n),
-        usage: METERED_ACTIONS.map((action) => ({
-          action: action as AiAction,
-          used: u.usage.find((row) => row.action === action)?.count ?? 0,
-          cap: PLAN_LIMITS[u.plan as Plan].caps[action] ?? 0,
-        })),
-      }))
-      .sort((a, b) => (b.lastActiveAt?.getTime() ?? 0) - (a.lastActiveAt?.getTime() ?? 0));
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      plan: u.plan,
+      joinedAt: u.createdAt,
+      lastActiveAt: lastByUser.get(u.id) ?? null,
+      documents: u._count.documents,
+      costInr: toInr(costByUser.get(u.id) ?? 0n),
+      usage: METERED_ACTIONS.map((action) => ({
+        action: action as AiAction,
+        used: u.usage.find((row) => row.action === action)?.count ?? 0,
+        cap: PLAN_LIMITS[u.plan as Plan].caps[action] ?? 0,
+      })),
+    }));
   }
 
   /** D.3.1: every new thesis in this institution starts on its template. */

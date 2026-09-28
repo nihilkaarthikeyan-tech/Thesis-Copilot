@@ -27,6 +27,9 @@ import {
   shouldBumpVisit,
 } from './guide-progress.js';
 
+/** The most theses one guide's list returns. */
+const SHARED_WITH_MAX = 200;
+
 export type ShareView = {
   id: string;
   guideEmail: string;
@@ -362,6 +365,8 @@ export class SharesService {
   }): Promise<Array<{ documentId: string; title: string; studentEmail: string; token: string }>> {
     const shares = await this.prisma.guideShare.findMany({
       where: { OR: [{ guideUserId: user.id }, { guideEmail: user.email.toLowerCase() }] },
+      orderBy: { createdAt: 'desc' },
+      take: SHARED_WITH_MAX,
       select: {
         token: true,
         document: { select: { id: true, title: true, owner: { select: { email: true } } } },

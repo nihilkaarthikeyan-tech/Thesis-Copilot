@@ -20,6 +20,14 @@ import { FiguresService } from './figures.service.js';
 import { ParaphraseService } from './paraphrase.service.js';
 import { SNAPSHOT_REASONS } from './snapshots.service.js';
 
+/** A version list's page cursor: absent for the first page, else the id of the last row shown. */
+function versionCursor(before: string | undefined): string | undefined {
+  if (before === undefined || before === '') return undefined;
+  const parsed = z.string().uuid().safeParse(before);
+  if (!parsed.success) throw new ValidationError('Invalid page cursor', parsed.error.issues);
+  return parsed.data;
+}
+
 const saveBody = z.object({
   content: z.unknown(),
   baseVersion: z.number().int().positive(),
@@ -92,14 +100,25 @@ export class ChaptersController {
   }
 
   @Get('documents/:id/versions')
-  versions(@CurrentUser() user: SessionUser, @Param('id') id: string) {
-    return this.chapters.versions(user.id, id);
+  versions(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Query('before') before?: string,
+  ) {
+    return this.chapters.versions(user.id, id, versionCursor(before));
   }
 
-  /** The History panel's list for one chapter: metadata only, newest first. */
+  /**
+   * The History panel's list for one chapter: metadata only, newest first, a page at a time.
+   * `?before=<version id>` continues after the last one shown.
+   */
   @Get('chapters/:id/versions')
-  chapterVersions(@CurrentUser() user: SessionUser, @Param('id') id: string) {
-    return this.chapters.chapterVersions(user.id, id);
+  chapterVersions(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Query('before') before?: string,
+  ) {
+    return this.chapters.chapterVersions(user.id, id, versionCursor(before));
   }
 
   /** One version's text, for the preview. */
