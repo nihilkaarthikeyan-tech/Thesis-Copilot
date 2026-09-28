@@ -59,8 +59,8 @@ blocks the agent from continuing to build against mocks.
       we were still on Claude.
       **Still yours:** confirm both pages independently before the pilot bills anyone. Prices
       change and nothing in the product re-reads them.
-- [ ] **Add a payment method to the Voyage account — it is rate-limited to 3 requests a minute.**
-      Hit on 2026-09-14: `429 … you have not yet added your payment method in the billing page and
+- [x] **Done 2026-09-25 (see the Voyage entry below): add a payment method to the Voyage account —
+      it was rate-limited to 3 requests a minute.** Hit on 2026-09-14: `429 … you have not yet added your payment method in the billing page and
       will have reduced rate limits of 3 RPM and 10K TPM`. Every chapter index and every chat
       question needs an embedding, so at 3 RPM the product is unusable with more than one student
       on it. The 200M free tokens still apply once a card is on file — this is about the rate
@@ -123,7 +123,7 @@ blocks the agent from continuing to build against mocks.
       off (so Voyage can never charge the card unasked), the $10 budget *alert* on the org that
       owns our key — proven by six calls in a minute all answering 200. The card cannot be
       debited beyond the credit already bought.
-- [ ] **Add a payment method to the Voyage account** (also listed under AI above) — done above. Price read off
+- [x] **Add a payment method to the Voyage account** (also listed under AI above) — done above. Price read off
       docs.voyageai.com on 2026-09-25: `voyage-3` is **USD 0.06 per million tokens**, pay-as-you-go,
       no minimum — about ₹1.60 to make a 30-paper library searchable, under ₹5 per active student
       a month. `docs/COSTING.md` and `pricing.ts` now carry 0.06 (they had §11.1's 0.02).
@@ -347,6 +347,13 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.12, 2026-09-28** (tag on `4294213`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.12/`): the redesigned landing, sign-in and sign-up pages (landing
+      round 7, approved by the owner as a PDF). Verified live: every container on v0.1.12, `/`,
+      `/sign-in`, `/sign-up` and the self-hosted photos 200, Satoshi loaded, no broken images and
+      no console errors at desktop, phone and dark, Google offered on sign-in, anonymous
+      `/admin/users` 401. Still needed from the owner: the company's legal name (the footer shows
+      "Thesis Copilot" until `COMPANY.legalName` is set).
 - [x] **Released v0.1.11, 2026-09-28** (tag on `e7a6bca`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.11/`): one press of "Continue with Google" starts one sign-in (the
       double press behind the owner's `state_mismatch`), a failed Google return lands on sign-in
