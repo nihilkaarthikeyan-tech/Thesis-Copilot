@@ -15,10 +15,11 @@
  * form is the most annoying way to learn it.
  */
 
+import { PLAN_LIMITS } from '@tc/config';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
-import { ThemeToggle } from '@/components/theme';
+import { AuthFrame } from '@/components/marketing/AuthFrame';
 import { Button } from '@/components/ui/button';
 import { Hint, Input, Label } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
@@ -28,13 +29,9 @@ import { PASSWORD_MIN_LENGTH, passwordProblem } from '@/lib/password';
 
 type Step = 'email' | 'code' | 'link';
 
-/** PRD §11.6's free-trial row, spelled out. Numbers from `packages/config` FREE_TRIAL caps. */
-const TRIAL = [
-  { n: '50', what: 'suggestions as you type' },
-  { n: '2', what: 'drafted sections' },
-  { n: '10', what: 'citation suggestions' },
-  { n: '5', what: 'questions to your library' },
-];
+/** The trial's real allowances, read from the same table the cap check uses (PRD §11.3). */
+const TRIAL_CAPS = PLAN_LIMITS.FREE_TRIAL.caps;
+const TRIAL_DAYS = PLAN_LIMITS.FREE_TRIAL.trialDays ?? 14;
 
 function GoogleMark() {
   return (
@@ -152,275 +149,227 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-          <Link href="/" className="font-serif text-[17px] font-semibold tracking-tight">
-            Thesis Copilot
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/pricing" className="text-[13px] text-muted hover:text-ink">
-              Pricing
-            </Link>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+    <AuthFrame
+      photo="/landing/library-cafe.webp"
+      photoAlt="A student reading a book at a library table"
+      cardTitle={`What the ${TRIAL_DAYS}-day free trial includes`}
+      cardBody={`${TRIAL_CAPS.ASSIST} writing suggestions, ${TRIAL_CAPS.DRAFT} drafted sections, ${TRIAL_CAPS.CITE} citation lookups and ${TRIAL_CAPS.VIVA} viva practice uses a month. Everything works, in smaller amounts.`}
+      cardPoints={['No card', 'Nothing deleted if you stop']}
+    >
+      <h1 className="text-balance">
+        {step === 'email' ? 'Create your account' : 'Check your email'}
+      </h1>
+      <Hint className="mt-2 text-[14px]">
+        {step === 'code'
+          ? 'The code works for ten minutes. It may take a moment to arrive.'
+          : step === 'link'
+            ? 'Open the link we sent to confirm the address. That signs you in; it works for 24 hours.'
+            : mode === 'password'
+              ? 'Choose a password now; we email you a link to confirm the address before the first sign-in. An emailed code will always work too.'
+              : 'Enter your email and we send a six-digit code. That code creates the account — no password to choose, and you can add one later.'}
+      </Hint>
 
-      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-stretch lg:grid-cols-2">
-        {/* ------------------------------------------------- what you get -- */}
-        <section className="hidden flex-col justify-center border-r border-line bg-sunk px-10 py-14 lg:flex">
-          <p className="eyebrow">Free for 14 days</p>
-          <h2 className="mt-3 max-w-[19ch] text-balance font-serif text-[30px] font-semibold leading-[1.15]">
-            No card. Everything works.
-          </h2>
-          <Hint className="mt-3 max-w-[42ch] text-[14px]">
-            The trial is the whole product at smaller monthly allowances — not a locked demo. Each
-            month you get:
-          </Hint>
-
-          <ul className="mt-7 grid list-none gap-0 p-0">
-            {TRIAL.map((row) => (
-              <li
-                key={row.what}
-                className="flex items-baseline gap-4 border-b border-line py-2.5 last:border-b-0"
-              >
-                <span className="tnum w-8 shrink-0 text-right font-serif text-[19px] font-semibold text-ink">
-                  {row.n}
-                </span>
-                <span className="text-[13.5px] text-muted">{row.what}</span>
-              </li>
-            ))}
-          </ul>
-
-          <p className="mt-7 border-l-2 border-line pl-3.5 text-[13.5px] leading-relaxed text-muted">
-            <strong className="font-semibold text-ink">Your thesis stays yours.</strong> We never
-            train on it, and if you stop paying, your documents, sources and exports remain.
+      {step === 'link' ? (
+        <div
+          className="mt-7 flex flex-col gap-3 text-[13.5px] text-muted"
+          data-testid="signup-link-sent"
+        >
+          <p className="rounded-md border border-line bg-sunk px-3 py-2">
+            Sent to <strong className="font-semibold text-ink">{email}</strong>
           </p>
-        </section>
-
-        {/* ---------------------------------------------------------- form -- */}
-        <section className="flex flex-col justify-center px-6 py-14 sm:px-12">
-          <div className="mx-auto w-full max-w-[24rem]">
-            <h1 className="text-balance font-serif text-[30px] font-semibold leading-tight">
-              {step === 'email' ? 'Create your account' : 'Check your email'}
-            </h1>
-            <Hint className="mt-2 text-[14px]">
-              {step === 'code'
-                ? 'The code works for ten minutes. It may take a moment to arrive.'
-                : step === 'link'
-                  ? 'Open the link we sent to confirm the address. That signs you in; it works for 24 hours.'
-                  : mode === 'password'
-                    ? 'Choose a password now; we email you a link to confirm the address before the first sign-in. An emailed code will always work too.'
-                    : 'Enter your email and we send a six-digit code. That code creates the account — no password to choose, and you can add one later.'}
-            </Hint>
-
-            {step === 'link' ? (
-              <div
-                className="mt-7 flex flex-col gap-3 text-[13.5px] text-muted"
-                data-testid="signup-link-sent"
-              >
-                <p className="rounded-md border border-line bg-sunk px-3 py-2">
-                  Sent to <strong className="font-semibold text-ink">{email}</strong>
-                </p>
-                <p>
-                  Nothing there after a minute? Check spam, or{' '}
-                  <button
-                    type="button"
-                    className="underline underline-offset-2 hover:text-ink"
-                    onClick={() => {
-                      setStep('email');
-                      setMode('code');
-                      setError(null);
-                    }}
-                  >
-                    create the account with a code instead
-                  </button>
-                  .
-                </p>
-              </div>
-            ) : step === 'email' && mode === 'password' ? (
-              <form onSubmit={createWithPassword} className="mt-7 flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="name">Your name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    autoComplete="name"
-                    required
-                    className="h-11"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="As your guide knows you"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="email">University or personal email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="username"
-                    required
-                    className="h-11"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@university.edu"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    minLength={PASSWORD_MIN_LENGTH}
-                    className="h-11"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <Hint>At least {PASSWORD_MIN_LENGTH} characters. A short sentence is ideal.</Hint>
-                </div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={
-                    busy || email.length === 0 || password.length === 0 || name.trim() === ''
-                  }
-                >
-                  {busy ? 'Creating…' : 'Create my account'}
-                </Button>
-                <button
-                  type="button"
-                  data-testid="mode-code"
-                  className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
-                  onClick={() => {
-                    setMode('code');
-                    setError(null);
-                  }}
-                >
-                  Use an emailed code instead — no password
-                </button>
-              </form>
-            ) : step === 'email' ? (
-              <form onSubmit={sendCode} className="mt-7 flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="email">University or personal email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="h-11"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@university.edu"
-                  />
-                  <Hint>
-                    Use the address your guide knows you by — shared drafts and comments go to it.
-                  </Hint>
-                </div>
-                <Button type="submit" size="lg" disabled={busy || email.length === 0}>
-                  {busy ? 'Sending…' : 'Create my account'}
-                </Button>
-                {passwordOn ? (
-                  <button
-                    type="button"
-                    data-testid="mode-password"
-                    className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
-                    onClick={() => {
-                      setMode('password');
-                      setError(null);
-                    }}
-                  >
-                    I would rather choose a password
-                  </button>
-                ) : null}
-              </form>
-            ) : (
-              <form onSubmit={verifyCode} className="mt-7 flex flex-col gap-3">
-                <p className="rounded-md border border-line bg-sunk px-3 py-2 text-[13px] text-muted">
-                  Sent to <strong className="font-semibold text-ink">{email}</strong>
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="code">Six-digit code</Label>
-                  <Input
-                    id="code"
-                    name="code"
-                    inputMode="numeric"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    autoComplete="one-time-code"
-                    required
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                    className="h-14 text-center font-mono text-[24px] tracking-[0.4em]"
-                    placeholder="000000"
-                  />
-                </div>
-                <Button type="submit" size="lg" disabled={busy || code.length !== 6}>
-                  {busy ? 'Checking…' : 'Create account and start'}
-                </Button>
-                <button
-                  type="button"
-                  className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
-                  onClick={() => {
-                    setStep('email');
-                    setCode('');
-                    setError(null);
-                  }}
-                >
-                  Use a different email
-                </button>
-              </form>
-            )}
-
-            {error ? (
-              <p
-                role="alert"
-                className="mt-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-[13px] text-danger"
-              >
-                {error}
-              </p>
-            ) : null}
-
-            {google && step === 'email' ? (
-              <>
-                <div className="my-6 flex items-center gap-3">
-                  <hr className="flex-1 border-line" />
-                  <span className="eyebrow">or</span>
-                  <hr className="flex-1 border-line" />
-                </div>
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="w-full"
-                  disabled={googleBusy}
-                  aria-busy={googleBusy}
-                  data-testid="google-sign-up"
-                  onClick={() => void continueWithGoogle()}
-                >
-                  <GoogleMark />
-                  {googleBusy ? 'Opening Google…' : 'Sign up with Google'}
-                </Button>
-              </>
-            ) : null}
-
-            <p className="mt-8 border-t border-line pt-4 text-[13px] text-muted">
-              Already have an account?{' '}
-              <Link href="/sign-in" className="font-semibold text-accent hover:underline">
-                Sign in
-              </Link>
-              <span className="mt-1 block text-[12.5px] text-faint">
-                Either page works — the same code signs you in or creates the account.
-              </span>
-            </p>
+          <p>
+            Nothing there after a minute? Check spam, or{' '}
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-ink"
+              onClick={() => {
+                setStep('email');
+                setMode('code');
+                setError(null);
+              }}
+            >
+              create the account with a code instead
+            </button>
+            .
+          </p>
+        </div>
+      ) : step === 'email' && mode === 'password' ? (
+        <form onSubmit={createWithPassword} className="mt-7 flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="name">Your name</Label>
+            <Input
+              id="name"
+              name="name"
+              autoComplete="name"
+              required
+              className="h-11"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="As your guide knows you"
+            />
           </div>
-        </section>
-      </div>
-    </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="email">University or personal email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              required
+              className="h-11"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@university.edu"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={PASSWORD_MIN_LENGTH}
+              className="h-11"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Hint>At least {PASSWORD_MIN_LENGTH} characters. A short sentence is ideal.</Hint>
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={busy || email.length === 0 || password.length === 0 || name.trim() === ''}
+          >
+            {busy ? 'Creating…' : 'Create my account'}
+          </Button>
+          <button
+            type="button"
+            data-testid="mode-code"
+            className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+            onClick={() => {
+              setMode('code');
+              setError(null);
+            }}
+          >
+            Use an emailed code instead — no password
+          </button>
+        </form>
+      ) : step === 'email' ? (
+        <form onSubmit={sendCode} className="mt-7 flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="email">University or personal email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="h-11"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@university.edu"
+            />
+            <Hint>
+              Use the address your guide knows you by — shared drafts and comments go to it.
+            </Hint>
+          </div>
+          <Button type="submit" size="lg" disabled={busy || email.length === 0}>
+            {busy ? 'Sending…' : 'Create my account'}
+          </Button>
+          {passwordOn ? (
+            <button
+              type="button"
+              data-testid="mode-password"
+              className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+              onClick={() => {
+                setMode('password');
+                setError(null);
+              }}
+            >
+              I would rather choose a password
+            </button>
+          ) : null}
+        </form>
+      ) : (
+        <form onSubmit={verifyCode} className="mt-7 flex flex-col gap-3">
+          <p className="rounded-md border border-line bg-sunk px-3 py-2 text-[13px] text-muted">
+            Sent to <strong className="font-semibold text-ink">{email}</strong>
+          </p>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="code">Six-digit code</Label>
+            <Input
+              id="code"
+              name="code"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              autoComplete="one-time-code"
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              className="h-14 text-center font-mono text-[24px] tracking-[0.4em]"
+              placeholder="000000"
+            />
+          </div>
+          <Button type="submit" size="lg" disabled={busy || code.length !== 6}>
+            {busy ? 'Checking…' : 'Create account and start'}
+          </Button>
+          <button
+            type="button"
+            className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+            onClick={() => {
+              setStep('email');
+              setCode('');
+              setError(null);
+            }}
+          >
+            Use a different email
+          </button>
+        </form>
+      )}
+
+      {error ? (
+        <p
+          role="alert"
+          className="mt-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-[13px] text-danger"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      {google && step === 'email' ? (
+        <>
+          <div className="my-6 flex items-center gap-3">
+            <hr className="flex-1 border-line" />
+            <span className="eyebrow">or</span>
+            <hr className="flex-1 border-line" />
+          </div>
+          <Button
+            variant="secondary"
+            size="lg"
+            className="w-full"
+            disabled={googleBusy}
+            aria-busy={googleBusy}
+            data-testid="google-sign-up"
+            onClick={() => void continueWithGoogle()}
+          >
+            <GoogleMark />
+            {googleBusy ? 'Opening Google…' : 'Sign up with Google'}
+          </Button>
+        </>
+      ) : null}
+
+      <p className="mt-8 border-t border-line pt-4 text-[13px] text-muted">
+        Already have an account?{' '}
+        <Link href="/sign-in" className="font-semibold text-accent hover:underline">
+          Sign in
+        </Link>
+        <span className="mt-1 block text-[12.5px] text-faint">
+          Either page works — the same code signs you in or creates the account.
+        </span>
+      </p>
+    </AuthFrame>
   );
 }

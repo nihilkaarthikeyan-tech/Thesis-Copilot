@@ -3824,3 +3824,21 @@ and checks it on the callback (`state.mjs`), so a double press overwrote the fir
 Google's reply failed. The button now starts one sign-in and says "Opening Google…";
 `errorCallbackURL` and `onAPIError.errorURL` bring every failed return to `/sign-in` (or
 `/sign-up`), which reads `?error=` and says it in words. `google-sign-in.spec.ts` holds both.
+
+### The public pages, redesigned — 2026-09-28
+
+The owner rejected six rounds of the landing page as looking AI-generated, then as reading like a
+magazine article (serif headlines, centred text, hairline rules, no people). Round 7 was approved
+as a PDF first and then built: `/`, `/sign-in` and `/sign-up` now share `components/marketing/`
+(Satoshi, self-hosted under the ITF Free Font License; one cobalt accent; photographs of Indian
+students from Unsplash, self-hosted in `public/landing/` and credited in the footer; a clickable
+tour of real product screenshots). Everything is scoped under `.mk`, which also redefines the
+`--color-*`, `--radius-*` and `--font-sans` variables, so the sign-in forms keep their own
+components and logic untouched. It has a dark palette for both the system and the explicit
+choice.
+
+Two facts the design mock had wrong, caught before they shipped: the free plan is a **14-day
+trial** (`PLAN_LIMITS.FREE_TRIAL.trialDays`, and the terms say so), not "no end date"; and its
+Word export is chapters only (`BODY_ONLY`). The page now reads plan numbers from `@tc/config`, so
+it cannot drift from what the cap check enforces. The FAQ still renders `FAQ` from `lib/site.ts`,
+the same list the JSON-LD emits, and the §12.3 line ("No detector evasion") stays on the page.

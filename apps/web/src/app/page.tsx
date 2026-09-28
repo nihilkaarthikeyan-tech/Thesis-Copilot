@@ -1,223 +1,577 @@
+import { PLAN_LIMITS, PRICING } from '@tc/config';
+import {
+  ArrowRight,
+  Ban,
+  BookOpen,
+  Check,
+  CircleAlert,
+  CircleCheck,
+  ClipboardList,
+  FileDown,
+  FileText,
+  Hand,
+  Lightbulb,
+  MessageSquareText,
+  Play,
+  Plus,
+  Quote,
+  Search,
+  Table,
+  TrendingUp,
+} from 'lucide-react';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme';
-import { Button } from '@/components/ui/button';
-import { Badge, Kbd } from '@/components/ui/primitives';
+import { Brand } from '@/components/marketing/Brand';
+import { satoshi } from '@/components/marketing/fonts';
+import { ProductTour } from '@/components/marketing/ProductTour';
+import { SiteHeader } from '@/components/marketing/SiteHeader';
+import '@/components/marketing/marketing.css';
+import { COMPANY } from '@/lib/company';
 import { FAQ, homeJsonLd } from '@/lib/site';
+import { cn } from '@/lib/utils';
 
 /**
- * `/` — the marketing home (PRD §6.1, §12.3, PHASES v2 W11.3).
+ * `/` — the marketing home (PRD §6.1, §12.3), redesigned as landing round 7 and approved by the
+ * owner on 2026-09-28.
  *
- * The page has one job: make a student who is already anxious about their submission believe this
- * tool will not get them into trouble. So the integrity position is not a footer link — it is the
- * second thing on the page and it has its own panel (§12.3).
+ * Product first: the hero is a real photograph of a student at a desk with the product's two
+ * defining moments laid over it — a grey suggestion that is not in the thesis until Tab, and a
+ * citation opened to the passage that supports it. Everything below is a real screen, a real rule
+ * the code enforces, or a number read from `@tc/config`, so the page cannot promise what the
+ * product does not do. The integrity position (§12.3) has its own section, not a footer link.
  *
- * The hero shows the product doing the one thing that distinguishes it: proposing a sentence in
- * grey that the student has not accepted yet, with the source it is grounded in sitting next to
- * it. Everything else on the page is subordinate to that demonstration.
+ * Photographs are from Unsplash (free licence), self-hosted under `public/landing/`; the
+ * photographers are credited in the footer.
  */
 
 export const metadata = {
-  title: 'An editor for university theses',
+  title: 'A thesis editor that only cites papers you have read',
   description:
-    'Thesis Copilot writes with you, cites only what it can show you, and logs every AI action so you can disclose it.',
+    'Write your thesis with suggestions drawn from your own library, check every citation against its source, and show your guide exactly where AI helped.',
 };
 
-const STAGES = [
-  { n: 'Proposal', d: 'Start from a paper you have written, or from a topic. It finds the gap.' },
+const TRIAL = PLAN_LIMITS.FREE_TRIAL;
+const STUDENT = PLAN_LIMITS.STUDENT_MONTHLY;
+const TRIAL_DAYS = TRIAL.trialDays ?? 14;
+
+const PLAN_ROWS: ReadonlyArray<{ label: string; free: string; student: string }> = [
   {
-    n: 'Sources',
-    d: 'Your library, indexed to the paragraph. Full text where the licence allows.',
+    label: 'Writing suggestions',
+    free: `${TRIAL.caps.ASSIST} / month`,
+    student: `${STUDENT.caps.ASSIST} / month`,
   },
-  { n: 'Outline', d: 'A chapter tree you can edit, not a template you have to fight.' },
-  { n: 'Write', d: 'Suggestions as you type, grounded in your own sources.' },
-  { n: 'Citations', d: '22 styles. Switch APA to IEEE without touching the body text.' },
-  { n: 'Submit', d: 'A .docx with numbered headings, a real contents page and a bibliography.' },
+  {
+    label: 'Drafted sections',
+    free: `${TRIAL.caps.DRAFT} / month`,
+    student: `${STUDENT.caps.DRAFT} / month`,
+  },
+  {
+    label: 'Citation lookups',
+    free: `${TRIAL.caps.CITE} / month`,
+    student: `${STUDENT.caps.CITE} / month`,
+  },
+  {
+    label: 'Questions to your papers',
+    free: `${TRIAL.caps.CHAT} / month`,
+    student: `${STUDENT.caps.CHAT} / month`,
+  },
+  {
+    label: 'Viva practice',
+    free: `${TRIAL.caps.VIVA} / month`,
+    student: `${STUDENT.caps.VIVA} / month`,
+  },
+  {
+    label: 'Whole-thesis consistency check',
+    free: TRIAL.caps.COHERENCE > 0 ? `${TRIAL.caps.COHERENCE} / month` : 'Not included',
+    student: STUDENT.caps.COHERENCE > 0 ? `${STUDENT.caps.COHERENCE} / month` : 'Not included',
+  },
+  {
+    label: 'Word export',
+    free: TRIAL.export === 'FULL' ? 'Complete' : 'Chapters only',
+    student: STUDENT.export === 'FULL' ? 'Complete' : 'Chapters only',
+  },
 ];
 
+const PHOTO_CREDITS = [
+  { who: 'Sweet Life', href: 'https://unsplash.com/photos/4NRgZmVb7bc' },
+  { who: 'Dollar Gill', href: 'https://unsplash.com/photos/Kyoshy7BJIQ' },
+  { who: 'litoon dev', href: 'https://unsplash.com/photos/9LwA7kToz9g' },
+  { who: 'Sanket Mishra', href: 'https://unsplash.com/photos/9i2t23J7HnE' },
+] as const;
+
 export default function HomePage() {
+  const annualMonthly = Math.round(PRICING.STUDENT_ANNUAL.priceInr / 12);
+
   return (
-    <div className="min-h-dvh">
-      {/* ------------------------------------------------------------ nav -- */}
-      <header className="border-b border-line">
-        <nav className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3.5">
-          <span className="font-serif text-[17px] font-semibold tracking-tight">
-            Thesis Copilot
-          </span>
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle className="mr-1 hidden sm:inline-flex" />
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/pricing">Pricing</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/sign-up">Start free</Link>
-            </Button>
-          </div>
-        </nav>
-      </header>
+    <div className={cn('mk', satoshi.variable)}>
+      <SiteHeader />
 
-      <main className="mx-auto max-w-5xl px-6">
-        {/* --------------------------------------------------------- hero -- */}
-        <section className="grid gap-10 border-b border-line py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center lg:gap-14">
-          <div>
-            <p className="eyebrow">For postgraduate and doctoral writing</p>
-            <h1 className="mt-3 text-balance font-serif text-[40px] font-semibold leading-[1.08] tracking-tight sm:text-[46px]">
-              It only cites what it can show you.
-            </h1>
-            <p className="mt-4 max-w-[52ch] text-[16px] leading-relaxed text-muted">
-              An editor for university theses. It writes with you, grounds every citation in a
-              passage from your own library, and keeps a log of everything it did — so you can
-              disclose it.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/sign-up">Start writing free</Link>
-              </Button>
-              <Button asChild variant="secondary" size="lg">
-                <Link href="/pricing">See what each plan allows</Link>
-              </Button>
+      <main>
+        {/* ------------------------------------------------------------- hero -- */}
+        <section className="mk-hero">
+          <div className="mk-wrap mk-hero-grid">
+            <div>
+              <span className="mk-pill">
+                <b>New</b> Viva practice from your own chapters
+              </span>
+              <h1>A thesis editor that only cites papers you've read.</h1>
+              <p className="mk-hero-sub">
+                Write your chapters with suggestions drawn from your own library, check each
+                citation against its source, and show your guide exactly where AI helped. Made for
+                master's and PhD students in India.
+              </p>
+              <div className="mk-acts">
+                <Link href="/sign-up" className="mk-btn mk-btn-primary">
+                  Start writing free <ArrowRight aria-hidden="true" strokeWidth={2.25} />
+                </Link>
+                <a href="#tour" className="mk-btn mk-btn-quiet">
+                  <Play aria-hidden="true" strokeWidth={2.25} /> See how it works
+                </a>
+              </div>
+              <p className="mk-fine">
+                <span>
+                  <Check aria-hidden="true" strokeWidth={2.5} />
+                  {TRIAL_DAYS}-day free trial, no card
+                </span>
+                <span>
+                  <Check aria-hidden="true" strokeWidth={2.5} />
+                  Nothing deleted if you stop paying
+                </span>
+              </p>
             </div>
-            <p className="mt-4 text-[13px] text-muted">
-              No credit card to start · sign in with a code, no password
-            </p>
-          </div>
 
-          {/* A still of the editor, with the one behaviour that matters. */}
-          <figure className="m-0">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              <div className="flex items-center justify-between gap-3 border-b border-line px-3.5 py-2 text-[11px] text-muted">
-                <span className="truncate font-semibold text-ink">Chapter 1 · Introduction</span>
-                <span className="tnum shrink-0">Saved · Assist 1/50</span>
+            <div className="mk-stage">
+              <div className="mk-stage-photo">
+                {/* biome-ignore lint/performance/noImgElement: pre-sized WebP in public/; the standalone image runs no image optimiser. */}
+                <img
+                  src="/landing/student-desk.webp"
+                  alt="A postgraduate student writing notes at her desk beside her laptop"
+                  width={1400}
+                  height={933}
+                  fetchPriority="high"
+                />
               </div>
-              <div className="px-5 py-5">
-                <p className="font-serif text-[14.5px] leading-[1.75] text-ink">
-                  Household adoption of rooftop solar in rural Karnataka remains low despite falling
-                  panel prices <span className="font-semibold text-accent">(Kumar, 2021)</span>.{' '}
-                  <span className="text-ghost">
-                    This puzzle motivates the research: what barriers prevent rural households from
-                    adopting the technology even as it becomes more affordable?
+
+              <div className="mk-frag mk-frag-check" aria-hidden="true">
+                <div className="mk-frag-k">
+                  <i>
+                    <Check strokeWidth={3} />
+                  </i>
+                  Citation supports the sentence
+                </div>
+                <div className="mk-frag-t">
+                  Solar PV adoption at household level: a systematic literature review
+                </div>
+                <div className="mk-frag-m">Shakeel et al. · Energy Strategy Reviews · 2023</div>
+                <div className="mk-frag-q">
+                  “…127 factors grouped into eight categories, from economic and technical to
+                  regulatory…”
+                </div>
+              </div>
+
+              <div className="mk-frag mk-frag-write" aria-hidden="true">
+                <div className="mk-frag-doc">
+                  …households that could afford a rooftop system still delay the decision.
+                  <span className="mk-caret" />
+                  <span className="mk-ghost">
+                    {' '}
+                    This chapter examines the gap between affordability and uptake, using the
+                    factors identified in prior work
+                  </span>{' '}
+                  <span className="mk-cite">(Shakeel et al., 2023)</span>
+                </div>
+                <div className="mk-frag-bar">
+                  <span>
+                    <kbd>Tab</kbd> keep
                   </span>
-                  <span className="ml-px inline-block h-[13px] w-px translate-y-[2px] bg-accent" />
-                </p>
-                <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-faint">
-                  <Kbd>Ctrl</Kbd>
-                  <Kbd>/</Kbd>
-                  <span>suggest</span>
-                  <span aria-hidden="true">·</span>
-                  <Kbd>Tab</Kbd>
-                  <span>keep it</span>
-                  <span aria-hidden="true">·</span>
-                  <Kbd>Esc</Kbd>
-                  <span>discard</span>
-                </p>
+                  <span>
+                    <kbd>Esc</kbd> dismiss
+                  </span>
+                  <span className="mk-push">Cites your library only</span>
+                </div>
               </div>
-              <div className="border-t border-line bg-sunk px-3.5 py-2.5">
-                <div className="flex items-start gap-2.5">
-                  <Badge tone="ok">Full text</Badge>
-                  <div className="min-w-0">
-                    <p className="truncate text-[11.5px] font-semibold text-ink">
-                      Solar adoption barriers in rural Karnataka
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ strip -- */}
+        <section className="mk-strip" aria-label="What it works with">
+          <div className="mk-wrap mk-strip-row">
+            <div className="mk-strip-cell">
+              <Search aria-hidden="true" strokeWidth={1.75} />
+              <div>
+                <b>Finds papers</b>
+                <span>OpenAlex, Crossref, arXiv, PubMed and CORE</span>
+              </div>
+            </div>
+            <div className="mk-strip-cell">
+              <Quote aria-hidden="true" strokeWidth={1.75} />
+              <div>
+                <b>Formats references</b>
+                <span>APA, IEEE, Vancouver, Chicago and every CSL style</span>
+              </div>
+            </div>
+            <div className="mk-strip-cell">
+              <FileText aria-hidden="true" strokeWidth={1.75} />
+              <div>
+                <b>Hands in cleanly</b>
+                <span>Word, PDF and LaTeX, with a real contents page</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------- tour -- */}
+        <section className="mk-sec" id="tour">
+          <div className="mk-wrap">
+            <div className="mk-sec-head">
+              <h2 className="mk-h2">From the first paper to the viva, in one place.</h2>
+              <p>
+                Each step below is a real screen from the product, using a sample thesis on rooftop
+                solar adoption in Karnataka.
+              </p>
+            </div>
+            <ProductTour />
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ rules --
+            PRD §12.3: the integrity position, stated on the page itself. */}
+        <section className="mk-sec mk-sec-tight">
+          <div className="mk-wrap mk-rules">
+            <figure className="mk-rules-photo">
+              {/* biome-ignore lint/performance/noImgElement: pre-sized WebP in public/; the standalone image runs no image optimiser. */}
+              <img
+                src="/landing/library-stacks.webp"
+                alt="A student reading between library shelves"
+                width={1100}
+                height={1650}
+                loading="lazy"
+              />
+              <figcaption>Your library is the only place it cites from.</figcaption>
+            </figure>
+            <div>
+              <h2 className="mk-h2">Four rules it follows every time.</h2>
+              <p className="mk-lede">
+                These aren't settings you can forget to turn on. They're how the product is built,
+                so they hold on every chapter and every plan.
+              </p>
+              <ul className="mk-rulelist">
+                <li className="mk-rule">
+                  <span className="mk-icon">
+                    <BookOpen aria-hidden="true" strokeWidth={1.75} />
+                  </span>
+                  <div>
+                    <h3>It cites only your library.</h3>
+                    <p>
+                      If the model names a paper you haven't added, that citation is removed before
+                      you ever see the suggestion.
                     </p>
-                    <p className="text-[10.5px] text-muted">Kumar et al. · 2021 · page 4</p>
+                  </div>
+                </li>
+                <li className="mk-rule">
+                  <span className="mk-icon">
+                    <Hand aria-hidden="true" strokeWidth={1.75} />
+                  </span>
+                  <div>
+                    <h3>Nothing goes in until you press Tab.</h3>
+                    <p>
+                      Suggestions stay grey. Drafted sections stay in a marked block until you
+                      accept them.
+                    </p>
+                  </div>
+                </li>
+                <li className="mk-rule">
+                  <span className="mk-icon">
+                    <ClipboardList aria-hidden="true" strokeWidth={1.75} />
+                  </span>
+                  <div>
+                    <h3>Every accepted line is on record.</h3>
+                    <p>
+                      A disclosure log you can hand to your guide or attach to your university's AI
+                      declaration.
+                    </p>
+                  </div>
+                </li>
+                <li className="mk-rule">
+                  <span className="mk-icon">
+                    <Ban aria-hidden="true" strokeWidth={1.75} />
+                  </span>
+                  <div>
+                    <h3>No detector evasion, ever.</h3>
+                    <p>
+                      There is no “humanise” button. It won't rewrite text to slip past AI
+                      detectors, and it never will.
+                    </p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ----------------------------------------------------------- guides -- */}
+        <section className="mk-sec mk-sec-tight" id="guides">
+          <div className="mk-wrap">
+            <div className="mk-band">
+              <div className="mk-band-txt">
+                <p className="mk-band-tag">For guides and committee members</p>
+                <h2 className="mk-h2">Read the thesis where it's being written.</h2>
+                <p>
+                  Your student invites you by email. You read the latest chapter, comment on the
+                  exact sentence, and see how much of it they wrote themselves.
+                </p>
+                <ul>
+                  <li>
+                    <MessageSquareText aria-hidden="true" strokeWidth={1.75} />
+                    Comments pinned to the passage, not to a page number
+                  </li>
+                  <li>
+                    <TrendingUp aria-hidden="true" strokeWidth={1.75} />
+                    Live progress: words, chapters, sources still unused
+                  </li>
+                  <li>
+                    <Table aria-hidden="true" strokeWidth={1.75} />A response-to-committee table the
+                    student fills in
+                  </li>
+                  <li>
+                    <FileDown aria-hidden="true" strokeWidth={1.75} />
+                    Comments from a marked-up .docx come in too
+                  </li>
+                </ul>
+              </div>
+              <div className="mk-band-vis">
+                {/* biome-ignore lint/performance/noImgElement: pre-sized WebP in public/; the standalone image runs no image optimiser. */}
+                <img
+                  src="/landing/guide-reading.webp"
+                  alt="A senior academic reading on a laptop"
+                  width={1400}
+                  height={933}
+                  loading="lazy"
+                />
+                <div className="mk-note" aria-hidden="true">
+                  <div className="mk-note-who">
+                    <span className="mk-av">RK</span>
+                    <span>
+                      <b>Dr. Ravi Kumar</b> commented on Chapter 1
+                    </span>
+                  </div>
+                  <div className="mk-note-anchor">
+                    …
+                    <mark>
+                      households that could afford a rooftop system still delay the decision
+                    </mark>
+                    .
+                  </div>
+                  <div className="mk-note-c">
+                    Say which districts. “Rural Karnataka” is too wide for a sample of 212.
                   </div>
                 </div>
               </div>
             </div>
-            <figcaption className="mt-2.5 text-[12px] text-faint">
-              Grey is the model's suggestion. It is not in your thesis until you press Tab.
-            </figcaption>
-          </figure>
+          </div>
         </section>
 
-        {/* ---------------------------------------------------- integrity -- */}
-        <section className="border-b border-line py-12">
-          <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {/* ----------------------------------------------------------- finish -- */}
+        <section className="mk-sec mk-sec-tight">
+          <div className="mk-wrap">
+            <div className="mk-sec-head">
+              <h2 className="mk-h2">The last month, handled.</h2>
+              <p>
+                Formatting and the viva are where most theses lose weeks. Both are built in, and
+                both use the chapters you've already written.
+              </p>
+            </div>
+            <div className="mk-finish">
+              <div className="mk-card">
+                <h3>Checked against your template</h3>
+                <p>
+                  Front matter, headings, the contents page and every reference, checked before you
+                  export. The biggest fix is listed first.
+                </p>
+                <div className="mk-shot" aria-hidden="true">
+                  <div className="mk-checks-head">
+                    <b>7 of 10 checks pass</b>
+                    <span>Submission in 23 days</span>
+                  </div>
+                  <div className="mk-meter">
+                    {Array.from({ length: 10 }, (_, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: a fixed ten-segment meter.
+                      <span key={i} data-ok={i < 7} />
+                    ))}
+                  </div>
+                  <ul className="mk-clist">
+                    <li>
+                      <CircleAlert className="mk-n" strokeWidth={2.25} />
+                      Every front-matter field is filled<em>4 to fix</em>
+                    </li>
+                    <li>
+                      <CircleAlert className="mk-n" strokeWidth={2.25} />
+                      Required front matter is present<em>2 to fix</em>
+                    </li>
+                    <li>
+                      <CircleAlert className="mk-n" strokeWidth={2.25} />
+                      Each chapter starts with one level-1 heading<em>1 to fix</em>
+                    </li>
+                    <li>
+                      <CircleCheck className="mk-y" strokeWidth={2.25} />
+                      Citations resolve and the bibliography is not empty<em>Passed</em>
+                    </li>
+                    <li>
+                      <CircleCheck className="mk-y" strokeWidth={2.25} />
+                      The contents list matches the headings<em>Passed</em>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mk-card">
+                <h3>Practise the viva</h3>
+                <p>
+                  Questions an examiner could fairly ask about a paragraph you wrote. You answer; it
+                  never answers for you.
+                </p>
+                <div className="mk-shot" aria-hidden="true">
+                  <span className="mk-qtag">IMPLICATIONS · CHAPTER 1</span>
+                  <p className="mk-q">
+                    How would your household-level findings translate into policy for the 40 GW
+                    rooftop target?
+                  </p>
+                  <p className="mk-ans">
+                    I'd argue the subsidy works for the first step, but the delay comes from
+                    installer trust, so the policy lever is…
+                  </p>
+                  <p className="mk-fb">
+                    <Lightbulb strokeWidth={2} />
+                    <span>
+                      Good start. An examiner would ask for evidence on installer trust. Which of
+                      your sources supports it?
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------- pricing -- */}
+        <section className="mk-sec mk-sec-tight" id="pricing">
+          <div className="mk-wrap">
+            <div className="mk-sec-head">
+              <h2 className="mk-h2">Priced for students.</h2>
+              <p>
+                Try everything free for {TRIAL_DAYS} days. Upgrade when you're writing every day,
+                and cancel whenever you like.
+              </p>
+            </div>
+            <div className="mk-plans">
+              <div className="mk-plan">
+                <p className="mk-plan-name">Free trial</p>
+                <p className="mk-price">
+                  <b>₹0</b>
+                  <span>for {TRIAL_DAYS} days</span>
+                </p>
+                <p className="mk-plan-alt">No card. Everything works, in smaller amounts.</p>
+                <Link href="/sign-up" className="mk-btn mk-btn-quiet">
+                  Start the free trial
+                </Link>
+                <ul>
+                  {PLAN_ROWS.map((row) => (
+                    <li key={row.label}>
+                      <span>{row.label}</span>
+                      <span>{row.free}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mk-plan" data-highlight="true">
+                <p className="mk-plan-name">Student</p>
+                <p className="mk-price">
+                  <b>₹{PRICING.STUDENT_MONTHLY.priceInr}</b>
+                  <span>a month</span>
+                </p>
+                <p className="mk-plan-alt">
+                  or ₹{PRICING.STUDENT_ANNUAL.priceInr.toLocaleString('en-IN')} a year, about ₹
+                  {annualMonthly} a month
+                </p>
+                <Link href="/pricing" className="mk-btn mk-btn-primary">
+                  Choose Student
+                </Link>
+                <ul>
+                  {PLAN_ROWS.map((row) => (
+                    <li key={row.label}>
+                      <span>{row.label}</span>
+                      <span>{row.student}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mk-dept">
+              <p>
+                <b>For departments.</b> Buy seats for a batch, with your own thesis template and one
+                invoice.
+              </p>
+              <Link href="/contact" className="mk-btn mk-btn-quiet mk-btn-sm">
+                Talk to us
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* -------------------------------------------------------------- faq --
+            The same questions are emitted as FAQPage JSON-LD below, from the same constant,
+            so the page and the structured data cannot disagree (lib/site.ts). */}
+        <section className="mk-sec mk-sec-tight" id="faq">
+          <div className="mk-wrap mk-faq">
             <div>
-              <p className="eyebrow">Where we stand</p>
-              <h2 className="mt-2.5 text-balance font-serif text-[25px] font-semibold leading-tight">
-                No “humanise” button. Not now, not later.
-              </h2>
-            </div>
-            <div className="grid gap-3 text-[14.5px] leading-relaxed text-muted sm:grid-cols-2">
-              <p className="border-l-2 border-line pl-4">
-                <strong className="font-semibold text-ink">Nothing writes itself in.</strong> Every
-                suggestion arrives in grey and stays there until you accept it. Your thesis contains
-                exactly what you decided to keep.
-              </p>
-              <p className="border-l-2 border-line pl-4">
-                <strong className="font-semibold text-ink">It cannot invent a source.</strong> The
-                model may only cite passages it was shown. Anything else is stripped before it
-                reaches you and counted against us.
-              </p>
-              <p className="border-l-2 border-line pl-4">
-                <strong className="font-semibold text-ink">Everything is logged.</strong> Which
-                ranges came from AI, and how. Export it and hand it to your guide.
-              </p>
-              <p className="border-l-2 border-line pl-4">
-                <strong className="font-semibold text-ink">No detector evasion.</strong> We will not
-                build a feature whose purpose is to hide that you used a tool. Ever.
+              <h2 className="mk-h2">Before you start.</h2>
+              <p className="mk-faq-aside">
+                Something else? <Link href="/contact">Write to us</Link> and a person will answer.
               </p>
             </div>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------------- stages -- */}
-        <section className="border-b border-line py-12">
-          <p className="eyebrow">First page to submission</p>
-          <h2 className="mt-2.5 text-balance font-serif text-[25px] font-semibold leading-tight">
-            One place for the whole thesis.
-          </h2>
-          <ol className="mt-7 grid list-none gap-x-8 gap-y-6 p-0 sm:grid-cols-2 lg:grid-cols-3">
-            {STAGES.map((stage, i) => (
-              <li key={stage.n} className="flex gap-3.5">
-                <span className="tnum mt-0.5 shrink-0 font-mono text-[11px] font-medium text-faint">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <div>
-                  <h3 className="font-serif text-[16px] font-semibold text-ink">{stage.n}</h3>
-                  <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{stage.d}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* ---------------------------------------------------------- cta -- */}
-        <section className="flex flex-wrap items-center justify-between gap-6 py-12">
-          <div>
-            <h2 className="text-balance font-serif text-[25px] font-semibold leading-tight">
-              Start with the paper you already wrote.
-            </h2>
-            <p className="mt-1.5 max-w-[50ch] text-[14px] text-muted">
-              Upload it and Thesis Copilot builds the proposal around it — or begin from a topic and
-              let it find the gap.
-            </p>
-          </div>
-          <Button asChild size="lg">
-            <Link href="/sign-up">Start writing free</Link>
-          </Button>
-        </section>
-
-        {/* ------------------------------------------------------------ faq --
-            Real questions with answers short enough to quote whole.
-
-            This is the half of GEO/AEO that is not plumbing: an answer engine asked "can it
-            invent a citation?" will quote a sentence, so the page has to contain the sentence.
-            The same text is emitted as FAQPage JSON-LD below, and the two must stay identical —
-            marking up a claim the page does not make is how a site stops being trusted. */}
-        <section className="border-t border-line" id="faq">
-          <div className="mx-auto max-w-3xl px-6 py-14">
-            <h2 className="font-serif text-[22px] font-semibold text-ink">Questions people ask</h2>
-            <dl className="mt-6 grid gap-6">
-              {FAQ.map((item) => (
-                <div key={item.q}>
-                  <dt className="font-semibold text-ink">{item.q}</dt>
-                  <dd className="mt-1 text-[15px] leading-relaxed text-muted">{item.a}</dd>
-                </div>
+            <div>
+              {FAQ.map((item, i) => (
+                <details key={item.q} open={i === 0}>
+                  <summary>
+                    {item.q}
+                    <Plus aria-hidden="true" strokeWidth={2} />
+                  </summary>
+                  <p>{item.a}</p>
+                </details>
               ))}
-            </dl>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ close -- */}
+        <section className="mk-sec mk-sec-tight">
+          <div className="mk-wrap">
+            <div className="mk-close">
+              <div className="mk-close-txt">
+                <h2 className="mk-h2">Start with the paper you already wrote.</h2>
+                <p>
+                  Upload it and the proposal is built around it. Or begin from a topic and find the
+                  gap first.
+                </p>
+                <div className="mk-acts">
+                  <Link href="/sign-up" className="mk-btn mk-btn-primary">
+                    Start writing free <ArrowRight aria-hidden="true" strokeWidth={2.25} />
+                  </Link>
+                  <Link href="/sign-in" className="mk-btn mk-btn-quiet">
+                    Sign in
+                  </Link>
+                </div>
+              </div>
+              <div className="mk-close-photo">
+                {/* biome-ignore lint/performance/noImgElement: pre-sized WebP in public/; the standalone image runs no image optimiser. */}
+                <img
+                  src="/landing/campus-bench.webp"
+                  alt="A student working on a laptop on a campus bench"
+                  width={1400}
+                  height={934}
+                  loading="lazy"
+                />
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -226,31 +580,75 @@ export default function HomePage() {
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON.stringify of our own constants. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: homeJsonLd() }} />
 
-      {/* --------------------------------------------------------- footer -- */}
-      <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-6 text-[13px]">
-          <p className="text-faint">© {new Date().getFullYear()} Thesis Copilot</p>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-muted">
-            <Link href="/pricing" className="hover:text-ink">
-              Pricing
-            </Link>
-            <Link href="/privacy" className="hover:text-ink">
-              What we do with your text
-            </Link>
-            <Link href="/refunds" className="hover:text-ink">
-              Refunds
-            </Link>
-            <Link href="/terms" className="hover:text-ink">
-              Terms
-            </Link>
-            <Link href="/contact" className="hover:text-ink">
-              Contact
-            </Link>
-            <Link href="/app" className="hover:text-ink">
-              Your theses
-            </Link>
-          </nav>
-          <ThemeToggle className="sm:hidden" />
+      {/* ----------------------------------------------------------- footer -- */}
+      <footer className="mk-foot">
+        <div className="mk-wrap">
+          <div className="mk-foot-top">
+            <div>
+              <Brand />
+              <p>
+                A thesis editor for master's and PhD students, with a record your guide can read.
+              </p>
+            </div>
+            <div>
+              <h4>Product</h4>
+              <ul>
+                <li>
+                  <a href="#tour">How it works</a>
+                </li>
+                <li>
+                  <Link href="/pricing">Pricing</Link>
+                </li>
+                <li>
+                  <a href="#guides">For guides</a>
+                </li>
+                <li>
+                  <Link href="/app">Your theses</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4>Help</h4>
+              <ul>
+                <li>
+                  <a href="#faq">Questions</a>
+                </li>
+                <li>
+                  <Link href="/contact">Contact</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4>Legal</h4>
+              <ul>
+                <li>
+                  <Link href="/privacy">What we do with your text</Link>
+                </li>
+                <li>
+                  <Link href="/terms">Terms</Link>
+                </li>
+                <li>
+                  <Link href="/refunds">Refunds</Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="mk-foot-bot">
+            <span>
+              © {new Date().getFullYear()} {COMPANY.legalName ?? 'Thesis Copilot'}
+            </span>
+            <span className="mk-credit">
+              Photos on Unsplash by{' '}
+              {PHOTO_CREDITS.map((c, i) => (
+                <span key={c.who}>
+                  <a href={c.href} rel="noopener" target="_blank">
+                    {c.who}
+                  </a>
+                  {i < PHOTO_CREDITS.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </span>
+          </div>
         </div>
       </footer>
     </div>
