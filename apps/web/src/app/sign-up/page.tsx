@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Hint, Input, Label } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
+import { googleErrorMessage, startGoogleSignIn } from '@/lib/google-sign-in';
 import { PASSWORD_MIN_LENGTH, passwordProblem } from '@/lib/password';
 
 type Step = 'email' | 'code' | 'link';
@@ -66,11 +67,29 @@ export default function SignUpPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [google, setGoogle] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   // ADR-0033: the code is the default; a password sign-up confirms the address by link instead.
   const [mode, setMode] = useState<'code' | 'password'>('code');
   const [passwordOn, setPasswordOn] = useState(true);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+
+  // A Google sign-up that did not finish comes back here with `?error=`.
+  useEffect(() => {
+    const failed = googleErrorMessage(new URL(window.location.href).searchParams.get('error'));
+    if (failed) setError(failed);
+  }, []);
+
+  async function continueWithGoogle() {
+    if (googleBusy) return;
+    setGoogleBusy(true);
+    setError(null);
+    const failed = await startGoogleSignIn({ next: '/app', back: '/sign-up' });
+    if (failed) {
+      setError(failed);
+      setGoogleBusy(false);
+    }
+  }
 
   useEffect(() => {
     api<{ emailOtp: boolean; password?: boolean; google: boolean }>('/auth/methods')
@@ -379,12 +398,13 @@ export default function SignUpPage() {
                   variant="secondary"
                   size="lg"
                   className="w-full"
-                  onClick={() =>
-                    authClient.signIn.social({ provider: 'google', callbackURL: '/app' })
-                  }
+                  disabled={googleBusy}
+                  aria-busy={googleBusy}
+                  data-testid="google-sign-up"
+                  onClick={() => void continueWithGoogle()}
                 >
                   <GoogleMark />
-                  Sign up with Google
+                  {googleBusy ? 'Opening Google…' : 'Sign up with Google'}
                 </Button>
               </>
             ) : null}

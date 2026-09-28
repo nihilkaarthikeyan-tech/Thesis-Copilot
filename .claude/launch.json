@@ -11,6 +11,18 @@
     {
       "name": "api",
       "url": "http://localhost:3001"
+    },
+    {
+      "name": "api-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@tc/api", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "worker-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@tc/worker", "dev"],
+      "port": 3099
     }
   ]
 }

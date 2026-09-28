@@ -25,6 +25,7 @@ import { Hint, Input, Kbd, Label } from '@/components/ui/primitives';
 import { safeNext } from '@/lib/admin-gate';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
+import { googleErrorMessage, startGoogleSignIn } from '@/lib/google-sign-in';
 import { passwordSignInProblem } from '@/lib/password';
 
 type Step = 'email' | 'code';
@@ -63,6 +64,7 @@ export default function SignInPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [google, setGoogle] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [mode, setMode] = useState<Mode>('code');
   const [password, setPassword] = useState('');
   const [passwordOn, setPasswordOn] = useState(true);
@@ -74,7 +76,25 @@ export default function SignInPage() {
     const params = new URL(window.location.href).searchParams;
     setNext(safeNext(params.get('next')));
     if (params.get('mode') === 'password') setMode('password');
+    // A Google sign-in that did not finish comes back here with `?error=`.
+    const failed = googleErrorMessage(params.get('error'));
+    if (failed) setError(failed);
   }, []);
+
+  async function continueWithGoogle() {
+    if (googleBusy) return;
+    setGoogleBusy(true);
+    setError(null);
+    const failed = await startGoogleSignIn({
+      next,
+      back: `/sign-in?next=${encodeURIComponent(next)}`,
+    });
+    // On success the browser is already leaving for Google; only a failure comes back here.
+    if (failed) {
+      setError(failed);
+      setGoogleBusy(false);
+    }
+  }
 
   useEffect(() => {
     api<{ emailOtp: boolean; password?: boolean; google: boolean }>('/auth/methods')
@@ -353,12 +373,13 @@ export default function SignInPage() {
                   variant="secondary"
                   size="lg"
                   className="w-full"
-                  onClick={() =>
-                    authClient.signIn.social({ provider: 'google', callbackURL: next })
-                  }
+                  disabled={googleBusy}
+                  aria-busy={googleBusy}
+                  data-testid="google-sign-in"
+                  onClick={() => void continueWithGoogle()}
                 >
                   <GoogleMark />
-                  Continue with Google
+                  {googleBusy ? 'Opening Google…' : 'Continue with Google'}
                 </Button>
               </>
             ) : null}

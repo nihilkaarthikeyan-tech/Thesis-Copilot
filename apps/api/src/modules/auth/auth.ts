@@ -221,6 +221,13 @@ export function createAuth(
     trustedOrigins: [env.APP_URL],
 
     /**
+     * Where an OAuth failure goes when the request itself cannot say (a lost or duplicated
+     * `state`, 2026-09-28): the sign-in page, which reads `?error=` and says it in words. Before
+     * this the student landed on the home page with the code in the address and no message.
+     */
+    onAPIError: { errorURL: `${env.APP_URL}/sign-in` },
+
+    /**
      * A Google sign-in for an address that already has an account (made by the emailed code)
      * attaches to that account rather than being refused with `account_not_linked` — which is
      * what the owner met on 2026-09-25. Google verifies the address, and Better Auth's own gate

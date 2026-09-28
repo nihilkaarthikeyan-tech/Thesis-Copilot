@@ -3804,3 +3804,23 @@ twenty sign-ins a minute for weeks (`_session.ts` waits out the limiter, which i
 as slowness rather than failure); three more tests tipped it. Two changes, neither touching
 production: the dev sink is a lookup and no longer counts, and `AUTH_RATE_LIMIT_PER_MINUTE`
 (default twenty, set to 600 only in CI's `.env`) lets a test environment say so.
+
+### Two editor faults found by photographing it, and Google sign-in — 2026-09-27/28
+
+While capturing real screenshots for the landing-page redesign:
+
+- **Grey suggestions showed the raw marker.** The ghost widget drew `ghost.text` verbatim, so a
+  cited suggestion ended with `{{cite:S1#c1}}` on screen until Tab turned it into a citation
+  node. `ghostDisplayText` now draws each marker as the label the server resolved (`(Kumar,
+  2021)`), drops one it did not resolve (as accepting does), and holds back a half-arrived marker
+  while streaming. `ghost-text.spec.ts` covers all three.
+- **Every citation read "(Source, n.d.)" until the Citations tab was opened.** The labels were
+  fetched only by `CitationsPanel`. `ThesisEditor` now loads them with the chapter, and again a
+  second after an edit leaves a citation with no label.
+
+Google sign-in, reported by the owner on production (`/?error=state_mismatch`): the log showed
+two `POST /auth/sign-in/social` 0.5 s apart. Better Auth keeps the OAuth state in a signed cookie
+and checks it on the callback (`state.mjs`), so a double press overwrote the first state and
+Google's reply failed. The button now starts one sign-in and says "Opening Google…";
+`errorCallbackURL` and `onAPIError.errorURL` bring every failed return to `/sign-in` (or
+`/sign-up`), which reads `?error=` and says it in words. `google-sign-in.spec.ts` holds both.
