@@ -5,7 +5,7 @@
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getGhostState, jsonContainsText } from '../src/editor/ghost-text.js';
+import { getGhostState, ghostDisplayText, jsonContainsText } from '../src/editor/ghost-text.js';
 import { createTestEditor, fakeRequest, pressKey, provenanceRuns, tick } from './helpers.js';
 
 let editor: Editor;
@@ -46,8 +46,10 @@ describe('ghost text (Appendix B.3)', () => {
     }
     expect(getGhostState(editor)?.status).toBe('shown');
     expect(getGhostState(editor)?.text).toBe(SUGGESTION);
-    // The widget is drawn, though.
-    expect(editor.view.dom.querySelector('span.ghost')?.textContent).toBe(SUGGESTION);
+    // The widget is drawn, though, with the citation shown as its label rather than the marker.
+    const drawn = editor.view.dom.querySelector('span.ghost')?.textContent ?? '';
+    expect(drawn).not.toContain('{{cite:');
+    expect(drawn).toContain('Evidence from rural Karnataka');
     expect(editor.view.dom.querySelector('span.ghost')?.getAttribute('aria-live')).toBe('polite');
   });
 
@@ -290,5 +292,35 @@ describe('the done event may carry post-processed text (A.1 steps 1–3, PHASES 
     editor.commands.requestSuggestion();
     await tick(40);
     expect(getGhostState(editor)?.text).toBe(SUGGESTION);
+  });
+});
+
+describe('what the student sees in grey', () => {
+  const cited = [{ key: 'S4#c2', sourceId: 's4', chunkId: 'c2', rendered: '(Kumar, 2021)' }];
+
+  it('draws a citation marker as its label, never as the raw marker', () => {
+    expect(ghostDisplayText(SUGGESTION, cited)).toBe(
+      'Evidence from rural Karnataka shows cost was the main barrier (Kumar, 2021). This section examines it.',
+    );
+  });
+
+  it('drops a marker the server did not resolve, as accepting does', () => {
+    expect(ghostDisplayText(SUGGESTION, [])).toBe(
+      'Evidence from rural Karnataka shows cost was the main barrier. This section examines it.',
+    );
+  });
+
+  it('holds back a marker that has only half arrived while streaming', () => {
+    expect(ghostDisplayText('The main barrier {{cite:S4', cited)).toBe('The main barrier ');
+  });
+
+  it('shows the widget without the marker once the suggestion is final', async () => {
+    const fake = streamOf(SUGGESTION);
+    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor.commands.setTextSelection(8);
+    editor.commands.requestSuggestion();
+    await tick(40);
+    const ghost = editor.view.dom.querySelector('.ghost');
+    expect(ghost?.textContent ?? '').not.toContain('{{cite:');
   });
 });

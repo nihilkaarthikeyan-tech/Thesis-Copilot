@@ -678,6 +678,49 @@ function ChapterEditor({
   }, []);
 
   /**
+   * The labels used to arrive only when the Citations tab was opened, so every chapter opened on
+   * any other tab showed "(Source, n.d.)" for each citation (found 2026-09-27 while photographing
+   * the editor). They load with the chapter now, and again whenever a citation appears whose key
+   * has no label yet: an accepted suggestion or a pasted reference, a second after the edit.
+   */
+  useEffect(() => {
+    if (!editor) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      api<Rendered>(`/documents/${doc.id}/citations`)
+        .then((rendered) => {
+          if (live) applyRendered(rendered);
+        })
+        .catch(() => undefined);
+    };
+    const unlabeled = () => {
+      const labels =
+        (editor.storage as { citation?: { renderedMap?: Record<string, string> } }).citation
+          ?.renderedMap ?? {};
+      let missing = false;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'citation' && !labels[String(node.attrs.key)]) missing = true;
+        return !missing;
+      });
+      return missing;
+    };
+    const onUpdate = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (unlabeled()) refresh();
+      }, 1000);
+    };
+    refresh();
+    editor.on('update', onUpdate);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+      editor.off('update', onUpdate);
+    };
+  }, [editor, doc.id, applyRendered]);
+
+  /**
    * D.1.3's "Suggest fix". Until scoped revision lands (A.14, Block 2) this selects the flagged
    * range and points the student at the command toolbar, which is the same COMMAND-capped path a
    * fix would take. It never edits the chapter — no flag is ever applied automatically.

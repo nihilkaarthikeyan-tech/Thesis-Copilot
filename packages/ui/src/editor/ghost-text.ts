@@ -219,6 +219,26 @@ export function suggestionToFragment(
   return Fragment.fromArray(nodes);
 }
 
+/**
+ * What the student sees in grey. The suggestion text keeps its `{{cite:KEY}}` markers (accepting
+ * turns each into a citation node), but drawn raw they showed the student the marker itself,
+ * "{{cite:S1#c1}}", found on 2026-09-27 while photographing the editor. Each marker is drawn as
+ * the label the server resolved for it; one it did not resolve is dropped, as accepting drops it;
+ * and while streaming, a marker that has only half arrived is held back rather than flashed.
+ */
+export function ghostDisplayText(text: string, citations: readonly SuggestionCitation[]): string {
+  const byKey = new Map(citations.map((c) => [c.key, c.rendered]));
+  const open = text.lastIndexOf('{{');
+  const complete = open !== -1 && text.indexOf('}}', open) === -1 ? text.slice(0, open) : text;
+  return complete
+    .replace(CITE_RE, (_marker, key: string) => {
+      const rendered = byKey.get(key);
+      return rendered ? ` ${rendered}` : '';
+    })
+    .replace(/ {2,}/g, ' ')
+    .replace(/ ([.,;:])/g, '$1');
+}
+
 function buildDecorations(
   state: EditorState,
   ghost: Omit<GhostState, 'decorations'>,
@@ -242,7 +262,7 @@ function buildDecorations(
           // development-only overlay, which a production build (and so CI) does not render.
           span.dataset.status = ghost.status;
           span.style.userSelect = 'none';
-          span.textContent = ghost.text;
+          span.textContent = ghostDisplayText(ghost.text, ghost.citations);
           return span;
         },
         // The status is in the key so the widget is redrawn when streaming ends, not only when
