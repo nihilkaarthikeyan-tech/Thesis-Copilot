@@ -347,6 +347,13 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.13, 2026-09-28** (tag on `8861570`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.13/`): the logo (option D, the owner's choice from a PDF of four),
+      the favicon — the site had none — the Apple and manifest icons, and a 1200×630 link preview.
+      Verified live: every container on v0.1.13, `/icon.svg`, `/favicon.ico`, `/apple-icon.png`,
+      `/manifest.webmanifest`, `/icons/icon-512.png` and `/opengraph-image.jpg` 200 with the right
+      types, the page's `<link rel="icon">` and `og:image` pointing at them, the new mark in the
+      live header, anonymous `/admin/users` 401.
 - [x] **Released v0.1.12, 2026-09-28** (tag on `4294213`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.12/`): the redesigned landing, sign-in and sign-up pages (landing
       round 7, approved by the owner as a PDF). Verified live: every container on v0.1.12, `/`,
