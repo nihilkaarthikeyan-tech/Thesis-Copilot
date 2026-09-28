@@ -347,6 +347,13 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.11, 2026-09-28** (tag on `e7a6bca`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.11/`): one press of "Continue with Google" starts one sign-in (the
+      double press behind the owner's `state_mismatch`), a failed Google return lands on sign-in
+      or sign-up with the reason in words, and grey suggestions show citation labels instead of
+      the raw marker. Verified live: every container on v0.1.11 and healthy, `/auth/methods`
+      reports Google, `POST /auth/sign-in/social` returns a Google URL, anonymous
+      `/admin/users` 401. Not yet done by a human: one real Google sign-in on the live site.
 - [x] **Released v0.1.10, 2026-09-26** (tag on `5a720e3`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.10/`): the optional password with forgot and reset (ADR-0033), the
       CI-only sign-in rate-limit headroom. Verified live: every container on v0.1.10 and healthy,

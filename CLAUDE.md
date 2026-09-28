@@ -144,7 +144,7 @@ locked out — that would be a takeover feature.
 footnotes and the ~700 note citation styles (ADR-0029), equations as real Word equations (with our
 own `tc-gotenberg` image, because the stock one drew them blank), a pre-submission citation report,
 viva preparation (ADR-0030, its own `VIVA` allowance) and a live progress view for supervisors.
-**Released as v0.1.5 through v0.1.9 on 2026-09-25, and v0.1.10 (passwords, ADR-0033) on 2026-09-26**, at the owner's go-ahead, with a backup
+**Released as v0.1.5 through v0.1.9 on 2026-09-25, v0.1.10 (passwords, ADR-0033) on 2026-09-26, and v0.1.11 (Google sign-in double-press fix) on 2026-09-28**, at the owner's go-ahead, with a backup
 taken first each time (`/root/backups/pre-vX/` on the VPS). v0.1.6 also moved embeddings
 to `voyage-4` (ADR-0032), fixed Google sign-in linking, added admin role management and a
 site-wide budget (₹2,000, editable in Admin, alerts to `ALERT_EMAILS`), and an admin screen
