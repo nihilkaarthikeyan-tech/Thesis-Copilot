@@ -144,6 +144,10 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   await expect(page.locator('.thesis-editor span.ghost')).toHaveCount(0);
 
   await editorHint.getByRole('button', { name: 'Got it' }).click();
+  // The dismissal is what the student sees before anything else happens. Reloading the instant
+  // the click is dispatched raced a busy main thread in CI (software rendering, right after a
+  // suggestion was accepted): the reload won, the click never ran, and the hint came back.
+  await expect(editorHint).toHaveCount(0);
   await page.reload();
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('hint-editor')).toHaveCount(0);

@@ -113,7 +113,7 @@
 }
 @keyframes ghost-accept-fade {
   from {
-    background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    background-color: var(--color-accent-soft);
   }
   to {
     background-color: transparent;

@@ -19,10 +19,14 @@ function contentSecurityPolicy(): string {
   const dev = process.env.NODE_ENV !== 'production';
   const api = new URL(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001');
   const socket = `${api.protocol === 'https:' ? 'wss' : 'ws'}://${api.host}`;
-  // Where a browser loads a signed figure or download from, when that is not this site.
-  const storage = [process.env.S3_PUBLIC_URL, dev ? process.env.S3_ENDPOINT : undefined]
-    .filter((v): v is string => Boolean(v && URL.canParse(v)))
-    .map((v) => new URL(v).origin);
+  // Where a browser loads a signed figure or download from: `S3_PUBLIC_URL` when set, else
+  // `S3_ENDPOINT` — the host the API signs for. The production image is built without either (its
+  // links are this site's own origin), so this adds nothing there; a build that sees the dev or CI
+  // `.env` allows the MinIO the browser really fetches from. The first CI run limited this to
+  // development and blocked every figure under `next start` (2026-09-28).
+  const signedFor = process.env.S3_PUBLIC_URL || process.env.S3_ENDPOINT;
+  const storage =
+    signedFor && URL.canParse(signedFor) ? [new URL(signedFor).origin] : ([] as string[]);
 
   return [
     "default-src 'self'",
