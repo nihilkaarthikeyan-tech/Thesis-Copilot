@@ -147,3 +147,14 @@ jobs:
       - name: logs on failure
         if: failure()
         run: tail -n 100 api.log worker.log web.log || true
+
+      # 2026-09-28: a spec that passed five times out of five on a laptop failed twice here, and the
+      # trace that would have said why (`trace: 'retain-on-failure'`) died with the runner. Keep it.
+      - name: keep the Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
