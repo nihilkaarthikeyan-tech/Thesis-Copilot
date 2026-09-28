@@ -33,10 +33,14 @@ test('the superadmin changes a user’s role from their page, and it is logged',
   const student = list.rows.find((row) => row.email === studentEmail);
   if (!student) throw new Error('the new student is not on the first page of users');
 
-  // The home page tells an admin where the admin screens are; a student never sees the link.
+  // The administrator's home is the admin screen (2026-09-29, the owner): every sign-in lands on
+  // /app, and /app sends a superadmin on to /admin instead of showing a student's thesis list.
   await page.goto('/app');
-  await expect(page.getByTestId('admin-link')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('admin-link')).toHaveAttribute('href', '/admin');
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'Your theses' })).toHaveCount(0);
+  await expect(
+    page.getByTestId('admin-nav').getByRole('link', { name: 'Account' }),
+  ).toHaveAttribute('href', '/app/account');
 
   // The admin home says who is signed in and how to leave (2026-09-25: the owner opened it from a
   // remembered session and could not tell they were signed in at all).

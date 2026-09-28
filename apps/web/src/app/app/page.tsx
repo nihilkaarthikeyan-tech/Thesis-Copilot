@@ -67,6 +67,13 @@ export default function DocumentListPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The administrator's home is the admin screen, not a student's thesis list (2026-09-29, the
+  // owner's instruction). Every sign-in — code, password or Google — lands on `/app`, so this one
+  // redirect covers them all.
+  useEffect(() => {
+    if (isAdmin) router.replace('/admin');
+  }, [isAdmin, router]);
+
   const load = useCallback(async () => {
     try {
       setDocuments(await api<DocumentSummary[]>('/documents'));
@@ -112,6 +119,12 @@ export default function DocumentListPage() {
     { href: `/app/d/${id}/viva`, label: 'Viva' },
     { href: `/app/d/${id}/write/${firstChapterId ?? 'none'}`, label: 'Write' },
   ];
+
+  // Until the session says who this is, show nothing rather than flash a student's list at an
+  // administrator on their way to /admin.
+  if (session.isPending || isAdmin) {
+    return <div className="min-h-dvh" aria-busy="true" />;
+  }
 
   return (
     <div className="min-h-dvh">

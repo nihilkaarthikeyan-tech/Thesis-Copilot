@@ -188,8 +188,8 @@ export default function AdminPage() {
             <Link href="/admin/users" className="hover:underline">
               Users
             </Link>
-            <Link href="/app" className="hover:underline">
-              Your theses
+            <Link href="/app/account" className="hover:underline">
+              Account
             </Link>
             {signedInAs ? (
               <span className="text-xs text-muted" data-testid="admin-signed-in">
