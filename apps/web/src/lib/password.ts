@@ -34,6 +34,8 @@ export function passwordSignInProblem(code: string | undefined, fallback?: strin
         'Confirm your email first. We have just sent the link again — open it and you will be ' +
         'signed in.'
       );
+    case 'ACCOUNT_SUSPENDED':
+      return fallback ?? 'This account has been suspended.';
     default:
       return fallback ?? 'Could not sign you in. Try again.';
   }

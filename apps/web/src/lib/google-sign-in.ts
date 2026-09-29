@@ -19,6 +19,9 @@ const MESSAGES: Record<string, string> = {
   state_not_found:
     'Google sign-in didn’t finish. This happens if the button was pressed twice or the Google tab was left open too long. Press “Continue with Google” once more.',
   access_denied: 'Google sign-in was cancelled. Nothing was changed.',
+  // The API refuses a session to a suspended account; on the Google path that is all it can say.
+  unable_to_create_session:
+    'This account has been suspended. Write to the Thesis Copilot team to ask why, or to have it restored.',
   account_not_linked:
     'That Google address already has an account here. Email yourself a code to sign in; Google will work after that.',
 };

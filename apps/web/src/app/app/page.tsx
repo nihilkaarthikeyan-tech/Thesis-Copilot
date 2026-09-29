@@ -20,6 +20,7 @@ import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import {
   Badge,
   Card,
@@ -66,6 +67,9 @@ export default function DocumentListPage() {
   const [entryPath, setEntryPath] = useState<'A_TOPIC' | 'B_PAPER'>('B_PAPER');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */
+  const [deleting, setDeleting] = useState<DocumentSummary | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   // The administrator's home is the admin screen, not a student's thesis list (2026-09-29, the
   // owner's instruction). Every sign-in — code, password or Google — lands on `/app`, so this one
@@ -105,6 +109,25 @@ export default function DocumentListPage() {
       setError(e instanceof Error ? e.message : 'Could not create the document.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function remove(doc: DocumentSummary) {
+    setDeleteBusy(true);
+    setError(null);
+    try {
+      await api(`/documents/${doc.id}`, { method: 'DELETE' });
+      setDeleting(null);
+      await load();
+    } catch (e) {
+      setDeleting(null);
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not delete the thesis. Try again.',
+      );
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -299,6 +322,15 @@ export default function DocumentListPage() {
                               {stage.label}
                             </Link>
                           ))}
+                          <button
+                            type="button"
+                            onClick={() => setDeleting(d)}
+                            className="text-muted hover:text-danger"
+                            aria-label={`Delete “${d.title}”`}
+                            data-testid="delete-thesis"
+                          >
+                            Delete
+                          </button>
                         </nav>
                       </div>
                       <div className="border-t border-line px-4 py-2">
@@ -317,6 +349,36 @@ export default function DocumentListPage() {
             </>
           )}
         </section>
+
+        <Dialog
+          open={deleting !== null}
+          onClose={() => setDeleting(null)}
+          title="Delete this thesis?"
+          testId="delete-thesis-dialog"
+        >
+          <p className="text-muted">
+            “{deleting?.title}”, with its chapters, sources, versions and files, is removed for
+            good. Export a copy first if you want one.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            {deleting ? (
+              <Button asChild variant="secondary">
+                <Link href={`/app/d/${deleting.id}/submit`}>Export .docx first</Link>
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={deleteBusy}
+              onClick={() => deleting && void remove(deleting)}
+              data-testid="delete-thesis-confirm"
+            >
+              {deleteBusy ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </Dialog>
       </main>
     </div>
   );

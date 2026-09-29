@@ -53,7 +53,10 @@ test('the superadmin changes a user’s role from their page, and it is logged',
   await expect(page.locator('main')).not.toContainText('PHASES');
   await page.screenshot({ path: 'test-results/admin-home.png', fullPage: true });
 
-  // The site-wide AI budget is set from the admin home (2026-09-25), and the change is logged.
+  // The home is the overview (2026-09-29); the site-wide AI budget moved to Settings with the
+  // other money controls, and a change there is still logged.
+  await expect(page.getByTestId('admin-overview')).toBeVisible({ timeout: 30_000 });
+  await page.goto('/admin/settings');
   const budgetInput = page.getByTestId('platform-budget-input');
   await expect(budgetInput).toBeVisible({ timeout: 30_000 });
   await budgetInput.fill('2000');
@@ -72,7 +75,9 @@ test('the superadmin changes a user’s role from their page, and it is logged',
   await role.selectOption('INSTITUTION_ADMIN');
   await expect(page.getByTestId('admin-notice')).toContainText('Role set to INSTITUTION_ADMIN');
   await expect(role).toHaveValue('INSTITUTION_ADMIN');
-  await expect(page.locator('main')).toContainText('ROLE_CHANGED');
+  // The log reads in words: "Role changed Student → Institution admin", by the admin.
+  await expect(page.getByTestId('user-events')).toContainText('Role changed');
+  await expect(page.getByTestId('user-events')).toContainText(`by ${ADMIN_EMAIL}`);
   await page.screenshot({ path: 'test-results/admin-role.png', fullPage: true });
 
   await role.selectOption('STUDENT');

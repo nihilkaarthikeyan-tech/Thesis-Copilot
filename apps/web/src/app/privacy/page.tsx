@@ -73,8 +73,10 @@ export default function PrivacyPage() {
       <p className="mt-2 text-muted">
         You. A supervisor only if you share a document with them, and then only that document, in
         read-and-comment mode. Our administrators can see your email, your plan, your usage and your
-        document titles — the things needed to run the service and answer support — and not your
-        chapters.
+        document titles — the things needed to run the service and answer support. When needed for
+        support or to prevent misuse, an administrator can also open your thesis to read it, never
+        to change it. Every time that happens it is recorded, and we email you straight away to say
+        so.
       </p>
 
       <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
