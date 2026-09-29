@@ -3954,3 +3954,10 @@ Tests: `apps/api/test/trial.spec.ts` (7: the database default, every action refu
 with the right words and no reset date, the meter at zero, a grant still honoured, a paid plan
 untouched, the admin extension from today and its log row, the overview list). Checked in a
 browser: the ended-trial notice on `/app`, and extending from the admin user page.
+
+The same day the owner narrowed it: the trial applies to accounts created from v0.1.18 on. The
+five production accounts that existed before had `trialEndsAt` set to null (no end), logged as
+`TRIAL_EXEMPTED` per account, after a fresh backup. The student notice now shows for the whole
+trial ("Free trial: 12 of 14 days left", amber in the last three days) instead of only the last
+week, and sign-up says what happens after the 14 days. Payments are not switched on (no Razorpay
+keys), so the first trials can end on 2026-10-13 with nothing to buy; docs/PENDING.md leads with it.

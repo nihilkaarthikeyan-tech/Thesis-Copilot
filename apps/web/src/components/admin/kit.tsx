@@ -133,6 +133,7 @@ export const EVENT_NAMES: Record<string, string> = {
   SESSIONS_REVOKED: 'Signed out of every device',
   THESIS_VIEWED: 'Thesis opened by an admin',
   TRIAL_EXTENDED: 'Free trial extended',
+  TRIAL_EXEMPTED: 'No trial end (account from before the trial)',
   USER_SUSPENDED: 'Suspended',
   USER_UNSUSPENDED: 'Unsuspended',
 };

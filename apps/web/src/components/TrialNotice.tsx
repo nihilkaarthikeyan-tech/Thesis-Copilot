@@ -4,9 +4,11 @@
  * Where a free trial stands, said before it matters (2026-09-29, ADR-0036).
  *
  * The trial ends 14 days after sign-up; after it, the theses stay and the AI features stop until
- * the student subscribes. A student should never learn that from a refused suggestion, so this
- * shows the days left through the last week, and after the end says plainly what still works.
- * Nothing is shown to a paying account, or early in the trial when there is nothing to plan for.
+ * the student subscribes. A student should never learn that from a refused suggestion, so this is
+ * shown for the whole trial (the owner, 2026-09-29: "show them clearly about the 14 day trial"):
+ * the days left and the end date from the first day, louder in the last three, and after the end
+ * what still works. Nothing is shown to a paying account, or to an account with no trial date
+ * (the accounts that existed before the trial began to end).
  */
 
 import Link from 'next/link';
@@ -16,8 +18,8 @@ import { cn } from '@/lib/utils';
 
 type Trial = { endsAt: string; ended: boolean; daysLeft: number } | null;
 
-/** Shown from this many days before the end. */
-const WARN_FROM_DAYS = 7;
+/** From here the notice turns from information into a warning. */
+const URGENT_DAYS = 3;
 
 export function TrialNotice({ className }: { className?: string }) {
   const [trial, setTrial] = useState<Trial>(null);
@@ -28,7 +30,8 @@ export function TrialNotice({ className }: { className?: string }) {
       .catch(() => undefined);
   }, []);
 
-  if (!trial || (!trial.ended && trial.daysLeft > WARN_FROM_DAYS)) return null;
+  if (!trial) return null;
+  const urgent = trial.ended || trial.daysLeft <= URGENT_DAYS;
 
   const date = new Date(trial.endsAt).toLocaleDateString(undefined, {
     day: 'numeric',
@@ -41,7 +44,7 @@ export function TrialNotice({ className }: { className?: string }) {
       data-testid="trial-notice"
       className={cn(
         'flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-[13.5px]',
-        trial.ended
+        urgent
           ? 'border-warn/40 bg-warn-soft text-ink'
           : 'border-accent/30 bg-accent-soft text-ink',
         className,
@@ -57,10 +60,13 @@ export function TrialNotice({ className }: { className?: string }) {
           <>
             <strong>
               {trial.daysLeft <= 1
-                ? 'Your free trial ends today.'
-                : `${trial.daysLeft} days left in your free trial.`}
+                ? 'Your 14-day free trial ends today.'
+                : trial.daysLeft <= 14
+                  ? `Free trial: ${trial.daysLeft} of 14 days left.`
+                  : `Free trial: ${trial.daysLeft} days left.`}
             </strong>{' '}
-            It ends on {date}. After that your theses stay; the AI features need a plan.
+            It ends on {date}. After that your theses stay and you can keep writing; the AI features
+            need a plan.
           </>
         )}
       </p>

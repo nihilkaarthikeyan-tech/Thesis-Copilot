@@ -153,7 +153,7 @@ export default function SignUpPage() {
       photo="/landing/library-cafe.webp"
       photoAlt="A student reading a book at a library table"
       cardTitle={`What the ${TRIAL_DAYS}-day free trial includes`}
-      cardBody={`${TRIAL_CAPS.ASSIST} writing suggestions, ${TRIAL_CAPS.DRAFT} drafted sections, ${TRIAL_CAPS.CITE} citation lookups and ${TRIAL_CAPS.VIVA} viva practice uses a month. Everything works, in smaller amounts.`}
+      cardBody={`${TRIAL_CAPS.ASSIST} writing suggestions, ${TRIAL_CAPS.DRAFT} drafted sections, ${TRIAL_CAPS.CITE} citation lookups and ${TRIAL_CAPS.VIVA} viva practice uses a month. Everything works, in smaller amounts. After 14 days your theses stay; the AI features need a plan.`}
       cardPoints={['No card', 'Nothing deleted if you stop']}
     >
       <h1 className="text-balance">

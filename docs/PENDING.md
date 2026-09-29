@@ -6,6 +6,21 @@ blocks the agent from continuing to build against mocks.
 
 ## Accounts, keys and services
 
+### Keys still to add (checked on the production server, 2026-09-29)
+
+Missing in the VPS `.env`, each with its steps further down this file:
+
+| Key | What it unlocks | Urgency |
+|---|---|---|
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_PLAN_MONTHLY`, `RAZORPAY_PLAN_ANNUAL` | Students can pay | **Needed by 2026-10-13.** The free trial ends 14 days after sign-up (ADR-0036) and applies to accounts created from 2026-09-29 13:11 UTC; the first can end on 2026-10-13. Without these keys a student whose trial ends cannot subscribe — "See plans" leads to a page that cannot take money. Until then, extend trials from Admin → Users. |
+| `CORE_API_KEY` | Full-text fallback for papers with no open PDF (FR-2.2) | Useful |
+| `SENTRY_DSN` | Error reports from production | Useful |
+| `BACKUP_S3_*` | Backups copied off the VPS | Important: today backups live only on the same server |
+| `SEMANTIC_SCHOLAR_API_KEY`, `NCBI_API_KEY` | Higher rate limits for literature search | Optional |
+
+Already set and working: OpenAI, Voyage, Anthropic (kept unused), SMTP mail, Google sign-in,
+OpenAlex.
+
 - [x] **Anthropic API key + model ids.** Done 2026-09-08. The owner supplied the key; it is in the
       root `.env` (git-ignored). Both `claude-haiku-4-5-20251001` and `claude-sonnet-5` were
       accepted by the provider on a live call. **The key is kept but no longer used**: on
@@ -231,7 +246,9 @@ blocks the agent from continuing to build against mocks.
       (`client_secret_…googleusercontent.com.json` in Downloads): it belongs to the **Gate**
       project, has no redirect URIs at all, and was not used. Full instructions below.
 
-- [ ] **Google sign-in.** Everything but the credentials is built: Better Auth's Google provider is
+- [x] **Google sign-in** — live since v0.1.6 (production reports `"google":true`; the double-press
+      fix shipped in v0.1.11). The original steps are kept below for reference.
+      Everything but the credentials was built: Better Auth's Google provider is
       registered whenever both variables are set (`apps/api/src/modules/auth/auth.ts`), the API
       reports it at `GET /api/v1/auth/methods`, and the sign-in page shows a "Continue with Google"
       button only when that says `true` — so a missing key hides the button rather than showing one
@@ -597,9 +614,12 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 ## Decisions and reviews
 
 - [x] **The free trial never ended — now it does (2026-09-29, ADR-0036).** The owner chose to
-      enforce 14 days. After them the theses stay and the AI features need a plan; an admin can
-      extend a trial from the user page. Accounts that existed before the release got 14 days
-      from the release. Optional follow-up: a reminder email a few days before the end.
+      enforce 14 days, **for accounts created from the release on**: the five accounts that
+      existed before it had their end date removed at the owner's request (one `TRIAL_EXEMPTED`
+      log row each; backup `/root/backups/pre-trial-exempt-2026-09-29/`). New accounts see
+      "Free trial: N of 14 days left" on the thesis list and account page from day one. After
+      the end the theses stay and the AI features need a plan — **which needs the Razorpay keys
+      above**. Optional follow-up: a reminder email a few days before the end.
 
 - [ ] **Send the privacy notice to existing students — only after you approve the text.**
       ADR-0035: admins can now read a thesis (read-only, logged, the student emailed each time),
