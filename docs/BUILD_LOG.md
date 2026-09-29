@@ -3938,3 +3938,19 @@ atomic check, a zero-cap action opened by a grant, suspension refusing every rou
 view mail once per visit, admin and student deletes leaving no file, filters, the log, feedback,
 overview, jobs) and `apps/web/e2e/admin-controls.spec.ts` (the admin flow in a browser, and the
 student's own delete); `admin-role.spec.ts` updated for the new home.
+
+## The free trial ends (2026-09-29, ADR-0036)
+
+The owner chose to enforce the 14 days the site had always promised. `User.trialEndsAt` (database
+default `now() + 14 days`; migration 0024 gives accounts older than that 14 days from release),
+checked inside `UsageService.consume` so every AI action obeys it; the plan cap becomes 0 and an
+admin's extra allowance still counts. The refusal keeps the `CAP_EXCEEDED` type so every screen
+already shows it, with its own words and no reset date. Students see the days left on the thesis
+list and account page in the last week, and what still works after. Admins see the date, can
+extend it (logged), and the overview lists trials ending in three days. Terms updated: a lapsed
+paid plan now pauses the AI features rather than "moving to the trial allowances".
+
+Tests: `apps/api/test/trial.spec.ts` (7: the database default, every action refused after the end
+with the right words and no reset date, the meter at zero, a grant still honoured, a paid plan
+untouched, the admin extension from today and its log row, the overview list). Checked in a
+browser: the ended-trial notice on `/app`, and extending from the admin user page.

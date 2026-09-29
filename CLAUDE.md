@@ -158,8 +158,9 @@ suspend (blocks every sign-in route), sign out everywhere, extra monthly allowan
 log, background jobs with retry and a feedback inbox. An admin may **read** a thesis, openly:
 logged every time, the student emailed, the privacy page says so. Never add a secret or writable
 way into a student's work. `DocumentEraser` is the one place a thesis is removed (student,
-admin, account erasure). Two owner decisions wait in `docs/PENDING.md`: what the never-ending
-free trial is, and sending the privacy notice.
+admin, account erasure). **The free trial ends 14 days after sign-up** (ADR-0036,
+`User.trialEndsAt`, enforced in `UsageService.consume`; theses stay, AI stops, admin can extend).
+Still waiting on the owner: sending the privacy notice (`docs/PENDING.md`).
 
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and

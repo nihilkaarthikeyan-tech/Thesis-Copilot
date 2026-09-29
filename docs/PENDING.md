@@ -591,16 +591,10 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
 ## Decisions and reviews
 
-- [ ] **The free trial never ends — decide what it is (found 2026-09-29).** The landing page,
-      sign-up and the terms say "14-day free trial", but nothing ends it: `effectivePlan`
-      (`packages/config/src/billing.ts`) returns `FREE_TRIAL` for as long as there is no
-      subscription, and `PRICING.FREE_TRIAL`'s "14 days" is text only. Two honest choices:
-      1. **Enforce 14 days** — after them the account keeps its theses but the AI allowances drop
-         to zero until the student subscribes (a small code change; the admin screen then gets an
-         "Extend free trial" button, which ADR-0035 left out because today it would do nothing).
-      2. **Call it a free plan** — change the words on the landing page, sign-up and terms to
-         "free plan, smaller monthly allowances, no time limit".
-      Tell the agent which.
+- [x] **The free trial never ended — now it does (2026-09-29, ADR-0036).** The owner chose to
+      enforce 14 days. After them the theses stay and the AI features need a plan; an admin can
+      extend a trial from the user page. Accounts that existed before the release got 14 days
+      from the release. Optional follow-up: a reminder email a few days before the end.
 
 - [ ] **Send the privacy notice to existing students — only after you approve the text.**
       ADR-0035: admins can now read a thesis (read-only, logged, the student emailed each time),
