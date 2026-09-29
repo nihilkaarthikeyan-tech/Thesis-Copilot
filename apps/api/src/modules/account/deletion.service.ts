@@ -26,10 +26,10 @@
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
+import { DocumentEraser } from '../../common/document-eraser.service.js';
 import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
-import { StorageService } from '../../common/storage.service.js';
 
 /**
  * Days between the request and the erasure.
@@ -62,7 +62,7 @@ export class DeletionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly storage: StorageService,
+    private readonly eraser: DocumentEraser,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -86,7 +86,11 @@ export class DeletionService {
    * said they are leaving, and if the request was not theirs, the session that made it is the one
    * thing that must not survive it.
    */
-  async request(userId: string, now: Date = new Date()): Promise<DeletionStatus> {
+  async request(
+    userId: string,
+    now: Date = new Date(),
+    actorId: string | null = null,
+  ): Promise<DeletionStatus> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { deletionRequestedAt: true, deletedAt: true },
@@ -106,7 +110,7 @@ export class DeletionService {
       this.prisma.user.update({ where: { id: userId }, data: { deletionRequestedAt: now } }),
       this.prisma.session.deleteMany({ where: { userId } }),
       this.prisma.auditEvent.create({
-        data: { kind: 'DELETION_REQUESTED', userId, detail: { erasesAt: erasesAt(now) } },
+        data: { kind: 'DELETION_REQUESTED', userId, actorId, detail: { erasesAt: erasesAt(now) } },
       }),
     ]);
 
@@ -115,7 +119,7 @@ export class DeletionService {
   }
 
   /** Change of mind, any time before the scheduler gets to it. */
-  async cancel(userId: string): Promise<DeletionStatus> {
+  async cancel(userId: string, actorId: string | null = null): Promise<DeletionStatus> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { deletionRequestedAt: true, deletedAt: true },
@@ -125,7 +129,9 @@ export class DeletionService {
 
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: userId }, data: { deletionRequestedAt: null } }),
-      this.prisma.auditEvent.create({ data: { kind: 'DELETION_CANCELLED', userId, detail: {} } }),
+      this.prisma.auditEvent.create({
+        data: { kind: 'DELETION_CANCELLED', userId, actorId, detail: {} },
+      }),
     ]);
 
     this.logger.log({ userId }, 'account deletion cancelled');
@@ -164,37 +170,12 @@ export class DeletionService {
     });
     const documentIds = documents.map((d) => d.id);
 
-    const files = documentIds.length > 0 ? await this.removeFiles(documentIds) : 0;
+    // The shared eraser (2026-09-29) also removes figures and version snapshots, which this path
+    // used to leave in the bucket after the account was gone.
+    const files = documentIds.length > 0 ? await this.eraser.removeFiles(documentIds) : 0;
 
     await this.prisma.$transaction(async (tx) => {
-      if (documentIds.length > 0) {
-        const inDocs = { documentId: { in: documentIds } };
-        const chapters = await tx.chapter.findMany({ where: inDocs, select: { id: true } });
-        const chapterIds = chapters.map((c) => c.id);
-        const sources = await tx.source.findMany({ where: inDocs, select: { id: true } });
-        const sourceIds = sources.map((s) => s.id);
-
-        // Deepest first. Prisma will not order these for us and several have no cascade.
-        if (chapterIds.length > 0) {
-          await tx.chapterChunk.deleteMany({ where: { chapterId: { in: chapterIds } } });
-          await tx.chapterSourcePin.deleteMany({ where: { chapterId: { in: chapterIds } } });
-          await tx.citation.deleteMany({ where: { chapterId: { in: chapterIds } } });
-        }
-        if (sourceIds.length > 0) {
-          await tx.sourceChunk.deleteMany({ where: { sourceId: { in: sourceIds } } });
-        }
-        await tx.coherenceFlag.deleteMany({ where: inDocs });
-        await tx.comment.deleteMany({ where: inDocs });
-        await tx.guideShare.deleteMany({ where: inDocs });
-        await tx.documentVersion.deleteMany({ where: inDocs });
-        await tx.suggestionEvent.deleteMany({ where: inDocs });
-        await tx.searchCandidate.deleteMany({ where: inDocs });
-        await tx.documentMemory.deleteMany({ where: inDocs });
-        await tx.seedPaper.deleteMany({ where: inDocs });
-        await tx.source.deleteMany({ where: inDocs });
-        await tx.chapter.deleteMany({ where: inDocs });
-        await tx.document.deleteMany({ where: { id: { in: documentIds } } });
-      }
+      await this.eraser.deleteRows(tx, documentIds);
 
       // Not document-scoped, and all of it is the student's behaviour rather than their money.
       await tx.aiCallLog.deleteMany({ where: { userId } });
@@ -229,54 +210,6 @@ export class DeletionService {
 
     this.logger.log({ userId, documents: documentIds.length, files }, 'account erased');
     return { files };
-  }
-
-  /**
-   * Every object in the bucket belonging to these documents.
-   *
-   * A failure to remove one file does not abort the erasure. The database rows are what make the
-   * content reachable, and leaving them because MinIO was briefly unavailable would be the worse
-   * of the two failures; the orphan is logged loudly and the key is in the log to sweep by hand.
-   */
-  private async removeFiles(documentIds: readonly string[]): Promise<number> {
-    const inDocs = { documentId: { in: [...documentIds] } };
-    const [seeds, sources] = await Promise.all([
-      this.prisma.seedPaper.findMany({ where: inDocs, select: { fileKey: true } }),
-      this.prisma.source.findMany({
-        where: { ...inDocs, fileKey: { not: null } },
-        select: { fileKey: true },
-      }),
-    ]);
-
-    const keys = [
-      ...seeds.map((s) => s.fileKey),
-      ...sources.map((s) => s.fileKey),
-      // Exports are written under a per-document prefix (D.3.2).
-      ...(await this.exportKeys(documentIds)),
-    ].filter((k): k is string => Boolean(k));
-
-    let removed = 0;
-    for (const key of keys) {
-      try {
-        await this.storage.remove(key);
-        removed += 1;
-      } catch (error) {
-        this.logger.error({ key, error }, 'could not remove a file during account erasure');
-      }
-    }
-    return removed;
-  }
-
-  private async exportKeys(documentIds: readonly string[]): Promise<string[]> {
-    const keys: string[] = [];
-    for (const id of documentIds) {
-      try {
-        keys.push(...(await this.storage.list(`exports/${id}/`)));
-      } catch (error) {
-        this.logger.error({ documentId: id, error }, 'could not list exports during erasure');
-      }
-    }
-    return keys;
   }
 
   /** Whether the API is configured such that erasure can run at all. Read by /health. */

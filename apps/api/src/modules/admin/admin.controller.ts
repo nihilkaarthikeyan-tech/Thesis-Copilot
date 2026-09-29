@@ -30,12 +30,17 @@ import { AdminService } from './admin.service.js';
 import { AlertsService } from './alerts.service.js';
 import { FeedbackService } from './feedback.service.js';
 import { SuperadminGuard } from './superadmin.guard.js';
-import { UsersService } from './users.service.js';
+import { USER_STATUSES, UsersService } from './users.service.js';
 
 /** Query strings are always strings; coerce and bound them here rather than trusting them. */
 const usersQuery = z.object({
   limit: z.coerce.number().int().positive().max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+  // Filters (2026-09-29): search by email or name, and narrow by plan, role or status.
+  q: z.string().trim().max(200).optional(),
+  plan: z.enum(PLANS).optional(),
+  role: z.enum(['STUDENT', 'GUIDE', 'INSTITUTION_ADMIN', 'SUPERADMIN']).optional(),
+  status: z.enum(USER_STATUSES).optional(),
 });
 
 const flagBody = z.object({ enabled: z.boolean() });
@@ -67,9 +72,10 @@ export class AdminController {
   /** PHASES 5.9: every pilot student's usage on one screen — a page at a time. */
   @Get('users')
   @UseGuards(SessionGuard, SuperadminGuard)
-  listUsers(@Query('limit') limit?: string, @Query('offset') offset?: string) {
-    const parsed = usersQuery.safeParse({ limit, offset });
-    if (!parsed.success) throw new ValidationError('limit and offset must be whole numbers.');
+  listUsers(@Query() query: Record<string, unknown>) {
+    const given = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== ''));
+    const parsed = usersQuery.safeParse(given);
+    if (!parsed.success) throw new ValidationError('Invalid filters', parsed.error.issues);
     return this.users.list(parsed.data);
   }
 

@@ -11,6 +11,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { type AiAction, METERED_ACTIONS, PLAN_LIMITS, PLANS, type Plan } from '@tc/config';
+import type { Prisma } from '@tc/db';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { periodFor } from '../usage/usage.service.js';
@@ -27,8 +28,69 @@ export type UserRow = {
   lastActiveAt: Date | null;
   documents: number;
   costInr: number;
-  usage: Array<{ action: AiAction; used: number; cap: number }>;
+  usage: Array<{ action: AiAction; used: number; cap: number; bonus: number }>;
+  status: UserStatus;
 };
+
+/**
+ * Where an account stands (2026-09-29). Deleted wins over everything, then a pending deletion,
+ * then a suspension.
+ */
+export type UserStatus = 'active' | 'suspended' | 'deleting' | 'deleted';
+export const USER_STATUSES = ['active', 'suspended', 'deleting', 'deleted'] as const;
+
+export type UserFilters = {
+  q?: string;
+  plan?: Plan;
+  role?: string;
+  status?: UserStatus;
+};
+
+function statusOf(u: {
+  suspendedAt: Date | null;
+  deletionRequestedAt: Date | null;
+  deletedAt: Date | null;
+}): UserStatus {
+  if (u.deletedAt) return 'deleted';
+  if (u.deletionRequestedAt) return 'deleting';
+  if (u.suspendedAt) return 'suspended';
+  return 'active';
+}
+
+function whereFor(filters: UserFilters): Prisma.UserWhereInput {
+  const where: Prisma.UserWhereInput = {};
+  const q = filters.q?.trim();
+  if (q) {
+    where.OR = [
+      { email: { contains: q, mode: 'insensitive' } },
+      { name: { contains: q, mode: 'insensitive' } },
+    ];
+  }
+  if (filters.plan) where.plan = filters.plan;
+  if (filters.role) where.role = filters.role as Prisma.UserWhereInput['role'];
+  switch (filters.status) {
+    case 'deleted':
+      where.deletedAt = { not: null };
+      break;
+    case 'deleting':
+      where.deletedAt = null;
+      where.deletionRequestedAt = { not: null };
+      break;
+    case 'suspended':
+      where.deletedAt = null;
+      where.deletionRequestedAt = null;
+      where.suspendedAt = { not: null };
+      break;
+    case 'active':
+      where.deletedAt = null;
+      where.deletionRequestedAt = null;
+      where.suspendedAt = null;
+      break;
+  }
+  return where;
+}
+
+const statusSelect = { suspendedAt: true, deletionRequestedAt: true, deletedAt: true } as const;
 
 export type UserPage = {
   rows: UserRow[];
@@ -42,9 +104,28 @@ export const USERS_PAGE_SIZE = 50;
 export const USERS_MAX_PAGE_SIZE = 200;
 
 export type UserDetail = UserRow & {
-  documentList: Array<{ id: string; title: string; updatedAt: Date; chapters: number }>;
+  documentList: Array<{
+    id: string;
+    title: string;
+    createdAt: Date;
+    updatedAt: Date;
+    chapters: number;
+    words: number;
+  }>;
   capExceeded: number;
-  recentEvents: Array<{ kind: string; actorId: string | null; detail: unknown; createdAt: Date }>;
+  recentEvents: Array<{
+    kind: string;
+    actorId: string | null;
+    actorEmail: string | null;
+    detail: unknown;
+    createdAt: Date;
+  }>;
+  /** How this person signs in: `otp` always, plus `password` and/or `google`. */
+  signInMethods: string[];
+  sessions: number;
+  suspendedAt: Date | null;
+  suspendedReason: string | null;
+  deletionRequestedAt: Date | null;
 };
 
 @Injectable()
@@ -64,16 +145,18 @@ export class UsersService {
    * depending on which page you were on. It is still a column; it is no longer the sort.
    */
   async list(
-    options: { limit?: number; offset?: number } = {},
+    options: { limit?: number; offset?: number } & UserFilters = {},
     now: Date = new Date(),
   ): Promise<UserPage> {
     const limit = Math.min(Math.max(options.limit ?? USERS_PAGE_SIZE, 1), USERS_MAX_PAGE_SIZE);
     const offset = Math.max(options.offset ?? 0, 0);
     const period = periodFor(now);
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const where = whereFor(options);
     const [total, users] = await Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
       this.prisma.user.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
@@ -84,8 +167,9 @@ export class UsersService {
           role: true,
           plan: true,
           createdAt: true,
+          ...statusSelect,
           _count: { select: { documents: true } },
-          usage: { where: { period }, select: { action: true, count: true } },
+          usage: { where: { period }, select: { action: true, count: true, bonus: true } },
         },
       }),
     ]);
@@ -129,6 +213,7 @@ export class UsersService {
       documents: u._count.documents,
       costInr: toInr(costByUser.get(u.id) ?? 0n),
       usage: usageWithCaps(u.plan, u.usage),
+      status: statusOf(u),
     }));
     return { rows, total, limit, offset };
   }
@@ -153,8 +238,11 @@ export class UsersService {
         role: true,
         plan: true,
         createdAt: true,
-        _count: { select: { documents: true } },
-        usage: { where: { period }, select: { action: true, count: true } },
+        ...statusSelect,
+        suspendedReason: true,
+        _count: { select: { documents: true, sessions: true } },
+        usage: { where: { period }, select: { action: true, count: true, bonus: true } },
+        accounts: { select: { providerId: true } },
       },
     });
     if (!user) throw new NotFoundError('That user');
@@ -183,13 +271,25 @@ export class UsersService {
       documents: user._count.documents,
       costInr: toInr(cost._sum.costMicroInr ?? 0n),
       usage: usageWithCaps(user.plan, user.usage),
+      status: statusOf(user),
     };
 
-    const [documents, capExceeded, recentEvents] = await Promise.all([
+    const [documents, words, capExceeded, recentEvents] = await Promise.all([
       this.prisma.document.findMany({
         where: { ownerId: userId },
         orderBy: { updatedAt: 'desc' },
-        select: { id: true, title: true, updatedAt: true, _count: { select: { chapters: true } } },
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { chapters: true } },
+        },
+      }),
+      this.prisma.chapter.groupBy({
+        by: ['documentId'],
+        where: { document: { ownerId: userId } },
+        _sum: { wordCount: true },
       }),
       this.prisma.auditEvent.count({
         where: { userId, kind: 'CAP_EXCEEDED', createdAt: { gte: from } },
@@ -197,21 +297,47 @@ export class UsersService {
       this.prisma.auditEvent.findMany({
         where: { userId, kind: { not: 'CAP_EXCEEDED' } },
         orderBy: { createdAt: 'desc' },
-        take: 10,
+        take: 20,
         select: { kind: true, actorId: true, detail: true, createdAt: true },
       }),
     ]);
+    const wordsByDoc = new Map(words.map((w) => [w.documentId, w._sum.wordCount ?? 0]));
+    const actorIds = [
+      ...new Set(recentEvents.map((e) => e.actorId).filter((id): id is string => Boolean(id))),
+    ];
+    const actors = actorIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: actorIds } },
+          select: { id: true, email: true },
+        })
+      : [];
+    const actorEmail = new Map(actors.map((a) => [a.id, a.email]));
+
+    const providers = new Set(user.accounts.map((a) => a.providerId));
+    const signInMethods = ['otp'];
+    if (providers.has('credential')) signInMethods.push('password');
+    if (providers.has('google')) signInMethods.push('google');
 
     return {
       ...row,
       documentList: documents.map((d) => ({
         id: d.id,
         title: d.title,
+        createdAt: d.createdAt,
         updatedAt: d.updatedAt,
         chapters: d._count.chapters,
+        words: wordsByDoc.get(d.id) ?? 0,
       })),
       capExceeded,
-      recentEvents,
+      recentEvents: recentEvents.map((e) => ({
+        ...e,
+        actorEmail: e.actorId ? (actorEmail.get(e.actorId) ?? null) : null,
+      })),
+      signInMethods,
+      sessions: user._count.sessions,
+      suspendedAt: user.suspendedAt,
+      suspendedReason: user.suspendedReason,
+      deletionRequestedAt: user.deletionRequestedAt,
     };
   }
 
@@ -294,14 +420,15 @@ export class UsersService {
 
 export const PLAN_NAMES = PLANS;
 
+/** This period's use against the plan's cap plus any extra an admin gave (2026-09-29). */
 function usageWithCaps(
   plan: Plan,
-  usage: Array<{ action: AiAction; count: number }>,
-): Array<{ action: AiAction; used: number; cap: number }> {
+  usage: Array<{ action: AiAction; count: number; bonus: number }>,
+): Array<{ action: AiAction; used: number; cap: number; bonus: number }> {
   const caps = PLAN_LIMITS[plan].caps;
-  return METERED_ACTIONS.map((action) => ({
-    action,
-    used: usage.find((u) => u.action === action)?.count ?? 0,
-    cap: caps[action] ?? 0,
-  }));
+  return METERED_ACTIONS.map((action) => {
+    const row = usage.find((u) => u.action === action);
+    const bonus = row?.bonus ?? 0;
+    return { action, used: row?.count ?? 0, cap: (caps[action] ?? 0) + bonus, bonus };
+  });
 }

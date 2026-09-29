@@ -1,13 +1,24 @@
 import { Module } from '@nestjs/common';
+import { DocumentEraser } from '../../common/document-eraser.service.js';
+import { StorageService } from '../../common/storage.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { DocumentsController } from './documents.controller.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
+import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
 import { ProgressService } from './progress.service.js';
 
 @Module({
   imports: [FlagsModule],
   controllers: [DocumentsController],
-  providers: [SessionGuard, NextActionService, SetupProgressService, ProgressService],
+  providers: [
+    SessionGuard,
+    NextActionService,
+    SetupProgressService,
+    ProgressService,
+    OwnThesisDeletion,
+    DocumentEraser,
+    StorageService,
+  ],
 })
 export class DocumentsModule {}

@@ -10,7 +10,17 @@
  * document belonging to someone else reads as absent rather than forbidden.
  */
 
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import type { Prisma } from '@tc/db';
 import { z } from 'zod';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
@@ -20,6 +30,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
+import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
 import { ProgressService } from './progress.service.js';
 
 const languageBody = z.object({
@@ -104,6 +115,7 @@ export class DocumentsController {
     private readonly setupProgress: SetupProgressService,
     private readonly progressService: ProgressService,
     private readonly flags: FlagsService,
+    private readonly deletion: OwnThesisDeletion,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -234,5 +246,15 @@ export class DocumentsController {
       liveEditing: document.shares.length > 0 && (await this.flags.isEnabled('collaboration')),
       ownerEmail: user.email,
     };
+  }
+
+  /**
+   * Deletes one of the student's own theses for good (2026-09-29): chapters, sources, versions
+   * and every file. The thesis list offers an export first.
+   */
+  @Delete(':id')
+  @HttpCode(200)
+  async remove(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.deletion.delete(user.id, id);
   }
 }

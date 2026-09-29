@@ -12,6 +12,7 @@ import type { Env } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins';
 import { ConsoleMailer, type Mail, type Mailer } from '../../common/mailer.js';
 import { claimInstitutionInvite } from '../institution/claim-invite.js';
@@ -336,6 +337,22 @@ export function createAuth(
     databaseHooks: {
       session: {
         create: {
+          // A suspended account cannot start a session, by any sign-in method (2026-09-29).
+          // Suspending also deletes the sessions it already had, so this is the whole lock.
+          // The Google callback cannot carry a message, so there the session is refused and
+          // the web page explains `unable_to_create_session`; elsewhere the refusal says why.
+          async before(session, ctx) {
+            const user = await prisma.user.findUnique({
+              where: { id: session.userId },
+              select: { suspendedAt: true },
+            });
+            if (!user?.suspendedAt) return;
+            if (ctx?.path?.startsWith('/callback')) return false;
+            throw new APIError('FORBIDDEN', {
+              code: 'ACCOUNT_SUSPENDED',
+              message: SUSPENDED_MESSAGE,
+            });
+          },
           async after(session) {
             try {
               const user = await prisma.user.findUnique({
@@ -375,6 +392,10 @@ export function createAuth(
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/** What a suspended student is told when they try to sign in. */
+export const SUSPENDED_MESSAGE =
+  'This account has been suspended. Write to the Thesis Copilot team to ask why, or to have it restored.';
 
 /** Whether Google sign-in is available, so the web app can hide the button when it is not. */
 export function isGoogleConfigured(env: Env): boolean {

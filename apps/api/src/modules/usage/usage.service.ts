@@ -93,7 +93,11 @@ export class UsageService {
     // A cap of 0 must refuse without touching the table: the INSERT branch would otherwise create
     // the row with count = 1 and let one call through. PRD Appendix E.2 relies on a missing or zero
     // cap making the endpoint unusable, so this path matters.
-    if (cap <= 0) {
+    //
+    // An admin's extra allowance (2026-09-29) sits on the ledger row as `bonus` and raises the
+    // cap for this period only; a zero-cap action with a bonus is let through to the statement,
+    // whose WHERE reads the bonus off the same locked row.
+    if (cap <= 0 && (await this.bonusFor(userId, period, action)) <= 0) {
       await this.audit(userId, plan, action, cap, 'cap');
       return { ok: false, reason: 'cap', cap, resetsAt: resetsAtFor(now) };
     }
@@ -130,13 +134,13 @@ export class UsageService {
       };
     }
 
-    const rows = await this.prisma.$queryRawUnsafe<Array<{ count: number }>>(
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ count: number; bonus: number }>>(
       `INSERT INTO "UsageLedger" ("id", "userId", "period", "action", "count")
        VALUES (uuid_generate_v7(), $1::uuid, $2, $3::"AiAction", 1)
        ON CONFLICT ("userId", "period", "action")
        DO UPDATE SET "count" = "UsageLedger"."count" + 1
-       WHERE "UsageLedger"."count" < $4
-       RETURNING "count"`,
+       WHERE "UsageLedger"."count" < $4 + "UsageLedger"."bonus"
+       RETURNING "count", "bonus"`,
       userId,
       period,
       action,
@@ -145,11 +149,58 @@ export class UsageService {
 
     const row = rows[0];
     if (!row) {
-      await this.audit(userId, plan, action, cap, 'cap');
-      return { ok: false, reason: 'cap', cap, resetsAt: resetsAtFor(now) };
+      const bonus = await this.bonusFor(userId, period, action);
+      await this.audit(userId, plan, action, cap + bonus, 'cap');
+      return { ok: false, reason: 'cap', cap: cap + bonus, resetsAt: resetsAtFor(now) };
     }
 
-    return { ok: true, count: row.count, cap, remaining: Math.max(cap - row.count, 0) };
+    const allowed = cap + row.bonus;
+    return {
+      ok: true,
+      count: row.count,
+      cap: allowed,
+      remaining: Math.max(allowed - row.count, 0),
+    };
+  }
+
+  private async bonusFor(userId: string, period: string, action: MeteredAction): Promise<number> {
+    const row = await this.prisma.usageLedger.findUnique({
+      where: { userId_period_action: { userId, period, action } },
+      select: { bonus: true },
+    });
+    return row?.bonus ?? 0;
+  }
+
+  /**
+   * Extra units of one action for this period, given by an admin (2026-09-29). Adds to whatever
+   * was given before; the next month starts from the plan's cap again. Logged with the reason.
+   */
+  async grantBonus(
+    actorId: string,
+    userId: string,
+    action: MeteredAction,
+    units: number,
+    reason: string,
+    now: Date = new Date(),
+  ): Promise<{ action: MeteredAction; bonus: number; period: string }> {
+    const period = periodFor(now);
+    const [row] = await this.prisma.$transaction([
+      this.prisma.usageLedger.upsert({
+        where: { userId_period_action: { userId, period, action } },
+        create: { userId, period, action, count: 0, bonus: units },
+        update: { bonus: { increment: units } },
+        select: { bonus: true },
+      }),
+      this.prisma.auditEvent.create({
+        data: {
+          kind: 'ALLOWANCE_GRANTED',
+          userId,
+          actorId,
+          detail: { period, action, units, reason },
+        },
+      }),
+    ]);
+    return { action, bonus: row.bonus, period };
   }
 
   /**
@@ -227,12 +278,12 @@ export class UsageService {
   async usageFor(
     userId: string,
     now: Date = new Date(),
-  ): Promise<Array<{ action: string; count: number }>> {
+  ): Promise<Array<{ action: string; count: number; bonus: number }>> {
     const rows = await this.prisma.usageLedger.findMany({
       where: { userId, period: periodFor(now) },
-      select: { action: true, count: true },
+      select: { action: true, count: true, bonus: true },
     });
-    return rows.map((r) => ({ action: r.action, count: r.count }));
+    return rows.map((r) => ({ action: r.action, count: r.count, bonus: r.bonus }));
   }
 }
 

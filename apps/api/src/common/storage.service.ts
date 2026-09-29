@@ -84,6 +84,33 @@ export class StorageService implements OnModuleInit {
     return keys.sort();
   }
 
+  /**
+   * How much is stored, grouped by the first part of the key (`sources`, `exports`, `figures`…).
+   * Walks the whole bucket, so the admin overview caches it rather than asking on every visit.
+   */
+  async totals(): Promise<{
+    files: number;
+    bytes: number;
+    byPrefix: Record<string, { files: number; bytes: number }>;
+  }> {
+    const byPrefix: Record<string, { files: number; bytes: number }> = {};
+    let files = 0;
+    let bytes = 0;
+    const stream = this.client.listObjectsV2(this.bucket, '', true);
+    for await (const item of stream) {
+      if (!item.name) continue;
+      const prefix = item.name.split('/')[0] ?? '';
+      const size = item.size ?? 0;
+      files += 1;
+      bytes += size;
+      const bucket = byPrefix[prefix] ?? { files: 0, bytes: 0 };
+      bucket.files += 1;
+      bucket.bytes += size;
+      byPrefix[prefix] = bucket;
+    }
+    return { files, bytes, byPrefix };
+  }
+
   async remove(key: string): Promise<void> {
     await this.client.removeObject(this.bucket, key);
   }

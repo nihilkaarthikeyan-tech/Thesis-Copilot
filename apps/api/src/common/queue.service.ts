@@ -55,6 +55,52 @@ export class QueueService implements OnModuleDestroy {
     return this.queue(name).getJobCounts();
   }
 
+  /**
+   * The jobs that ran out of retries, newest first (2026-09-29, the admin's jobs screen). Only
+   * what an administrator needs to decide on a retry, and whose job it was: never the rest of
+   * the payload, which can carry a student's text.
+   */
+  async failed(
+    name: QueueName,
+    limit = 20,
+  ): Promise<
+    Array<{
+      id: string;
+      reason: string;
+      attempts: number;
+      failedAt: number | null;
+      addedAt: number;
+      userId: string | null;
+    }>
+  > {
+    const jobs = await this.queue(name).getFailed(0, Math.max(limit - 1, 0));
+    return jobs
+      .filter((job) => job?.id)
+      .map((job) => ({
+        id: String(job.id),
+        reason: (job.failedReason ?? '').slice(0, 500),
+        attempts: job.attemptsMade,
+        failedAt: job.finishedOn ?? null,
+        addedAt: job.timestamp,
+        userId: typeof job.data?.userId === 'string' ? job.data.userId : null,
+      }));
+  }
+
+  /** Puts one failed job back on its queue. False when it is not there or not failed. */
+  async retry(name: QueueName, jobId: string): Promise<boolean> {
+    const job = await this.queue(name).getJob(jobId);
+    if (!job || !(await job.isFailed())) return false;
+    await job.retry('failed');
+    return true;
+  }
+
+  /** Every failed job in one queue, back on it. */
+  async retryAll(name: QueueName): Promise<number> {
+    const failed = (await this.counts(name)).failed ?? 0;
+    if (failed > 0) await this.queue(name).retryJobs({ state: 'failed', count: 1000 });
+    return failed;
+  }
+
   async onModuleDestroy(): Promise<void> {
     for (const queue of this.queues.values()) await queue.close();
     await this.connection.quit();

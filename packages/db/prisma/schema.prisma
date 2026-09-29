@@ -144,6 +144,12 @@ model User {
    * requires us to retain still have something to point at.
    */
   deletedAt           DateTime?
+  /**
+   * Set by a superadmin (2026-09-29): the account cannot sign in and every session is revoked.
+   * Nothing is deleted; unsuspending clears both fields. The reason is for the activity log only.
+   */
+  suspendedAt         DateTime?
+  suspendedReason     String?
   @@index([deletionRequestedAt])
 }
 
@@ -465,6 +471,8 @@ model UsageLedger {
   period    String   // "2026-09"
   action    AiAction
   count     Int      @default(0)
+  /** Extra units a superadmin granted for this period only (2026-09-29); the cap is plan + bonus. */
+  bonus     Int      @default(0)
   @@unique([userId, period, action])
 }
 
@@ -646,4 +654,15 @@ model Verification {
   // DB default too, matching migration 0002 and `User.updatedAt`; caught by `prisma migrate diff`.
   updatedAt  DateTime @default(now()) @updatedAt
   @@index([identifier])
+}
+
+/**
+ * Whether a piece of feedback (an `AuditEvent` of kind FEEDBACK) has been read and answered in
+ * Admin (2026-09-29). Kept apart because audit events are never edited.
+ */
+model FeedbackState {
+  auditEventId String    @id @db.Uuid
+  readAt       DateTime?
+  answeredAt   DateTime?
+  answeredBy   String?   @db.Uuid
 }

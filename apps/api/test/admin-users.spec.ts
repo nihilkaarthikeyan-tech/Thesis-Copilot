@@ -100,6 +100,8 @@ describe('GET /admin/users', () => {
       action: 'ASSIST',
       used: 37,
       cap: 50,
+      // An admin's extra allowance for the month (2026-09-29, ADR-0035); none given here.
+      bonus: 0,
     });
   });
 
@@ -114,8 +116,10 @@ describe('GET /admin/users', () => {
       capExceeded: number;
     };
     expect(body.documentList).toHaveLength(1);
+    // Still no chapter text in the list: counts and dates only. Reading a thesis is its own,
+    // logged route (ADR-0035).
     expect(Object.keys(body.documentList[0] ?? {}).sort()).toEqual(
-      ['chapters', 'id', 'title', 'updatedAt'].sort(),
+      ['chapters', 'createdAt', 'id', 'title', 'updatedAt', 'words'].sort(),
     );
   });
 

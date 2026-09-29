@@ -12,7 +12,8 @@
     "reembed": "dotenv -e ../../.env -- tsx scripts/reembed-chunks.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start:local": "dotenv -e ../../.env -- node dist/main.js"
+    "start:local": "dotenv -e ../../.env -- node dist/main.js",
+    "privacy:notice": "dotenv -e ../../.env -- node dist/privacy-notice.js"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

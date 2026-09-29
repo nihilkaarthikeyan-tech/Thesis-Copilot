@@ -20,7 +20,15 @@ export class UsageController {
       : 'FREE_TRIAL';
     const rows = await this.usage.usageFor(user.id);
     const used = Object.fromEntries(rows.map((r) => [r.action, r.count])) as Record<string, number>;
-    const caps = PLAN_LIMITS[plan].caps;
+    // An admin's extra allowance counts as cap for this month (2026-09-29).
+    const bonus = Object.fromEntries(rows.map((r) => [r.action, r.bonus])) as Record<
+      string,
+      number
+    >;
+    const planCaps = PLAN_LIMITS[plan].caps;
+    const caps = Object.fromEntries(
+      METERED_ACTIONS.map((a) => [a, planCaps[a] + (bonus[a] ?? 0)]),
+    ) as Record<string, number>;
 
     return {
       period: periodFor(),
@@ -29,8 +37,8 @@ export class UsageController {
       actions: METERED_ACTIONS.map((action) => ({
         action,
         used: used[action] ?? 0,
-        cap: caps[action],
-        remaining: Math.max(caps[action] - (used[action] ?? 0), 0),
+        cap: caps[action] ?? 0,
+        remaining: Math.max((caps[action] ?? 0) - (used[action] ?? 0), 0),
       })),
     };
   }
