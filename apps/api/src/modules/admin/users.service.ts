@@ -30,6 +30,8 @@ export type UserRow = {
   costInr: number;
   usage: Array<{ action: AiAction; used: number; cap: number; bonus: number }>;
   status: UserStatus;
+  /** When the free trial ends or ended (ADR-0036); meaningful on FREE_TRIAL only. */
+  trialEndsAt: Date | null;
 };
 
 /**
@@ -90,7 +92,12 @@ function whereFor(filters: UserFilters): Prisma.UserWhereInput {
   return where;
 }
 
-const statusSelect = { suspendedAt: true, deletionRequestedAt: true, deletedAt: true } as const;
+const statusSelect = {
+  suspendedAt: true,
+  deletionRequestedAt: true,
+  deletedAt: true,
+  trialEndsAt: true,
+} as const;
 
 export type UserPage = {
   rows: UserRow[];
@@ -212,8 +219,9 @@ export class UsersService {
       lastActiveAt: lastByUser.get(u.id) ?? null,
       documents: u._count.documents,
       costInr: toInr(costByUser.get(u.id) ?? 0n),
-      usage: usageWithCaps(u.plan, u.usage),
+      usage: usageWithCaps(u.plan, u.usage, trialOver(u.plan, u.trialEndsAt, now)),
       status: statusOf(u),
+      trialEndsAt: u.trialEndsAt,
     }));
     return { rows, total, limit, offset };
   }
@@ -270,8 +278,9 @@ export class UsersService {
         : null,
       documents: user._count.documents,
       costInr: toInr(cost._sum.costMicroInr ?? 0n),
-      usage: usageWithCaps(user.plan, user.usage),
+      usage: usageWithCaps(user.plan, user.usage, trialOver(user.plan, user.trialEndsAt, now)),
       status: statusOf(user),
+      trialEndsAt: user.trialEndsAt,
     };
 
     const [documents, words, capExceeded, recentEvents] = await Promise.all([
@@ -421,11 +430,16 @@ export class UsersService {
 export const PLAN_NAMES = PLANS;
 
 /** This period's use against the plan's cap plus any extra an admin gave (2026-09-29). */
+function trialOver(plan: Plan, endsAt: Date | null, now: Date): boolean {
+  return plan === 'FREE_TRIAL' && endsAt !== null && endsAt.getTime() <= now.getTime();
+}
+
 function usageWithCaps(
   plan: Plan,
   usage: Array<{ action: AiAction; count: number; bonus: number }>,
+  trialEnded = false,
 ): Array<{ action: AiAction; used: number; cap: number; bonus: number }> {
-  const caps = PLAN_LIMITS[plan].caps;
+  const caps: Partial<Record<AiAction, number>> = trialEnded ? {} : PLAN_LIMITS[plan].caps;
   return METERED_ACTIONS.map((action) => {
     const row = usage.find((u) => u.action === action);
     const bonus = row?.bonus ?? 0;

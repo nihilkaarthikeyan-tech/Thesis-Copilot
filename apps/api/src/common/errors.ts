@@ -47,6 +47,31 @@ export class CapExceededError extends AppError {
 }
 
 /**
+ * The free trial has ended (ADR-0036).
+ *
+ * Kept as `CAP_EXCEEDED` on purpose: every screen that meets a refused AI action already shows
+ * that type's `detail`, and a new type would fall silent in the ones that ignore what they do not
+ * know. No `resetsAt`, because nothing resets: the editor would otherwise add "It resets on 1
+ * October" to a trial that is over. `trialEnded` lets a screen offer the pricing page.
+ */
+export class TrialEndedError extends AppError {
+  constructor(action: string, endedAt: Date) {
+    super(
+      'CAP_EXCEEDED',
+      'Free trial ended',
+      HttpStatus.PAYMENT_REQUIRED,
+      `Your 14-day free trial ended on ${endedAt.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata',
+      })}. Your theses are safe and you can keep writing; subscribe to use the AI features again.`,
+      { action, cap: 0, trialEnded: true, trialEndedAt: endedAt.toISOString() },
+    );
+  }
+}
+
+/**
  * PRD §11's ₹100 ceiling, refusing at run time rather than in a projection.
  *
  * Separate from `CapExceededError` because it can arrive while the student's action counter still

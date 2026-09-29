@@ -117,6 +117,38 @@ export class AdminControlsService {
     return { granted: results };
   }
 
+  /**
+   * Gives a free trial more days (ADR-0036). Counted from whichever is later, today or the
+   * current end, so extending a trial that ended last month gives the full number of days.
+   */
+  async extendTrial(
+    actorId: string,
+    userId: string,
+    days: number,
+    reason: string,
+    now: Date = new Date(),
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { deletedAt: true, trialEndsAt: true, plan: true },
+    });
+    if (!user || user.deletedAt) throw new NotFoundError('That user');
+    const from = Math.max(now.getTime(), user.trialEndsAt?.getTime() ?? 0);
+    const trialEndsAt = new Date(from + days * 86_400_000);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { trialEndsAt } }),
+      this.prisma.auditEvent.create({
+        data: {
+          kind: 'TRIAL_EXTENDED',
+          userId,
+          actorId,
+          detail: { days, reason, from: user.trialEndsAt, to: trialEndsAt },
+        },
+      }),
+    ]);
+    return { trialEndsAt };
+  }
+
   /** Starts the same seven-day deletion a student can start, logged as the admin's. */
   async requestDeletion(actorId: string, userId: string) {
     await this.target(actorId, userId, 'delete');

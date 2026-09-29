@@ -27,6 +27,7 @@ import { SuperadminGuard } from './superadmin.guard.js';
 
 const reason = z.string().trim().min(3, 'Say why, in a few words.').max(500);
 const suspendBody = z.object({ reason });
+const trialBody = z.object({ days: z.number().int().min(1).max(365), reason });
 const deleteThesisBody = z.object({ reason });
 const allowanceBody = z.object({
   grants: z
@@ -100,6 +101,13 @@ export class AdminControlsController {
   allowance(@CurrentUser() admin: SessionUser, @Param('id') id: string, @Body() body: unknown) {
     const { grants, reason } = parse(allowanceBody, body, 'Invalid allowance');
     return this.controls.grantAllowance(admin.id, id, grants, reason);
+  }
+
+  @Post('users/:id/trial')
+  @HttpCode(200)
+  extendTrial(@CurrentUser() admin: SessionUser, @Param('id') id: string, @Body() body: unknown) {
+    const { days, reason } = parse(trialBody, body, 'Days (1 to 365) and a reason are needed');
+    return this.controls.extendTrial(admin.id, id, days, reason);
   }
 
   @Post('users/:id/deletion')

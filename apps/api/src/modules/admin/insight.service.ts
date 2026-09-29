@@ -80,6 +80,8 @@ export class AdminInsightService {
       dbSize,
       suspended,
       deleting,
+      trialsEnding,
+      trialsEnded,
     ] = await Promise.all([
       this.prisma.user.count({ where: people }),
       this.prisma.user.count({ where: { ...people, createdAt: { gte: weekAgo } } }),
@@ -127,6 +129,19 @@ export class AdminInsightService {
         SELECT pg_database_size(current_database()) AS bytes`,
       this.prisma.user.count({ where: { deletedAt: null, suspendedAt: { not: null } } }),
       this.prisma.user.count({ where: { deletedAt: null, deletionRequestedAt: { not: null } } }),
+      this.prisma.user.findMany({
+        where: {
+          ...people,
+          plan: 'FREE_TRIAL',
+          trialEndsAt: { gt: now, lte: new Date(now.getTime() + 3 * DAY) },
+        },
+        orderBy: { trialEndsAt: 'asc' },
+        take: 8,
+        select: { id: true, email: true, trialEndsAt: true },
+      }),
+      this.prisma.user.count({
+        where: { ...people, plan: 'FREE_TRIAL', trialEndsAt: { lte: now } },
+      }),
     ]);
 
     // Sign-ups per day for the last 30 days, by the Indian calendar day.
@@ -166,6 +181,12 @@ export class AdminInsightService {
       activeLast7Days: Number(activeRows[0]?.n ?? 0),
       suspended,
       deleting,
+      trialsEnding: trialsEnding.map((u) => ({
+        id: u.id,
+        email: u.email,
+        trialEndsAt: u.trialEndsAt,
+      })),
+      trialsEnded,
       paying,
       annualSubscriptions: annual,
       monthlyRecurringInr: Math.round(mrr),

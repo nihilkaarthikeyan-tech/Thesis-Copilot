@@ -150,6 +150,13 @@ model User {
    */
   suspendedAt         DateTime?
   suspendedReason     String?
+  /**
+   * When the free trial ends (2026-09-29, ADR-0036). Fourteen days after sign-up, set by the
+   * database so every way an account is created gets it. After it, an account with no paid plan
+   * keeps every thesis but has no AI allowance until it subscribes or an admin extends it.
+   * The 14 matches `PLAN_LIMITS.FREE_TRIAL.trialDays`.
+   */
+  trialEndsAt         DateTime?  @default(dbgenerated("(now() + '14 days'::interval)"))
   @@index([deletionRequestedAt])
 }
 

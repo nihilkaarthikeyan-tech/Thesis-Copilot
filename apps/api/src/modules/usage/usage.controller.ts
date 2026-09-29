@@ -25,15 +25,18 @@ export class UsageController {
       string,
       number
     >;
+    // ADR-0036: a free trial past its end has no plan allowance, only what an admin gave.
+    const trial = plan === 'FREE_TRIAL' ? await this.usage.trialStatus(user.id) : null;
     const planCaps = PLAN_LIMITS[plan].caps;
     const caps = Object.fromEntries(
-      METERED_ACTIONS.map((a) => [a, planCaps[a] + (bonus[a] ?? 0)]),
+      METERED_ACTIONS.map((a) => [a, (trial?.ended ? 0 : planCaps[a]) + (bonus[a] ?? 0)]),
     ) as Record<string, number>;
 
     return {
       period: periodFor(),
       resetsAt: resetsAtFor().toISOString(),
       plan,
+      trial,
       actions: METERED_ACTIONS.map((action) => ({
         action,
         used: used[action] ?? 0,

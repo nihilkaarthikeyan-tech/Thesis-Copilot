@@ -31,6 +31,7 @@ import {
   CapExceededError,
   CeilingExceededError,
   PlatformCeilingExceededError,
+  TrialEndedError,
 } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PlatformBudgetService } from './platform-budget.service.js';
@@ -40,7 +41,7 @@ import { PlatformBudgetService } from './platform-budget.service.js';
  * different things: a cap is "you have used your 180 suggestions", the ceiling is "your AI budget
  * for the month is spent" and can arrive while suggestions are still showing as remaining.
  */
-export type RefusalReason = 'cap' | 'ceiling' | 'platform';
+export type RefusalReason = 'cap' | 'ceiling' | 'platform' | 'trial';
 
 export type ConsumeResult =
   | { readonly ok: true; readonly count: number; readonly cap: number; readonly remaining: number }
@@ -53,6 +54,8 @@ export type ConsumeResult =
       readonly spentInr?: number;
       /** The site-wide ceiling, present when that is what refused. */
       readonly platformCeilingInr?: number;
+      /** When the free trial ended, present when that is what refused (ADR-0036). */
+      readonly trialEndedAt?: Date;
     };
 
 /**
@@ -87,8 +90,19 @@ export class UsageService {
     action: MeteredAction,
     now: Date = new Date(),
   ): Promise<ConsumeResult> {
-    const cap = capFor(plan, action);
     const period = periodFor(now);
+    // ADR-0036: a free trial past its end date has no plan allowance. The student keeps every
+    // thesis; an admin's extra allowance still counts, so a grant can help someone finish.
+    const trialEndedAt = plan === 'FREE_TRIAL' ? await this.trialEndedAt(userId, now) : null;
+    const cap = trialEndedAt ? 0 : capFor(plan, action);
+    const refusedFor: RefusalReason = trialEndedAt ? 'trial' : 'cap';
+    const capRefusal = (shown: number) => ({
+      ok: false as const,
+      reason: refusedFor,
+      cap: shown,
+      resetsAt: resetsAtFor(now),
+      ...(trialEndedAt ? { trialEndedAt } : {}),
+    });
 
     // A cap of 0 must refuse without touching the table: the INSERT branch would otherwise create
     // the row with count = 1 and let one call through. PRD Appendix E.2 relies on a missing or zero
@@ -98,8 +112,8 @@ export class UsageService {
     // cap for this period only; a zero-cap action with a bonus is let through to the statement,
     // whose WHERE reads the bonus off the same locked row.
     if (cap <= 0 && (await this.bonusFor(userId, period, action)) <= 0) {
-      await this.audit(userId, plan, action, cap, 'cap');
-      return { ok: false, reason: 'cap', cap, resetsAt: resetsAtFor(now) };
+      await this.audit(userId, plan, action, cap, refusedFor);
+      return capRefusal(cap);
     }
 
     // PRD §11's ₹100 is a constraint on money, and caps are only a proxy for money: they assume a
@@ -150,8 +164,8 @@ export class UsageService {
     const row = rows[0];
     if (!row) {
       const bonus = await this.bonusFor(userId, period, action);
-      await this.audit(userId, plan, action, cap + bonus, 'cap');
-      return { ok: false, reason: 'cap', cap: cap + bonus, resetsAt: resetsAtFor(now) };
+      await this.audit(userId, plan, action, cap + bonus, refusedFor);
+      return capRefusal(cap + bonus);
     }
 
     const allowed = cap + row.bonus;
@@ -161,6 +175,34 @@ export class UsageService {
       cap: allowed,
       remaining: Math.max(allowed - row.count, 0),
     };
+  }
+
+  /** For the usage meter: when the trial ends, whether it has, and whole days left. */
+  async trialStatus(
+    userId: string,
+    now: Date = new Date(),
+  ): Promise<{ endsAt: string; ended: boolean; daysLeft: number } | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { trialEndsAt: true },
+    });
+    if (!user?.trialEndsAt) return null;
+    const ms = user.trialEndsAt.getTime() - now.getTime();
+    return {
+      endsAt: user.trialEndsAt.toISOString(),
+      ended: ms <= 0,
+      daysLeft: Math.max(Math.ceil(ms / 86_400_000), 0),
+    };
+  }
+
+  /** The end of this account's free trial if it has passed, otherwise null. */
+  async trialEndedAt(userId: string, now: Date = new Date()): Promise<Date | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { trialEndsAt: true },
+    });
+    const ends = user?.trialEndsAt ?? null;
+    return ends && ends.getTime() <= now.getTime() ? ends : null;
   }
 
   private async bonusFor(userId: string, period: string, action: MeteredAction): Promise<number> {
@@ -296,7 +338,10 @@ export class UsageService {
 export function refusal(
   action: string,
   result: Extract<ConsumeResult, { ok: false }>,
-): CapExceededError | CeilingExceededError | PlatformCeilingExceededError {
+): CapExceededError | CeilingExceededError | PlatformCeilingExceededError | TrialEndedError {
+  if (result.reason === 'trial' && result.trialEndedAt) {
+    return new TrialEndedError(action, result.trialEndedAt);
+  }
   if (result.reason === 'platform') {
     return new PlatformCeilingExceededError(
       action,
