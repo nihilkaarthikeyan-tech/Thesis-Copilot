@@ -71,6 +71,18 @@ export const PLAN_NAMES: Record<string, string> = {
 };
 export const planName = (plan: string) => PLAN_NAMES[plan] ?? plan;
 
+/** "4 days left", "ends today", "ended 2 Oct" — a free trial's state in a few words (ADR-0036). */
+export function trialWords(endsAt: string | null | undefined, now: number = Date.now()): string {
+  if (!endsAt) return '';
+  const ms = new Date(endsAt).getTime() - now;
+  if (ms <= 0) return `ended ${day(endsAt)}`;
+  const days = Math.ceil(ms / 86_400_000);
+  return days <= 1 ? 'ends today' : `${days} days left`;
+}
+
+export const trialOver = (endsAt: string | null | undefined, now: number = Date.now()) =>
+  Boolean(endsAt && new Date(endsAt).getTime() <= now);
+
 export const ROLE_NAMES: Record<string, string> = {
   STUDENT: 'Student',
   GUIDE: 'Guide',
@@ -120,6 +132,7 @@ export const EVENT_NAMES: Record<string, string> = {
   ROLE_CHANGED: 'Role changed',
   SESSIONS_REVOKED: 'Signed out of every device',
   THESIS_VIEWED: 'Thesis opened by an admin',
+  TRIAL_EXTENDED: 'Free trial extended',
   USER_SUSPENDED: 'Suspended',
   USER_UNSUSPENDED: 'Unsuspended',
 };
@@ -142,6 +155,8 @@ export function describeEvent(kind: string, detail: unknown): string {
       return `${planName(str(d.from))} → ${planName(str(d.to))}`;
     case 'THESIS_VIEWED':
       return `“${str(d.title)}”, read-only${d.emailed ? ' · student emailed' : ''}`;
+    case 'TRIAL_EXTENDED':
+      return `+${str(d.days)} days, until ${day(str(d.to))}${d.reason ? ` · “${str(d.reason)}”` : ''}`;
     case 'CHAPTER_VIEWED':
       return `“${str(d.title)}”`;
     case 'DOCUMENT_DELETED':

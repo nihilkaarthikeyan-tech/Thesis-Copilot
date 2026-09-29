@@ -58,11 +58,13 @@ export default function TermsPage() {
       <h2 className={H2}>The free trial, plans and payment</h2>
       <p className="mt-2 text-muted">
         A new account starts with a {trialDays}-day free trial, with smaller monthly allowances and
-        no card needed. The paid plans are ₹{monthly} a month or ₹{annual} a year, paid through
-        Razorpay. A plan renews automatically at the end of each period until you cancel; we email
-        you {BILLING.reminderDaysBefore} days before every renewal. If a payment fails, you keep
-        your plan for {BILLING.graceDays} days while it is retried, then move to the trial
-        allowances — your documents are never deleted for a failed payment.
+        no card needed. When the trial ends your theses stay, and you can keep writing, editing and
+        exporting; the AI features need a paid plan. The paid plans are ₹{monthly} a month or ₹
+        {annual} a year, paid through Razorpay. A plan renews automatically at the end of each
+        period until you cancel; we email you {BILLING.reminderDaysBefore} days before every
+        renewal. If a payment fails, you keep your plan for {BILLING.graceDays} days while it is
+        retried, then the AI features pause until a payment goes through — your documents are never
+        deleted for a failed payment.
       </p>
       <p className="mt-2 text-muted">
         AI features have monthly allowances, shown in the app, which reset at 00:00 UTC on the 1st

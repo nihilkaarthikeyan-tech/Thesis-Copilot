@@ -15,6 +15,8 @@ export type UserRow = {
   /** `cap` already includes `bonus`, the extra an admin gave for this month. */
   usage: Array<{ action: string; used: number; cap: number; bonus: number }>;
   status: UserStatus;
+  /** When the free trial ends or ended (ADR-0036). */
+  trialEndsAt: string | null;
 };
 
 export type UserDetail = UserRow & {

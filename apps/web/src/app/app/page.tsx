@@ -18,6 +18,7 @@ import { LogoMark } from '@/components/LogoMark';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { SetupChecklist } from '@/components/SetupChecklist';
+import { TrialNotice } from '@/components/TrialNotice';
 import { ThemeToggle } from '@/components/theme';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -196,6 +197,8 @@ export default function DocumentListPage() {
             </Button>
           }
         />
+
+        <TrialNotice className="mt-6" />
 
         {documents && documents.length === 0 ? (
           <FirstRunHint id="list" className="mt-6">

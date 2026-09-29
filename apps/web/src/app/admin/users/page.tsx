@@ -20,6 +20,8 @@ import {
   ROLE_NAMES,
   roleName,
   StatusBadge,
+  trialOver,
+  trialWords,
 } from '@/components/admin/kit';
 import { Pager } from '@/components/ui/pager';
 import { Input, PageHeader, Select } from '@/components/ui/primitives';
@@ -209,6 +211,13 @@ function UsersList() {
                         </td>
                         <td className="px-3 py-2">
                           {planName(u.plan)}
+                          {u.plan === 'FREE_TRIAL' && u.trialEndsAt ? (
+                            <span
+                              className={`block text-xs ${trialOver(u.trialEndsAt) ? 'text-warn' : 'text-muted'}`}
+                            >
+                              {trialWords(u.trialEndsAt)}
+                            </span>
+                          ) : null}
                           {bonus > 0 ? (
                             <span className="block text-xs text-accent">+{bonus} extra</span>
                           ) : null}

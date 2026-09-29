@@ -13,6 +13,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { TrialNotice } from '@/components/TrialNotice';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/auth-client';
 import { passwordProblem } from '@/lib/password';
@@ -404,6 +405,8 @@ export default function AccountPage() {
           </p>
         </section>
       ) : null}
+
+      <TrialNotice className="mt-6" />
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <h2 className="eyebrow">This month</h2>

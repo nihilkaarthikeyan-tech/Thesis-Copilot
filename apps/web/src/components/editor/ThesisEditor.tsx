@@ -332,9 +332,12 @@ function ChapterEditor({
           onError: (e) => {
             // §6.2 / PHASES 5.2. Cap: say when it resets, in the student's own timezone.
             if (e.code === 'CAP_EXCEEDED') {
+              // A trial that has ended (ADR-0036) has no reset date and says all it needs to.
               const when = e.resetsAt ? formatResetsAt(e.resetsAt) : null;
               setNotice(
-                `${e.message}${when ? ` It resets on ${when}.` : ''} Until then, keep writing — nothing you type is affected.`,
+                when
+                  ? `${e.message} It resets on ${when}. Until then, keep writing — nothing you type is affected.`
+                  : e.message,
               );
               return;
             }

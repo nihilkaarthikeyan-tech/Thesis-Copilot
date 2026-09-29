@@ -25,6 +25,8 @@ import {
   problemText,
   roleName,
   StatusBadge,
+  trialOver,
+  trialWords,
   when,
   whole,
 } from '@/components/admin/kit';
@@ -48,6 +50,7 @@ const METHOD_NAMES: Record<string, string> = {
 type Open =
   | null
   | 'allowance'
+  | 'trial'
   | 'suspend'
   | 'delete-account'
   | { kind: 'delete-thesis'; id: string; title: string };
@@ -140,6 +143,21 @@ export default function AdminUserPage() {
             <StatusBadge status={user.status} />
           </header>
 
+          {user.plan === 'FREE_TRIAL' && user.trialEndsAt ? (
+            <p
+              data-testid="admin-trial"
+              className={`mt-4 rounded-md border px-3 py-2 text-sm ${
+                trialOver(user.trialEndsAt)
+                  ? 'border-warn/30 bg-warn-soft text-warn'
+                  : 'border-line bg-surface text-muted'
+              }`}
+            >
+              Free trial {trialWords(user.trialEndsAt)}
+              {trialOver(user.trialEndsAt)
+                ? ' — the AI features are off until they subscribe, or you extend it.'
+                : ` (until ${when(user.trialEndsAt)}).`}
+            </p>
+          ) : null}
           {user.status === 'suspended' ? (
             <p className="mt-4 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
               Suspended {when(user.suspendedAt)}
@@ -195,6 +213,17 @@ export default function AdminUserPage() {
               >
                 Give extra allowance
               </Button>
+              {user.plan === 'FREE_TRIAL' ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy || user.status === 'deleted'}
+                  data-testid="admin-open-trial"
+                  onClick={() => setOpen('trial')}
+                >
+                  Extend free trial
+                </Button>
+              ) : null}
               <label className="flex items-center gap-1.5 text-xs text-muted">
                 Plan
                 <select
@@ -436,6 +465,21 @@ export default function AdminUserPage() {
             }
           />
 
+          <TrialDialog
+            open={open === 'trial'}
+            name={firstName}
+            busy={busy}
+            onClose={() => setOpen(null)}
+            onSubmit={(days, reason) =>
+              act(async () => {
+                const r = (await post(`/admin/users/${id}/trial`, { days, reason })) as {
+                  trialEndsAt: string;
+                };
+                return `Free trial extended by ${days} day${days === 1 ? '' : 's'}, until ${when(r.trialEndsAt)}.`;
+              })
+            }
+          />
+
           <ReasonDialog
             open={open === 'suspend'}
             testId="admin-suspend-dialog"
@@ -575,6 +619,73 @@ function AllowanceDialog({
           onClick={() => onSubmit(grants, reason.trim())}
         >
           {busy ? 'Giving…' : 'Give allowance'}
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+function TrialDialog({
+  open,
+  name,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  name: string;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (days: number, reason: string) => void;
+}) {
+  const [days, setDays] = useState('7');
+  const [reason, setReason] = useState('');
+  const n = Number(days);
+  const valid = Number.isInteger(n) && n >= 1 && n <= 365 && reason.trim().length >= 3;
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={`Extend ${name}’s free trial`}
+      testId="admin-trial-dialog"
+    >
+      <p className="text-muted">
+        Counted from today, or from the current end if that is later. Their AI allowances come back
+        at once if the trial had ended.
+      </p>
+      <Label className="mt-4 block" htmlFor="trial-days">
+        Extra days
+      </Label>
+      <Input
+        id="trial-days"
+        type="number"
+        min={1}
+        max={365}
+        inputMode="numeric"
+        value={days}
+        onChange={(e) => setDays(e.target.value)}
+        data-testid="trial-days"
+      />
+      <Label className="mt-4 block" htmlFor="trial-reason">
+        Reason (kept in the log)
+      </Label>
+      <Textarea
+        id="trial-reason"
+        rows={2}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        data-testid="trial-reason"
+      />
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          disabled={!valid || busy}
+          data-testid="trial-submit"
+          onClick={() => onSubmit(n, reason.trim())}
+        >
+          {busy ? 'Extending…' : 'Extend trial'}
         </Button>
       </div>
     </Dialog>

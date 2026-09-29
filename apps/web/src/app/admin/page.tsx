@@ -13,7 +13,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ago, bytes, inr, whole } from '@/components/admin/kit';
+import { ago, bytes, inr, trialWords, whole } from '@/components/admin/kit';
 import { Card, PageHeader } from '@/components/ui/primitives';
 import { isSessionGone, signInUrlFor } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
@@ -29,6 +29,8 @@ type Overview = {
   monthlyRecurringInr: number;
   signupsPerDay: Array<{ day: string; signups: number; withThesis: number }>;
   newest: Array<{ id: string; email: string; createdAt: string; theses: number }>;
+  trialsEnding: Array<{ id: string; email: string; trialEndsAt: string }>;
+  trialsEnded: number;
   ai: {
     costInr: number;
     budgetInr: number | null;
@@ -200,7 +202,37 @@ export default function AdminOverviewPage() {
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
             <SignupChart days={data.signupsPerDay} />
             <Card className="p-4">
-              <p className="text-sm font-bold text-ink">Newest sign-ups</p>
+              <p className="text-sm font-bold text-ink">Trials ending in 3 days</p>
+              {data.trialsEnding.length === 0 ? (
+                <p className="mt-2 text-sm text-muted">None.</p>
+              ) : (
+                <ul className="mt-3 space-y-2 text-sm" data-testid="overview-trials-ending">
+                  {data.trialsEnding.map((u) => (
+                    <li key={u.id} className="flex items-baseline justify-between gap-3">
+                      <Link
+                        href={`/admin/users/${u.id}`}
+                        className="min-w-0 truncate font-medium hover:underline"
+                      >
+                        {u.email}
+                      </Link>
+                      <span className="shrink-0 text-xs text-muted">
+                        {trialWords(u.trialEndsAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-2 text-xs text-muted">
+                {whole(data.trialsEnded)} free trial{data.trialsEnded === 1 ? ' has' : 's have'}{' '}
+                ended without a plan.{' '}
+                <Link href="/admin/users?plan=FREE_TRIAL" className="underline">
+                  See them
+                </Link>
+              </p>
+
+              <p className="mt-5 border-t border-line pt-4 text-sm font-bold text-ink">
+                Newest sign-ups
+              </p>
               <ul className="mt-3 space-y-2 text-sm">
                 {data.newest.map((u) => (
                   <li key={u.id} className="flex items-baseline justify-between gap-3">
