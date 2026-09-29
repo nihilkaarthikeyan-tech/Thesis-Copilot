@@ -3897,3 +3897,44 @@ anything just after typing could lose a click the same way. The editor header no
 line from `lg` (the title truncates) and the status has a fixed width; its height is 45 px for
 every status text at 1024, 1280 and 1440. My first theory (a reload racing the click) was wrong,
 and the spec's new wait for the hint to disappear is what proved it.
+
+## Superadmin controls (2026-09-29, ADR-0035)
+
+The owner asked for overall control of the platform from the admin screens and approved a design
+PDF. Built: a sidebar layout (Overview, Users, Activity log, Background jobs, Feedback, Settings);
+the overview (students, 7-day active, paying, recurring revenue, sign-ups per day, AI cost against
+the site budget, failed jobs, unread feedback, what the site holds and the storage it uses); users
+searchable and filterable by plan, role and status; per user: sign out everywhere, extra allowance
+for this month, plan, role, suspend/unsuspend, start or cancel account deletion, the theses with
+words and chapters, open read-only, delete with a typed confirmation and a reason; an activity log
+in words; failed jobs with retry; a feedback inbox with read/answered state (`FeedbackState`). The
+old admin home became Settings, with a plans table added. A student can now delete one thesis from
+the list (the dialog offers an export first).
+
+Reading a thesis is open, not secret: logged every time, the student emailed (once per ten minutes
+per admin), the privacy page rewritten, and a one-off notice to existing students waiting for the
+owner's approval of its text (docs/PENDING.md).
+
+Migration 0023 adds `User.suspendedAt/suspendedReason`, `UsageLedger.bonus` and `FeedbackState`.
+The cap statement is still one atomic `INSERT … ON CONFLICT … WHERE count < cap + bonus`.
+
+Found on the way:
+- **Account erasure left files behind.** It removed seed papers, sources and exports but not
+  figures (`figures/<id>/`) or version snapshots — both outlived the account, which §12.2 forbids.
+  `DocumentEraser` now does the sweep for erasure, the student's delete and the admin's delete.
+- **The free trial never ends** (`effectivePlan` has no clock), while three pages promise 14 days.
+  Not changed; a decision for the owner, in docs/PENDING.md.
+- A native `<dialog>` sat in the top-left corner: Tailwind's reset removes the `margin: auto` the
+  browser centres it with. `m-auto` on the shared `Dialog`.
+- Phone width: an `sr-only` table heading inside a scrolling table wrapper is positioned against
+  the page, not the wrapper, and widened every admin page to 413–562 px. The wrappers are
+  `relative` now; every admin page measures 375 px at 375.
+- A controlled `<select>` snaps back to its old value until the reload, so reading `e.target.value`
+  after the request made the notice say "Role set to STUDENT" when it had been set to
+  INSTITUTION_ADMIN. Caught by `admin-role.spec.ts`; the value is read first now.
+
+Tests: `apps/api/test/admin-controls.spec.ts` (15, real Postgres/Redis/MinIO: the bonus in the
+atomic check, a zero-cap action opened by a grant, suspension refusing every route back in, the
+view mail once per visit, admin and student deletes leaving no file, filters, the log, feedback,
+overview, jobs) and `apps/web/e2e/admin-controls.spec.ts` (the admin flow in a browser, and the
+student's own delete); `admin-role.spec.ts` updated for the new home.

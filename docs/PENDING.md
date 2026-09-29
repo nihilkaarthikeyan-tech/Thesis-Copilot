@@ -584,6 +584,32 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
 ## Decisions and reviews
 
+- [ ] **The free trial never ends — decide what it is (found 2026-09-29).** The landing page,
+      sign-up and the terms say "14-day free trial", but nothing ends it: `effectivePlan`
+      (`packages/config/src/billing.ts`) returns `FREE_TRIAL` for as long as there is no
+      subscription, and `PRICING.FREE_TRIAL`'s "14 days" is text only. Two honest choices:
+      1. **Enforce 14 days** — after them the account keeps its theses but the AI allowances drop
+         to zero until the student subscribes (a small code change; the admin screen then gets an
+         "Extend free trial" button, which ADR-0035 left out because today it would do nothing).
+      2. **Call it a free plan** — change the words on the landing page, sign-up and terms to
+         "free plan, smaller monthly allowances, no time limit".
+      Tell the agent which.
+
+- [ ] **Send the privacy notice to existing students — only after you approve the text.**
+      ADR-0035: admins can now read a thesis (read-only, logged, the student emailed each time),
+      and the privacy page says so from v0.1.17. Existing students should be told once. The text
+      is in `privacyNoticeMail` (`apps/api/src/modules/admin/admin-mail.ts`):
+
+      > Subject: A change to how we handle your thesis
+      >
+      > We have updated our privacy notice. Administrators can now open a thesis to read it, only
+      > for support or to prevent misuse, never to change it. You will get an email every time this
+      > happens. Read the full notice at thesis.rademics.ai/privacy.
+
+      Once approved, on the VPS in the app directory: `docker compose -f docker-compose.prod.yml exec api node apps/api/dist/privacy-notice.js` prints
+      the text and how many accounts it would reach; add `--send` to send. Each send is logged, so
+      a second run only reaches whoever the first missed.
+
 - [ ] **A.4 refuses in the wrong words when the question is about the student's own draft.**
       A prompt change, so it needs the owner: PRD §0.3 rule 6 says prompts are content, and
       `packages/ai/prompts/chat.md` is a verbatim copy of Appendix A.4. The agent has not touched

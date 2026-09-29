@@ -152,6 +152,15 @@ written for its owner; v0.1.9 gates the admin screens (`apps/web/src/lib/admin-g
 signed-out visitor goes to sign-in and comes back, a student is told plainly.
 The agent releases only when asked.
 
+**The superadmin has real controls** (2026-09-29, ADR-0035): overview, users with filters,
+suspend (blocks every sign-in route), sign out everywhere, extra monthly allowance
+(`UsageLedger.bonus`, inside the atomic cap check), thesis delete, account deletion, an activity
+log, background jobs with retry and a feedback inbox. An admin may **read** a thesis, openly:
+logged every time, the student emailed, the privacy page says so. Never add a secret or writable
+way into a student's work. `DocumentEraser` is the one place a thesis is removed (student,
+admin, account erasure). Two owner decisions wait in `docs/PENDING.md`: what the never-ending
+free trial is, and sending the privacy notice.
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.
