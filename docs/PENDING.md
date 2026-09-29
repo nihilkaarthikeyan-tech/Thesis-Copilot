@@ -356,6 +356,13 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.17, 2026-09-29** (tag on `5c75683`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.17/`): the superadmin controls of ADR-0035 — overview, users with
+      filters, suspend, sign out everywhere, extra allowance, thesis delete (admin and student),
+      read-only thesis view that emails the student, activity log, jobs, feedback inbox,
+      Settings; the privacy page's new wording; migration 0023. Verified live: every container on
+      v0.1.17, migration 0023 applied, health 200, `/admin/badges` 401 signed out, the privacy
+      page carries the new sentence, `/admin/jobs` served.
 - [x] **Released v0.1.16, 2026-09-29** (tag on `b74c9d7`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.16/`): a superadmin's sign-in lands on `/admin`, not a thesis list;
       the admin header links Account instead of "Your theses". The first deploy attempt failed on
