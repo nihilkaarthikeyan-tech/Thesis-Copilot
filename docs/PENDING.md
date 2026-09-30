@@ -617,8 +617,8 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
 ## Decisions and reviews
 
-- [x] **Step 2 approved and built (2026-09-30).** Still to approve: the step 4 wording below.
-- [ ] **Approve the writing-quality prompt changes** (2026-09-30):
+- [x] **Steps 2 and 4 approved and built (2026-09-30).**
+- [x] **Approve the writing-quality prompt changes** (2026-09-30):
       `docs/proposals/2026-09-30-writing-prompts.md` has the exact before-and-after wording. Step 2:
       autocomplete writes nothing (and says what source is missing) instead of filler, no
       "this section will…" sentences, finished-thesis tense, and a review draft must cite every

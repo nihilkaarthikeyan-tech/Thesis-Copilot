@@ -4041,3 +4041,13 @@ indexes) on a fresh "EDM of Hastelloy" thesis, and it found two faults no test h
    cosine ≥ 0.6 (`AUTO_SOURCES.addCosine`), where on-topic papers for two theses scored 0.67–0.80.
    Rerun: 39 candidates, five EDM papers added (best 0.786, "EDM of Hastelloy C-22 with Different
    Graphite Electrodes"), and the next suggestion cited one of them for a claim it supports.
+
+## Writing quality, step 4: the different-material warning (2026-09-30)
+
+Approved by the owner. The citation-support check has a `DIFFERENT_SUBJECT` verdict for a finding
+about another material or setting cited as if it held for the thesis's own (the reviewer's
+stainless-vs-maraging example), with its own wording and its own heading in the citation report.
+A real-model probe showed gpt-5-nano noticing the difference but labelling it NOT_IN_PASSAGE;
+gpt-5-mini labelled it DIFFERENT_SUBJECT and passed the control sentence. The check moved to the
+strong tier (ADR-0023 addendum): about ₹1.2 a month more for a fully active student.
+`pnpm ai:shakedown`: 23/23 after the schema change.

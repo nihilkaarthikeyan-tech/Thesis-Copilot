@@ -21,7 +21,12 @@
 import type { LlmProvider, LlmRequest } from '@tc/ai';
 import { EMBEDDING_DIMENSIONS } from '@tc/retrieval';
 import { describe, expect, it, vi } from 'vitest';
-import { type CoherenceRunDeps, estimateRun, runCoherence } from '../src/jobs/coherence-run.js';
+import {
+  type CoherenceRunDeps,
+  estimateRun,
+  runCoherence,
+  supportFlagText,
+} from '../src/jobs/coherence-run.js';
 
 const CHAPTER_TEXT = [
   'Solar drying is the practice of removing moisture using solar heat.',
@@ -573,7 +578,7 @@ describe('the citation-support check (ADR-0023)', () => {
     await runCoherence(JOB, f.deps);
 
     const [call] = supportCalls(f);
-    expect(call?.tier).toBe('fast');
+    expect(call?.tier).toBe('strong'); // ADR-0023 addendum, 2026-09-30
     expect(call?.messages.at(-1)?.content).toContain(PASSAGE);
     expect(call?.messages.at(-1)?.content).toContain('source="Kumar 2021" page="4"');
     const [flag] = supportFlags(f);
@@ -663,5 +668,23 @@ describe('the chapter re-embedding is logged as spend (2026-09-25)', () => {
     expect(call.userId).toBe(JOB.userId);
     expect(call.ok).toBe(true);
     expect(call.tokens).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * 2026-09-30, approved by the owner: a reviewer caught Jenni citing a stainless-steel finding in
+ * a maraging-steel review. The support check now has a verdict for it.
+ */
+describe('the different-material warning', () => {
+  it('reads as a warning about the subject, with the passage’s own words when there are some', () => {
+    const flag = supportFlagText(
+      'DIFFERENT_SUBJECT',
+      'The passage studies 316L stainless steel, not maraging steel',
+      'MnS inclusions in 316L act as pitting initiation sites',
+    );
+    expect(flag.severity).toBe('WARN');
+    expect(flag.description).toMatch(/^This source studies a different material or setting/);
+    expect(flag.description).toContain('316L stainless steel');
+    expect(flag.description).toContain('“MnS inclusions in 316L act as pitting initiation sites”');
   });
 });

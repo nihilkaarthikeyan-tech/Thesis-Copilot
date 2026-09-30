@@ -196,3 +196,22 @@ describe('citation density in a review chapter', () => {
     expect(isReviewChapter('Results and discussion')).toBe(false);
   });
 });
+
+describe('the different-material warning in the report', () => {
+  it('has its own heading, not "claims more than the source"', () => {
+    const report = buildCitationReport({
+      ...empty,
+      flags: {
+        flags: [
+          flag({
+            severity: 'WARN',
+            description:
+              'This source studies a different material or setting: the finding may not carry over to your subject.',
+          }),
+        ],
+        lastRunAt: '2026-09-30T00:00:00.000Z',
+      },
+    });
+    expect(report.items[0]?.title).toBe('Different material or setting');
+  });
+});

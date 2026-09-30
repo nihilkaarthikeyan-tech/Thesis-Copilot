@@ -1036,6 +1036,11 @@ export function supportFlagText(
         severity: quote ? 'ERROR' : 'WARN',
         description: `The cited passage says something different.${because}${says}`,
       };
+    case 'DIFFERENT_SUBJECT':
+      return {
+        severity: 'WARN',
+        description: `This source studies a different material or setting: the finding may not carry over to your subject.${because}${says}`,
+      };
     case 'OVERSTATED':
       return {
         severity: 'WARN',
@@ -1062,9 +1067,11 @@ function chunksOf<T>(items: readonly T[], size: number): T[][] {
 
 /** D.1.1 step 4's estimate, from §11.2's unit costs. */
 export function estimateRun(changedChapters: number, terms: number, citedSentences = 0): number {
-  const strong = terms + changedChapters * 3; // term drift, two claim steps, outline drift
-  // Two unsupported batches and the summary per chapter, and the support checks (ADR-0023).
-  const fast = changedChapters * 3 + Math.ceil(citedSentences / COHERENCE.supportBatch);
+  // Term drift, two claim steps, outline drift, and the support checks (ADR-0023; strong since
+  // 2026-09-30).
+  const strong = terms + changedChapters * 3 + Math.ceil(citedSentences / COHERENCE.supportBatch);
+  // Two unsupported batches and the summary per chapter.
+  const fast = changedChapters * 3;
   return Number((strong * ESTIMATE_INR.strong + fast * ESTIMATE_INR.fast).toFixed(2));
 }
 

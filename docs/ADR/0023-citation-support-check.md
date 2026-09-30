@@ -65,3 +65,25 @@ owner rather than repricing the unit here.
   paper was passed.
 - **For the owner:** review `packages/ai/prompts/coh_support.md`. The honest end state is a PRD
   section for it (an A.12.5), at which point the file becomes a verbatim copy like the others.
+
+## Addendum, 2026-09-30: a sixth verdict, and the strong tier
+
+The owner approved `DIFFERENT_SUBJECT` (docs/proposals/2026-09-30-writing-prompts.md): a passage
+whose finding is about another material, organism, population, country or setting, cited as if it
+held for the thesis's own. A reviewer had found Jenni citing a stainless-steel finding in a
+maraging-steel review. The student sees "This source studies a different material or setting:
+the finding may not carry over to your subject", under its own heading in the citation report.
+
+Tested on the real models with that exact case and a control sentence that states openly the
+finding is from stainless steel (`packages/ai/scripts/probe-different-subject.ts`):
+
+| Model | Maraging sentence | Control sentence |
+|---|---|---|
+| gpt-5-nano (fast) | NOT_IN_PASSAGE ("discusses 316L stainless steel, not maraging steel") | NOT_IN_PASSAGE |
+| gpt-5-mini (strong) | **DIFFERENT_SUBJECT** | **SUPPORTED** |
+
+The fast model saw the difference and gave it the wrong label, which would have shown the student
+a vague note instead of the warning. So the support check moved to the strong tier. It runs only
+inside a coherence run (one a month on a paid plan, none on the trial), about ₹1.5 a run instead of
+₹0.3: roughly ₹1.2 a month more for a fully active student. `pnpm ai:shakedown` passed 23/23 after
+the schema change (₹2.90).

@@ -33,8 +33,9 @@ describe('the request', () => {
     documentId: 'd',
   });
 
-  it('is a Fast-tier coherence call on the support prompt', () => {
-    expect(request.tier).toBe('fast');
+  // Strong since 2026-09-30 (ADR-0023 addendum): only gpt-5-mini used DIFFERENT_SUBJECT correctly.
+  it('is a Strong-tier coherence call on the support prompt', () => {
+    expect(request.tier).toBe('strong');
     expect(request.action).toBe('COHERENCE');
     expect(request.system.cached).toContain(loadPrompt('coh_support').system);
   });

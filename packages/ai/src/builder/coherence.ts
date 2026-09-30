@@ -266,6 +266,9 @@ export const SUPPORT_VERDICTS = [
   'WEAKLY_SUPPORTED',
   'OVERSTATED',
   'MISREPRESENTED',
+  // 2026-09-30, approved by the owner: a finding about another material or setting applied to
+  // the thesis's own (a reviewer caught Jenni citing stainless steel for maraging steel).
+  'DIFFERENT_SUBJECT',
   'NOT_IN_PASSAGE',
 ] as const;
 export type SupportVerdict = (typeof SUPPORT_VERDICTS)[number];
@@ -313,8 +316,12 @@ export function buildSupportRequest(input: {
         ),
       ].join('\n'),
     );
+  // Strong since 2026-09-30 (ADR-0023 addendum). On the real models, only gpt-5-mini used the
+  // DIFFERENT_SUBJECT verdict for a stainless-steel finding cited for maraging steel, and passed
+  // the control sentence that said so openly; gpt-5-nano saw the difference and labelled both
+  // NOT_IN_PASSAGE. About ₹1.2 more a month for a student on one coherence run.
   return request('coh_support', `<support_check>\n${blocks.join('\n\n')}\n</support_check>`, {
-    tier: 'fast',
+    tier: 'strong',
     maxTokens: 1_500,
     ...input,
   });

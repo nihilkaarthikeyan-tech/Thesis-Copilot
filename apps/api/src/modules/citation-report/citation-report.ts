@@ -164,6 +164,12 @@ const FLAG_SEVERITY: Record<string, ReportSeverity> = {
 };
 
 /** ADR-0023's verdicts arrive as severities: ERROR misrepresents, WARN overstates. */
+/**
+ * How the support check's DIFFERENT_SUBJECT flag begins (coherence-run.ts `supportFlagText`). The
+ * flag keeps no verdict of its own, so its wording is how the report tells it apart.
+ */
+export const DIFFERENT_SUBJECT_TEXT = 'This source studies a different material or setting';
+
 const SUPPORT_TITLE: Record<ReportSeverity, string> = {
   high: 'The source says something else',
   medium: 'Claims more than the source',
@@ -255,7 +261,11 @@ export function buildCitationReport(input: ReportInput): CitationReport {
       check: 'support',
       kind: flag.type,
       title:
-        flag.type === 'CITATION_SUPPORT' ? SUPPORT_TITLE[severity] : 'A claim with no citation',
+        flag.type !== 'CITATION_SUPPORT'
+          ? 'A claim with no citation'
+          : flag.description.startsWith(DIFFERENT_SUBJECT_TEXT)
+            ? 'Different material or setting'
+            : SUPPORT_TITLE[severity],
       message: flag.description,
       chapterId: flag.chapterId,
       chapterTitle: flag.chapterTitle,

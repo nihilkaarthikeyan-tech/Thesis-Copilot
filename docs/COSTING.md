@@ -101,7 +101,9 @@ Proofreading (ADR-0026) is charged as one AI edit per run of up to 2,000 words: 
 ₹0.25 for 5,004 words on `gpt-5-nano`, so about ₹0.10 a run, which is less than the AI-edit
 unit at the prices the budget actually uses — and at the E.2 reference prices, 2,000 words is
 sized to cost no more than the unit (a test holds it there). The citation-support check
-(ADR-0023) runs inside a coherence check, at about ₹0.3 more per run.
+(ADR-0023) runs inside a coherence check: about ₹0.3 more per run on the fast tier, and about
+₹1.5 since it moved to the strong tier on 2026-09-30 (it alone can tell a finding about another
+material from one about the thesis's). One run a month on a paid plan: about ₹1.2 a month more.
 
 ### Step 3 — multiply by the caps, then add the fixed costs
 
