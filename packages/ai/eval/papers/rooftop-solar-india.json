@@ -1,0 +1,85 @@
+[
+  {
+    "openalexId": "https://openalex.org/W2508321430",
+    "doi": "10.1016/j.gee.2016.08.003",
+    "title": "Solar rooftop in India: Policies, challenges and outlook",
+    "year": 2016,
+    "authors": ["Malti Goel"],
+    "venue": "Green Energy & Environment",
+    "abstract": "Solar photovoltaic rooftop has emerged as a potential green technology to address climate change issues by reducing reliance on conventional fossil fuel based energy. With a strong commitment to increase the renewable sources based energy capacity to 175 GW by 2022, India has a target to install 100 GW of solar energy capacity. Of this 40 GW would be the share of grid connected solar PV rooftop. This paper examines global growth in solar energy, world's major rooftop installed capacity countries' policies and solar rooftop policy instruments in India. The current Indian goals, issues & challenges in achieving them and trends in further development are discussed."
+  },
+  {
+    "openalexId": "https://openalex.org/W2014301549",
+    "doi": "10.1016/j.rser.2013.06.018",
+    "title": "Status of solar wind renewable energy in India",
+    "year": 2013,
+    "authors": ["Vikas Khare", "Savita Nema", "Prashant Baredar"],
+    "venue": "Renewable and Sustainable Energy Reviews",
+    "abstract": "There are some specific constraints that hinder the development of solar and wind energy system in India. However, India has adequate sunshine and balanced wind speed. Hence there is greater opportunity for extension of solar and wind energy system in the Indian scenario along with enough future scope for these renewable sources through “Grid Parity”. The aim of this paper is to present in a coherent and integrated way the major constraints hampering the development of renewable energy in India."
+  },
+  {
+    "openalexId": "https://openalex.org/W3041118016",
+    "doi": "10.1108/ijppm-11-2019-0544",
+    "title": "A study on the factors affecting household solar adoption in Kerala, India",
+    "year": 2020,
+    "authors": ["Chandan Parsad", "Shashank Mittal", "Raveesh Krishnankutty"],
+    "venue": "International Journal of Productivity and Performance Management",
+    "abstract": "Purpose Recent research on the energy system highlights the need for understanding the bandwidth of drivers and inhibitors of household investor's behaviour in rooftop PV (or photovoltaic power system) and to fit the broader socio-economic context in which they are deployed. However, apart from few exceptions, these newer perspectives have not been duly applied in the research on rooftop PV. This paper aims to fill this gap and to shed new light on rooftop PV investment decisions. Design/methodology/approach This study has been conducted with the primary data collected using two data sets of 237 households and 387 households of Indian southern state Kerala using survey-based questionnaire. The findings from first data set revealed that households considering the adoption of PV were likely influenced by six distinct factors, three motivators and three inhibitors. Second data set for multi-state analytic approach was proposed whereby the research model was tested using structural equation modelling (SEM). The outcomes of SEM were used as inputs for an artificial neural network (ANN) model for forecasting investor investment decision in in renewables. The ANN model was also used to rank the relative influence of significant predictors obtained from SEM. Findings In line with the risk–return framework, government subsidies act as primary motivator which helps in overcoming the initial risk of investment in the new technology. Further, low prices and low cost of maintenance are some of the financial motivators which may likely mitigate the long-term apprehension of returns and maintenance cost. Lastly, the strongest motivators of PV investment come from the environmental and financial motivator in the form of PV subsidies, which further solidifies the role of policy interventions in investment decision. The ANN model identified the technical barrier and knowledge and awareness factors play a significant role in forcasting the investor investing decision. Practical implications The study results will be useful for policymakers for framing strategies to attract and influence their investment in renewable energy. Originality/value Building upon behavioural finance and institutional theory, this paper posits that, in addition to a rational evaluation of the economics of the investment opportunities, various non-financial factors affect the household's decision to invest in renewables."
+  },
+  {
+    "openalexId": "https://openalex.org/W4229333193",
+    "doi": "10.1016/j.enpol.2022.112868",
+    "title": "Towards improved solar energy justice: Exploring the complex inequities of household adoption of photovoltaic panels",
+    "year": 2022,
+    "authors": [
+      "Benjamin Kenneth Sovacool",
+      "Max Lacey‐Barnacle",
+      "Adrian Smith",
+      "Marie Claire Brisbois"
+    ],
+    "venue": "Energy Policy",
+    "abstract": "Solar energy, including household and community based solar photovoltaic panels, is the fastest growing source of low-carbon electricity worldwide, and it could become the single largest source of renewable energy by mid-century. But what negative equity and justice issues may be associated with its adoption? What risks are being accelerated as solar energy grows exponentially in its deployment? In this study, we rely on a mixed methods research design involving household solar interviews (N = 24), site visits (N = 4 solar neighbourhoods), and a literature review to investigate four types of inequities associated with household solar adoption. We utilize a novel framework looking at demographic inequities (between groups), spatial inequities (across geographic scales), interspecies inequities (between humans and non-humans), and temporal inequities (across present and future generations). This framework enables not only the identification of multiple and often interlinked inequities; it also points the way towards how to make solar energy adoption more sustainable and just, with direct implications for solar business practices (and supply chains) as well as energy and climate policy."
+  },
+  {
+    "openalexId": "https://openalex.org/W3031747086",
+    "doi": "10.1186/s13705-019-0232-1",
+    "title": "Renewable energy for sustainable development in India: current status, future prospects, challenges, employment, and investment opportunities",
+    "year": 2020,
+    "authors": ["Charles Rajesh Kumar. J", "M. A. Majid"],
+    "venue": "Energy Sustainability and Society",
+    "abstract": "Abstract The primary objective for deploying renewable energy in India is to advance economic development, improve energy security, improve access to energy, and mitigate climate change. Sustainable development is possible by use of sustainable energy and by ensuring access to affordable, reliable, sustainable, and modern energy for citizens. Strong government support and the increasingly opportune economic situation have pushed India to be one of the top leaders in the world’s most attractive renewable energy markets. The government has designed policies, programs, and a liberal environment to attract foreign investments to ramp up the country in the renewable energy market at a rapid rate. It is anticipated that the renewable energy sector can create a large number of domestic jobs over the following years. This paper aims to present significant achievements, prospects, projections, generation of electricity, as well as challenges and investment and employment opportunities due to the development of renewable energy in India. In this review, we have identified the various obstacles faced by the renewable sector. The recommendations based on the review outcomes will provide useful information for policymakers, innovators, project developers, investors, industries, associated stakeholders and departments, researchers, and scientists."
+  },
+  {
+    "openalexId": "https://openalex.org/W3194155044",
+    "doi": "10.3390/en14165008",
+    "title": "Do Perceived Risk, Perception of Self-Efficacy, and Openness to Technology Matter for Solar PV Adoption? An Application of the Extended Theory of Planned Behavior",
+    "year": 2021,
+    "authors": ["Arifa Tanveer", "Shihong Zeng", "Muhammad Faisal Irfan", "Rui Peng"],
+    "venue": "Energies",
+    "abstract": "Solar PV (photovoltaic) technology has gained considerable attention worldwide, as it can help reduce the adverse effects of CO2 emissions. Though the government of Pakistan is adopting solar PV technology due to its environmental friendliness nature, studies focusing on consumer’s acceptance of solar PV are limited in the country. This research aims to close this knowledge gap by looking into the various considerations that may influence consumers’ willingness to adopt (WTA) solar PV for household purposes. The study further contributes by expanding the conceptual framework of the theory of planned behavior by including three novel factors (perceived risk, perception of self-efficacy, and openness to technology). The analysis is based on questionnaire data collected from 683 households in Pakistan’s provincial capitals, including Lahore, Peshawar, Quetta, Gilgit, and Karachi. The proposed hypotheses are investigated using the state-of-the-art structural equation modeling approach. The empirical results reveal that social norms, perception of self-efficacy, and belief about solar PV benefits positively influence consumers’ WTA solar PV. On the contrary, the perceived risk and solar PV cost have negative effects. Notably, the openness to technology has an insignificant effect. This study can help government officials and policymakers explore cost-effective, risk-free technologies to lessen the environmental burden and make the country more sustainable. Based on research results, study limitations, as well as prospective research directions, are also addressed."
+  },
+  {
+    "openalexId": "https://openalex.org/W3214010150",
+    "doi": "10.1016/j.jclepro.2021.129619",
+    "title": "Adoption of solar photovoltaic systems in households: Evidence from Uganda",
+    "year": 2021,
+    "authors": [
+      "Sylvia Manjeri Aarakit",
+      "Joseph Mpeera Ntayi",
+      "Francis Wasswa",
+      "Muyiwa  Samuel Adaramola",
+      "Vincent Fred Ssennono"
+    ],
+    "venue": "Journal of Cleaner Production",
+    "abstract": "With over 70% of households without access to clean energy, Uganda presents a huge potential for increased adoption of solar photovoltaic (PV) technologies. However, their uptake is relatively low. This study employs a nationally representative data set from Uganda's National Electrification Survey of 2018 to analyze factors influencing households' choice of solar PV system. Conditional mixed process model was estimated for quantification of associations between flexible payment mechanism, influential persons, access to grid electricity and solar PV adoption in the first stage, then type of solar PV adopted in the second stage. We find that, the determinants of adoption as well as type of solar PV adopted are heterogeneous. Specifically, flexible payment mechanism is positive for uptake of solar home systems and solar kit; Influential people were insignificant in all cases, while grid access was negatively associated with uptake of both solar kits and solar home systems. We further find that, rural residence, income, type of house are significant drivers of solar PV type adopted. Conversely, education attainment was positive and significantly associated with adoption but insignificant for type of solar PV adopted. Sex of household head was significant for uptake of solar kit. Our findings suggest that, solar PV uptake is a rural phenomenon and affordability is the main driver of solar PV type adopted. Flexible payment mechanism enhances the ability of income constrained households to afford relatively expensive solar PV systems. Hence, any policy interventions geared at scaling uptake of solar home systems should address affordability. Solar companies should continue to offer flexible payment modalities and target rural household."
+  },
+  {
+    "openalexId": "https://openalex.org/W2175430741",
+    "doi": "10.1016/j.protcy.2015.10.033",
+    "title": "Analysis of Rooftop Solar PV System Implementation Barrier in Puducherry Smart Grid Pilot Project",
+    "year": 2015,
+    "authors": ["Ramakrishna Kappagantu", "S. Arul Daniel", "Murali Venkatesh"],
+    "venue": "Procedia Technology",
+    "abstract": "India is on a growth trajectory in terms of population as well as development. To maintain the pace of development along with environmental and fuel consideration, the country is desperate to explore and implement various emerging features like smart grids,renewable technologies,etc, with the policy of “go green”, several initiatives are being taken by GoI and echoed by respective authorities. The smart grid project in Puducherry is one of such initial pilot project in India. Rooftop solar PV system has been used as renewable sources in this Smart Grid. This paper presents an analysis of rooftop solar PV system implementation barrier in Puducherry smart grid pilot project. A survey has been performed with electricity consumers, considering questions regarding consumption over different period, space availability for roof top PV system and users experience with this technology. Result of the survey and impact of government initiatives are also discussed in detail."
+  }
+]

@@ -1,13 +1,9 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.1 Assist — `assist.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-09-30: system block replaced by the evaluated winner (docs/BUILD_LOG.md).
+  CANDIDATE for assist.md (ADR-0038). Tested against the prompt on disk by eval/run.ts; it replaces
+  it only if it wins.
 -->
 
-### A.1 Assist — `assist.md`
-
-**Tier:** Fast. **Max output:** 120 tokens. **Temperature:** 0.4. **Cached:** A.0 + A.0.1. **Volatile:** the user message below.
+### Assist — `assist.md`
 
 System block (after preamble and memory):
 
@@ -49,10 +45,3 @@ User message:
 <instruction>{{instruction_or_none}}</instruction>
 </chapter>
 ```
-
-Post-processing (in code, in this order): (1) strip any `{{cite:ID}}` whose ID is not in `passages` and count it as `HALLUCINATED_CITE`; (2) if the output starts with the last 6+ words of `before`, remove that overlap; (3) cut after the second sentence terminator (`.`, `?`, `!` followed by space/end) — never mid-citation; (4) if the output is only whitespace, return empty and do not count against the cap (log as `EMPTY_SUGGESTION`).
-
-Good output (given a passage S4#c2 about a 2021 survey of 312 rural households):
-`Evidence from rural Karnataka shows that upfront cost, not awareness, was the main barrier reported by households {{cite:S4#c2}}. This section therefore examines cost-related barriers before turning to policy responses.`
-
-Bad output (must never appear): `According to Sharma et al. (2019), 78% of villages...` — a named author and figure with no passage id.

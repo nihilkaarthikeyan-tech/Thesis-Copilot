@@ -1,0 +1,100 @@
+[
+  {
+    "openalexId": "https://openalex.org/W2192772080",
+    "doi": "10.1063/1.4935926",
+    "title": "Review of selective laser melting: Materials and applications",
+    "year": 2015,
+    "authors": [
+      "Chor Yen Yap",
+      "Chee Kai Chua",
+      "Zhili Dong",
+      "Z. H. Liu",
+      "D. Q. Zhang",
+      "L. E. Loh"
+    ],
+    "venue": "Applied Physics Reviews",
+    "abstract": "Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive Manufacturing (AM) technique designed to use high power-density laser to melt and fuse metallic powders. A component is built by selectively melting and fusing powders within and between layers. The SLM technique is also commonly known as direct selective laser sintering, LaserCusing, and direct metal laser sintering, and this technique has been proven to produce near net-shape parts up to 99.9% relative density. This enables the process to build near full density functional parts and has viable economic benefits. Recent developments of fibre optics and high-power laser have also enabled SLM to process different metallic materials, such as copper, aluminium, and tungsten. Similarly, this has also opened up research opportunities in SLM of ceramic and composite materials. The review presents the SLM process and some of the common physical phenomena associated with this AM technology. It then focuses on the following areas: (a) applications of SLM materials and (b) mechanical properties of SLM parts achieved in research publications. The review is not meant to put a ceiling on the capabilities of the SLM process but to enable readers to have an overview on the material properties achieved by the SLM process so far. Trends in research of SLM are also elaborated in the last section."
+  },
+  {
+    "openalexId": "https://openalex.org/W3113246435",
+    "doi": "10.1038/s41598-021-82572-y",
+    "title": "Use of plasma nitriding to improve the wear and corrosion resistance of 18Ni-300 maraging steel manufactured by selective laser melting",
+    "year": 2021,
+    "authors": [
+      "Matjaž Godec",
+      "Bojan Podgornik",
+      "Aleksandra Kocijan",
+      "Črtomir Donik",
+      "Danijela A. Skobir Balantič"
+    ],
+    "venue": "Scientific Reports",
+    "abstract": "18Ni-300 maraging steel manufactured by selective laser melting was plasma nitrided to improve its wear and corrosion resistance. The effects of a prior solution treatment, aging and the combination of both on the microstructure and the properties after nitriding were investigated. The results were compared with conventionally produced 18Ni-300 counterparts subjected to the same heat- and thermo-chemical treatments. The plasma nitriding was performed under the same conditions (temperature of 520 °C and time of 6 h) as the aging in order to investigate whether the nitriding and the aging could be carried out simultaneously in a single step. The aim of this work was to provide a better understanding of the morphology and chemical composition of the nitrided layer in the additive-manufactured maraging steel as a function of the prior heat treatments and to compare the wear and corrosion resistance with those of conventional maraging steel. The results show that nitriding without any prior aging leads to cracks in the compound layer, while nitriding of the prior-heat-treated additive-manufactured maraging steel leads to benefits from the thermochemical treatment in terms of wear and corrosion resistance. Some explanations for the origins of the cracks and pores in the nitride layers are provided."
+  },
+  {
+    "openalexId": "https://openalex.org/W2898289031",
+    "doi": "10.1080/14686996.2018.1527645",
+    "title": "Microstructural characterization and properties of selective laser melted maraging steel with different build directions",
+    "year": 2018,
+    "authors": ["Chaolin Tan", "Kesong Zhou", "Min Kuang", "Wenyou Ma", "Tongchun Kuang"],
+    "venue": "Science and Technology of Advanced Materials",
+    "abstract": "A nearly fully dense grade 300 maraging steel was fabricated by selective laser melting (SLM) additive manufacturing with optimum laser parameters. Different heat treatments were elaborately applied based on the detected phase transformation temperatures. Microstructures, precipitation characteristics, residual stress and properties of the as-fabricated and heat-treated SLM parts were systematically characterized and analyzed. The observed submicron grain size (0.31 μm on average) suggests an extremely high cooling rate up to 107 K/s. Massive needle-shaped nanoprecipitates Ni3X (X = Ti, Al, Mo) are clearly present in the martensitic matrix, which accounts for the age hardening. The interfacial relations between the precipitate and matrix are revealed by electron microscopy and illustrated in detail. Strengthening mechanism is explained by Orowan bowing mechanism and coherency strain hardening. Building orientation-based mechanical anisotropy, caused by ‘layer-wise effect’, is also investigated in as-fabricated and heat-treated specimens. The findings reveal that heat treatments not only induce strengthening, but also significantly relieve the residual stress and slightly eliminate the mechanical anisotropy. In addition, comprehensive performance in terms of Charpy impact test, tribological performance, as well as corrosion resistance of the as-fabricated and heat-treated parts are characterized and systematically investigated in comparison with traditionally produced maraging steels as guidance for industry applications."
+  },
+  {
+    "openalexId": "https://openalex.org/W4206346931",
+    "doi": "10.5006/3972",
+    "title": "Improvement of Corrosion Resistance of Maraging Steel Manufactured by Selective Laser Melting Through Intercritical Heat Treatment",
+    "year": 2022,
+    "authors": ["Hamaid Mahmood Khan", "Gökhan Özer", "Mustafa Safa Yılmaz", "Gürkan Tarakçı"],
+    "venue": "CORROSION",
+    "abstract": "Selective laser melting allows the layerwise fabrication of bespoke designs, creating new prospects in applications and properties compared to conventional methods. Like other ultra-high-strength steels, maraging steels offer a high toughness/strength ratio. However, additively prepared maraging steels’ lower ductility and strain-hardening limit their commercial adaptability. Studies exist that show superior mechanical performance is attainable through martensite-to-austenite reversion. However, their impact on corrosion properties is not well understood. In the present study, maraging steel specimens were tempered close to austenite forming temperatures to investigate the reversed austenite effect on maraging steels’ pitting behavior. X-ray diffraction, scanning electron microscopy, and energy-dispersive x-ray spectroscopy were used to characterize selective laser melting samples’ microstructure. To characterize and analyze the pitting performance, potentiodynamic polarization and open-circuit potential were performed in a 3.5 wt% NaCl solution. The intercritical heat-treatment within α’ + γ range of 720°C shows that reversed austenite precipitated mainly along the martensite laths boundaries. The local Ni enrichment as a result of intermetallic particles’ dissolution enables the nucleation of reversed austenite. As a result, the 720°C-tempered specimen exhibits a higher pitting potential, lower corrosion current density, and lower corrosion rate than the as-printed, aged, and homogenized (without reversed austenite) specimens. This study shows that the reversed austenite enhances the pitting resistance of maraging steels."
+  },
+  {
+    "openalexId": "https://openalex.org/W2909667680",
+    "doi": "10.1016/j.ijfatigue.2018.12.029",
+    "title": "Fatigue characteristics of steels manufactured by selective laser melting",
+    "year": 2019,
+    "authors": [
+      "Shahriar Afkhami",
+      "Mohammad Dabiri",
+      "S. Habib Alavi",
+      "Timo Björk",
+      "Antti Salminen"
+    ],
+    "venue": "International Journal of Fatigue",
+    "abstract": "Additive manufacturing is extending its influence on various modern industries, including automobile, aerospace, aviation, and maritime. This is specifically true for selective laser melting since it is capable of manufacturing dense parts from metal and alloy powders. Thus, the performance of materials processed by selective laser melting has become the focus of many studies recently. However, their fatigue endurance is yet to be understood comprehensively, and few studies have been carried out on this topic thus far. The lack of understanding is often attributed to the considerable number of manufacturing parameters, which also hinders employing selective laser melting for typical industrial applications. Among the various materials processed by selective laser melting, steel is one of the most attractive ones to manufacturers due to its broad range of properties and applications. This paper aims to describe the studies carried out on the fatigue properties of diverse types of steel manufactured by selective laser melting. It also reviews the parameters which are recognized to be effective on the fatigue behaviour of these steels. These parameters include building orientation, heat treatment, surface quality, energy density, and service condition of the final product. Recent studies on selective laser melting along with the variety of its influential parameters on the fatigue strength highlight a knowledge gap towards reaching a comprehensive understanding of the fatigue behaviour of steels manufactured by this process. Based on this fact, some of these gaps are discussed as the potential topics for the future studies in the field of additive manufacturing at the end of this review."
+  },
+  {
+    "openalexId": "https://openalex.org/W3080496249",
+    "doi": "10.1007/s10853-020-05109-0",
+    "title": "Additive manufacturing of steels: a review of achievements and challenges",
+    "year": 2020,
+    "authors": ["N. Haghdadi", "Majid Laleh", "M.S. Moyle", "Sophie Primig"],
+    "venue": "Journal of Materials Science",
+    "abstract": "Abstract Metal additive manufacturing (AM), also known as 3D printing, is a disruptive manufacturing technology in which complex engineering parts are produced in a layer-by-layer manner, using a high-energy heating source and powder, wire or sheet as feeding material. The current paper aims to review the achievements in AM of steels in its ability to obtain superior properties that cannot be achieved through conventional manufacturing routes, thanks to the unique microstructural evolution in AM. The challenges that AM encounters are also reviewed, and suggestions for overcoming these challenges are provided if applicable. We focus on laser powder bed fusion and directed energy deposition as these two methods are currently the most common AM methods to process steels. The main foci are on austenitic stainless steels and maraging/precipitation-hardened (PH) steels, the two so far most widely used classes of steels in AM, before summarising the state-of-the-art of AM of other classes of steels. Our comprehensive review highlights that a wide range of steels can be processed by AM. The unique microstructural features including hierarchical (sub)grains and fine precipitates induced by AM result in enhancements of strength, wear resistance and corrosion resistance of AM steels when compared to their conventional counterparts. Achieving an acceptable ductility and fatigue performance remains a challenge in AM steels. AM also acts as an intrinsic heat treatment, triggering ‘in situ’ phase transformations including tempering and other precipitation phenomena in different grades of steels such as PH steels and tool steels. A thorough discussion of the performance of AM steels as a function of these unique microstructural features is presented in this review."
+  },
+  {
+    "openalexId": "https://openalex.org/W2796403392",
+    "doi": "10.1016/j.surfcoat.2018.03.072",
+    "title": "Additive manufacturing of WC reinforced maraging steel 300 composites by cold spraying and selective laser melting",
+    "year": 2018,
+    "authors": [
+      "Xingchen Yan",
+      "Chunjie Huang",
+      "Chaoyue Chen",
+      "Rodolphe Bolot",
+      "Lucas Dembinski",
+      "Renzhong Huang"
+    ],
+    "venue": "Surface and Coatings Technology",
+    "abstract": "Till now, additive manufacturing (AM) technologies based on different principles have been widely applied to produce metal matrix composites (MMCs). In this study, AM technologies of cold spraying additive manufacturing (CSAM) and selective laser melting (SLM) were used to manufacture maraging steel 300 (MS300) composite reinforced by WC particles. The results show that the SLM composite possesses a relatively higher densification rate and a lower porosity than that of the CSAM composite. Dry sliding wear test and microhardness measurements were performed to characterize the mechanical properties. The CSAM composite possesses a slightly higher microhardness value than that of the SLM composite. However, the SLM composite shows a significantly lower wear rate than that of the CSAM composite, presenting a stable evolution of the friction coefficient and a worn morphology without obvious scratches. However, these differences in the mechanical properties can be contributed to the distinct evolution features of the WC reinforcement particle during these two AM processes . Through understanding the composite formation mechanisms and the WC evolution, it is possible to provide a guidance for application of the different AM technologies for preparation of MMCs."
+  },
+  {
+    "openalexId": "https://openalex.org/W3166118302",
+    "doi": "10.1007/s11665-021-05927-6",
+    "title": "Studying the Microstructural Effect of Selective Laser Melting and Electropolishing on the Performance of Maraging Steel",
+    "year": 2021,
+    "authors": ["Donya Ahmadkhaniha", "Heinrich Möller", "Caterina Zanella"],
+    "venue": "Journal of Materials Engineering and Performance",
+    "abstract": "Abstract Selective laser melting is one of the additive manufacturing technologies that have been known for building various and complicated shapes. Despite numerous advantages of additive manufacturing technologies, they strongly influence the microstructure and typically show a relatively high surface roughness. In this study, maraging steel was produced by selective laser melting (SLM), and its microstructure, hardness and corrosion behavior before and after heat treatment were studied and compared to traditionally manufactured ones (wrought, forged samples). In addition, the effect of electropolishing on the surface roughness was evaluated. The microstructural study was carried out by scanning electron microscopy equipped with electron backscattered diffraction in three different sections: parallel to the top surface (xy), transverse cross section (xz) and longitudinal cross section (yz). The same characterization was applied to heat-treated samples, austenitized and quenched as well as the aged ones. The results showed that selective laser melting produced a fine grain martensitic structure (in the as-printed condition) with a surface roughness (Ra) of about 10 µm. There was no sign of preferred texture or anisotropy in the microstructure of as-print SLM materials. The SLM microstructure was similar in all 3 sections (xy, xz and yz). Despite finer microstructure, nano-hardness and corrosion behavior of SLM and conventional wrought maraging steel in heat-treated conditions were similar. Aging resulted in the maximum nano-hardness and the minimum corrosion potential values. Precipitation has the main role in both hardness and corrosion behavior. Electropolishing was optimized and reduced the surface roughness (Ra) by 65%."
+  }
+]

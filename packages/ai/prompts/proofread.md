@@ -1,15 +1,7 @@
 <!--
-  NOT FROM PRD APPENDIX A. Written for proofreading, which Appendix A has no prompt for.
-
-  See docs/ADR/0026-proofreading.md. The product rewrites text only on request and only in the
-  ways Appendix A defines (A.11's section commands); nothing corrected spelling and grammar. This
-  prompt does that and only that, in A.12.3's shape: sentences in, small JSON corrections out,
-  Fast tier. The post-processing refuses anything larger than a correction, so it cannot become a
-  paraphraser (PRD §12.3).
-
-  PRD §0.3 rule 11 still applies to it. If it performs badly, record examples in
-  docs/BUILD_LOG.md and propose a change for the human to approve rather than editing it here.
-  docs/PENDING.md asks the owner to review it.
+  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, Appendix A.
+  Change it only when a candidate wins the side-by-side evaluation on the real models
+  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
 -->
 
 ### Proofreading — `proofread.md`

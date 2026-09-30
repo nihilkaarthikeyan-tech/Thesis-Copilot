@@ -4051,3 +4051,47 @@ A real-model probe showed gpt-5-nano noticing the difference but labelling it NO
 gpt-5-mini labelled it DIFFERENT_SUBJECT and passed the control sentence. The check moved to the
 strong tier (ADR-0023 addendum): about ₹1.2 a month more for a fully active student.
 `pnpm ai:shakedown`: 23/23 after the schema change.
+
+## Prompt evaluation, round 1 (2026-09-30, ADR-0038)
+
+The owner: the prompts must be better than Jenni's; "change what wins and show me summary".
+`packages/ai/eval/` runs each prompt against a candidate on the real models (gpt-5-nano /
+gpt-5-mini) with real OpenAlex papers for five theses in five fields (EDM of Hastelloy, SLM
+maraging steel, rooftop solar in India, diabetes apps, microfinance and women). Both versions go
+through production's own request builders and post-processing; gpt-5-mini judges each pair blind,
+twice with the order swapped, and a win counts only when both orders agree.
+
+| Prompt | Runs | Current wins | Candidate wins | Ties | Mean score (current → candidate) | Adopted |
+|---|---|---|---|---|---|---|
+| assist | 30 | 3 | 25 | 2 | 5.30 → 7.95 | yes |
+| chat | 20 | 2 | 14 | 4 | 5.13 → 7.40 (cited answers 14 → 20) | yes |
+| command: expand | 15 | 0 | 15 | 0 | 7.00 → 9.03, no failed calls | yes |
+| command: formalise | 10 | 2 | 1 | 7 | 8.5 → 8.3 | no, wording kept |
+| draft | 10 | 5 | 3 | 2 | 8.15 → 7.80 | no, kept |
+
+What changed in the winners: say what a good continuation or answer does (the next logical step;
+the material, method, population, conditions and figures; synthesis across sources; no stretching
+a finding to another material or population), write the citation marker exactly, and do not put
+author names in the sentence (the marker shows the source). The draft candidate's "end with the
+gap" rule produced NEEDS SOURCE placeholders the judge marked down; the current draft prompt,
+already revised earlier today, stays.
+
+Faults the evaluation found in code, all fixed with tests (`test/quality.spec.ts`):
+
+1. **"et al." ended a sentence.** The two-sentence cut and the sentence splitter treated the
+   full stop in "et al.", "e.g.", "Fig." or an initial as a sentence end, so a suggestion naming a
+   study was cut off mid-sentence ("…while Zhao et al."). `isAbbreviationStop`.
+2. **Bare passage ids reached the student.** The model sometimes wrote "(S3#c1; S1#c1)" instead
+   of `{{cite:S3#c1}}`. `normalizeBareCitations` turns each into a marker before the whitelist, so a
+   real one becomes a citation and an invented one is still stripped and counted. Applied to
+   assist, draft, chat and command.
+3. **A row of citations with no sentence.** An answer that repeated the student's sentence lost
+   its words to the overlap step and kept its two markers. Such an answer is now empty (not
+   charged).
+4. The first command run crashed on a candidate answer that came back as a list of parts; the
+   adopted wording asks for one piece of text, and 15 further runs had no failure.
+
+`scripts/extract-prompts.ts` is removed (it would regenerate the files from the PRD and undo
+this); every prompt's header now names ADR-0038 and the evaluation. Estimated spend for the
+round: under ₹100 of the ₹150 agreed (the harness does not yet total its own cost).
+Not yet evaluated: cite, proofread, outline, proposal and the coherence prompts.

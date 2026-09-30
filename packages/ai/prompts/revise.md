@@ -1,12 +1,7 @@
 <!--
-  VERBATIM COPY OF PRD APPENDIX A — DO NOT EDIT BY HAND.
-
-  PRD §0.3 rule 11: prompts are content, not code. If this prompt performs badly, record
-  examples of the bad output in docs/BUILD_LOG.md and propose a change for the human to
-  approve. Do not rewrite it here.
-
-  Source: docs/PRD.md, "### A.14 Scoped revision — `revise.md`"
-  Regenerate: pnpm --filter @tc/ai run prompts:extract
+  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.14 Scoped revision — `revise.md`".
+  Change it only when a candidate wins the side-by-side evaluation on the real models
+  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
 -->
 
 ### A.14 Scoped revision — `revise.md`

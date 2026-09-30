@@ -1,14 +1,7 @@
 <!--
-  NOT FROM PRD APPENDIX A. Written for the citation-support check, which Appendix A has no prompt for.
-
-  See docs/ADR/0023-citation-support-check.md. Appendix A's coherence prompts (A.12.1–A.12.4) ask
-  whether a claim needs a citation and whether two claims contradict each other; none asks whether
-  the passage a claim cites says what the claim says it says. This one does, in A.12.3's shape:
-  sentences in, one small JSON verdict per sentence out, Fast tier.
-
-  PRD §0.3 rule 11 still applies to it. If it performs badly, record examples in
-  docs/BUILD_LOG.md and propose a change for the human to approve rather than editing it here.
-  docs/PENDING.md asks the owner to review it.
+  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, Appendix A.
+  Change it only when a candidate wins the side-by-side evaluation on the real models
+  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
 -->
 
 ### Citation support check — `coh_support.md`

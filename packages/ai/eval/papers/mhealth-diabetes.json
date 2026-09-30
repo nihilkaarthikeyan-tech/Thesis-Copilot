@@ -1,0 +1,114 @@
+[
+  {
+    "openalexId": "https://openalex.org/W4296802076",
+    "doi": "10.2337/dci22-0034",
+    "title": "Management of Hyperglycemia in Type 2 Diabetes, 2022. A Consensus Report by the American Diabetes Association (ADA) and the European Association for the Study of Diabetes (EASD)",
+    "year": 2022,
+    "authors": [
+      "Melanie Jane Davies",
+      "Vanita R. Aroda",
+      "Billy S. Collins",
+      "Robert A. Gabbay",
+      "Jennifer Green",
+      "Nisa M. Maruthur"
+    ],
+    "venue": "Diabetes Care",
+    "abstract": "The American Diabetes Association and the European Association for the Study of Diabetes convened a panel to update the previous consensus statements on the management of hyperglycemia in type 2 diabetes in adults, published since 2006 and last updated in 2019. The target audience is the full spectrum of the professional health care team providing diabetes care in the U.S. and Europe. A systematic examination of publications since 2018 informed new recommendations. These include additional focus on social determinants of health, the health care system, and physical activity behaviors, including sleep. There is a greater emphasis on weight management as part of the holistic approach to diabetes management. The results of cardiovascular and kidney outcomes trials involving sodium-glucose cotransporter 2 inhibitors and glucagon-like peptide 1 receptor agonists, including assessment of subgroups, inform broader recommendations for cardiorenal protection in people with diabetes at high risk of cardiorenal disease. After a summary listing of consensus recommendations, practical tips for implementation are provided."
+  },
+  {
+    "openalexId": "https://openalex.org/W2142564124",
+    "doi": "10.2196/jmir.2058",
+    "title": "Design of an mHealth App for the Self-management of Adolescent Type 1 Diabetes: A Pilot Study",
+    "year": 2012,
+    "authors": [
+      "Joseph Antony Cafazzo",
+      "Mark Casselman",
+      "Nathaniel Hamming",
+      "Debra K. Katzman",
+      "Mark R. Palmert"
+    ],
+    "venue": "Journal of Medical Internet Research",
+    "abstract": "BACKGROUND: The use of mHealth apps has shown improved health outcomes in adult populations with type 2 diabetes mellitus. However, this has not been shown in the adolescent type 1 population, despite their predisposition to the use of technology. We hypothesized that a more tailored approach and a strong adherence mechanism is needed for this group. OBJECTIVE: To design, develop, and pilot an mHealth intervention for the management of type 1 diabetes in adolescents. METHODS: We interviewed adolescents with type 1 diabetes and their family caregivers. Design principles were derived from a thematic analysis of the interviews. User-centered design was then used to develop the mobile app bant. In the 12-week evaluation phase, a pilot group of 20 adolescents aged 12-16 years, with a glycated hemoglobin (HbA(1c)) of between 8% and 10% was sampled. Each participant was supplied with the bant app running on an iPhone or iPod Touch and a LifeScan glucometer with a Bluetooth adapter for automated transfers to the app. The outcome measure was the average daily frequency of blood glucose measurement during the pilot compared with the preceding 12 weeks. RESULTS: Thematic analysis findings were the role of data collecting rather than decision making; the need for fast, discrete transactions; overcoming decision inertia; and the need for ad hoc information sharing. Design aspects of the resultant app emerged through the user-centered design process, including simple, automated transfer of glucometer readings; the use of a social community; and the concept of gamification, whereby routine behaviors and actions are rewarded in the form of iTunes music and apps. Blood glucose trend analysis was provided with immediate prompting of the participant to suggest both the cause and remedy of the adverse trend. The pilot evaluation showed that the daily average frequency of blood glucose measurement increased 50% (from 2.4 to 3.6 per day, P = .006, n = 12). A total of 161 rewards (average of 8 rewards each) were distributed to participants. Satisfaction was high, with 88% (14/16 participants) stating that they would continue to use the system. Demonstrating improvements in HbA(1c) will require a properly powered study of sufficient duration. CONCLUSIONS: This mHealth diabetes app with the use of gamification incentives showed an improvement in the frequency of blood glucose monitoring in adolescents with type 1 diabetes. Extending this to improved health outcomes will require the incentives to be tied not only to frequency of blood glucose monitoring but also to patient actions and decision making based on those readings such that glycemic control can be improved."
+  },
+  {
+    "openalexId": "https://openalex.org/W2102560179",
+    "doi": "10.5210/ojphi.v5i3.4814",
+    "title": "Mobile medical and health apps: state of the art, concerns, regulatory control and certification",
+    "year": 2014,
+    "authors": [
+      "Maged N. Kamel Boulos",
+      "Ann Chang Brewer",
+      "Chanté Karimkhani",
+      "David B. Buller",
+      "Robert Paul Dellavalle"
+    ],
+    "venue": "Online Journal of Public Health Informatics",
+    "abstract": "This paper examines the state of the art in mobile clinical and health-related apps. A 2012 estimate puts the number of health-related apps at no fewer than 40,000, as healthcare professionals and consumers continue to express concerns about the quality of many apps, calling for some form of app regulatory control or certification to be put in place. We describe the range of apps on offer as of 2013, and then present a brief survey of evaluation studies of medical and health-related apps that have been conducted to date, covering a range of clinical disciplines and topics. Our survey includes studies that highlighted risks, negative issues and worrying deficiencies in existing apps. We discuss the concept of 'apps as a medical device' and the relevant regulatory controls that apply in USA and Europe, offering examples of apps that have been formally approved using these mechanisms. We describe the online Health Apps Library run by the National Health Service in England and the calls for a vetted medical and health app store. We discuss the ingredients for successful apps beyond the rather narrow definition of 'apps as a medical device'. These ingredients cover app content quality, usability, the need to match apps to consumers' general and health literacy levels, device connectivity standards (for apps that connect to glucometers, blood pressure monitors, etc.), as well as app security and user privacy. 'Happtique Health App Certification Program' (HACP), a voluntary app certification scheme, successfully captures most of these desiderata, but is solely focused on apps targeting the US market. HACP, while very welcome, is in ways reminiscent of the early days of the Web, when many \"similar\" quality benchmarking tools and codes of conduct for information publishers were proposed to appraise and rate online medical and health information. It is probably impossible to rate and police every app on offer today, much like in those early days of the Web, when people quickly realised the same regarding informational Web pages. The best first line of defence was, is, and will always be to educate consumers regarding the potentially harmful content of (some) apps."
+  },
+  {
+    "openalexId": "https://openalex.org/W2546565370",
+    "doi": "10.2196/jmir.5692",
+    "title": "Can Mobile Phone Apps Influence People’s Health Behavior Change? An Evidence Review",
+    "year": 2016,
+    "authors": ["Jing Zhao", "Becky Freeman", "Mu Li"],
+    "venue": "Journal of Medical Internet Research",
+    "abstract": "BACKGROUND: Globally, mobile phones have achieved wide reach at an unprecedented rate, and mobile phone apps have become increasingly prevalent among users. The number of health-related apps that were published on the two leading platforms (iOS and Android) reached more than 100,000 in 2014. However, there is a lack of synthesized evidence regarding the effectiveness of mobile phone apps in changing people's health-related behaviors. OBJECTIVE: The aim was to examine the effectiveness of mobile phone apps in achieving health-related behavior change in a broader range of interventions and the quality of the reported studies. METHODS: We conducted a comprehensive bibliographic search of articles on health behavior change using mobile phone apps in peer-reviewed journals published between January 1, 2010 and June 1, 2015. Databases searched included Medline, PreMedline, PsycINFO, Embase, Health Technology Assessment, Education Resource Information Center (ERIC), and Cumulative Index to Nursing and Allied Health Literature (CINAHL). Articles published in the Journal of Medical Internet Research during that same period were hand-searched on the journal's website. Behavior change mechanisms were coded and analyzed. The quality of each included study was assessed by the Cochrane Risk of Bias Assessment Tool. RESULTS: A total of 23 articles met the inclusion criteria, arranged under 11 themes according to their target behaviors. All studies were conducted in high-income countries. Of these, 17 studies reported statistically significant effects in the direction of targeted behavior change; 19 studies included in this analysis had a 65% or greater retention rate in the intervention group (range 60%-100%); 6 studies reported using behavior change theories with the theory of planned behavior being the most commonly used (in 3 studies). Self-monitoring was the most common behavior change technique applied (in 12 studies). The studies suggest that some features improve the effectiveness of apps, such as less time consumption, user-friendly design, real-time feedback, individualized elements, detailed information, and health professional involvement. All studies were assessed as having some risk of bias. CONCLUSIONS: Our results provide a snapshot of the current evidence of effectiveness for a range of health-related apps. Large sample, high-quality, adequately powered, randomized controlled trials are required. In light of the bias evident in the included studies, better reporting of health-related app interventions is also required. The widespread adoption of mobile phones highlights a significant opportunity to impact health behaviors globally, particularly in low- and middle-income countries."
+  },
+  {
+    "openalexId": "https://openalex.org/W2551537348",
+    "doi": "10.1186/s12889-016-3808-0",
+    "title": "A qualitative study of user perceptions of mobile health apps",
+    "year": 2016,
+    "authors": ["Wei Peng", "Shaheen Kanthawala", "Shupei Yuan", "Syed Ali Hussain"],
+    "venue": "BMC Public Health",
+    "abstract": "BACKGROUND: Mobile apps for health exist in large numbers today, but oftentimes, consumers do not continue to use them after a brief period of initial usage, are averse toward using them at all, or are unaware that such apps even exist. The purpose of our study was to examine and qualitatively determine the design and content elements of health apps that facilitate or impede usage from the users' perceptive. METHODS: In 2014, six focus groups and five individual interviews were conducted in the Midwest region of the U.S. with a mixture of 44 smartphone owners of various social economic status. The participants were asked about their general and health specific mobile app usage. They were then shown specific features of exemplar health apps and prompted to discuss their perceptions. The focus groups and interviews were audio recorded, transcribed verbatim, and coded using the software NVivo. RESULTS: Inductive thematic analysis was adopted to analyze the data and nine themes were identified: 1) barriers to adoption of health apps, 2) barriers to continued use of health apps, 3) motivators, 4) information and personalized guidance, 5) tracking for awareness and progress, 6) credibility, 7) goal setting, 8) reminders, and 9) sharing personal information. The themes were mapped to theories for interpretation of the results. CONCLUSIONS: This qualitative research with a diverse pool of participants extended previous research on challenges and opportunities of health apps. The findings provide researchers, app designers, and health care providers insights on how to develop and evaluate health apps from the users' perspective."
+  },
+  {
+    "openalexId": "https://openalex.org/W2891497594",
+    "doi": "10.2196/10321",
+    "title": "Mobile App for Improved Self-Management of Type 2 Diabetes: Multicenter Pragmatic Randomized Controlled Trial",
+    "year": 2018,
+    "authors": [
+      "Payal Agarwal",
+      "Geetha Mukerji",
+      "Laura Desveaux",
+      "Noah Michael Ivers",
+      "Onil K. Bhattacharyya",
+      "Jennifer M. Hensel"
+    ],
+    "venue": "JMIR mhealth and uhealth",
+    "abstract": "Background: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health systems to appropriately manage these patients, there have been a growing number of mobile apps designed to improve the self-management of diabetes. One such app, BlueStar, has been shown to significantly reduce hemoglobin A1c (HbA1c) levels in small studies and is the first app in the United States to receive Food and Drug Administration approval as a mobile prescription therapy. However, the impact of the app across real-world population among different clinical sites and health systems remains unclear. Objective: The primary objective of this study was to conduct a pragmatic randomized controlled trial of the BlueStar mobile app to determine if app usage leads to improved HbA1c levels among diverse participants in real-life clinical contexts. We hypothesized that this mobile app would improve self-management and HbA1c levels compared with controls. Methods: The study consisted of a multicenter pragmatic randomized controlled trial. Overall, 110 participants randomized to the immediate treatment group (ITG) received the intervention for 6 months, and 113 participants randomized to the wait-list control (WLC) group received usual care for the first 3 months and then received the intervention for 3 months. The primary outcome was glucose control measured by HbA1c levels at 3 months. Secondary outcomes assessed intervention impact on patient self-management, experience of care, and self-reported health utilization using validated scales, including the Problem Areas in Diabetes, the Summary of Diabetes Self-Care Activities, and the EuroQol-5D. Intervention usage data were collected directly from the app. Results: The results of an analysis of covariance controlling for baseline HbA1c levels did not show evidence of intervention impact on HbA1c levels at 3 months (mean difference [ITG−WLC] −0.42, 95% CI −1.05 to 0.21; P=.19). Similarly, there was no intervention effect on secondary outcomes measuring diabetes self-efficacy, quality of life, and health care utilization behaviors. An exploratory analysis of 57 ITG participants investigating the impact of app usage on HbA1c levels showed that each additional day of app use corresponded with a 0.016-point decrease in participants’ 3-month HbA1c levels (95% CI −0.03 to −0.003). App usage varied significantly by site, as participants from 1 site logged in to the app a median of 36 days over 14 weeks (interquartile range [IQR] 10.5-124); those at another site used the app significantly less (median 9; IQR 6-51). Conclusions: The results showed no difference between intervention and control arms for the primary clinical outcome of glycemic control measured by HbA1c levels. Although there was low usage of the app among participants, results indicate contextual factors, particularly site, had a significant impact on overall usage. Future research into the patient and site-specific factors that increase app utilization are needed. Trial Registration: Clinicaltrials.gov NCT02813343; https://clinicaltrials.gov/ct2/show/NCT02813343 (Archived by WebCite at https://clinicaltrials.gov/ct2/show/NCT02813343)"
+  },
+  {
+    "openalexId": "https://openalex.org/W2769185139",
+    "doi": "10.3389/fendo.2017.00318",
+    "title": "Content Analysis of Mobile Health Applications on Diabetes Mellitus",
+    "year": 2017,
+    "authors": [
+      "Syarafina Izahar",
+      "Qi Ying Lean",
+      "Mohammed Abdul Hameed",
+      "Muthu Kumar Murugiah",
+      "Rahul P. Patel",
+      "Yaser Mohammed Al‐Worafi"
+    ],
+    "venue": "Frontiers in Endocrinology",
+    "abstract": "Diabetes self-management offers an opportunity to patients to be actively involved in managing their conditions and modifying lifestyle behaviors to attain positive health outcomes. With the unprecedented growth of mobile technology, smartphone plays a role in supporting diabetes self-management. Nonetheless, selecting appropriate mobile applications (apps) is challenging for patients. Thus, this study aimed to evaluate and compare the contents and features of mobile medical apps for diabetes self-management. Of 346 commercial apps, 16 (16%) and 19 (7.72%) of the diabetes apps found in Apple and Google Play stores, respectively, were included based on the selection criteria and individually scored for the availability of 8 main features of diabetes self-management. The apps supported self-management by offering features such as free installation, less than 50 MB space used, offline use, automated data entry, data export and sharing, educational tool, and advice. Of the 8 evaluated features, only 11 (31.4%) apps had a score of 5 whereas 7 (20%) apps scored the lowest, with a score of 3. The majority of apps were free, required no Internet connectivity to use and were less than 50 MB in size. Our findings showed that the design of diabetes mobile apps focused on reporting and setting reminders, rather than providing personalized education or therapeutic support. In the future, the design of apps could be improved to integrate patients' needs, usability for disease management, and lifestyle modifications."
+  },
+  {
+    "openalexId": "https://openalex.org/W2980451355",
+    "doi": "10.1186/s13098-019-0480-4",
+    "title": "Mobile phone applications and their use in the self-management of Type 2 Diabetes Mellitus: a qualitative study among app users and non-app users",
+    "year": 2019,
+    "authors": [
+      "Bronte Jeffrey",
+      "Melina Bagala",
+      "Ashley Creighton",
+      "Tayla Leavey",
+      "Sarah Nicholls",
+      "Crystal Wood"
+    ],
+    "venue": "Diabetology & Metabolic Syndrome",
+    "abstract": "BACKGROUND: Mobile phone applications (apps) have been shown to successfully facilitate the self-management of chronic disease. This study aims to evaluate firstly the experiences, barriers and facilitators to app usage among people with Type 2 Diabetes Mellitus (T2DM) and secondly determine recommendations to improve usage of diabetes apps. METHODS: Participants were aged ≥ 18 years with a diagnosis of T2DM for ≥ 6 months. Semi-structured phone-interviews were conducted with 16 app and 14 non-app users. Interviews were based on the Technology Acceptance Model, Health Information Technology Acceptance Model (HITAM) and the Mobile Application Rating Scale. Data were analysed using deductive content analysis. RESULTS: Most app-users found apps improved their T2DM self-management and health. The recommendation of apps by health professionals, as well as positive interactions with them, improved satisfaction; however, only a minority of patients had practitioners involved in their app use. All non-app users had never had the concept discussed with them by a health professional. Facilitators to app use included the visual representation of trends, intuitive navigation and convenience (for example, discretion and portability). Barriers to app use were participant's lack of knowledge and awareness of apps as healthcare tools, perceptions of disease severity, technological and health literacy or practical limitations such as rural connectivity. Factors contributing to app use were classified into a framework based on the Health Belief Model and HITAM. Recommendations for future app design centred on educational features, which were currently lacking (e.g. diabetes complications, including organ damage and hypoglycaemic episodes), monitoring and tracking features (e.g. blood glucose level monitoring with trends and dynamic tips and comorbidities) and nutritional features (e.g. carbohydrate counters). Medication reminders were not used by participants. Lastly, participants felt that receiving weekly text-messaging relating to their self-management would be appropriate. CONCLUSIONS: The incorporation of user-centred features, which engage T2DM consumers in self-management tasks, can improve health outcomes. The findings may guide app developers and entrepreneurs in improving app design and usability. Given self-management is a significant factor in glycaemic control, these findings are significant for GPs, nurse practitioners and allied health professionals who may integrate apps into a holistic management plan which considers strategies outside the clinical environment."
+  }
+]

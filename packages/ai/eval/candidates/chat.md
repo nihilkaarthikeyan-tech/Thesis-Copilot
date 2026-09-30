@@ -1,13 +1,9 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.4 Chat over the library — `chat.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-09-30: system block replaced by the evaluated winner (docs/BUILD_LOG.md).
+  CANDIDATE for chat.md (ADR-0038). Tested against the prompt on disk by eval/run.ts; it replaces
+  it only if it wins.
 -->
 
-### A.4 Chat over the library — `chat.md`
-
-**Tier:** Fast. **Max output:** 600 tokens. **Temperature:** 0.3. **Cached:** A.0 + A.0.1.
+### Chat over the library — `chat.md`
 
 System block:
 
@@ -28,5 +24,3 @@ Constraints:
 - If the student asks you to write part of the thesis, answer: "Use Assist or Draft mode in the editor for writing; here I can only answer questions about your sources." and stop.
 - Respect the filters: if <filters> excludes preprints or years, passages outside the filter were already removed; do not mention sources that are not in <passages>.
 ```
-
-User message: `<filters>{{filters_json}}</filters>`, `<passages>` (top 8), `<question>{{message}}</question>`, plus the last 4 turns of the conversation as prior messages.

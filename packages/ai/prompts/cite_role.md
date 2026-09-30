@@ -1,13 +1,7 @@
 <!--
-  NOT FROM PRD APPENDIX A. Written for FR-5.6, which Appendix A has no prompt for.
-
-  See docs/ADR/0010-fr-5-6-prompt.md. Appendix A stops at A.16 and covers no citation-role
-  rewrite, so this one was written to FR-5.6's one-line description: "Narrative ↔ parenthetical
-  rewrite on request (strong tier; language task)". It follows the shape of A.11 (`command.md`),
-  which is the nearest task: rewrite one selection, output only the rewrite, change nothing else.
-
-  PRD §0.3 rule 11 still applies to it. If it performs badly, record examples in
-  docs/BUILD_LOG.md and propose a change for the human to approve rather than editing it here.
+  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, Appendix A.
+  Change it only when a candidate wins the side-by-side evaluation on the real models
+  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
 -->
 
 ### FR-5.6 Citation role rewrite — `cite_role.md`

@@ -1,0 +1,87 @@
+[
+  {
+    "openalexId": "https://openalex.org/W4292264207",
+    "doi": "10.3390/ma15165631",
+    "title": "Experimental Investigation of Technological Indicators and Surface Roughness of Hastelloy C-22 after Electrical Discharge Machining Using POCO Graphite Electrodes",
+    "year": 2022,
+    "authors": ["Rafał Nowicki", "Rafał Świercz", "Dorota Oniszczuk–Świercz", "Marek Rozenek"],
+    "venue": "Materials",
+    "abstract": "Modern industry is focused on looking for new and effective technologies to manufacture complex shapes from alloys based on nickel and chromium. One of the materials widely used in the chemical and aerospace industry is Hastelloy C-22. This material is difficult to machine by conventional methods, and in many cases, unconventional methods are used to manufacture it, such as electrical discharge machining (EDM). In the EDM process, the material is removed by electrical discharges between a workpiece and a tool electrode. The physical and mechanical properties of the tool electrodes have a direct impact on the process efficiency, machining accuracy, and surface roughness. Currently, there has been a significant increase in the use of graphite as a material for tool electrodes due to the low purchase cost of the raw material, good machinability, and high sublimation temperature. In this work, an experimental investigation of the influence of the grain size of the graphite tool electrode on material removal rate (MRR), tool wear rate (TWR), and surface roughness (Ra) of Hastelloy C-22 was carried out. Two POCO graphite tool electrodes with a grain size of 1 µm (AF-5) and 10 µm (S-180) were used. Based on the experimental studies, empirical models describing the influence of machining parameters on technological indicators and the condition of the surface texture were determined. The research indicates that graphite with a larger grain provides higher process efficiency with high relative wear of the tool electrode. The lowest surface roughness was obtained for graphite with a smaller grain size (AF-5). The analysis of the machining parameters proves that the discharge current and pulse duration are the main factors determining the MRR and Ra values for both AF-5 and S-180 graphite. The time interval is the dominant parameter with regard to the relative wear of the graphite electrode."
+  },
+  {
+    "openalexId": "https://openalex.org/W4310990231",
+    "doi": "10.3390/machines10121131",
+    "title": "Optimization of EDM Machinability of Hastelloy C22 Super Alloys",
+    "year": 2022,
+    "authors": ["Engin Nas", "Fuat Kara"],
+    "venue": "Machines",
+    "abstract": "In this study, machinability tests were carried out on a corrosion-resistant superalloy subjected to shallow (SCT) and deep cryogenic treatment (DCT) via electrical discharge machining (EDM), and the effect of the cryogenic treatment types applied to the material on the EDM processing performance was investigated. Experimental parameters, including pulse-on time (300, 400 and 500 μs), peak current (A) (6 and 10 A) and material types (untreated and treated with SCT and DCT), were used to construct the full factorial experimental design. The resulting average surface roughness (Ra) and material removal rate (MRR) results were optimized using the Taguchi L18 method. According to the Taguchi-based gray relational analysis, the optimal parameters for both Ra and MRR were determined as cryogenic treatment, pulse-on time and peak current, respectively. The response table obtained using the Taguchi method showed the most effective factors as A1BlC3 for Ra and A2B2C1 for MRR values. According to the ANOVA results for determining parameters affecting performance, peak current was the most effective factor for average surface roughness and MRR, at 74.79% and 86.43%, respectively. When examined in terms of Taguchi-gray relational degrees, the optimal parameters for both Ra and MRR were observed in the experiment performed with the SCT sample at a peak current of 6 A and 300 μs pulse-on time."
+  },
+  {
+    "openalexId": "https://openalex.org/W4396857442",
+    "doi": "10.3390/ma17102257",
+    "title": "Experimental Investigation on the Impact of Graphite Electrodes Grain Size on Technological Parameters and Surface Texture of Hastelloy C-22 after Electrical Discharge Machining with Negative Polarity",
+    "year": 2024,
+    "authors": ["Rafał Nowicki", "Dorota Oniszczuk–Świercz", "Rafał Świercz"],
+    "venue": "Materials",
+    "abstract": "Electrical discharge machining (EDM) is a rapidly evolving method in modern industry that manufactures highly complex components. The physical properties of a tool electrode material are significant factors in determining the effectiveness of the process, as well as the characteristics of the machined surfaces. The current trend of implementing graphite tool electrodes in manufacturing processes is observed. Innovative material engineering solutions enable graphite production with miniaturized grain size. However, the correlation between the graphite electrode grain size and the mechanism of the process removal in the EDM is a challenge for its widespread implementation in the industry. This research introduces a new method to evaluate the impact of the graphite electrode grain size and machining parameters on the material removal effectiveness, relative tool wear rate, and surface roughness (Ra) of Hastelloy C-22 following EDM with negative polarity. The study utilized new graphite materials with a grain size of 1 µm (POCO AF-5) and 10 µm (POCO EDM-180). An assessment of the impact of the EDM process parameters on the technological parameters and the development of the surface roughness was carried out. Electrical discharge machining with fine-grained graphite electrodes increases process efficiency and reduces tool wear. Graphite grains detached from the tool electrode affect the stability of electrical discharges and the efficiency of the process. Based on the experimental results, mathematical models were developed, enabling the prediction of machining effects to advance state-of-the-art manufacturing processes. The obtained mathematical models can be implemented in modern industrial EDM machines as guidelines for selecting adequate machining parameters depending on the desired process efficiency, tool wear rate, and surface roughness for advanced materials."
+  },
+  {
+    "openalexId": "https://openalex.org/W4401758842",
+    "doi": "10.1038/s41598-024-68829-2",
+    "title": "An experimental investigation on copper square electrode wear in electric discharge machining of Hastelloy B2",
+    "year": 2024,
+    "authors": ["S. Ramabalan", "N. Ramasubbu", "P. Velvizhi", "V. Sathiya"],
+    "venue": "Scientific Reports",
+    "abstract": "Hastelloy B2 is a high-performance nickel-molybdenum alloy and has been used in micro reactor, pump, pipe, and corrosion-resistant equipment. Square holes are required in the above application components. Although square holes are easily produced by spending more electrodes wear in Electrical Discharge Machining (EDM). Moreover, the square hole with small electrode wear achieved is a challenging task in thermal machining. Hence, in this work, the effects of EDM process parameters on electrode taper angle, electrode radius, electrode wear length and cutting time of Hastelloy B2 are studied. Taguchi based VišekriterijumskoKompromisnoRangiranje (VIKOR) method is used to find the optimum process parameters and compared with Taguchi based Grey Relational Analysis (GRA) method for validation. The results showed that current and pulse duration greatly affects the electrode wear out surface and edges. The square electrodes with sharp edges and surfaces are fully transformed into hemispherical shapes at electrode ends due to an unstable spark with diffusion of heat. Also, the VIKOR method provides an alternative multi-criteria optimization method that enhances the process performance over the grey relational analysis due to comparability, uniqueness, assessment and prediction."
+  },
+  {
+    "openalexId": "https://openalex.org/W3004783043",
+    "doi": "10.1088/2631-7990/ab7332",
+    "title": "Surface modification and functionalization by electrical discharge coating: a comprehensive review",
+    "year": 2020,
+    "authors": ["Pay Jun Liew", "Ching Yee Yap", "Jingsi Wang", "Tianfeng Zhou", "Jiwang Yan"],
+    "venue": "International Journal of Extreme Manufacturing",
+    "abstract": "Abstract Hard coatings are extensively required in industry for protecting mechanical/structural parts that withstand extremely high temperature, stress, chemical corrosion, and other hostile environments. Electrical discharge coating (EDC) is an emerging surface modification technology to produce such hard coatings by using electrical discharges to coat a layer of material on workpiece surface to modify and enhance the surface characteristics or create new surface functions. This paper presents a comprehensive overview of EDC technologies for various materials, and summarises the types and key parameters of EDC processes as well as the characteristics of resulting coatings. It provides a systematic summary of the fundamentals and key features of the EDC processes, as well as its applications and future trends."
+  },
+  {
+    "openalexId": "https://openalex.org/W4210582297",
+    "doi": "10.3390/nano12030384",
+    "title": "Reviewing Performance Measures of the Die-Sinking Electrical Discharge Machining Process: Challenges and Future Scopes",
+    "year": 2022,
+    "authors": [
+      "Renu Kiran Shastri",
+      "Chinmaya P. Mohanty",
+      "S. Dash",
+      "Karthick M.P.G",
+      "A. Raja Annamalai",
+      "Chun‐Ping Jen"
+    ],
+    "venue": "Nanomaterials",
+    "abstract": "The most well-known and widely used non-traditional manufacturing method is electrical discharge machining (EDM). It is well-known for its ability to cut rigid materials and high-temperature alloys that are difficult to machine with traditional methods. The significant challenges encountered in EDM are high tool wear rate, low material removal rate, and high surface roughness caused by the continuous electric spark generated between the tool and the workpiece. Researchers have reported using a variety of approaches to overcome this challenge, such as combining the die-sinking EDM process with cryogenic treatment, cryogenic cooling, powder-mixed processing, ultrasonic assistance, and other methods. This paper examines the results of these association techniques on various performance measures, such as material removal rate (MRR), tool wear rate (TWR), surface roughness, surface integrity, and recast layer formed during machining, and identifies potential gap areas and proposes a solution. The manuscript is useful for improving performance and introducing new resolutions to the field of EDM machining."
+  },
+  {
+    "openalexId": "https://openalex.org/W4391226403",
+    "doi": "10.1007/s00170-024-13023-x",
+    "title": "Machine learning for multi-dimensional performance optimization and predictive modelling of nanopowder-mixed electric discharge machining (EDM)",
+    "year": 2024,
+    "authors": [
+      "Muhammad Sana",
+      "Muhammad Asad",
+      "Muhammad Umar Farooq",
+      "Saqib Anwar",
+      "Muhammad Talha"
+    ],
+    "venue": "The International Journal of Advanced Manufacturing Technology",
+    "abstract": "Abstract Aluminium 6061 (Al6061) is a widely used material for various industrial applications due to low density and high strength. Nevertheless, the conventional machining operations are not the best choice for the machining purposes. Therefore, amongst all the non-conventional machining operations, electric discharge machining (EDM) is opted to carry out the research due to its wide ability to cut the materials. But the high electrode wear rate (EWR) and high dimensional inaccuracy or overcut (OC) of EDM limit its usage. Consequently, nanopowder is added to the dielectric medium to address the abovementioned issues. Nanopowder mixed EDM (NPMEDM) process is a complex process in terms of performance predictability for different materials. Similarly, the interactions between the process parameters such as peak current ( I p ), spark voltage ( S v ), pulse on time ( P on ) and powder concentration ( C p ) in dielectric enhance the parametric sensitivity. In addition, the cryogenic treatment (CT) of electrodes makes the process complex limiting conventional simulation approaches for modelling inter-relationships. An alternative approach requires experimental exploration and systematic investigation to model EWR and overcutting problems of EDM. Thus, artificial neural networks (ANNs) are used for predictive modelling of the process which are integrated with multi-objective genetic algorithm (MOGA) for parametric optimization. The approach uses experimental data based on response surface methodology (RSM) design of experiments. Moreover, the process physics is thoroughly discussed with parametric effect analysis supported with evidence of microscopic images, scanning electron microscopy (SEM) and 3D surface topographic images. Based on multi-dimensional optimization results, the NT brass electrode showed an improvement of 65.02% in EWR and 59.73% in OC using deionized water. However, CT brass electrode showed 78.41% reduction in EWR and 67.79% improved dimensional accuracy in deionized water. In addition to that, CT brass electrode gave 27.69% less EWR and 81.40% improved OC in deionized water compared to kerosene oil."
+  },
+  {
+    "openalexId": "https://openalex.org/W3147369050",
+    "doi": "10.22190/fume201230028a",
+    "title": "TAGUCHI OPTIMIZATION OF MULTIPLE PERFORMANCE CHARACTERISTICS IN THE ELECTRICAL DISCHARGE MACHINING OF THE TIGR2",
+    "year": 2022,
+    "authors": ["Sıtkı Akıncıoğlu"],
+    "venue": "Facta Universitatis Series Mechanical Engineering",
+    "abstract": "Electrical discharge machining (EDM) provides many advantages for the shaping of metallic materials. It also provides better surface quality for Ti alloys used in the defense industry. In this study, experiments were carried out with different EDM parameters using the Titanium (Gr2) alloy. A number of novel industrial processes have been developed as a result of advances in technology. For a product to be developed, these novel approaches must be utilized to determine optimum parameters. The Taguchi method was applied in the experiments with EDM. The impact the test parameters had on the performance characteristics of tool wear rate, material removal rate, depth, and surface roughness were analyzed by the variance analysis (ANOVA). Quadratic regression analyses were carried out to reveal the correlation between the experimental results and the predicted values. According to the ANOVA results for material removal rate (MRR), tool wear rate (TWR), depth, and surface roughness, the most effective factor was amperage, at 99.66%, 99.56%, 87.95%, and 81.12%, respectively. The best value for average surface roughness was determined to be 3.29 µm obtained at 120 μs time-on, 8 A, and 40 μs time-off."
+  }
+]

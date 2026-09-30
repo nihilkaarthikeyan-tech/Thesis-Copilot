@@ -1,14 +1,7 @@
 <!--
-  NOT FROM PRD APPENDIX A. Written for viva preparation, which Appendix A has no prompt for.
-
-  See docs/ADR/0030-viva-preparation.md. An examiner's question, the passages of the thesis it
-  concerns, and the student's typed answer in; a judgement of the answer out. It coaches: it names
-  what the answer is missing and never writes the answer, because the viva is the student's to
-  give. A quotation is shown only if code finds it, word for word, in the passage it names.
-
-  PRD §0.3 rule 11 still applies to it. If it performs badly, record examples in
-  docs/BUILD_LOG.md and propose a change for the human to approve rather than editing it here.
-  docs/PENDING.md asks the owner to review it.
+  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, Appendix A.
+  Change it only when a candidate wins the side-by-side evaluation on the real models
+  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
 -->
 
 ### Viva answer feedback — `viva_feedback.md`

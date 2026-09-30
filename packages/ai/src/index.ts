@@ -181,6 +181,7 @@ export {
 export {
   CITE_RE,
   cutAfterSecondSentence,
+  normalizeBareCitations,
   type PostProcessInput,
   type PostProcessResult,
   postProcessAssist,
@@ -344,6 +345,7 @@ export {
   listPromptFiles,
   loadAllPrompts,
   loadPrompt,
+  overridePrompt,
   PROMPT_NAMES,
   PROMPTS_DIR,
   type PromptName,

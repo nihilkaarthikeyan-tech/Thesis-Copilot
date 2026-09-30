@@ -1,17 +1,17 @@
 /**
  * Prompt loader — PRD §10.5.
  *
- * Reads `packages/ai/prompts/*.md`, which are verbatim copies of Appendix A produced by
- * `scripts/extract-prompts.ts`. Each file holds the PRD subsection unchanged, so the fenced code
- * blocks inside it are the prompt text and the prose around them is the spec.
+ * Reads `packages/ai/prompts/*.md`. Since ADR-0038 (2026-09-30) these files are the product's own
+ * and change when a new version wins the side-by-side evaluation in `packages/ai/eval`; they began
+ * as copies of PRD Appendix A. The fenced code blocks inside each file are the prompt text and the
+ * prose around them is the explanation.
  *
  * Block order inside a prompt file follows Appendix A:
  *   block 0 = the system block
  *   block 1 = the user message template, where the prompt has one (A.1, A.2, ...)
  * Prompts with extra fenced blocks (worked examples) keep them in `blocks` but they are not sent.
  *
- * PRD §0.3 rule 11: the agent must not rewrite prompt text. `test/prompts.spec.ts` re-derives every
- * file from the PRD and fails if any byte differs.
+ * `test/prompts.spec.ts` checks that every prompt parses and keeps the rules the code relies on.
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -114,8 +114,33 @@ export function extractFencedBlocks(markdown: string): string[] {
 
 const cache = new Map<PromptName, LoadedPrompt>();
 
+/**
+ * A prompt swapped in for one run of the evaluation (ADR-0038): `packages/ai/eval` compares a
+ * candidate with the prompt on disk by building the same request both ways. Never set in the
+ * app; `null` removes the override.
+ */
+const overrides = new Map<PromptName, LoadedPrompt>();
+
+export function overridePrompt(name: PromptName, raw: string | null): void {
+  if (raw === null) {
+    overrides.delete(name);
+    return;
+  }
+  const blocks = extractFencedBlocks(raw);
+  if (blocks.length === 0) throw new Error(`Override for ${name} contains no fenced block`);
+  overrides.set(name, {
+    name,
+    blocks,
+    system: blocks[0] ?? '',
+    ...(blocks.length > 1 ? { user: blocks[1] } : {}),
+    raw,
+  });
+}
+
 /** Loads one prompt by name. Cached — prompt files never change at runtime. */
 export function loadPrompt(name: PromptName, dir: string = PROMPTS_DIR): LoadedPrompt {
+  const override = dir === PROMPTS_DIR ? overrides.get(name) : undefined;
+  if (override) return override;
   const cached = dir === PROMPTS_DIR ? cache.get(name) : undefined;
   if (cached) return cached;
 
