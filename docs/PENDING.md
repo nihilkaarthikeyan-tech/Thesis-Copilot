@@ -617,6 +617,18 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 
 ## Decisions and reviews
 
+- [ ] **Approve the writing-quality prompt changes** (2026-09-30):
+      `docs/proposals/2026-09-30-writing-prompts.md` has the exact before-and-after wording. Step 2:
+      autocomplete writes nothing (and says what source is missing) instead of filler, no
+      "this section will…" sentences, finished-thesis tense, and a review draft must cite every
+      paragraph. Step 4: the citation-support check gains a "different material or setting"
+      verdict. Nothing changes until you approve.
+- [ ] **Turn on "Find sources automatically"** (ADR-0037) in Admin → Settings → Feature switches
+      once the release is live. Off by default. Measured: ₹0.075 for two searches, 10 papers.
+- [ ] **The Jenni benchmark** (step 4 of the plan): 20–30 identical topic prompts through both
+      tools, scored on the reviewer's scorecard. Someone with a Jenni account runs the Jenni side;
+      the agent runs ours after you approve its cost.
+
 - [x] **The free trial never ended — now it does (2026-09-29, ADR-0036).** The owner chose to
       enforce 14 days, **for accounts created from the release on**: the five accounts that
       existed before it had their end date removed at the owner's request (one `TRIAL_EXEMPTED`
