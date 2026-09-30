@@ -4138,3 +4138,62 @@ Not evaluated, because an honest test needs real material we do not have: `extra
 papers), `xpaper` (a student's own published papers), `style` (a student's writing sample),
 `comment_classify` (real guide comments). The coherence checks above passed every case both ways;
 harder cases are the next step if they are to be improved further.
+
+## Chapter build: Ranjith's specification, built under the product's own rules (2026-10-01, ADR-0039)
+
+The owner shared Ranjith's "Developer Specification v1.0" (30 September): an agent that writes
+whole thesis chapters for every department — extract the key terms, plan the chapter so every term
+is introduced before the objectives use it, gather verified sources, write one section at a time
+from those sources only, join in code, run about thirty checks, an examiner review, a fix loop,
+deliver with a QA report; everything department- or university-specific in profiles; a pitfall
+bank of known errors. Two things in it conflicted with the product (an agent that *delivers*
+chapters; the cost of a strong writer and examiner with three loops), and the owner said to decide
+and build. ADR-0039 has both decisions: the chapter is delivered as pending draft blocks the
+student accepts one by one, and the pipeline is arranged so a build costs ₹8.69.
+
+**What was built**
+
+- `packages/config/src/profiles/`: ten discipline profiles (the spec's §4.2 families) as typed
+  data — entity types, paradigms, citation style, generic-background cap, recency target, the
+  checks each enables, a terminology sheet, what the examiner looks at; chapter blueprints for the
+  six chapter roles with the Methodology variants by paradigm (§5); five university profiles, all
+  marked unconfirmed (§6); the check catalogue (§7, 36 ids); the fifteen engineering pitfall seeds
+  (§8.3).
+- `packages/ai/src/checks/`: the deterministic checks — S1 entity coverage, S2 required sections,
+  S3 generic share, E1 uncited paragraphs, E2 uncited figures, E7 recency, E8 twelve-word copy, E9
+  numbers with no data in a Results chapter, L3 abbreviations, L4 terminology and spelling, L9
+  artefacts, T2 pitfalls by pattern, D-ENG1 equation balance (atom counting), D-ENG2 formula
+  validity (element table and charge neutrality: K₂Br is +1), D-ENG3 property ranges (graphite
+  hardness, Ti₃Al, alumina density…), D-ENG4 units against their quantity, D-CS1 metrics defined,
+  D-MED1 PICO and ethics, D-MGT1 hypotheses name defined variables, D-HUM1 quotations — and the
+  assembler (L1 duplicates across sections, L2 spacing, L7 dangling connectives, L8 roadmap).
+  Tested on the spec's own sentences (`test/checks.spec.ts`, 28).
+- Three prompts (`entities.md`, `examiner.md`, `fix_flagged.md`) with their builders and the code
+  guards: an entity not in the student's inputs is dropped; an examiner issue naming a sentence not
+  sent is dropped; a fix that loses more than a tenth of the unflagged sentences is rejected.
+- `apps/worker/src/jobs/chapter-build.ts`: the pipeline. Plan from the blueprint (one section per
+  key-term group or per objective, cap 14), retrieve and draft each section through the existing
+  A.2 path, assemble, check, examiner per section, one fix loop on sections with blocking issues,
+  re-check, deliver as `draftBlock`s with DRAFT provenance after a `PRE_CHAPTER_BUILD` snapshot,
+  write the QA report. Every call logged under `CHAPTER_BUILD`; a build that delivers nothing is
+  REFUSED and refunds its unit. Tested end to end on the mock (`test/chapter-build.spec.ts`): the
+  spec's "statistically loaded" reached a draft from a passage, T2 caught it, the fix loop cleared
+  it, the hit was counted.
+- API: `chapter-build` module (start, overview, view, issue decisions, pitfall report; admin bank
+  with approve/retire), `CHAPTER_BUILD` metered with caps 3/3/3/1, the accept path for a build's
+  draft blocks. Web: `/app/d/:id/build` (chapter, discipline, paradigm, university; progress; the QA
+  report with checks, issues, key-term coverage, references, sections, the disclosure statement)
+  and `/admin/pitfalls`. Migration 0026; the seed writes the fifteen pitfalls.
+
+**Cost.** `pnpm ai:verify`'s table: Chapter builds 3 × ₹8.6935 = ₹26.08; STUDENT total **₹51.68**
+of ₹100. The PRD's own six rows at reference prices are unchanged (₹99.18).
+
+**Found on the way.** The mock draft writes the same passage into every section, and the assembler
+rightly dropped the repeats, leaving sections that were nothing but a citation marker. A section
+with no words is now "not written" and never delivered, whatever the model returned.
+
+**Not done, in `docs/PENDING.md`:** the AA7050 gold test (needs the original chapter), expert
+approval of the pitfall bank, university manuals, the Jenni benchmark each release, Tamil review,
+and the ADR-0038 evaluation of the three new prompts, which needs real built chapters as material.
+The API integration test (`apps/api/test/chapter-build.spec.ts`) was written but not run: Docker
+was down on the build machine; it runs in CI with the others.

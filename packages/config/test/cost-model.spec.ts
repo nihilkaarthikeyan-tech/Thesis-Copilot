@@ -116,6 +116,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       COHERENCE: 0,
       // ADR-0030: not a §11.3 row.
       VIVA: 3,
+      // ADR-0039: one chapter build to see what it does.
+      CHAPTER_BUILD: 1,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
     expect(PLAN_LIMITS.FREE_TRIAL.libraryPdfs).toBe(10);
@@ -139,6 +141,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       COHERENCE: 1,
       // ADR-0030: not a §11.3 row.
       VIVA: 30,
+      // ADR-0039: three planned, checked chapters a month.
+      CHAPTER_BUILD: 3,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);

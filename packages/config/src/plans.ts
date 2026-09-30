@@ -36,7 +36,16 @@ const MB = 1024 * 1024;
 
 /** STUDENT_MONTHLY and STUDENT_ANNUAL share one row in §11.3 ("STUDENT (monthly/annual)"). */
 const STUDENT: PlanLimits = {
-  caps: { ASSIST: 180, DRAFT: 10, CITE: 30, CHAT: 15, COMMAND: 4, COHERENCE: 1, VIVA: 30 },
+  caps: {
+    ASSIST: 180,
+    DRAFT: 10,
+    CITE: 30,
+    CHAT: 15,
+    COMMAND: 4,
+    COHERENCE: 1,
+    VIVA: 30,
+    CHAPTER_BUILD: 3,
+  },
   seedPapers: 3,
   libraryPdfs: 60,
   pdfMaxBytes: 50 * MB,
@@ -47,7 +56,16 @@ const STUDENT: PlanLimits = {
 
 export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
   FREE_TRIAL: {
-    caps: { ASSIST: 50, DRAFT: 2, CITE: 10, CHAT: 5, COMMAND: 2, COHERENCE: 0, VIVA: 3 },
+    caps: {
+      ASSIST: 50,
+      DRAFT: 2,
+      CITE: 10,
+      CHAT: 5,
+      COMMAND: 2,
+      COHERENCE: 0,
+      VIVA: 3,
+      CHAPTER_BUILD: 1,
+    },
     seedPapers: 1,
     libraryPdfs: 10,
     pdfMaxBytes: 25 * MB,
@@ -58,7 +76,16 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
   STUDENT_MONTHLY: STUDENT,
   STUDENT_ANNUAL: STUDENT,
   INSTITUTION_SEAT: {
-    caps: { ASSIST: 180, DRAFT: 10, CITE: 30, CHAT: 15, COMMAND: 4, COHERENCE: 1, VIVA: 30 },
+    caps: {
+      ASSIST: 180,
+      DRAFT: 10,
+      CITE: 30,
+      CHAT: 15,
+      COMMAND: 4,
+      COHERENCE: 1,
+      VIVA: 30,
+      CHAPTER_BUILD: 3,
+    },
     seedPapers: 3,
     libraryPdfs: 60,
     pdfMaxBytes: 50 * MB,

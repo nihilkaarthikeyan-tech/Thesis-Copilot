@@ -27,6 +27,8 @@ export const AI_ACTIONS = [
   'CROSS_PAPER',
   // ADR-0030: viva preparation — a question set, or feedback on one typed answer.
   'VIVA',
+  // ADR-0039: one planned, checked chapter, delivered as drafts the student accepts.
+  'CHAPTER_BUILD',
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -44,6 +46,8 @@ export const METERED_ACTIONS = [
   'COHERENCE',
   // ADR-0030. Not in §11.3: its cap is set there, and priced at the configured models.
   'VIVA',
+  // ADR-0039. One unit is one chapter build (up to 12 sections), priced the same way.
+  'CHAPTER_BUILD',
 ] as const satisfies readonly AiAction[];
 
 /** The six §11.3 rows — what the PRD's own budget table (§11.4) prices. */

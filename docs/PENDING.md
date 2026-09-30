@@ -14,6 +14,41 @@ per proofread (the strong tier is several times the fast tier's price) and needs
 `packages/ai/eval/results/proofread-*.json`, `docs/BUILD_LOG.md` → "Prompt evaluation, rounds 2
 and 3".
 
+## Chapter build (ADR-0039, 2026-10-01) — what only a person can supply
+
+- [ ] **Confirm the university profiles against the manuals.** `packages/config/src/profiles/universities.ts`
+      ships five, every one `confirmed: false`; the build screen says so. For each university you
+      will support: the in-text citation form (surnames only? "and" or "&"? "et al." from how many
+      authors?), spelling variant, whether a chapter summary is required, and the manual's name,
+      version and date. Ranjith's spec lists Anna University's page and font values (A4; margins
+      38/25/25/25 mm; Times New Roman 12 at 1.5) — those belong in the institution template
+      (Admin → template), and the spec itself says "confirm against the official manual".
+- [ ] **Approve the pitfall bank as a domain expert** (spec §8.2: "every entry is approved by a
+      domain expert before going live"). The fifteen engineering entries came in approved because
+      they are Ranjith's own evaluation findings; a materials engineer should read them once
+      (Admin → Pitfall bank), and each other discipline needs its own seed (the spec suggests
+      correlation-as-causation for social sciences, overruled cases for law, superseded guidelines
+      for medicine). Students' reports arrive there as pending.
+- [ ] **The AA7050 gold test** (spec §13.2). It needs the original Chapter 1 the evaluation was made
+      on. Put it in `fixtures/thesis/aa7050-chapter1.docx`; the agent will then write the runner
+      that asserts the spec's list (S1 five terms, S2 four sections, D-ENG2 K₂Br, D-ENG3 three
+      values, T2 eleven codes, L1, L3 AMC/FRM, L4, L6/L9…). Until then the checks are tested on the
+      spec's sentences alone.
+- [ ] **Evaluate the three new prompts** (`entities.md`, `examiner.md`, `fix_flagged.md`) under
+      ADR-0038 once a few real chapters have been built: the harness needs real built sections as
+      material. `pnpm ai:shakedown` should get cases for them too before the next release.
+- [ ] **Run the first real build** on the local stack against gpt-5-mini and read the QA report and
+      the drafts yourself before this is released. It is the one part of the spec nobody has seen
+      on a real model. Before it: `pnpm db:migrate` (migration 0026) and `pnpm db:seed` (the
+      pitfalls), with the API and worker stopped.
+- [ ] **The monthly benchmark against Jenni** (spec §13.4): 20–30 matched inputs per profile through
+      both tools each release, scored by the checks plus a blind expert rating. This is a process
+      with a budget and a panel, not code.
+- [ ] **Tamil and other languages** (spec Phase 4): the build passes the document language through
+      to every prompt as the rest of the product does; a native-speaker review of one built chapter
+      is what says whether the checks (spelling pairs, abbreviations, terminology) need language
+      variants.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

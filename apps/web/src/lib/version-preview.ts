@@ -87,6 +87,7 @@ const REASON_LABEL: Record<string, string> = {
   PRE_DRAFT_ACCEPT: 'Before accepting a draft',
   PRE_REVISION: 'Before accepting a revision',
   PRE_RESTORE: 'Before restoring an older version',
+  PRE_CHAPTER_BUILD: 'Before a chapter build added its sections',
 };
 
 /** What caused a version, in words. Unknown reasons are shown as they are rather than hidden. */

@@ -9,6 +9,13 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > were computed before it: add ₹11.16 to their per-student figures. Measured on the real models, a
 > question set costs ₹0.11 and one answer's feedback ₹0.08, so ₹0.37 a use is a ceiling.
 >
+> **2026-10-01 — chapter builds (ADR-0039).** An eighth allowance: 3 chapter builds a month on
+> the paid plans (1 on the trial), each priced for its worst case of 14 sections written once and
+> examined once on the strong model with half of them fixed once — ₹8.6935 a build, ₹26.08 a
+> month. The worst case for a fully active student is now **₹51.68**; `pnpm ai:verify` prints it.
+> The tables below are as they stood before it: add ₹26.08 to the paid-plan totals and ₹8.69 to
+> the trial's.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.

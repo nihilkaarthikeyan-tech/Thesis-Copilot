@@ -5,14 +5,19 @@
  * and every file is in object storage. Nothing here may hold state the API also needs.
  */
 
+import { gzipSync } from 'node:zlib';
 import {
   createProviders,
+  type LlmRequest,
   MockEmbeddingProvider,
   MockLlmProvider,
   mockCoherenceResponse,
   mockCrossPaperResponse,
   mockDraftFor,
+  mockEntitiesFor,
+  mockExaminerFor,
   mockExtractionResponse,
+  mockFixFor,
   mockOutlineResponse,
   mockQueriesResponse,
   mockSectionScopeResponse,
@@ -40,6 +45,7 @@ import {
   UnpaywallClient,
 } from '@tc/retrieval';
 import {
+  type ChapterBuildJob,
   type CoherenceRunJob,
   type DraftSectionJob,
   type ExtractPaperJob,
@@ -54,6 +60,7 @@ import {
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
+import { runChapterBuild } from './jobs/chapter-build.js';
 import { runCoherence } from './jobs/coherence-run.js';
 import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
@@ -70,6 +77,7 @@ import { runSearchLiterature } from './jobs/search-literature.js';
 import { assertPlatformBudget } from './platform-budget.js';
 import {
   DEFAULT_JOB_OPTIONS,
+  QUEUE_CHAPTER_BUILD,
   QUEUE_COHERENCE,
   QUEUE_DRAFT_SECTION,
   QUEUE_EXTRACT_PAPER,
@@ -93,12 +101,31 @@ function providersFor(env: Env): Providers {
         // A DRAFT request gets an A.2-shaped answer built from its own passages, so the whole
         // draft path is exercisable before provider keys exist. Nothing is invented: each
         // sentence restates the passage it cites.
-        defaultText: (req) => (req.action === 'DRAFT' ? mockDraftFor(req) : 'Mock text.'),
+        defaultText: (req) =>
+          req.action === 'DRAFT'
+            ? mockDraftFor(req)
+            : req.action === 'CHAPTER_BUILD'
+              ? // ADR-0039: the fixer streams the section back with the flagged sentences changed.
+                mockFixFor(req)
+              : 'Mock text.',
         latencyMs: env.AI_MOCK_LATENCY_MS,
         // An EXTRACT request is answered from the paper's own text, so an upload still yields a
         // usable proposal screen and library before real provider keys exist. It invents nothing.
         // Themes before queries: both are SEARCH_QUERIES calls, told apart by <candidates>.
         responses: [
+          // ADR-0039: the chapter build's two structured calls, told apart by their outer tag.
+          {
+            match: (req: LlmRequest) =>
+              req.action === 'CHAPTER_BUILD' &&
+              req.messages.some((m) => m.content.startsWith('<entity_types>')),
+            respond: mockEntitiesFor,
+          },
+          {
+            match: (req: LlmRequest) =>
+              req.action === 'CHAPTER_BUILD' &&
+              req.messages.some((m) => m.content.startsWith('<review')),
+            respond: mockExaminerFor,
+          },
           mockExtractionResponse,
           mockCrossPaperResponse,
           mockCoherenceResponse,
@@ -119,6 +146,7 @@ function providersFor(env: Env): Providers {
 function storageFor(env: Env): {
   get: (key: string) => Promise<Buffer>;
   put: (key: string, body: Buffer) => Promise<unknown>;
+  putSnapshot: (key: string, body: Buffer) => Promise<unknown>;
 } {
   const endpoint = new URL(env.S3_ENDPOINT);
   const client = new MinioClient({
@@ -140,6 +168,12 @@ function storageFor(env: Env): {
     async put(key: string, body: Buffer) {
       return client.putObject(env.S3_BUCKET, key, body, body.length, {
         'content-type': 'application/pdf',
+      });
+    },
+    async putSnapshot(key: string, body: Buffer) {
+      return client.putObject(env.S3_BUCKET, key, body, body.length, {
+        'Content-Type': 'application/json',
+        'Content-Encoding': 'gzip',
       });
     },
   };
@@ -515,6 +549,82 @@ async function main(): Promise<void> {
       },
       // D.1.1: "concurrency 2 per worker".
       { connection, concurrency: 2 },
+    ),
+    // ADR-0039: one chapter planned, written, checked and delivered as drafts to accept.
+    new Worker(
+      QUEUE_CHAPTER_BUILD,
+      async (job: Job<ChapterBuildJob>) => {
+        const result = await runChapterBuild(job.data, {
+          prisma,
+          llm: providers.llm,
+          embeddings: providers.embeddings,
+          memoryBlock: async (chapter: ContextChapter) =>
+            (await buildChapterMemory(prisma as unknown as ContextClient, chapter)).text,
+          retrieve: (chapter: ContextChapter, query: string) =>
+            retrievePassages(
+              prisma as unknown as ContextClient,
+              (texts) => providers.embeddings.embed(texts),
+              chapter,
+              query,
+              'DRAFT',
+            ),
+          // B.7: the chapter as it was before the build appended to it, one click from restored.
+          snapshot: async ({ documentId, chapterId, content }) => {
+            const key = `snapshots/${documentId}/${chapterId}/${Date.now()}-pre_chapter_build.json.gz`;
+            const body = gzipSync(Buffer.from(JSON.stringify(content), 'utf8'));
+            await storage.putSnapshot(key, body);
+            const row = await prisma.documentVersion.create({
+              data: { documentId, chapterId, snapshotKey: key, reason: 'PRE_CHAPTER_BUILD' },
+              select: { createdAt: true },
+            });
+            await prisma.chapter.update({
+              where: { id: chapterId },
+              data: { snapshotAt: row.createdAt },
+            });
+          },
+          logCall: async (call) => {
+            const cost =
+              call.ok && call.usage && env.AI_PROVIDER !== 'mock'
+                ? computeCallCost({ tier: call.tier, modelId: call.modelId, usage: call.usage })
+                : 0;
+            await prisma.aiCallLog.create({
+              data: {
+                userId: call.userId,
+                documentId: call.documentId,
+                action: 'CHAPTER_BUILD',
+                model: call.modelId,
+                inputTokens: call.usage?.inputTokens ?? 0,
+                cachedInputTokens: call.usage?.cachedInputTokens ?? 0,
+                cacheWriteTokens: call.usage?.cacheWriteTokens ?? 0,
+                outputTokens: call.usage?.outputTokens ?? 0,
+                costMicroInr: BigInt(cost),
+                latencyMs: call.latencyMs,
+                ok: call.ok,
+                error: call.error ?? null,
+              },
+            });
+            return cost;
+          },
+          // The same statement `UsageService.refund` runs: a build that delivered nothing costs
+          // no unit (§11.5). The worker cannot reach the API's service, so it says it here.
+          refund: async (userId) => {
+            const now = new Date();
+            const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+            await prisma.$executeRawUnsafe(
+              `UPDATE "UsageLedger" SET "count" = "count" - 1
+               WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = 'CHAPTER_BUILD'::"AiAction" AND "count" > 0`,
+              userId,
+              period,
+            );
+          },
+          assertBudget: assertPlatformBudget(prisma, env),
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        log({ msg: 'chapter build finished', jobId: job.id, ...result });
+        return result;
+      },
+      // One build at a time: up to thirty strong-tier calls, each holding a section and its passages.
+      { connection: connection.duplicate(), concurrency: 1 },
     ),
     // ADR-0037: the library had nothing on the section being written.
     new Worker(

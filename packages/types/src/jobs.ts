@@ -10,6 +10,8 @@
  * logged as an addition in docs/CONSISTENCY_REVIEW.md.
  */
 
+import type { ChapterBuildJob } from './chapter-build.js';
+
 export const QUEUE_NAMES = [
   'noop',
   'extract-paper',
@@ -23,6 +25,8 @@ export const QUEUE_NAMES = [
   'coherence',
   // ADR-0037: nothing in the library covers the section being written, so find papers on it.
   'find-sources',
+  // ADR-0039: one chapter planned, written section by section, checked and delivered as drafts.
+  'chapter-build',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -115,6 +119,7 @@ export type JobPayloads = {
   'generate-outline': GenerateOutlineJob;
   coherence: CoherenceRunJob;
   'find-sources': FindSourcesJob;
+  'chapter-build': ChapterBuildJob;
 };
 
 /**

@@ -162,6 +162,17 @@ admin, account erasure). **The free trial ends 14 days after sign-up** (ADR-0036
 `User.trialEndsAt`, enforced in `UsageService.consume`; theses stay, AI stops, admin can extend).
 Still waiting on the owner: sending the privacy notice (`docs/PENDING.md`).
 
+**A chapter can be built whole (2026-10-01, ADR-0039)** from Ranjith's developer specification:
+`/app/d/:id/build` plans the chapter from the discipline blueprint and the key terms of the
+objectives, writes each section from the library through the A.2 draft path, joins and checks it
+(`packages/ai/src/checks/`, the spec's S/E/L/T/D checks in code), has the strong model review it
+as an examiner, fixes flagged sentences once, and delivers every section as a **pending draft
+block** with the QA report. Flag-don't-fix holds: nothing is thesis text until the student accepts
+each block. Discipline and university profiles are data in `packages/config/src/profiles/`; the
+pitfall bank is the `Pitfall` table (Admin → Pitfall bank; seeded from the spec). One
+`CHAPTER_BUILD` unit is one build (₹8.69; caps 3/1). The university profiles are unconfirmed and
+the new prompts unevaluated — `docs/PENDING.md`.
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.
@@ -188,8 +199,8 @@ co-author, off by default and live only for a document with a co-author). The wh
 built; production needs the v0.1.5 release and, for co-authoring, the host nginx `/collab/`
 location and the flag — both in `docs/PENDING.md`.
 
-**A fully active student costs ₹25.60/month** against the ₹100 ceiling (₹7 of it hosting; viva
-preparation, ADR-0030, is ₹11.16 of the rest). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
+**A fully active student costs ₹51.68/month** against the ₹100 ceiling (₹7 of it hosting; chapter
+builds, ADR-0039, are ₹26.08 and viva preparation, ADR-0030, ₹11.16 of the rest). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
 ₹299. `pnpm ai:verify` reproduces it. The runtime hard stop at ₹100 of real spend is in
 `UsageService.consume`.
 

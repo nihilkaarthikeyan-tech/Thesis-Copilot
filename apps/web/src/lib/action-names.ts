@@ -11,6 +11,7 @@ export const ACTION_NAMES: Record<string, string> = {
   COMMAND: 'AI edits',
   COHERENCE: 'Consistency check',
   VIVA: 'Viva preparation',
+  CHAPTER_BUILD: 'Chapter builds',
   PROPOSAL: 'Proposal conversation',
   OUTLINE: 'Outline',
   STYLE_PROFILE: 'Writing profile',

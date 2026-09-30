@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Prisma, PrismaClient } from '@prisma/client';
+import { PITFALL_SEED } from '@tc/config';
 
 const prisma = new PrismaClient();
 const here = dirname(fileURLToPath(import.meta.url));
@@ -77,6 +78,37 @@ async function main(): Promise<void> {
     : await prisma.institutionTemplate.create({ data: { name: 'EXAMPLE_IN_UNIVERSITY', spec } });
 
   console.log(`template   ${template.name}  (${template.id})`);
+
+  // ADR-0039: the pitfall bank's seed, from the specification's evaluation. `update` keeps the
+  // statement current if the seed changes; an admin's status change (retired) is kept.
+  for (const entry of PITFALL_SEED) {
+    await prisma.pitfall.upsert({
+      where: { code: entry.code },
+      update: {
+        topic: entry.topic,
+        wrongPattern: entry.wrongPattern,
+        pattern: entry.pattern ?? null,
+        detection: entry.detection,
+        correctStatement: entry.correctStatement,
+        severity: entry.severity,
+        source: entry.source,
+      },
+      create: {
+        code: entry.code,
+        profile: entry.profile,
+        topic: entry.topic,
+        wrongPattern: entry.wrongPattern,
+        pattern: entry.pattern ?? null,
+        detection: entry.detection,
+        correctStatement: entry.correctStatement,
+        severity: entry.severity,
+        source: entry.source,
+        status: 'APPROVED',
+        approvedBy: 'Developer Specification v1.0 (evaluation)',
+      },
+    });
+  }
+  console.log(`pitfalls   ${PITFALL_SEED.length} approved entries (ADR-0039)`);
   console.log(
     '           placeholder values for common Indian university conventions. PRD D.3.1 requires\n' +
       '           replacing them with a real university guideline before any real export.',

@@ -137,6 +137,8 @@ export default function DocumentListPage() {
     { href: `/app/d/${id}/proposal`, label: 'Proposal' },
     { href: `/app/d/${id}/sources`, label: 'Sources' },
     { href: `/app/d/${id}/outline`, label: 'Outline' },
+    // ADR-0039: a chapter planned, written, checked and delivered as drafts to accept.
+    { href: `/app/d/${id}/build`, label: 'Build' },
     { href: `/app/d/${id}/review`, label: 'Review' },
     { href: `/app/d/${id}/submit`, label: 'Submit' },
     // ADR-0030: after submission comes the defence.

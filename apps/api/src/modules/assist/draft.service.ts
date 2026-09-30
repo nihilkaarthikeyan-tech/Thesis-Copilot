@@ -226,7 +226,8 @@ export class DraftService {
     keptChars = 0,
   ): Promise<{ outcome: string }> {
     const updated = await this.prisma.suggestionEvent.updateMany({
-      where: { id: draftId, userId, action: 'DRAFT' },
+      // ADR-0039: a chapter build's sections are draft blocks too, accepted the same way.
+      where: { id: draftId, userId, action: { in: ['DRAFT', 'CHAPTER_BUILD'] } },
       data: { outcome, keptChars: Math.max(0, Math.floor(keptChars)) },
     });
     if (updated.count === 0) throw new NotFoundError('That draft');

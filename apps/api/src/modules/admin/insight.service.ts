@@ -231,8 +231,10 @@ export class AdminInsightService {
 
   /** The two numbers the sidebar shows beside its links. Cheap: no bucket walk. */
   async badges() {
-    const [jobs, feedback] = await Promise.all([
+    const [jobs, pitfalls, feedback] = await Promise.all([
       this.jobCounts(),
+      // ADR-0039: pitfall reports waiting for approval.
+      this.prisma.pitfall.count({ where: { status: 'PENDING' } }),
       this.prisma.$queryRaw<Array<{ unread: bigint }>>`
         SELECT COUNT(*) AS unread
         FROM "AuditEvent" a LEFT JOIN "FeedbackState" f ON f."auditEventId" = a."id"
@@ -241,6 +243,7 @@ export class AdminInsightService {
     return {
       failedJobs: jobs.reduce((n, q) => n + q.failed, 0),
       unreadFeedback: Number(feedback[0]?.unread ?? 0),
+      pendingPitfalls: pitfalls,
     };
   }
 

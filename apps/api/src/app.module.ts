@@ -10,6 +10,7 @@ import { AiModule } from './modules/ai/ai.module.js';
 import { AssistModule } from './modules/assist/assist.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
+import { ChapterBuildModule } from './modules/chapter-build/chapter-build.module.js';
 import { ChaptersModule } from './modules/chapters/chapters.module.js';
 import { CitationReportModule } from './modules/citation-report/citation-report.module.js';
 import { CoherenceModule } from './modules/coherence/coherence.module.js';
@@ -74,6 +75,7 @@ import { VivaModule } from './modules/viva/viva.module.js';
     AdminModule,
     InstitutionModule,
     VivaModule,
+    ChapterBuildModule,
   ],
 })
 export class AppModule {}

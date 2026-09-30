@@ -14,6 +14,34 @@ export {
   type PromptPassage,
 } from './builder/assist.js';
 export {
+  buildEntitiesRequest,
+  buildExaminerRequest,
+  buildFixRequest,
+  CHAPTER_BUILD,
+  cleanBuildText,
+  type EntitiesInput,
+  type EntitiesResult,
+  EXAMINER_ISSUE_TYPES,
+  type ExaminerInput,
+  type ExaminerIssue,
+  type ExaminerIssueType,
+  type ExaminerPassage,
+  type ExaminerPitfall,
+  type ExaminerResult,
+  type ExaminerSentence,
+  entitiesSchema,
+  examinerIssueCheck,
+  examinerSchema,
+  examinerSentences,
+  type FixInput,
+  mockEntitiesFor,
+  mockExaminerFor,
+  mockFixFor,
+  postProcessEntities,
+  postProcessExaminer,
+  unchangedSentencesKept,
+} from './builder/chapter-build.js';
+export {
   activeFilters,
   buildChatRequest,
   CHAT,
@@ -310,6 +338,7 @@ export {
   mockCrossPaperResponse,
   XPAPER,
 } from './builder/xpaper.js';
+export * from './checks/index.js';
 export {
   buildExtractionRequest,
   buildExtractionUserMessage,

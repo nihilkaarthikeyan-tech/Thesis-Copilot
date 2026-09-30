@@ -16,7 +16,7 @@ import { api } from '@/lib/api';
 import { signOut } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 
-type Badges = { failedJobs: number; unreadFeedback: number };
+type Badges = { failedJobs: number; unreadFeedback: number; pendingPitfalls?: number };
 
 const SECTIONS: Array<{ href: string; label: string; badge?: keyof Badges }> = [
   { href: '/admin', label: 'Overview' },
@@ -24,6 +24,7 @@ const SECTIONS: Array<{ href: string; label: string; badge?: keyof Badges }> = [
   { href: '/admin/activity', label: 'Activity log' },
   { href: '/admin/jobs', label: 'Background jobs', badge: 'failedJobs' },
   { href: '/admin/feedback', label: 'Feedback', badge: 'unreadFeedback' },
+  { href: '/admin/pitfalls', label: 'Pitfall bank', badge: 'pendingPitfalls' },
   { href: '/admin/settings', label: 'Settings' },
 ];
 
@@ -101,7 +102,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         >
           {SECTIONS.map((section) => {
             const current = isCurrent(pathname, section.href);
-            const count = section.badge && badges ? badges[section.badge] : 0;
+            const count = (section.badge && badges ? badges[section.badge] : 0) ?? 0;
             return (
               <div key={section.href} className="shrink-0">
                 <Link

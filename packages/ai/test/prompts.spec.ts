@@ -11,8 +11,8 @@ import { describe, expect, it } from 'vitest';
 import { listPromptFiles, loadAllPrompts, loadPrompt, PROMPT_NAMES } from '../src/prompts.js';
 
 describe('the prompt files', () => {
-  it('there are 26, and the files on disk are exactly the ones named in code', () => {
-    expect(PROMPT_NAMES).toHaveLength(26);
+  it('there are 29, and the files on disk are exactly the ones named in code', () => {
+    expect(PROMPT_NAMES).toHaveLength(29);
     expect(listPromptFiles()).toEqual([...PROMPT_NAMES].sort());
   });
 
@@ -31,9 +31,9 @@ describe('the prompt files', () => {
 });
 
 describe('loadPrompt', () => {
-  it('loads all 26 without throwing', () => {
+  it('loads all 29 without throwing', () => {
     const all = loadAllPrompts();
-    expect(all.size).toBe(26);
+    expect(all.size).toBe(29);
   });
 
   it('gives _preamble the six shared rules from A.0', () => {

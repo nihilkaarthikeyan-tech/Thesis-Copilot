@@ -125,6 +125,9 @@ export const EVENT_NAMES: Record<string, string> = {
   INSTITUTION_SEAT_RELEASED: 'Institution seat released',
   INSTITUTION_SEAT_TAKEN: 'Institution seat taken',
   PASSWORD_RESET: 'Password reset',
+  PITFALL_APPROVED: 'Pitfall approved',
+  PITFALL_EDITED: 'Pitfall edited',
+  PITFALL_RETIRED: 'Pitfall retired',
   PLAN_CHANGED: 'Plan changed',
   PLATFORM_BUDGET_CHANGED: 'Site budget changed',
   PLATFORM_CEILING_EXCEEDED: 'Site budget reached',
@@ -160,6 +163,10 @@ export function describeEvent(kind: string, detail: unknown): string {
       return `+${str(d.days)} days, until ${day(str(d.to))}${d.reason ? ` · “${str(d.reason)}”` : ''}`;
     case 'CHAPTER_VIEWED':
       return `“${str(d.title)}”`;
+    case 'PITFALL_APPROVED':
+    case 'PITFALL_EDITED':
+    case 'PITFALL_RETIRED':
+      return str(d.code);
     case 'DOCUMENT_DELETED':
       return `“${str(d.title)}”${d.by === 'admin' ? ' by an admin' : d.by === 'owner' ? ' by the student' : ''}${d.reason ? ` · “${str(d.reason)}”` : ''}`;
     case 'DELETION_REQUESTED':

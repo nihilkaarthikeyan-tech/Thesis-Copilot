@@ -78,6 +78,7 @@ enum AiAction {
   PROPOSAL      // ADR-0005: Path A conversation (A.6)
   CROSS_PAPER   // ADR-0005: multi-paper consistency pass (A.16)
   VIVA          // ADR-0030: viva preparation — a question set, or feedback on one answer
+  CHAPTER_BUILD // ADR-0039: one planned, checked chapter, delivered as drafts to accept
 }
 enum FlagType {
   TERM_DRIFT
@@ -225,6 +226,7 @@ model Document {
   seedPapers  SeedPaper[]
   flags       CoherenceFlag[]
   vivaQuestions VivaQuestion[]
+  chapterBuilds ChapterBuild[]
   comments    Comment[]
   shares      GuideShare[]
   versions    DocumentVersion[]
@@ -589,6 +591,62 @@ model VivaQuestion {
   answeredAt  DateTime?
   createdAt   DateTime  @default(now())
   @@index([documentId, setId])
+}
+
+/// ADR-0039: one chapter build — the plan (entities, coverage), the sections it wrote, every check
+/// it ran, and what is still open. The sections themselves are pending draft blocks in the
+/// chapter; this row is the QA report and the run's state. The worker owns `status`.
+model ChapterBuild {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId  String    @db.Uuid
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chapterId   String    @db.Uuid
+  userId      String    @db.Uuid
+  /// QUEUED | RUNNING | DONE | REFUSED | FAILED
+  status      String    @default("QUEUED")
+  /// { disciplineId, paradigm, universityId, language }
+  profile     Json
+  /// The stage the worker is at and how far: { stage, sectionsTotal, sectionsDone, note? }
+  progress    Json?
+  /// ChapterBuildPlan: entities, sections, the coverage matrix (packages/types).
+  plan        Json?
+  /// ChapterBuildReport: checks, issues, evidence needed, references (packages/types).
+  report      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  @@index([documentId, createdAt])
+  @@index([chapterId])
+}
+
+/// ADR-0039: the pitfall bank — a known technical error the checks and the examiner look for.
+/// Entries from the specification's evaluation are APPROVED; a report from a student or a
+/// supervisor is PENDING until an admin approves it. `hits` counts the times the check fired.
+model Pitfall {
+  id               String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  /// ENG-TRIB-001 and the like; unique so a re-seed updates rather than duplicates.
+  code             String    @unique
+  /// Discipline profile id it belongs to (packages/config profiles), or "*" for every discipline.
+  profile          String
+  topic            String
+  wrongPattern     String
+  /// A case-insensitive regular expression for the wrong statement, when one can be written.
+  pattern          String?
+  /// regex | semantic | both — how the check looks for it.
+  detection        String    @default("semantic")
+  correctStatement String
+  /// blocking | warning
+  severity         String    @default("blocking")
+  source           String?
+  /// PENDING | APPROVED | RETIRED
+  status           String    @default("PENDING")
+  approvedBy       String?
+  reportedById     String?   @db.Uuid
+  version          Int       @default(1)
+  hits             Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  @@index([profile, status])
 }
 
 model InstitutionTemplate {

@@ -21,6 +21,8 @@ export const SNAPSHOT_REASONS = [
   'PRE_REVISION',
   // Written before a restore overwrites the chapter, so a restore is itself one click from undone.
   'PRE_RESTORE',
+  // ADR-0039: written before a chapter build appends its draft blocks to the chapter.
+  'PRE_CHAPTER_BUILD',
 ] as const;
 export type SnapshotReason = (typeof SNAPSHOT_REASONS)[number];
 

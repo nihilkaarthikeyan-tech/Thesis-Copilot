@@ -68,6 +68,7 @@ export {
   parsePricingOverride,
   priceFor,
 } from './pricing.js';
+export * from './profiles/index.js';
 export {
   type ChapterRole,
   renderTemplateBlock,

@@ -95,6 +95,20 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
   // ADR-0030. Priced for the larger of its two calls, a question set: about twenty passages of the
   // thesis in, eight questions out. Feedback on one answer is smaller on both sides.
   VIVA: { tier: 'strong', inputTokens: 5_000, cachedInputTokens: 1_000, outputTokens: 1_500 },
+  /**
+   * ADR-0039. One unit is one chapter build, priced for its worst case: 14 sections (the
+   * Introduction blueprint has eleven fixed elements, plus up to three key-term groups), each
+   * written once (the DRAFT shape: 6k in, 800 out) and examined once (section + evidence abstracts
+   * + entities + pitfalls: 5.5k in, 600 out), half of them fixed once (2.5k in, 900 out), plus the
+   * fast-tier entity extraction, which is under a paisa and folded in. The 4k cached block is
+   * counted once per call (35 calls).
+   */
+  CHAPTER_BUILD: {
+    tier: 'strong',
+    inputTokens: 14 * (6_000 + 5_500) + 7 * 2_500,
+    cachedInputTokens: 35 * 4_000,
+    outputTokens: 14 * (800 + 600) + 7 * 900,
+  },
 };
 
 /** One-time per-document operations, amortised over 4 months in PRD §11.4. */
@@ -223,6 +237,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
       ['Commands', 'COMMAND'],
       ['Coherence', 'COHERENCE'],
       ['Viva preparation', 'VIVA'],
+      ['Chapter builds', 'CHAPTER_BUILD'],
     ] as const
   )
     .filter(([, action]) => !options.actions || options.actions.includes(action))

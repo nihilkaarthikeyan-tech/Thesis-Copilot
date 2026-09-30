@@ -1,3 +1,4 @@
+export * from './chapter-build.js';
 export {
   CHART_LIMITS,
   CHART_TYPES,
