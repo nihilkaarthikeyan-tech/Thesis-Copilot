@@ -27,6 +27,7 @@ import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
+import { docToText } from './doc-text.js';
 
 export type SuggestInput = {
   chapterId: string;
@@ -250,6 +251,8 @@ export class AssistService {
         passageIds: retrieved.passages.map((p) => p.id),
         before: input.before,
         autoCite,
+        // The chapter as it stands, so a sentence already in it is not offered again.
+        existingText: docToText(chapter.content),
       });
       for (const key of processed.hallucinated) {
         hallucinatedCite.inc();

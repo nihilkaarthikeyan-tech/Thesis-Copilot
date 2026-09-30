@@ -19,6 +19,34 @@ import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
 import type { PromptPassage } from './assist.js';
 import { stripUnknownCitations } from './postprocess.js';
+import { filterSentences } from './quality.js';
+
+/**
+ * The quality filters (`quality.ts`) over a draft, one paragraph at a time. A paragraph's
+ * "before" is the paragraph ahead of it, so a "However," that opens a paragraph after a real
+ * finding stays; headings pass through; a paragraph that loses every sentence is removed.
+ */
+export function filterDraftParagraphs(markdown: string, existingText: string): string {
+  const kept: string[] = [];
+  let previous = '';
+  for (const block of markdown.split(/\n{2,}/)) {
+    const trimmed = block.trim();
+    if (/^###\s/.test(trimmed)) {
+      kept.push(trimmed);
+      previous = '';
+      continue;
+    }
+    const { text } = filterSentences({
+      text: trimmed,
+      before: previous,
+      existing: `${existingText}\n${kept.join('\n')}`,
+    });
+    if (text.trim().length === 0) continue;
+    kept.push(text.trim());
+    previous = text.trim();
+  }
+  return kept.join('\n\n').trim();
+}
 
 /** A.2's parameters. */
 export const DRAFT = {
@@ -153,6 +181,8 @@ export function postProcessDraft(
   markdown: string,
   passages: readonly PromptPassage[],
   targetWords: number,
+  /** The rest of the chapter as text, for the duplicate check (2026-09-30). */
+  existingText = '',
 ): DraftPostProcess {
   const passageIds = passages.map((passage) => passage.id);
 
@@ -174,11 +204,14 @@ export function postProcessDraft(
     .filter(([, count]) => count > DRAFT.maxUsesPerPassage)
     .map(([id]) => id);
 
-  const cleaned = stripped.text
-    .replace(NEEDS_SOURCE_RE, '')
-    // A removed marker leaves a blank line where a paragraph break already was.
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  const cleaned = filterDraftParagraphs(
+    stripped.text
+      .replace(NEEDS_SOURCE_RE, '')
+      // A removed marker leaves a blank line where a paragraph break already was.
+      .replace(/\n{3,}/g, '\n\n')
+      .trim(),
+    existingText,
+  );
 
   const words = countDraftWords(cleaned);
 

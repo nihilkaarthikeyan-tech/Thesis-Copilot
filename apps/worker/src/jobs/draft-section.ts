@@ -23,6 +23,7 @@ import {
   postProcessDraft,
 } from '@tc/ai';
 import type { PrismaClient } from '@tc/db';
+import { docToText } from '@tc/retrieval';
 import type { DraftSectionJob } from '@tc/types';
 
 export type DraftSectionDeps = {
@@ -200,7 +201,8 @@ export async function runDraftSection(
     ok: true,
   });
 
-  const processed = postProcessDraft(markdown, passages, targetWords);
+  // The chapter as it stands, so a draft does not repeat what is already written (quality.ts).
+  const processed = postProcessDraft(markdown, passages, targetWords, docToText(chapter.content));
 
   // Prompt ids become the real ids the citation nodes will carry.
   const citations = processed.result.citations.flatMap((citation) => {

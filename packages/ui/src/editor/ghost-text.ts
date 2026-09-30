@@ -180,6 +180,30 @@ function cursorEligible(state: EditorState): boolean {
 
 const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
 
+/** The character just before `pos` in its textblock, or '' at the start of one. */
+export function charBefore(doc: PmNode, pos: number): string {
+  const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
+  if ($pos.parentOffset === 0) return '';
+  // An inline node (a citation) counts as a word: a suggestion after it needs a space too.
+  return $pos.parent.textBetween($pos.parentOffset - 1, $pos.parentOffset, undefined, 'x');
+}
+
+/**
+ * A suggestion joined to the text before it with exactly the space it needs: one space after a
+ * word or a sentence end, none at the start of a paragraph, after existing whitespace or an
+ * opening bracket, or when the suggestion itself starts with punctuation that attaches to the
+ * previous word (",", ".", ";", ":", ")" …).
+ */
+export function spaceBefore(text: string, previous: string): string {
+  const trimmed = text.replace(/^[ \t]+/, '');
+  if (trimmed.length === 0) return trimmed;
+  if (previous === '' || /\s/.test(previous) || /[([{“‘"'—–-]/.test(previous)) {
+    return trimmed;
+  }
+  if (/^[,.;:!?)\]}”’%]/.test(trimmed)) return trimmed;
+  return ` ${trimmed}`;
+}
+
 /**
  * Turns suggestion text into nodes: text carrying `provenance ASSIST`, and a `citation` node for
  * each `{{cite:KEY}}` the server resolved (B.3 accept-all).
@@ -355,7 +379,14 @@ export const GhostText = Extension.create<GhostTextOptions>({
                 }
                 case 'done': {
                   // The server's post-processed text wins over what streamed (A.1 steps 1–3).
-                  const finalText = meta.text ?? prev.text;
+                  // A.1 tells the model "do not add a leading space; the editor handles spacing",
+                  // and until 2026-09-30 nothing did: every accepted suggestion was glued to the
+                  // sentence before it ("Hastelloy EDM.This synthesis"). The space is decided
+                  // here, against the character actually before the cursor.
+                  const finalText = spaceBefore(
+                    meta.text ?? prev.text,
+                    prev.anchorPos === null ? '' : charBefore(newState.doc, prev.anchorPos),
+                  );
                   next =
                     finalText.length === 0
                       ? { ...IDLE }
@@ -628,7 +659,8 @@ export const GhostText = Extension.create<GhostTextOptions>({
           if (ghost?.status !== 'shown' || ghost.anchorPos === null || !ghost.suggestionId) {
             return false;
           }
-          const match = /^\S+\s*/.exec(ghost.text);
+          // `\s*` first: the suggestion may begin with the joining space `spaceBefore` added.
+          const match = /^\s*\S+\s*/.exec(ghost.text);
           if (!match) return false;
           const word = match[0];
           const remaining = ghost.text.slice(word.length);

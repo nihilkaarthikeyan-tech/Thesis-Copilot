@@ -3961,3 +3961,30 @@ five production accounts that existed before had `trialEndsAt` set to null (no e
 trial ("Free trial: 12 of 14 days left", amber in the last three days) instead of only the last
 week, and sign-up says what happens after the 14 days. Payments are not switched on (no Razorpay
 keys), so the first trials can end on 2026-10-13 with nothing to buy; docs/PENDING.md leads with it.
+
+## Writing quality, step 1: the visible mistakes (2026-09-30)
+
+A reviewer compared a Literature Review written with Jenni against one written here
+(`AI_Literature_Review_Comparison_Report.docx`, 30 September). Ours had no citations, one
+sentence twice in a row, four missing spaces ("Hastelloy EDM.This synthesis"), the same
+"this section will…" roadmap three or four times, and a "Despite this" with nothing before it.
+
+Causes, found in code, not guessed:
+- **Missing spaces.** A.1 tells the model "do not add a leading space; the editor handles spacing",
+  and nothing in the editor did. `spaceBefore` in `ghost-text.ts` now decides the space from the
+  character before the cursor; word-by-word accept takes the space with the first word.
+- **Repeats and roadmap filler.** With no passage to cite, A.1 says to "write a structural or
+  connective sentence instead (for example, one that introduces what the section will examine)",
+  so every suggestion was a roadmap sentence, near-copies of each other, each accepted.
+  `packages/ai/src/builder/quality.ts` now drops, before the student sees them: a sentence that
+  nearly matches one already in the chapter, a future-tense self-describing sentence that cites
+  nothing, and a sentence opening with a connective ("Despite this", "However"…) when nothing
+  before it is a claim. Suggestions and drafts (paragraph by paragraph) both pass through it.
+  The prompt change that removes the cause is step 2 and needs the owner's approval.
+
+Tests: `packages/ai/test/quality.spec.ts` (10, the reviewer's own paragraph as the fixture),
+three new ghost-text specs for the space. Three older ghost-text specs had built "Intro. " from
+HTML, which trims the trailing space, so the cursor sat after a period; they now build it as JSON,
+as their cursor position always assumed. Checked in a browser against the mock: a suggestion after
+text with no trailing space arrives with its space, and asking again no longer offers the sentence
+just accepted.

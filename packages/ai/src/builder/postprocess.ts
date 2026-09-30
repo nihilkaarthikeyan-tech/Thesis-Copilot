@@ -13,6 +13,8 @@
  * output that was nothing but a bad citation must end up EMPTY, not charged.
  */
 
+import { filterSentences, type QualityDrops } from './quality.js';
+
 export const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
 
 export type PostProcessInput = {
@@ -28,6 +30,11 @@ export type PostProcessInput = {
    * and still constrain what it may claim. Only the visible markers go.
    */
   autoCite?: boolean;
+  /**
+   * The rest of the chapter as text, so a sentence it already contains is not offered again
+   * (`quality.ts`). Empty or absent: only the answer itself and `before` are checked.
+   */
+  existingText?: string;
 };
 
 export type PostProcessResult = {
@@ -42,6 +49,8 @@ export type PostProcessResult = {
   overlapRemoved: boolean;
   /** Step (3) cut the output at the second sentence. */
   truncated: boolean;
+  /** Sentences the quality filters removed (duplicates, roadmap filler, dangling connectives). */
+  drops: QualityDrops;
 };
 
 /** Step (1). */
@@ -151,10 +160,15 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
     : stripUnknownCitations(input.output, input.passageIds);
   const overlap = removeLeadingOverlap(stripped.text, input.before);
   const cut = cutAfterSecondSentence(overlap.text);
+  const filtered = filterSentences({
+    text: cut.text,
+    before: input.before,
+    existing: input.existingText ?? '',
+  });
 
   // A.1: "Do not add a leading space or newline; the editor handles spacing." Trailing whitespace
-  // is likewise noise. Interior spacing is the model's and is kept.
-  const text = cut.text.trim();
+  // is likewise noise, and the editor adds the joining space (`spaceBefore`, ghost-text.ts).
+  const text = filtered.text.trim();
   const empty = text.length === 0;
 
   return {
@@ -164,5 +178,6 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
     empty,
     overlapRemoved: overlap.removed,
     truncated: cut.truncated,
+    drops: filtered.drops,
   };
 }

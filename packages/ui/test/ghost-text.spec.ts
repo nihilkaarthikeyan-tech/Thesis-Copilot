@@ -5,7 +5,12 @@
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getGhostState, ghostDisplayText, jsonContainsText } from '../src/editor/ghost-text.js';
+import {
+  getGhostState,
+  ghostDisplayText,
+  jsonContainsText,
+  spaceBefore,
+} from '../src/editor/ghost-text.js';
 import { createTestEditor, fakeRequest, pressKey, provenanceRuns, tick } from './helpers.js';
 
 let editor: Editor;
@@ -29,10 +34,16 @@ const streamOf = (text: string, paced = false) =>
     ],
   });
 
+/** "Intro. " with its trailing space. HTML parsing would trim it and leave the cursor after a period. */
+const INTRO_WITH_SPACE = {
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Intro. ' }] }],
+};
+
 describe('ghost text (Appendix B.3)', () => {
   it('B.9 #1: ghost text never appears in editor.getJSON() at any point during a stream', async () => {
     const fake = streamOf(SUGGESTION, true);
-    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor = createTestEditor(INTRO_WITH_SPACE, { request: fake.request });
     editor.commands.setTextSelection(8);
     expect(editor.commands.requestSuggestion()).toBe(true);
 
@@ -251,7 +262,7 @@ describe('the done event may carry post-processed text (A.1 steps 1–3, PHASES 
         { type: 'done', citations: [], text: final },
       ],
     });
-    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor = createTestEditor(INTRO_WITH_SPACE, { request: fake.request });
     editor.commands.setTextSelection(8);
     editor.commands.requestSuggestion();
     await tick(40);
@@ -276,7 +287,7 @@ describe('the done event may carry post-processed text (A.1 steps 1–3, PHASES 
         { type: 'done', citations: [], text: '' },
       ],
     });
-    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor = createTestEditor(INTRO_WITH_SPACE, { request: fake.request });
     editor.commands.setTextSelection(8);
     editor.commands.requestSuggestion();
     await tick(40);
@@ -287,7 +298,7 @@ describe('the done event may carry post-processed text (A.1 steps 1–3, PHASES 
 
   it('keeps the streamed text when done carries none (the stream was final)', async () => {
     const fake = streamOf(SUGGESTION);
-    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor = createTestEditor(INTRO_WITH_SPACE, { request: fake.request });
     editor.commands.setTextSelection(8);
     editor.commands.requestSuggestion();
     await tick(40);
@@ -316,11 +327,62 @@ describe('what the student sees in grey', () => {
 
   it('shows the widget without the marker once the suggestion is final', async () => {
     const fake = streamOf(SUGGESTION);
-    editor = createTestEditor('<p>Intro. </p>', { request: fake.request });
+    editor = createTestEditor(INTRO_WITH_SPACE, { request: fake.request });
     editor.commands.setTextSelection(8);
     editor.commands.requestSuggestion();
     await tick(40);
     const ghost = editor.view.dom.querySelector('.ghost');
     expect(ghost?.textContent ?? '').not.toContain('{{cite:');
+  });
+});
+
+/**
+ * 2026-09-30: A.1 tells the model the editor adds the joining space, and nothing did, so accepted
+ * suggestions read "Hastelloy EDM.This synthesis". The space is decided by what is before the
+ * cursor.
+ */
+describe('the joining space', () => {
+  it('spaceBefore adds one space after a word or sentence end, and none where it would be wrong', () => {
+    expect(spaceBefore('This follows.', '.')).toBe(' This follows.');
+    expect(spaceBefore('word', 'x')).toBe(' word');
+    expect(spaceBefore('word', ' ')).toBe('word');
+    expect(spaceBefore('word', '')).toBe('word');
+    expect(spaceBefore('word', '(')).toBe('word');
+    expect(spaceBefore(', and more', 'x')).toBe(', and more');
+    expect(spaceBefore('. Next.', 'x')).toBe('. Next.');
+    expect(spaceBefore('  word', '.')).toBe(' word');
+  });
+
+  it('Tab after a sentence with no trailing space inserts "Intro. Evidence…", not "Intro.Evidence…"', async () => {
+    const fake = streamOf(SUGGESTION);
+    editor = createTestEditor(
+      {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Intro.' }] }],
+      },
+      { request: fake.request },
+    );
+    editor.commands.setTextSelection(7);
+    editor.commands.requestSuggestion();
+    await tick(40);
+    expect(getGhostState(editor)?.status).toBe('shown');
+    expect(pressKey(editor, 'Tab')).toBe(true);
+    expect(editor.state.doc.textContent.startsWith('Intro. Evidence from rural')).toBe(true);
+  });
+
+  it('Alt+→ still takes the first word when the suggestion starts with the joining space', async () => {
+    const fake = streamOf(SUGGESTION);
+    editor = createTestEditor(
+      {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Intro.' }] }],
+      },
+      { request: fake.request },
+    );
+    editor.commands.setTextSelection(7);
+    editor.commands.requestSuggestion();
+    await tick(40);
+    expect(editor.commands.acceptSuggestionWord()).toBe(true);
+    expect(editor.state.doc.textContent).toBe('Intro. Evidence ');
   });
 });

@@ -147,6 +147,7 @@ export {
   draftResultSchema,
   draftToProseMirror,
   draftUserMessage,
+  filterDraftParagraphs,
   mockDraftFor,
   NEEDS_SOURCE_RE,
   NO_SOURCES_MESSAGE,
@@ -223,6 +224,14 @@ export {
   SKELETON_INSTRUCTION,
   skeletonSchema,
 } from './builder/proposal.js';
+export {
+  filterSentences,
+  isRoadmap,
+  nearDuplicate,
+  opensWithConnective,
+  type QualityDrops,
+  splitSentences,
+} from './builder/quality.js';
 export {
   buildQueriesRequest,
   cleanQueries,
