@@ -4095,3 +4095,46 @@ Faults the evaluation found in code, all fixed with tests (`test/quality.spec.ts
 this); every prompt's header now names ADR-0038 and the evaluation. Estimated spend for the
 round: under ₹100 of the ₹150 agreed (the harness does not yet total its own cost).
 Not yet evaluated: cite, proofread, outline, proposal and the coherence prompts.
+
+## Prompt evaluation, rounds 2 and 3 (2026-09-30, ADR-0038)
+
+Round 1 was released as v0.1.21. The owner then asked for the remaining prompts. Tasks with a
+known right answer are now scored in code (`packages/ai/eval/score.ts`), from the same real
+abstracts changed in a known way: a sentence as the paper wrote it, the same sentence with a
+figure changed, a sentence from another field's paper, a clean sentence with one error put in,
+references written out in APA, IEEE and Vancouver from the papers' real metadata. The rest are
+judged blind in both orders as in round 1 (`run.ts`), and the harness now totals its own spend
+from real token counts (`eval/meter.ts`).
+
+| Prompt | Measure (current → candidate) | Adopted |
+|---|---|---|
+| cite | wrong-field paper offered 9 → 6 of 20; changed figure called "direct" 13 → 9 of 16; true source 30/30 both | yes |
+| coh_unsupported | right calls 55 → 59 of 60 | yes |
+| proposal | 7 wins to 2, 1 tie; 5.85 → 7.75 | yes |
+| outline | 2 wins to 0, 8 ties; 8.15 → 8.70 | yes |
+| queries | 6 wins to 3, 1 tie; 6.85 → 7.55 | yes |
+| viva_questions | 7 wins to 0, 3 ties; 6.95 → 8.80 | yes |
+| cite_parse | fields right 397 → 400 of 400 | yes |
+| cite_role | right form 24 → 26 of 26, no claim changed, no names typed | yes |
+| viva_feedback | right verdict 25 → 26 of 26 | yes |
+| proofread (two candidates) | errors fixed 42 → 29, then 55 → 55 of 90 | no |
+| revise | 8 wins to 6 for the current | no |
+| themes | 2 wins to 0 for the current | no |
+| coh_outline | 34 → 33 items flagged on a match (noise) | no |
+| coh_support, coh_claim, coh_term | both perfect on every case | no |
+
+Found in code, fixed with tests:
+
+- **A changed figure was offered as direct support.** Code now shows a passage as "partial",
+  never "direct", when the sentence gives a figure (a number with a unit or counted noun) the
+  passage does not contain (`figuresAgree`, `usableCandidates`, used by `cite.service.ts`).
+
+Measured, not changed: proofreading on gpt-5-nano catches about 60% of planted errors. The same
+prompt on gpt-5-mini fixed 50 of 60 against 41, with fewer extra changes in the faulty sentences
+(8 against 14) but three more changes to sentences with no planted error (some of those are real
+errors in the abstracts). That is a model and cost decision for the owner, in `docs/PENDING.md`.
+
+Not evaluated, because an honest test needs real material we do not have: `extract` (full-text
+papers), `xpaper` (a student's own published papers), `style` (a student's writing sample),
+`comment_classify` (real guide comments). The coherence checks above passed every case both ways;
+harder cases are the next step if they are to be improved further.

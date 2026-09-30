@@ -1,0 +1,48 @@
+{
+  "summary": {
+    "task": "cite_parse",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "fields": 400,
+        "fieldsRight": 397
+      },
+      "candidate": {
+        "fields": 400,
+        "fieldsRight": 400
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "fieldsRight",
+        "better": "higher",
+        "current": 397,
+        "candidate": 400,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "doiInvented",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": true,
+    "spentRupees": 1.21
+  },
+  "logs": {
+    "current": [
+      "title wrong (IEEE): [1] E. Nas, and F. Kara, \"Optimization of EDM Machinability of Hastell",
+      "title wrong (IEEE): [4] P. J. Liew, C. Y. Yap, J. Wang, T. Zhou, and J. Yan, \"Surface modi",
+      "container wrong (IEEE): [4] P. J. Liew, C. Y. Yap, J. Wang, T. Zhou, and J. Yan, \"Surface modi"
+    ],
+    "candidate": []
+  }
+}

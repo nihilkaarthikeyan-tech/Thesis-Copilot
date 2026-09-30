@@ -1,0 +1,44 @@
+{
+  "summary": {
+    "task": "coh_support",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "items": 66,
+        "rightVerdict": 66
+      },
+      "candidate": {
+        "items": 66,
+        "rightVerdict": 66
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "rightVerdict",
+        "better": "higher",
+        "current": 66,
+        "candidate": 66,
+        "candidateBetter": false,
+        "candidateWorse": false
+      },
+      {
+        "measure": "wrongSupported",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": false,
+    "spentRupees": 3.21
+  },
+  "logs": {
+    "current": [],
+    "candidate": []
+  }
+}

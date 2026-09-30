@@ -1,0 +1,112 @@
+{
+  "summary": {
+    "task": "proofread",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "errors": 60,
+        "errorsFixed": 41,
+        "clean": 60,
+        "cleanSentencesChanged": 10,
+        "extraChangesInErrorSentences": 14
+      },
+      "candidate": {
+        "errors": 60,
+        "errorsFixed": 50,
+        "clean": 60,
+        "cleanSentencesChanged": 13,
+        "extraChangesInErrorSentences": 8
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "errorsFixed",
+        "better": "higher",
+        "current": 41,
+        "candidate": 50,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "cleanSentencesChanged",
+        "better": "lower",
+        "current": 10,
+        "candidate": 13,
+        "candidateBetter": false,
+        "candidateWorse": true
+      },
+      {
+        "measure": "extraChangesInErrorSentences",
+        "better": "lower",
+        "current": 14,
+        "candidate": 8,
+        "candidateBetter": true,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": false,
+    "spentRupees": 2.06
+  },
+  "logs": {
+    "current": [
+      "changed clean: electrodes -> electrode",
+      "missed spelling: The most well-known and widely used non-traidtional manufacturing method is electrical dis",
+      "missed doubled: Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive ",
+      "missed spelling: A nearly fully dense grade 300 margaing steel was fabricated by selective laser melting (S",
+      "missed spelling: Selective laser melting allows the layrewise fabrication of bespoke designs, creating new ",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "changed clean: renewable sources based -> renewable-sources-based",
+      "missed spelling: There are some speicfic constraints that hinder the development of solar and wind energy s",
+      "changed clean: system -> systems",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "changed clean: few -> a few",
+      "missed spelling: Solar energy, inculding household and community based solar photovoltaic panels, is the fa",
+      "changed clean: consumer’s -> consumers'",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed article: In this article we provide an critical analysis of the role of market-based approaches to ",
+      "missed verb form: Hastelloy B2 is a high-performance nickel-molybdenum alloy and has been use in micro react",
+      "changed clean: electrodes -> electrode",
+      "missed doubled: Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive ",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "changed clean: renewable sources based -> renewable-sources-based",
+      "missed spelling: There are some speicfic constraints that hinder the development of solar and wind energy s",
+      "changed clean: system -> systems",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "changed clean: few -> a few",
+      "missed spelling: Solar energy, inculding household and community based solar photovoltaic panels, is the fa",
+      "changed clean: consumer’s -> consumers’",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed article: In this article we provide an critical analysis of the role of market-based approaches to "
+    ],
+    "candidate": [
+      "changed clean: workpiece -> the workpiece",
+      "missed doubled: Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive ",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "changed clean: sources based -> sources-based",
+      "changed clean: system -> systems",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "changed clean: few -> a few",
+      "changed clean: perceptive -> perspective",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "changed clean: research-design -> research design",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed agreement: Although the word finance are in the term microfinance, and the core elements of microfina",
+      "changed clean: electrodes -> electrode",
+      "changed clean: its -> their",
+      "changed clean: renewable sources based -> renewable-sources-based",
+      "changed clean: system -> systems",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "changed clean: few -> a few",
+      "changed clean: perceptive -> perspective",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "changed clean: quasi-experimental -> a quasi-experimental",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed agreement: Although the word finance are in the term microfinance, and the core elements of microfina"
+    ]
+  }
+}

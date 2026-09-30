@@ -1,0 +1,99 @@
+{
+  "summary": {
+    "task": "cite",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "supported": 30,
+        "trueSourceOffered": 30,
+        "changedFigure": 16,
+        "changedFigureOfferedAsDirect": 13,
+        "offTopic": 20,
+        "offTopicOffered": 9
+      },
+      "candidate": {
+        "supported": 30,
+        "trueSourceOffered": 30,
+        "changedFigure": 16,
+        "offTopic": 20,
+        "changedFigureOfferedAsDirect": 9,
+        "offTopicOffered": 6
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "trueSourceOffered",
+        "better": "higher",
+        "current": 30,
+        "candidate": 30,
+        "candidateBetter": false,
+        "candidateWorse": false
+      },
+      {
+        "measure": "changedFigureOfferedAsDirect",
+        "better": "lower",
+        "current": 13,
+        "candidate": 9,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "offTopicOffered",
+        "better": "lower",
+        "current": 9,
+        "candidate": 6,
+        "candidateBetter": true,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": true,
+    "spentRupees": 1.61
+  },
+  "logs": {
+    "current": [
+      "changed figure called direct: Experimental parameters, including pulse-on time (300, 1207 and 500 μs), peak cu",
+      "off-topic offered partial,partial: The SLM technique is also commonly known as direct selective laser sintering, La",
+      "off-topic offered partial: The plasma nitriding was performed under the same conditions (temperature of 520",
+      "changed figure called direct: The plasma nitriding was performed under the same conditions (temperature of 156",
+      "changed figure called direct: The observed submicron grain size (0.93 μm on average) suggests an extremely hig",
+      "off-topic offered partial: The results of cardiovascular and kidney outcomes trials involving sodium-glucos",
+      "changed figure called direct: The results of cardiovascular and kidney outcomes trials involving sodium-glucos",
+      "changed figure called direct: The use of mHealth apps has shown improved health outcomes in adult populations ",
+      "changed figure called direct: Using data collected from 154 members of a rural social enterprise in North Indi",
+      "off-topic offered partial: Modern industry is focused on looking for new and effective technologies to manu",
+      "off-topic offered partial: Experimental parameters, including pulse-on time (300, 400 and 500 μs), peak cur",
+      "changed figure called direct: Experimental parameters, including pulse-on time (300, 1207 and 500 μs), peak cu",
+      "off-topic offered partial: The SLM technique is also commonly known as direct selective laser sintering, La",
+      "off-topic offered partial,partial: The plasma nitriding was performed under the same conditions (temperature of 520",
+      "changed figure called direct: The SLM technique is also commonly known as direct selective laser sintering, La",
+      "changed figure called direct: The plasma nitriding was performed under the same conditions (temperature of 156",
+      "changed figure called direct: The observed submicron grain size (0.93 μm on average) suggests an extremely hig",
+      "changed figure called direct: The results of cardiovascular and kidney outcomes trials involving sodium-glucos",
+      "changed figure called direct: The use of mHealth apps has shown improved health outcomes in adult populations ",
+      "changed figure called direct: Using data collected from 154 members of a rural social enterprise in North Indi",
+      "off-topic offered partial: Modern industry is focused on looking for new and effective technologies to manu",
+      "off-topic offered partial: Experimental parameters, including pulse-on time (300, 400 and 500 μs), peak cur"
+    ],
+    "candidate": [
+      "changed figure called direct: The plasma nitriding was performed under the same conditions (temperature of 156",
+      "changed figure called direct: The observed submicron grain size (0.93 μm on average) suggests an extremely hig",
+      "off-topic offered partial: There are some specific constraints that hinder the development of solar and win",
+      "changed figure called direct: The results of cardiovascular and kidney outcomes trials involving sodium-glucos",
+      "changed figure called direct: The use of mHealth apps has shown improved health outcomes in adult populations ",
+      "changed figure called direct: Using data collected from 154 members of a rural social enterprise in North Indi",
+      "off-topic offered partial: Modern industry is focused on looking for new and effective technologies to manu",
+      "changed figure called direct: Experimental parameters, including pulse-on time (300, 1207 and 500 μs), peak cu",
+      "changed figure called direct: The plasma nitriding was performed under the same conditions (temperature of 156",
+      "off-topic offered partial: Solar photovoltaic rooftop has emerged as a potential green technology to addres",
+      "off-topic offered partial: There are some specific constraints that hinder the development of solar and win",
+      "off-topic offered partial: The results of cardiovascular and kidney outcomes trials involving sodium-glucos",
+      "changed figure called direct: The results of cardiovascular and kidney outcomes trials involving sodium-glucos",
+      "changed figure called direct: Using data collected from 154 members of a rural social enterprise in North Indi",
+      "off-topic offered partial: Modern industry is focused on looking for new and effective technologies to manu"
+    ]
+  }
+}

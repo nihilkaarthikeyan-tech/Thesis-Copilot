@@ -21,6 +21,10 @@ export type Topic = {
   questions: string[];
   /** A paragraph in a student's casual first-draft register, for the formalise command. */
   informal: string;
+  /** What a student types to start the proposal conversation. */
+  idea: string;
+  /** Literature themes and source counts for the outline's gap map; the last is thin. */
+  themes: string[];
 };
 
 export const TOPICS: Topic[] = [
@@ -50,6 +54,12 @@ export const TOPICS: Topic[] = [
     ],
     informal:
       "So basically EDM is used a lot for really hard alloys like Hastelloy because normal cutting just doesn't work well. The electrode matters a lot and people keep looking at which one wears less.",
+    idea: 'I want to do something on EDM of Hastelloy, maybe comparing electrodes.',
+    themes: [
+      'Electrode materials and tool wear',
+      'Process parameters and material removal rate',
+      'Surface integrity of nickel-based superalloys',
+    ],
   },
   {
     id: 'slm-maraging',
@@ -76,6 +86,12 @@ export const TOPICS: Topic[] = [
     ],
     informal:
       'SLM lets you print maraging steel parts with pretty complicated shapes, and after that you usually heat treat them, which changes a lot about how the metal behaves.',
+    idea: 'My idea is corrosion of 3D printed maraging steel.',
+    themes: [
+      'As-built microstructure of SLM maraging steel',
+      'Heat treatment and austenite reversion',
+      'Corrosion in chloride environments',
+    ],
   },
   {
     id: 'rooftop-solar-india',
@@ -102,6 +118,12 @@ export const TOPICS: Topic[] = [
     ],
     informal:
       "Lots of people in India still haven't put solar on their roofs even though the government wants them to, and money is a big reason but not the only one.",
+    idea: "I'm interested in why people in villages don't install rooftop solar.",
+    themes: [
+      'Upfront cost, subsidies and finance',
+      'Awareness and trust in installers',
+      'Policy and institutional barriers',
+    ],
   },
   {
     id: 'mhealth-diabetes',
@@ -128,6 +150,12 @@ export const TOPICS: Topic[] = [
     ],
     informal:
       'Diabetes apps sound like a cheap way to help people manage their sugar, but a lot of users kind of drop off after a few weeks, so it is not clear how much they really help.',
+    idea: 'Something about diabetes apps and whether patients keep using them.',
+    themes: [
+      'Effect of apps on HbA1c',
+      'Engagement and attrition over time',
+      'Features linked to sustained use',
+    ],
   },
   {
     id: 'microfinance-women',
@@ -154,5 +182,11 @@ export const TOPICS: Topic[] = [
     ],
     informal:
       "Microfinance gets pushed a lot as a way to empower women, but just giving loans doesn't seem to be the whole story, and self-help groups are the usual way it works in India.",
+    idea: 'I want to study microfinance and women entrepreneurs in India.',
+    themes: [
+      'Credit and business outcomes',
+      'Household decision-making and empowerment',
+      'Self-help groups and the limits of credit alone',
+    ],
   },
 ];

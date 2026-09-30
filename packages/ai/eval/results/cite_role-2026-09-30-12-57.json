@@ -1,0 +1,63 @@
+{
+  "summary": {
+    "task": "cite_role",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "sentences": 26,
+        "rightForm": 24
+      },
+      "candidate": {
+        "sentences": 26,
+        "rightForm": 26
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "rightForm",
+        "better": "higher",
+        "current": 24,
+        "candidate": 26,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "claimChanged",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      },
+      {
+        "measure": "namesTyped",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      },
+      {
+        "measure": "refused",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": true,
+    "spentRupees": 4.4
+  },
+  "logs": {
+    "current": [
+      "narrative not achieved: However, in pragmatic and real-world studies, the HbA1c effects are inconsistent and often modest, w",
+      "narrative not achieved: However, in pragmatic and real-world studies, the HbA1c effects are inconsistent and often modest, w"
+    ],
+    "candidate": []
+  }
+}

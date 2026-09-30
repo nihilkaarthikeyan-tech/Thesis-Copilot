@@ -1,0 +1,44 @@
+{
+  "summary": {
+    "task": "viva_feedback",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "answers": 26,
+        "rightVerdict": 25
+      },
+      "candidate": {
+        "answers": 26,
+        "rightVerdict": 26
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "rightVerdict",
+        "better": "higher",
+        "current": 25,
+        "candidate": 26,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "weakAnswerPassed",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": true,
+    "spentRupees": 5.62
+  },
+  "logs": {
+    "current": ["vague answer called partial (mhealth-diabetes)"],
+    "candidate": []
+  }
+}

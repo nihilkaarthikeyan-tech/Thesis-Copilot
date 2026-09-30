@@ -1,8 +1,6 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, Appendix A.
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-09-30: system block replaced by the evaluated winner (docs/BUILD_LOG.md).
+  CANDIDATE for viva_feedback.md (ADR-0038). Tested against the prompt on disk by eval/score.ts; it replaces
+  it only if it wins.
 -->
 
 ### Viva answer feedback — `viva_feedback.md`

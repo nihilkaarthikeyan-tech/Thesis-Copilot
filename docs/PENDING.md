@@ -4,6 +4,16 @@ The agent builds every phase it can (owner's instruction, 2026-09-04) and lists 
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
 
+## Decision: proofreading on the stronger model? (2026-09-30)
+
+Proofreading runs on gpt-5-nano and catches about 60% of planted errors (missed typos such as
+"indsutry"). On gpt-5-mini the same prompt fixed 50 of 60 against 41, with fewer extra edits in
+faulty sentences, and a few more edits to sentences that had no planted error. It would cost more
+per proofread (the strong tier is several times the fast tier's price) and needs an ADR and a
+`docs/COSTING.md` update. Say yes or no; nothing changes until you do. Evidence:
+`packages/ai/eval/results/proofread-*.json`, `docs/BUILD_LOG.md` → "Prompt evaluation, rounds 2
+and 3".
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

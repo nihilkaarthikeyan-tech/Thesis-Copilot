@@ -1,8 +1,6 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.9 Outline generation — `outline.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-09-30: system block replaced by the evaluated winner (docs/BUILD_LOG.md).
+  CANDIDATE for outline.md (ADR-0038). Tested against the prompt on disk by eval/run.ts; it replaces
+  it only if it wins.
 -->
 
 ### A.9 Outline generation — `outline.md`

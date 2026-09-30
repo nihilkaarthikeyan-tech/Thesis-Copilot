@@ -1,0 +1,46 @@
+{
+  "summary": {
+    "task": "coh_claim",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "consistent": 16,
+        "contradictions": 12,
+        "contradictionCaught": 12
+      },
+      "candidate": {
+        "consistent": 16,
+        "contradictions": 12,
+        "contradictionCaught": 12
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "contradictionCaught",
+        "better": "higher",
+        "current": 12,
+        "candidate": 12,
+        "candidateBetter": false,
+        "candidateWorse": false
+      },
+      {
+        "measure": "consistentFlagged",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": false,
+    "spentRupees": 1.06
+  },
+  "logs": {
+    "current": [],
+    "candidate": []
+  }
+}

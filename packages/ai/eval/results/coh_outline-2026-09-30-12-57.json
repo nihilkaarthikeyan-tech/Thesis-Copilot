@@ -1,0 +1,70 @@
+{
+  "summary": {
+    "task": "coh_outline",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "matches": 10,
+        "itemsFlaggedOnMatch": 34,
+        "mismatches": 10,
+        "mismatchCaught": 10
+      },
+      "candidate": {
+        "matches": 10,
+        "itemsFlaggedOnMatch": 33,
+        "mismatches": 10,
+        "mismatchCaught": 10
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "mismatchCaught",
+        "better": "higher",
+        "current": 10,
+        "candidate": 10,
+        "candidateBetter": false,
+        "candidateWorse": false
+      },
+      {
+        "measure": "itemsFlaggedOnMatch",
+        "better": "lower",
+        "current": 34,
+        "candidate": 33,
+        "candidateBetter": true,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": true,
+    "spentRupees": 4.91
+  },
+  "logs": {
+    "current": [
+      "match flagged 5: Copper electrodes: no coverage though requested. | Composite electrodes: no coverage though requested. | Explicit statem",
+      "match flagged 4: Austenite reversion | Corrosion specifically in chloride environments | Detailed SLM process and near‑full density claim",
+      "match flagged 3: Awareness | Low maintenance costs as a factor mitigating uptake | Mention of national solar capacity targets/goals as su",
+      "match flagged 2: Features linked to sustained use {{cite:scope_note}} | Emphasis on need for larger, high-quality randomized trials and m",
+      "match flagged 2: Household decision-making and intra-household allocation/roles (explicit treatment absent from the summary) {{cite:scope",
+      "match flagged 5: Copper electrodes (no discussion in chapter) {{cite:scope_note}} | Composite electrodes (no discussion in chapter) {{cit",
+      "match flagged 4: Austenite reversion (no mention of austenite reversion or reverted austenite) | Corrosion specifically in chloride envir",
+      "match flagged 3: awareness (public knowledge, information deficits, or awareness campaigns) | maintenance costs and long-term upkeep conc",
+      "match flagged 2: Features linked to sustained use: specific app features that promote long-term or sustained use are not reported in the ",
+      "match flagged 4: Household decision-making within households (explicit treatment of intra-household decision processes and outcomes) | IC"
+    ],
+    "candidate": [
+      "match flagged 5: reports on copper electrodes | reports on composite electrodes | explicitly stated research gaps for Hastelloy | surface",
+      "match flagged 4: Austenite reversion (no mention of austenite reversion in the chapter summary) {{cite:scope_note}}{{cite:chapter_summary",
+      "match flagged 3: awareness (public knowledge, information barriers) {{cite:scope_note}} | low maintenance costs as a distinct facilitator",
+      "match flagged 2: Features linked to sustained use (design elements or specific features associated with retention) — requested by scope n",
+      "match flagged 3: Household decision-making (how households allocate resources or make intra-household choices) {{cite:scope_note}} | Role",
+      "match flagged 5: copper electrodes | composite electrodes | explicit statement of gaps for Hastelloy | detailed POCO graphite grain‑size ",
+      "match flagged 4: Austenite reversion (not mentioned in the chapter summary). {{cite:scope_note}} | Corrosion behavior specifically in chl",
+      "match flagged 2: Awareness (studies about awareness among households). {{cite:scope_note}} | India-specific policy targets and case-based",
+      "match flagged 2: Features linked to sustained use (no discussion of specific app features associated with continued engagement) | Calls f",
+      "match flagged 3: Household decision-making within the household (explicit analysis of intra-household allocation or bargaining) {{cite:sc"
+    ]
+  }
+}

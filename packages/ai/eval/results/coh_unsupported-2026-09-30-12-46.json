@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "task": "coh_unsupported",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "sentences": 60,
+        "rightCall": 55
+      },
+      "candidate": {
+        "sentences": 60,
+        "rightCall": 59
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "rightCall",
+        "better": "higher",
+        "current": 55,
+        "candidate": 59,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "structureFlagged",
+        "better": "lower",
+        "current": 0,
+        "candidate": 0,
+        "candidateBetter": false,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": true,
+    "spentRupees": 0.17
+  },
+  "logs": {
+    "current": [
+      "c0 expected true got false: Modern industry is focused on looking for new and effective technologi",
+      "c0 expected true got false: Modern industry is focused on looking for new and effective technologi",
+      "c1 expected true got false: The plasma nitriding was performed under the same conditions (temperat",
+      "c0 expected true got false: Solar photovoltaic rooftop has emerged as a potential green technology",
+      "c2 expected true got false: This paper examines the state of the art in mobile clinical and health"
+    ],
+    "candidate": [
+      "c0 expected true got false: Modern industry is focused on looking for new and effective technologi"
+    ]
+  }
+}

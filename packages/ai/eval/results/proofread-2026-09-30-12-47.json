@@ -1,0 +1,122 @@
+{
+  "summary": {
+    "task": "proofread",
+    "samples": 2,
+    "totals": {
+      "current": {
+        "errors": 60,
+        "errorsFixed": 42,
+        "clean": 60,
+        "extraChangesInErrorSentences": 12,
+        "cleanSentencesChanged": 11
+      },
+      "candidate": {
+        "errors": 60,
+        "errorsFixed": 29,
+        "clean": 60,
+        "cleanSentencesChanged": 2,
+        "extraChangesInErrorSentences": 4
+      }
+    },
+    "verdicts": [
+      {
+        "measure": "errorsFixed",
+        "better": "higher",
+        "current": 42,
+        "candidate": 29,
+        "candidateBetter": false,
+        "candidateWorse": true
+      },
+      {
+        "measure": "cleanSentencesChanged",
+        "better": "lower",
+        "current": 11,
+        "candidate": 2,
+        "candidateBetter": true,
+        "candidateWorse": false
+      },
+      {
+        "measure": "extraChangesInErrorSentences",
+        "better": "lower",
+        "current": 12,
+        "candidate": 4,
+        "candidateBetter": true,
+        "candidateWorse": false
+      }
+    ],
+    "failedRuns": {
+      "current": 0,
+      "candidate": 0
+    },
+    "adopt": false,
+    "spentRupees": 0.61
+  },
+  "logs": {
+    "current": [
+      "missed doubled: Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive ",
+      "missed spelling: A nearly fully dense grade 300 margaing steel was fabricated by selective laser melting (S",
+      "missed spelling: Selective laser melting allows the layrewise fabrication of bespoke designs, creating new ",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "changed clean: renewable sources based -> renewable-sources-based",
+      "missed spelling: There are some speicfic constraints that hinder the development of solar and wind energy s",
+      "changed clean: extension -> the extension; system -> systems",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "changed clean: few -> a few",
+      "missed spelling: Solar energy, inculding household and community based solar photovoltaic panels, is the fa",
+      "changed clean: consumer’s -> consumers’",
+      "changed clean: perceptive. -> perspective.",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed article: In this article we provide an critical analysis of the role of market-based approaches to ",
+      "changed clean: electrodes -> electrode",
+      "missed spelling: Selective laser melting allows the layrewise fabrication of bespoke designs, creating new ",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "changed clean: renewable sources based -> renewable-sources-based",
+      "missed spelling: There are some speicfic constraints that hinder the development of solar and wind energy s",
+      "changed clean: extension -> the extension; system -> systems",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "changed clean: few -> a few",
+      "missed spelling: Solar energy, inculding household and community based solar photovoltaic panels, is the fa",
+      "changed clean: consumer’s -> consumers'",
+      "changed clean: perceptive. -> perspective.",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed article: In this article we provide an critical analysis of the role of market-based approaches to "
+    ],
+    "candidate": [
+      "changed clean: electrodes -> electrode",
+      "missed doubled: Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive ",
+      "missed agreement: The effects of a prior solution treatment, aging and the combination of both on the micros",
+      "missed spelling: A nearly fully dense grade 300 margaing steel was fabricated by selective laser melting (S",
+      "missed spelling: Selective laser melting allows the layrewise fabrication of bespoke designs, creating new ",
+      "missed spelling: Additive manfuacturing is extending its influence on various modern industries, including ",
+      "missed doubled: Metal additive manufacturing (AM), also known as 3D printing, is a disruptive manufacturin",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "missed spelling: There are some speicfic constraints that hinder the development of solar and wind energy s",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "missed spelling: Solar energy, inculding household and community based solar photovoltaic panels, is the fa",
+      "missed doubled: The primary objective for deploying renewable energy in India is to advance economic devel",
+      "missed agreement: Solar PV (photovoltaic) technology have gained considerable attention worldwide, as it can",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed article: In this article we provide an critical analysis of the role of market-based approaches to ",
+      "changed clean: electrodes -> electrode",
+      "missed doubled: Selective Laser Melting (SLM) is a particular rapid prototyping, 3D printing, or Additive ",
+      "missed agreement: The effects of a prior solution treatment, aging and the combination of both on the micros",
+      "missed spelling: A nearly fully dense grade 300 margaing steel was fabricated by selective laser melting (S",
+      "missed spelling: Selective laser melting allows the layrewise fabrication of bespoke designs, creating new ",
+      "missed spelling: Additive manfuacturing is extending its influence on various modern industries, including ",
+      "missed doubled: Metal additive manufacturing (AM), also known as 3D printing, is a disruptive manufacturin",
+      "missed agreement: Solar photovoltaic rooftop have emerged as a potential green technology to address climate",
+      "missed spelling: There are some speicfic constraints that hinder the development of solar and wind energy s",
+      "missed spelling: Recent resaerch on the energy system highlights the need for understanding the bandwidth o",
+      "missed spelling: Solar energy, inculding household and community based solar photovoltaic panels, is the fa",
+      "missed doubled: The primary objective for deploying renewable energy in India is to advance economic devel",
+      "missed agreement: Solar PV (photovoltaic) technology have gained considerable attention worldwide, as it can",
+      "missed article: As the increasing prevalence of type 2 diabetes mellitus has put pressure on health system",
+      "missed spelling: In this paper, we examine the ecoonmic logic behind microfinance institutions and consider",
+      "missed agreement: Although the word finance are in the term microfinance, and the core elements of microfina",
+      "missed article: In this article we provide an critical analysis of the role of market-based approaches to "
+    ]
+  }
+}
