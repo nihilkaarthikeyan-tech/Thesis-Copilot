@@ -46,8 +46,22 @@ export type DraftSectionDeps = {
   publish: (event: DraftEvent) => Promise<unknown>;
   /** Writes the `AiCallLog` row (§10.2 step 5). Optional so unit tests can omit it. */
   logCall?: (call: DraftCallLog) => Promise<unknown>;
+  /**
+   * ADR-0037: asks for papers on this section when the library has none. Resolves true when a
+   * search was started (the feature is on, the student has not turned it off, and the month's
+   * searches are not used up). Optional so unit tests can omit it.
+   */
+  findSources?: (input: { chapterId: string; query: string }) => Promise<boolean>;
   log?: (event: Record<string, unknown>) => void;
 };
+
+/** The refusal when a search for this section's sources has just been started (ADR-0037). */
+export function findingSourcesMessage(sectionTitle: string): string {
+  return (
+    `No source in your library covers “${sectionTitle}” yet. We are finding papers on it and ` +
+    'adding them to your library now. Try Draft again in a minute or two.'
+  );
+}
 
 export type DraftCallLog = {
   userId: string;
@@ -133,7 +147,17 @@ export async function runDraftSection(
 
   // FR-4.4's AC: refuse rather than write ungrounded prose.
   if (!canDraft(passages)) {
-    await deps.publish({ type: 'refused', draftId, reason: NO_SOURCES_MESSAGE });
+    const searching = await deps
+      .findSources?.({
+        chapterId: chapter.id,
+        query: `${section.title}. ${section.scopeNote}`,
+      })
+      .catch(() => false);
+    await deps.publish({
+      type: 'refused',
+      draftId,
+      reason: searching ? findingSourcesMessage(section.title) : NO_SOURCES_MESSAGE,
+    });
     log({ msg: 'draft refused', draftId, reason: 'no sources' });
     return { draftId, status: 'refused', words: 0, citations: 0, needsSource: 0, short: false };
   }

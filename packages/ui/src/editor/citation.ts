@@ -30,6 +30,21 @@ export type CitationPassage = {
   shortRef: string;
   /** Signed PDF link, when the source has a file. The popover appends `#page=N`. */
   pdfUrl: string | null;
+  /**
+   * The paper itself (2026-09-30): what a reader needs to check that the citation is real —
+   * title, authors, year, journal, a DOI link — and whether we read the whole paper or only its
+   * abstract. A reviewer found Jenni citing papers that could not be confirmed; every citation
+   * here names a record anyone can open.
+   */
+  record?: {
+    title: string | null;
+    authors: string | null;
+    year: number | null;
+    venue: string | null;
+    doi: string | null;
+    /** `FULL_TEXT` or `ABSTRACT`: what the citation could have been drawn from. */
+    grounding: string | null;
+  };
 };
 
 export type CitationOptions = {
@@ -233,6 +248,45 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           .filter(Boolean)
           .join(' · ');
         el.appendChild(head);
+
+        if (passage.record) {
+          const r = passage.record;
+          const record = document.createElement('span');
+          record.className = 'citation-popover__record';
+          record.style.display = 'block';
+          if (r.title) {
+            const title = document.createElement('strong');
+            title.className = 'citation-popover__title';
+            title.style.display = 'block';
+            title.textContent = r.title;
+            record.appendChild(title);
+          }
+          const meta = document.createElement('span');
+          meta.className = 'citation-popover__meta';
+          meta.style.display = 'block';
+          meta.textContent = [r.authors, r.year, r.venue].filter(Boolean).join(' · ');
+          record.appendChild(meta);
+          if (r.grounding === 'ABSTRACT' || r.grounding === 'FULL_TEXT') {
+            const depth = document.createElement('span');
+            depth.className = 'citation-popover__depth';
+            depth.style.display = 'block';
+            depth.textContent =
+              r.grounding === 'FULL_TEXT'
+                ? 'Drawn from the full text'
+                : 'Abstract only: we could read the abstract, not the whole paper';
+            record.appendChild(depth);
+          }
+          if (r.doi) {
+            const doi = document.createElement('a');
+            doi.className = 'citation-popover__doi';
+            doi.href = `https://doi.org/${r.doi}`;
+            doi.target = '_blank';
+            doi.rel = 'noopener noreferrer';
+            doi.textContent = `doi.org/${r.doi}`;
+            record.appendChild(doi);
+          }
+          el.appendChild(record);
+        }
 
         const body = document.createElement('span');
         body.className = 'citation-popover__text';

@@ -22,7 +22,7 @@ type Usage = {
   actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
 };
 
-type Settings = { automaticSuggest?: boolean; autoCite?: boolean };
+type Settings = { automaticSuggest?: boolean; autoCite?: boolean; autoSources?: boolean };
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -160,6 +160,41 @@ export default function SettingsPage() {
             }`}
           >
             {settings?.autoCite !== false ? 'On' : 'Off'}
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="eyebrow">Find sources for me</h2>
+            <p className="mt-1 text-sm text-muted">
+              On by default. When nothing in your library covers what you are writing, we search
+              OpenAlex, Semantic Scholar, arXiv and PubMed for papers on it and add the few that are
+              clearly on topic to your library, marked “Added automatically”. Your suggestions can
+              then cite them.
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              Every paper added is a real, published record you can open and check, and you can
+              remove any of them from your library. A few searches a month are included in your
+              plan.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.autoSources !== false}
+            aria-label="Find sources for me"
+            disabled={busy || settings === null}
+            onClick={() => void save({ autoSources: settings?.autoSources === false })}
+            data-testid="auto-sources-toggle"
+            className={`shrink-0 rounded-full px-3 py-1 text-xs ${
+              settings?.autoSources !== false
+                ? 'bg-accent text-accent-ink'
+                : 'border border-line text-muted'
+            }`}
+          >
+            {settings?.autoSources !== false ? 'On' : 'Off'}
           </button>
         </div>
       </section>

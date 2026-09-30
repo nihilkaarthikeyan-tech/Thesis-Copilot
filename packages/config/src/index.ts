@@ -49,7 +49,11 @@ export {
   loadEnv,
 } from './env.js';
 export {
+  AUTO_SOURCES,
+  AUTO_SOURCES_FLAG,
+  autoSourcesJobKey,
   capFor,
+  monthlyAutoSearches,
   PLAN_LIMITS,
   PLANS,
   type Plan,

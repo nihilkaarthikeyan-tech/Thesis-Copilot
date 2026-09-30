@@ -306,6 +306,11 @@ model Source {
   fileKey        String?  // MinIO key of PDF if available
   groundingLevel GroundingLevel @default(NONE)
   subTheme       String?
+  /**
+   * Set when the system added this paper on its own, because nothing in the library covered what
+   * the student was writing (2026-09-30, ADR-0037). Null for everything the student added.
+   */
+  autoAddedAt    DateTime?
   citationCount  Int?
   isPreprint     Boolean  @default(false)
   isRetracted    Boolean  @default(false)

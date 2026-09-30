@@ -74,6 +74,7 @@ type PlanCaps = { plan: string; caps: Record<string, number> };
 /** Each switch in plain words, so a toggle is never a mystery. */
 const FLAG_NAMES: Record<string, string> = {
   automaticSuggest: 'Suggest without being asked',
+  autoSources: 'Find sources automatically',
   collaboration: 'Live co-authoring',
   costModelVerified: 'Cost figures confirmed',
   draftModeStrongTier: 'Draft mode on the stronger model',
@@ -83,6 +84,8 @@ const FLAG_NAMES: Record<string, string> = {
 const FLAG_NOTES: Record<string, string> = {
   automaticSuggest:
     'A suggestion appears 0.8 s after a student pauses typing, for students who opt in. Off: only when they ask.',
+  autoSources:
+    'When nothing in a student’s library covers what they are writing, search the literature and add up to 5 on-topic papers (5 searches a month on the trial, 20 on paid plans). Students can turn it off in their settings.',
   collaboration:
     'Two people can write one chapter at the same time. Needs the server step in docs/PENDING.md first.',
   costModelVerified:

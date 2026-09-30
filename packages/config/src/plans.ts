@@ -74,3 +74,47 @@ export function capFor(plan: Plan, action: MeteredAction): number {
 }
 
 export { METERED_ACTIONS, type MeteredAction };
+
+/**
+ * Finding sources on its own (ADR-0037, 2026-09-30): when nothing in the library covers the
+ * section being written, the system searches the indexes and adds a few papers.
+ *
+ * Bounded twice. `perRun` papers at most per search, and `monthly` searches per plan; each search
+ * reads at most ~90k embedding tokens (candidate abstracts plus the full text of what it adds), a
+ * worst case under ₹0.50 at voyage-4's price, so 20 a month is at most ~₹9 against the ₹100
+ * ceiling. `minCosine` is chat's measured relevance floor (`RELEVANCE_FLOOR`): below it a paper is
+ * not about what the student is writing, and adding it would only put an off-topic citation in
+ * reach. `cooldownMinutes` stops one chapter searching again while the last search is still
+ * being read.
+ */
+export const AUTO_SOURCES = {
+  perRun: 5,
+  minCosine: 0.3,
+  cooldownMinutes: 10,
+  monthly: {
+    FREE_TRIAL: 5,
+    STUDENT_MONTHLY: 20,
+    STUDENT_ANNUAL: 20,
+    INSTITUTION_SEAT: 20,
+  } satisfies Record<Plan, number>,
+} as const;
+
+/** This plan's automatic searches per month (ADR-0037). An unknown plan gets the trial's. */
+export function monthlyAutoSearches(plan: string): number {
+  return (PLANS as readonly string[]).includes(plan)
+    ? AUTO_SOURCES.monthly[plan as Plan]
+    : AUTO_SOURCES.monthly.FREE_TRIAL;
+}
+
+/**
+ * The job id for a chapter's automatic search: one per chapter per cooldown window, so repeated
+ * requests while the last search is still being read are the same job, which BullMQ ignores.
+ * Keyed on the chapter (what the search reads), and free of ':', which job ids cannot contain.
+ */
+export function autoSourcesJobKey(chapterId: string, now: Date = new Date()): string {
+  const window = Math.floor(now.getTime() / (AUTO_SOURCES.cooldownMinutes * 60_000));
+  return `find-sources-${chapterId}-${window}`;
+}
+
+/** The feature switch that turns automatic sources on for the whole site (ADR-0037). */
+export const AUTO_SOURCES_FLAG = 'autoSources';

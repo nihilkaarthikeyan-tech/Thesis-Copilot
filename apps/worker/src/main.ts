@@ -43,6 +43,7 @@ import {
   type CoherenceRunJob,
   type DraftSectionJob,
   type ExtractPaperJob,
+  type FindSourcesJob,
   type GenerateOutlineJob,
   type IndexSourceJob,
   jobId,
@@ -57,6 +58,7 @@ import { runCoherence } from './jobs/coherence-run.js';
 import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
+import { runFindSources, startFindSources } from './jobs/find-sources.js';
 import { runGenerateOutline } from './jobs/generate-outline.js';
 import { runIndexSource } from './jobs/index-source.js';
 import {
@@ -71,6 +73,7 @@ import {
   QUEUE_COHERENCE,
   QUEUE_DRAFT_SECTION,
   QUEUE_EXTRACT_PAPER,
+  QUEUE_FIND_SOURCES,
   QUEUE_GENERATE_OUTLINE,
   QUEUE_INDEX_SOURCE,
   QUEUE_NOOP,
@@ -193,6 +196,10 @@ async function main(): Promise<void> {
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   });
   const indexQueue = new Queue('index-source', {
+    connection,
+    defaultJobOptions: DEFAULT_JOB_OPTIONS,
+  });
+  const findSourcesQueue = new Queue(QUEUE_FIND_SOURCES, {
     connection,
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   });
@@ -360,6 +367,16 @@ async function main(): Promise<void> {
               query,
               'DRAFT',
             ),
+          // ADR-0037: a draft refused for want of sources starts a search for them.
+          findSources: ({ chapterId, query }) =>
+            startFindSources(
+              {
+                prisma,
+                enqueue: (payload, id) =>
+                  findSourcesQueue.add('find-sources', payload, { jobId: id }),
+              },
+              { documentId: job.data.documentId, userId: job.data.userId, chapterId, query },
+            ),
           strongTier: async () => {
             const flag = await prisma.featureFlag.findUnique({
               where: { key: 'draftModeStrongTier' },
@@ -497,6 +514,30 @@ async function main(): Promise<void> {
         }
       },
       // D.1.1: "concurrency 2 per worker".
+      { connection, concurrency: 2 },
+    ),
+    // ADR-0037: the library had nothing on the section being written.
+    new Worker(
+      QUEUE_FIND_SOURCES,
+      async (job: Job<FindSourcesJob>) => {
+        const result = await runFindSources(job.data, {
+          prisma,
+          embeddings: providers.embeddings,
+          openalex: scholarly.discovery,
+          semanticScholar: scholarly.semanticScholar,
+          pubmed: scholarly.pubmed,
+          arxiv: scholarly.arxiv,
+          assertBudget: assertPlatformBudget(prisma, env),
+          enqueueResolve: (input) =>
+            resolveQueue.add('resolve-reference', input, {
+              jobId: jobId('resolve-reference', input.documentId, jobKeyDigest(input.rawReference)),
+            }),
+          logEmbed: logEmbed(prisma, env),
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        log({ msg: 'find-sources finished', jobId: job.id, ...result });
+        return result;
+      },
       { connection, concurrency: 2 },
     ),
     new Worker(

@@ -3988,3 +3988,28 @@ HTML, which trims the trailing space, so the cursor sat after a period; they now
 as their cursor position always assumed. Checked in a browser against the mock: a suggestion after
 text with no trailing space arrives with its space, and asking again no longer offers the sentence
 just accepted.
+
+## Writing quality, step 3: finding sources automatically (2026-09-30, ADR-0037)
+
+The main gap in the reviewer's comparison: Jenni cites everything because it searches the
+literature itself; ours may only cite the student's library, and the library was empty. Now,
+when autocomplete finds nothing on topic (no passage at the 0.3 relevance floor) or a draft is
+refused for want of sources, a `find-sources` job searches OpenAlex, Semantic Scholar, PubMed and
+arXiv, keeps up to 5 on-topic papers with abstracts, and adds them to the library as "Added
+automatically", through the same resolve → index path as a picked paper. The student is told at
+once; the next suggestion can cite them. Hovering a citation now shows the paper's record:
+title, authors, year, journal, DOI link, and full text or abstract only.
+
+Bounded at 5 searches a month on the trial and 20 on paid plans, one per chapter per 10 minutes,
+behind the site-wide budget; the embedding spend is logged, so the ₹100 ceiling sees it. Off by
+default (`autoSources` flag); students can turn it off in Settings.
+
+Real run on the local stack: two searches read 45 candidates and added 10 real papers, all
+resolved and readable, for 14,340 embedding tokens, ₹0.075 in total.
+
+Found on the way: a paper picked from the literature search lost its abstract whenever the
+resolver had none (Crossref often has none), so it could never be cited. Fixed at both ends.
+
+Tests: `apps/worker/test/find-sources.spec.ts` (7), a resolve test for the kept abstract, a draft
+test for the search-started refusal, `apps/api/test/auto-sources.spec.ts` (3: switch off, one
+search per cooldown, student opted out).

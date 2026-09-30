@@ -34,6 +34,8 @@ type Source = {
   isRetracted: boolean;
   hasFile: boolean;
   rawReference: string | null;
+  /** ADR-0037: added by the system because the library had nothing on a section. */
+  autoAddedAt?: string | null;
 };
 
 const POLL_MS = 3_000;
@@ -449,6 +451,11 @@ function SourceRow({
 
         <div className="flex shrink-0 items-center gap-2">
           <GroundingBadge source={source} />
+          {source.autoAddedAt ? (
+            <Badge tone="muted" data-testid="auto-added-badge">
+              Added automatically
+            </Badge>
+          ) : null}
         </div>
       </div>
 

@@ -247,6 +247,22 @@ describe('runResolveReference', () => {
     expect(without.source.groundingLevel).toBe('NONE');
   });
 
+  it('keeps an abstract the source already carries when the resolver has none (2026-09-30)', async () => {
+    const { abstract: _dropped, ...noAbstract } = crossrefItem;
+    const f = fakeDeps([
+      { match: 'query.bibliographic', body: { message: { items: [noAbstract] } } },
+      { match: 'api.openalex.org', body: {} },
+      { match: 'api.unpaywall.org', body: { is_oa: false } },
+    ]);
+    // A search result brought its abstract with it; Crossref has none for this paper.
+    f.source.cslJson = { abstract: 'Cost, not awareness, drives non-adoption, in 400 households.' };
+    await runResolveReference(job(), f.deps);
+    expect(f.source.cslJson?.abstract).toBe(
+      'Cost, not awareness, drives non-adoption, in 400 households.',
+    );
+    expect(f.source.groundingLevel).toBe('ABSTRACT');
+  });
+
   it('leaves a reference UNRESOLVED rather than attaching a wrong DOI', async () => {
     const { deps, source, indexed } = fakeDeps([
       {

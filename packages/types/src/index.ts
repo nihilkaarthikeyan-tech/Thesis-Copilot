@@ -35,6 +35,7 @@ export {
   type CoherenceRunJob,
   type DraftSectionJob,
   type ExtractPaperJob,
+  type FindSourcesJob,
   type GenerateOutlineJob,
   type IndexSourceJob,
   JOB_RETRY,

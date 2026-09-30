@@ -54,6 +54,8 @@ export type SourceView = {
   isRetracted: boolean;
   hasFile: boolean;
   rawReference: string | null;
+  /** ADR-0037: when the system added it because the library had nothing on a section. */
+  autoAddedAt: Date | null;
 };
 
 @Injectable()
@@ -215,6 +217,7 @@ export class SourcesService {
         isRetracted: true,
         fileKey: true,
         rawReference: true,
+        autoAddedAt: true,
       },
     });
     return rows.map(({ fileKey, ...rest }) => ({ ...rest, hasFile: Boolean(fileKey) }));
@@ -384,6 +387,7 @@ export class SourcesService {
         isRetracted: true,
         fileKey: true,
         rawReference: true,
+        autoAddedAt: true,
       },
     });
     const { fileKey, ...rest } = view;
@@ -458,6 +462,9 @@ export class SourcesService {
       authors: unknown;
       groundingLevel: string;
       hasFile: boolean;
+      /** The record behind the citation, shown in the citation card (2026-09-30). */
+      venue: string | null;
+      doi: string | null;
     };
     /** Signed, time-limited; null when there is no PDF. The client appends `#page=N`. */
     pdfUrl: string | null;
@@ -477,6 +484,8 @@ export class SourcesService {
             authors: true,
             groundingLevel: true,
             fileKey: true,
+            venue: true,
+            doi: true,
           },
         },
       },
@@ -495,6 +504,8 @@ export class SourcesService {
         authors: chunk.source.authors,
         groundingLevel: chunk.source.groundingLevel,
         hasFile: Boolean(chunk.source.fileKey),
+        venue: chunk.source.venue,
+        doi: chunk.source.doi,
       },
       pdfUrl: chunk.source.fileKey ? await this.storage.signedUrl(chunk.source.fileKey) : null,
     };

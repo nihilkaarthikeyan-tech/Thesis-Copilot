@@ -7,6 +7,7 @@ import { FlagsModule } from '../flags/flags.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { AssistController } from './assist.controller.js';
 import { AssistService } from './assist.service.js';
+import { AutoSourcesService } from './auto-sources.service.js';
 import { ChatController } from './chat.controller.js';
 import { ChatService } from './chat.service.js';
 import { CitationsController } from './citations.controller.js';
@@ -24,6 +25,7 @@ import { WebScopeService } from './web-scope.service.js';
   controllers: [AssistController, CitationsController, DraftController, ChatController],
   providers: [
     AssistService,
+    AutoSourcesService,
     ChatService,
     WebScopeService,
     CiteRoleService,

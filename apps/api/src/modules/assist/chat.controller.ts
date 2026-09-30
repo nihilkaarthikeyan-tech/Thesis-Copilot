@@ -79,6 +79,8 @@ const settingsBody = z.object({
   automaticSuggest: z.boolean().optional(),
   /** §2.2: auto-cite is toggled independently of autocomplete. On unless turned off. */
   autoCite: z.boolean().optional(),
+  /** ADR-0037: find papers on the section when the library has none. On unless turned off. */
+  autoSources: z.boolean().optional(),
   chatFilters: z
     .object({
       yearFrom: z.number().int().nullish(),
@@ -190,6 +192,7 @@ export class ChatController {
       // Unlike automatic-suggest, citations are on by default: a grounded suggestion that shows
       // where it came from is the product's whole argument, and turning that off is the choice.
       autoCite: settings.autoCite !== false,
+      autoSources: settings.autoSources !== false,
       ...settings,
     };
   }

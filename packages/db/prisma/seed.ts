@@ -27,6 +27,7 @@ const FEATURE_FLAGS: ReadonlyArray<{ key: string; enabled: boolean; note: string
   { key: 'grobid', enabled: false, note: 'Off until the Phase 2 quality review (FR-1.7, §17 #8)' },
   { key: 'draftModeStrongTier', enabled: true, note: 'Draft on the Strong tier (§10.1, A.2)' },
   { key: 'livingGapMap', enabled: false, note: 'Phase 3 (§4)' },
+  { key: 'autoSources', enabled: false, note: 'ADR-0037: find sources when the library has none' },
   // ADR-0028. Off until the host nginx passes WebSockets to the collab instance.
   { key: 'collaboration', enabled: false, note: 'Live co-authoring (ADR-0028)' },
   // Not one of FR-9.7's four. PHASES task 0.10 adds it: the admin page shows "Cost model:

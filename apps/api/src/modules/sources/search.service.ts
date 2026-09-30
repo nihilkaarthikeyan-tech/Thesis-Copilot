@@ -277,6 +277,9 @@ export class SearchService {
           isPreprint: c.isPreprint,
           oaStatus: c.oaStatus,
           subTheme: c.theme,
+          // The search already read the abstract; keep it, so the paper is citable even when the
+          // resolver finds none (2026-09-30).
+          ...(c.abstract ? { cslJson: { abstract: c.abstract } } : {}),
         },
         select: { id: true },
       });

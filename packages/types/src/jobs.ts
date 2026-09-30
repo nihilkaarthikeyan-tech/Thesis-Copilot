@@ -21,6 +21,8 @@ export const QUEUE_NAMES = [
   'generate-outline',
   // D.1.1: a coherence run is minutes of Strong calls; it never blocks a request.
   'coherence',
+  // ADR-0037: nothing in the library covers the section being written, so find papers on it.
+  'find-sources',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -91,6 +93,18 @@ export type GenerateOutlineJob = {
   template?: string;
 };
 
+/**
+ * `find-sources` — ADR-0037. The library has nothing on what the student is writing, so search
+ * the indexes for it and add the few papers that are genuinely on topic.
+ */
+export type FindSourcesJob = {
+  documentId: string;
+  userId: string;
+  chapterId: string;
+  /** What the student is writing about, in words: the section title, scope note and last sentence. */
+  query: string;
+};
+
 export type JobPayloads = {
   noop: Record<string, never>;
   'extract-paper': ExtractPaperJob;
@@ -100,6 +114,7 @@ export type JobPayloads = {
   'draft-section': DraftSectionJob;
   'generate-outline': GenerateOutlineJob;
   coherence: CoherenceRunJob;
+  'find-sources': FindSourcesJob;
 };
 
 /**

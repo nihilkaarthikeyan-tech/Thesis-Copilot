@@ -47,9 +47,29 @@ type PassageDto = {
   text: string;
   page: number | null;
   section: string | null;
-  source: { title: string | null; year: number | null; authors: unknown };
+  source: {
+    title: string | null;
+    year: number | null;
+    authors: unknown;
+    groundingLevel?: string;
+    venue?: string | null;
+    doi?: string | null;
+  };
   pdfUrl: string | null;
 };
+
+/** "Goel, M., Rao, S. and others" — the card's author line, from CSL names. */
+function authorLine(authors: unknown): string | null {
+  if (!Array.isArray(authors) || authors.length === 0) return null;
+  const names = (authors as Array<{ family?: string; given?: string; literal?: string }>)
+    .slice(0, 3)
+    .map((a) =>
+      a.family ? `${a.family}${a.given ? `, ${a.given.charAt(0)}.` : ''}` : (a.literal ?? ''),
+    )
+    .filter(Boolean);
+  if (names.length === 0) return null;
+  return authors.length > 3 ? `${names.join('; ')} and others` : names.join('; ');
+}
 
 /** "Kumar 2021" for the popover header; falls back through what is actually known. */
 function shortRefOf(source: PassageDto['source']): string {
@@ -359,6 +379,14 @@ function ChapterEditor({
           },
           onDone: (info) => {
             retriedRef.current = false;
+            // ADR-0037: nothing in the library covers this, and a search has started. Said
+            // first, because it is what will actually change the next suggestion.
+            if (info.findingSources) {
+              setNotice(
+                'No source in your library covers this yet. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.',
+              );
+              return;
+            }
             // Empty-grounding state: the suggestion had no passage to draw on. Not an error —
             // a hint about what would make the next one better.
             if (!info.grounded) {
@@ -407,6 +435,14 @@ function ChapterEditor({
                 section: p.section,
                 shortRef: shortRefOf(p.source),
                 pdfUrl: p.pdfUrl,
+                record: {
+                  title: p.source.title,
+                  authors: authorLine(p.source.authors),
+                  year: p.source.year,
+                  venue: p.source.venue ?? null,
+                  doi: p.source.doi ?? null,
+                  grounding: p.source.groundingLevel ?? null,
+                },
               };
             } catch {
               return null;

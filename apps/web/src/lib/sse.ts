@@ -97,6 +97,9 @@ export async function* assistRequest(
           ...(typeof parsed.text === 'string' ? { text: parsed.text } : {}),
           ...(typeof parsed.grounded === 'boolean' ? { grounded: parsed.grounded } : {}),
           ...(typeof parsed.pinned === 'number' ? { pinned: parsed.pinned } : {}),
+          ...(typeof parsed.findingSources === 'boolean'
+            ? { findingSources: parsed.findingSources }
+            : {}),
           usage: parsed.usage,
           ttfbMs: typeof parsed.ttfbMs === 'number' ? parsed.ttfbMs : undefined,
           latencyMs: typeof parsed.latencyMs === 'number' ? parsed.latencyMs : undefined,

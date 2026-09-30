@@ -26,6 +26,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
+import { AutoSourcesService, anyOnTopic, sourcesQuery } from './auto-sources.service.js';
 import { ContextService } from './context.service.js';
 import { docToText } from './doc-text.js';
 
@@ -57,6 +58,8 @@ export type SuggestEvent =
         /** §6.2 empty-grounding state: false when no passage was retrieved for this call. */
         grounded: boolean;
         pinned: number;
+        /** ADR-0037: nothing in the library was on topic, and a search for papers has started. */
+        findingSources: boolean;
         usage: unknown;
         ttfbMs: number;
         latencyMs: number;
@@ -91,6 +94,7 @@ export class AssistService {
     private readonly context: ContextService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
+    private readonly autoSources: AutoSourcesService,
   ) {
     this.redis = redis.client;
   }
@@ -161,6 +165,21 @@ export class AssistService {
         // §2.2's citation toggle, per user and independent of automatic-suggest (ADR-0006).
         this.prisma.user.findUnique({ where: { id: user.id }, select: { settings: true } }),
       ]);
+      // ADR-0037: nothing in the library is on this topic, so ask the worker to find papers on
+      // it. Started now and awaited only at the end, so the suggestion is not held up by it.
+      const findingSources = anyOnTopic(retrieved.passages)
+        ? Promise.resolve(false)
+        : this.autoSources
+            .start({
+              documentId: chapter.documentId,
+              userId: user.id,
+              chapterId: chapter.id,
+              query: sourcesQuery(chapter.title, chapter.scopeNote, input.before),
+            })
+            .catch((error: unknown) => {
+              this.logger.warn({ err: error }, 'could not start a source search');
+              return false;
+            });
       // PRD 2.2: auto-cite is on unless the student turned it off in settings.
       const userSettings = (settings?.settings ?? {}) as Record<string, unknown>;
       const autoCite = userSettings.autoCite !== false;
@@ -295,6 +314,7 @@ export class AssistService {
           citations,
           grounded: retrieved.passages.length > 0,
           pinned: retrieved.pinned,
+          findingSources: await findingSources,
           usage,
           ttfbMs: ttfbMs ?? latencyMs,
           latencyMs,

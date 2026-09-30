@@ -49,6 +49,8 @@ export type GhostEvent =
       /** §6.2 empty-grounding state: false when nothing was retrieved for this call. */
       grounded?: boolean;
       pinned?: number;
+      /** ADR-0037: nothing in the library was on topic, and a search for papers has started. */
+      findingSources?: boolean;
       usage?: unknown;
       ttfbMs?: number;
       latencyMs?: number;
@@ -81,7 +83,12 @@ export type GhostTextOptions = {
     cap?: number;
   }) => void;
   /** Fires on `done` with what the server knew about grounding, for the §6.2 hint. */
-  onDone?: (info: { grounded: boolean; pinned: number; empty: boolean }) => void;
+  onDone?: (info: {
+    grounded: boolean;
+    pinned: number;
+    empty: boolean;
+    findingSources: boolean;
+  }) => void;
   onTiming?: (timing: { ttfbMs: number; latencyMs: number }) => void;
   /**
    * FR-4.6: automatic-suggest. When true, a suggestion is requested `autoSuggestIdleMs` after the
@@ -523,6 +530,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
             options.onDone?.({
               grounded: event.grounded ?? true,
               pinned: event.pinned ?? 0,
+              findingSources: event.findingSources ?? false,
               empty: (event.text ?? '').length === 0 && event.citations.length === 0,
             });
             // PHASES 3.5: the label the server rendered for each resolved key ("(Kumar 2021)")

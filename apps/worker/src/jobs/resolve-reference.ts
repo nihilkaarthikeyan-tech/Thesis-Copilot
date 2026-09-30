@@ -77,7 +77,7 @@ export async function runResolveReference(
 
   const source = await deps.prisma.source.findFirst({
     where: { documentId: job.documentId, rawReference: job.rawReference },
-    select: { id: true, status: true },
+    select: { id: true, status: true, cslJson: true },
   });
   if (!source) {
     // The student removed it from the library between enqueue and run. Nothing to do.
@@ -143,10 +143,16 @@ export async function runResolveReference(
     }
   }
 
+  // An abstract the source already carries (from a search result, 2026-09-30) is kept when the
+  // resolver found none: Crossref often has no abstract, and dropping the one OpenAlex gave us
+  // left the paper unreadable and uncitable.
+  const existing = source.cslJson as { abstract?: unknown } | null;
+  const abstract =
+    resolved.abstract ?? (typeof existing?.abstract === 'string' ? existing.abstract : null);
   const cslJson: Record<string, unknown> | null = resolved.cslJson
-    ? { ...resolved.cslJson, ...(resolved.abstract ? { abstract: resolved.abstract } : {}) }
-    : resolved.abstract
-      ? { abstract: resolved.abstract }
+    ? { ...resolved.cslJson, ...(abstract ? { abstract } : {}) }
+    : abstract
+      ? { abstract }
       : null;
 
   await deps.prisma.source.update({
@@ -171,7 +177,7 @@ export async function runResolveReference(
       venueCitedness,
       // Full text is only claimed once it has actually been fetched, by `index-source`; and
       // ABSTRACT only when there really is an abstract, not merely because a match was found.
-      groundingLevel: groundingLevelFor(false, Boolean(resolved.abstract)),
+      groundingLevel: groundingLevelFor(false, Boolean(abstract)),
     },
   });
 
@@ -182,7 +188,7 @@ export async function runResolveReference(
     doi: resolved.doi,
     score: Number(resolved.score.toFixed(3)),
     retracted: resolved.isRetracted,
-    hasAbstract: Boolean(resolved.abstract),
+    hasAbstract: Boolean(abstract),
   });
 
   await deps.enqueueIndex({

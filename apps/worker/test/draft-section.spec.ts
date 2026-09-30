@@ -109,6 +109,17 @@ describe('runDraftSection', () => {
     expect((published.at(-1) as { reason: string }).reason).toContain('Pin at least one source');
   });
 
+  it('with no sources, starts a search for them and says so (ADR-0037)', async () => {
+    const { deps, published } = fakeDeps({ passages: false });
+    const findSources = vi.fn(async () => true);
+    const result = await runDraftSection(job, { ...deps, findSources });
+    expect(result.status).toBe('refused');
+    expect(findSources).toHaveBeenCalledWith(expect.objectContaining({ chapterId: 'ch-1' }));
+    const reason = (published.at(-1) as { reason: string }).reason;
+    expect(reason).toContain('We are finding papers on it');
+    expect(reason).toContain('Try Draft again');
+  });
+
   it('writes the draft, resolves its citation, and logs the call with its usage', async () => {
     const { deps, published, logged } = fakeDeps();
 
