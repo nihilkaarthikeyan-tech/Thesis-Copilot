@@ -70,3 +70,31 @@ note; these lines make it the answer for a whole unsupported paragraph, not only
   other citation (§10.6). This is what keeps every citation real.
 - Length limits, the two-sentence limit on autocomplete, and the student's style profile.
 - The proposal and outline prompts. The proposal is the one place future tense is right.
+
+---
+
+## Step 4: the different-material warning (`coh_support.md`, the citation-support check)
+
+The reviewer found Jenni citing stainless-steel findings in a maraging-steel review. Our
+citation-support check already judges whether the cited passage says what the sentence claims.
+This adds one verdict for "the passage is about something else".
+
+### New verdict (added to the list of verdicts)
+
+> - DIFFERENT_SUBJECT: the passage's finding is about a different material, organism, population,
+>   country or setting from the one the sentence (and the thesis, per its scope) is about, and the
+>   sentence applies it to its own subject without saying so. For example, a finding on stainless
+>   steel cited as if it held for maraging steel.
+
+### New rule (added under Rules)
+
+> - Use DIFFERENT_SUBJECT only when the difference is stated in the passage or plain from it.
+>   A sentence that says the finding comes from another setting ("in stainless steels, …; whether
+>   this holds for maraging steel is untested") is SUPPORTED, not DIFFERENT_SUBJECT.
+
+What the student sees: in the citation report and on the sentence, *"This source studies a
+different material or setting: the finding may not carry over to your subject."* It is a warning,
+never an automatic change.
+
+(`coh_support.md` is not from PRD Appendix A; it was written for ADR-0023 and is already on your
+review list in docs/PENDING.md. The same rule applies: nothing changes until you approve.)
