@@ -12,7 +12,7 @@ import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest, Message } from '../types.js';
 import type { PromptPassage } from './assist.js';
-import { CITE_RE } from './postprocess.js';
+import { CITE_RE, normalizeBareCitations } from './postprocess.js';
 
 export const CHAT = {
   tier: 'fast',
@@ -165,7 +165,7 @@ export function postProcessChat(raw: string, allowedIds: readonly string[]): Cha
   const allowed = new Set(allowedIds);
   const cited: string[] = [];
   const hallucinated: string[] = [];
-  const text = raw
+  const text = normalizeBareCitations(raw)
     .replace(CITE_RE, (match, id: string) => {
       const key = id.trim();
       if (!allowed.has(key)) {

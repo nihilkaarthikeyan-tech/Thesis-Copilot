@@ -15,7 +15,7 @@ import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
 import type { PromptPassage } from './assist.js';
-import { CITE_RE } from './postprocess.js';
+import { CITE_RE, normalizeBareCitations } from './postprocess.js';
 
 export const COMMANDS = ['expand', 'formalise', 'simplify', 'shorten', 'consistency'] as const;
 export type CommandName = (typeof COMMANDS)[number];
@@ -136,7 +136,7 @@ export function postProcessCommand(
   const allowed = new Set([...inSelection, ...allowedPassageIds]);
 
   const hallucinated: string[] = [];
-  const text = raw
+  const text = normalizeBareCitations(raw)
     .replace(CITE_RE, (match, id: string) => {
       const key = id.trim();
       if (allowed.has(key)) return match;

@@ -13,7 +13,7 @@
  * output that was nothing but a bad citation must end up EMPTY, not charged.
  */
 
-import { filterSentences, type QualityDrops } from './quality.js';
+import { filterSentences, isAbbreviationStop, type QualityDrops } from './quality.js';
 
 export const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
 
@@ -55,11 +55,40 @@ export type PostProcessResult = {
   needsSource: string | null;
 };
 
+const PASSAGE_ID = 'S[A-Za-z0-9-]+#c[A-Za-z0-9-]+';
+const BARE_IDS = new RegExp(
+  `[([]?[ \\t]*${PASSAGE_ID}(?:[ \\t]*[;,][ \\t]*${PASSAGE_ID})*[ \\t]*[)\\]]?`,
+  'g',
+);
+
+/**
+ * Before step (1), 2026-09-30: the model sometimes cites a passage by writing its id the way the
+ * passage list shows it — "(S3#c1; S1#c1)", "[S6#c1]" — instead of `{{cite:S3#c1}}`. Left alone,
+ * the student would read the raw code in their thesis (the prompt evaluation, ADR-0038, found it
+ * in a third of one model's answers). Each such id becomes a marker, so step (1) then judges it
+ * like any other: kept if it was in the request, stripped and counted if it was not.
+ */
+export function normalizeBareCitations(output: string): string {
+  return output
+    .split(/(\{\{cite:[^}]+\}\})/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part.replace(BARE_IDS, (group) =>
+            [...group.matchAll(new RegExp(PASSAGE_ID, 'g'))]
+              .map((m) => `{{cite:${m[0]}}}`)
+              .join(''),
+          ),
+    )
+    .join('');
+}
+
 /** Step (1). */
 export function stripUnknownCitations(
-  output: string,
+  rawOutput: string,
   passageIds: readonly string[],
 ): { text: string; hallucinated: string[]; cited: string[] } {
+  const output = normalizeBareCitations(rawOutput);
   const allowed = new Set(passageIds);
   const hallucinated: string[] = [];
   const cited: string[] = [];
@@ -130,7 +159,7 @@ export function cutAfterSecondSentence(output: string): { text: string; truncate
       continue;
     }
     const char = output[i] as string;
-    if (char === '.' || char === '?' || char === '!') {
+    if ((char === '.' || char === '?' || char === '!') && !isAbbreviationStop(output, i)) {
       // Consume a run of terminators and closing quotes/brackets.
       let end = i + 1;
       while (end < output.length && /[.!?"')\]]/.test(output[end] as string)) end++;
@@ -184,7 +213,10 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
 
   // A.1: "Do not add a leading space or newline; the editor handles spacing." Trailing whitespace
   // is likewise noise, and the editor adds the joining space (`spaceBefore`, ghost-text.ts).
-  const text = filtered.text.trim();
+  // An answer that only repeated `before` loses its words to step (2) but keeps its markers, and
+  // a row of citations with no sentence is not a suggestion (prompt evaluation, 2026-09-30).
+  const hasWords = /[\p{L}\p{N}]/u.test(filtered.text.replace(CITE_RE, ''));
+  const text = hasWords ? filtered.text.trim() : '';
   const empty = text.length === 0;
 
   return {

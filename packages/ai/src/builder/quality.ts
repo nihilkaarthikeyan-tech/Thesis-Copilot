@@ -33,6 +33,45 @@ export type QualityDrops = {
 
 const CITE = /\{\{cite:[^}]+\}\}/;
 
+/**
+ * The full stop of an abbreviation, not the end of a sentence (2026-09-30). "et al." ended a
+ * sentence as far as the splitters knew, so a suggestion naming a study was cut off mid-sentence
+ * ("…while Zhao et al.") — the prompt evaluation (ADR-0038) caught it.
+ */
+const ABBREVIATIONS = new Set([
+  'al',
+  'e.g',
+  'i.e',
+  'eg',
+  'ie',
+  'cf',
+  'vs',
+  'ca',
+  'approx',
+  'fig',
+  'figs',
+  'eq',
+  'eqs',
+  'no',
+  'nos',
+  'vol',
+  'pp',
+  'dr',
+  'prof',
+  'resp',
+  'viz',
+  'wt',
+]);
+
+export function isAbbreviationStop(text: string, i: number): boolean {
+  if (text[i] !== '.') return false;
+  const word = /([A-Za-z]+(?:\.[A-Za-z]+)*)$/.exec(text.slice(Math.max(0, i - 12), i))?.[1];
+  if (!word) return false;
+  // A single capital is an author's initial ("J. Smith"), not a sentence.
+  if (/^[A-Z]$/.test(word)) return true;
+  return ABBREVIATIONS.has(word.toLowerCase());
+}
+
 /** Sentences, each keeping any `{{cite:…}}` that follows its terminator. */
 export function splitSentences(text: string): string[] {
   const out: string[] = [];
@@ -45,7 +84,10 @@ export function splitSentences(text: string): string[] {
       continue;
     }
     const char = text[i] as string;
-    if (char === '.' || char === '?' || char === '!' || char === '\n') {
+    if (
+      (char === '.' || char === '?' || char === '!' || char === '\n') &&
+      !isAbbreviationStop(text, i)
+    ) {
       let end = i + 1;
       while (end < text.length && /[.!?"')\]”’]/.test(text[end] as string)) end++;
       const rest = text.slice(end);

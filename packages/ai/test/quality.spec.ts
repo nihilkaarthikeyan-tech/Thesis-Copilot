@@ -11,6 +11,7 @@ import {
   isRoadmap,
   isUncitedAttribution,
   nearDuplicate,
+  normalizeBareCitations,
   postProcessAssist,
   splitSentences,
 } from '../src/index.js';
@@ -201,5 +202,57 @@ describe('a claim credited to research with no citation (real model, 2026-09-30)
     ]) {
       expect(isUncitedAttribution(s)).toBe(false);
     }
+  });
+});
+
+describe('abbreviations and bare citation ids (prompt evaluation, 2026-09-30)', () => {
+  const ids = ['S1#c1', 'S3#c1', 'S6#c1'];
+
+  it('does not end a sentence at "et al." or "e.g."', () => {
+    expect(
+      splitSentences(
+        'Zhao et al. reported lower wear with graphite. Copper, e.g. in finishing, wore more.',
+      ),
+    ).toHaveLength(2);
+    const result = postProcessAssist({
+      output:
+        'Graphite wore less than copper {{cite:S1#c1}}. Zhao et al. found the same at high current {{cite:S3#c1}}. A third sentence.',
+      passageIds: ids,
+      before: 'Electrode wear is one of the main concerns.',
+    });
+    expect(result.text).toContain('Zhao et al. found the same at high current {{cite:S3#c1}}.');
+    expect(result.text).not.toContain('A third sentence');
+  });
+
+  it('turns a bare passage id into a citation, and still strips one not in the request', () => {
+    expect(normalizeBareCitations('Wear fell by half (S3#c1; S1#c1).')).toBe(
+      'Wear fell by half {{cite:S3#c1}}{{cite:S1#c1}}.',
+    );
+    expect(normalizeBareCitations('Agarwal et al. [S6#c1] reported it.')).toBe(
+      'Agarwal et al. {{cite:S6#c1}} reported it.',
+    );
+    expect(normalizeBareCitations('Kept {{cite:S1#c1}} as is.')).toBe('Kept {{cite:S1#c1}} as is.');
+
+    const result = postProcessAssist({
+      output: 'Wear fell by half (S3#c1; S9#c4).',
+      passageIds: ids,
+      before: 'Electrode wear is one of the main concerns.',
+    });
+    expect(result.text).toBe('Wear fell by half {{cite:S3#c1}}.');
+    expect(result.hallucinated).toEqual(['S9#c4']);
+  });
+});
+
+describe('an answer that only repeats the student (prompt evaluation, 2026-09-30)', () => {
+  it('is empty, not a row of bare citations', () => {
+    const before = 'Heat treatment after printing changes the microstructure of these parts.';
+    const result = postProcessAssist({
+      output: `${before} {{cite:S3#c1}} {{cite:S4#c1}}`,
+      passageIds: ['S3#c1', 'S4#c1'],
+      before,
+    });
+    expect(result.text).toBe('');
+    expect(result.empty).toBe(true);
+    expect(result.cited).toEqual([]);
   });
 });
