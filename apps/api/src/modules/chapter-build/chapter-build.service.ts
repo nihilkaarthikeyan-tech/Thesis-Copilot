@@ -4,11 +4,20 @@
  * student's decision on an issue. The worker does the work and owns the build's status.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  buildEntitiesRequest,
+  entitiesSchema,
+  intakeQuestions,
+  type Providers,
+  postProcessEntities,
+} from '@tc/ai';
 import {
   capFor,
+  computeCallCost,
   DISCIPLINE_PROFILES,
   disciplineProfile,
+  type Env,
   PARADIGM_LABELS,
   PARADIGMS,
   type Plan,
@@ -22,14 +31,18 @@ import {
   type ChapterBuildPlan,
   type ChapterBuildReport,
   type ChapterProfile,
+  type Clarification,
   chapterBuildReportSchema,
   chapterProfileSchema,
   jobId,
+  planEditSchema,
   readOutline,
 } from '@tc/types';
+import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
+import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 
 export type BuildSummary = {
@@ -89,6 +102,8 @@ export class ChapterBuildService {
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
     private readonly queue: QueueService,
+    @Inject(PROVIDERS) private readonly providers: Providers,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   profiles(): ProfilesView {
@@ -126,7 +141,7 @@ export class ChapterBuildService {
           orderBy: { order: 'asc' },
         },
         shares: { where: { canEdit: true }, select: { id: true }, take: 1 },
-        memory: { select: { outline: true } },
+        memory: { select: { outline: true, scope: true } },
       },
     });
     if (!document) throw new NotFoundError('That document');
@@ -216,17 +231,8 @@ export class ChapterBuildService {
     return parsed.data;
   }
 
-  /**
-   * Starts a build: refuses (before any unit is taken) a chapter that already has a build running
-   * or pending draft blocks, and a thesis with a live co-author; then one `CHAPTER_BUILD` unit;
-   * then the row and the job. The worker takes it from here.
-   */
-  async start(
-    user: { id: string; plan: string },
-    documentId: string,
-    chapterId: string,
-    profileBody?: unknown,
-  ): Promise<{ buildId: string }> {
+  /** The refusals that cost nothing, shared by the plan step and the start. */
+  private async guard(user: { id: string }, documentId: string, chapterId: string) {
     const document = await this.owned(user.id, documentId);
     const chapter = document.chapters.find((c) => c.id === chapterId);
     if (!chapter) throw new NotFoundError('That chapter');
@@ -242,45 +248,253 @@ export class ChapterBuildService {
     }
     const running = await this.prisma.chapterBuild.findFirst({
       where: { documentId, status: { in: ['QUEUED', 'RUNNING'] } },
-      select: { id: true, chapterId: true },
+      select: { id: true },
     });
-    if (running)
+    if (running) {
       throw new ConflictError('A chapter build is already running on this thesis. One at a time.');
+    }
     const outline = readOutline(document.memory?.outline);
     if (outline.length === 0) {
       throw new ValidationError(
         'Generate the outline first: the build plans the chapter from it and from your objectives.',
       );
     }
+    return document;
+  }
 
+  /**
+   * Spec stages 1 and 2: extract the key terms (one fast-tier call, logged, no unit taken) and ask
+   * the clarifying questions, then wait for the student to confirm. The row is PLANNED; nothing
+   * is queued and nothing is charged until `start`.
+   */
+  async plan(
+    user: { id: string; plan: string },
+    documentId: string,
+    chapterId: string,
+    profileBody?: unknown,
+  ): Promise<BuildView> {
+    const document = await this.guard(user, documentId, chapterId);
     const profile = profileBody
       ? await this.saveProfile(user.id, documentId, profileBody)
       : this.profileFor(document).profile;
+    const discipline = disciplineProfile(profile.disciplineId);
+    const scope = (document.memory?.scope as { objectives?: unknown[] } | null) ?? {};
+    const objectives = (scope.objectives ?? []).map((o) => String(o).trim()).filter(Boolean);
 
-    const cap = await this.usage.consume(user.id, user.plan as Plan, 'CHAPTER_BUILD');
-    if (!cap.ok) throw refusal('CHAPTER_BUILD', cap);
+    // Older PLANNED rows for this chapter are superseded; they never cost anything.
+    await this.prisma.chapterBuild.deleteMany({
+      where: { documentId, chapterId, status: 'PLANNED' },
+    });
 
+    const input = {
+      title: document.title,
+      objectives,
+      questions: [] as string[],
+      hypotheses: [] as string[],
+      entityTypes: discipline.entityTypes,
+      userId: user.id,
+      documentId,
+    };
+    let entities: ChapterBuildPlan['entities'] = [];
+    const started = Date.now();
+    const request = buildEntitiesRequest(input);
+    try {
+      const result = await this.providers.llm.complete({ ...request, schema: entitiesSchema });
+      await this.logCall(
+        user.id,
+        documentId,
+        result.modelId,
+        result.usage,
+        Date.now() - started,
+        true,
+      );
+      entities = postProcessEntities(result.value, input);
+    } catch (error) {
+      await this.logCall(
+        user.id,
+        documentId,
+        this.providers.llm.modelIdFor('fast'),
+        null,
+        Date.now() - started,
+        false,
+        error,
+      );
+      this.logger.warn(
+        { documentId, error: String(error) },
+        'entity extraction failed; the student can type the terms',
+      );
+    }
+    const clarifications: Clarification[] = intakeQuestions(entities, {
+      objectives,
+      fallbackType: discipline.entityTypes[0]?.code ?? 'TERM',
+    }).map((q) => ({ ...q, answer: null }));
+
+    const plan: ChapterBuildPlan = {
+      chapterRole: '',
+      entities,
+      sections: [],
+      coverage: {},
+      uncovered: [],
+      clarifications,
+      confirmedAt: null,
+    };
     const build = await this.prisma.chapterBuild.create({
       data: {
         documentId,
         chapterId,
         userId: user.id,
-        status: 'QUEUED',
+        status: 'PLANNED',
         profile: profile as Prisma.InputJsonValue,
-        progress: { stage: 'loading', sectionsTotal: 0, sectionsDone: 0 } as Prisma.InputJsonValue,
+        plan: plan as Prisma.InputJsonValue,
       },
       select: { id: true },
     });
+    return this.view(user.id, documentId, build.id);
+  }
+
+  /** The student's edits to the key terms and answers to the questions, while still PLANNED. */
+  async updatePlan(
+    ownerId: string,
+    documentId: string,
+    buildId: string,
+    body: unknown,
+  ): Promise<BuildView> {
+    const parsed = planEditSchema.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Check the key terms.', parsed.error.issues);
+    await this.owned(ownerId, documentId);
+    const build = await this.prisma.chapterBuild.findFirst({ where: { id: buildId, documentId } });
+    if (!build) throw new NotFoundError('That build');
+    if (build.status !== 'PLANNED') {
+      throw new ConflictError('This build has already started; its key terms are fixed.');
+    }
+    const profile = chapterProfileSchema.safeParse(build.profile);
+    const discipline = disciplineProfile(profile.success ? profile.data.disciplineId : null);
+    const codes = new Set(discipline.entityTypes.map((t) => t.code));
+    const current = (build.plan as ChapterBuildPlan | null) ?? {
+      chapterRole: '',
+      entities: [],
+      sections: [],
+      coverage: {},
+      uncovered: [],
+    };
+    const seen = new Set<string>();
+    const entities = parsed.data.entities
+      .filter((e) => {
+        const key = e.text.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((e, i) => ({
+        id: `E${String(i + 1).padStart(2, '0')}`,
+        text: e.text,
+        type: codes.has(e.type) ? e.type : (discipline.entityTypes[0]?.code ?? 'TERM'),
+        aliases: [...new Set(e.aliases.filter((a) => a.toLowerCase() !== e.text.toLowerCase()))],
+        sourceObjective: e.sourceObjective,
+        coveredBy: [],
+      }));
+    const byId = new Map(parsed.data.answers.map((a) => [a.id, a.answer]));
+    const clarifications = (current.clarifications ?? []).map((q) => {
+      const answer = byId.has(q.id) ? (byId.get(q.id) as string) || null : q.answer;
+      return { ...q, answer };
+    });
+    // An expansion given for an abbreviation becomes an alias, so coverage and L3 see it.
+    for (const q of clarifications) {
+      if (q.kind !== 'abbreviation' || !q.answer || !q.entityId) continue;
+      const original = current.entities.find((e) => e.id === q.entityId);
+      const entity = entities.find(
+        (e) => original && e.text.toLowerCase() === original.text.toLowerCase(),
+      );
+      if (entity && !entity.aliases.some((a) => a.toLowerCase() === q.answer?.toLowerCase())) {
+        entity.aliases.push(q.answer);
+      }
+    }
+    const plan: ChapterBuildPlan = { ...current, entities, clarifications };
+    await this.prisma.chapterBuild.update({
+      where: { id: buildId },
+      data: { plan: plan as Prisma.InputJsonValue },
+    });
+    return this.view(ownerId, documentId, buildId);
+  }
+
+  /**
+   * Starts a PLANNED build: the refusals again (nothing has been charged yet), then one
+   * `CHAPTER_BUILD` unit, then the job. The worker takes it from here.
+   */
+  async start(
+    user: { id: string; plan: string },
+    documentId: string,
+    buildId: string,
+  ): Promise<{ buildId: string }> {
+    const build = await this.prisma.chapterBuild.findFirst({
+      where: { id: buildId, documentId, userId: user.id },
+    });
+    if (!build) throw new NotFoundError('That build');
+    if (build.status !== 'PLANNED') throw new ConflictError('This build has already started.');
+    await this.guard(user, documentId, build.chapterId);
+    const profile = chapterProfileSchema.safeParse(build.profile);
+    if (!profile.success) throw new ValidationError('The build has no profile; plan it again.');
+
+    const cap = await this.usage.consume(user.id, user.plan as Plan, 'CHAPTER_BUILD');
+    if (!cap.ok) throw refusal('CHAPTER_BUILD', cap);
+
+    const plan = (build.plan as ChapterBuildPlan | null) ?? null;
+    await this.prisma.chapterBuild.update({
+      where: { id: buildId },
+      data: {
+        status: 'QUEUED',
+        progress: { stage: 'loading', sectionsTotal: 0, sectionsDone: 0 } as Prisma.InputJsonValue,
+        ...(plan
+          ? { plan: { ...plan, confirmedAt: new Date().toISOString() } as Prisma.InputJsonValue }
+          : {}),
+      },
+    });
     await this.queue.enqueue(
       'chapter-build',
-      { buildId: build.id, documentId, chapterId, userId: user.id, profile },
-      { jobId: jobId('chapter-build', build.id) },
+      { buildId, documentId, chapterId: build.chapterId, userId: user.id, profile: profile.data },
+      { jobId: jobId('chapter-build', buildId) },
     );
     this.logger.log(
-      { documentId, chapterId, buildId: build.id, discipline: profile.disciplineId },
+      { documentId, chapterId: build.chapterId, buildId, discipline: profile.data.disciplineId },
       'chapter build queued',
     );
-    return { buildId: build.id };
+    return { buildId };
+  }
+
+  private async logCall(
+    userId: string,
+    documentId: string,
+    model: string,
+    usage: {
+      inputTokens: number;
+      cachedInputTokens?: number;
+      cacheWriteTokens?: number;
+      outputTokens: number;
+    } | null,
+    latencyMs: number,
+    ok: boolean,
+    error?: unknown,
+  ): Promise<void> {
+    const cost =
+      ok && usage && this.env.AI_PROVIDER !== 'mock'
+        ? computeCallCost({ tier: 'fast', modelId: model, usage })
+        : 0;
+    await this.prisma.aiCallLog.create({
+      data: {
+        userId,
+        documentId,
+        action: 'CHAPTER_BUILD',
+        model,
+        inputTokens: usage?.inputTokens ?? 0,
+        cachedInputTokens: usage?.cachedInputTokens ?? 0,
+        cacheWriteTokens: usage?.cacheWriteTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        costMicroInr: BigInt(cost),
+        latencyMs,
+        ok,
+        error: ok ? null : String(error instanceof Error ? error.message : error).slice(0, 500),
+      },
+    });
   }
 
   async view(ownerId: string, documentId: string, buildId: string): Promise<BuildView> {

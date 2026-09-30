@@ -53,10 +53,28 @@ export const planSectionSchema = z.object({
 });
 export type PlanSection = z.infer<typeof planSectionSchema>;
 
+/**
+ * Spec stage 1: one clarifying question per ambiguous term, asked in code before the build and
+ * answered by the student on the plan screen. The answer becomes an alias of the term and a line
+ * in the section's scope note.
+ */
+export const clarificationSchema = z.object({
+  id: z.string(),
+  entityId: z.string().nullable(),
+  kind: z.enum(['abbreviation', 'meaning', 'scope']),
+  question: z.string(),
+  answer: z.string().nullable(),
+});
+export type Clarification = z.infer<typeof clarificationSchema>;
+
 export const chapterBuildPlanSchema = z.object({
   chapterRole: z.string(),
   entities: z.array(buildEntitySchema),
+  /** Empty until the worker instantiates the blueprint. */
   sections: z.array(planSectionSchema),
+  clarifications: z.array(clarificationSchema).optional(),
+  /** When the student confirmed the key terms (spec stage 2 done criterion). */
+  confirmedAt: z.string().nullable().optional(),
   /** Entity id → section ids that introduce it before the objectives (spec §2 "coverage matrix"). */
   coverage: z.record(z.string(), z.array(z.string())),
   /** Entities nothing introduces before the objectives; the build adds a section for them. */
@@ -173,7 +191,31 @@ export const chapterBuildReportSchema = z.object({
 });
 export type ChapterBuildReport = z.infer<typeof chapterBuildReportSchema>;
 
-export const BUILD_STATUSES = ['QUEUED', 'RUNNING', 'DONE', 'REFUSED', 'FAILED'] as const;
+/** PLANNED: key terms extracted, waiting for the student to confirm them; no unit taken yet. */
+export const BUILD_STATUSES = [
+  'PLANNED',
+  'QUEUED',
+  'RUNNING',
+  'DONE',
+  'REFUSED',
+  'FAILED',
+] as const;
+
+/** What the student may change on the plan screen before the build starts. */
+export const planEditSchema = z.object({
+  entities: z
+    .array(
+      z.object({
+        text: z.string().trim().min(1).max(120),
+        type: z.string().trim().min(1).max(40),
+        aliases: z.array(z.string().trim().min(1).max(120)).max(10),
+        sourceObjective: z.number().int().min(0).max(50),
+      }),
+    )
+    .max(25),
+  answers: z.array(z.object({ id: z.string(), answer: z.string().trim().max(300) })).max(10),
+});
+export type PlanEdit = z.infer<typeof planEditSchema>;
 export type BuildStatus = (typeof BUILD_STATUSES)[number];
 
 export const BUILD_STAGES = [

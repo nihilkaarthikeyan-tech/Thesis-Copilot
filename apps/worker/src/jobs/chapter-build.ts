@@ -283,8 +283,15 @@ export async function runChapterBuild(
 
     // ---- 2. Entities --------------------------------------------------------------------------
     await progress({ stage: 'extracting', sectionsTotal: 0, sectionsDone: 0 });
-    let entities: BuildEntity[] = [];
-    if (objectives.length > 0 || document.title) {
+    // The plan step (API) already extracted the key terms and the student confirmed them; a build
+    // that arrives with them uses them as they are and asks the model nothing.
+    const planned = build.plan as Partial<ChapterBuildPlan> | null;
+    const confirmed = Array.isArray(planned?.entities)
+      ? (planned?.entities as BuildEntity[])
+      : null;
+    const clarifications = (planned?.clarifications ?? []).filter((q) => q.answer);
+    let entities: BuildEntity[] = confirmed ?? [];
+    if (!confirmed && (objectives.length > 0 || document.title)) {
       const input = {
         title: document.title,
         objectives,
@@ -349,6 +356,8 @@ export async function runChapterBuild(
       sections,
       coverage: {},
       uncovered: [],
+      clarifications: planned?.clarifications ?? [],
+      confirmedAt: planned?.confirmedAt ?? null,
     };
     await prisma.chapterBuild.update({ where: { id: job.buildId }, data: { plan } });
 
@@ -401,6 +410,7 @@ export async function runChapterBuild(
         drafted,
         discipline,
         university,
+        clarifications,
       );
       const request = buildDraftRequest({
         memoryBlock,
@@ -1127,8 +1137,23 @@ function scopeNoteFor(
   drafted: readonly DraftedSection[],
   discipline: DisciplineProfile,
   university: UniversityProfile,
+  clarifications: ReadonlyArray<{
+    entityId: string | null;
+    question: string;
+    answer: string | null;
+  }> = [],
 ): string {
   const parts = [section.instructions];
+  // The student's answers to the intake questions, for the sections that introduce the term
+  // asked about (or every section, for a question about the thesis as a whole).
+  const relevant = clarifications.filter(
+    (q) => q.answer && (q.entityId === null || section.entities.includes(q.entityId)),
+  );
+  if (relevant.length > 0) {
+    parts.push(
+      `The student clarified: ${relevant.map((q) => `${q.question} — ${q.answer}`).join(' | ')}`,
+    );
+  }
   const ents = section.entities
     .map((id) => entities.find((e) => e.id === id))
     .filter((e): e is BuildEntity => Boolean(e));

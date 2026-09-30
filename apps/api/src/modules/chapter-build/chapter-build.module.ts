@@ -4,7 +4,9 @@
  *   GET  /chapter-build/profiles                                  disciplines, paradigms, universities
  *   GET  /documents/:id/chapter-build                             profile, chapters, past builds, allowance
  *   PUT  /documents/:id/chapter-build/profile                     keep the student's choice
- *   POST /documents/:id/chapter-build                             start one (one CHAPTER_BUILD unit) → 202
+ *   POST /documents/:id/chapter-build                             plan one: key terms + questions, PLANNED (no unit) → 201
+ *   PUT  /documents/:id/chapter-build/:buildId/plan               the student's edits to the key terms and answers
+ *   POST /documents/:id/chapter-build/:buildId/start              start it (one CHAPTER_BUILD unit) → 202
  *   GET  /documents/:id/chapter-build/:buildId                    state, plan and QA report
  *   POST /documents/:id/chapter-build/:buildId/issues/:issueId    accept (dismiss) or reopen an issue
  *   GET  /documents/:id/chapter-build/pitfalls                    what the bank checks for this discipline
@@ -32,6 +34,7 @@ import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { QueueService } from '../../common/queue.service.js';
 import { SuperadminGuard } from '../admin/superadmin.guard.js';
+import { AiModule } from '../ai/ai.module.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { UsageModule } from '../usage/usage.module.js';
@@ -76,11 +79,31 @@ export class ChapterBuildController {
   }
 
   @Post('documents/:id/chapter-build')
-  @HttpCode(202)
-  start(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Body() body: unknown) {
+  @HttpCode(201)
+  plan(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Body() body: unknown) {
     const parsed = startBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Pick a chapter to build.', parsed.error.issues);
-    return this.builds.start(user, documentId, parsed.data.chapterId, parsed.data.profile);
+    return this.builds.plan(user, documentId, parsed.data.chapterId, parsed.data.profile);
+  }
+
+  @Put('documents/:id/chapter-build/:buildId/plan')
+  updatePlan(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('buildId') buildId: string,
+    @Body() body: unknown,
+  ) {
+    return this.builds.updatePlan(user.id, documentId, buildId, body);
+  }
+
+  @Post('documents/:id/chapter-build/:buildId/start')
+  @HttpCode(202)
+  start(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('buildId') buildId: string,
+  ) {
+    return this.builds.start(user, documentId, buildId);
   }
 
   @Get('documents/:id/chapter-build/pitfalls')
@@ -173,7 +196,7 @@ export class PitfallsAdminController {
 }
 
 @Module({
-  imports: [UsageModule],
+  imports: [UsageModule, AiModule],
   controllers: [ChapterBuildController, PitfallsAdminController],
   providers: [ChapterBuildService, PitfallsService, QueueService, SessionGuard, SuperadminGuard],
   exports: [PitfallsService],

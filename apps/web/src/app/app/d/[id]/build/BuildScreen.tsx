@@ -114,15 +114,25 @@ type Report = {
   sensitiveNote?: string;
   universityUnconfirmed: boolean;
 };
+type Clarification = {
+  id: string;
+  entityId: string | null;
+  kind: 'abbreviation' | 'meaning' | 'scope';
+  question: string;
+  answer: string | null;
+};
 type Plan = {
   chapterRole: string;
   entities: Array<{
     id: string;
     text: string;
     type: string;
+    aliases: string[];
     sourceObjective: number;
     coveredBy: string[];
   }>;
+  clarifications?: Clarification[];
+  confirmedAt?: string | null;
   sections: Array<{ id: string; title: string; isObjectives: boolean }>;
   coverage: Record<string, string[]>;
   uncovered: string[];
@@ -188,19 +198,21 @@ export function BuildScreen({ documentId }: { documentId: string }) {
     return () => clearInterval(timer);
   }, [running, load]);
 
-  const start = async () => {
+  // Spec stages 1–2: the plan step extracts the key terms and asks its questions; no unit is
+  // taken until the student confirms and starts the build from the plan below.
+  const plan = async () => {
     if (!profile || !chapterId) return;
     setBusy(true);
     setError(null);
     try {
-      const { buildId } = await api<{ buildId: string }>(`/documents/${documentId}/chapter-build`, {
+      const view = await api<{ id: string }>(`/documents/${documentId}/chapter-build`, {
         method: 'POST',
         body: JSON.stringify({ chapterId, profile }),
       });
-      setSelected(buildId);
+      setSelected(view.id);
       await load();
     } catch (e) {
-      setError(problem(e, 'Could not start the build. Nothing was charged.'));
+      setError(problem(e, 'Could not plan the build. Nothing was charged.'));
     } finally {
       setBusy(false);
     }
@@ -339,7 +351,7 @@ export function BuildScreen({ documentId }: { documentId: string }) {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => void start()}
+            onClick={() => void plan()}
             disabled={
               busy ||
               running ||
@@ -348,15 +360,15 @@ export function BuildScreen({ documentId }: { documentId: string }) {
               overview?.hasCoAuthor ||
               chapter?.pendingBuild
             }
-            data-testid="build-start"
+            data-testid="build-plan"
             className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
           >
-            {running ? 'Building…' : busy ? 'Starting…' : 'Build this chapter'}
+            {running ? 'Building…' : busy ? 'Reading the objectives…' : 'Plan this chapter'}
           </button>
           <span className="text-xs text-muted" data-testid="build-left">
             {left !== null && overview?.remaining
               ? `${left} of ${overview.remaining.cap} chapter builds left this month`
-              : 'One build is one unit of your monthly allowance'}
+              : 'Planning is free; the build is one unit of your monthly allowance'}
           </span>
         </div>
         {overview?.hasCoAuthor ? (
@@ -413,6 +425,7 @@ export function BuildScreen({ documentId }: { documentId: string }) {
           documentId={documentId}
           buildId={selected}
           running={running}
+          profiles={profiles}
           onChanged={() => void load()}
         />
       ) : null}
@@ -421,6 +434,8 @@ export function BuildScreen({ documentId }: { documentId: string }) {
 }
 
 function StatusBadge({ build }: { build: BuildSummary }) {
+  if (build.status === 'PLANNED')
+    return <Badge tone="neutral">Planned · confirm the key terms</Badge>;
   if (build.status === 'RUNNING' || build.status === 'QUEUED') {
     const p = build.progress;
     return (
@@ -446,11 +461,13 @@ function BuildDetail({
   documentId,
   buildId,
   running,
+  profiles,
   onChanged,
 }: {
   documentId: string;
   buildId: string;
   running: boolean;
+  profiles: Profiles | null;
   onChanged: () => void;
 }) {
   const [view, setView] = useState<BuildView | null>(null);
@@ -481,6 +498,20 @@ function BuildDetail({
 
   const report = view.report;
   const plan = view.plan;
+
+  if (view.status === 'PLANNED') {
+    return (
+      <PlanEditor
+        documentId={documentId}
+        view={view}
+        profiles={profiles}
+        onChanged={async () => {
+          await load();
+          onChanged();
+        }}
+      />
+    );
+  }
 
   if (view.status === 'QUEUED' || view.status === 'RUNNING') {
     const p = view.progress;
@@ -852,6 +883,239 @@ function BuildDetail({
             <p className="mt-2">{report.disclosure}</p>
           </details>
         </div>
+      ) : null}
+    </section>
+  );
+}
+
+type EntityRow = {
+  key: number;
+  text: string;
+  type: string;
+  aliases: string;
+  sourceObjective: number;
+};
+let rowKey = 0;
+
+/**
+ * Spec stage 2: "every noun phrase carrying technical meaning in the objectives is an entity,
+ * confirmed by the user in a one-screen review", and stage 1's clarifying questions. Nothing is
+ * charged on this screen; the unit is taken when the student presses Build.
+ */
+function PlanEditor({
+  documentId,
+  view,
+  profiles,
+  onChanged,
+}: {
+  documentId: string;
+  view: BuildView;
+  profiles: Profiles | null;
+  onChanged: () => Promise<void>;
+}) {
+  const discipline = profiles?.disciplines.find((d) => d.id === view.profile.disciplineId) ?? null;
+  const types = discipline?.entityTypes ?? [];
+  const [rows, setRows] = useState<EntityRow[]>(
+    (view.plan?.entities ?? []).map((e) => ({
+      key: ++rowKey,
+      text: e.text,
+      type: e.type,
+      aliases: e.aliases.join(', '),
+      sourceObjective: e.sourceObjective,
+    })),
+  );
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    Object.fromEntries((view.plan?.clarifications ?? []).map((q) => [q.id, q.answer ?? ''])),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const questions = view.plan?.clarifications ?? [];
+
+  const save = async () => {
+    await api(`/documents/${documentId}/chapter-build/${view.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        entities: rows
+          .filter((r) => r.text.trim().length > 0)
+          .map((r) => ({
+            text: r.text.trim(),
+            type: r.type,
+            aliases: r.aliases
+              .split(',')
+              .map((a) => a.trim())
+              .filter((a) => a.length > 0),
+            sourceObjective: r.sourceObjective,
+          })),
+        answers: Object.entries(answers).map(([id, answer]) => ({ id, answer })),
+      }),
+    });
+  };
+
+  const build = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await save();
+      await api(`/documents/${documentId}/chapter-build/${view.id}/start`, {
+        method: 'POST',
+        body: '{}',
+      });
+      await onChanged();
+    } catch (e) {
+      setError(problem(e, 'Could not start the build. Nothing was charged.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const update = (i: number, patch: Partial<EntityRow>) =>
+    setRows((current) => current.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  return (
+    <section
+      className="mt-6 rounded-md border border-line bg-surface p-4 text-sm"
+      data-testid="build-plan-editor"
+    >
+      <h2 className="text-[17px] font-bold text-ink">
+        Confirm the key terms · {view.chapterTitle}
+      </h2>
+      <p className="mt-1 text-xs text-muted">
+        These are the terms your objectives use. Every one of them will be introduced in the chapter
+        before the objectives; the coverage check holds the build to it. Fix a wrong type, remove a
+        word that is not a term, add one that is missing. Aliases are other forms of the same term
+        (an abbreviation and its expansion), separated by commas.
+      </p>
+
+      <table className="mt-3 w-full text-left text-sm">
+        <thead className="text-xs text-muted">
+          <tr>
+            <th className="py-1 pr-2">Term</th>
+            <th className="py-1 pr-2">Type</th>
+            <th className="py-1 pr-2">Aliases</th>
+            <th className="py-1 pr-2">Objective</th>
+            <th className="py-1" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((row, i) => (
+            <tr key={row.key}>
+              <td className="py-1 pr-2">
+                <input
+                  aria-label={`Term ${i + 1}`}
+                  value={row.text}
+                  onChange={(e) => update(i, { text: e.target.value })}
+                  className="w-full rounded border border-line bg-transparent px-2 py-1"
+                />
+              </td>
+              <td className="py-1 pr-2">
+                <select
+                  aria-label={`Type of term ${i + 1}`}
+                  value={row.type}
+                  onChange={(e) => update(i, { type: e.target.value })}
+                  className="w-full rounded border border-line bg-transparent px-2 py-1"
+                >
+                  {types.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.label}
+                    </option>
+                  ))}
+                  {types.some((t) => t.code === row.type) ? null : (
+                    <option value={row.type}>{row.type}</option>
+                  )}
+                </select>
+              </td>
+              <td className="py-1 pr-2">
+                <input
+                  aria-label={`Aliases of term ${i + 1}`}
+                  value={row.aliases}
+                  onChange={(e) => update(i, { aliases: e.target.value })}
+                  className="w-full rounded border border-line bg-transparent px-2 py-1"
+                />
+              </td>
+              <td className="py-1 pr-2">
+                <input
+                  aria-label={`Objective number of term ${i + 1}`}
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={row.sourceObjective}
+                  onChange={(e) => update(i, { sourceObjective: Number(e.target.value) || 0 })}
+                  className="w-16 rounded border border-line bg-transparent px-2 py-1"
+                />
+              </td>
+              <td className="py-1">
+                <button
+                  type="button"
+                  className="text-xs text-muted underline"
+                  onClick={() => setRows((current) => current.filter((_, j) => j !== i))}
+                >
+                  Remove
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button
+        type="button"
+        className="mt-2 text-xs text-accent underline"
+        onClick={() =>
+          setRows((current) => [
+            ...current,
+            {
+              key: ++rowKey,
+              text: '',
+              type: types[0]?.code ?? 'TERM',
+              aliases: '',
+              sourceObjective: 1,
+            },
+          ])
+        }
+        data-testid="build-plan-add"
+      >
+        Add a term
+      </button>
+
+      {questions.length > 0 ? (
+        <div className="mt-4">
+          <h3 className="eyebrow">Before it writes, a few questions</h3>
+          <ul className="mt-2 space-y-3">
+            {questions.map((q) => (
+              <li key={q.id}>
+                <label className="block text-sm text-ink" htmlFor={`clar-${q.id}`}>
+                  {q.question}
+                </label>
+                <input
+                  id={`clar-${q.id}`}
+                  value={answers[q.id] ?? ''}
+                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                  className="mt-1 w-full rounded border border-line bg-transparent px-2 py-1 text-sm"
+                  placeholder="Leave blank to skip"
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void build()}
+          disabled={busy || (rows.every((r) => r.text.trim().length === 0) && rows.length > 0)}
+          data-testid="build-start"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
+        >
+          {busy ? 'Starting…' : 'Build this chapter (1 unit)'}
+        </button>
+        <span className="text-xs text-muted">
+          A chapter takes a few minutes. The sections arrive in your chapter as drafts to accept.
+        </span>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-warn">
+          {error}
+        </p>
       ) : null}
     </section>
   );

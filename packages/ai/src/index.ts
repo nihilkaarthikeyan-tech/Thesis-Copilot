@@ -34,6 +34,8 @@ export {
   examinerSchema,
   examinerSentences,
   type FixInput,
+  type IntakeQuestion,
+  intakeQuestions,
   mockEntitiesFor,
   mockExaminerFor,
   mockFixFor,

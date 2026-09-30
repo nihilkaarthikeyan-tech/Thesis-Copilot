@@ -147,6 +147,62 @@ export function postProcessEntities(
   return out;
 }
 
+/**
+ * Spec stage 1: "ask one clarifying question per ambiguous term … maximum 5 questions per round",
+ * in code. An abbreviation with no expansion anywhere in the inputs is ambiguous; so is a
+ * one-word term the profile could not type (it fell to the first type). Nothing else is asked:
+ * the objectives are the student's own words.
+ */
+export type IntakeQuestion = {
+  id: string;
+  entityId: string | null;
+  kind: 'abbreviation' | 'meaning' | 'scope';
+  question: string;
+};
+
+export function intakeQuestions(
+  entities: readonly BuildEntity[],
+  input: { objectives: readonly string[]; fallbackType: string },
+): IntakeQuestion[] {
+  const out: IntakeQuestion[] = [];
+  for (const entity of entities) {
+    if (out.length >= 5) break;
+    const abbreviation = /^[A-Z][A-Z0-9]{1,7}$/.test(entity.text);
+    const expanded = entity.aliases.some((a) => a.length > entity.text.length + 2);
+    if (abbreviation && !expanded) {
+      out.push({
+        id: `q${out.length + 1}`,
+        entityId: entity.id,
+        kind: 'abbreviation',
+        question: `What does “${entity.text}” stand for? (It will be defined at first use.)`,
+      });
+      continue;
+    }
+    if (
+      entity.type === input.fallbackType &&
+      !entity.text.includes(' ') &&
+      entity.text.length <= 12
+    ) {
+      out.push({
+        id: `q${out.length + 1}`,
+        entityId: entity.id,
+        kind: 'meaning',
+        question: `“${entity.text}” could mean more than one thing in this discipline. Which do you mean, in a few words?`,
+      });
+    }
+  }
+  if (input.objectives.length === 0 && out.length < 5) {
+    out.push({
+      id: `q${out.length + 1}`,
+      entityId: null,
+      kind: 'scope',
+      question:
+        'No objectives are recorded on the proposal screen. In one or two sentences, what does this thesis set out to do?',
+    });
+  }
+  return out;
+}
+
 /** A mock answer built from the inputs: capitalised phrases and quoted terms of the objectives. */
 export function mockEntitiesFor(req: LlmRequest): EntitiesResult {
   const user = req.messages.find((m) => m.role === 'user')?.content ?? '';

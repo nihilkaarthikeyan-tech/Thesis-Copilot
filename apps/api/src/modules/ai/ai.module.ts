@@ -19,6 +19,7 @@ import {
   mockCiteRoleResponse,
   mockClassifyResponse,
   mockCommandResponse,
+  mockEntitiesFor,
   mockProofreadResponse,
   mockProposalFor,
   mockRevisionFor,
@@ -85,6 +86,12 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 // ADR-0030: viva preparation, its own action; matched by its outer tag.
                 mockVivaQuestionsResponse,
                 mockVivaFeedbackResponse,
+                // ADR-0039: the plan step's key-term extraction, matched by its outer tag.
+                {
+                  match: (req: LlmRequest) =>
+                    req.messages.some((m) => m.content.startsWith('<entity_types>')),
+                  respond: mockEntitiesFor,
+                },
                 mockCommandResponse,
                 mockStyleResponse,
                 {
