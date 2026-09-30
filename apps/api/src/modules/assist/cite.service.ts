@@ -127,6 +127,7 @@ export class CiteService {
       const { candidates, hallucinated } = usableCandidates(
         result.value,
         passages.map((p) => p.id),
+        { sentence, passages },
       );
       for (const id of hallucinated) {
         hallucinatedCite.inc();

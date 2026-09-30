@@ -184,11 +184,38 @@ export function buildCiteRequest(input: CiteBuildInput): LlmRequest {
  * output: a candidate that points at no passage cannot be inserted, and offering it would be
  * offering a citation to nothing.
  */
+/**
+ * A figure in a sentence: a number followed by a unit or a counted noun ("49 members", "500 μs",
+ * "12%"), not part of a name ("18Ni-300") and not a year.
+ */
+const FIGURE_VALUE = /(?<![\w.-])(\d+(?:\.\d+)?)(?=\s?(?:%|[a-zμ°]))/g;
+
+export function figuresIn(text: string): string[] {
+  return [...text.matchAll(FIGURE_VALUE)]
+    .map((m) => m[1] as string)
+    .filter((n) => !(/^\d{4}$/.test(n) && Number(n) >= 1900 && Number(n) <= 2100));
+}
+
+/** Every figure the sentence gives is also in the passage, as the same number. */
+export function figuresAgree(sentence: string, passage: string): boolean {
+  return figuresIn(sentence).every((n) =>
+    new RegExp(`(?<![\\d.])${n.replace('.', '\\.')}(?![\\d])`).test(passage),
+  );
+}
+
 export function usableCandidates(
   result: CiteResult,
   passageIds: readonly string[],
+  /**
+   * The sentence and the passages' text, 2026-09-30. With them, a passage the model called
+   * "direct" support is shown as "partial" when the sentence gives a figure the passage does
+   * not contain: the prompt evaluation (ADR-0038) found the model calling a sentence with a
+   * changed sample size or measurement "direct" support 13 times in 16.
+   */
+  check?: { sentence: string; passages: ReadonlyArray<{ id: string; text: string }> },
 ): { candidates: CiteCandidate[]; hallucinated: string[] } {
   const allowed = new Set(passageIds);
+  const textOf = new Map(check?.passages.map((p) => [p.id, p.text]) ?? []);
   const hallucinated: string[] = [];
   const kept: CiteCandidate[] = [];
   const seen = new Set<string>();
@@ -200,7 +227,13 @@ export function usableCandidates(
     }
     if (candidate.support === 'none' || seen.has(candidate.id)) continue;
     seen.add(candidate.id);
-    kept.push(candidate);
+    const text = textOf.get(candidate.id);
+    const downgrade =
+      check &&
+      candidate.support === 'direct' &&
+      text !== undefined &&
+      !figuresAgree(check.sentence, text);
+    kept.push(downgrade ? { ...candidate, support: 'partial' } : candidate);
   }
 
   const rank = (support: CiteCandidate['support']) => (support === 'direct' ? 0 : 1);

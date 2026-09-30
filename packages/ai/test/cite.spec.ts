@@ -194,3 +194,27 @@ describe('mockCiteResponse', () => {
     expect(result.candidates[0]?.support).toBe('direct');
   });
 });
+
+describe('a changed figure is not direct support (prompt evaluation, 2026-09-30)', () => {
+  const passage = {
+    id: 'S1#c1',
+    text: 'Using data collected from 49 members of a rural social enterprise, grain size was 0.31 μm.',
+  };
+  const direct = { candidates: [{ id: 'S1#c1', support: 'direct' as const, why: '' }] };
+
+  it('shows the passage as partial when the sentence gives a figure the passage does not', () => {
+    const { candidates } = usableCandidates(direct, ['S1#c1'], {
+      sentence: 'Data were collected from 154 members of a rural social enterprise.',
+      passages: [passage],
+    });
+    expect(candidates[0]?.support).toBe('partial');
+  });
+
+  it('keeps direct when every figure matches, and ignores years', () => {
+    const { candidates } = usableCandidates(direct, ['S1#c1'], {
+      sentence: 'A 2021 study of 49 members found a grain size of 0.31 μm.',
+      passages: [passage],
+    });
+    expect(candidates[0]?.support).toBe('direct');
+  });
+});
