@@ -631,7 +631,7 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
       "this section will…" sentences, finished-thesis tense, and a review draft must cite every
       paragraph. Step 4: the citation-support check gains a "different material or setting"
       verdict. Nothing changes until you approve.
-- [ ] **Turn on "Find sources automatically"** (ADR-0037) in Admin → Settings → Feature switches
+- [x] **Turned on "Find sources automatically"** (ADR-0037) on production, 2026-09-30, at the owner's request: the `autoSources` row did not exist there (flags are created by the seed, which production does not run), so it was inserted enabled; Admin → Settings → Feature switches shows and toggles it from now on.
       once the release is live. Off by default. Measured: ₹0.075 for two searches, 10 papers.
 - [ ] **The Jenni benchmark** (step 4 of the plan): 20–30 identical topic prompts through both
       tools, scored on the reviewer's scorecard. Someone with a Jenni account runs the Jenni side;
