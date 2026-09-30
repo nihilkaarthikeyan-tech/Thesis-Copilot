@@ -27,6 +27,8 @@ export type QualityDrops = {
   duplicate: number;
   roadmap: number;
   dangling: number;
+  /** A claim attributed to research ("recent work shows…") with no citation. */
+  unsupported: number;
 };
 
 const CITE = /\{\{cite:[^}]+\}\}/;
@@ -135,6 +137,25 @@ export function isRoadmap(sentence: string): boolean {
   return ROADMAP.some((re) => re.test(sentence.trim()));
 }
 
+/**
+ * A sentence that credits "research" with a finding. With a citation it is a claim about a
+ * source; without one it is a claim about sources nobody can check, which A.1 forbids and which
+ * gpt-5-nano wrote anyway on an empty library ("However, recent work shows that optimizing
+ * process parameters can mitigate electrode wear…", 2026-09-30).
+ */
+const ATTRIBUTION: readonly RegExp[] = [
+  /\b(studies|research|researchers|work|works|literature|evidence|findings|experiments|investigations|reports|authors|scholars|analyses)\s+(has |have |had )?(also )?(shown|show|shows|found|find|finds|demonstrated|demonstrate|demonstrates|reported|report|reports|indicated|indicate|indicates|suggested|suggest|suggests|revealed|reveal|reveals|established|confirmed|highlighted|noted|observed)\b/i,
+  /\bit (has been|is|was) (widely |well |generally |often |frequently )?(shown|reported|established|documented|demonstrated|observed|accepted|recognised|recognized)\b/i,
+  /\baccording to (recent |previous |prior |the |existing )?(studies|research|literature|reports)\b/i,
+  /\b(prior|previous|earlier|recent|existing|several|numerous|many) (studies|research|work|investigations|reports)\b/i,
+];
+
+/** Credits research with a finding and cites nothing. */
+export function isUncitedAttribution(sentence: string): boolean {
+  if (CITE.test(sentence)) return false;
+  return ATTRIBUTION.some((re) => re.test(sentence));
+}
+
 const CONNECTIVE =
   /^(despite (this|these|that)|however|furthermore|moreover|additionally|in addition|nevertheless|nonetheless|consequently|therefore|thus|hence|in contrast|conversely|similarly|likewise|as a result|by contrast)\b/i;
 
@@ -152,7 +173,7 @@ export function filterSentences(input: { text: string; before: string; existing:
   text: string;
   drops: QualityDrops;
 } {
-  const drops: QualityDrops = { duplicate: 0, roadmap: 0, dangling: 0 };
+  const drops: QualityDrops = { duplicate: 0, roadmap: 0, dangling: 0, unsupported: 0 };
   const sentences = splitSentences(input.text);
   if (sentences.length === 0) return { text: input.text, drops };
 
@@ -171,6 +192,10 @@ export function filterSentences(input: { text: string; before: string; existing:
       drops.roadmap++;
       continue;
     }
+    if (isUncitedAttribution(sentence)) {
+      drops.unsupported++;
+      continue;
+    }
     if (opensWithConnective(sentence) && (previous === null || isRoadmap(previous))) {
       drops.dangling++;
       continue;
@@ -183,6 +208,6 @@ export function filterSentences(input: { text: string; before: string; existing:
     previous = sentence;
   }
 
-  const removed = drops.duplicate + drops.roadmap + drops.dangling;
+  const removed = drops.duplicate + drops.roadmap + drops.dangling + drops.unsupported;
   return { text: removed === 0 ? input.text : kept.join(' '), drops };
 }

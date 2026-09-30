@@ -51,6 +51,8 @@ export type GhostEvent =
       pinned?: number;
       /** ADR-0037: nothing in the library was on topic, and a search for papers has started. */
       findingSources?: boolean;
+      /** A.1: what no passage covers, when the model wrote nothing for that reason. */
+      needsSource?: string | null;
       usage?: unknown;
       ttfbMs?: number;
       latencyMs?: number;
@@ -88,6 +90,7 @@ export type GhostTextOptions = {
     pinned: number;
     empty: boolean;
     findingSources: boolean;
+    needsSource: string | null;
   }) => void;
   onTiming?: (timing: { ttfbMs: number; latencyMs: number }) => void;
   /**
@@ -531,6 +534,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
               grounded: event.grounded ?? true,
               pinned: event.pinned ?? 0,
               findingSources: event.findingSources ?? false,
+              needsSource: event.needsSource ?? null,
               empty: (event.text ?? '').length === 0 && event.citations.length === 0,
             });
             // PHASES 3.5: the label the server rendered for each resolved key ("(Kumar 2021)")

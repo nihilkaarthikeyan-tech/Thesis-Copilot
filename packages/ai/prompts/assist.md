@@ -22,7 +22,10 @@ Constraints:
 - Write at most two sentences. Stop at the end of the second sentence.
 - Continue from the exact end of <text_before>. Do not repeat any words from the end of <text_before>. Do not add a leading space or newline; the editor handles spacing.
 - If <text_after> begins mid-sentence, write text that joins <text_before> to <text_after> grammatically, and stop before the first word of <text_after>.
-- If the continuation states a fact, finding, number, or claim about prior work, it must be supported by a passage and cited with {{cite:ID}} placed right after the sentence. If no passage supports such a sentence, write a structural or connective sentence instead (for example, one that introduces what the section will examine) or write nothing.
+- If the continuation states a fact, finding, number, or claim about prior work, it must be supported by a passage and cited with {{cite:ID}} placed right after the sentence. If no passage supports what the text needs next, do not write a sentence to fill the space. Output only [[NEEDS SOURCE: <what is missing, in ten words or fewer>]].
+- Do not write sentences that describe what this section, chapter or review will do, and do not restate its aims. Write the content itself.
+- Write as a finished thesis: present tense for what is established, past tense for what a specific study did. Do not use the future tense for the thesis's own work.
+- Begin with a connective such as "However", "Furthermore" or "Despite this" only when the sentence before the cursor states a finding it refers to.
 - If <instruction> is not "none", follow it while keeping all constraints above.
 - Match the style profile if present; otherwise write plain academic English.
 - Output plain text only. No quotes around the output. No headings. No bullet points.

@@ -11,7 +11,7 @@
  *   1. search OpenAlex (and Semantic Scholar, PubMed, arXiv where configured) for what the student
  *      is writing about;
  *   2. keep only papers with an abstract, not already in the library, whose abstract is close to
- *      the query (cosine at least `AUTO_SOURCES.minCosine`, chat's measured relevance floor);
+ *      the thesis title and the query (cosine at least `AUTO_SOURCES.addCosine`, measured);
  *   3. add the best `AUTO_SOURCES.perRun` to the library, marked `autoAddedAt`, and hand them to
  *      `resolve-reference` → `index-source`, the same path a paper the student picks takes.
  *
@@ -107,14 +107,27 @@ export async function runFindSources(
   const log = deps.log ?? (() => undefined);
   const now = deps.now?.() ?? new Date();
 
-  const [user, chapter] = await Promise.all([
+  const [user, chapter, document] = await Promise.all([
     deps.prisma.user.findUnique({ where: { id: job.userId }, select: { plan: true } }),
     deps.prisma.chapter.findFirst({
       where: { id: job.chapterId, documentId: job.documentId },
       select: { id: true, title: true },
     }),
+    deps.prisma.document.findUnique({
+      where: { id: job.documentId },
+      select: { title: true, memory: { select: { scope: true } } },
+    }),
   ]);
-  if (!user || !chapter) return { status: 'gone', added: 0, searched: 0 };
+  if (!user || !chapter || !document) return { status: 'gone', added: 0, searched: 0 };
+
+  // The thesis's own title leads the query. Without it, "Electrode wear remains a major cost"
+  // found battery and wastewater electrodes for an EDM thesis (2026-09-30).
+  const scope = (document.memory?.scope ?? {}) as { workingTitle?: unknown };
+  const thesis =
+    typeof scope.workingTitle === 'string' && scope.workingTitle.trim()
+      ? scope.workingTitle.trim()
+      : document.title;
+  const query = `${thesis}. ${job.query}`.slice(0, 600);
 
   if (
     (await autoSearchesThisMonth(deps.prisma, job.userId, now)) >= monthlyAutoSearches(user.plan)
@@ -130,16 +143,27 @@ export async function runFindSources(
     { name: 'pubmed', client: deps.pubmed },
     { name: 'arxiv', client: deps.arxiv },
   ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
-  const lists = await Promise.all(
-    indexes.map(async ({ name, client }) => {
-      try {
-        return await client.search(job.query, now);
-      } catch (error) {
-        log({ level: 40, msg: `${name} search failed`, error: String(error) });
-        return [];
-      }
-    }),
-  );
+  // Two short searches, not one long one: an index matches a long query against every word and
+  // returns almost nothing (one usable paper for an EDM thesis, 2026-09-30). The thesis title
+  // finds the field; the section's own words find the part being written. Every result is still
+  // scored against the whole of `query` below, so the short searches cost no relevance.
+  const searches = [thesis, job.query.slice(0, 300)].filter((q) => q.trim().length > 0);
+  const lists = (
+    await Promise.all(
+      indexes.map(async ({ name, client }) => {
+        const found: DiscoveredWork[][] = [];
+        for (const q of searches) {
+          try {
+            found.push(await client.search(q, now));
+          } catch (error) {
+            log({ level: 40, msg: `${name} search failed`, error: String(error) });
+            found.push([]);
+          }
+        }
+        return found;
+      }),
+    )
+  ).flat();
 
   // 2. Not already in the library, and with an abstract: a paper with nothing to read cannot be
   // cited, and adding it would only lengthen the library.
@@ -161,10 +185,7 @@ export async function runFindSources(
   let added: Array<DiscoveredWork & { score: number }> = [];
   if (fresh.length > 0) {
     const startedAt = Date.now();
-    const texts = [
-      job.query,
-      ...fresh.map((w) => `${w.title}. ${w.abstract ?? ''}`.slice(0, 2_000)),
-    ];
+    const texts = [query, ...fresh.map((w) => `${w.title}. ${w.abstract ?? ''}`.slice(0, 2_000))];
     let vectors: number[][] = [];
     let tokens = 0;
     for (let i = 0; i < texts.length; i += 64) {
@@ -182,7 +203,7 @@ export async function runFindSources(
     const [queryVector, ...workVectors] = vectors;
     added = fresh
       .map((w, i) => ({ ...w, score: cosine(queryVector ?? [], workVectors[i] ?? []) }))
-      .filter((w) => w.score >= AUTO_SOURCES.minCosine)
+      .filter((w) => w.score >= AUTO_SOURCES.addCosine)
       .sort((a, b) => b.score - a.score)
       .slice(0, AUTO_SOURCES.perRun);
   }
@@ -225,7 +246,7 @@ export async function runFindSources(
       documentId: job.documentId,
       detail: {
         chapterId: job.chapterId,
-        query: job.query.slice(0, 300),
+        query: query.slice(0, 300),
         searched: fresh.length,
         added: added.map((w) => ({
           title: w.title,

@@ -20,8 +20,10 @@ When the student writes and nothing in the library is on topic, the system finds
 - **Search** (worker job `find-sources`, no LLM call): OpenAlex, plus Semantic Scholar, PubMed and
   arXiv where configured, queried with the chapter title, its scope note and the last sentence
   written.
-- **Keep** only papers with an abstract, not already in the library, whose abstract is at or
-  above the same relevance floor against the query; the best 5.
+- **Keep** only papers with an abstract, not already in the library, whose abstract scores at
+  least 0.6 against the thesis title plus the section (`AUTO_SOURCES.addCosine`, measured: on-topic
+  papers 0.67–0.80, wrong-field papers up to 0.61); the best 5. The indexes are searched with the
+  thesis title and with the section text separately, since one long query returns almost nothing.
 - **Add** them to the library marked `Source.autoAddedAt`, carrying the abstract the search already
   read, and send them down the path a student-picked paper takes: `resolve-reference` (the real
   record: title, authors, year, journal, DOI) → `index-source` (full text where it is open

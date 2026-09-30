@@ -1414,7 +1414,10 @@ Constraints:
 - Write at most two sentences. Stop at the end of the second sentence.
 - Continue from the exact end of <text_before>. Do not repeat any words from the end of <text_before>. Do not add a leading space or newline; the editor handles spacing.
 - If <text_after> begins mid-sentence, write text that joins <text_before> to <text_after> grammatically, and stop before the first word of <text_after>.
-- If the continuation states a fact, finding, number, or claim about prior work, it must be supported by a passage and cited with {{cite:ID}} placed right after the sentence. If no passage supports such a sentence, write a structural or connective sentence instead (for example, one that introduces what the section will examine) or write nothing.
+- If the continuation states a fact, finding, number, or claim about prior work, it must be supported by a passage and cited with {{cite:ID}} placed right after the sentence. If no passage supports what the text needs next, do not write a sentence to fill the space. Output only [[NEEDS SOURCE: <what is missing, in ten words or fewer>]].
+- Do not write sentences that describe what this section, chapter or review will do, and do not restate its aims. Write the content itself.
+- Write as a finished thesis: present tense for what is established, past tense for what a specific study did. Do not use the future tense for the thesis's own work.
+- Begin with a connective such as "However", "Furthermore" or "Despite this" only when the sentence before the cursor states a finding it refers to.
 - If <instruction> is not "none", follow it while keeping all constraints above.
 - Match the style profile if present; otherwise write plain academic English.
 - Output plain text only. No quotes around the output. No headings. No bullet points.
@@ -1461,6 +1464,9 @@ Constraints:
 - Every factual claim, statistic, finding, or reference to prior work must be supported by a passage and cited with {{cite:ID}} immediately after the sentence. Use each passage at most three times.
 - Where the scope note asks for something the passages do not cover, do not invent material. Instead write, on its own line, [[NEEDS SOURCE: <what is missing, in ten words or fewer>]] and continue with the next part of the scope.
 - Do not write an introduction to the whole thesis or a conclusion to the whole thesis; write only this section.
+- Review the evidence itself: what the studies found, how, under which conditions, and where they agree or disagree. Do not write sentences that describe what this section will do.
+- Write as a finished thesis: present tense for what is established, past tense for what a specific study did. Do not use the future tense for the thesis's own work.
+- In a section that reviews prior work, every paragraph must cite at least one passage. Where the passages cannot support a paragraph, write [[NEEDS SOURCE: <what is missing, in ten words or fewer>]] on its own line instead of the paragraph.
 - Do not include a references list; citations are handled by the editor.
 - Match the style profile if present. Do not use first person unless the style profile says the student does.
 - Output Markdown: headings with "###", paragraphs separated by blank lines. No title line for the section itself. No fences.

@@ -89,7 +89,15 @@ export { METERED_ACTIONS, type MeteredAction };
  */
 export const AUTO_SOURCES = {
   perRun: 5,
+  /** Library passages at or above this count as covering the text (chat's `RELEVANCE_FLOOR`). */
   minCosine: 0.3,
+  /**
+   * A found paper is added only at or above this against the thesis-and-section query. Measured
+   * 2026-09-30 on the real indexes with voyage-4: on-topic papers for two theses scored 0.67–0.80;
+   * the wrong-field papers a weak query let in (battery, supercapacitor and wastewater electrodes
+   * for an EDM thesis) scored 0.46–0.61. Adding nothing is better than adding the wrong field.
+   */
+  addCosine: 0.6,
   cooldownMinutes: 10,
   monthly: {
     FREE_TRIAL: 5,

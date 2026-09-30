@@ -70,6 +70,7 @@ function fakes(
       }),
     },
     chapter: { findFirst: async () => ({ id: JOB.chapterId, title: 'Literature Review' }) },
+    document: { findUnique: async () => ({ title: 'EDM of Hastelloy', memory: null }) },
     featureFlag: { findUnique: async () => ({ enabled: options.flag ?? true }) },
     auditEvent: {
       count: async () => options.usedThisMonth ?? 0,
@@ -131,6 +132,24 @@ describe('find-sources', () => {
     const result = await runFindSources(JOB, f.deps);
     expect(result.added).toBe(1);
     expect(f.sources.map((s) => s.doi)).toEqual(['10.1000/w1']);
+  });
+
+  it('searches the thesis title and the section separately, and logs the full query', async () => {
+    const f = fakes();
+    const queries: string[] = [];
+    const deps = {
+      ...f.deps,
+      openalex: {
+        search: async (q: string) => {
+          queries.push(q);
+          return [work(1)];
+        },
+      },
+    };
+    await runFindSources(JOB, deps);
+    expect(queries).toEqual(['EDM of Hastelloy', JOB.query]);
+    const detail = f.audits[0]?.detail as { query?: string } | undefined;
+    expect(String(detail?.query)).toMatch(/^EDM of Hastelloy\. /);
   });
 
   it('adds at most five papers from one search', async () => {

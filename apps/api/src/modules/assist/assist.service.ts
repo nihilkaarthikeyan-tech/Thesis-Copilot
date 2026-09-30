@@ -60,6 +60,8 @@ export type SuggestEvent =
         pinned: number;
         /** ADR-0037: nothing in the library was on topic, and a search for papers has started. */
         findingSources: boolean;
+        /** A.1: what the model said no passage covers, when it wrote nothing for that reason. */
+        needsSource: string | null;
         usage: unknown;
         ttfbMs: number;
         latencyMs: number;
@@ -295,6 +297,20 @@ export class AssistService {
         suggestionOutcome.inc({ outcome: 'SHOWN' });
       }
 
+      // A.1: the model named what is missing. That is a better search than the chapter's own
+      // words, so it starts one if none is already running (the cooldown makes a repeat a no-op).
+      const searchStarted =
+        processed.needsSource && !(await findingSources)
+          ? this.autoSources
+              .start({
+                documentId: chapter.documentId,
+                userId: user.id,
+                chapterId: chapter.id,
+                query: `${processed.needsSource}. ${chapter.title}`,
+              })
+              .catch(() => false)
+          : findingSources;
+
       // Each surviving key resolves to the real source and chunk it stood for in this request.
       const citations: SuggestCitation[] = processed.cited.map((key) => {
         const real = retrieved.byKey.get(key);
@@ -314,7 +330,8 @@ export class AssistService {
           citations,
           grounded: retrieved.passages.length > 0,
           pinned: retrieved.pinned,
-          findingSources: await findingSources,
+          findingSources: await searchStarted,
+          needsSource: processed.needsSource,
           usage,
           ttfbMs: ttfbMs ?? latencyMs,
           latencyMs,

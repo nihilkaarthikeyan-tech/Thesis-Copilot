@@ -227,6 +227,7 @@ export {
 export {
   filterSentences,
   isRoadmap,
+  isUncitedAttribution,
   nearDuplicate,
   opensWithConnective,
   type QualityDrops,

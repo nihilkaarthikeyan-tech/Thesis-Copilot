@@ -9,6 +9,7 @@ import {
   filterDraftParagraphs,
   filterSentences,
   isRoadmap,
+  isUncitedAttribution,
   nearDuplicate,
   postProcessAssist,
   splitSentences,
@@ -75,7 +76,7 @@ describe('what a good suggestion keeps', () => {
     });
     expect(result.empty).toBe(false);
     expect(result.text).toContain('graphite electrodes');
-    expect(result.drops).toEqual({ duplicate: 0, roadmap: 0, dangling: 0 });
+    expect(result.drops).toEqual({ duplicate: 0, roadmap: 0, dangling: 0, unsupported: 0 });
   });
 
   it('drops a connective that opens a paragraph, since there is nothing to contrast', () => {
@@ -131,5 +132,74 @@ describe('drafts', () => {
     expect(out).not.toContain('This section will review');
     expect(out.match(/lower wear than pure copper/g)).toHaveLength(1);
     expect(out).toContain('However, graphite remains cheaper');
+  });
+});
+
+describe('A.1 when no passage supports what comes next (approved 2026-09-30)', () => {
+  it('offers nothing, is not charged, and names what is missing', () => {
+    const result = postProcessAssist({
+      output: '[[NEEDS SOURCE: electrode wear rates in Hastelloy EDM]]',
+      passageIds: [],
+      before: 'Electrode wear governs the cost of machining Hastelloy.',
+    });
+    expect(result.empty).toBe(true);
+    expect(result.text).toBe('');
+    expect(result.needsSource).toBe('electrode wear rates in Hastelloy EDM');
+  });
+
+  it('never shows the marker, even beside text', () => {
+    const result = postProcessAssist({
+      output: 'Copper electrodes wear fastest {{cite:S1}}. [[NEEDS SOURCE: graphite wear data]]',
+      passageIds: ['S1'],
+      before: 'Electrode choice matters.',
+    });
+    expect(result.text).not.toContain('NEEDS SOURCE');
+    expect(result.text).toContain('Copper electrodes wear fastest');
+    expect(result.needsSource).toBe('graphite wear data');
+  });
+
+  it('is null when the model wrote a suggestion', () => {
+    expect(
+      postProcessAssist({ output: 'A sentence.', passageIds: [], before: 'Before.' }).needsSource,
+    ).toBeNull();
+  });
+});
+
+describe('a claim credited to research with no citation (real model, 2026-09-30)', () => {
+  it('drops what gpt-5-nano wrote on an empty library', () => {
+    const result = postProcessAssist({
+      output:
+        'However, recent work shows that optimizing process parameters can mitigate electrode wear while maintaining material removal rates.',
+      passageIds: [],
+      before: 'Electrode wear remains a major cost in this process.',
+    });
+    expect(result.empty).toBe(true);
+    expect(result.drops.unsupported).toBe(1);
+  });
+
+  it('keeps the same claim when it cites its source', () => {
+    expect(
+      isUncitedAttribution(
+        'Recent work shows that pulse-on time drives electrode wear {{cite:S1}}.',
+      ),
+    ).toBe(false);
+  });
+
+  it('knows the common shapes, and leaves ordinary sentences alone', () => {
+    for (const s of [
+      'Studies have shown that copper electrodes wear fastest.',
+      'It has been widely reported that graphite is cheaper to machine.',
+      'According to previous research, tool wear rises with current.',
+      'Several studies examined composite electrodes.',
+    ]) {
+      expect(isUncitedAttribution(s)).toBe(true);
+    }
+    for (const s of [
+      'This thesis compares composite and conventional electrodes.',
+      'Tool wear rate was measured by weight loss after each cut.',
+      'The results show that wear rose with peak current.',
+    ]) {
+      expect(isUncitedAttribution(s)).toBe(false);
+    }
   });
 });

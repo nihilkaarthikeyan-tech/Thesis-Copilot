@@ -51,6 +51,8 @@ export type PostProcessResult = {
   truncated: boolean;
   /** Sentences the quality filters removed (duplicates, roadmap filler, dangling connectives). */
   drops: QualityDrops;
+  /** What the model said is missing when no passage supports the next sentence (A.1). */
+  needsSource: string | null;
 };
 
 /** Step (1). */
@@ -151,13 +153,27 @@ export function cutAfterSecondSentence(output: string): { text: string; truncate
   return { text: output, truncated: false };
 }
 
+/**
+ * A.1 (2026-09-30): "If no passage supports what the text needs next… output only
+ * [[NEEDS SOURCE: <what is missing>]]". Anywhere in the answer, one or more times: the first
+ * names the gap, and every marker is removed from the text the student is offered.
+ */
+const NEEDS_SOURCE = /\[\[NEEDS SOURCE:\s*([^\]]*)\]\]/gi;
+
 export function postProcessAssist(input: PostProcessInput): PostProcessResult {
+  let needsSource: string | null = null;
+  for (const match of input.output.matchAll(NEEDS_SOURCE)) {
+    const note = (match[1] ?? '').trim();
+    if (note && needsSource === null) needsSource = note.slice(0, 120);
+  }
+  const output = input.output.replace(NEEDS_SOURCE, ' ');
+
   // With auto-cite off the allowed set is empty, but a removed marker is the student's choice
   // rather than the model's fault, so `suppressed` keeps it out of the hallucination count.
   const suppressed = input.autoCite === false;
   const stripped = suppressed
-    ? { ...stripUnknownCitations(input.output, []), hallucinated: [], cited: [] }
-    : stripUnknownCitations(input.output, input.passageIds);
+    ? { ...stripUnknownCitations(output, []), hallucinated: [], cited: [] }
+    : stripUnknownCitations(output, input.passageIds);
   const overlap = removeLeadingOverlap(stripped.text, input.before);
   const cut = cutAfterSecondSentence(overlap.text);
   const filtered = filterSentences({
@@ -179,5 +195,6 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
     overlapRemoved: overlap.removed,
     truncated: cut.truncated,
     drops: filtered.drops,
+    needsSource,
   };
 }

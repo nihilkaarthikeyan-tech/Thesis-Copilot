@@ -28,13 +28,17 @@ export function anyOnTopic(passages: ReadonlyArray<{ cosine?: number }>): boolea
  * and scope note and the last sentence before the cursor, without citation markers.
  */
 export function sourcesQuery(title: string, scopeNote: string | null, before: string): string {
-  const last =
-    before
-      .replace(/\{\{cite:[^}]+\}\}/g, ' ')
-      .split(/(?<=[.!?])\s+/)
-      .filter((s) => s.trim().length > 0)
-      .pop() ?? '';
-  return [title, scopeNote ?? '', last]
+  // The last two sentences: one alone is often "Electrode wear remains a major cost in this
+  // process", which names nothing without the one before it. The worker adds the thesis title.
+  const last = before
+    .replace(/\{\{cite:[^}]+\}\}/g, ' ')
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => s.trim().length > 0)
+    .slice(-2)
+    .join(' ');
+  // "Chapter 1" names nothing a search can use.
+  const named = /^chapter\s+\d+$/i.test(title.trim()) ? '' : title;
+  return [named, scopeNote ?? '', last]
     .map((part) => part.trim())
     .filter(Boolean)
     .join('. ')

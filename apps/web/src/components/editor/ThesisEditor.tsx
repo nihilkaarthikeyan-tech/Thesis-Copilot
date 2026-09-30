@@ -381,9 +381,18 @@ function ChapterEditor({
             retriedRef.current = false;
             // ADR-0037: nothing in the library covers this, and a search has started. Said
             // first, because it is what will actually change the next suggestion.
+            // A.1 (2026-09-30): with no source for what comes next, the model writes nothing and
+            // names the gap instead of padding the page.
+            const gap = info.needsSource ? `: ${info.needsSource}` : '';
             if (info.findingSources) {
               setNotice(
-                'No source in your library covers this yet. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.',
+                `No source in your library covers this yet${gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.`,
+              );
+              return;
+            }
+            if (info.needsSource) {
+              setNotice(
+                `No source in your library covers this yet${gap}. Add sources on it in the Sources panel to continue.`,
               );
               return;
             }
