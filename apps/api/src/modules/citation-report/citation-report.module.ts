@@ -6,19 +6,21 @@
  */
 
 import { Controller, Get, Injectable, Module, Param, UseGuards } from '@nestjs/common';
+import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { ChaptersModule } from '../chapters/chapters.module.js';
 import { CitationsService } from '../chapters/citations.service.js';
 import { CoherenceModule } from '../coherence/coherence.module.js';
 import { CoherenceService } from '../coherence/coherence.service.js';
-import { buildCitationReport, type CitationReport } from './citation-report.js';
+import { buildCitationReport, type CitationReport, chapterDensity } from './citation-report.js';
 
 @Injectable()
 export class CitationReportService {
   constructor(
     private readonly citations: CitationsService,
     private readonly coherence: CoherenceService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async report(ownerId: string, documentId: string): Promise<CitationReport> {
@@ -29,7 +31,19 @@ export class CitationReportService {
       this.citations.readingDepth(ownerId, documentId),
       this.coherence.flags(ownerId, documentId, 'OPEN'),
     ]);
-    return buildCitationReport({ citations, health: health.findings, depth, flags });
+    // Ownership was checked by the calls above; this reads the same document's chapters.
+    const chapters = await this.prisma.chapter.findMany({
+      where: { documentId, document: { ownerId } },
+      orderBy: { order: 'asc' },
+      select: { id: true, title: true, content: true },
+    });
+    return buildCitationReport({
+      citations,
+      health: health.findings,
+      depth,
+      flags,
+      chapters: chapters.map(chapterDensity),
+    });
   }
 }
 

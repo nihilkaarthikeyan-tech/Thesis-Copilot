@@ -22,7 +22,7 @@ export type ReportItem = {
   key: string;
   severity: ReportSeverity;
   /** Which existing check found it. */
-  check: 'citations' | 'references' | 'reading' | 'support';
+  check: 'citations' | 'references' | 'reading' | 'support' | 'density';
   kind: string;
   /** A few words naming the problem, for the list. */
   title: string;
@@ -55,7 +55,92 @@ export type ReportInput = {
   health: ReferenceHealthFinding[];
   depth: Pick<ReadingDepth, 'atRisk' | 'unread'>;
   flags: { flags: FlagView[]; lastRunAt: string | null };
+  /** Per-chapter paragraph counts for the citation-density check (2026-09-30). Optional. */
+  chapters?: ChapterDensity[];
 };
+
+/**
+ * How well a chapter that reviews prior work is cited (2026-09-30).
+ *
+ * A reviewer's comparison with Jenni found our Literature Review "describes the review without
+ * reviewing anything": 300 words, no citation. In a review, a paragraph that cites nothing is
+ * almost always a paragraph that says nothing checkable. Counted from the saved chapter; only
+ * paragraphs of 40 words or more count, so headings and one-line links are left alone.
+ */
+export type ChapterDensity = {
+  chapterId: string;
+  chapterTitle: string;
+  words: number;
+  citations: number;
+  paragraphs: number;
+  uncitedParagraphs: number;
+};
+
+const REVIEW_TITLE =
+  /\b(literature|review|related work|state of the art|prior work|previous studies|theoretical (background|framework)|background)\b/i;
+
+/** Whether a chapter's title says it reviews prior work. */
+export function isReviewChapter(title: string): boolean {
+  return REVIEW_TITLE.test(title);
+}
+
+type PmNode = { type?: string; text?: string; content?: PmNode[] };
+
+/** Paragraph and citation counts for one chapter's saved content. */
+export function chapterDensity(chapter: {
+  id: string;
+  title: string;
+  content: unknown;
+}): ChapterDensity {
+  let words = 0;
+  let citations = 0;
+  let paragraphs = 0;
+  let uncited = 0;
+  const walk = (node: PmNode): void => {
+    if (node.type === 'paragraph') {
+      let text = '';
+      let cites = 0;
+      const inner = (n: PmNode): void => {
+        if (n.type === 'text') text += n.text ?? '';
+        if (n.type === 'citation') cites++;
+        for (const c of n.content ?? []) inner(c);
+      };
+      inner(node);
+      const count = text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+      words += count;
+      citations += cites;
+      if (count >= 40) {
+        paragraphs++;
+        if (cites === 0) uncited++;
+      }
+      return;
+    }
+    for (const c of node.content ?? []) walk(c);
+  };
+  walk((chapter.content ?? {}) as PmNode);
+  return {
+    chapterId: chapter.id,
+    chapterTitle: chapter.title,
+    words,
+    citations,
+    paragraphs,
+    uncitedParagraphs: uncited,
+  };
+}
+
+/**
+ * A review chapter with at least two substantial paragraphs, half or more of them uncited. Not a
+ * rule about a number of citations per page: a review with one citation per paragraph is fine,
+ * however short.
+ */
+export function thinlyCited(d: ChapterDensity): boolean {
+  return (
+    isReviewChapter(d.chapterTitle) &&
+    d.paragraphs >= 2 &&
+    d.uncitedParagraphs >= 2 &&
+    d.uncitedParagraphs / d.paragraphs >= 0.5
+  );
+}
 
 const MECHANICAL: Record<CitationFinding['kind'], { severity: ReportSeverity; title: string }> = {
   ORPHAN: { severity: 'high', title: 'Citation with no source' },
@@ -89,8 +174,9 @@ const RANK: Record<ReportSeverity, number> = { high: 0, medium: 1, low: 2 };
 const CHECK_RANK: Record<ReportItem['check'], number> = {
   citations: 0,
   support: 1,
-  references: 2,
-  reading: 3,
+  density: 2,
+  references: 3,
+  reading: 4,
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -174,6 +260,20 @@ export function buildCitationReport(input: ReportInput): CitationReport {
       chapterId: flag.chapterId,
       chapterTitle: flag.chapterTitle,
       ...(flag.positionTrusted ? { from: flag.from, to: flag.to } : {}),
+    });
+  }
+
+  for (const chapter of input.chapters ?? []) {
+    if (!thinlyCited(chapter)) continue;
+    items.push({
+      key: `density-${chapter.chapterId}`,
+      severity: 'medium',
+      check: 'density',
+      kind: 'THIN_REVIEW',
+      title: 'Review with few citations',
+      message: `“${chapter.chapterTitle}” reviews prior work, but ${chapter.uncitedParagraphs} of its ${plural(chapter.paragraphs, 'paragraph')} cite nothing (${plural(chapter.citations, 'citation')} in ${chapter.words.toLocaleString('en-IN')} words). In a literature review, each paragraph should rest on the studies it discusses: add the sources, or cut what they cannot support.`,
+      chapterId: chapter.chapterId,
+      chapterTitle: chapter.chapterTitle,
     });
   }
 

@@ -9,6 +9,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCitationReport,
+  chapterDensity,
+  isReviewChapter,
   type ReportInput,
 } from '../src/modules/citation-report/citation-report.js';
 import type { FlagView } from '../src/modules/coherence/coherence.service.js';
@@ -150,5 +152,47 @@ describe('the citation report', () => {
       title: 'A claim with no citation',
       severity: 'medium',
     });
+  });
+});
+
+/**
+ * 2026-09-30: a reviewer's comparison with Jenni found our Literature Review cited nothing. The
+ * report now says when a chapter that reviews prior work has paragraphs that cite nothing.
+ */
+describe('citation density in a review chapter', () => {
+  const sentence =
+    'Electrode wear in the machining of nickel superalloys depends on the electrode material and the discharge energy used.';
+  const para = (cited: boolean) => ({
+    type: 'paragraph',
+    content: [
+      { type: 'text', text: `${sentence} ${sentence} ${sentence}` },
+      ...(cited ? [{ type: 'citation', attrs: { key: 'k' } }] : []),
+    ],
+  });
+  const doc = (...cited: boolean[]) => ({ type: 'doc', content: cited.map(para) });
+
+  it('flags a literature review where most paragraphs cite nothing', () => {
+    const chapters = [
+      chapterDensity({ id: 'c2', title: 'Literature Review', content: doc(false, false, true) }),
+    ];
+    const report = buildCitationReport({ ...empty, chapters });
+    const item = report.items.find((i) => i.kind === 'THIN_REVIEW');
+    expect(item).toMatchObject({ severity: 'medium', chapterId: 'c2', check: 'density' });
+    expect(item?.message).toContain('2 of its 3 paragraphs cite nothing');
+  });
+
+  it('leaves a well-cited review, and a chapter that is not a review, alone', () => {
+    const chapters = [
+      chapterDensity({ id: 'c2', title: 'Literature Review', content: doc(true, true, false) }),
+      chapterDensity({ id: 'c3', title: 'Methodology', content: doc(false, false, false) }),
+    ];
+    const report = buildCitationReport({ ...empty, chapters });
+    expect(report.items.filter((i) => i.kind === 'THIN_REVIEW')).toHaveLength(0);
+  });
+
+  it('knows a review chapter by its title', () => {
+    expect(isReviewChapter('Chapter 2: Review of related work')).toBe(true);
+    expect(isReviewChapter('Theoretical framework')).toBe(true);
+    expect(isReviewChapter('Results and discussion')).toBe(false);
   });
 });

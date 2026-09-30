@@ -19,7 +19,7 @@ type Severity = 'high' | 'medium' | 'low';
 type Item = {
   key: string;
   severity: Severity;
-  check: 'citations' | 'references' | 'reading' | 'support';
+  check: 'citations' | 'references' | 'reading' | 'support' | 'density';
   kind: string;
   title: string;
   message: string;
@@ -69,6 +69,7 @@ const CHECK_LABEL: Record<Item['check'], string> = {
   references: 'Reference health',
   reading: 'Reading depth',
   support: 'Support check',
+  density: 'Citation density',
 };
 
 export function CitationReport({ documentId }: { documentId: string }) {
