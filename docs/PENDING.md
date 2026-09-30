@@ -373,6 +373,13 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.20, 2026-09-30** (tag on `76f3339`, CI green, `pg_dump` in
+      `/root/backups/pre-v0.1.20/`): the writing-quality plan, steps 1–4 — joining space, no
+      repeats or filler, the approved A.1/A.2 wording, uncited "research shows" dropped, automatic
+      sources (ADR-0037, off until the flag is turned on), citation records on hover, the
+      review-density warning, the different-material verdict on the strong tier; nodemailer
+      10.0.13 for a new advisory. Verified live: containers on v0.1.20, migration 0025, the
+      worker serving `find-sources`, health 200.
 - [x] **Released v0.1.19, 2026-09-29** (tag on `654f27d`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.19/`): the trial notice for the whole 14 days and the sign-up
       wording. Verified live: containers on v0.1.19, health 200, the sign-up page carries the new
