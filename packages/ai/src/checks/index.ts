@@ -27,6 +27,12 @@ import {
 } from './evidence.js';
 import { checkAbbreviations, checkArtefacts, checkTerminology } from './language.js';
 import { checkEntityCoverage, checkGenericShare, checkRequiredSections } from './structure.js';
+import {
+  checkDoses,
+  checkInstrumentEvidence,
+  checkLegalCitations,
+  checkObjectiveTraceability,
+} from './traceability.js';
 import type { CheckContext, RawIssue } from './types.js';
 
 export type CheckRun = {
@@ -62,6 +68,10 @@ export function runChecks(ctx: CheckContext): CheckRun {
     ...checkPicoAndEthics(ctx),
     ...checkHypothesisVariables(ctx),
     ...checkQuotations(ctx),
+    ...checkObjectiveTraceability(ctx),
+    ...checkInstrumentEvidence(ctx),
+    ...checkDoses(ctx),
+    ...checkLegalCitations(ctx),
   ];
   return {
     issues,
@@ -113,6 +123,12 @@ export {
   sentencesOf,
   wordCount,
 } from './text.js';
+export {
+  checkDoses,
+  checkInstrumentEvidence,
+  checkLegalCitations,
+  checkObjectiveTraceability,
+} from './traceability.js';
 export {
   CHAPTER_LEVEL,
   type CheckContext,

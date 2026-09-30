@@ -18,6 +18,7 @@
     "verify": "dotenv -e ../../.env -- tsx scripts/verify.ts",
     "shakedown": "dotenv -e ../../.env -- tsx scripts/shakedown.ts",
     "floor": "dotenv -e ../../.env -- tsx scripts/relevance-floor.ts",
+    "benchmark": "tsx scripts/benchmark.ts",
     "build": "tsc -p tsconfig.build.json",
     "clean": "rimraf dist"
   },

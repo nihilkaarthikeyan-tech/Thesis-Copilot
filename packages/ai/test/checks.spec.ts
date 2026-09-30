@@ -65,6 +65,8 @@ function context(sections: CheckSection[], overrides: Partial<CheckContext> = {}
     entities: [],
     passages: new Map(),
     sourceYears: [],
+    objectives: [],
+    language: 'en',
     knownAbbreviations: [],
     pitfalls: PITFALL_SEED.map((p) => ({
       code: p.code,
@@ -528,5 +530,90 @@ describe('the model calls’ guards', () => {
       1,
     );
     expect(unchangedSentencesKept(original, bad, ['Second sentence is wrong here.']).ratio).toBe(0);
+  });
+});
+
+describe('traceability and the discipline floors', () => {
+  it('S5: an objective no section names or takes up is a warning in a review chapter', () => {
+    const ctx = context(
+      [
+        section(
+          'gap',
+          'The wear behaviour of AA7050 hybrid composites under dry sliding remains unresolved. {{cite:p1}}',
+        ),
+      ],
+      {
+        chapterRole: 'LITERATURE',
+        objectives: [
+          'To evaluate the wear behaviour of AA7050 hybrid composites under dry sliding.',
+          'To model the stress corrosion cracking of the composites by finite elements.',
+        ],
+      },
+    );
+    const issues = runChecks(ctx).issues.filter((i) => i.checkId === 'S5');
+    expect(issues.map((i) => i.sentence)).toEqual([
+      'To model the stress corrosion cracking of the composites by finite elements.',
+    ]);
+  });
+
+  it('D-MED2: an implausible dose is blocking; a plausible one is not', () => {
+    const medicine = disciplineProfile('medicine_health_v1');
+    const ctx = context(
+      [
+        section('a', 'Patients received metformin 500 mg twice daily. {{cite:p1}}'),
+        section('b', 'The rats were given 450 mg/kg of the extract. {{cite:p1}}'),
+      ],
+      { discipline: medicine, enabled: enabledChecks(medicine.specialChecks) },
+    );
+    const issues = runChecks(ctx).issues.filter((i) => i.checkId === 'D-MED2');
+    expect(issues.map((i) => i.sectionId)).toEqual(['b']);
+  });
+
+  it('D-LAW1: a case without a year or reporter is blocking; two jurisdictions need a comparative framing', () => {
+    const law = disciplineProfile('law_v1');
+    const ctx = context(
+      [
+        section(
+          'a',
+          'In Kesavananda Bharati v State of Kerala the court read a basic structure into the Constitution. {{cite:p1}}',
+        ),
+        section(
+          'b',
+          'In Marbury v Madison (1803) the court asserted review. The Indian courts and the United States courts differ here. {{cite:p1}}',
+        ),
+      ],
+      {
+        discipline: law,
+        enabled: enabledChecks(law.specialChecks),
+        entities: [
+          { ...entity('E01', 'India'), type: 'JURISDICTION', aliases: ['Indian'] },
+          { ...entity('E02', 'United States'), type: 'JURISDICTION', aliases: [] },
+        ],
+      },
+    );
+    const issues = runChecks(ctx).issues.filter((i) => i.checkId === 'D-LAW1');
+    expect(issues.filter((i) => i.severity === 'blocking').map((i) => i.sectionId)).toEqual(['a']);
+    expect(
+      issues.some((i) => i.severity === 'warning' && i.explanation.includes('comparing')),
+    ).toBe(true);
+  });
+
+  it('D-MGT2: a management methodology with no reliability or validity evidence is warned', () => {
+    const management = disciplineProfile('management_commerce_v1');
+    const ctx = context([section('m', 'A questionnaire was given to 300 employees. {{cite:p1}}')], {
+      discipline: management,
+      enabled: enabledChecks(management.specialChecks),
+      chapterRole: 'METHOD',
+    });
+    expect(runChecks(ctx).issues.filter((i) => i.checkId === 'D-MGT2')).toHaveLength(2);
+  });
+
+  it('a non-Latin script stands down the abbreviation and spelling checks', () => {
+    const ctx = context([section('a', 'FRM வழிமுறை aluminum பயன்படுத்தப்பட்டது. {{cite:p1}}')], {
+      language: 'ta',
+    });
+    const ids = runChecks(ctx).issues.map((i) => i.checkId);
+    expect(ids).not.toContain('L3');
+    expect(ids.filter((i) => i === 'L4')).toHaveLength(0);
   });
 });

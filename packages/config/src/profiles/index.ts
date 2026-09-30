@@ -21,6 +21,7 @@ export {
   disciplineProfile,
   suggestDiscipline,
 } from './disciplines.js';
+export { LANGUAGES, type LanguageSetting, languageSetting, latinScript } from './languages.js';
 export { PITFALL_SEED, type PitfallSeed } from './pitfalls.js';
 export {
   type BlueprintElement,

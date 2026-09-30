@@ -105,7 +105,10 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
    */
   CHAPTER_BUILD: {
     tier: 'strong',
-    inputTokens: 14 * (6_000 + 5_500) + 7 * 2_500,
+    // The last term is the fast-tier proofread pass over the fourteen sections (spec L6: about
+    // 7,000 words at PROOFREAD_TOKENS_PER_WORD, ₹0.35 on gpt-5-nano), expressed in strong-tier
+    // input tokens so one profile prices the whole build.
+    inputTokens: 14 * (6_000 + 5_500) + 7 * 2_500 + 16_000,
     cachedInputTokens: 35 * 4_000,
     outputTokens: 14 * (800 + 600) + 7 * 900,
   },

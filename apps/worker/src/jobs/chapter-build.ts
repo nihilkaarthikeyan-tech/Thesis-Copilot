@@ -18,6 +18,7 @@ import {
   buildEntitiesRequest,
   buildExaminerRequest,
   buildFixRequest,
+  buildProofreadRequest,
   CHAPTER_BUILD,
   type CheckContext,
   type CheckPassage,
@@ -34,10 +35,13 @@ import {
   examinerSentences,
   type LlmProvider,
   type LlmRequest,
+  PROOFREAD,
   type PromptPassage,
   postProcessDraft,
   postProcessEntities,
   postProcessExaminer,
+  postProcessProofread,
+  proofreadSchema,
   type RawIssue,
   runChecks,
   sentencesOf,
@@ -52,6 +56,7 @@ import {
   type CheckId,
   type DisciplineProfile,
   disciplineProfile,
+  languageSetting,
   PARADIGMS,
   type Paradigm,
   TEMPLATE_SPECS,
@@ -120,9 +125,26 @@ export type ChapterBuildDeps = {
   refund: (userId: string) => Promise<void>;
   /** The site-wide budget (ADR-0037's guard); throws when reached. */
   assertBudget?: () => Promise<void>;
+  /**
+   * Spec stage 4: "search the user's library first, then the discipline's databases". Asks for
+   * papers on a section the library does not cover (ADR-0037's search); resolves true when a
+   * search was started. Optional: without it the build writes from the library alone.
+   */
+  findSources?: (input: { chapterId: string; query: string }) => Promise<boolean>;
+  /** For the wait between polls while found papers are indexed; tests pass a no-op. */
+  sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
   log?: (event: Record<string, unknown>) => void;
 };
+
+/** How long a build waits for papers it asked for to be indexed before writing without them. */
+export const EVIDENCE_WAIT = {
+  /** Give up on a search that has added nothing after this long. */
+  noneAddedMs: 75_000,
+  /** The most a build waits for added papers to finish indexing. */
+  maxMs: 4 * 60_000,
+  pollMs: 10_000,
+} as const;
 
 export type ChapterBuildResult = {
   buildId: string;
@@ -147,6 +169,8 @@ type DraftedSection = PlanSection & {
   status: ReportSection['status'];
   note?: string;
   fixed: boolean;
+  /** Citation markers the model invented and the whitelist removed (E6, §10.6). */
+  hallucinated: number;
 };
 
 export async function runChapterBuild(
@@ -361,7 +385,47 @@ export async function runChapterBuild(
     };
     await prisma.chapterBuild.update({ where: { id: job.buildId }, data: { plan } });
 
-    // ---- 4 + 5. Evidence and drafting, one section at a time -----------------------------------
+    // ---- 4. Evidence: the library first, then the databases (ADR-0037's search) ---------------
+    const evidenceStarted = now();
+    let searches = 0;
+    if (deps.findSources) {
+      for (const section of sections) {
+        if (section.noEvidence) continue;
+        await progress({
+          stage: 'evidence',
+          sectionsTotal: sections.length,
+          sectionsDone: searches,
+          note: section.title,
+        });
+        const query = [
+          section.title,
+          section.instructions,
+          ...section.entities.map((id) => entityText(entities, id)),
+        ]
+          .filter(Boolean)
+          .join('. ');
+        const found = await deps
+          .retrieve(contextChapter, query)
+          .catch(() => ({ passages: [], byKey: new Map() }) as Retrieved);
+        if (found.passages.length > 0) continue;
+        const started = await deps
+          .findSources({ chapterId: chapter.id, query: `${document.title}. ${query}` })
+          .catch(() => false);
+        if (started) searches++;
+      }
+      if (searches > 0) {
+        await waitForFoundSources(
+          prisma,
+          job.documentId,
+          evidenceStarted,
+          deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))),
+          now,
+          (note) => progress({ stage: 'evidence', sectionsTotal: 0, sectionsDone: 0, note }),
+        );
+      }
+    }
+
+    // ---- 5. Drafting, one section at a time ---------------------------------------------------
     const memoryBlock = await deps.memoryBlock(contextChapter);
     const existingText = docToText(chapter.content);
     const drafted: DraftedSection[] = [];
@@ -397,6 +461,7 @@ export async function runChapterBuild(
           status: 'refused',
           note: 'No source in the library covers this section. Add or pin sources and build again.',
           fixed: false,
+          hallucinated: 0,
         });
         done++;
         continue;
@@ -441,6 +506,7 @@ export async function runChapterBuild(
           status: 'error',
           note: 'The section could not be written (provider error).',
           fixed: false,
+          hallucinated: 0,
         });
         done++;
         continue;
@@ -466,6 +532,7 @@ export async function runChapterBuild(
           ? { note: 'The sources did not cover this section; nothing usable was written.' }
           : {}),
         fixed: false,
+        hallucinated: processed.hallucinated.length,
       });
       done++;
     }
@@ -487,6 +554,8 @@ export async function runChapterBuild(
           spacing: 0,
           dangling: 0,
           roadmap: 0,
+          proofread: 0,
+          hallucinated: 0,
         },
       );
       return finish(
@@ -509,6 +578,70 @@ export async function runChapterBuild(
     for (const a of assembled.sections) {
       const d = written.find((w) => w.id === a.id);
       if (d) d.markdown = a.markdown;
+    }
+
+    // ---- 6b. Spelling, grammar and punctuation (L6): the proofreader, in code's hands ----------
+    // The fast model proposes corrections in batches of forty sentences; `postProcessProofread`
+    // keeps only what `correctionSize` allows (a spelling, an inflection, a grammar word,
+    // punctuation — never a different word, ADR-0026), and the accepted ones are applied to the
+    // draft before delivery. Counted as corrected, like the assembler's own fixes.
+    let proofread = 0;
+    if (languageSetting(job.profile.language ?? document.language).proofread) {
+      for (const section of written) {
+        const sentences = sentencesOf(section.markdown)
+          .map((text, i) => ({
+            id: `s${i + 1}`,
+            raw: text,
+            text: text.replace(/\{\{cite:[^}]+\}\}/g, '').trim(),
+          }))
+          .filter((s) => s.text.length >= 20);
+        for (let from = 0; from < sentences.length; from += PROOFREAD.batch) {
+          const batch = sentences.slice(from, from + PROOFREAD.batch);
+          const request = buildProofreadRequest({
+            sentences: batch.map((s) => ({ id: s.id, text: s.text })),
+            language: job.profile.language ?? document.language,
+            userId: job.userId,
+            documentId: job.documentId,
+          });
+          const started = Date.now();
+          try {
+            const result = await deps.llm.complete({ ...request, schema: proofreadSchema });
+            spentMicro += await deps.logCall({
+              userId: job.userId,
+              documentId: job.documentId,
+              tier: 'fast',
+              modelId: result.modelId,
+              usage: result.usage,
+              latencyMs: Date.now() - started,
+              ok: true,
+            });
+            const checked = postProcessProofread(
+              result.value,
+              batch.map((s) => ({ id: s.id, text: s.text })),
+            );
+            for (const c of checked.corrections) {
+              const target = batch.find((s) => s.id === c.sentenceId);
+              if (!target?.raw.includes(c.original)) continue;
+              const fixedRaw = target.raw.replace(c.original, c.replacement);
+              if (!section.markdown.includes(target.raw)) continue;
+              section.markdown = section.markdown.replace(target.raw, fixedRaw);
+              target.raw = fixedRaw;
+              proofread++;
+            }
+          } catch (error) {
+            spentMicro += await deps.logCall({
+              userId: job.userId,
+              documentId: job.documentId,
+              tier: 'fast',
+              modelId: deps.llm.modelIdFor('fast'),
+              usage: null,
+              latencyMs: Date.now() - started,
+              ok: false,
+              error: String(error instanceof Error ? error.message : error).slice(0, 500),
+            });
+          }
+        }
+      }
     }
 
     // ---- 7. Checks ----------------------------------------------------------------------------
@@ -567,6 +700,8 @@ export async function runChapterBuild(
         ]),
       ),
       sourceYears: citedSources(written).map((id) => sourceById.get(id)?.year ?? Number.NaN),
+      objectives,
+      language: job.profile.language ?? document.language,
       knownAbbreviations,
       pitfalls,
       enabled,
@@ -919,7 +1054,11 @@ export async function runChapterBuild(
       discipline,
       university,
       spentMicro,
-      assembled.counts,
+      {
+        ...assembled.counts,
+        proofread,
+        hallucinated: written.reduce((n, w) => n + w.hallucinated, 0),
+      },
     );
     const blockingOpen = report.totals.blockingOpen;
     return finish(
@@ -1263,7 +1402,14 @@ function buildReport(
   discipline: DisciplineProfile,
   university: UniversityProfile,
   spentMicro: number,
-  assembly: { duplicates: number; spacing: number; dangling: number; roadmap: number },
+  assembly: {
+    duplicates: number;
+    spacing: number;
+    dangling: number;
+    roadmap: number;
+    proofread: number;
+    hallucinated: number;
+  },
 ): ChapterBuildReport {
   const open = (id: string) => issues.filter((i) => i.checkId === id && i.status === 'open');
   const fixedFor = (id: string) =>
@@ -1271,8 +1417,10 @@ function buildReport(
   const corrected: Partial<Record<CheckId, number>> = {
     L1: assembly.duplicates,
     L2: assembly.spacing,
+    L6: assembly.proofread,
     L7: assembly.dangling,
     L8: assembly.roadmap,
+    E6: assembly.hallucinated,
   };
   const checks: ReportCheck[] = (Object.keys(CHECKS) as CheckId[]).map((id) => {
     const spec = CHECKS[id];
@@ -1346,6 +1494,43 @@ function buildReport(
 // --------------------------------------------------------------------------------------------
 // Small helpers
 // --------------------------------------------------------------------------------------------
+
+/**
+ * Waits for the papers a search added (`Source.autoAddedAt` after the build began) to be indexed —
+ * resolved and given a grounding level — so the drafts can cite them. Gives up when a search adds
+ * nothing within `noneAddedMs`, and always by `maxMs`; the build then writes from what there is.
+ */
+export async function waitForFoundSources(
+  prisma: PrismaClient,
+  documentId: string,
+  since: Date,
+  sleep: (ms: number) => Promise<void>,
+  now: () => Date,
+  note: (text: string) => Promise<unknown>,
+): Promise<{ added: number; indexed: number }> {
+  const start = now().getTime();
+  let added = 0;
+  let indexed = 0;
+  while (now().getTime() - start < EVIDENCE_WAIT.maxMs) {
+    const rows = await prisma.source.findMany({
+      where: { documentId, autoAddedAt: { gte: since } },
+      select: { status: true, groundingLevel: true },
+    });
+    added = rows.length;
+    indexed = rows.filter(
+      (r) => r.groundingLevel !== 'NONE' || r.status === 'FAILED' || r.status === 'UNRESOLVED',
+    ).length;
+    if (added > 0 && indexed === added) break;
+    if (added === 0 && now().getTime() - start >= EVIDENCE_WAIT.noneAddedMs) break;
+    await note(
+      added === 0
+        ? 'Searching the literature for sections the library does not cover…'
+        : `Reading ${added} paper(s) found for this chapter (${indexed} ready)…`,
+    );
+    await sleep(EVIDENCE_WAIT.pollMs);
+  }
+  return { added, indexed };
+}
 
 async function streamText(
   deps: ChapterBuildDeps,

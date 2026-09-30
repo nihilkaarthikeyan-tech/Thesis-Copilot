@@ -47,6 +47,10 @@ export type CheckContext = {
   passages: ReadonlyMap<string, readonly CheckPassage[]>;
   /** Years of the sources the chapter cites (one per source). */
   sourceYears: readonly number[];
+  /** The thesis's objectives, verbatim (check S5). */
+  objectives: readonly string[];
+  /** IETF tag of the thesis's language; non-Latin scripts skip the Latin-only checks (L3, spelling). */
+  language: string;
   /** Abbreviations the thesis already defines (front matter, glossary), so L3 does not ask again. */
   knownAbbreviations: readonly string[];
   pitfalls: readonly CheckPitfall[];

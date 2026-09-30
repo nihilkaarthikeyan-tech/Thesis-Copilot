@@ -18,6 +18,7 @@ import {
   DISCIPLINE_PROFILES,
   disciplineProfile,
   type Env,
+  LANGUAGES,
   PARADIGM_LABELS,
   PARADIGMS,
   type Plan,
@@ -37,6 +38,7 @@ import {
   jobId,
   planEditSchema,
   readOutline,
+  readThesisDetails,
 } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
@@ -44,6 +46,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
+import { qaReportHtml } from './qa-report-html.js';
 
 export type BuildSummary = {
   id: string;
@@ -76,6 +79,7 @@ export type ProfilesView = {
   }>;
   paradigms: Array<{ id: string; label: string }>;
   universities: Array<{ id: string; displayName: string; spelling: string; confirmed: boolean }>;
+  languages: Array<{ id: string; label: string; script: string }>;
 };
 
 export type OverviewView = {
@@ -124,6 +128,7 @@ export class ChapterBuildService {
         spelling: u.spelling,
         confirmed: u.confirmed,
       })),
+      languages: LANGUAGES.map((l) => ({ id: l.id, label: l.label, script: l.script })),
     };
   }
 
@@ -459,6 +464,71 @@ export class ChapterBuildService {
       'chapter build queued',
     );
     return { buildId };
+  }
+
+  /**
+   * The QA report as a file (spec §11). HTML always; PDF through Gotenberg's Chromium route, the
+   * same service the thesis PDF uses.
+   */
+  async reportDocument(
+    ownerId: string,
+    documentId: string,
+    buildId: string,
+    format: 'html' | 'pdf',
+  ): Promise<{ body: Buffer; contentType: string; filename: string }> {
+    const document = await this.owned(ownerId, documentId);
+    const view = await this.view(ownerId, documentId, buildId);
+    if (!view.report) throw new ConflictError('This build has no report yet.');
+    const details = readThesisDetails(
+      (document.meta as Record<string, unknown> | null)?.thesisDetails,
+    );
+    const html = qaReportHtml({
+      thesisTitle: document.title,
+      chapterTitle: view.chapterTitle,
+      studentName: details.studentName,
+      disciplineName: disciplineProfile(view.profile.disciplineId).displayName,
+      paradigm:
+        (PARADIGM_LABELS as Record<string, string>)[view.profile.paradigm] ?? view.profile.paradigm,
+      universityName: universityProfile(view.profile.universityId).displayName,
+      builtAt: (view.finishedAt ?? view.createdAt).slice(0, 10),
+      plan: view.plan,
+      report: view.report,
+    });
+    const stem = `QA_Report_${view.chapterTitle.replace(/[^A-Za-z0-9]+/g, '_').slice(0, 40)}`;
+    if (format === 'html') {
+      return {
+        body: Buffer.from(html, 'utf8'),
+        contentType: 'text/html; charset=utf-8',
+        filename: `${stem}.html`,
+      };
+    }
+    const form = new FormData();
+    form.append('files', new Blob([html], { type: 'text/html' }), 'index.html');
+    form.append('paperWidth', '8.27');
+    form.append('paperHeight', '11.7');
+    form.append('marginTop', '0');
+    form.append('marginBottom', '0');
+    form.append('marginLeft', '0');
+    form.append('marginRight', '0');
+    form.append('printBackground', 'true');
+    const response = await fetch(`${this.env.GOTENBERG_URL}/forms/chromium/convert/html`, {
+      method: 'POST',
+      body: form,
+    }).catch((error: unknown) => {
+      throw new ConflictError(
+        `The PDF service is not reachable (${error instanceof Error ? error.message : String(error)}). Download the HTML report instead.`,
+      );
+    });
+    if (!response.ok) {
+      throw new ConflictError(
+        `The PDF service refused the conversion (HTTP ${response.status}). Download the HTML report instead.`,
+      );
+    }
+    return {
+      body: Buffer.from(await response.arrayBuffer()),
+      contentType: 'application/pdf',
+      filename: `${stem}.pdf`,
+    };
   }
 
   private async logCall(

@@ -19,6 +19,7 @@ import {
   mockExtractionResponse,
   mockFixFor,
   mockOutlineResponse,
+  mockProofreadResponse,
   mockQueriesResponse,
   mockSectionScopeResponse,
   mockThemesResponse,
@@ -127,6 +128,8 @@ function providersFor(env: Env): Providers {
             respond: mockExaminerFor,
           },
           mockExtractionResponse,
+          // ADR-0039: the build's proofread pass answers as the editor's does.
+          mockProofreadResponse,
           mockCrossPaperResponse,
           mockCoherenceResponse,
           mockThemesResponse,
@@ -618,6 +621,17 @@ async function main(): Promise<void> {
             );
           },
           assertBudget: assertPlatformBudget(prisma, env),
+          // Spec stage 4: the library first, then the databases — ADR-0037's search, under its
+          // flag, its allowance and its cooldown.
+          findSources: ({ chapterId, query }) =>
+            startFindSources(
+              {
+                prisma,
+                enqueue: (payload, id) =>
+                  findSourcesQueue.add('find-sources', payload, { jobId: id }),
+              },
+              { documentId: job.data.documentId, userId: job.data.userId, chapterId, query },
+            ),
           log: (event) => log({ jobId: job.id, ...event }),
         });
         log({ msg: 'chapter build finished', jobId: job.id, ...result });

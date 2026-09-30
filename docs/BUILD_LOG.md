@@ -4197,3 +4197,25 @@ approval of the pitfall bank, university manuals, the Jenni benchmark each relea
 and the ADR-0038 evaluation of the three new prompts, which needs real built chapters as material.
 The API integration test (`apps/api/test/chapter-build.spec.ts`) was written but not run: Docker
 was down on the build machine; it runs in CI with the others.
+
+## Chapter build, second round: the spec's remaining items (2026-10-01, ADR-0039)
+
+Asked "did you complete these?", the honest answer was no: of the spec's nine "genuinely new"
+items two were partly done and two not at all, and a re-read of the whole document found more
+(the intake questions, the entity confirmation, external search inside the build, S5, L6, E6,
+the D-MED2/D-MGT2/D-LAW1 code floors, the gold-test runner). The owner said to complete them one
+by one. Six commits' worth, each in ADR-0039's "Closed the same day" list:
+
+1. The plan step: extraction and questions first, the student confirms, then the unit is taken.
+2. Stage 4 search inside the build, waiting for found papers to be indexed.
+3. The QA report as PDF (Gotenberg Chromium) and HTML.
+4. L6 in the build through the proofreader under `correctionSize`; E6, S5, D-MED2, D-MGT2,
+   D-LAW1 in code; the cost profile carries the proofread pass (one build ₹9.04, student ₹52.72).
+5. Language settings: chosen on the screen, kept on the profile, Latin-only checks stand down.
+6. `pnpm ai:benchmark` and the §13.2 gold-test runner, both waiting on material only a person
+   can supply.
+
+Tests: `checks.spec.ts` 33 (S5, D-MED2, D-LAW1, D-MGT2, the Tamil stand-down), the worker's
+pipeline test now covers confirmed terms reaching a prompt and the proofread batches; the API
+spec covers plan → edit → start and the cap at start. Docker was still down locally, so the API
+spec is unrun here; CI runs it.

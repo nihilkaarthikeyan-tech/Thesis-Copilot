@@ -4,7 +4,7 @@
  * examiner's and the proofreader's.
  */
 
-import { SPELLING_PAIRS } from '@tc/config';
+import { latinScript, SPELLING_PAIRS } from '@tc/config';
 import { normalise, plainDigits, sentencesOf, stripCites } from './text.js';
 import type { CheckContext, RawIssue } from './types.js';
 
@@ -69,7 +69,7 @@ const ELEMENT_LIKE = /^(?:[A-Z][a-z]?\d*){1,4}$/;
  * abbreviations table, the entities' aliases — are not asked for.
  */
 export function checkAbbreviations(ctx: CheckContext): RawIssue[] {
-  if (!ctx.enabled.has('L3')) return [];
+  if (!ctx.enabled.has('L3') || !latinScript(ctx.language)) return [];
   const known = new Set<string>(
     [
       ...ctx.discipline.knownAbbreviations,
@@ -139,6 +139,7 @@ export function checkTerminology(ctx: CheckContext): RawIssue[] {
         });
       }
     }
+    if (!latinScript(ctx.language)) continue;
     const [wrongIndex, rightIndex] = ctx.university.spelling === 'british' ? [0, 1] : [1, 0];
     for (const pair of SPELLING_PAIRS) {
       const wrong = pair[wrongIndex] as string;

@@ -14,6 +14,7 @@ import {
   mockEntitiesFor,
   mockExaminerFor,
   mockFixFor,
+  mockProofreadResponse,
 } from '@tc/ai';
 import { PITFALL_SEED } from '@tc/config';
 import type { ChapterBuildReport } from '@tc/types';
@@ -194,6 +195,7 @@ function fakeWorld(options: { passages?: boolean } = {}) {
         match: (req) => req.messages.some((m) => m.content.startsWith('<review')),
         respond: mockExaminerFor,
       },
+      mockProofreadResponse,
     ],
   });
 
@@ -287,7 +289,8 @@ describe('runChapterBuild', () => {
 
     // Every call logged: one entity extraction, one draft and one examiner pass per section, plus fixes.
     expect(world.logged.every((c) => c.ok)).toBe(true);
-    expect(world.logged.filter((c) => c.tier === 'fast')).toHaveLength(1);
+    // One entity extraction, then one proofread batch per delivered section (L6).
+    expect(world.logged.filter((c) => c.tier === 'fast')).toHaveLength(1 + result.drafted);
     expect(world.logged.filter((c) => c.tier === 'strong').length).toBeGreaterThanOrEqual(
       2 * result.drafted,
     );

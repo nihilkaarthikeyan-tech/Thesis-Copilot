@@ -30,10 +30,9 @@ and 3".
       correlation-as-causation for social sciences, overruled cases for law, superseded guidelines
       for medicine). Students' reports arrive there as pending.
 - [ ] **The AA7050 gold test** (spec §13.2). It needs the original Chapter 1 the evaluation was made
-      on. Put it in `fixtures/thesis/aa7050-chapter1.docx`; the agent will then write the runner
-      that asserts the spec's list (S1 five terms, S2 four sections, D-ENG2 K₂Br, D-ENG3 three
-      values, T2 eleven codes, L1, L3 AMC/FRM, L4, L6/L9…). Until then the checks are tested on the
-      spec's sentences alone.
+      on. Put it in `fixtures/thesis/aa7050-chapter1.docx` (`fixtures/thesis/README.md`); the
+      runner `apps/worker/test/gold-aa7050.spec.ts` is written, reports BLOCKED until the file
+      exists, then asserts 90% recall of the code-checkable list and prints what it missed.
 - [ ] **Evaluate the three new prompts** (`entities.md`, `examiner.md`, `fix_flagged.md`) under
       ADR-0038 once a few real chapters have been built: the harness needs real built sections as
       material. `pnpm ai:shakedown` should get cases for them too before the next release.
@@ -42,8 +41,10 @@ and 3".
       on a real model. Before it: `pnpm db:migrate` (migration 0026) and `pnpm db:seed` (the
       pitfalls), with the API and worker stopped.
 - [ ] **The monthly benchmark against Jenni** (spec §13.4): 20–30 matched inputs per profile through
-      both tools each release, scored by the checks plus a blind expert rating. This is a process
-      with a budget and a panel, not code.
+      both tools each release, scored by the checks plus a blind expert rating. The machine half is
+      built: put each pair in `fixtures/benchmark/<case>/` (`README.md` there) and run
+      `pnpm ai:benchmark`. Writing the Jenni side and the expert rating are a person's, with a
+      budget and a panel.
 - [ ] **Tamil and other languages** (spec Phase 4): the build passes the document language through
       to every prompt as the rest of the product does; a native-speaker review of one built chapter
       is what says whether the checks (spelling pairs, abbreviations, terminology) need language

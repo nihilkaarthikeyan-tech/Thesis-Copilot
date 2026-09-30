@@ -8,6 +8,7 @@
  *   PUT  /documents/:id/chapter-build/:buildId/plan               the student's edits to the key terms and answers
  *   POST /documents/:id/chapter-build/:buildId/start              start it (one CHAPTER_BUILD unit) → 202
  *   GET  /documents/:id/chapter-build/:buildId                    state, plan and QA report
+ *   GET  /documents/:id/chapter-build/:buildId/report.pdf|.html    the QA report as a file (spec §11)
  *   POST /documents/:id/chapter-build/:buildId/issues/:issueId    accept (dismiss) or reopen an issue
  *   GET  /documents/:id/chapter-build/pitfalls                    what the bank checks for this discipline
  *   POST /documents/:id/chapter-build/pitfalls                    report a pitfall (goes to the queue)
@@ -28,8 +29,10 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { QueueService } from '../../common/queue.service.js';
@@ -124,6 +127,34 @@ export class ChapterBuildController {
   ) {
     const overview = await this.builds.overview(user, documentId);
     return this.pitfalls.report(user.id, overview.profile.disciplineId, body);
+  }
+
+  @Get('documents/:id/chapter-build/:buildId/report.pdf')
+  async reportPdf(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('buildId') buildId: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const file = await this.builds.reportDocument(user.id, documentId, buildId, 'pdf');
+    reply
+      .header('content-type', file.contentType)
+      .header('content-disposition', `attachment; filename="${file.filename}"`)
+      .send(file.body);
+  }
+
+  @Get('documents/:id/chapter-build/:buildId/report.html')
+  async reportHtml(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('buildId') buildId: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const file = await this.builds.reportDocument(user.id, documentId, buildId, 'html');
+    reply
+      .header('content-type', file.contentType)
+      .header('content-disposition', `attachment; filename="${file.filename}"`)
+      .send(file.body);
   }
 
   @Get('documents/:id/chapter-build/:buildId')

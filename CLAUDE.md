@@ -170,7 +170,9 @@ as an examiner, fixes flagged sentences once, and delivers every section as a **
 block** with the QA report. Flag-don't-fix holds: nothing is thesis text until the student accepts
 each block. Discipline and university profiles are data in `packages/config/src/profiles/`; the
 pitfall bank is the `Pitfall` table (Admin → Pitfall bank; seeded from the spec). One
-`CHAPTER_BUILD` unit is one build (₹8.69; caps 3/1). The university profiles are unconfirmed and
+`CHAPTER_BUILD` unit is one build (₹9.04; caps 3/1). The student confirms the key terms and answers
+intake questions before the unit is taken; the build searches for sources it lacks, proofreads, and
+the QA report downloads as PDF or HTML. The university profiles are unconfirmed and
 the new prompts unevaluated — `docs/PENDING.md`.
 
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
@@ -199,8 +201,8 @@ co-author, off by default and live only for a document with a co-author). The wh
 built; production needs the v0.1.5 release and, for co-authoring, the host nginx `/collab/`
 location and the flag — both in `docs/PENDING.md`.
 
-**A fully active student costs ₹51.68/month** against the ₹100 ceiling (₹7 of it hosting; chapter
-builds, ADR-0039, are ₹26.08 and viva preparation, ADR-0030, ₹11.16 of the rest). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
+**A fully active student costs ₹52.72/month** against the ₹100 ceiling (₹7 of it hosting; chapter
+builds, ADR-0039, are ₹27.12 and viva preparation, ADR-0030, ₹11.16 of the rest). `docs/COSTING.md` shows the derivation, the sensitivity to user count, and the profit at
 ₹299. `pnpm ai:verify` reproduces it. The runtime hard stop at ₹100 of real spend is in
 `UsageService.consume`.
 

@@ -114,11 +114,43 @@ discipline is suggested from the document's field. The choice is kept on
 - **No humanise, no detector evasion (§12.3).** The fix step is bounded to the flagged sentences
   and re-checked; it is not a rewrite.
 
+## Closed the same day (second round, after the owner asked for "the other things")
+
+- **Stage 1 intake and stage 2 confirmation.** The build is now two steps. `POST …/chapter-build`
+  plans: one fast-tier extraction, the clarifying questions written in code (an abbreviation with
+  no expansion; a one-word term the profile could not type; no objectives at all — at most five),
+  a `PLANNED` row and no unit. The student edits the terms and answers on the screen;
+  `POST …/:buildId/start` takes the unit. The worker uses the confirmed terms as they are and puts
+  the answers into the scope notes of the sections that introduce the term.
+- **Stage 4 external evidence.** Before drafting, each section that needs evidence is retrieved;
+  where the library has nothing, ADR-0037's search is started (under its flag, allowance and
+  cooldown), and the build waits — up to four minutes, or 75 seconds if nothing is added — for the
+  found papers to be resolved and indexed, then drafts with them.
+- **The QA report as a file** (spec §11): `…/report.pdf` through Gotenberg's Chromium route,
+  `…/report.html` always.
+- **L6 in the build.** The proofreader runs over every written section on the fast tier, and only
+  what `correctionSize` allows is applied (ADR-0026's line); counted as corrected. Priced into
+  the profile (≈₹0.35 a build); one build is now ₹9.04, the fully active student ₹52.72.
+- **E6, S5, D-MED2, D-MGT2, D-LAW1 in code.** E6 counts the invented citation markers the
+  whitelist removed; S5 traces each objective in a review, results, discussion or conclusion
+  chapter; D-MED2 flags doses no formulary allows; D-MGT2 wants reliability and validity evidence
+  in a management methodology; D-LAW1 wants a year or reporter on every case and a comparative
+  framing when two jurisdictions appear. The examiner still judges the rest of each.
+- **Language settings** (`profiles/languages.ts`): the thesis's language is chosen on the build
+  screen and kept on the profile; the Latin-only checks (L3, spelling pairs) stand down for a
+  non-Latin script; every prompt already writes in the language. Terminology sheets in Tamil and
+  Hindi are for the departments to fill.
+- **The benchmark's machine half** (`pnpm ai:benchmark`, `fixtures/benchmark/README.md`): the
+  check suite over matched `ours.md` / `jenni.md` pairs, a table per case and totals. The blind
+  expert rating stays a person's.
+- **The gold-test runner** (`apps/worker/test/gold-aa7050.spec.ts`): BLOCKED until
+  `fixtures/thesis/aa7050-chapter1.docx` exists; then asserts 90% recall of the spec's
+  code-checkable list and prints what was missed.
+
 ## Not done, and where it is recorded
 
-- The AA7050 gold test (spec §13.2) needs the original chapter, which we do not have; the
-  validators are tested on the spec's own sentences (`packages/ai/test/checks.spec.ts`) and the
-  gold set is in `docs/PENDING.md`.
+- The AA7050 gold test (spec §13.2) needs the original chapter, which we do not have; the runner
+  is written and skips until the file exists (`fixtures/thesis/README.md`).
 - Expert approval of the pitfall bank, university manuals, the monthly benchmark against Jenni,
   native-speaker review for Tamil: `docs/PENDING.md`.
 - The three new prompts have not yet been through the ADR-0038 evaluation, because it needs real

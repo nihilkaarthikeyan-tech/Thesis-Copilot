@@ -13,7 +13,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Select } from '@/components/ui/primitives';
-import { ApiError, api } from '@/lib/api';
+import { API_URL, ApiError, api } from '@/lib/api';
 
 type Profile = { disciplineId: string; paradigm: string; universityId: string; language?: string };
 type Profiles = {
@@ -28,6 +28,7 @@ type Profiles = {
   }>;
   paradigms: Array<{ id: string; label: string }>;
   universities: Array<{ id: string; displayName: string; spelling: string; confirmed: boolean }>;
+  languages: Array<{ id: string; label: string; script: string }>;
 };
 type Progress = { stage: string; sectionsTotal: number; sectionsDone: number; note?: string };
 type BuildSummary = {
@@ -327,6 +328,22 @@ export function BuildScreen({ documentId }: { documentId: string }) {
                 ))}
               </Select>
             </label>
+            <label className="text-xs text-muted" htmlFor="bs-f5">
+              Language of the thesis
+              <Select
+                id="bs-f5"
+                value={profile.language ?? 'en'}
+                onChange={(e) => setProfile({ ...profile, language: e.target.value })}
+                className="mt-1 w-full"
+                data-testid="build-language"
+              >
+                {profiles.languages.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
           </div>
         ) : null}
 
@@ -612,6 +629,23 @@ function BuildDetail({
         ) : (
           <p className="mt-3 text-xs text-warn">{view.error}</p>
         )}
+        <p className="mt-2 text-xs text-muted">
+          Download the report:{' '}
+          <a
+            href={`${API_URL}/api/v1/documents/${documentId}/chapter-build/${buildId}/report.pdf`}
+            className="text-accent underline"
+            data-testid="build-report-pdf"
+          >
+            PDF
+          </a>{' '}
+          ·{' '}
+          <a
+            href={`${API_URL}/api/v1/documents/${documentId}/chapter-build/${buildId}/report.html`}
+            className="text-accent underline"
+          >
+            HTML
+          </a>
+        </p>
         {report.sensitiveNote ? (
           <p className="mt-2 text-xs text-muted">{report.sensitiveNote}</p>
         ) : null}

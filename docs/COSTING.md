@@ -11,10 +11,10 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 >
 > **2026-10-01 — chapter builds (ADR-0039).** An eighth allowance: 3 chapter builds a month on
 > the paid plans (1 on the trial), each priced for its worst case of 14 sections written once and
-> examined once on the strong model with half of them fixed once — ₹8.6935 a build, ₹26.08 a
-> month. The worst case for a fully active student is now **₹51.68**; `pnpm ai:verify` prints it.
-> The tables below are as they stood before it: add ₹26.08 to the paid-plan totals and ₹8.69 to
-> the trial's.
+> examined once on the strong model with half of them fixed once, plus a fast-tier proofread pass
+> — ₹9.0415 a build, ₹27.12 a month. The worst case for a fully active student is now **₹52.72**;
+> `pnpm ai:verify` prints it. The tables below are as they stood before it: add ₹27.12 to the
+> paid-plan totals and ₹9.04 to the trial's.
 >
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
