@@ -7,7 +7,7 @@
 
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTH_RATE_LIMIT,
   checkRateLimit,
@@ -38,6 +38,18 @@ beforeEach(async () => {
 });
 
 describe('checkRateLimit', () => {
+  // The window is fixed (`floor(now / window)`), so calls that straddle a boundary start a new
+  // count, and a test of "exactly `max`" failed in CI when its eight calls crossed a minute
+  // (2026-09-30). The clock is pinned one second into a window; only Date is faked, so Redis
+  // and its timers run as normal.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Math.ceil(Date.now() / 60_000) * 60_000 + 1_000);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('allows exactly `max` requests, then refuses', async () => {
     const verdicts = [];
     for (let i = 0; i < 8; i++) {
