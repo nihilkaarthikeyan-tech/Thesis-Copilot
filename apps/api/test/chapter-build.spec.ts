@@ -87,7 +87,7 @@ describe('starting a chapter build', () => {
     expect(await h.prisma.chapterBuild.count({ where: { documentId } })).toBe(0);
   });
 
-  it('takes one unit, keeps the profile, and queues the build', async () => {
+  it('plans for nothing, then takes one unit, keeps the profile, and queues the build', async () => {
     const chapter = await h.prisma.chapter.findUniqueOrThrow({ where: { id: chapterId } });
     await setOutline([
       {
@@ -97,7 +97,8 @@ describe('starting a chapter build', () => {
         children: [],
       },
     ]);
-    const response = await h.api(`/documents/${documentId}/chapter-build`, {
+    // Stage 1–2: the plan. Key terms come back for confirmation; no unit, no job.
+    const planned = await h.api(`/documents/${documentId}/chapter-build`, {
       method: 'POST',
       body: JSON.stringify({
         chapterId,
@@ -108,13 +109,60 @@ describe('starting a chapter build', () => {
         },
       }),
     });
+    expect(planned.status).toBe(201);
+    const view = (await planned.json()) as {
+      id: string;
+      status: string;
+      plan: { entities: Array<{ text: string; type: string }>; clarifications: unknown[] };
+    };
+    expect(view.status).toBe('PLANNED');
+    expect(view.plan.entities.length).toBeGreaterThan(0);
+    expect(await units()).toBe(0);
+
+    // The student corrects a term and adds one; the plan is rewritten, still for nothing.
+    const edited = await h.api(`/documents/${documentId}/chapter-build/${view.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        entities: [
+          {
+            text: 'AA7050',
+            type: 'MATERIAL',
+            aliases: ['aluminium alloy 7050'],
+            sourceObjective: 1,
+          },
+          { text: 'stir casting', type: 'PROCESS', aliases: [], sourceObjective: 1 },
+        ],
+        answers: [],
+      }),
+    });
+    expect(edited.status).toBe(200);
+    const after = (await edited.json()) as {
+      plan: { entities: Array<{ id: string; text: string; aliases: string[] }> };
+    };
+    expect(after.plan.entities.map((e) => e.text)).toEqual(['AA7050', 'stir casting']);
+    expect(after.plan.entities[0]?.aliases).toEqual(['aluminium alloy 7050']);
+    expect(await units()).toBe(0);
+
+    // Start: one unit, the row is queued with the confirmed terms.
+    const response = await h.api(`/documents/${documentId}/chapter-build/${view.id}/start`, {
+      method: 'POST',
+      body: '{}',
+    });
     expect(response.status).toBe(202);
     const { buildId } = (await response.json()) as { buildId: string };
+    expect(buildId).toBe(view.id);
     expect(await units()).toBe(1);
 
     const build = await h.prisma.chapterBuild.findUniqueOrThrow({ where: { id: buildId } });
     expect(build.status).toBe('QUEUED');
     expect(build.chapterId).toBe(chapterId);
+    expect((build.plan as { confirmedAt: string | null }).confirmedAt).toBeTypeOf('string');
+    // Its key terms cannot be changed once it has started.
+    const late = await h.api(`/documents/${documentId}/chapter-build/${buildId}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({ entities: [], answers: [] }),
+    });
+    expect(late.status).toBe(409);
 
     const document = await h.prisma.document.findUniqueOrThrow({ where: { id: documentId } });
     expect(
@@ -132,7 +180,7 @@ describe('starting a chapter build', () => {
     expect(overview.remaining).toEqual({ used: 1, cap: CAP });
     expect(overview.suggested).toBe(false);
 
-    // A second build while one is queued is refused, for nothing.
+    // A second plan while one is queued is refused, for nothing.
     const again = await h.api(`/documents/${documentId}/chapter-build`, {
       method: 'POST',
       body: JSON.stringify({ chapterId }),
@@ -141,7 +189,7 @@ describe('starting a chapter build', () => {
     expect(await units()).toBe(1);
   });
 
-  it('is refused at the cap, before any row or job', async () => {
+  it('is refused at the cap when started, before any job, and stays PLANNED', async () => {
     const chapter = await h.prisma.chapter.findUniqueOrThrow({ where: { id: chapterId } });
     await setOutline([
       {
@@ -152,13 +200,20 @@ describe('starting a chapter build', () => {
       },
     ]);
     await setUnits(CAP);
-    const response = await h.api(`/documents/${documentId}/chapter-build`, {
+    const planned = await h.api(`/documents/${documentId}/chapter-build`, {
       method: 'POST',
       body: JSON.stringify({ chapterId }),
     });
+    expect(planned.status).toBe(201);
+    const view = (await planned.json()) as { id: string };
+    const response = await h.api(`/documents/${documentId}/chapter-build/${view.id}/start`, {
+      method: 'POST',
+      body: '{}',
+    });
     expect(response.status).toBe(429);
     expect(await units()).toBe(CAP);
-    expect(await h.prisma.chapterBuild.count({ where: { documentId } })).toBe(0);
+    const row = await h.prisma.chapterBuild.findUniqueOrThrow({ where: { id: view.id } });
+    expect(row.status).toBe('PLANNED');
   });
 
   it('refuses a chapter whose built sections are still waiting for a decision', async () => {

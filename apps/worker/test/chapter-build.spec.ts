@@ -332,6 +332,60 @@ describe('runChapterBuild', () => {
     expect(result.drafted).toBe(0);
   });
 
+  it('uses the key terms the student confirmed and asks the model for none', async () => {
+    const world = fakeWorld();
+    world.build.plan = {
+      chapterRole: '',
+      entities: [
+        {
+          id: 'E01',
+          text: 'AA7050',
+          type: 'MATERIAL',
+          aliases: [],
+          sourceObjective: 1,
+          coveredBy: [],
+        },
+        {
+          id: 'E02',
+          text: 'SSCC',
+          type: 'TEST',
+          aliases: ['sulphide stress corrosion cracking'],
+          sourceObjective: 2,
+          coveredBy: [],
+        },
+      ],
+      sections: [],
+      coverage: {},
+      uncovered: [],
+      clarifications: [
+        {
+          id: 'q1',
+          entityId: 'E02',
+          kind: 'abbreviation',
+          question: 'What does SSCC stand for?',
+          answer: 'sulphide stress corrosion cracking',
+        },
+      ],
+      confirmedAt: '2026-10-01T00:00:00.000Z',
+    };
+    const result = await runChapterBuild(job, world.deps);
+    expect(result.status).toBe('DONE');
+    expect(world.llm.calls.some((c) => c.messages[0]?.content.startsWith('<entity_types>'))).toBe(
+      false,
+    );
+    const plan = world.build.plan as {
+      entities: Array<{ text: string }>;
+      confirmedAt: string | null;
+    };
+    expect(plan.entities.map((e) => e.text)).toEqual(['AA7050', 'SSCC']);
+    expect(plan.confirmedAt).toBe('2026-10-01T00:00:00.000Z');
+    // The answer reached the prompt of a section that introduces the term.
+    const drafts = world.llm.calls.filter((c) => c.action === 'DRAFT');
+    expect(
+      drafts.some((c) => c.messages[0]?.content.includes('sulphide stress corrosion cracking')),
+    ).toBe(true);
+  });
+
   it('does not run twice: a build that is not QUEUED is left alone', async () => {
     const world = fakeWorld();
     world.build.status = 'DONE';
