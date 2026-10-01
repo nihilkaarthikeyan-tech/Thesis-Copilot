@@ -325,7 +325,12 @@ export class ChapterBuildService {
         error,
       );
       this.logger.warn(
-        { documentId, error: String(error) },
+        {
+          documentId,
+          error: String(error),
+          cause: String((error as { cause?: unknown }).cause ?? ''),
+          innerCause: String((error as { cause?: { cause?: unknown } }).cause?.cause ?? ''),
+        },
         'entity extraction failed; the student can type the terms',
       );
     }

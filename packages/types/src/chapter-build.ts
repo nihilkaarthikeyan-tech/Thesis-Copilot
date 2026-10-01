@@ -28,6 +28,8 @@ export const buildEntitySchema = z.object({
   sourceObjective: z.number().int().min(0),
   /** Section ids (plan order) that introduce it, filled by the coverage step. */
   coveredBy: z.array(z.string()),
+  /** The model gave a type the profile does not have, so the first type stands in (ask about it). */
+  typeUnknown: z.boolean().optional(),
 });
 export type BuildEntity = z.infer<typeof buildEntitySchema>;
 

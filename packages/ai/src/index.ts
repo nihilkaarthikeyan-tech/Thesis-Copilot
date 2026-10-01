@@ -178,9 +178,11 @@ export {
   draftToProseMirror,
   draftUserMessage,
   filterDraftParagraphs,
+  INLINE_NEEDS_SOURCE_RE,
   mockDraftFor,
   NEEDS_SOURCE_RE,
   NO_SOURCES_MESSAGE,
+  normaliseDraftMarkdown,
   postProcessDraft,
 } from './builder/draft.js';
 export {

@@ -93,6 +93,9 @@ export function checkAbbreviations(ctx: CheckContext): RawIssue[] {
     const after = chapter.slice(index + abbr.length, index + abbr.length + 2);
     const defined = (before === '(' && after.startsWith(')')) || after.startsWith(' (');
     if (defined) continue;
+    // A grade or model designation ("AF-5", "S-180", "SUS 304", "AA7050") is a name, not an
+    // abbreviation to be expanded — seen on the first real build (2026-10-01).
+    if (/^[-‑–]\d|^ \d/.test(after) || /[-‑–]$/.test(before)) continue;
     const section = ctx.sections.find((s) => stripCites(s.markdown).includes(abbr));
     const sentence = sentencesOf(section?.markdown ?? '').find((s) => stripCites(s).includes(abbr));
     issues.push({
@@ -255,6 +258,14 @@ export function checkArtefacts(ctx: CheckContext): RawIssue[] {
       for (const match of sentence.matchAll(COMPOUND_TAILS)) {
         const head = match[1] as string;
         const tail = match[2] as string;
+        // "interrelated", "unrelated", "overdependent": a prefix, not a word run into the next.
+        if (
+          PREFIXES.has(head) ||
+          /^(?:un|re|de|dis|mis|pre|co|sub|super|inter|intra|over|under|non|anti|semi|multi|trans|counter)$/.test(
+            head,
+          )
+        )
+          continue;
         issues.push({
           checkId: 'L9',
           severity: 'warning',

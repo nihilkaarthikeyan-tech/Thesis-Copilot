@@ -290,6 +290,10 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
   are signed for `S3_PUBLIC_URL` and `edge` forwards `/thesis-copilot/`; test a link from outside.
 - **A single-file bind mount keeps the old file after a checkout.** `edge.conf` changes never
   reached nginx; `deploy.sh` now recreates `edge` when the file differs.
+- **No model call without a time limit.** The second real chapter build (2026-10-01) hung for an
+  hour on one examiner call and seven and a half on the next, and took 8 h 34 min; every call
+  before them had finished in 25 s. Pass `signal: AbortSignal.timeout(...)` on every `LlmRequest`
+  a job makes, and treat a timeout as a failed call the job survives.
 - **Never write a regex through a Python heredoc.** `\b` in a Python string is a literal backspace
   byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
   matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a

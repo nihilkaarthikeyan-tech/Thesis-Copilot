@@ -34,6 +34,13 @@ export const CHAPTER_BUILD = {
   maxPassages: 12,
   /** Share of unflagged sentences a fix must keep for it to be accepted. */
   keepRatio: 0.9,
+  /**
+   * The most one model call may take. On the second real build (2026-10-01) an examiner call
+   * hung for an hour (the SDK's own ceiling) and the next for seven and a half, and the build
+   * took 8 h 34 min instead of eight minutes. A call that passes this is a failed call: the
+   * section keeps its deterministic checks and the build goes on.
+   */
+  callTimeoutMs: 180_000,
 } as const;
 
 // --------------------------------------------------------------------------------------------
@@ -135,6 +142,7 @@ export function postProcessEntities(
       id: `E${String(out.length + 1).padStart(2, '0')}`,
       text,
       type: codes.has(raw.type) ? raw.type : fallback,
+      ...(codes.has(raw.type) ? {} : { typeUnknown: true }),
       aliases: [...new Set(aliases)],
       sourceObjective: Math.max(
         0,
@@ -178,16 +186,12 @@ export function intakeQuestions(
       });
       continue;
     }
-    if (
-      entity.type === input.fallbackType &&
-      !entity.text.includes(' ') &&
-      entity.text.length <= 12
-    ) {
+    if (entity.typeUnknown && !entity.text.includes(' ') && entity.text.length <= 12) {
       out.push({
         id: `q${out.length + 1}`,
         entityId: entity.id,
         kind: 'meaning',
-        question: `“${entity.text}” could mean more than one thing in this discipline. Which do you mean, in a few words?`,
+        question: `“${entity.text}” did not fit any of this discipline’s kinds of key term. What is it, in a few words?`,
       });
     }
   }

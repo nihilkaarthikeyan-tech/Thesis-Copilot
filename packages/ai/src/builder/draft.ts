@@ -153,6 +153,59 @@ export function buildDraftRequest(input: DraftBuildInput): LlmRequest {
 /** A.2: `[[NEEDS SOURCE: <what is missing, in ten words or fewer>]]`, on its own line. */
 export const NEEDS_SOURCE_RE = /^[ \t]*\[\[NEEDS SOURCE:\s*([^\]]*)\]\][ \t]*$/gim;
 
+/**
+ * The same marker written inside a sentence, which A.2 forbids and gpt-5-mini did anyway on the
+ * first real chapter build (2026-10-01): "(for example [[NEEDS SOURCE: full forms …]])". Taken out
+ * of the prose and kept as a note, so it neither reaches the student as text nor confuses the
+ * checks (L3 read "NEEDS" and "SOURCE" as undefined abbreviations and the fixer "defined" them).
+ */
+export const INLINE_NEEDS_SOURCE_RE = /\s*\[\[NEEDS SOURCE:\s*([^\]]*)\]\]/gi;
+
+/**
+ * The request's own wrapper, echoed back. The user message wraps the section in
+ * `<section …>…</section>`; on the first real build every section came back with those tags in
+ * the Markdown. Nothing the model writes is allowed to be a tag of this request.
+ */
+const ECHOED_TAGS_RE =
+  /^[ \t]*<\/?(?:section|passages?|subheadings|scope_note|student_prior_writing)\b[^>\n]*>[ \t]*$/gim;
+
+/**
+ * Cleans what the model returned before anything reads it: echoed request tags gone, every
+ * heading at A.2's one level (`###`), inline needs-source markers pulled out, headings with no
+ * paragraph under them dropped (the model wrote "## Copper" and moved on when it had no source).
+ */
+export function normaliseDraftMarkdown(markdown: string): { text: string; inlineNotes: string[] } {
+  const inlineNotes: string[] = [];
+  let text = markdown.replace(ECHOED_TAGS_RE, '');
+  text = text.replace(/^[ \t]*#{1,6}[ \t]+/gm, '### ');
+  // Inline markers: keep the note, drop the marker; a marker alone on a line stays for NEEDS_SOURCE_RE.
+  text = text.replace(
+    /^(?![ \t]*\[\[NEEDS SOURCE)(.*?)\[\[NEEDS SOURCE:\s*([^\]]*)\]\](.*)$/gim,
+    (_m, before: string, note: string, after: string) => {
+      const trimmed = note.trim();
+      if (trimmed && !inlineNotes.includes(trimmed)) inlineNotes.push(trimmed);
+      return `${before}${after}`
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\s+([.,;:)])/g, '$1')
+        .trimEnd();
+    },
+  );
+  // Drop a heading that has nothing but another heading, a marker or the end after it.
+  const blocks = text
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+  const kept: string[] = [];
+  blocks.forEach((block, i) => {
+    if (/^###\s/.test(block)) {
+      const next = blocks.slice(i + 1).find((b) => !/^\[\[NEEDS SOURCE/i.test(b));
+      if (!next || /^###\s/.test(next)) return;
+    }
+    kept.push(block);
+  });
+  return { text: kept.join('\n\n'), inlineNotes };
+}
+
 export type DraftPostProcess = {
   result: DraftResult;
   /** Ids the model invented, each one a HALLUCINATED_CITE (§10.6). */
@@ -186,7 +239,9 @@ export function postProcessDraft(
 ): DraftPostProcess {
   const passageIds = passages.map((passage) => passage.id);
 
-  const needsSource: string[] = [];
+  const normalised = normaliseDraftMarkdown(markdown);
+  markdown = normalised.text;
+  const needsSource: string[] = [...normalised.inlineNotes];
   for (const match of markdown.matchAll(NEEDS_SOURCE_RE)) {
     const note = (match[1] ?? '').trim();
     if (note.length > 0 && !needsSource.includes(note)) needsSource.push(note);

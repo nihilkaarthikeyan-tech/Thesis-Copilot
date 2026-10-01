@@ -36,10 +36,11 @@ and 3".
 - [ ] **Evaluate the three new prompts** (`entities.md`, `examiner.md`, `fix_flagged.md`) under
       ADR-0038 once a few real chapters have been built: the harness needs real built sections as
       material. `pnpm ai:shakedown` should get cases for them too before the next release.
-- [ ] **Run the first real build** on the local stack against gpt-5-mini and read the QA report and
-      the drafts yourself before this is released. It is the one part of the spec nobody has seen
-      on a real model. Before it: `pnpm db:migrate` (migration 0026) and `pnpm db:seed` (the
-      pitfalls), with the API and worker stopped.
+- [x] **Done 2026-10-01: the first two real builds**, Literature Review of the Hastelloy EDM thesis
+      on gpt-5-mini, ₹5.93 and ₹4.43, QA reports read, seven faults fixed from run 1 and the
+      missing per-call timeout from run 2 (`docs/BUILD_LOG.md` → "The first real chapter build").
+      **Still yours before a release:** read one built chapter yourself, on a thesis with a fuller
+      library (twenty papers or more), and say whether an examiner would accept it.
 - [ ] **The monthly benchmark against Jenni** (spec §13.4): 20–30 matched inputs per profile through
       both tools each release, scored by the checks plus a blind expert rating. The machine half is
       built: put each pair in `fixtures/benchmark/<case>/` (`README.md` there) and run

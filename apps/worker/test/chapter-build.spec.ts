@@ -314,6 +314,8 @@ describe('runChapterBuild', () => {
     expect(world.pitfallHits.get('ENG-SCC-001')).toBeGreaterThan(0);
     expect(JSON.stringify(world.chapter.content)).not.toContain('Statistically loaded');
     expect(world.refunds).toHaveLength(0);
+    // Every model call carries a time limit (the second real build hung for hours without one).
+    expect(world.llm.calls.every((c) => c.signal instanceof AbortSignal)).toBe(true);
   });
 
   it('is REFUSED, and gives the unit back, when no section can be written', async () => {

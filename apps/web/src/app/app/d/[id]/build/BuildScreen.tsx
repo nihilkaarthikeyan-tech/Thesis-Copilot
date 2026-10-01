@@ -518,7 +518,10 @@ function BuildDetail({
 
   if (view.status === 'PLANNED') {
     return (
+      // Keyed by the build, so a re-plan starts the editor's state from the new terms rather than
+      // keeping the previous build's rows (seen on the first real run, 2026-10-01).
       <PlanEditor
+        key={view.id}
         documentId={documentId}
         view={view}
         profiles={profiles}

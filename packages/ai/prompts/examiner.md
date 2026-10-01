@@ -3,6 +3,9 @@
   PRD Appendix A has no section for it. Change it only when a candidate wins the side-by-side
   evaluation on the real models (packages/ai/eval/run.ts), and record the result in
   docs/BUILD_LOG.md.
+  2026-10-01: after the first real build, one sentence added under "terminology" — the examiner
+  had flagged "EDM" against the sheet's full form; after the second, one under "unsupported" —
+  seven of twelve open issues were topic sentences introducing cited ones (docs/BUILD_LOG.md).
 -->
 
 ### Examiner review — `examiner.md`
@@ -17,11 +20,11 @@ Output JSON only: {"issues":[{"sentenceId": string, "issueType": string, "explan
 issueType is exactly one of:
 - "inaccuracy": a factual or technical statement that is wrong in this discipline (give the correct statement in correction).
 - "contradiction": the section contradicts itself, or a description contradicts the sentence that defined the same thing.
-- "unsupported": the sentence's cited passage does not say what the sentence says it says (overstated, misrepresented, or not in the passage).
+- "unsupported": the sentence's cited passage does not say what the sentence says it says (overstated, misrepresented, or not in the passage). A sentence that only introduces or sums up the cited sentences around it in the same paragraph ("Two findings converge…", "Methodological approaches vary:") is not an unsupported claim; judge the cited sentences it introduces.
 - "different_subject": a finding about one material, population, setting, jurisdiction or text is applied to another as if it held.
 - "definition": a process, construct, doctrine or method is described inconsistently with its own definition, or used before any definition.
 - "entity_missing": a key term the section was asked to introduce is absent, or named without saying what it is.
-- "terminology": a term that is non-standard, unclear, or a different form from the terminology sheet.
+- "terminology": a term that is non-standard, unclear, or a different form from the terminology sheet. The standard abbreviation of a preferred term (EDM for electrical discharge machining), once the full form has appeared, is not a terminology issue.
 - "pitfall": the sentence matches an entry in the pitfall bank (give its code in pitfallCode).
 - "summary": in a summary section, a claim about the chapter that the chapter does not contain.
 - "tense": present tense for what one study did, past tense for what is established, or future tense for the thesis's own completed work.

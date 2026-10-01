@@ -328,7 +328,11 @@ export async function runChapterBuild(
       const request = buildEntitiesRequest(input);
       const started = Date.now();
       try {
-        const result = await deps.llm.complete({ ...request, schema: entitiesSchema });
+        const result = await deps.llm.complete({
+          ...request,
+          signal: AbortSignal.timeout(CHAPTER_BUILD.callTimeoutMs),
+          schema: entitiesSchema,
+        });
         spentMicro += await deps.logCall({
           userId: job.userId,
           documentId: job.documentId,
@@ -354,6 +358,7 @@ export async function runChapterBuild(
           msg: 'entity extraction failed; building without key terms',
           buildId: job.buildId,
           error: String(error),
+          cause: String((error as { cause?: unknown }).cause ?? ''),
         });
       }
     }
@@ -517,6 +522,14 @@ export async function runChapterBuild(
         section.targetWords,
         `${existingText}\n${drafted.map((d) => d.markdown).join('\n')}`,
       );
+      // The model sometimes repeats the section's own title as its first subheading
+      // ("## Thematic review: EDM" over "### Thematic review: EDM", run 2); the block already has
+      // the title as its heading, so that line is dropped.
+      const titleLine = new RegExp(
+        `^###\\s+${section.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\n+`,
+        'i',
+      );
+      processed.result.markdown = processed.result.markdown.replace(titleLine, '').trim();
       drafted.push({
         ...section,
         markdown: processed.result.markdown,
@@ -605,7 +618,11 @@ export async function runChapterBuild(
           });
           const started = Date.now();
           try {
-            const result = await deps.llm.complete({ ...request, schema: proofreadSchema });
+            const result = await deps.llm.complete({
+              ...request,
+              signal: AbortSignal.timeout(CHAPTER_BUILD.callTimeoutMs),
+              schema: proofreadSchema,
+            });
             spentMicro += await deps.logCall({
               userId: job.userId,
               documentId: job.documentId,
@@ -760,7 +777,11 @@ export async function runChapterBuild(
       });
       const started = Date.now();
       try {
-        const result = await deps.llm.complete({ ...request, schema: examinerSchema });
+        const result = await deps.llm.complete({
+          ...request,
+          signal: AbortSignal.timeout(CHAPTER_BUILD.callTimeoutMs),
+          schema: examinerSchema,
+        });
         spentMicro += await deps.logCall({
           userId: job.userId,
           documentId: job.documentId,
@@ -1298,7 +1319,9 @@ function scopeNoteFor(
     .filter((e): e is BuildEntity => Boolean(e));
   if (ents.length > 0) {
     parts.push(
-      `Introduce and define, in this order: ${ents.map((e) => `${e.text} (${e.type.toLowerCase().replace(/_/g, ' ')})`).join('; ')}.`,
+      `Introduce and define, in this order: ${ents.map((e) => e.text).join('; ')}. (Kinds of term: ${[
+        ...new Set(ents.map((e) => e.type.toLowerCase().replace(/_/g, ' '))),
+      ].join(', ')}. Do not put a kind or a bracketed label in a heading.)`,
     );
   }
   if (section.isObjectives && objectives.length > 0) {
@@ -1543,7 +1566,10 @@ async function streamText(
   let modelId = deps.llm.modelIdFor(request.tier);
   const started = Date.now();
   try {
-    for await (const chunk of deps.llm.stream(request)) {
+    for await (const chunk of deps.llm.stream({
+      ...request,
+      signal: AbortSignal.timeout(CHAPTER_BUILD.callTimeoutMs),
+    })) {
       if (chunk.type === 'text') text += chunk.text;
       else {
         usage = chunk.usage;

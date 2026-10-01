@@ -4219,3 +4219,83 @@ Tests: `checks.spec.ts` 33 (S5, D-MED2, D-LAW1, D-MGT2, the Tamil stand-down), t
 pipeline test now covers confirmed terms reaching a prompt and the proofread batches; the API
 spec covers plan → edit → start and the cap at start. Docker was still down locally, so the API
 spec is unrun here; CI runs it.
+
+## The first real chapter build (2026-10-01, gpt-5-nano / gpt-5-mini, voyage-4)
+
+The owner asked for the dev stack and the first real build. Local stack up (Compose, migration
+0026, seed), API and worker on the new code, a real outline generated for the "Composite versus
+conventional electrodes in EDM of Hastelloy" thesis (six chapters, 24 sections, one strong call,
+30 s), five real EDM papers in its library (abstracts only), three objectives typed in as the
+student would. Chapter built: the Literature Review, Engineering (core), experimental, generic
+author–year profile.
+
+**Run 1.** Plan step: the first extraction call failed after 77 s ("OpenAI structured call
+failed", the SDK's three retries on a non-schema error; the cause was not in the log — it is now).
+The second attempt returned 14 key terms in 6 s. Build: 7 sections planned from the blueprint,
+all 7 written, assembled, checked, examined, 7 fix passes, delivered as 7 pending draft blocks.
+**2,345 words, 39 citations (every one a library passage), 21 issues fixed by the build, 6
+blocking and 10 warnings left open. 30 model calls (21 gpt-5-mini, 9 gpt-5-nano), ₹5.93, about
+seven minutes.** The profile prices 14 sections at ₹9.04; 7 sections at ₹5.93 is the same rate.
+Accept on the first block in the editor worked: it became ordinary thesis text, six drafts left.
+
+The writing: a real synthesis — it compares the five sources, names where they agree, names
+what they do not cover for Hastelloy C-276 and composite electrodes, and writes
+`[[NEEDS SOURCE: …]]` where the library has nothing, exactly as A.2 asks. The examiner caught the
+one place a C-22 finding was written as if for C-276 (E5), and the fixer corrected it.
+
+**Faults the real model exposed, all fixed the same hour and pinned in
+`packages/ai/test/real-run-fixes.spec.ts`:**
+
+1. Every section came back wrapped in the request's own `<section title="…">…</section>` tags,
+   which reached the editor as text. `normaliseDraftMarkdown` strips echoed request tags.
+2. The model wrote `[[NEEDS SOURCE: …]]` inside sentences. The marker reached the student as
+   prose, L3 read "NEEDS" and "SOURCE" as undefined abbreviations, and the fixer duly "defined"
+   them: "[[Needs Evidence (NEEDS) Source (SOURCE): …]]". Inline markers are now pulled out into
+   the needs-source notes before anything reads the text.
+3. With no source for copper it wrote "## Copper" and moved on, leaving empty headings at the
+   wrong level. Headings are brought to `###` and a heading with nothing under it is dropped.
+4. L3 flagged "AF" in "AF‑5", "SUS" in "SUS 304": grade names. A capital group followed by a
+   hyphen and a digit, or a space and a digit, is a designation, not an abbreviation.
+5. The intake question "X could mean more than one thing" fired for "copper" and "graphite",
+   which the model had typed correctly; it now fires only when the model's type was one the
+   profile does not have (`typeUnknown`).
+6. The examiner flagged "EDM" against the terminology sheet's full form. One sentence added to
+   `examiner.md`: the standard abbreviation of a preferred term, once expanded, is not an issue.
+7. The plan editor kept the previous plan's rows when the student re-planned (React state keyed
+   on nothing); keyed by build id.
+
+What the run did not settle: whether an examiner would accept the chapter. It reads as a
+competent review of five abstracts; it is not a review of the field, because the library held
+five papers. The automatic source search did not add any (the flag was on, the allowance was
+there; the sections all found at least one passage in the library, so the search was never
+asked). That is the spec's design working as intended and the library being thin.
+
+**Run 2, on the fixed code.** Same chapter, same library, the chapter emptied and the allowance
+reset locally. Planning returned 14 terms at once and asked one question (EDM). **7 sections,
+2,096 words, 40 citations, 18 fixed, 5 blocking and 7 warnings open, 27 calls, ₹4.43.** No
+echoed tags, no inline markers, no empty headings. The open blocking issues were real: two
+twelve-word runs copied from an abstract (E8, which the fixer did not clear), "POCO" and "VIKOR"
+undefined (L3; one a brand, one a method the model expanded for its neighbours but not itself),
+and one scope sentence the examiner wanted cited.
+
+**And the finding that matters most: the run took 8 h 34 min.** Every model call had finished in
+under 25 s until the examiner's sixth, which hung for exactly an hour (the SDK's own ceiling) and
+was logged as failed, after which the next call hung for 7 h 30 min and then returned normally.
+Nothing in the build put a time limit on a call. Now every call in the build carries
+`AbortSignal.timeout(CHAPTER_BUILD.callTimeoutMs)` (three minutes); a call that passes it is a
+failed call, the section keeps its deterministic checks, and the build goes on. The worker test
+asserts every call carries the signal.
+
+Smaller things from run 2, fixed: "interrelated" read as two words run together (L9 now knows
+prefixes); the model repeated the section title as its first subheading (dropped); entity kinds
+leaked into headings as "(parameter)" because the scope note listed them that way (the kinds are
+now named once, with an instruction not to put them in headings); seven of the twelve open
+issues were examiner E4 warnings on topic sentences that introduce cited ones (one sentence added
+to `examiner.md`). Left as found: the fixer once turned a copied sentence into a fragment ending
+in a comma; a guard for that is the next thing to add if it recurs.
+
+**Still unproven after two runs:** whether an examiner would accept the chapter. Both runs read as
+a careful review of five abstracts, with every gap named honestly. That is the design. It is not
+yet a review of the field, because the library had five papers and the automatic search was
+never needed (every section found a passage). A build on a fuller library is the next evidence
+to gather, and the three new prompts still need ADR-0038's evaluation.
