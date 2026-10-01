@@ -172,8 +172,8 @@ each block. Discipline and university profiles are data in `packages/config/src/
 pitfall bank is the `Pitfall` table (Admin → Pitfall bank; seeded from the spec). One
 `CHAPTER_BUILD` unit is one build (₹9.04; caps 3/1). The student confirms the key terms and answers
 intake questions before the unit is taken; the build searches for sources it lacks, proofreads, and
-the QA report downloads as PDF or HTML. The university profiles are unconfirmed and
-the new prompts unevaluated — `docs/PENDING.md`.
+the QA report downloads as PDF or HTML. **Released as v0.1.23 on 2026-10-01** (backup `pre-v0.1.23`). The university profiles are
+unconfirmed and the new prompts unevaluated — `docs/PENDING.md`.
 
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and

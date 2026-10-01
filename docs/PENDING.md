@@ -420,6 +420,16 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       server, so any change is: back the file up, add only the new block, `nginx -t`, and reload
       only if that passes. CI's drift warning will always fire because of the Certbot lines;
       read its diff for anything *besides* them.
+- [x] **Released v0.1.23, 2026-10-01** (tag on `0f13b66`, CI green including the browser smoke,
+      `pg_dump` in `/root/backups/pre-v0.1.23/`): the chapter build (ADR-0039) — plan step with
+      key-term confirmation and intake questions, the build itself with its checks, examiner and
+      one fix loop, pending draft blocks, the QA report on screen and as PDF/HTML, discipline,
+      university and language profiles, the pitfall bank with its admin screen, `CHAPTER_BUILD`
+      metered at 3/3/3/1; the per-call timeout from the second real build; fastify 5.12.5 and
+      @nestjs/platform-fastify 11.2.7 for six new advisories. The seed ran on the VPS (15 approved
+      pitfalls). Verified live: every container on v0.1.23, migration 0026 applied, the worker
+      serving `chapter-build`, health 200, anonymous `/api/v1/admin/*` and
+      `/api/v1/chapter-build/profiles` 401, web 200.
 - [x] **Released v0.1.20, 2026-09-30** (tag on `76f3339`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.20/`): the writing-quality plan, steps 1–4 — joining space, no
       repeats or filler, the approved A.1/A.2 wording, uncited "research shows" dropped, automatic
