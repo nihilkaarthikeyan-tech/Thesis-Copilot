@@ -100,6 +100,7 @@ declare module '@tiptap/core' {
         alt: string;
         caption?: string | null;
         chart?: unknown;
+        diagram?: unknown;
       }) => ReturnType;
     };
   }
@@ -140,6 +141,20 @@ export const ThesisImage = Image.extend<{
           }
         },
         renderHTML: (a) => (a.chart ? { 'data-chart': JSON.stringify(a.chart) } : {}),
+      },
+      /** ADR-0049: the structure a diagram was drawn from — the student's own lines. */
+      diagram: {
+        default: null,
+        parseHTML: (el) => {
+          const raw = el.getAttribute('data-diagram');
+          if (!raw) return null;
+          try {
+            return JSON.parse(raw) as unknown;
+          } catch {
+            return null;
+          }
+        },
+        renderHTML: (a) => (a.diagram ? { 'data-diagram': JSON.stringify(a.diagram) } : {}),
       },
     };
   },

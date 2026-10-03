@@ -16,6 +16,16 @@ export {
   refIdOf,
 } from './cross-ref.js';
 export {
+  DIAGRAM_DIRECTIONS,
+  DIAGRAM_LIMITS,
+  type DiagramEdge,
+  type DiagramNode,
+  type DiagramSpec,
+  diagramSpecSchema,
+  type ParsedDiagram,
+  parseDiagram,
+} from './diagram.js';
+export {
   emptyExtraction,
   type Finding,
   findingSchema,

@@ -263,6 +263,7 @@ export function FormatToolbar({
   className,
   onInsertImage,
   onInsertChart,
+  onInsertDiagram,
 }: {
   editor: Editor | null;
   className?: string;
@@ -270,6 +271,8 @@ export function FormatToolbar({
   onInsertImage?: (file: File) => void;
   /** Opens the chart dialog (ADR-0027) — for a new chart, or the selected one to edit. */
   onInsertChart?: () => void;
+  /** ADR-0049: a diagram from the student's own steps and links. */
+  onInsertDiagram?: () => void;
 }) {
   useEditorTick(editor);
 
@@ -383,6 +386,8 @@ export function FormatToolbar({
   const inTable = editor.isActive('table');
   // A figure that was drawn from numbers can be opened and redrawn (ADR-0027).
   const chartSelected = editor.isActive('image') && Boolean(editor.getAttributes('image').chart);
+  const diagramSelected =
+    editor.isActive('image') && Boolean(editor.getAttributes('image').diagram);
   // Recomputed on every render, which `useEditorTick` already drives: inserting a figure has to
   // make it immediately referenceable, and renumber the references that exist.
   const refTargets = numberTargets(editor.getJSON());
@@ -625,6 +630,17 @@ export function FormatToolbar({
             onClick={onInsertChart}
           >
             <span className="text-[11px] font-medium leading-none">Chart</span>
+          </Tool>
+        ) : null}
+
+        {onInsertDiagram ? (
+          <Tool
+            label={diagramSelected ? 'Edit diagram' : 'Insert diagram'}
+            testId="fmt-diagram"
+            active={diagramSelected}
+            onClick={onInsertDiagram}
+          >
+            <span className="text-[11px] font-medium leading-none">Diagram</span>
           </Tool>
         ) : null}
 

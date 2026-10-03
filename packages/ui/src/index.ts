@@ -9,6 +9,13 @@ export {
   tableToChartInput,
 } from './charts/index.js';
 export {
+  type DiagramLayout,
+  drawDiagram,
+  layoutDiagram,
+  type PlacedNode,
+  wrap,
+} from './diagrams/index.js';
+export {
   AI_TOKEN_RE,
   type AiCitation,
   type AiTextOptions,

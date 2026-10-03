@@ -11,7 +11,7 @@
  * freezes saving and shows the reload banner. Ctrl/Cmd+S forces a save and a MANUAL snapshot.
  */
 
-import { type ChartSpec, chartSpecSchema } from '@tc/types';
+import { type ChartSpec, chartSpecSchema, type DiagramSpec, diagramSpecSchema } from '@tc/types';
 import {
   type Autosave,
   type AutosaveStatus,
@@ -95,6 +95,7 @@ import { CitationsPanel, type Rendered } from './CitationsPanel';
 import { CitePicker } from './CitePicker';
 import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
+import { DiagramDialog } from './DiagramDialog';
 import { DraftMode } from './DraftMode';
 import { type Flag, FlagsPanel } from './FlagsPanel';
 import { FormatToolbar, WordCount } from './FormatToolbar';
@@ -619,6 +620,44 @@ function ChapterEditor({
     [uploadFigure, chart],
   );
 
+  /** ADR-0049: a diagram from the student's own steps and links; opens on a selected one. */
+  const [diagram, setDiagram] = useState<{
+    initial: DiagramSpec | null;
+    replacing: boolean;
+  } | null>(null);
+  const openDiagram = useCallback(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    setNotice(null);
+    const existing = ed.isActive('image')
+      ? diagramSpecSchema.safeParse(ed.getAttributes('image').diagram)
+      : null;
+    setDiagram(
+      existing?.success
+        ? { initial: existing.data, replacing: true }
+        : { initial: null, replacing: false },
+    );
+  }, []);
+  const insertDiagram = useCallback(
+    async (spec: DiagramSpec, png: Blob) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      const { key, url } = await uploadFigure(
+        new File([png], 'diagram.png', { type: 'image/png' }),
+      );
+      const attrs = {
+        src: url,
+        key,
+        alt: spec.title || 'Diagram',
+        caption: spec.title || null,
+        diagram: spec,
+      };
+      if (diagram?.replacing) ed.chain().focus().updateAttributes('image', attrs).run();
+      else ed.chain().focus().insertFigure(attrs).run();
+    },
+    [uploadFigure, diagram],
+  );
+
   // ADR-0028: live, the room stores the chapter; here only the connection is watched, and
   // Ctrl/Cmd+S still takes a snapshot of what the room has written.
   useEffect(() => {
@@ -1111,7 +1150,12 @@ function ChapterEditor({
               {notice}
             </p>
           ) : null}
-          <FormatToolbar editor={editor} onInsertImage={insertFigure} onInsertChart={openChart} />
+          <FormatToolbar
+            editor={editor}
+            onInsertImage={insertFigure}
+            onInsertChart={openChart}
+            onInsertDiagram={openDiagram}
+          />
           <EditorContent editor={editor} />
           <div className="mx-auto mt-8 flex max-w-[72ch] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[11.5px] text-faint">
             {[
@@ -1284,6 +1328,13 @@ function ChapterEditor({
         replacing={chart?.replacing ?? false}
         onClose={() => setChart(null)}
         onInsert={insertChart}
+      />
+      <DiagramDialog
+        open={diagram !== null}
+        initial={diagram?.initial ?? null}
+        replacing={diagram?.replacing ?? false}
+        onClose={() => setDiagram(null)}
+        onInsert={insertDiagram}
       />
       {historyOpen ? (
         <VersionHistory

@@ -4457,3 +4457,20 @@ string is never closed into a value the model did not finish. Plugged into the A
   ```
   $ pnpm --filter @tc/ai exec vitest run    Tests 439 passed | 1 skipped
   ```
+
+## Diagrams drawn from the student's own structure (2026-10-03, ADR-0049)
+
+From the Rademics Copilot comparison, made integrity-safe: Rademics has the model write Graphviz
+and a third party draw it; here the student types the steps and links, and our own layered layout
+draws them in the browser as a figure that keeps its text for editing. No model, no outside
+service, nothing metered.
+
+- Found in the browser, fixed before commit: a tall flowchart shrank into a wide frame (the canvas
+  now takes the diagram's proportions); a loop link lay on top of the forward link (it now bows
+  out); a link that skipped a layer ran behind the box between and hid its label (it now routes
+  through a waypoint slot as wide as its label).
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui exec vitest run test/diagram.spec.ts   Tests 7 passed
+  $ pnpm exec playwright test diagrams.spec.ts charts.spec.ts   3 passed
+  ```
