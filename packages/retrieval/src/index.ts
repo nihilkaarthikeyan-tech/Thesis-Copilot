@@ -50,6 +50,14 @@ export {
   type TextItem,
 } from './extract/index.js';
 export {
+  GAP_SIGNAL,
+  type GapCandidate,
+  type GapClass,
+  type GapSignal,
+  type GapTheme,
+  gapSignals,
+} from './gap/relevance.js';
+export {
   type AlignmentLevel,
   type ImpactTier,
   JOURNAL_MATCH,

@@ -10,7 +10,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { type BibEntry, parseBibliography } from '@tc/retrieval';
+import { type BibEntry, type GapSignal, gapSignals, parseBibliography } from '@tc/retrieval';
 import { jobId, jobKeyDigest } from '@tc/types';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -38,6 +38,12 @@ export type SearchRunView = {
      * moves as the library is curated (FR-2.6).
      */
     libraryCount?: number;
+    /**
+     * ADR-0041: a grounded reading of this theme's gap — relevance to the scope (mean of the
+     * candidates' cosine similarities) against coverage (their count and citedness), both ranked
+     * within the run. A heuristic for the student, computed from observed numbers, not a claim.
+     */
+    signal?: Omit<GapSignal, 'name'>;
     candidates: Array<{
       id: string;
       title: string;
@@ -176,6 +182,31 @@ export class SearchService {
     // than from what the run returned. That record is in `DocumentMemory.gapMap`, and this is the
     // only screen that shows it — without this merge the flag changes nothing anyone can see.
     const living = await this.livingThemes(documentId, runId);
+    const withLibrary = living
+      ? themes.map((theme) => {
+          const stored = living.byName.get(theme.name);
+          return stored
+            ? { ...theme, libraryCount: stored.libraryCount, thin: stored.thin }
+            : theme;
+        })
+      : themes;
+
+    // ADR-0041: the grounded gap signal, from the candidates' cosine scores and citation counts.
+    // Pure arithmetic over numbers already fetched — no model, no extra query, no metered unit.
+    const signalByName = new Map(
+      gapSignals(
+        withLibrary.map((theme) => ({
+          name: theme.name,
+          candidates: theme.candidates.map((c) => ({
+            score: c.score,
+            citationCount: c.citationCount,
+          })),
+          ...('libraryCount' in theme && typeof theme.libraryCount === 'number'
+            ? { libraryCount: theme.libraryCount }
+            : {}),
+        })),
+      ).map((s) => [s.name, s]),
+    );
 
     return {
       ...(living?.refreshedAt ? { refreshedAt: living.refreshedAt } : {}),
@@ -187,14 +218,12 @@ export class SearchService {
       error: record.error ?? null,
       counts: record.counts ?? {},
       queries: record.queries ?? [],
-      themes: living
-        ? themes.map((theme) => {
-            const stored = living.byName.get(theme.name);
-            return stored
-              ? { ...theme, libraryCount: stored.libraryCount, thin: stored.thin }
-              : theme;
-          })
-        : themes,
+      themes: withLibrary.map((theme) => {
+        const signal = signalByName.get(theme.name);
+        if (!signal) return theme;
+        const { name: _name, ...rest } = signal;
+        return { ...theme, signal: rest };
+      }),
     };
   }
 

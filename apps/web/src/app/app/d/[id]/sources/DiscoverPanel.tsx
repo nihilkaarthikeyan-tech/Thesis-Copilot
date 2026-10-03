@@ -37,7 +37,41 @@ type Run = {
   counts: Record<string, number>;
   queries: Array<{ angle: string; q: string }>;
   /** Present once the `livingGapMap` flag is on: how many of this theme the student kept. */
-  themes: Array<{ name: string; thin: boolean; libraryCount?: number; candidates: Candidate[] }>;
+  themes: Array<{
+    name: string;
+    thin: boolean;
+    libraryCount?: number;
+    /** ADR-0041: grounded relevance-vs-coverage reading of the theme. */
+    signal?: {
+      relevance: number;
+      relevanceRank: number;
+      coverage: number;
+      medianCitations: number | null;
+      candidateCount: number;
+      gapScore: number;
+      gapClass: 'open' | 'active' | 'crowded' | 'peripheral' | 'sparse';
+    };
+    candidates: Candidate[];
+  }>;
+};
+
+const GAP_LABEL: Record<
+  NonNullable<Run['themes'][number]['signal']>['gapClass'],
+  { text: string; tone: string }
+> = {
+  open: { text: 'Open gap', tone: 'bg-ok-soft text-ok' },
+  active: { text: 'Active area', tone: 'bg-accent-soft text-accent' },
+  crowded: { text: 'Crowded', tone: 'bg-sunk text-muted' },
+  peripheral: { text: 'Peripheral', tone: 'bg-sunk text-muted' },
+  sparse: { text: 'Too few to tell', tone: 'bg-warn-soft text-warn' },
+};
+
+const GAP_BLURB: Record<NonNullable<Run['themes'][number]['signal']>['gapClass'], string> = {
+  open: 'Relevant to your thesis but thinly covered — a gap worth pursuing.',
+  active: 'Relevant and already well covered — a live conversation to join.',
+  crowded: 'A large body of work only loosely related to your scope.',
+  peripheral: 'Little literature and loosely related.',
+  sparse: 'Too few papers here to read a relevance from — a real gap, or a dead end.',
 };
 
 type RunSummary = { runId: string; mode: 'discover' | 'expand'; status: string; startedAt: string };
@@ -245,8 +279,20 @@ export function DiscoverPanel({
                 data-thin={theme.thin}
                 className={`rounded-lg border p-3 ${theme.thin ? 'border-warn/50 bg-warn/5' : 'border-line bg-surface'}`}
               >
-                <h3 className="flex items-baseline justify-between text-sm font-medium">
-                  <span>{theme.name}</span>
+                <h3 className="flex items-baseline justify-between gap-2 text-sm font-medium">
+                  <span className="flex items-center gap-2">
+                    {theme.name}
+                    {theme.signal ? (
+                      <span
+                        data-testid="gap-class"
+                        data-gap-class={theme.signal.gapClass}
+                        title={GAP_BLURB[theme.signal.gapClass]}
+                        className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] ${GAP_LABEL[theme.signal.gapClass].tone}`}
+                      >
+                        {GAP_LABEL[theme.signal.gapClass].text}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="text-xs text-muted">
                     {theme.libraryCount === undefined
                       ? theme.candidates.length
@@ -254,6 +300,14 @@ export function DiscoverPanel({
                     {theme.thin ? ' · thin' : ''}
                   </span>
                 </h3>
+                {theme.signal && theme.signal.gapClass !== 'sparse' ? (
+                  <p className="mt-1 text-xs text-muted">
+                    {GAP_BLURB[theme.signal.gapClass]}
+                    {theme.signal.medianCitations !== null
+                      ? ` Median ${theme.signal.medianCitations} citations.`
+                      : ''}
+                  </p>
+                ) : null}
                 {theme.thin ? (
                   <p className="mt-1 text-xs text-warn">
                     {theme.libraryCount === undefined
