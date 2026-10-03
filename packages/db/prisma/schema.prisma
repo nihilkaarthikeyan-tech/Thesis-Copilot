@@ -242,6 +242,7 @@ model Document {
   comments    Comment[]
   shares      GuideShare[]
   versions    DocumentVersion[]
+  exportArtifacts ExportArtifact[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([ownerId])
@@ -454,6 +455,23 @@ model AiCallLog {
  * resetting caps or changing a plan, a feedback message. `kind` is a string, not an enum, so a
  * new kind is a code change rather than a migration.
  */
+/// ADR-0044: a durable record of every thesis export and its SHA-256 fingerprint, so a student (or
+/// a committee) can verify the file they hold is byte-for-byte the one this produced.
+model ExportArtifact {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId String   @db.Uuid
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String   @db.Uuid
+  format     String   // docx | pdf | latex | html
+  filename   String
+  storageKey String
+  bytes      Int
+  /// Lowercase hex SHA-256 of the exported bytes.
+  sha256     String
+  createdAt  DateTime @default(now())
+  @@index([documentId, createdAt])
+}
+
 model AuditEvent {
   id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   kind       String   // CAP_EXCEEDED | CAPS_RESET | PLAN_CHANGED | FEEDBACK | BILLING_EVENT

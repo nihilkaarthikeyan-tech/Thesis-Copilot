@@ -118,6 +118,12 @@ export class ExportController {
     );
   }
 
+  /** ADR-0044: the SHA-256 fingerprints of this thesis's recent exports, for verification. */
+  @Get('export/artifacts')
+  artifacts(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.thesis.artifacts(user.id, documentId);
+  }
+
   @Post('export')
   async exportChapter(@CurrentUser() user: SessionUser, @Body() body: unknown) {
     const parsed = exportBody.safeParse(body);

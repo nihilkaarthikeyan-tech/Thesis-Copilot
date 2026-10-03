@@ -13,6 +13,7 @@
  *     decision has an author.
  */
 
+import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   citationKeys,
@@ -61,6 +62,8 @@ export type ThesisExportResult = {
   key: string;
   filename: string;
   bytes: number;
+  /** ADR-0044: lowercase hex SHA-256 of the exported bytes, for integrity verification. */
+  sha256: string;
   format: ThesisExportFormat;
   compliance: ComplianceResult;
   /** Set when the PDF was produced despite failures, with the reason recorded. */
@@ -413,7 +416,14 @@ export class ThesisExportService {
       body = format === 'pdf' ? await this.toPdf(docx, `${base}.docx`) : docx;
       filename = `${base}.${format}`;
     }
-    const stored = await this.store(documentId, filename, body, CONTENT_TYPES[format]);
+    const stored = await this.store(
+      documentId,
+      user.id,
+      format,
+      filename,
+      body,
+      CONTENT_TYPES[format],
+    );
 
     if (format === 'pdf' && !compliance.passed && overrideReason?.trim()) {
       // D.3.3: the reason goes in the export log, so an override has an author and a date.
@@ -461,13 +471,43 @@ export class ThesisExportService {
 
   private async store(
     documentId: string,
+    userId: string,
+    format: ThesisExportFormat,
     filename: string,
     body: Buffer,
     contentType: string,
-  ): Promise<{ url: string; key: string; filename: string; bytes: number }> {
+  ): Promise<{ url: string; key: string; filename: string; bytes: number; sha256: string }> {
     const key = `exports/${documentId}/thesis/${Date.now()}-${filename}`;
     await this.storage.put(key, body, { 'content-type': contentType });
-    return { url: await this.storage.signedUrl(key), key, filename, bytes: body.length };
+    // ADR-0044: fingerprint the exact bytes we stored, and keep a durable record of it.
+    const sha256 = createHash('sha256').update(body).digest('hex');
+    await this.prisma.exportArtifact.create({
+      data: { documentId, userId, format, filename, storageKey: key, bytes: body.length, sha256 },
+    });
+    return { url: await this.storage.signedUrl(key), key, filename, bytes: body.length, sha256 };
+  }
+
+  /** ADR-0044: the recent export fingerprints for a thesis, newest first, owner-scoped. */
+  async artifacts(
+    ownerId: string,
+    documentId: string,
+  ): Promise<
+    Array<{ format: string; filename: string; bytes: number; sha256: string; createdAt: string }>
+  > {
+    await this.owned(ownerId, documentId);
+    const rows = await this.prisma.exportArtifact.findMany({
+      where: { documentId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { format: true, filename: true, bytes: true, sha256: true, createdAt: true },
+    });
+    return rows.map((r) => ({
+      format: r.format,
+      filename: r.filename,
+      bytes: r.bytes,
+      sha256: r.sha256,
+      createdAt: r.createdAt.toISOString(),
+    }));
   }
 
   /**

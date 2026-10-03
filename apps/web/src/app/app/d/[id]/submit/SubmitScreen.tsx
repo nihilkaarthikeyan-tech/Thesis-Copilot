@@ -82,7 +82,9 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [override, setOverride] = useState('');
   const [showOverride, setShowOverride] = useState(false);
-  const [downloads, setDownloads] = useState<Array<{ filename: string; url: string }>>([]);
+  const [downloads, setDownloads] = useState<
+    Array<{ filename: string; url: string; sha256: string }>
+  >([]);
 
   const load = useCallback(async () => {
     try {
@@ -139,7 +141,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
     setBusy(format);
     setError(null);
     try {
-      const result = await api<{ url: string; filename: string; bytes: number }>(
+      const result = await api<{ url: string; filename: string; bytes: number; sha256: string }>(
         `/documents/${documentId}/export/thesis`,
         {
           method: 'POST',
@@ -149,7 +151,12 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           }),
         },
       );
-      setDownloads((prev) => [{ filename: result.filename, url: result.url }, ...prev].slice(0, 5));
+      setDownloads((prev) =>
+        [{ filename: result.filename, url: result.url, sha256: result.sha256 }, ...prev].slice(
+          0,
+          5,
+        ),
+      );
       setNotice(EXPORT_NOTICE[format]);
       setShowOverride(false);
       setOverride('');
@@ -445,12 +452,19 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         ) : null}
 
         {downloads.length > 0 ? (
-          <ul className="mt-4 space-y-1 text-xs" data-testid="downloads">
+          <ul className="mt-4 space-y-2 text-xs" data-testid="downloads">
             {downloads.map((file) => (
               <li key={file.url}>
                 <a href={file.url} className="underline" target="_blank" rel="noreferrer">
                   {file.filename}
                 </a>
+                <span
+                  className="mt-0.5 block select-all font-mono text-[10.5px] text-muted"
+                  title="SHA-256 fingerprint — verify your file with: sha256sum (Linux) or Get-FileHash (Windows)"
+                  data-testid="export-sha256"
+                >
+                  SHA-256 {file.sha256}
+                </span>
               </li>
             ))}
           </ul>

@@ -4299,3 +4299,83 @@ a careful review of five abstracts, with every gap named honestly. That is the d
 yet a review of the field, because the library had five papers and the automatic search was
 never needed (every section found a passage). A build on a fuller library is the next evidence
 to gather, and the three new prompts still need ADR-0038's evaluation.
+
+---
+
+## Unit: Competitor-parity features — ADRs 0040–0044
+Started: 2026-10-03 · Sessions: 1
+
+From a technical comparison against PublishMate and Rademics Copilot, five integrity-safe features,
+built one at a time at the owner's "build this one by one" (blue/green deploy excluded; humanise /
+detector-evasion and model-invented results stay forbidden by design, §12.3). All grounded, all
+un-metered (pure code over data already fetched, or bytes already in hand).
+
+### Task — Journal matching (ADR-0040)
+- Status: DONE
+- A deterministic scorer in `@tc/retrieval` ranks journals by scope fit, how many of the thesis's
+  own cited sources a journal published, OpenAlex citedness (an impact proxy, not a JIF) and
+  access/APC, with a hard eligibility gate. Candidates from the thesis's cited venues + an OpenAlex
+  `/sources` search. `GET /documents/:id/journals`; a Journals stage screen.
+- Evidence:
+  ```
+  $ pnpm --filter @tc/retrieval exec vitest run journal
+  Test Files  2 passed (2)
+      Tests  15 passed (15)
+  ```
+
+### Task — Gap-map relevance signal (ADR-0041)
+- Status: DONE
+- `gapSignals` reads each gap-map theme as open / active / crowded / peripheral / sparse from the
+  candidates' cosine similarity to the scope against their count and median OpenAlex citedness,
+  ranked within the run. The API adds a `signal` to each theme; the Discover panel labels it.
+- Evidence:
+  ```
+  $ pnpm --filter @tc/retrieval exec vitest run gap-relevance
+  Test Files  1 passed (1)
+      Tests  8 passed (8)
+  ```
+
+### Task — Indexing verification + read-only overlap check (ADR-0042)
+- Status: DONE
+- Indexing: an `IndexingProvider` interface + an OpenAlex default that verifies DOAJ membership and
+  ISSN registration only (Scopus/WoS stay `unknown`, never `not-listed`). `inDoaj` on the journal
+  candidate; an "In DOAJ" badge. Overlap: a read-only word-shingling report flagging where a draft
+  passage runs near-verbatim to a source the thesis cites — it reports copied text and never
+  rewrites it (§12.3). `POST /documents/:id/overlap`; a `/originality` page.
+- Evidence:
+  ```
+  $ pnpm --filter @tc/retrieval exec vitest run indexing overlap
+  Test Files  2 passed (2)
+      Tests  10 passed (10)
+  ```
+
+### Task — Thesis lifecycle state machine (ADR-0043)
+- Status: DONE
+- A pure machine in `@tc/types` (DRAFTING → IN_REVIEW → REVISING → READY → SUBMITTED) with guards
+  reading real signals: `markReady` reuses the exact compliance gate `exportThesis` enforces and
+  requires no open guide comments. `Document.lifecycle` (migration 0027, defaults DRAFTING);
+  `GET`/`POST /documents/:id/lifecycle`; a LifecycleBar on the Submit screen.
+- Evidence:
+  ```
+  $ pnpm --filter @tc/types exec vitest run lifecycle
+  Test Files  1 passed (1)
+      Tests  7 passed (7)
+  ```
+
+### Task — Export fingerprint (ADR-0044)
+- Status: DONE
+- Every export is SHA-256'd at store time and recorded as an `ExportArtifact` (migration 0028); the
+  hash is returned and shown under each download, and `GET /documents/:id/export/artifacts` lists
+  the recent fingerprints. An honest checksum a committee can recompute, not a cryptographic
+  signature — the copy says so.
+- Evidence:
+  ```
+  $ pnpm lint
+  Found 1 warning.   # pre-existing admin-gate optional-chain
+  $ pnpm --filter @tc/api typecheck && pnpm --filter @tc/web typecheck
+  (both clean)
+  ```
+
+**Not run here:** the DB migration-diff check and the Playwright e2e specs — both need Docker, which
+was down in this session; they run in CI. The two licensed indexing providers (Scopus / Web of
+Science) and the optional inline-editor overlap are human/future steps in `docs/PENDING.md`.
