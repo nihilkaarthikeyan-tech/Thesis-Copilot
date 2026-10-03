@@ -63,6 +63,7 @@ import {
   type Template,
   type UniversityProfile,
   universityProfile,
+  writingGuidance,
 } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
 import { type ContextChapter, docToText, shortReference } from '@tc/retrieval';
@@ -481,6 +482,7 @@ export async function runChapterBuild(
         discipline,
         university,
         clarifications,
+        paradigm,
       );
       const request = buildDraftRequest({
         memoryBlock,
@@ -1302,6 +1304,7 @@ function scopeNoteFor(
     question: string;
     answer: string | null;
   }> = [],
+  paradigm?: Paradigm,
 ): string {
   const parts = [section.instructions];
   // The student's answers to the intake questions, for the sections that introduce the term
@@ -1353,6 +1356,11 @@ function scopeNoteFor(
     parts.push(
       'Write only from the passages, which are the student’s own data. Where a number is not in them, write [[DATA NEEDED: what is missing]] on its own line and give no figure.',
     );
+  }
+  // ADR-0047: what counts as evidence and validity in this kind of research. A summary restates
+  // the chapter, so it gets none.
+  if (paradigm && !section.summary) {
+    parts.push(writingGuidance(discipline, paradigm, section.title));
   }
   parts.push(`Spelling: ${university.spelling}. Discipline: ${discipline.displayName}.`);
   return parts.join('\n');

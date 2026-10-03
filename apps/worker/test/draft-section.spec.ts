@@ -12,6 +12,7 @@ import {
   type DraftCallLog,
   type DraftEvent,
   type DraftSectionDeps,
+  guidanceFor,
   runDraftSection,
 } from '../src/jobs/draft-section.js';
 
@@ -170,5 +171,27 @@ describe('runDraftSection', () => {
     expect(logged).toHaveLength(1);
     expect(logged[0]).toMatchObject({ ok: false, usage: null });
     expect(logged[0]?.error).toContain('provider down');
+  });
+});
+
+describe('ADR-0047: research-type guidance in Draft mode', () => {
+  it('uses the saved build profile when there is one', () => {
+    const text = guidanceFor(
+      {
+        field: 'Mechanical Engineering',
+        meta: { chapterProfile: { disciplineId: 'law_v1', paradigm: 'doctrinal' } },
+      },
+      'Methodology',
+    );
+    expect(text).toContain('Research type: doctrinal');
+    expect(text).toContain('binding or persuasive');
+  });
+
+  it('suggests from the field otherwise, and adds nothing when there is neither', () => {
+    expect(guidanceFor({ field: 'Mechanical Engineering', meta: {} }, 'Introduction')).toContain(
+      'Research type: experimental',
+    );
+    expect(guidanceFor({ field: null, meta: null }, 'Introduction')).toBe('');
+    expect(guidanceFor(null, 'Introduction')).toBe('');
   });
 });

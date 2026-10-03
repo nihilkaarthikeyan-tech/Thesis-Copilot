@@ -22,6 +22,13 @@ import {
   type PromptPassage,
   postProcessDraft,
 } from '@tc/ai';
+import {
+  disciplineProfile,
+  PARADIGMS,
+  type Paradigm,
+  suggestDiscipline,
+  writingGuidance,
+} from '@tc/config';
 import type { PrismaClient } from '@tc/db';
 import { docToText } from '@tc/retrieval';
 import type { DraftSectionJob } from '@tc/types';
@@ -129,6 +136,8 @@ export async function runDraftSection(
       title: true,
       scopeNote: true,
       content: true,
+      // ADR-0047: the discipline and research type the guidance is chosen by.
+      document: { select: { field: true, meta: true } },
     },
   });
   if (!chapter) {
@@ -165,9 +174,17 @@ export async function runDraftSection(
   await deps.publish({ type: 'progress', stage: 'writing', draftId });
 
   const tier = (await deps.strongTier()) ? 'strong' : 'fast';
+  // ADR-0047: what counts as evidence and validity in this kind of research goes with the section
+  // to the writer — the retrieval query above stays the section's own words.
+  const guidance = guidanceFor(
+    (chapter as { document?: { field: string | null; meta: unknown } | null }).document ?? null,
+    section.title,
+  );
   const request = buildDraftRequest({
     memoryBlock: await deps.memoryBlock(chapter),
-    section,
+    section: guidance
+      ? { ...section, scopeNote: `${section.scopeNote}\n${guidance}`.trim() }
+      : section,
     passages,
     targetWords,
     tier,
@@ -315,4 +332,29 @@ async function sectionFor(
       scopeNote: child.scopeNote,
     })),
   };
+}
+
+/**
+ * ADR-0047: the discipline and research type for Draft mode — the one the student chose on the
+ * build screen (`Document.meta.chapterProfile`) when there is one, else suggested from the
+ * thesis's field. No field and no saved profile: no guidance, rather than a guessed discipline.
+ */
+export function guidanceFor(
+  document: { field: string | null; meta: unknown } | null,
+  sectionTitle: string,
+): string {
+  if (!document) return '';
+  const saved = (
+    document.meta as { chapterProfile?: { disciplineId?: unknown; paradigm?: unknown } } | null
+  )?.chapterProfile;
+  const discipline =
+    typeof saved?.disciplineId === 'string'
+      ? disciplineProfile(saved.disciplineId)
+      : suggestDiscipline(document.field);
+  if (!discipline) return '';
+  const paradigm: Paradigm =
+    typeof saved?.paradigm === 'string' && (PARADIGMS as readonly string[]).includes(saved.paradigm)
+      ? (saved.paradigm as Paradigm)
+      : (discipline.defaultParadigms[0] ?? 'experimental');
+  return writingGuidance(discipline, paradigm, sectionTitle);
 }

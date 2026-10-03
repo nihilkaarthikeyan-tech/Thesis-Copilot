@@ -25,6 +25,13 @@ and 3".
 - [ ] **Evaluate preamble rule 7** (LaTeX for equations) in the next ADR-0038 round, with a
       shakedown case that writes an equation. It is a format rule, added without the side-by-side.
 
+## Research-type guidance (ADR-0047, 2026-10-03)
+
+- [ ] **Read the guidance once** (`packages/config/src/profiles/guidance.ts`): one short block per
+      research type telling the writer what counts as evidence and what an examiner calls a
+      mistake. A law and a humanities colleague are the people to check those two. It is data;
+      say what to change and it is one edit.
+
 ## Competitor-parity features (ADRs 0040–0042, 2026-10-03) — optional human steps
 
 These shipped grounded and un-metered; none blocks anything. The human steps only widen them.

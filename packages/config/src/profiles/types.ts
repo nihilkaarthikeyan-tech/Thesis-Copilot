@@ -17,6 +17,10 @@ export const PARADIGMS = [
   'qualitative',
   'mixed',
   'computational',
+  // ADR-0047: numerical modelling has its own Methodology (governing equations, boundary
+  // conditions, mesh independence, validation) — Rademics Copilot branches on it, and it is how
+  // most engineering theses on this platform actually work.
+  'simulation',
   'design_build',
   'theoretical',
   'doctrinal',
@@ -31,6 +35,7 @@ export const PARADIGM_LABELS: Readonly<Record<Paradigm, string>> = {
   qualitative: 'Qualitative',
   mixed: 'Mixed methods',
   computational: 'Computational',
+  simulation: 'Simulation / numerical modelling',
   design_build: 'Design and build',
   theoretical: 'Theoretical',
   doctrinal: 'Doctrinal (law)',

@@ -21,6 +21,12 @@ export {
   disciplineProfile,
   suggestDiscipline,
 } from './disciplines.js';
+export {
+  isMethodSection,
+  PARADIGM_GUIDANCE,
+  type ParadigmGuidance,
+  writingGuidance,
+} from './guidance.js';
 export { LANGUAGES, type LanguageSetting, languageSetting, latinScript } from './languages.js';
 export { PITFALL_SEED, type PitfallSeed } from './pitfalls.js';
 export {

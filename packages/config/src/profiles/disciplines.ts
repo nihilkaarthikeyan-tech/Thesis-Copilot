@@ -68,7 +68,7 @@ export const DISCIPLINE_PROFILES: readonly DisciplineProfile[] = [
       'Automobile',
       'Metallurgy',
     ],
-    defaultParadigms: ['experimental', 'computational'],
+    defaultParadigms: ['experimental', 'computational', 'simulation'],
     entityTypes: [
       t(
         'MATERIAL',
@@ -279,7 +279,7 @@ export const DISCIPLINE_PROFILES: readonly DisciplineProfile[] = [
       'Biotechnology',
       'Microbiology',
     ],
-    defaultParadigms: ['experimental', 'theoretical', 'computational'],
+    defaultParadigms: ['experimental', 'theoretical', 'computational', 'simulation'],
     entityTypes: [
       t(
         'PHENOMENON',

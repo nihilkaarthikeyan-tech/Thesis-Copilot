@@ -265,7 +265,7 @@ const METHOD: ChapterBlueprint = {
       'Implementation environment',
       'Hardware, software, versions.',
       'State the hardware, software, libraries and versions used.',
-      ['computational', 'design_build'],
+      ['computational', 'design_build', 'simulation'],
       150,
     ),
     paradigm(
@@ -281,6 +281,44 @@ const METHOD: ChapterBlueprint = {
       'How the evaluation was run.',
       'Describe the evaluation protocol: runs, seeds, validation, and how results are reported.',
       ['computational', 'design_build'],
+    ),
+    // Simulation / numerical modelling (ADR-0047)
+    paradigm(
+      'method.model',
+      'Model and governing equations',
+      'The physics or mathematics the model solves.',
+      'State the governing equations in LaTeX with every symbol defined, and the assumptions and simplifications made, citing the source of each model where a passage gives it.',
+      ['simulation'],
+      350,
+    ),
+    paradigm(
+      'method.domain',
+      'Domain, boundary and initial conditions',
+      'Where the model is solved and under which conditions.',
+      'Describe the geometry or domain, the boundary and initial conditions and the material properties, with their values and sources.',
+      ['simulation'],
+    ),
+    paradigm(
+      'method.numerics',
+      'Numerical method and independence study',
+      'How the equations are solved, and evidence that the answer does not depend on the grid.',
+      'Name the discretisation, solver and convergence criteria, and report the mesh or time-step independence study.',
+      ['simulation'],
+    ),
+    paradigm(
+      'method.validation',
+      'Verification and validation',
+      'Evidence that the model is right.',
+      'Report how the model was verified and validated against experimental or published data, with the agreement found, only as the passages give it.',
+      ['simulation'],
+    ),
+    paradigm(
+      'method.parametric',
+      'Simulation plan',
+      'The cases run.',
+      'List the parameters varied, their ranges and the cases run.',
+      ['simulation'],
+      200,
     ),
     // Quantitative survey
     paradigm(
@@ -316,7 +354,7 @@ const METHOD: ChapterBlueprint = {
       'Analysis techniques',
       'The statistical or analytical methods.',
       'Name the analysis techniques and the software, and match each to the hypothesis or question it answers.',
-      ['quantitative', 'mixed', 'computational', 'experimental'],
+      ['quantitative', 'mixed', 'computational', 'experimental', 'simulation'],
     ),
     // Qualitative
     paradigm(

@@ -4430,3 +4430,18 @@ as ADR-0041 said it did.
   $ pnpm --filter @tc/worker exec vitest run       Tests 142 passed | 1 skipped
   $ pnpm exec playwright test gap-density.spec.ts  1 passed   (real OpenAlex, mock models)
   ```
+
+## Research-type writing guidance and a simulation paradigm (2026-10-03, ADR-0047)
+
+From the Rademics Copilot comparison. Each paradigm now carries, as data, what counts as evidence,
+the validity vocabulary an examiner expects and the mistakes to avoid (law: statutes and cases,
+holding versus obiter; humanities: interpretive validity; qualitative: trustworthiness;
+simulation: verification and validation). It reaches the writer through the section's scope note
+in both the chapter build and Draft mode, which before this passed no discipline at all. A new
+`simulation` paradigm gives numerical-modelling theses their own Methodology sections.
+
+- Evidence:
+  ```
+  $ pnpm --filter @tc/config exec vitest run test/guidance.spec.ts   Tests 6 passed
+  $ pnpm --filter @tc/worker exec vitest run                          Tests 144 passed | 1 skipped
+  ```
