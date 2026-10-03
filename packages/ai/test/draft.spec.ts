@@ -168,11 +168,38 @@ describe('draftToProseMirror (A.2: DRAFT provenance)', () => {
     const nodes = draftToProseMirror('Cost dominated {{cite:S1#c1}}.', 'draft-1', resolve);
     const content = (nodes[0] as { content: Array<Record<string, unknown>> }).content;
     const citation = content.find((node) => node.type === 'citation');
-    expect(citation?.attrs).toMatchObject({
-      key: 'S1#c1',
-      sourceId: 'src-1',
-      chunkId: 'chunk-1',
-    });
+    // ADR-0045: a fresh node key, never the request-local passage id.
+    expect(citation?.attrs).toMatchObject({ sourceId: 'src-1', chunkId: 'chunk-1' });
+    expect(String((citation?.attrs as { key?: string } | undefined)?.key)).toMatch(/^c_/);
+  });
+
+  it('reports each node key against the prompt key it came from, uniquely', () => {
+    const seen: Array<[string, string]> = [];
+    const nodes = draftToProseMirror(
+      'One {{cite:S1#c1}}.\n\nTwo {{cite:S1#c1}}.',
+      'draft-1',
+      resolve,
+      (nodeKey, promptKey) => seen.push([nodeKey, promptKey]),
+    );
+    expect(nodes).toHaveLength(2);
+    expect(seen.map(([, p]) => p)).toEqual(['S1#c1', 'S1#c1']);
+    expect(seen[0]?.[0]).not.toBe(seen[1]?.[0]);
+  });
+
+  it('turns an inline equation into a mathInline node and a display one into a mathBlock', () => {
+    const nodes = draftToProseMirror(
+      'Stress follows $\\sigma = E\\varepsilon$ here.\n\n$$\\dot{m} = \\rho A v$$\n\nThe fee was $5 and $10.',
+      'draft-1',
+      resolve,
+    );
+    expect(nodes.map((n) => n.type)).toEqual(['paragraph', 'mathBlock', 'paragraph']);
+    const first = (nodes[0] as { content: Array<Record<string, unknown>> }).content;
+    expect(first.map((n) => n.type)).toEqual(['text', 'mathInline', 'text']);
+    expect(first[1]?.attrs).toEqual({ latex: '\\sigma = E\\varepsilon' });
+    expect(nodes[1]?.attrs).toEqual({ latex: '\\dot{m} = \\rho A v' });
+    const third = (nodes[2] as { content: Array<{ text: string }> }).content;
+    expect(third).toHaveLength(1);
+    expect(third[0]?.text).toBe('The fee was $5 and $10.');
   });
 
   it('drops a citation that resolves to nothing rather than leaving a marker in the prose', () => {

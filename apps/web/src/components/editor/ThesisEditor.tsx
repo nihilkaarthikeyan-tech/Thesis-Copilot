@@ -515,6 +515,9 @@ function ChapterEditor({
   });
   editorRef.current = editor;
 
+  /** Labels are re-fetched after every save; set inside the label effect below. */
+  const refreshLabelsRef = useRef<() => void>(() => undefined);
+
   /**
    * The citation report links a problem as `?from=&to=`: select it once the chapter is in. Live,
    * the text arrives over the socket after the editor exists, so it waits for a document long
@@ -668,6 +671,8 @@ function ChapterEditor({
             method: 'PUT',
             body: JSON.stringify({ content, baseVersion }),
           });
+          // The saved document is what the server renders labels from (ADR-0045).
+          refreshLabelsRef.current();
           return { ok: true, version: result.version };
         } catch (e) {
           if (e instanceof ApiError && e.problem.status === 409) {
@@ -679,6 +684,12 @@ function ChapterEditor({
     });
     autosaveRef.current = autosave;
     setLocalDraft(autosave.localDraft());
+
+    // ADR-0045: chapters written before it hold citation nodes keyed by the request-local passage
+    // id (`S1#c1`), several per chapter, pointing at different sources. One label map cannot
+    // serve them; each twin after the first gets a key of its own, once, when the chapter opens.
+    // After the autosave is listening, so the repair is saved and the labels re-rendered.
+    editor.commands.dedupeCitationKeys();
 
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -718,18 +729,28 @@ function ChapterEditor({
    * live in the extension's storage, and `setCitationStyle` dispatches a re-render transaction.
    */
   const applyRendered = useCallback((rendered: Rendered) => {
-    editorRef.current?.commands.setCitationStyle(
+    const current = editorRef.current;
+    if (!current) return;
+    current.commands.setCitationStyle(
       rendered.style,
       rendered.labels,
       rendered.noteStyle === true,
+      rendered.styleFamily === 'numeric',
     );
+    // A citation whose source left the library is drawn red (B.5); before ADR-0045 nothing in
+    // the app ever told the editor which those were.
+    for (const sourceId of rendered.missingSourceIds ?? []) {
+      current.commands.markSourceRemoved(sourceId);
+    }
   }, []);
 
   /**
    * The labels used to arrive only when the Citations tab was opened, so every chapter opened on
    * any other tab showed "(Source, n.d.)" for each citation (found 2026-09-27 while photographing
-   * the editor). They load with the chapter now, and again whenever a citation appears whose key
-   * has no label yet: an accepted suggestion or a pasted reference, a second after the edit.
+   * the editor). They load with the chapter now, again whenever a citation appears whose key has
+   * no label yet, and — ADR-0045 — after every save: the server renders the saved document, so
+   * only then can a new node get its real label, a numeric style renumber after a deletion, or
+   * the "(Kumar, 2021)" a suggestion seeded become the "[7]" the style actually wants.
    */
   useEffect(() => {
     if (!editor) return;
@@ -742,6 +763,7 @@ function ChapterEditor({
         })
         .catch(() => undefined);
     };
+    refreshLabelsRef.current = refresh;
     const unlabeled = () => {
       const labels =
         (editor.storage as { citation?: { renderedMap?: Record<string, string> } }).citation

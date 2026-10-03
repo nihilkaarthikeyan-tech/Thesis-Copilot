@@ -77,7 +77,10 @@ export function checkAbbreviations(ctx: CheckContext): RawIssue[] {
       ...ctx.entities.flatMap((e) => [e.text, ...e.aliases]),
     ].map((a) => a.toUpperCase()),
   );
-  const chapter = ctx.sections.map((s) => stripCites(s.markdown)).join('\n\n');
+  // Subscript and superscript digits become plain digits first: `CO₂` matched as the
+  // "abbreviation" CO because ₂ is not a word character, and the formula exemption below only
+  // sees an ASCII digit (ADR-0045).
+  const chapter = ctx.sections.map((s) => plainDigits(stripCites(s.markdown))).join('\n\n');
   const seen = new Set<string>();
   const issues: RawIssue[] = [];
   for (const match of chapter.matchAll(/\b([A-Z][A-Z0-9]{1,6})\b/g)) {

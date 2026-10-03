@@ -5,7 +5,18 @@
  * `thesis-editor` class gives it the editor's own typography (`app/editor.css`).
  */
 
+import katex from 'katex';
 import type { ReactNode } from 'react';
+import 'katex/dist/katex.min.css';
+
+/** KaTeX's HTML for an equation, or the source when it cannot be drawn. */
+function typeset(latex: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(latex, { displayMode, throwOnError: false, output: 'html' });
+  } catch {
+    return latex;
+  }
+}
 
 type Mark = { type: string; attrs?: Record<string, unknown> };
 type Node = {
@@ -136,16 +147,23 @@ function render(node: Node, key: string, labels: Record<string, string>): ReactN
         </span>
       );
     case 'mathInline':
+      // Typeset, as the student sees it (ADR-0045); KaTeX's own markup, from the stored source.
       return (
-        <code key={key} className="text-[0.9em]">
-          {str(node.attrs?.latex)}
-        </code>
+        <span
+          key={key}
+          className="math-inline"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output from our own LaTeX source
+          dangerouslySetInnerHTML={{ __html: typeset(str(node.attrs?.latex), false) }}
+        />
       );
     case 'mathBlock':
       return (
-        <pre key={key} className="text-[0.9em]">
-          {str(node.attrs?.latex)}
-        </pre>
+        <div
+          key={key}
+          className="math-block my-2 text-center"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output from our own LaTeX source
+          dangerouslySetInnerHTML={{ __html: typeset(str(node.attrs?.latex), true) }}
+        />
       );
     default:
       return node.content ? <div key={key}>{kids()}</div> : node.text ? node.text : null;

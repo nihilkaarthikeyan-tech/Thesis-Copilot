@@ -9,6 +9,17 @@ export {
   tableToChartInput,
 } from './charts/index.js';
 export {
+  AI_TOKEN_RE,
+  type AiCitation,
+  type AiTextOptions,
+  type AiToken,
+  aiTextToFragment,
+  aiTextToNodes,
+  citationsInRange,
+  type ExistingCitation,
+  tokenizeAiText,
+} from './editor/ai-text.js';
+export {
   type Autosave,
   type AutosaveOptions,
   type AutosaveStatus,
@@ -57,7 +68,14 @@ export {
   suggestionToFragment,
 } from './editor/ghost-text.js';
 export { insertBlockWithCaretAfter } from './editor/insert-block.js';
-export { MathBlock, MathInline } from './editor/math.js';
+export {
+  latexError,
+  MATH_EDIT_EVENT,
+  MathBlock,
+  type MathEditDetail,
+  MathInline,
+  mathText,
+} from './editor/math.js';
 export {
   CommentAnchor,
   type ImageResolveUrl,

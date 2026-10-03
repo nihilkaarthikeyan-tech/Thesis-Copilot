@@ -8,9 +8,30 @@ import { splitSentences } from '../builder/quality.js';
 export const CITE_RE = /\{\{cite:[^}]+\}\}/g;
 export const HAS_CITE = /\{\{cite:[^}]+\}\}/;
 
-/** Subscript digits to plain digits, so `K₂Br` and `K2Br` are one token. */
+const SUPERSCRIPT_DIGITS: Record<string, string> = {
+  '⁰': '0',
+  '¹': '1',
+  '²': '2',
+  '³': '3',
+  '⁴': '4',
+  '⁵': '5',
+  '⁶': '6',
+  '⁷': '7',
+  '⁸': '8',
+  '⁹': '9',
+  '⁺': '+',
+  '⁻': '-',
+};
+
+/**
+ * Subscript digits to plain digits, so `K₂Br` and `K2Br` are one token; superscript digits and
+ * signs likewise (`Fe³⁺` → `Fe3+`, `m²` → `m2`), so a charge or a power is readable by the same
+ * patterns (ADR-0045).
+ */
 export function plainDigits(text: string): string {
-  return text.replace(/[₀-₉]/g, (d) => String(d.charCodeAt(0) - 0x2080));
+  return text
+    .replace(/[₀-₉]/g, (d) => String(d.charCodeAt(0) - 0x2080))
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]/g, (d) => SUPERSCRIPT_DIGITS[d] ?? d);
 }
 
 export function normalise(text: string): string {

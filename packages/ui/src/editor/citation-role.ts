@@ -23,7 +23,15 @@ export type SentenceForCitation = {
   from: number;
   to: number;
   /** Attributes of every citation in the range, so the rebuild keeps its source and chunk. */
-  citations: Array<{ key: string; sourceId: string | null; chunkId: string | null }>;
+  citations: Array<{
+    key: string;
+    sourceId: string | null;
+    chunkId: string | null;
+    role?: string | null;
+    locator?: string | null;
+    prefix?: string | null;
+    suffix?: string | null;
+  }>;
 };
 
 const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
@@ -50,7 +58,7 @@ export function sentenceAroundCitation(editor: Editor, key: string): SentenceFor
     posStart: number;
     posEnd: number;
     isTarget: boolean;
-    citation: { key: string; sourceId: string | null; chunkId: string | null } | null;
+    citation: SentenceForCitation['citations'][number] | null;
   };
 
   let result: SentenceForCitation | null = null;
@@ -76,6 +84,10 @@ export function sentenceAroundCitation(editor: Editor, key: string): SentenceFor
               key: childKey,
               sourceId: (child.attrs.sourceId as string | null) ?? null,
               chunkId: (child.attrs.chunkId as string | null) ?? null,
+              role: (child.attrs.role as string | null) ?? null,
+              locator: (child.attrs.locator as string | null) ?? null,
+              prefix: (child.attrs.prefix as string | null) ?? null,
+              suffix: (child.attrs.suffix as string | null) ?? null,
             }
           : null,
       });
@@ -212,8 +224,12 @@ export function sentenceToFragment(
           key: citation.key,
           sourceId: citation.sourceId,
           chunkId: citation.chunkId,
+          // The page the student had set stays with the citation (ADR-0045).
+          locator: citation.locator ?? null,
+          prefix: citation.prefix ?? null,
+          suffix: citation.suffix ?? null,
           // Only the one the student asked about changes form; the others keep theirs.
-          ...(key === targetKey ? { role: targetRole } : {}),
+          role: key === targetKey ? targetRole : (citation.role ?? 'parenthetical'),
         }),
       );
     }

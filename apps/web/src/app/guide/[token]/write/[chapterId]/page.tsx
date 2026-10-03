@@ -14,6 +14,9 @@ import { useEffect, useState } from 'react';
 import { CoAuthorEditor } from '@/components/editor/CoAuthorEditor';
 import { ApiError, api } from '@/lib/api';
 import '../../../../editor.css';
+// Equations in a co-author's editor rendered unstyled: the KaTeX sheet was only on the student's
+// write page (ADR-0045).
+import 'katex/dist/katex.min.css';
 
 type GuideDocument = {
   documentId: string;

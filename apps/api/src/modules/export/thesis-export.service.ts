@@ -205,7 +205,15 @@ export class ThesisExportService {
       orderBy: { order: 'asc' },
       select: { id: true, title: true, order: true, content: true },
     });
-    const rendered = await this.citations.render(ownerId, documentId);
+    // The same style and the same citation set the export itself will use (ADR-0045).
+    const styleForExport = isKnownStyle(spec.bibliography.style)
+      ? spec.bibliography.style
+      : document.citationStyle;
+    await this.styleStore.ensure(styleForExport);
+    const rendered = await this.citations.render(ownerId, documentId, {
+      style: styleForExport,
+      excludePendingDrafts: true,
+    });
 
     const result = runComplianceChecks({
       spec,
@@ -215,7 +223,7 @@ export class ThesisExportService {
       citations: {
         orphans: rendered.counts.orphans,
         bibliographyEntries: rendered.bibliography.length,
-        style: document.citationStyle,
+        style: styleForExport,
       },
       actualPageSetup: pageSetupOf(spec),
     });
@@ -305,17 +313,14 @@ export class ThesisExportService {
     const styleForExport = isKnownStyle(spec.bibliography.style)
       ? spec.bibliography.style
       : document.citationStyle;
-    // Loaded before the switch is written, so a failed download leaves the thesis on the style it
-    // had rather than on one that cannot render.
+    // Rendered in the template's style without touching the thesis's own: before ADR-0045 the
+    // export wrote the template style to the document and never put the old one back, so every
+    // export silently changed what the editor showed. Pending drafts are left out, as the file is.
     await this.styleStore.ensure(styleForExport);
-    const previousStyle = document.citationStyle;
-    if (styleForExport !== previousStyle) {
-      await this.prisma.document.update({
-        where: { id: documentId },
-        data: { citationStyle: styleForExport },
-      });
-    }
-    const rendered = await this.citations.render(user.id, documentId);
+    const rendered = await this.citations.render(user.id, documentId, {
+      style: styleForExport,
+      excludePendingDrafts: true,
+    });
 
     const compliance = runComplianceChecks({
       spec,

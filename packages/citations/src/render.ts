@@ -30,6 +30,13 @@ export type CitationRef = {
   prefix?: string | null;
   suffix?: string | null;
   /**
+   * `narrative` puts the author in the sentence and only the year in brackets — "Kumar (2021)
+   * found…" — through citeproc's composite mode; `parenthetical` (the default) is "(Kumar,
+   * 2021)". FR-5.6's role rewrite set the attribute for a year while the renderer ignored it, so
+   * every narrative citation still read "(Kumar, 2021) found…" (ADR-0045).
+   */
+  role?: 'parenthetical' | 'narrative' | string | null;
+  /**
    * The footnote this citation sits in, counted through the thesis with the student's own notes.
    * Only a note style reads it: it is how citeproc knows to write the short form, or "Ibid.",
    * for a source the previous note already cited. Absent, each citation is its own next note.
@@ -140,8 +147,13 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
         ...(citation.suffix ? { suffix: citation.suffix } : {}),
       },
     ],
-    // In-text styles ignore it; a note style needs each citation's own footnote number.
-    properties: { noteIndex: noteStyle ? (citation.noteIndex ?? index + 1) : 0 },
+    properties: {
+      // In-text styles ignore it; a note style needs each citation's own footnote number.
+      noteIndex: noteStyle ? (citation.noteIndex ?? index + 1) : 0,
+      // A narrative citation in an in-text style: author in the running text, year in brackets.
+      // A note style has no in-text form to vary, so the role is left alone there.
+      ...(citation.role === 'narrative' && !noteStyle ? { mode: 'composite' } : {}),
+    },
   }));
 
   const rendered = engine.rebuildProcessorState(clusters, format, []);

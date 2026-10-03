@@ -325,7 +325,9 @@ export class ChatService {
     const turns: StoredTurn[] = [
       ...history,
       { id: randomUUID(), role: 'user' as const, text: input.message },
-      { id: randomUUID(), role: 'assistant' as const, text: processed.text },
+      // The citations stay with the turn (ADR-0045): without them the history rendered no
+      // citation after a reload, and the stale `{{cite:S1#c1}}` ids went back to the model.
+      { id: randomUUID(), role: 'assistant' as const, text: processed.text, citations },
     ].slice(-KEEP_TURNS);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
     await this.prisma.document.update({

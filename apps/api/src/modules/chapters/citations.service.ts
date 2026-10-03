@@ -27,6 +27,7 @@ import {
   STYLES,
   type StyleEntry,
 } from '@tc/citations';
+import { withoutPendingDrafts } from '@tc/export';
 import { shortReference } from '@tc/retrieval';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -46,8 +47,25 @@ export type RenderedCitations = {
   /** ADR-0029: citations are footnotes — the editor shows a note number, exports write notes. */
   noteStyle: boolean;
   bibliography: BibliographyEntry[];
+  /** Sources a citation points at that are no longer in the library: the editor draws them red. */
+  missingSourceIds: string[];
   findings: CitationFinding[];
   counts: { citations: number; sources: number; orphans: number; unused: number; untagged: number };
+};
+
+export type RenderOptions = {
+  /**
+   * Render in this style instead of the document's, without writing it to the document — the
+   * whole-thesis export renders in the template's style, and before ADR-0045 it did so by
+   * switching the thesis to that style for good.
+   */
+  style?: string;
+  /**
+   * Leave out citations inside pending draft blocks. The export strips those blocks, so counting
+   * their citations gave the exported bibliography sources the thesis does not cite and left gaps
+   * in a numeric style's numbers.
+   */
+  excludePendingDrafts?: boolean;
 };
 
 @Injectable()
@@ -67,8 +85,14 @@ export class CitationsService {
   }
 
   /** FR-5.2 + FR-5.4 in one read: the editor needs the labels, the panel needs the rest. */
-  async render(ownerId: string, documentId: string): Promise<RenderedCitations> {
+  async render(
+    ownerId: string,
+    documentId: string,
+    options: RenderOptions = {},
+  ): Promise<RenderedCitations> {
     const document = await this.owned(ownerId, documentId);
+    const styleId =
+      options.style && isKnownStyle(options.style) ? options.style : document.citationStyle;
     const [chapters, sources] = await Promise.all([
       this.prisma.chapter.findMany({
         where: { documentId },
@@ -95,17 +119,26 @@ export class CitationsService {
     // carries the footnote it would be in a note style, counted through the thesis with the
     // student's own footnotes (ADR-0029) — an in-text style ignores it.
     let notesBefore = 0;
-    const ordered = chapters.flatMap((chapter) => {
+    const walked = options.excludePendingDrafts
+      ? chapters.map((chapter) => ({ ...chapter, content: withoutPendingDrafts(chapter.content) }))
+      : chapters;
+    const ordered = walked.flatMap((chapter) => {
       const nodes = citationNodesIn(chapter).map((node) => ({
         key: node.nodeKey,
         sourceId: node.sourceId,
         noteIndex: notesBefore + node.noteOrdinal,
+        // The node's own attributes: the role the student chose (FR-5.6), the page, the affixes.
+        role: node.role,
+        locator: node.locator,
+        prefix: node.prefix,
+        suffix: node.suffix,
       }));
       notesBefore += notesIn(chapter);
       return nodes;
     });
 
-    // Locators live on the `Citation` rows, not on the node attrs the walker reads.
+    // A locator set through the Citations tab lives on the `Citation` row until the next save
+    // copies it to the node; the row wins while the two differ.
     const rows = await this.prisma.citation.findMany({
       where: { chapter: { documentId } },
       select: { nodeKey: true, locator: true },
@@ -113,15 +146,15 @@ export class CitationsService {
     const locators = new Map(rows.map((r) => [r.nodeKey, r.locator]));
 
     // A catalogue style's XML must be in this process before citeproc can use it (style-store).
-    await this.styleStore.ensure(resolveStyle(document.citationStyle).id);
+    await this.styleStore.ensure(resolveStyle(styleId).id);
     const rendered = renderCitations({
-      style: document.citationStyle,
+      style: styleId,
       sources,
-      citations: ordered.map((c) => ({ ...c, locator: locators.get(c.key) ?? null })),
+      citations: ordered.map((c) => ({ ...c, locator: locators.get(c.key) ?? c.locator ?? null })),
     });
 
     const findings = runCitationChecks({ chapters, sources });
-    const style = resolveStyle(document.citationStyle);
+    const style = resolveStyle(styleId);
 
     return {
       style: style.id,
@@ -136,6 +169,7 @@ export class CitationsService {
       labels: rendered.labels,
       noteStyle: rendered.noteStyle,
       bibliography: rendered.bibliography,
+      missingSourceIds: rendered.missingSourceIds,
       findings,
       counts: {
         citations: ordered.length,
@@ -267,6 +301,8 @@ export class CitationsService {
     query?: string,
   ): Promise<{
     style: string;
+    /** The style numbers its citations: `label` is the short reference, not a number. */
+    numeric: boolean;
     sources: Array<{
       sourceId: string;
       shortRef: string;
@@ -314,26 +350,35 @@ export class CitationsService {
 
     // One render per candidate would be one CSL engine run per keystroke. Instead every candidate
     // is rendered in a single pass, each as its own citation, and the labels are read off by key.
+    // A numeric style is not rendered here at all: the label it would give is the candidate's
+    // place in this list ("[1]", "[2]"…), not in the thesis, and the picker seeded that wrong
+    // number into the editor (ADR-0045). The picker shows the short reference instead, and the
+    // real number arrives with the first render after the node is saved.
+    const style = resolveStyle(document.citationStyle);
+    const numeric = style.family === 'numeric';
+    await this.styleStore.ensure(style.id);
     const probes = matches.map((source, index) => ({ key: `pick-${index}`, sourceId: source.id }));
-    await this.styleStore.ensure(resolveStyle(document.citationStyle).id);
-    const rendered = renderCitations({
-      style: document.citationStyle,
-      sources: matches,
-      citations: probes.map((p) => ({ ...p, locator: null })),
-    });
+    const rendered = numeric
+      ? null
+      : renderCitations({
+          style: document.citationStyle,
+          sources: matches,
+          citations: probes.map((p) => ({ ...p, locator: null })),
+        });
 
     return {
       style: document.citationStyle,
-      sources: matches.map((source, index) => ({
-        sourceId: source.id,
-        shortRef: shortReference(source.authors, source.year, source.title) ?? 'Source',
-        label:
-          rendered.labels[`pick-${index}`] ??
-          shortReference(source.authors, source.year, source.title) ??
-          'Source',
-        title: source.title,
-        year: source.year,
-      })),
+      numeric,
+      sources: matches.map((source, index) => {
+        const shortRef = shortReference(source.authors, source.year, source.title) ?? 'Source';
+        return {
+          sourceId: source.id,
+          shortRef,
+          label: rendered?.labels[`pick-${index}`] ?? shortRef,
+          title: source.title,
+          year: source.year,
+        };
+      }),
     };
   }
 

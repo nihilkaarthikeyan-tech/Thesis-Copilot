@@ -32,6 +32,10 @@ export function documentText(doc: PmNode): string {
       lines.push(blockText(node));
       return false;
     }
+    if (node.type.name === 'mathBlock') {
+      lines.push(`$$${String(node.attrs.latex ?? '')}$$`);
+      return false;
+    }
     return true;
   });
   return lines.join('\n');

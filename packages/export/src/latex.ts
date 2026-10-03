@@ -67,9 +67,33 @@ const SPECIALS: Record<string, string> = {
   '~': '\\textasciitilde{}',
 };
 
+const SUBSCRIPTS = '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎';
+const SUBSCRIPT_PLAIN = '0123456789+-=()';
+const SUPERSCRIPTS = '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ';
+const SUPERSCRIPT_PLAIN = '0123456789+-=()n';
+
+/**
+ * Unicode sub- and superscript runs become `\textsubscript{…}` / `\textsuperscript{…}`:
+ * pdfLaTeX's `inputenc` has no glyph for ₂ or ³, so `CO₂` and `m²` in the prose stopped the
+ * compile with "Unicode character not set up for use with LaTeX" (ADR-0045).
+ */
+function unicodeScripts(text: string): string {
+  return text
+    .replace(
+      /[₀-₎]+/g,
+      (run) =>
+        `\\textsubscript{${[...run].map((c) => SUBSCRIPT_PLAIN[SUBSCRIPTS.indexOf(c)] ?? c).join('')}}`,
+    )
+    .replace(
+      /[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ]+/g,
+      (run) =>
+        `\\textsuperscript{${[...run].map((c) => SUPERSCRIPT_PLAIN[SUPERSCRIPTS.indexOf(c)] ?? c).join('')}}`,
+    );
+}
+
 /** Text as LaTeX prints it: the ten characters that mean something to TeX, escaped. */
 export function escapeLatex(text: string): string {
-  return text.replace(/[\\{}$&#%_^~]/g, (c) => SPECIALS[c] ?? c);
+  return unicodeScripts(text.replace(/[\\{}$&#%_^~]/g, (c) => SPECIALS[c] ?? c));
 }
 
 const textOf = (node: Node | undefined): string =>

@@ -14,6 +14,17 @@ per proofread (the strong tier is several times the fast tier's price) and needs
 `packages/ai/eval/results/proofread-*.json`, `docs/BUILD_LOG.md` → "Prompt evaluation, rounds 2
 and 3".
 
+## Citations and equations (ADR-0045, 2026-10-03) — what a person should do
+
+- [ ] **Tell the students who complained.** Citations no longer share labels or vanish under a
+      command, and AI-written equations arrive as real equations. A chapter written before the
+      fix repairs itself the first time it is opened; nothing is needed from the student.
+- [ ] **Optional: re-key theses nobody will reopen.** The repair runs in the editor. For an
+      abandoned thesis that will still be exported, a one-off script over
+      `rekeyDuplicateCitations` (`@tc/citations`) does the same server-side. Say if you want it.
+- [ ] **Evaluate preamble rule 7** (LaTeX for equations) in the next ADR-0038 round, with a
+      shakedown case that writes an equation. It is a format rule, added without the side-by-side.
+
 ## Competitor-parity features (ADRs 0040–0042, 2026-10-03) — optional human steps
 
 These shipped grounded and un-metered; none blocks anything. The human steps only widen them.

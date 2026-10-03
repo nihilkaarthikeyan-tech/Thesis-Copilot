@@ -18,6 +18,7 @@
  * only pick a source they have already added.
  */
 
+import { newCitationKey } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
@@ -62,10 +63,12 @@ export function CitePicker({
   const [results, setResults] = useState<Pickable[]>([]);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
+  /** The style numbers its citations, so the picker's label is not the one the node will get. */
+  const [numeric, setNumeric] = useState(false);
   // The list is keyboard-driven while focus stays in the document, so the highlighted row has to
   // be readable by the keydown handler without waiting for a re-render.
-  const stateRef = useRef({ results, active, query });
-  stateRef.current = { results, active, query };
+  const stateRef = useRef({ results, active, query, numeric });
+  stateRef.current = { results, active, query, numeric };
 
   const close = useCallback(() => {
     setQuery(null);
@@ -84,12 +87,15 @@ export function CitePicker({
       const start = from - (typed.length + 1);
       if (start < 0) return;
 
-      const key = `c_${Math.random().toString(36).slice(2, 12)}`;
+      const key = newCitationKey();
       // The editor renders labels from its own storage; seeding it here means the new citation
-      // reads correctly immediately, instead of as a placeholder until the next render call.
+      // reads correctly immediately, instead of as a placeholder until the next render call. Not
+      // in a numeric style: the number is the document's to give, and the picker's "[1]" was the
+      // candidate's place in the list (ADR-0045) — the placeholder shows until the post-save
+      // render brings the real one.
       const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
         .citation;
-      if (store?.renderedMap) store.renderedMap[key] = choice.label;
+      if (store?.renderedMap && !stateRef.current.numeric) store.renderedMap[key] = choice.label;
 
       editor
         .chain()
@@ -133,12 +139,13 @@ export function CitePicker({
     if (query === null) return;
     let cancelled = false;
     setLoading(true);
-    api<{ sources: Pickable[] }>(
+    api<{ sources: Pickable[]; numeric?: boolean }>(
       `/documents/${documentId}/citations/pick?q=${encodeURIComponent(query)}`,
     )
       .then((data) => {
         if (cancelled) return;
         setResults(data.sources.slice(0, 8));
+        setNumeric(data.numeric === true);
         setActive(0);
       })
       .catch(() => {

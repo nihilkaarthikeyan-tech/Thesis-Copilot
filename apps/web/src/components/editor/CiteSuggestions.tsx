@@ -11,6 +11,7 @@
  * source supports the claim; the model only narrows the field.
  */
 
+import { newCitationKey } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
@@ -113,15 +114,18 @@ export function CiteSuggestions({
 
   function insert(suggestion: Suggestion) {
     if (!editor) return;
+    // The node's key is its own; `suggestion.key` is the passage's id in this one request, and
+    // reusing it as the node key made later suggestions overwrite this node's label (ADR-0045).
+    const key = newCitationKey();
     const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
       .citation;
-    if (store?.renderedMap) store.renderedMap[suggestion.key] = suggestion.rendered;
+    if (store?.renderedMap) store.renderedMap[key] = suggestion.rendered;
 
     editor
       .chain()
       .focus()
       .insertCitation({
-        key: suggestion.key,
+        key,
         sourceId: suggestion.sourceId,
         chunkId: suggestion.chunkId,
       })

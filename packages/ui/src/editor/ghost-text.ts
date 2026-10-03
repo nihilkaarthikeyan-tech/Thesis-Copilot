@@ -9,10 +9,11 @@
  */
 
 import { Extension, type JSONContent } from '@tiptap/core';
-import { Fragment, type Node as PmNode, type Schema } from '@tiptap/pm/model';
+import type { Fragment, Node as PmNode, Schema } from '@tiptap/pm/model';
 import { type EditorState, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { nanoid } from 'nanoid';
+import { aiTextToFragment } from './ai-text.js';
 import { contextAround } from './text.js';
 
 export type GhostStatus = 'idle' | 'requesting' | 'streaming' | 'shown';
@@ -190,6 +191,17 @@ function cursorEligible(state: EditorState): boolean {
 
 const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
 
+/** Writes the label the server rendered under the fresh node key, so the node shows it at once. */
+function seedLabel(editor: {
+  storage: unknown;
+}): (nodeKey: string, rendered: string | null) => void {
+  const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
+    .citation;
+  return (nodeKey, rendered) => {
+    if (store?.renderedMap && rendered) store.renderedMap[nodeKey] = rendered;
+  };
+}
+
 /** The character just before `pos` in its textblock, or '' at the start of one. */
 export function charBefore(doc: PmNode, pos: number): string {
   const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
@@ -215,42 +227,24 @@ export function spaceBefore(text: string, previous: string): string {
 }
 
 /**
- * Turns suggestion text into nodes: text carrying `provenance ASSIST`, and a `citation` node for
- * each `{{cite:KEY}}` the server resolved (B.3 accept-all).
+ * Turns suggestion text into nodes: text carrying `provenance ASSIST`, a `citation` node for
+ * each `{{cite:KEY}}` the server resolved (B.3 accept-all), and a `mathInline` node for each
+ * equation the model wrote. Each citation node gets a fresh key of its own — the server's key is
+ * the passage's id *in this request*, and reusing it as the node key made later suggestions
+ * collide with earlier nodes (ADR-0045). `onCitation` reports the new key and the label.
  */
 export function suggestionToFragment(
   schema: Schema,
   text: string,
   suggestionId: string,
   citations: SuggestionCitation[],
+  onCitation?: (nodeKey: string, rendered: string | null) => void,
 ): Fragment {
-  const provenance = schema.marks.provenance?.create({ kind: 'ASSIST', actionId: suggestionId });
-  const marks = provenance ? [provenance] : [];
-  const nodes: PmNode[] = [];
-  const byKey = new Map(citations.map((c) => [c.key, c]));
-
-  let last = 0;
-  for (const match of text.matchAll(CITE_RE)) {
-    const index = match.index ?? 0;
-    if (index > last) nodes.push(schema.text(text.slice(last, index), marks));
-    const key = match[1] ?? '';
-    const citation = byKey.get(key);
-    const citationType = schema.nodes.citation;
-    if (citation && citationType) {
-      nodes.push(
-        citationType.create({
-          key: citation.key,
-          sourceId: citation.sourceId,
-          chunkId: citation.chunkId,
-        }),
-      );
-    }
-    // Unresolved keys are dropped: PRD §10.6 strips citations not in the retrieved set.
-    last = index + match[0].length;
-  }
-  if (last < text.length) nodes.push(schema.text(text.slice(last), marks));
-
-  return Fragment.fromArray(nodes);
+  return aiTextToFragment(schema, text, {
+    provenance: { kind: 'ASSIST', actionId: suggestionId },
+    citations,
+    ...(onCitation ? { onCitation: (key, rendered) => onCitation(key, rendered) } : {}),
+  });
 }
 
 /**
@@ -643,6 +637,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
             ghost.text,
             ghost.suggestionId,
             ghost.citations,
+            seedLabel(editor),
           );
           const from = ghost.anchorPos;
           const to = from + fragment.size;
@@ -682,6 +677,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
             word,
             ghost.suggestionId,
             ghost.citations,
+            seedLabel(editor),
           );
           const from = ghost.anchorPos;
           const to = from + fragment.size;

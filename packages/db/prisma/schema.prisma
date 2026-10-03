@@ -372,7 +372,9 @@ model Citation {
   chapterId String  @db.Uuid
   chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   sourceId  String  @db.Uuid
-  source    Source  @relation(fields: [sourceId], references: [id])
+  // Cascade (ADR-0045): removing a cited source used to fail on this key, so a student could not
+  // delete a paper once cited. The row goes; the node in the chapter stays and renders red (B.5).
+  source    Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   chunkId   String? @db.Uuid
   nodeKey   String  // stable key stored on the ProseMirror citation node
   role      String  @default("parenthetical")

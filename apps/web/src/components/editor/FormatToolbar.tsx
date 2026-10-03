@@ -24,7 +24,7 @@
  */
 
 import { numberTargets } from '@tc/types';
-import { wordCountByProvenance } from '@tc/ui';
+import { latexError, MATH_EDIT_EVENT, type MathEditDetail, wordCountByProvenance } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import {
   Bold,
@@ -80,7 +80,14 @@ function useEditorTick(editor: Editor | null): void {
  * by what is being asked for, and kept local because the shape it needs — a starting value, and a
  * caller that acts on the answer rather than awaiting a promise — differs from the guided one.
  */
-type Ask = { label: string; hint: string; initial: string; onDone: (value: string | null) => void };
+type Ask = {
+  label: string;
+  hint: string;
+  initial: string;
+  onDone: (value: string | null) => void;
+  /** Shown under the field while it is non-null; Apply waits until it is (ADR-0045). */
+  validate?: (value: string) => string | null;
+};
 
 function useInlinePrompt() {
   const [ask, setAsk] = useState<Ask | null>(null);
@@ -98,12 +105,14 @@ function useInlinePrompt() {
 
   const close = useCallback(
     (result: string | null) => {
+      if (result !== null && ask?.validate?.(result)) return; // the message under the field says why
       ask?.onDone(result);
       setAsk(null);
       setValue('');
     },
     [ask],
   );
+  const problem = ask?.validate && value.trim() ? ask.validate(value.trim()) : null;
 
   const element = ask ? (
     // A plain div with an explicit Enter handler and a visible Apply button, rather than a
@@ -151,7 +160,13 @@ function useInlinePrompt() {
           Apply
         </button>
       </div>
-      <p className="mt-1 text-xs text-muted">Enter to apply · Esc to cancel</p>
+      {problem ? (
+        <p className="mt-1 text-xs text-danger" role="alert">
+          {problem}
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-muted">Enter to apply · Esc to cancel</p>
+      )}
     </div>
   ) : null;
 
@@ -329,6 +344,7 @@ export function FormatToolbar({
         label: kind === 'inline' ? 'Equation (LaTeX)' : 'Display equation (LaTeX)',
         hint: 'E = mc^2',
         initial: '',
+        validate: latexError,
         onDone: (latex) => {
           if (!latex) return;
           if (kind === 'inline') editor.chain().focus().insertMathInline(latex).run();
@@ -338,6 +354,29 @@ export function FormatToolbar({
     },
     [editor, prompt],
   );
+
+  // ADR-0045: an equation is edited by clicking it. The NodeView raises an event with its
+  // position and source; the same field that inserted it opens with the source filled in.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const onEdit = (event: Event) => {
+      const detail = (event as CustomEvent<MathEditDetail>).detail;
+      if (!detail) return;
+      prompt.open({
+        label: detail.display ? 'Display equation (LaTeX)' : 'Equation (LaTeX)',
+        hint: 'E = mc^2',
+        initial: detail.latex,
+        validate: latexError,
+        onDone: (latex) => {
+          if (!latex || latex === detail.latex) return;
+          editor.chain().focus().setMathLatex(detail.pos, latex).run();
+        },
+      });
+    };
+    dom.addEventListener(MATH_EDIT_EVENT, onEdit);
+    return () => dom.removeEventListener(MATH_EDIT_EVENT, onEdit);
+  }, [editor, prompt]);
 
   if (!editor) return null;
 

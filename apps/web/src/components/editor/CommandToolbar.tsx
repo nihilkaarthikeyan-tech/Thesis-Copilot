@@ -11,6 +11,7 @@
  * warning is shown before the student can apply it.
  */
 
+import { aiTextToFragment, citationsInRange } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
@@ -34,8 +35,30 @@ type RunResult = {
   words: number;
   originalWords: number;
   droppedCitations: string[];
+  /** Citations the rewrite added from the passages it was sent, resolved (ADR-0045). */
+  citations?: Array<{ key: string; sourceId: string; chunkId: string; rendered: string }>;
   unchanged: boolean;
 };
+
+/**
+ * The preview shows what the student will see, not the wire format: a citation marker reads as
+ * its label and an equation as its source without the dollar signs (ADR-0045). Markers for
+ * citations already in the chapter take the label the editor holds; new ones take the server's.
+ */
+function readable(text: string, editor: Editor | null, result: RunResult): string {
+  const labels =
+    (editor?.storage as { citation?: { renderedMap?: Record<string, string> } } | undefined)
+      ?.citation?.renderedMap ?? {};
+  const added = new Map((result.citations ?? []).map((c) => [c.key, c.rendered]));
+  return text
+    .replace(/\{\{cite:([^}]+)\}\}/g, (_m, key: string) => {
+      const k = key.trim();
+      return labels[k] ?? added.get(k) ?? '';
+    })
+    .replace(/\$\$([^$]+)\$\$|\$([^$\n]+)\$/g, (_m, display?: string, inline?: string) =>
+      (display ?? inline ?? '').trim(),
+    );
+}
 
 const COMMANDS = [
   { key: 'expand', label: 'Expand' },
@@ -127,23 +150,29 @@ export function CommandToolbar({
 
   function apply() {
     if (!editor || !selection || !result) return;
-    // FR-4.11: applied text is COMMAND provenance, set on the range we just inserted.
+    // FR-4.11: applied text is COMMAND provenance. The answer is text with `{{cite:KEY}}` markers
+    // and `$…$` equations; before ADR-0045 it was inserted as a plain string, which deleted every
+    // citation and equation that had been inside the selection and left any marker the model
+    // wrote as literal text. The citations that were in the selection are kept as they were;
+    // the ones the rewrite added get fresh nodes with the server's label.
+    const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
+      .citation;
+    const fragment = aiTextToFragment(editor.schema, result.text, {
+      provenance: { kind: 'COMMAND', actionId: null },
+      existing: citationsInRange(editor.state.doc, selection.from, selection.to),
+      citations: result.citations ?? [],
+      onCitation: (key, rendered) => {
+        if (store?.renderedMap && rendered) store.renderedMap[key] = rendered;
+      },
+    });
     editor
       .chain()
       .focus()
-      .insertContentAt({ from: selection.from, to: selection.to }, result.text)
-      .command(({ tr, state, dispatch }) => {
-        const to = state.selection.from;
-        const from = Math.max(0, to - result.text.length);
-        if (dispatch) {
-          const mark = state.schema.marks.provenance;
-          if (mark) {
-            tr.addMark(from, to, mark.create({ kind: 'COMMAND', actionId: null }));
-          }
-        }
-        void tr;
+      .command(({ tr, dispatch }) => {
+        if (dispatch) tr.replaceWith(selection.from, selection.to, fragment);
         return true;
       })
+      .setTextSelection(selection.from + fragment.size)
       .run();
     setResult(null);
     setSelection(null);
@@ -180,7 +209,7 @@ export function CommandToolbar({
                       : ''
                 }
               >
-                {op.text}
+                {readable(op.text, editor, result)}
               </span>
             ))}
           </div>

@@ -47,6 +47,11 @@ export type FoundCitationNode = {
   sourceId: string;
   from: number;
   to: number;
+  /** The node's own attributes, so the renderer sees the role, page and affixes (ADR-0045). */
+  role: string | null;
+  locator: string | null;
+  prefix: string | null;
+  suffix: string | null;
   /**
    * Its place among the chapter's notes — the student's own footnotes and its citations, counted
    * together in document order, from 1. In a note style every citation is a footnote, so this is
@@ -68,11 +73,35 @@ export function notesIn(chapter: ChapterDoc): number {
 }
 
 /**
+ * Node types of the editor schema (Appendix B.2 plus the later extensions) that have no content
+ * and occupy one position. Everything else without `content` in its JSON is an empty block —
+ * an empty paragraph, say — and occupies two.
+ */
+const LEAF_NODES = new Set([
+  'citation',
+  'footnote',
+  'hardBreak',
+  'horizontalRule',
+  'image',
+  'mathInline',
+  'mathBlock',
+  'needsSourceNote',
+  'crossRef',
+  'chart',
+]);
+
+const attr = (node: Node, name: string): string | null => {
+  const value = node.attrs?.[name];
+  return typeof value === 'string' && value.length > 0 ? value : null;
+};
+
+/**
  * Every `citation` node in a chapter, with its ProseMirror position.
  *
- * Positions follow ProseMirror's own accounting: a text node advances by its length, every other
- * node by 1 plus the size of its content (the two token positions of the open and close tags).
- * An inline atom like `citation` has size 1.
+ * Positions follow ProseMirror's own accounting: a text node advances by its length, a leaf node
+ * by 1, every other node by 1 plus the size of its content plus 1 (the open and close tokens).
+ * Before ADR-0045 a leaf other than citation and footnote (an equation, a line break, a figure)
+ * was counted as two, so every position after one was off by one per leaf.
  */
 export function citationNodesIn(chapter: ChapterDoc): FoundCitationNode[] {
   const out: FoundCitationNode[] = [];
@@ -97,10 +126,15 @@ export function citationNodesIn(chapter: ChapterDoc): FoundCitationNode[] {
           sourceId,
           from: pos,
           to: pos + 1,
+          role: attr(node, 'role'),
+          locator: attr(node, 'locator'),
+          prefix: attr(node, 'prefix'),
+          suffix: attr(node, 'suffix'),
         });
       }
       return pos + 1;
     }
+    if (node.type && LEAF_NODES.has(node.type)) return pos + 1;
     let inner = pos + 1;
     for (const child of node.content ?? []) inner = walk(child, inner);
     return inner + 1;
@@ -230,4 +264,35 @@ export function runCitationChecks(input: CheckInput): CitationFinding[] {
   }
 
   return findings;
+}
+
+/**
+ * Gives every citation after the first with the same key a fresh key, in place of the prompt-local
+ * ids older documents carry (ADR-0045; the editor runs the same repair on load through
+ * `dedupeCitationKeys`). Returns the repaired document and whether anything changed. Pure: the
+ * input is not mutated.
+ */
+export function rekeyDuplicateCitations(
+  content: unknown,
+  newKey: () => string,
+): { content: unknown; changed: boolean } {
+  if (!content || typeof content !== 'object') return { content, changed: false };
+  const seen = new Set<string>();
+  let changed = false;
+  const visit = (node: Node): Node => {
+    if (node.type === 'citation') {
+      const key = String(node.attrs?.key ?? '');
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        return node;
+      }
+      changed = true;
+      const fresh = newKey();
+      seen.add(fresh);
+      return { ...node, attrs: { ...(node.attrs ?? {}), key: fresh } };
+    }
+    return node.content ? { ...node, content: node.content.map(visit) } : node;
+  };
+  const repaired = visit(content as Node);
+  return { content: changed ? repaired : content, changed };
 }

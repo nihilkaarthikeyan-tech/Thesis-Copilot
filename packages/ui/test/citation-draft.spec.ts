@@ -292,7 +292,9 @@ describe('citation passage popover and rendered labels (PHASES 3.5)', () => {
     expect(label).toBe('(Kumar 2021)');
     const json = editor.getJSON();
     const node = json.content?.[0]?.content?.find((n) => n.type === 'citation');
-    expect(node?.attrs).toMatchObject({ key: 'S1#c1', sourceId: 'src-4', chunkId: 'chunk-2' });
+    // ADR-0045: the node's key is its own, never the request-local passage id.
+    expect(node?.attrs).toMatchObject({ sourceId: 'src-4', chunkId: 'chunk-2' });
+    expect(String(node?.attrs?.key)).toMatch(/^c_/);
     // The label lives in storage, never in the document (B.5).
     expect(JSON.stringify(json)).not.toContain('Kumar 2021');
   });

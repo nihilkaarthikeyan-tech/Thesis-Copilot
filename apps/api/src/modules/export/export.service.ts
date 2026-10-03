@@ -65,7 +65,9 @@ export class ExportService {
     // FR-5.2/FR-8.1: the same renderer the editor uses, on the whole document — so the labels in
     // the exported chapter are the labels on screen, and a numeric style's numbers match the
     // bibliography's order. Only the sources this chapter cites are printed.
-    const rendered = await this.citations.render(ownerId, chapter.documentId);
+    const rendered = await this.citations.render(ownerId, chapter.documentId, {
+      excludePendingDrafts: true,
+    });
     const citedHere = new Set(chapter.citations.map((c) => c.nodeKey));
     const sourcesHere = new Set(chapter.citations.map((c) => c.sourceId));
     const renderedMap = Object.fromEntries(

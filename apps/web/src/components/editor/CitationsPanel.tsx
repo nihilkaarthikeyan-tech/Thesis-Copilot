@@ -28,6 +28,8 @@ export type Rendered = {
   /** ADR-0029: citations are footnotes in this style. */
   noteStyle?: boolean;
   bibliography: Array<{ sourceId: string; text: string }>;
+  /** Sources cited somewhere that are no longer in the library (ADR-0045). */
+  missingSourceIds?: string[];
   findings: Array<{
     kind: 'ORPHAN' | 'UNUSED' | 'UNTAGGED';
     message: string;

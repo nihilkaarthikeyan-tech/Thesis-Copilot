@@ -38,7 +38,25 @@ export type ChatFilters = {
   excludePreprints?: boolean;
 };
 
-export type ChatTurn = { role: 'user' | 'assistant'; text: string };
+export type ChatTurn = {
+  role: 'user' | 'assistant';
+  text: string;
+  /** An answer's citations, kept with the turn so its markers can be read back later. */
+  citations?: ReadonlyArray<{ key: string; label: string }>;
+};
+
+/**
+ * A past answer's `{{cite:S1#c1}}` markers name passages of *that* request; sent back as they
+ * are, the model echoes ids this request does not hold and every one is stripped as
+ * hallucinated. In history they read as the label the student saw (ADR-0045).
+ */
+export function historyText(turn: ChatTurn): string {
+  const labels = new Map((turn.citations ?? []).map((c) => [c.key, c.label]));
+  return turn.text.replace(/\{\{cite:([^}]+)\}\}/g, (_m, key: string) => {
+    const label = labels.get(key.trim());
+    return label ? `(${label})` : '';
+  });
+}
 
 export type ChatBuildInput = {
   memoryBlock: string;
@@ -87,7 +105,7 @@ export function chatUserMessage(input: ChatBuildInput): string {
 export function buildChatRequest(input: ChatBuildInput): LlmRequest {
   const history: Message[] = input.history
     .slice(-CHAT.keepTurns * 2)
-    .map((t) => ({ role: t.role, content: t.text.slice(0, CHAT.maxMessageChars) }));
+    .map((t) => ({ role: t.role, content: historyText(t).slice(0, CHAT.maxMessageChars) }));
   return {
     tier: CHAT.tier,
     system: {

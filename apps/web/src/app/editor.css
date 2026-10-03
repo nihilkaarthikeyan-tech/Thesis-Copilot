@@ -189,13 +189,25 @@
   border-radius: 3px;
 }
 
-/* Math */
+/* Math — click to edit (ADR-0045); LaTeX KaTeX cannot draw is marked, with the reason in the title. */
 .thesis-editor .math-inline {
   padding: 0 0.1em;
+  cursor: pointer;
+  border-radius: 3px;
 }
 .thesis-editor .math-block {
   text-align: center;
   padding: 0.5em 0;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.thesis-editor .math-inline:hover,
+.thesis-editor .math-block:hover {
+  background: color-mix(in srgb, var(--accent, #2563eb) 10%, transparent);
+}
+.thesis-editor .math--error {
+  outline: 1px dashed var(--danger, #b91c1c);
+  outline-offset: 2px;
 }
 
 /* Provenance is invisible by default; the AI-usage view (FR-8.6) can reveal it. */

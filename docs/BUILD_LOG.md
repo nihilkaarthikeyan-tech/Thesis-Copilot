@@ -4379,3 +4379,37 @@ un-metered (pure code over data already fetched, or bytes already in hand).
 **Not run here:** the DB migration-diff check and the Playwright e2e specs — both need Docker, which
 was down in this session; they run in CI. The two licensed indexing providers (Scopus / Web of
 Science) and the optional inline-editor overlap are human/future steps in `docs/PENDING.md`.
+
+## Citations and equations that hold (2026-10-03, ADR-0045)
+
+The owner relayed student complaints: citations "not properly working", and formulas in
+AI-written text that could not be read. A read of the whole pipeline found eight faults, each
+sitting between two parts that were right on their own (ADR-0045 lists them). The worst: every AI
+path keyed the citation node with the request-local passage id `S1#c1`, so a later suggestion
+overwrote an earlier citation's label; and the command toolbar's Apply replaced the selection
+with plain text, deleting every citation and equation inside it.
+
+- One converter turns model text into nodes (`@tc/ui` `ai-text.ts`, mirrored in `@tc/ai`
+  `notation.ts` for the worker): a fresh key per citation, `$…$` / `$$…$$` as equation nodes.
+- Citation and math atoms declare `leafText`, so a selection and the prompt context carry them.
+- Old chapters are re-keyed once on open and saved; labels re-render after every save; the `@`
+  picker stops seeding list positions as numbers; the renderer honours narrative role, prefix,
+  suffix and the node's locator; the export renders the template style without writing it and
+  leaves pending drafts out; a cited source can be deleted (migration 0029, cascade); chat history
+  keeps its citations.
+- Equations: preamble rule 7 asks for LaTeX; click an equation to edit it; bad LaTeX is refused
+  with KaTeX's message; admin and co-author views typeset; the LaTeX export sets Unicode sub- and
+  superscripts; `CO₂` is no longer an "undefined abbreviation".
+- Evidence:
+  ```
+  $ pnpm --filter @tc/ui exec vitest run          Tests 90 passed (90)
+  $ pnpm --filter @tc/ai exec vitest run          Tests 429 passed | 1 skipped
+  $ pnpm --filter @tc/citations exec vitest run   Tests 97 passed (97)
+  $ pnpm --filter @tc/worker exec vitest run      Tests 140 passed | 1 skipped
+  $ pnpm exec playwright test citations-equations.spec.ts      3 passed
+  $ pnpm exec playwright test editor citation-styles citation-report outline-commands-chat
+      paste-and-tables other-exports chat-scopes footnotes chat-mentions path-a   17 passed
+  $ pnpm turbo run typecheck   20 successful;   pnpm lint   clean
+  ```
+- Found while proving it in the browser: the re-key ran before autosave was listening, so it was
+  drawn but never saved. It now runs after autosave starts; the spec reloads to prove the save.

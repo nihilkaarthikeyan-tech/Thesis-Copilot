@@ -49,7 +49,7 @@ describe('finding the sentence a citation sits in', () => {
     );
     const found = sentenceAroundCitation(editor, 'a');
     expect(found?.text).toBe('Upfront cost was the main barrier {{cite:a}}.');
-    expect(found?.citations).toEqual([{ key: 'a', sourceId: 'src-a', chunkId: 'chunk-a' }]);
+    expect(found?.citations).toMatchObject([{ key: 'a', sourceId: 'src-a', chunkId: 'chunk-a' }]);
   });
 
   it('returns null for a key that is not in the document', () => {
@@ -116,8 +116,8 @@ describe('finding the sentence a citation sits in', () => {
     );
     const found = sentenceAroundCitation(editor, 'a');
     const slice = editor.state.doc.textBetween(found?.from ?? 0, found?.to ?? 0, '', '');
-    // `textBetween` renders the atom as nothing, so what is left is the sentence's words.
-    expect(slice).toBe('Cost was the barrier .');
+    // ADR-0045: the atom reads as its marker, the same form the model is shown.
+    expect(slice).toBe('Cost was the barrier {{cite:a}}.');
   });
 });
 

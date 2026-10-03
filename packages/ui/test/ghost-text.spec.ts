@@ -86,7 +86,14 @@ describe('ghost text (Appendix B.3)', () => {
     const runs = provenanceRuns(editor);
     expect(runs[0]).toEqual({ text: 'Intro. ', kind: 'HUMAN', actionId: null });
     expect(runs.slice(1).every((r) => r.kind === 'ASSIST' && r.actionId === 'sug-42')).toBe(true);
-    expect(editor.state.doc.textContent).not.toContain('{{cite');
+    // The marker became a node: no text node holds it (textContent would show the node's own
+    // `{{cite:KEY}}` leaf text, so the text nodes are checked directly).
+    const textNodes: string[] = [];
+    editor.state.doc.descendants((n) => {
+      if (n.isText) textNodes.push(n.text ?? '');
+      return true;
+    });
+    expect(textNodes.join('')).not.toContain('{{cite');
     const citations =
       editor.getJSON().content?.[0]?.content?.filter((n) => n.type === 'citation') ?? [];
     expect(citations).toHaveLength(1);
@@ -276,7 +283,14 @@ describe('the done event may carry post-processed text (A.1 steps 1–3, PHASES 
     expect(pressKey(editor, 'Tab')).toBe(true);
     expect(editor.state.doc.textContent).toContain('This section examines it.');
     expect(editor.state.doc.textContent).not.toContain('A third sentence');
-    expect(editor.state.doc.textContent).not.toContain('{{cite');
+    // The marker became a node: no text node holds it (textContent would show the node's own
+    // `{{cite:KEY}}` leaf text, so the text nodes are checked directly).
+    const textNodes: string[] = [];
+    editor.state.doc.descendants((n) => {
+      if (n.isText) textNodes.push(n.text ?? '');
+      return true;
+    });
+    expect(textNodes.join('')).not.toContain('{{cite');
   });
 
   it('goes idle when the final text is empty (A.1 step 4: EMPTY_SUGGESTION)', async () => {

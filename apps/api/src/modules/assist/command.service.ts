@@ -48,6 +48,12 @@ export type CommandRunResult = {
   originalWords: number;
   /** Citations the model dropped from the selection — the student is warned before applying. */
   droppedCitations: string[];
+  /**
+   * Citations the rewrite added from the passages sent with an expand or consistency request,
+   * resolved to real ids with the label to show. Keys that were already in the selection are not
+   * here: the client keeps those nodes as they were (ADR-0045).
+   */
+  citations: Array<{ key: string; sourceId: string; chunkId: string; rendered: string }>;
   unchanged: boolean;
 };
 
@@ -98,9 +104,10 @@ export class CommandService {
     }
 
     // A.11 sends passages only to expand and consistency; the others rewrite what is there.
-    const passages = COMMAND.needsPassages.includes(input.command)
-      ? (await this.context.retrieve(chapter, selection, 'CHAT')).passages.slice(0, COMMAND.topK)
-      : [];
+    const retrieved = COMMAND.needsPassages.includes(input.command)
+      ? await this.context.retrieve(chapter, selection, 'CHAT')
+      : null;
+    const passages = retrieved?.passages.slice(0, COMMAND.topK) ?? [];
     const memory = await this.context.memoryBlock(chapter);
     const request = buildCommandRequest({
       command: input.command,
@@ -137,6 +144,27 @@ export class CommandService {
 
       // A.11's consistency command returns the selection unchanged when nothing conflicts.
       const unchanged = processed.text.trim() === selection;
+      const inSelection = new Set(
+        [...selection.matchAll(/\{\{cite:([^}]+)\}\}/g)].map((m) => (m[1] ?? '').trim()),
+      );
+      const citations = [
+        ...new Set(
+          [...processed.text.matchAll(/\{\{cite:([^}]+)\}\}/g)].map((m) => (m[1] ?? '').trim()),
+        ),
+      ].flatMap((key) => {
+        if (inSelection.has(key)) return [];
+        const real = retrieved?.byKey.get(key);
+        return real
+          ? [
+              {
+                key,
+                sourceId: real.sourceId,
+                chunkId: real.chunkId,
+                rendered: `(${real.shortRef})`,
+              },
+            ]
+          : [];
+      });
       return {
         command: input.command,
         text: processed.text,
@@ -146,6 +174,7 @@ export class CommandService {
         words: processed.words,
         originalWords: processed.originalWords,
         droppedCitations: processed.dropped,
+        citations,
         unchanged,
       };
     } catch (error) {

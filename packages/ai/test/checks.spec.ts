@@ -257,6 +257,13 @@ describe('language', () => {
     expect(ids(ctx)).not.toContain('L3');
   });
 
+  it('L3: a formula written with Unicode subscripts (CO₂, SO₄²⁻) is not an abbreviation (ADR-0045)', () => {
+    const ctx = context([
+      section('subject', 'CO₂ uptake rose while SO₄²⁻ fell; H₂O was the solvent throughout.'),
+    ]);
+    expect(ids(ctx)).not.toContain('L3');
+  });
+
   it('L4: "Electric" and "Electrical" discharge machining mixed is blocking', () => {
     const ctx = context([
       section('a', 'Electrical discharge machining is thermal. {{cite:p1}}'),

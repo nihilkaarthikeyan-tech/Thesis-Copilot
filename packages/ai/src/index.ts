@@ -197,6 +197,13 @@ export {
   type StyleProfile,
 } from './builder/memory.js';
 export {
+  displayEquationOf,
+  NOTATION_RE,
+  type NotationToken,
+  tokenizeNotation,
+  withoutNotation,
+} from './builder/notation.js';
+export {
   buildOutlineRequest,
   enforceTemplateShape,
   type GapMapTheme,

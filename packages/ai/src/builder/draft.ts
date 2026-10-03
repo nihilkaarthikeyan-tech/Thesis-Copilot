@@ -13,11 +13,13 @@
  * silently dropping.
  */
 
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
 import type { PromptPassage } from './assist.js';
+import { displayEquationOf, tokenizeNotation } from './notation.js';
 import { stripUnknownCitations } from './postprocess.js';
 import { filterSentences } from './quality.js';
 
@@ -291,18 +293,29 @@ export function postProcessDraft(
 
 type PmNode = Record<string, unknown>;
 
+/** The editor's own key shape (`newCitationKey` in `@tc/ui`): a node key, never a passage id. */
+function freshCitationKey(): string {
+  return `c_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
+}
+
 /**
  * A.2 constrains the model to `###` headings and blank-line-separated paragraphs, so this handles
  * exactly that and nothing else. A general Markdown parser would accept syntax the prompt forbids
  * and quietly produce nodes the schema (Appendix B.2) does not allow.
  *
- * `{{cite:KEY}}` becomes a citation node; everything else becomes text carrying `DRAFT`
+ * `{{cite:KEY}}` becomes a citation node with a **fresh key of its own** — the prompt id
+ * (`S1#c1`) names a passage in this one request, and before ADR-0045 reusing it as the node key
+ * made every draft's first citation collide with the last draft's in the label map. Each node
+ * reports the prompt key it came from through `onCitation`, so the caller can seed its label.
+ * An equation the model wrote (`$…$`, or `$$…$$` on a line of its own) becomes a math node
+ * rather than dollar signs in the prose. Everything else becomes text carrying `DRAFT`
  * provenance, which is what makes the word counts in B.4 and the AI-usage export truthful.
  */
 export function draftToProseMirror(
   markdown: string,
   actionId: string,
   resolve: (key: string) => { sourceId: string; chunkId: string | null } | null,
+  onCitation?: (nodeKey: string, promptKey: string) => void,
 ): PmNode[] {
   const provenance = { type: 'provenance', attrs: { kind: 'DRAFT', actionId } };
   const blocks: PmNode[] = [];
@@ -322,34 +335,45 @@ export function draftToProseMirror(
       continue;
     }
 
-    const content: PmNode[] = [];
-    let last = 0;
-    for (const match of block.matchAll(/\{\{cite:([^}]+)\}\}/g)) {
-      const index = match.index ?? 0;
-      if (index > last) {
-        content.push({ type: 'text', text: block.slice(last, index), marks: [provenance] });
-      }
-      const key = (match[1] ?? '').trim();
-      const real = resolve(key);
-      if (real) {
-        content.push({
-          type: 'citation',
-          attrs: {
-            key,
-            sourceId: real.sourceId,
-            chunkId: real.chunkId,
-            role: 'parenthetical',
-            locator: null,
-            prefix: null,
-            suffix: null,
-          },
-        });
-      }
-      // An unresolvable key is dropped, the same rule as A.1: §10.6 leaves no dangling marker.
-      last = index + match[0].length;
+    const display = displayEquationOf(block);
+    if (display) {
+      blocks.push({ type: 'mathBlock', attrs: { latex: display } });
+      continue;
     }
-    if (last < block.length) {
-      content.push({ type: 'text', text: block.slice(last), marks: [provenance] });
+
+    const content: PmNode[] = [];
+    const pushText = (text: string) => {
+      if (text.length === 0) return;
+      const previous = content[content.length - 1];
+      if (previous?.type === 'text') previous.text = `${String(previous.text)}${text}`;
+      else content.push({ type: 'text', text, marks: [provenance] });
+    };
+    for (const token of tokenizeNotation(block)) {
+      if (token.type === 'text') {
+        pushText(token.text);
+        continue;
+      }
+      if (token.type === 'math') {
+        if (token.latex.length > 0)
+          content.push({ type: 'mathInline', attrs: { latex: token.latex } });
+        continue;
+      }
+      const real = resolve(token.key);
+      if (!real) continue; // §10.6: an unresolvable key leaves no dangling marker (same as A.1).
+      const key = freshCitationKey();
+      content.push({
+        type: 'citation',
+        attrs: {
+          key,
+          sourceId: real.sourceId,
+          chunkId: real.chunkId,
+          role: 'parenthetical',
+          locator: null,
+          prefix: null,
+          suffix: null,
+        },
+      });
+      onCitation?.(key, token.key);
     }
     if (content.length > 0) blocks.push({ type: 'paragraph', content });
   }

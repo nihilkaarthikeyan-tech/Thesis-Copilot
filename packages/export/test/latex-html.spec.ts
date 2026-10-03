@@ -163,6 +163,12 @@ describe('the LaTeX project', () => {
     expect(main).toContain('\\chapter{Results \\& Discussion}');
   });
 
+  it('writes Unicode sub- and superscripts as text commands pdfLaTeX can set (ADR-0045)', () => {
+    expect(escapeLatex('CO₂ at 25 m² and Fe³⁺')).toBe(
+      'CO\\textsubscript{2} at 25 m\\textsuperscript{2} and Fe\\textsuperscript{3+}',
+    );
+  });
+
   it('cites with real commands over the .bib, page and all, and marks a lost source', () => {
     expect(main).toContain('\\parencite[12]{kumar2021}');
     expect(main).toContain('\\textcite{rao2019}');

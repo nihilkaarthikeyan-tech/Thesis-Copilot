@@ -201,12 +201,26 @@ function insertDraft(
     content: [{ type: 'needsSourceNote', attrs: { text } }],
   }));
 
-  const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
-    .citation;
-  if (store?.renderedMap) {
-    for (const citation of result.citations) {
-      store.renderedMap[citation.key] = citation.rendered ?? '(Source)';
-    }
+  // Each citation node arrives with a key of its own (ADR-0045); the label the worker rendered
+  // is keyed by the prompt id, so it is matched to the node through the source and chunk.
+  const renderedMap = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
+    .citation?.renderedMap;
+  if (renderedMap) {
+    const bySource = new Map(
+      result.citations.map((c) => [`${c.sourceId}|${c.chunkId ?? ''}`, c.rendered ?? '(Source)']),
+    );
+    const seed = (node: unknown): void => {
+      if (!node || typeof node !== 'object') return;
+      const n = node as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] };
+      if (n.type === 'citation' && n.attrs) {
+        const label =
+          bySource.get(`${String(n.attrs.sourceId)}|${String(n.attrs.chunkId ?? '')}`) ??
+          bySource.get(`${String(n.attrs.sourceId)}|`);
+        if (label) renderedMap[String(n.attrs.key)] = label;
+      }
+      for (const child of n.content ?? []) seed(child);
+    };
+    for (const block of content) seed(block);
   }
 
   // `insertDraft` builds a real node, so the JSON the server sent has to become ProseMirror nodes

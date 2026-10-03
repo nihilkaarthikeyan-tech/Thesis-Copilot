@@ -13,6 +13,7 @@ export {
   citationNodesIn,
   type FoundCitationNode,
   notesIn,
+  rekeyDuplicateCitations,
   runCitationChecks,
   untaggedCitationsIn,
 } from './checks.js';

@@ -70,6 +70,12 @@ export type CitationStorage = {
    * student's own footnotes — and `renderedMap` holds the note's text, shown on hover.
    */
   noteStyle: boolean;
+  /**
+   * The style's labels are numbers (`[7]`): the placeholder a brand-new node shows for the frame
+   * before its real label arrives is shaped to match. Set from the server's `styleFamily`, so a
+   * catalogue style the bundled list does not know is placed right too.
+   */
+  numeric: boolean;
 };
 
 export const CITATIONS_RERENDER = 'citationsRerender';
@@ -83,8 +89,11 @@ declare module '@tiptap/core' {
         style: string,
         renderedMap: Record<string, string>,
         noteStyle?: boolean,
+        numeric?: boolean,
       ) => ReturnType;
       markSourceRemoved: (sourceId: string) => ReturnType;
+      /** Gives every citation after the first with the same key a fresh key (ADR-0045). */
+      dedupeCitationKeys: () => ReturnType;
     };
   }
 }
@@ -93,7 +102,10 @@ export function newCitationKey(): string {
   return `c_${nanoid(10)}`;
 }
 
-/** Styles whose labels are numbers; the registry in `@tc/citations` is the full list. */
+/**
+ * Bundled styles whose labels are numbers — the fallback until the server has said which family
+ * the current style is in (`storage.numeric`); the registry in `@tc/citations` is the full list.
+ */
 const NUMERIC_PLACEHOLDER = new Set([
   'ieee',
   'vancouver',
@@ -116,7 +128,7 @@ function labelFor(node: PmNode, storage: CitationStorage): string {
   // No label yet: the render is a round trip (GET /documents/:id/citations), so a citation
   // inserted this second shows a placeholder for one frame. Shaped like the style so the line
   // does not reflow when the real label arrives.
-  return NUMERIC_PLACEHOLDER.has(storage.style) ? '[·]' : '(Source, n.d.)';
+  return storage.numeric || NUMERIC_PLACEHOLDER.has(storage.style) ? '[·]' : '(Source, n.d.)';
 }
 
 export const Citation = Node.create<CitationOptions, CitationStorage>({
@@ -138,6 +150,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       removedSourceIds: new Set<string>(),
       meta: {},
       noteStyle: false,
+      numeric: false,
     };
   },
 
@@ -190,6 +203,23 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       // Copy/paste within the app carries the attrs; the label is recomputed on paste.
       `{{cite:${a.key}}}`,
     ];
+  },
+
+  /**
+   * What `doc.textBetween` yields for the node — the same marker the model is shown everywhere
+   * else (B.3). Without it a citation inside a selection was the empty string: the command
+   * toolbar sent the model text with no citations in it and then replaced the selection with
+   * the answer, deleting every citation the student had placed there (ADR-0045).
+   */
+  renderText({ node }) {
+    return `{{cite:${String(node.attrs.key)}}}`;
+  },
+  // `renderText` only feeds `editor.getText()`; ProseMirror's own `textBetween` reads the
+  // schema's `leafText`, and TipTap 2 does not derive one from the other.
+  extendNodeSchema(extension) {
+    return extension.name === 'citation'
+      ? { leafText: (node: PmNode) => `{{cite:${String(node.attrs.key)}}}` }
+      : {};
   },
 
   addNodeView() {
@@ -409,12 +439,41 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           }),
 
       setCitationStyle:
-        (style, renderedMap, noteStyle = false) =>
+        (style, renderedMap, noteStyle = false, numeric) =>
         ({ tr, dispatch }) => {
           this.storage.style = style;
           this.storage.renderedMap = renderedMap;
           this.storage.noteStyle = noteStyle;
+          if (numeric !== undefined) this.storage.numeric = numeric;
           if (dispatch) tr.setMeta(CITATIONS_RERENDER, true);
+          return true;
+        },
+
+      // Before ADR-0045 an accepted suggestion's node took the prompt-local passage id as its
+      // key, so a chapter written over a few sessions holds several nodes keyed `S1#c1` that
+      // point at different sources. One label map cannot serve them. The first keeps its key —
+      // its `Citation` row and locator survive — and each later twin gets a fresh one, which the
+      // next save turns into a row of its own.
+      dedupeCitationKeys:
+        () =>
+        ({ tr, state, dispatch }) => {
+          const seen = new Set<string>();
+          const rekey: Array<{ pos: number; node: PmNode }> = [];
+          state.doc.descendants((node, pos) => {
+            if (node.type.name !== 'citation') return true;
+            const key = String(node.attrs.key ?? '');
+            if (!key || seen.has(key)) rekey.push({ pos, node });
+            else seen.add(key);
+            return true;
+          });
+          if (rekey.length === 0) return false;
+          if (!dispatch) return true;
+          for (const { pos, node } of rekey) {
+            const key = newCitationKey();
+            tr.setNodeMarkup(pos, undefined, { ...node.attrs, key });
+            const old = this.storage.renderedMap[String(node.attrs.key)];
+            if (old) this.storage.renderedMap[key] = old;
+          }
           return true;
         },
 

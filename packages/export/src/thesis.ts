@@ -258,13 +258,11 @@ function figureParagraph(block: Node, input: ThesisExportInput): Paragraph {
 }
 
 /**
- * A display equation, carried through as its LaTeX source in a monospace run.
- *
- * Not typeset maths — proper Office maths is LaTeX to MathML to OMML and `docx` has no OMML to
- * build on. Shared between the chapter loop and a table cell, which rendered its contents as
- * inline runs and so dropped an equation the same way it dropped a figure.
+ * A display equation, typeset as a Word equation where it can be (`word-math.ts`); LaTeX the
+ * converter cannot map falls back to its source in a monospace run. Shared between the chapter
+ * loop and a table cell, which rendered its contents as inline runs and so dropped an equation
+ * the same way it dropped a figure.
  */
-/** A display equation, typeset as a Word equation where it can be (`word-math.ts`). */
 function mathParagraph(block: Node, spec: TemplateSpec): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
