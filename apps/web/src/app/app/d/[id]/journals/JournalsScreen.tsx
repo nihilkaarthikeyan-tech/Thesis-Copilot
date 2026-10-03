@@ -31,6 +31,7 @@ type JournalScore = {
   meanCitedness: number | null;
   citedHereCount: number;
   openAccess: boolean;
+  inDoaj: boolean;
   apcUsd: number | null;
   overBudget: boolean;
 };
@@ -100,6 +101,11 @@ function JournalRow({ j }: { j: JournalScore }) {
           {IMPACT_LABEL[j.impactTier]}
           {j.meanCitedness !== null ? ` · ${j.meanCitedness.toFixed(1)}` : ''}
         </Badge>
+        {j.inDoaj ? (
+          <Badge tone="ok" className="uppercase">
+            In DOAJ
+          </Badge>
+        ) : null}
         {j.openAccess ? <Badge tone="accent">Open access</Badge> : null}
         {j.apcUsd !== null ? (
           <Badge tone={j.overBudget ? 'warn' : 'neutral'}>

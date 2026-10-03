@@ -23,6 +23,8 @@ export type JournalCandidate = {
    */
   meanCitedness: number | null;
   isOpenAccess: boolean;
+  /** OpenAlex reports the venue is listed in the DOAJ — a verified indexing fact (ADR-0042). */
+  inDoaj: boolean;
   /** Article-processing charge in USD, when OpenAlex reports one; null otherwise. */
   apcUsd: number | null;
   /** OpenAlex source type, lowercased: `journal`, `conference`, `repository`, `ebook platform`… */
@@ -63,6 +65,8 @@ export type JournalScore = {
   /** How many of the thesis's cited sources this journal published. */
   citedHereCount: number;
   openAccess: boolean;
+  /** OpenAlex lists the venue in the DOAJ (verified indexing fact, ADR-0042). */
+  inDoaj: boolean;
   apcUsd: number | null;
   /** True when `maxApcUsd` is set and this journal's APC exceeds it. */
   overBudget: boolean;
@@ -222,6 +226,7 @@ export function scoreJournal(
     meanCitedness: candidate.meanCitedness,
     citedHereCount,
     openAccess: candidate.isOpenAccess,
+    inDoaj: candidate.inDoaj,
     apcUsd: candidate.apcUsd,
     overBudget,
   };

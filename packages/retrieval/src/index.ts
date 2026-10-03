@@ -58,6 +58,14 @@ export {
   gapSignals,
 } from './gap/relevance.js';
 export {
+  type IndexingProvider,
+  type IndexingStatus,
+  type IndexName,
+  type IndexVerdict,
+  indexingOf,
+  OpenAlexIndexing,
+} from './indexing/provider.js';
+export {
   type AlignmentLevel,
   type ImpactTier,
   JOURNAL_MATCH,
@@ -232,6 +240,16 @@ export {
   REFERENCE_MATCH_THRESHOLD,
   scorePaper,
 } from './scoring.js';
+export {
+  OVERLAP,
+  type OverlapMatch,
+  type OverlapReport,
+  type OverlapSourceText,
+  type OverlapVerdict,
+  overlapReport,
+  ShingleSimilarity,
+  type SimilarityProvider,
+} from './similarity/overlap.js';
 export {
   approxTokens,
   CHARS_PER_TOKEN,

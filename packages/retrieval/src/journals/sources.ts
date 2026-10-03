@@ -17,6 +17,7 @@ type OpenAlexSource = {
   type?: string | null;
   works_count?: number | null;
   is_oa?: boolean | null;
+  is_in_doaj?: boolean | null;
   /** OpenAlex puts the 2-year mean citedness under summary_stats. */
   summary_stats?: { '2yr_mean_citedness'?: number | null } | null;
   apc_usd?: number | null;
@@ -27,7 +28,7 @@ type OpenAlexSource = {
 type OpenAlexSourceList = { results?: OpenAlexSource[] };
 
 const SELECT =
-  'id,display_name,issn,issn_l,host_organization_name,type,works_count,is_oa,summary_stats,apc_usd,apc_prices,x_concepts';
+  'id,display_name,issn,issn_l,host_organization_name,type,works_count,is_oa,is_in_doaj,summary_stats,apc_usd,apc_prices,x_concepts';
 
 /** `S4210…` from a full OpenAlex URL or a bare id. */
 export function sourceShortId(id: string | null | undefined): string | null {
@@ -58,6 +59,7 @@ function toCandidate(source: OpenAlexSource): JournalCandidate | null {
     worksCount: source.works_count ?? null,
     meanCitedness: source.summary_stats?.['2yr_mean_citedness'] ?? null,
     isOpenAccess: source.is_oa === true,
+    inDoaj: source.is_in_doaj === true,
     apcUsd: apcUsd ?? null,
     type: source.type?.toLowerCase() ?? null,
   };

@@ -28,6 +28,7 @@ const journal = (over: Partial<JournalCandidate>): JournalCandidate => ({
   worksCount: 12000,
   meanCitedness: 6.2,
   isOpenAccess: false,
+  inDoaj: false,
   apcUsd: null,
   type: 'journal',
   ...over,

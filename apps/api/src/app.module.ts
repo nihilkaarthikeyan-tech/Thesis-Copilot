@@ -24,6 +24,7 @@ import { InstitutionModule } from './modules/institution/institution.module.js';
 import { JournalsModule } from './modules/journals/journals.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
+import { OverlapModule } from './modules/overlap/overlap.module.js';
 import { PromptsModule } from './modules/prompts/prompts.module.js';
 import { SourcesModule } from './modules/sources/sources.module.js';
 import { UsageModule } from './modules/usage/usage.module.js';
@@ -78,6 +79,7 @@ import { VivaModule } from './modules/viva/viva.module.js';
     VivaModule,
     ChapterBuildModule,
     JournalsModule,
+    OverlapModule,
   ],
 })
 export class AppModule {}

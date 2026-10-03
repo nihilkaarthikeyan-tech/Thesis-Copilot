@@ -298,6 +298,17 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           </Link>
         </p>
         <p className="mt-2 text-sm">
+          And an originality check: paste a paragraph to see where it runs too close to the wording
+          of a source you cite, so you can quote it or put it in your own words.{' '}
+          <Link
+            href={`/app/d/${documentId}/originality`}
+            className="font-semibold text-accent hover:underline"
+            data-testid="open-originality"
+          >
+            Open the originality check →
+          </Link>
+        </p>
+        <p className="mt-2 text-sm">
           Then the defence: questions an examiner could ask about your thesis, with feedback on your
           answers.{' '}
           <Link

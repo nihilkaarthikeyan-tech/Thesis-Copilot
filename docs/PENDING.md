@@ -14,6 +14,27 @@ per proofread (the strong tier is several times the fast tier's price) and needs
 `packages/ai/eval/results/proofread-*.json`, `docs/BUILD_LOG.md` → "Prompt evaluation, rounds 2
 and 3".
 
+## Competitor-parity features (ADRs 0040–0042, 2026-10-03) — optional human steps
+
+These shipped grounded and un-metered; none blocks anything. The human steps only widen them.
+
+- [ ] **A licensed indexing provider (Scopus / Web of Science).** The indexing check
+      (`packages/retrieval/src/indexing/provider.ts`, ADR-0042) verifies DOAJ membership and ISSN
+      registration from OpenAlex, free; Scopus and Web of Science stay reported as `unknown`
+      because their catalogues are paid. If you license one, implement `IndexingProvider` against
+      its API (the interface and the OpenAlex default are the template) and set its key in env.
+      Until then the journals screen and the indexing status never claim a venue is in Scopus — it
+      says unknown, never "not indexed".
+- [ ] **Confirm the ₹299 / Scopus-targeting framing** against what you actually tell students the
+      journal matcher does (ADR-0040). It ranks fit and shows real OpenAlex citedness, never a
+      Journal Impact Factor; marketing copy must not promise an impact factor or a guaranteed
+      acceptance.
+- [ ] **Optional: inline originality check in the editor.** The overlap check (ADR-0042) is a
+      read-only page at `/app/d/:id/originality` and a `POST /documents/:id/overlap` endpoint today.
+      Wiring it to flag the current selection inside the TipTap editor is a nice-to-have; it needs
+      an editor extension and is deferred, not built. It must stay read-only — report the overlap,
+      never offer to reword it (§12.3).
+
 ## Chapter build (ADR-0039, 2026-10-01) — what only a person can supply
 
 - [ ] **Confirm the university profiles against the manuals.** `packages/config/src/profiles/universities.ts`
