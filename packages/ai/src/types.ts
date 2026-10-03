@@ -62,6 +62,11 @@ export type LlmResult<T> = {
   readonly value: T;
   readonly usage: TokenUsage;
   readonly modelId: string;
+  /**
+   * ADR-0048: the answer was cut off and only the values the model finished were kept. Set only
+   * when it happened, so a caller that cares (a list that must be complete) can tell.
+   */
+  readonly truncatedRepaired?: true;
 };
 
 /** PRD §10.2. */

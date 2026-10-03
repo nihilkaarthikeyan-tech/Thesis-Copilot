@@ -46,6 +46,7 @@ import {
   type TokenUsage,
 } from '../types.js';
 import { toTokenUsage } from './anthropic.js';
+import { makeRepairText } from './json-repair.js';
 
 /**
  * Whether a model reasons before answering, and so spends `maxOutputTokens` doing it.
@@ -283,12 +284,18 @@ export class OpenAiLlmProvider implements LlmProvider {
   private async generateOnce<T>(
     req: LlmRequest & { schema: z.ZodType<T> },
     strict: boolean,
-  ): Promise<{ object: unknown; usage: LanguageModelUsage }> {
+  ): Promise<{ object: unknown; usage: LanguageModelUsage; repaired: boolean }> {
     const providerOptions = this.providerOptionsFor(req.tier, strict);
     const temperature = this.temperatureFor(req);
+    let repaired = false;
     const result = await generateObject({
       model: this.model(req.tier),
       schema: req.schema,
+      // ADR-0048: an answer cut off by the output budget keeps what the model finished, instead
+      // of the whole call failing. Only a JSON parse failure reaches this; never a schema one.
+      repairText: makeRepairText(() => {
+        repaired = true;
+      }),
       instructions: this.instructions(req),
       messages: this.messages(req),
       maxOutputTokens: this.outputBudget(req),
@@ -300,7 +307,7 @@ export class OpenAiLlmProvider implements LlmProvider {
       // The result is validated below, so nothing downstream trusts the cast.
     } as unknown as Parameters<typeof generateObject>[0]);
 
-    return { object: result.object, usage: result.usage };
+    return { object: result.object, usage: result.usage, repaired };
   }
 
   /**
@@ -331,19 +338,27 @@ export class OpenAiLlmProvider implements LlmProvider {
   async complete<T>(req: LlmRequest & { schema: z.ZodType<T> }): Promise<LlmResult<T>> {
     let object: unknown;
     let usage: LanguageModelUsage;
+    let repaired = false;
 
     try {
       const knownLenient = lenientSchemas.has(req.schema);
       try {
-        ({ object, usage } = await this.generateOnce(req, !knownLenient));
+        ({ object, usage, repaired } = await this.generateOnce(req, !knownLenient));
       } catch (cause) {
         if (knownLenient || !isSchemaRejection(cause)) throw cause;
         lenientSchemas.add(req.schema);
-        ({ object, usage } = await this.generateOnce(req, false));
+        ({ object, usage, repaired } = await this.generateOnce(req, false));
       }
     } catch (cause) {
       if (cause instanceof Error && cause.name === 'AI_NoObjectGeneratedError') {
-        throw new LlmValidationError(req.action, cause, cause.message);
+        // The model's own text, when the SDK kept it: the message alone ("could not parse the
+        // response") said nothing about what came back (ADR-0048).
+        const text = (cause as { text?: unknown }).text;
+        throw new LlmValidationError(
+          req.action,
+          cause,
+          typeof text === 'string' && text.length > 0 ? text.slice(0, 4_000) : cause.message,
+        );
       }
       throw new LlmProviderError(req.action, 'OpenAI structured call failed', cause);
     }
@@ -353,6 +368,11 @@ export class OpenAiLlmProvider implements LlmProvider {
       throw new LlmValidationError(req.action, parsed.error.issues, JSON.stringify(object));
     }
 
-    return { value: parsed.data, usage: toTokenUsage(usage), modelId: this.models[req.tier] };
+    return {
+      value: parsed.data,
+      usage: toTokenUsage(usage),
+      modelId: this.models[req.tier],
+      ...(repaired ? { truncatedRepaired: true as const } : {}),
+    };
   }
 }

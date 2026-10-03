@@ -276,3 +276,61 @@ describe('provider errors', () => {
     }).rejects.toThrow(LlmProviderError);
   });
 });
+
+describe('an answer cut off by the output budget (ADR-0048)', () => {
+  /** A Responses API body whose JSON stops mid-way, as OpenAI returns it at max_output_tokens. */
+  const truncated = (text: string) =>
+    new Response(
+      JSON.stringify({
+        id: 'resp_1',
+        created_at: 1,
+        model: 'gpt-5-mini',
+        status: 'incomplete',
+        incomplete_details: { reason: 'max_output_tokens' },
+        output: [
+          {
+            type: 'message',
+            role: 'assistant',
+            id: 'msg_1',
+            status: 'incomplete',
+            content: [{ type: 'output_text', text, annotations: [] }],
+          },
+        ],
+        usage: {
+          input_tokens: 100,
+          input_tokens_details: { cached_tokens: 0 },
+          output_tokens: 40,
+          output_tokens_details: { reasoning_tokens: 0 },
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+
+  const provider = (respond: () => Response) =>
+    new OpenAiLlmProvider({
+      apiKey: 'test-key',
+      fastModel: 'gpt-5-nano',
+      strongModel: 'gpt-5-mini',
+      fetch: (async () => respond()) as typeof globalThis.fetch,
+    });
+
+  it('keeps the items the model finished and says the answer was repaired', async () => {
+    const schema = z.object({ themes: z.array(z.object({ name: z.string() })) });
+    const result = await provider(() =>
+      truncated('{"themes":[{"name":"Solar dryers"},{"name":"Cost"},{"name":"Fish qual'),
+    ).complete({ ...request({ tier: 'strong' }), schema });
+
+    expect(result.value).toEqual({ themes: [{ name: 'Solar dryers' }, { name: 'Cost' }] });
+    expect(result.truncatedRepaired).toBe(true);
+  });
+
+  it('still fails, with the model’s own text, when nothing complete can be kept', async () => {
+    const schema = z.object({ text: z.string() });
+    await expect(
+      provider(() => truncated('{"text":"The results show that')).complete({
+        ...request({ tier: 'strong' }),
+        schema,
+      }),
+    ).rejects.toMatchObject({ raw: expect.stringContaining('The results show that') });
+  });
+});

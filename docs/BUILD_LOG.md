@@ -4445,3 +4445,15 @@ in both the chapter build and Draft mode, which before this passed no discipline
   $ pnpm --filter @tc/config exec vitest run test/guidance.spec.ts   Tests 6 passed
   $ pnpm --filter @tc/worker exec vitest run                          Tests 144 passed | 1 skipped
   ```
+
+## Keep what a cut-off structured answer finished (2026-10-03, ADR-0048)
+
+From the Rademics Copilot comparison, done the safe way round: a structured answer cut off by the
+output budget keeps the values the model completed instead of failing the whole call; an open
+string is never closed into a value the model did not finish. Plugged into the AI SDK's own
+`repairText` hook. A failed parse now logs the model's text rather than the error message.
+
+- Evidence (a truncated Responses API body through the real SDK, `openai.spec.ts`):
+  ```
+  $ pnpm --filter @tc/ai exec vitest run    Tests 439 passed | 1 skipped
+  ```
