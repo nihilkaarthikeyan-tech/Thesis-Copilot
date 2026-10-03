@@ -53,6 +53,14 @@ enum GroundingLevel {
   ABSTRACT
   FULL_TEXT
 }
+/// ADR-0043: where a thesis is in its lifecycle. The machine lives in @tc/types; this is storage.
+enum DocumentLifecycle {
+  DRAFTING
+  IN_REVIEW
+  REVISING
+  READY
+  SUBMITTED
+}
 enum Provenance {
   HUMAN
   ASSIST
@@ -210,6 +218,10 @@ model Document {
   field       String?
   language    String    @default("en")
   citationStyle String  @default("apa")
+  /// ADR-0043: the validated lifecycle state. Transitions are decided by @tc/types, not here.
+  lifecycle   DocumentLifecycle @default(DRAFTING)
+  /// When the thesis was marked submitted, for the progress view; null until it is.
+  submittedAt DateTime?
   /**
    * The date the thesis is due, if the student has told us.
    *

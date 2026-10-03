@@ -15,6 +15,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { LifecycleBar } from './LifecycleBar';
 import { ReadinessBanner } from './ReadinessBanner';
 
 type Details = {
@@ -183,6 +184,10 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         documentId={documentId}
         refreshKey={compliance ? compliance.checks.length + (compliance.passed ? 1 : 0) : 0}
       />
+
+      <div className="mt-4">
+        <LifecycleBar documentId={documentId} />
+      </div>
 
       {data.template.isExample ? (
         <p

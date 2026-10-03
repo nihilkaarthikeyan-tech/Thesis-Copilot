@@ -22,6 +22,7 @@ import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InstitutionModule } from './modules/institution/institution.module.js';
 import { JournalsModule } from './modules/journals/journals.module.js';
+import { LifecycleModule } from './modules/lifecycle/lifecycle.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { OverlapModule } from './modules/overlap/overlap.module.js';
@@ -80,6 +81,7 @@ import { VivaModule } from './modules/viva/viva.module.js';
     ChapterBuildModule,
     JournalsModule,
     OverlapModule,
+    LifecycleModule,
   ],
 })
 export class AppModule {}

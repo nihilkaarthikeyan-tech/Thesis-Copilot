@@ -50,6 +50,7 @@ export {
   type SearchLiteratureJob,
   type SeedPaperStatus,
 } from './jobs.js';
+export * from './lifecycle.js';
 export {
   DEFAULT_CHAPTER_TITLE,
   findOutlineNode,
