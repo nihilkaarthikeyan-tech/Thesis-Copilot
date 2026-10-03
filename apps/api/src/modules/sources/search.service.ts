@@ -10,7 +10,13 @@
 
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { type BibEntry, type GapSignal, gapSignals, parseBibliography } from '@tc/retrieval';
+import {
+  type BibEntry,
+  type GapSignal,
+  gapSignals,
+  parseBibliography,
+  type ThemeDensity,
+} from '@tc/retrieval';
 import { jobId, jobKeyDigest } from '@tc/types';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -44,6 +50,11 @@ export type SearchRunView = {
      * within the run. A heuristic for the student, computed from observed numbers, not a claim.
      */
     signal?: Omit<GapSignal, 'name'>;
+    /**
+     * ADR-0046: what OpenAlex holds for this theme's targeted query — the real publication
+     * density, per year, and whether it is growing. Absent when it could not be fetched.
+     */
+    density?: ThemeDensity;
     candidates: Array<{
       id: string;
       title: string;
@@ -69,6 +80,7 @@ type RunRecord = {
   error?: string;
   counts?: Record<string, number>;
   queries?: Array<{ angle: string; q: string }>;
+  themeDensity?: Record<string, ThemeDensity>;
 };
 
 const THIN_BELOW = 4;
@@ -218,12 +230,27 @@ export class SearchService {
       error: record.error ?? null,
       counts: record.counts ?? {},
       queries: record.queries ?? [],
-      themes: withLibrary.map((theme) => {
-        const signal = signalByName.get(theme.name);
-        if (!signal) return theme;
-        const { name: _name, ...rest } = signal;
-        return { ...theme, signal: rest };
-      }),
+      themes: withLibrary
+        .map((theme) => {
+          const signal = signalByName.get(theme.name);
+          const density = record.themeDensity?.[theme.name];
+          const withDensity = density ? { ...theme, density } : theme;
+          if (!signal) return withDensity;
+          const { name: _name, ...rest } = signal;
+          return { ...withDensity, signal: rest };
+        })
+        // ADR-0041 promised the map most-open-gap first; it was sorted by size until ADR-0046.
+        // "Other" stays last whatever its score: it is the run's leftovers, not a theme.
+        .sort((a, b) => {
+          const otherA = a.name.toLowerCase() === 'other' ? 1 : 0;
+          const otherB = b.name.toLowerCase() === 'other' ? 1 : 0;
+          if (otherA !== otherB) return otherA - otherB;
+          return (
+            ('signal' in b ? (b.signal?.gapScore ?? 0) : 0) -
+              ('signal' in a ? (a.signal?.gapScore ?? 0) : 0) ||
+            b.candidates.length - a.candidates.length
+          );
+        }),
     };
   }
 

@@ -50,6 +50,13 @@ export {
   type TextItem,
 } from './extract/index.js';
 export {
+  DENSITY,
+  densityFrom,
+  type ThemeDensity,
+  themeQuery,
+  type YearCount,
+} from './gap/density.js';
+export {
   GAP_SIGNAL,
   type GapCandidate,
   type GapClass,

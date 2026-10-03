@@ -119,6 +119,39 @@ export class OpenAlexDiscovery {
     return (body?.results ?? []).map(fromOpenAlex).filter((w): w is DiscoveredWork => w !== null);
   }
 
+  /**
+   * ADR-0046: how many works OpenAlex holds for a query, per publication year, over the same
+   * window and types `search` uses. One request — `group_by` returns the counts without the
+   * works — so a theme's density costs a single call.
+   */
+  async yearCounts(
+    query: string,
+    now = new Date(),
+    signal?: AbortSignal,
+  ): Promise<Array<{ year: number; count: number }>> {
+    const from = now.getUTCFullYear() - DISCOVER.yearsBack;
+    // Title and abstract, not `search=`: the plain search also matches full text, so a paper that
+    // mentions "marine" once in its methods counted towards a marine theme (2026-10-03, the first
+    // local run read 57,696 papers for "solar drying marine"). A comma would end the filter
+    // value, so none is let through.
+    const terms = openAlexSearchText(query).replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+    const filter = encodeURIComponent(
+      `title_and_abstract.search:${terms},type:${DISCOVER.types},from_publication_date:${from}-01-01`,
+    );
+    const url =
+      `https://api.openalex.org/works?filter=${filter}` +
+      `&group_by=publication_year&mailto=${encodeURIComponent(this.http.mailto)}`;
+    const body = await this.http.getJson<{
+      group_by?: Array<{ key?: string | number; count?: number }>;
+    }>(url, signal);
+    return (body?.group_by ?? []).flatMap((g) => {
+      const year = Number(g.key);
+      return Number.isInteger(year) && typeof g.count === 'number'
+        ? [{ year, count: g.count }]
+        : [];
+    });
+  }
+
   /** FR-2.8: the works that cite this one, most cited first. */
   async citedBy(openalexId: string, signal?: AbortSignal): Promise<DiscoveredWork[]> {
     const filter = encodeURIComponent(`cites:${openalexId},type:${DISCOVER.types}`);

@@ -4413,3 +4413,20 @@ with plain text, deleting every citation and equation inside it.
   ```
 - Found while proving it in the browser: the re-key ran before autosave was listening, so it was
   drawn but never saved. It now runs after autosave starts; the spec reloads to prove the save.
+
+## Theme density and targeted search (2026-10-03, ADR-0046)
+
+From the Rademics Copilot comparison: a query per theme built in code, its real publication
+density from OpenAlex (per year, with a trend), and a second search for thin themes that keeps
+only papers as close to the scope as those already kept. The gap map now sorts most-open-gap first,
+as ADR-0041 said it did.
+
+- Found on the first local run: OpenAlex's plain `search=` matches full text, so "solar drying
+  marine" counted 57,696 papers. Counted on title and abstract it is 239. The link on each theme
+  opens the same filter on openalex.org.
+- Evidence:
+  ```
+  $ pnpm --filter @tc/retrieval exec vitest run    Tests 344 passed | 1 skipped
+  $ pnpm --filter @tc/worker exec vitest run       Tests 142 passed | 1 skipped
+  $ pnpm exec playwright test gap-density.spec.ts  1 passed   (real OpenAlex, mock models)
+  ```

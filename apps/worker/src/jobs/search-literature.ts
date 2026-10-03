@@ -30,10 +30,13 @@ import {
   type ArxivClient,
   cosine,
   type DiscoveredWork,
+  densityFrom,
   mergeWorks,
   type OpenAlexDiscovery,
   type PubMedClient,
   type SemanticScholarClient,
+  type ThemeDensity,
+  themeQuery,
 } from '@tc/retrieval';
 import type { SearchLiteratureJob } from '@tc/types';
 
@@ -43,6 +46,10 @@ export const SEARCH = {
   /** Embedding batch size, as index-source uses. */
   embedBatch: 64,
   expandTheme: 'Related to your citations',
+  /** ADR-0046: thin themes searched again with their own query, at most this many per run. */
+  fillThemes: 4,
+  /** Papers a targeted search may add to one thin theme. */
+  fillPerTheme: 5,
 } as const;
 
 export type SearchLiteratureDeps = {
@@ -72,6 +79,11 @@ export type SearchRunRecord = {
   error?: string;
   counts: Record<string, number>;
   queries?: Array<{ angle: string; q: string }>;
+  /**
+   * ADR-0046: per theme, the targeted query and what OpenAlex counts for it, year by year. Kept
+   * on the run rather than the gap map, which the next run overwrites.
+   */
+  themeDensity?: Record<string, ThemeDensity>;
 };
 
 export type SearchLiteratureResult = {
@@ -379,6 +391,24 @@ async function discover(
       throw error;
     }
   }
+  // 5b. ADR-0046: one targeted query per theme, its real publication density, and a second
+  //     search for the thin ones. No model call; OpenAlex only.
+  const extra = await deepenThemes({
+    themes,
+    scored,
+    tempIds,
+    pool: merged,
+    library,
+    workingTitle: scope.workingTitle,
+    scopeVector: scopeVector ?? [],
+    deps,
+    record,
+    log,
+    now,
+  });
+  scored.push(...extra.works);
+  tempIds.push(...extra.tempIds);
+
   const themeOf = new Map<string, string>();
   for (const t of themes) for (const id of t.candidateIds) themeOf.set(id, t.name);
 
@@ -463,4 +493,113 @@ async function expand(
     themes: 1,
     counts: record.counts,
   };
+}
+
+type ScoredWork = DiscoveredWork & { score: number };
+
+/**
+ * ADR-0046 — Rademics Copilot's per-cluster search, built on what this job already has.
+ *
+ * For every theme but "Other": a query from the thesis title's content words and the theme's own
+ * (`themeQuery`, deterministic), and OpenAlex's per-year count for it — the theme's real
+ * publication density, and whether it is growing. For up to `SEARCH.fillThemes` thin themes, the
+ * same query is searched and the papers that score at least as high against the scope as the
+ * weakest one kept are added to that theme. A request that fails costs its theme its density or
+ * its extra papers, never the run.
+ */
+async function deepenThemes(input: {
+  themes: Array<{ name: string; candidateIds: string[]; count: number; thin: boolean }>;
+  scored: readonly ScoredWork[];
+  tempIds: readonly string[];
+  pool: readonly DiscoveredWork[];
+  library: { dois: Set<string>; titles: Set<string> };
+  workingTitle: string;
+  scopeVector: number[];
+  deps: SearchLiteratureDeps;
+  record: SearchRunRecord;
+  log: NonNullable<SearchLiteratureDeps['log']>;
+  now: () => Date;
+}): Promise<{ works: ScoredWork[]; tempIds: string[] }> {
+  const { themes, scored, tempIds, deps, record, log, now } = input;
+  const openalex = deps.openalex as OpenAlexDiscovery & {
+    yearCounts?: OpenAlexDiscovery['yearCounts'];
+  };
+  const titleOf = new Map(tempIds.map((id, i) => [id, scored[i]?.title ?? '']));
+  const named = themes.filter((t) => t.name.toLowerCase() !== 'other');
+
+  const density: Record<string, ThemeDensity> = {};
+  const queryOf = new Map<string, string>();
+  for (const theme of named) {
+    const q = themeQuery(
+      input.workingTitle,
+      theme.name,
+      theme.candidateIds.map((id) => titleOf.get(id) ?? ''),
+    );
+    queryOf.set(theme.name, q);
+    if (typeof openalex.yearCounts !== 'function') continue;
+    try {
+      density[theme.name] = densityFrom(q, await openalex.yearCounts(q, now()), now());
+    } catch (error) {
+      log({ level: 40, msg: 'theme density failed', theme: theme.name, q, error: String(error) });
+    }
+  }
+  if (Object.keys(density).length > 0) record.themeDensity = density;
+  record.counts.themeQueries = queryOf.size;
+
+  // Thin themes: search again with their own query.
+  const floor = scored.length > 0 ? Math.min(...scored.map((w) => w.score)) : 0;
+  const norm = (t: string) =>
+    t
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  const seen = new Set<string>();
+  for (const w of [...input.pool, ...scored]) {
+    if (w.doi) seen.add(`doi:${w.doi}`);
+    seen.add(`t:${norm(w.title)}`);
+  }
+  const isNew = (w: DiscoveredWork) =>
+    !(w.doi && (seen.has(`doi:${w.doi}`) || input.library.dois.has(w.doi))) &&
+    !seen.has(`t:${norm(w.title)}`) &&
+    !input.library.titles.has(norm(w.title));
+
+  const works: ScoredWork[] = [];
+  const ids: string[] = [];
+  let filled = 0;
+  const thin = named.filter((t) => t.thin).slice(0, SEARCH.fillThemes);
+  for (const theme of thin) {
+    const q = queryOf.get(theme.name);
+    if (!q) continue;
+    let found: DiscoveredWork[] = [];
+    try {
+      found = (await deps.openalex.search(q, now())).filter(isNew);
+    } catch (error) {
+      log({ level: 40, msg: 'theme search failed', theme: theme.name, q, error: String(error) });
+      continue;
+    }
+    if (found.length === 0) continue;
+    await deps.assertBudget?.();
+    const vectors = await deps.embeddings.embed(
+      found.map((w) => `${w.title}. ${w.abstract ?? ''}`.slice(0, 2_000)),
+    );
+    const kept = found
+      .map((w, i) => ({ ...w, score: cosine(input.scopeVector, vectors[i] ?? []) }))
+      .filter((w) => w.score >= floor)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, SEARCH.fillPerTheme);
+    for (const w of kept) {
+      if (w.doi) seen.add(`doi:${w.doi}`);
+      seen.add(`t:${norm(w.title)}`);
+      const id = `f${tempIds.length + ids.length + 1}`;
+      ids.push(id);
+      works.push(w);
+      theme.candidateIds.push(id);
+    }
+    theme.count = theme.candidateIds.length;
+    theme.thin = theme.count < 4;
+    filled += kept.length;
+  }
+  record.counts.filled = filled;
+  log({ msg: 'themes deepened', runId: record.runId, queries: queryOf.size, filled });
+  return { works, tempIds: ids };
 }

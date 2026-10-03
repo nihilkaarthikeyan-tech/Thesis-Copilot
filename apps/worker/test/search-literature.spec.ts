@@ -181,11 +181,13 @@ describe('discover', () => {
     // One count per index searched (ADR-0020) — here only OpenAlex — and one per stage.
     expect(Object.keys(result.counts).sort()).toEqual([
       'fetched',
+      'filled',
       'kept',
       'merged',
       'notInLibrary',
       'openalex',
       'queries',
+      'themeQueries',
       'themes',
       'thin',
     ]);
@@ -194,13 +196,59 @@ describe('discover', () => {
   });
 
   it('makes exactly one Strong call and one Fast call, however many queries it runs', async () => {
-    // FR-2.5 "one Strong call per search run"; FR-2.6 "one Fast call for the themes". The four
-    // searches in between are HTTP, not tokens.
+    // FR-2.5 "one Strong call per search run"; FR-2.6 "one Fast call for the themes". The
+    // searches in between are HTTP, not tokens — including ADR-0046's targeted search for the
+    // one thin theme, which is the third.
     const f = fakes();
     await runSearchLiterature(JOB, f.deps);
     expect(f.requests.filter((r) => r.tier === 'strong')).toHaveLength(1);
     expect(f.requests.filter((r) => r.tier === 'fast')).toHaveLength(1);
-    expect(f.deps.openalex.search).toHaveBeenCalledTimes(2);
+    expect(f.deps.openalex.search).toHaveBeenCalledTimes(3);
+  });
+
+  it("ADR-0046: records each theme's targeted query and its real per-year density", async () => {
+    const f = fakes();
+    const yearCounts = vi.fn(async () => [
+      { year: 2025, count: 40 },
+      { year: 2024, count: 30 },
+      { year: 2023, count: 30 },
+      { year: 2021, count: 20 },
+    ]);
+    (f.deps.openalex as unknown as { yearCounts: typeof yearCounts }).yearCounts = yearCounts;
+    await runSearchLiterature(JOB, f.deps);
+    const run = (f.meta().searchRuns as Record<string, Record<string, unknown>>)['run-1'];
+    const density = run?.themeDensity as Record<string, { query: string; total: number }>;
+    // Built in code: the title's words, then — the name "Solar" adding nothing new — the words
+    // its papers' titles share. No model call.
+    expect(density.Solar?.query).toBe('low-cost forced-convection solar drying number');
+    expect(yearCounts).toHaveBeenCalledWith(density.Solar?.query, expect.any(Date));
+    expect(density.Solar?.total).toBe(120);
+    expect(f.requests).toHaveLength(2);
+  });
+
+  it('ADR-0046: a thin theme is searched again and gains only papers as close to the scope', async () => {
+    let call = 0;
+    const f = fakes();
+    // The two run queries return the usual three; the theme's own search returns two new papers
+    // and one the run already has.
+    f.deps.openalex.search = vi.fn(async () => {
+      call++;
+      return call <= 2 ? [work(1), work(2), work(3)] : [work(1), work(7), work(8)];
+    }) as never;
+    const result = await runSearchLiterature(JOB, f.deps);
+    expect(result.counts.filled).toBe(2);
+    expect(result.candidates).toBe(5);
+    const solar = f.candidates.filter((c) => c.theme === 'Solar').map((c) => c.doi);
+    expect(solar).toEqual(expect.arrayContaining(['10.1000/w7', '10.1000/w8']));
+    // W1 was not added twice.
+    expect(f.candidates.filter((c) => c.doi === '10.1000/w1')).toHaveLength(1);
+    // The gap map records the theme as no longer thin: five papers.
+    const themes = (f.gapMap()?.themes ?? []) as Array<{
+      name: string;
+      count: number;
+      thin: boolean;
+    }>;
+    expect(themes.find((t) => t.name === 'Solar')).toMatchObject({ count: 5, thin: false });
   });
 
   it('logs both calls against the document, as SEARCH_QUERIES', async () => {

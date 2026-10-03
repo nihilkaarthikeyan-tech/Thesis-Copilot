@@ -51,9 +51,63 @@ type Run = {
       gapScore: number;
       gapClass: 'open' | 'active' | 'crowded' | 'peripheral' | 'sparse';
     };
+    /** ADR-0046: what OpenAlex counts for the theme's own query, year by year. */
+    density?: {
+      query: string;
+      total: number;
+      recent: number;
+      previous: number;
+      trend: 'rising' | 'steady' | 'falling' | null;
+      perYear: Array<{ year: number; count: number }>;
+    };
     candidates: Candidate[];
   }>;
 };
+
+const TREND: Record<'rising' | 'steady' | 'falling', string> = {
+  rising: 'growing',
+  steady: 'steady',
+  falling: 'slowing',
+};
+
+/** "12,400" — a count as a student reads it. */
+const count = (n: number) => n.toLocaleString('en-IN');
+
+/**
+ * ADR-0046: the theme's real publication density, from OpenAlex, with a sparkline of the years.
+ * The query is shown and links to OpenAlex, so the number can be checked rather than trusted.
+ */
+function Density({ density }: { density: NonNullable<Run['themes'][number]['density']> }) {
+  const years = density.perYear.slice(-10);
+  const max = Math.max(1, ...years.map((y) => y.count));
+  // The same filter the count was taken with, so the number on OpenAlex's page is this one.
+  const href = `https://openalex.org/works?filter=${encodeURIComponent(`title_and_abstract.search:${density.query}`)}`;
+  return (
+    <div data-testid="theme-density" className="mt-1 flex items-end gap-2 text-xs text-muted">
+      {years.length > 1 ? (
+        <span aria-hidden="true" className="flex h-4 items-end gap-px">
+          {years.map((y) => (
+            <span
+              key={y.year}
+              title={`${y.year}: ${count(y.count)}`}
+              className="w-1 rounded-sm bg-accent/60"
+              style={{ height: `${Math.max(8, Math.round((y.count / max) * 100))}%` }}
+            />
+          ))}
+        </span>
+      ) : null}
+      <span>
+        <a href={href} target="_blank" rel="noopener noreferrer" className="underline">
+          {count(density.total)} papers
+        </a>{' '}
+        on OpenAlex with “{density.query}” in the title or abstract
+        {density.trend
+          ? ` · ${TREND[density.trend]} (${count(density.recent)} in the last three years, ${count(density.previous)} in the three before)`
+          : ''}
+      </span>
+    </div>
+  );
+}
 
 const GAP_LABEL: Record<
   NonNullable<Run['themes'][number]['signal']>['gapClass'],
@@ -300,6 +354,7 @@ export function DiscoverPanel({
                     {theme.thin ? ' · thin' : ''}
                   </span>
                 </h3>
+                {theme.density ? <Density density={theme.density} /> : null}
                 {theme.signal && theme.signal.gapClass !== 'sparse' ? (
                   <p className="mt-1 text-xs text-muted">
                     {GAP_BLURB[theme.signal.gapClass]}
