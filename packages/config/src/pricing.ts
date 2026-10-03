@@ -85,6 +85,9 @@ const SONNET_5: ModelPrice = {
 const OPENAI: Record<string, ModelPrice> = {
   'gpt-5-nano': { inputPerM: 0.05, outputPerM: 0.4, cacheReadMult: 0.1, cacheWriteMult: 1 },
   'gpt-4.1-nano': { inputPerM: 0.1, outputPerM: 0.4, cacheReadMult: 0.25, cacheWriteMult: 1 },
+  // Read off developers.openai.com/api/docs/pricing on 2026-10-04: $0.40 in, $0.10 cached, $1.60
+  // out. The Assist candidate that won the blind comparison (docs/BUILD_LOG.md, 2026-10-04).
+  'gpt-4.1-mini': { inputPerM: 0.4, outputPerM: 1.6, cacheReadMult: 0.25, cacheWriteMult: 1 },
   'gpt-4o-mini': { inputPerM: 0.15, outputPerM: 0.6, cacheReadMult: 0.5, cacheWriteMult: 1 },
   'gpt-5-mini': { inputPerM: 0.25, outputPerM: 2.0, cacheReadMult: 0.1, cacheWriteMult: 1 },
   'gpt-5.4-nano': { inputPerM: 0.2, outputPerM: 1.25, cacheReadMult: 0.1, cacheWriteMult: 1 },

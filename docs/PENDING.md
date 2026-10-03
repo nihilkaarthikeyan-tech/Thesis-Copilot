@@ -14,6 +14,20 @@ per proofread (the strong tier is several times the fast tier's price) and needs
 `packages/ai/eval/results/proofread-*.json`, `docs/BUILD_LOG.md` → "Prompt evaluation, rounds 2
 and 3".
 
+## Autocomplete model and allowance (ADR-0051, 2026-10-04)
+
+- [ ] **On the next release, set `AI_FAST_MODEL=gpt-4.1-mini`** in the VPS `.env` (it is a setting,
+      not code). The shakedown passed every fast-tier task on it; a fully active student costs
+      ₹74.64 against the ₹100 ceiling.
+- [ ] **Decide the monthly suggestion allowance.** Paid plans allow 180 autocomplete suggestions a
+      month — fewer than Jenni's *free* plan (10 a day). On `gpt-4.1-mini`, 300 a month costs
+      ₹85.87 per fully active student; 500 would break the ₹100 ceiling. Say the number and it is
+      one line in `packages/config/src/plans.ts`.
+- [ ] **Turn automatic suggestions and automatic sources on for new students?** Both features
+      exist and are off by default (`automaticSuggest` setting, `autoSources` flag). Jenni suggests
+      on a pause by default. On means more suggestions used per student, so decide it together with
+      the allowance above.
+
 ## Citations and equations (ADR-0045, 2026-10-03) — what a person should do
 
 - [ ] **Tell the students who complained.** Citations no longer share labels or vanish under a

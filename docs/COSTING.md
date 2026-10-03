@@ -16,6 +16,13 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > `pnpm ai:verify` prints it. The tables below are as they stood before it: add ₹27.12 to the
 > paid-plan totals and ₹9.04 to the trial's.
 >
+> **2026-10-04 — Assist on `gpt-4.1-mini` (ADR-0051).** Autocomplete moves to the model that won
+> a blind comparison against `gpt-5-nano` (mean 8.03 against 6.95 over 30 judged cases). The fast
+> tier changes as a whole, so citation suggestions and chat cost more too. Same allowances, a
+> fully active student goes from ₹52.72 to **₹74.64**. At 300 suggestions a month (Jenni's free
+> level) it would be ₹85.87; at 500, ₹104.58, over the ceiling. `gpt-4.1-mini` was priced from
+> OpenAI's page on 2026-10-04 ($0.40 in, $0.10 cached, $1.60 out per million tokens).
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.
