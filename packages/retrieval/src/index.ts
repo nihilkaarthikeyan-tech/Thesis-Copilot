@@ -50,6 +50,19 @@ export {
   type TextItem,
 } from './extract/index.js';
 export {
+  type AlignmentLevel,
+  type ImpactTier,
+  JOURNAL_MATCH,
+  type JournalCandidate,
+  type JournalMatchProfile,
+  type JournalScore,
+  rankJournals,
+  scopeAlignment,
+  scoreJournal,
+  tokensOf,
+} from './journals/score.js';
+export { OpenAlexSources, sourceShortId } from './journals/sources.js';
+export {
   adviceFor,
   buildIndex,
   type ChunkForMatch,

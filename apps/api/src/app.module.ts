@@ -21,6 +21,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module.js';
 import { FlagsModule } from './modules/flags/flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InstitutionModule } from './modules/institution/institution.module.js';
+import { JournalsModule } from './modules/journals/journals.module.js';
 import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { PromptsModule } from './modules/prompts/prompts.module.js';
@@ -76,6 +77,7 @@ import { VivaModule } from './modules/viva/viva.module.js';
     InstitutionModule,
     VivaModule,
     ChapterBuildModule,
+    JournalsModule,
   ],
 })
 export class AppModule {}

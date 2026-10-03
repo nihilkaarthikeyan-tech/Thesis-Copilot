@@ -141,6 +141,8 @@ export default function DocumentListPage() {
     { href: `/app/d/${id}/build`, label: 'Build' },
     { href: `/app/d/${id}/review`, label: 'Review' },
     { href: `/app/d/${id}/submit`, label: 'Submit' },
+    // ADR-0040: a grounded, un-metered ranking of where to submit.
+    { href: `/app/d/${id}/journals`, label: 'Journals' },
     // ADR-0030: after submission comes the defence.
     { href: `/app/d/${id}/viva`, label: 'Viva' },
     { href: `/app/d/${id}/write/${firstChapterId ?? 'none'}`, label: 'Write' },
