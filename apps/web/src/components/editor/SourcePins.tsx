@@ -100,9 +100,19 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
   if (sources.length === 0) {
     return (
       <div className="space-y-2">
-        <p>No sources yet. Upload your paper and its references land here automatically.</p>
+        <p>
+          No papers yet. Find papers for this thesis, or add your own PDFs — suggestions cite only
+          what is in your library.
+        </p>
+        <Link
+          href={`/app/d/${documentId}/sources?tab=discover`}
+          data-testid="find-papers"
+          className="inline-block rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:bg-accent-hover"
+        >
+          Find papers
+        </Link>{' '}
         <Link href={`/app/d/${documentId}/sources`} className="inline-block underline">
-          Open the library
+          Add PDFs
         </Link>
       </div>
     );

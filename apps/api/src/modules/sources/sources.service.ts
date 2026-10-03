@@ -98,7 +98,11 @@ export class SourcesService {
     const check = checkUpload({ filename: input.filename, bytes: input.bytes, plan: input.plan });
     if (!check.ok) throw new UploadRejected(check.reason, check.detail);
 
-    const existing = await this.prisma.seedPaper.count({ where: { documentId: input.documentId } });
+    // A paper that could not be read does not use the allowance (2026-10-04): it counted, and on
+    // the trial's one paper a failed upload left the student with nothing to do but start over.
+    const existing = await this.prisma.seedPaper.count({
+      where: { documentId: input.documentId, status: { not: 'FAILED' } },
+    });
     const quota = checkSeedPaperQuota(existing, input.plan);
     if (!quota.ok) throw new UploadRejected(quota.reason, quota.detail);
 

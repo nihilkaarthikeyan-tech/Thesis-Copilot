@@ -378,6 +378,7 @@ function ChapterEditor({
             }
             setNotice(e.message);
           },
+          onIneligible: (reason) => setNotice(reason),
           onDone: (info) => {
             retriedRef.current = false;
             // ADR-0037: nothing in the library covers this, and a search has started. Said
@@ -402,7 +403,7 @@ function ChapterEditor({
             if (!info.grounded) {
               setNotice(
                 info.pinned === 0
-                  ? 'That suggestion had no sources to draw on. Pin some in the Sources panel to get cited text.'
+                  ? 'That suggestion had no sources to draw on. Add papers in the Sources panel to get cited text.'
                   : 'None of the pinned sources matched this passage, so the suggestion cites nothing.',
               );
             }
@@ -516,6 +517,8 @@ function ChapterEditor({
   });
   editorRef.current = editor;
 
+  /** The chapter the editor last placed the cursor in on opening; see the autosave effect. */
+  const focusedChapterRef = useRef<string | null>(null);
   /** Labels are re-fetched after every save; set inside the label effect below. */
   const refreshLabelsRef = useRef<() => void>(() => undefined);
 
@@ -729,6 +732,19 @@ function ChapterEditor({
     // serve them; each twin after the first gets a key of its own, once, when the chapter opens.
     // After the autosave is listening, so the repair is saved and the labels re-rendered.
     editor.commands.dedupeCitationKeys();
+
+    // A new chapter (a heading and an empty paragraph) opens ready to type: the cursor in the
+    // paragraph. Before, nothing had focus, and Ctrl+/ did nothing until the student clicked
+    // (2026-10-04 journey audit). Once per chapter: this effect runs again later, and moving the
+    // cursor then would take it from wherever the student had put it.
+    if (
+      focusedChapterRef.current !== chapter.id &&
+      editor.state.doc.childCount <= 2 &&
+      editor.state.doc.textContent.trim().length < 80
+    ) {
+      editor.commands.focus('end');
+    }
+    focusedChapterRef.current = chapter.id;
 
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -1135,8 +1151,9 @@ function ChapterEditor({
         <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
           <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
-            This is your chapter. Write as you normally would; press <kbd>Ctrl+/</kbd> when you want
-            a suggestion, and <kbd>Tab</kbd> to keep it. Pin the sources it may cite under Sources.{' '}
+            This is your chapter. Write as you normally would; press <kbd>Ctrl+/</kbd> (or Suggest,
+            below) when you want a suggestion, and <kbd>Tab</kbd> to keep it. It cites the papers in
+            your library — pin some under Sources only if you want to narrow it.{' '}
             <button type="button" className="underline" onClick={() => setHowOpen(true)}>
               How suggestions work (90 seconds)
             </button>
@@ -1158,12 +1175,25 @@ function ChapterEditor({
           />
           <EditorContent editor={editor} />
           <div className="mx-auto mt-8 flex max-w-[72ch] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[11.5px] text-faint">
+            {/* A visible way in (2026-10-04): the only one used to be a shortcut a new student had
+                to have read about. The mouse keeps the cursor where it was. */}
+            <button
+              type="button"
+              data-testid="suggest-button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editor?.chain().focus().requestSuggestion().run()}
+              className="rounded-md bg-accent px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink hover:bg-accent-hover"
+            >
+              Suggest
+            </button>
             {[
               ['Ctrl+/', 'suggestion'],
               ['Tab', 'accept'],
               ['Alt+→', 'a word'],
               ['Shift+→', 'guided'],
               ['Esc', 'dismiss'],
+              ['Ctrl+Shift+D', 'draft a section'],
+              ['@', 'cite'],
               ['Ctrl+S', 'snapshot'],
             ].map(([key, what]) => (
               <span key={key} className="flex items-center gap-1.5">

@@ -100,12 +100,13 @@ export default function DocumentListPage() {
     setBusy(true);
     setError(null);
     try {
-      await api<DocumentSummary>('/documents', {
+      const created = await api<{ id: string }>('/documents', {
         method: 'POST',
         body: JSON.stringify({ title, entryPath }),
       });
-      setTitle('');
-      await load();
+      // Straight on to the proposal (2026-10-04): creating used to clear the field and leave the
+      // student on this list, choosing between nine links on the new card.
+      router.push(`/app/d/${created.id}/proposal`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create the document.');
     } finally {

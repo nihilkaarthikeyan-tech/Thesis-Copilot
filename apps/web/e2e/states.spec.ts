@@ -30,6 +30,9 @@ async function signIn(page: Page, request: APIRequestContext) {
 async function openFreshChapter(page: Page, title: string): Promise<void> {
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();
+  // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  await page.goto('/app');
   await page.getByRole('link', { name: title }).click();
   await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 20_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
@@ -54,7 +57,7 @@ test.describe('§6.2 states, forced through the mock', () => {
 
     // Not an error: the suggestion arrived, and the hint says what would make the next one cited.
     await expect(page.getByTestId('notice')).toContainText('no sources to draw on');
-    await expect(page.getByTestId('notice')).toContainText('Pin some in the Sources panel');
+    await expect(page.getByTestId('notice')).toContainText('Add papers in the Sources panel');
     await expect(page.locator('.thesis-editor span.ghost')).toBeVisible();
   });
 
@@ -169,6 +172,9 @@ test.describe('§6.2 states, forced through the mock', () => {
     await signIn(page, request);
     await page.getByLabel('Working title').fill(`States upload ${Date.now()}`);
     await page.getByRole('button', { name: 'Create thesis' }).click();
+    // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+    await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+    await page.goto('/app');
     const proposal = page
       .getByRole('listitem')
       .filter({ hasText: 'States upload' })

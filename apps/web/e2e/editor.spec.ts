@@ -18,6 +18,9 @@ test('B.9 #9: suggestion streams, Tab accepts, text survives a reload with prove
   // Create a thesis and open its first chapter.
   await page.getByLabel('Working title').fill('E2E thesis');
   await page.getByRole('button', { name: 'Create thesis' }).click();
+  // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  await page.goto('/app');
   const link = page.getByRole('link', { name: 'E2E thesis' });
   await expect(link).toBeVisible();
   await link.click();
@@ -67,6 +70,9 @@ test('typing while a suggestion is shown dismisses it; Tab in a list indents', a
   await signInThroughTheScreen(page, request);
   await page.getByLabel('Working title').fill('Dismiss test');
   await page.getByRole('button', { name: 'Create thesis' }).click();
+  // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  await page.goto('/app');
   await page.getByRole('link', { name: 'Dismiss test' }).click();
 
   const editor = page.locator('.thesis-editor');

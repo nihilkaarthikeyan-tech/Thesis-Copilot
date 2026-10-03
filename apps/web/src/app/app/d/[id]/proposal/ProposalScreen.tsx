@@ -278,27 +278,43 @@ function PaperStatus({
   uploading: boolean;
   onUpload: (file: File) => void;
 }) {
-  if (papers.length === 0) {
+  // No paper yet, or only ones that could not be read: offer the upload (again). A failed paper
+  // does not count against the allowance (2026-10-04); before, this was a dead end.
+  const allFailed = papers.length > 0 && papers.every((p) => p.status === 'FAILED');
+  if (papers.length === 0 || allFailed) {
     return (
-      <section className="mt-8 rounded-lg border border-dashed border-line p-8 text-center">
-        <p className="text-sm">Upload the paper this thesis grows from.</p>
-        <p className="mt-1 text-xs text-muted">
-          A PDF or Word file. Yours, or one you have written.
-        </p>
-        <label className="mt-4 inline-block cursor-pointer rounded-md px-4 py-2 text-sm bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors">
-          {uploading ? 'Uploading…' : 'Choose a file'}
-          <input
-            type="file"
-            accept=".pdf,.docx"
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onUpload(file);
-            }}
-          />
-        </label>
-      </section>
+      <>
+        {allFailed ? (
+          <div className="mt-8 space-y-1 text-sm">
+            {papers.map((paper) => (
+              <p key={paper.id} className="text-warn">
+                {paper.filename}: {paper.error ?? 'could not be read'}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        <section className="mt-8 rounded-lg border border-dashed border-line p-8 text-center">
+          <p className="text-sm">
+            {allFailed ? 'Try another file.' : 'Upload the paper this thesis grows from.'}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            A PDF or Word file. Yours, or one you have written.
+          </p>
+          <label className="mt-4 inline-block cursor-pointer rounded-md px-4 py-2 text-sm bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors">
+            {uploading ? 'Uploading…' : 'Choose a file'}
+            <input
+              type="file"
+              accept=".pdf,.docx"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUpload(file);
+              }}
+            />
+          </label>
+        </section>
+      </>
     );
   }
 

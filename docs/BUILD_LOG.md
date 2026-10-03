@@ -4503,3 +4503,30 @@ both orders. Against the current gpt-5-nano:
 |---|---|---|---|---|
 | gpt-4.1-mini | 8 / **14** / 8 | 6.95 → **8.03** | 29 → 30 | ₹14.68 |
 | gpt-5.4-nano (`none`) | 15 / 12 / 3 | 7.32 → 6.82 | 30 → 30 | ₹6.04 |
+
+## The first minutes of a new student (2026-10-04)
+
+A journey audit from the code (landing page to first cited paragraph) found a new student could
+get stuck in many places. Fixed:
+
+- "Create thesis" now opens the new thesis's proposal; it used to clear the field and stay on the
+  list, leaving nine links to choose from.
+- A new chapter opens with the cursor in its empty paragraph; Ctrl+/ used to do nothing until the
+  student clicked. Asking for a suggestion in a heading, a code block or with text selected now
+  says why. A visible **Suggest** button; the legend names Ctrl+Shift+D (Draft) and `@` (cite).
+- The copy no longer says pinning is required: Assist and Draft use the whole library unless the
+  student pins some.
+- An empty library in the editor offers **Find papers** (opens Discover) instead of telling a
+  topic-path student to upload a paper they do not have. The Sources page links back to writing,
+  and a failed load shows the error with "Try again" instead of "Loading the library…" for ever.
+- A seed paper that could not be read no longer uses the allowance, and the proposal screen offers
+  the upload again; on the trial's one paper this was a dead end.
+- Found while testing: the new cursor placement re-ran with the autosave effect and took the cursor
+  from where the student had put it. It runs once per chapter now.
+- Evidence:
+  ```
+  $ pnpm exec playwright test journey editor onboarding proposal-sources states
+      outline-commands-chat citations-equations chat-scopes mobile     30 passed, 2 failed*
+  * both expect the "no sources" message with the autoSources flag off; this dev database has had
+    it on since 2026-09-30. CI seeds it off.
+  ```

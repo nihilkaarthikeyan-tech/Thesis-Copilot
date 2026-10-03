@@ -95,6 +95,12 @@ export type GhostTextOptions = {
   }) => void;
   onTiming?: (timing: { ttfbMs: number; latencyMs: number }) => void;
   /**
+   * The student asked for a suggestion where one cannot go — in a heading, a code block, an
+   * equation, with text selected. Ctrl+/ used to do nothing at all there (2026-10-04 journey
+   * audit); this says why.
+   */
+  onIneligible?: (reason: string) => void;
+  /**
    * FR-4.6: automatic-suggest. When true, a suggestion is requested `autoSuggestIdleMs` after the
    * student stops typing. Off by default; the same cap applies. B.3's conditions still hold — the
    * timer is reset by every keystroke and cancelled when a suggestion is already open.
@@ -187,6 +193,16 @@ function cursorEligible(state: EditorState): boolean {
     if (name === 'draftBlock' && $from.node(depth).attrs.status !== 'accepted') return false;
   }
   return true;
+}
+
+/** Why `cursorEligible` said no, in words for the student. */
+function ineligibleReason(state: EditorState): string {
+  if (!state.selection.empty)
+    return 'Click where the next sentence should go — with no text selected — then ask again.';
+  const parent = state.selection.$from.parent.type.name;
+  if (parent === 'heading')
+    return 'Suggestions go in paragraphs, not headings. Click into the paragraph below and ask again.';
+  return 'A suggestion can only go in an ordinary paragraph. Click into one and ask again.';
 }
 
 const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
@@ -590,7 +606,10 @@ export const GhostText = Extension.create<GhostTextOptions>({
         ({ state, tr, dispatch, editor }) => {
           const ghost = ghostTextKey.getState(state);
           if (ghost?.status !== 'idle') return false;
-          if (!cursorEligible(state)) return false;
+          if (!cursorEligible(state)) {
+            if (dispatch) options.onIneligible?.(ineligibleReason(state));
+            return false;
+          }
 
           const abort = new AbortController();
           const suggestionId = `client-${nanoid(10)}`;

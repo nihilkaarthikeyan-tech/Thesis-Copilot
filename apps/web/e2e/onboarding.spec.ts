@@ -79,6 +79,9 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   const title = `Onboarding ${Date.now()}`;
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();
+  // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  await page.goto('/app');
   await expect(page.getByRole('link', { name: title })).toBeVisible({ timeout: 20_000 });
   // With a thesis on the list the step-1 hint has done its job.
   await expect(listHint).toHaveCount(0);
@@ -160,6 +163,9 @@ test('the chapter exports as a .docx from the header', async ({ page, request })
   const title = `Export ${Date.now()}`;
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();
+  // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  await page.goto('/app');
   await page.getByRole('link', { name: title }).click();
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
 

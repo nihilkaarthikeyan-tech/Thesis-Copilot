@@ -76,24 +76,24 @@ export function HowSuggestionsWork({
             Dismiss. Dismissing still counts against the month, because the text was generated.
           </dd>
           <dt className="font-mono text-xs">Ctrl+Shift+D</dt>
-          <dd>Draft a whole section from your pinned sources.</dd>
+          <dd>Draft a whole section from your library.</dd>
         </dl>
 
         <h3 className="mt-5 font-medium">Assist and Draft are different things</h3>
         <p className="mt-2">
           <strong>Assist</strong> writes the next sentence or two in your voice, from what is around
-          the cursor and the passages of your pinned sources that match it. It is quick and you use
-          it often.
+          the cursor and the passages of your library that match it — or only of the sources you
+          pinned, if you pinned some. It is quick and you use it often.
         </p>
         <p className="mt-2">
-          <strong>Draft</strong> writes a first pass at a section from your outline and pinned
-          sources. It arrives tinted, as a block you read and then accept or discard as a whole. It
+          <strong>Draft</strong> writes a first pass at a section from your outline and your
+          library. It arrives tinted, as a block you read and then accept or discard as a whole. It
           uses the stronger model, so the monthly allowance is small.
         </p>
         <p className="mt-2">
           Both only see what you have given them: this chapter, your outline and glossary, and the
-          sources you pinned. They cannot cite a paper that is not in your library, and if they try,
-          the citation is removed before you see it.
+          papers in your library. They cannot cite a paper that is not in your library, and if they
+          try, the citation is removed before you see it.
         </p>
 
         {documentId ? (

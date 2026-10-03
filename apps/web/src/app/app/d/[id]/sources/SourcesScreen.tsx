@@ -48,17 +48,27 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'full' | 'unresolved'>('all');
   const [tab, setTab] = useState<'library' | 'discover'>('library');
+  // `?tab=discover` opens on Discover: the editor's empty library links straight to it. Read after
+  // mount — on the server there is no address bar, and a state initialiser runs there.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'discover') setTab('discover');
+  }, []);
+  /** The chapter to go back to; the screen had no way back to writing (2026-10-04). */
+  const [writeHref, setWriteHref] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [doc, rows] = await Promise.all([
-        api<{ title: string }>(`/documents/${documentId}`),
+        api<{ title: string; chapters?: Array<{ id: string }> }>(`/documents/${documentId}`),
         api<Source[]>(`/documents/${documentId}/sources`),
       ]);
       setTitle(doc.title);
       setSources(rows);
+      setError(null);
+      const first = doc.chapters?.[0]?.id;
+      if (first) setWriteHref(`/app/d/${documentId}/write/${first}`);
     } catch (e) {
       if (e instanceof ApiError && e.problem.status === 401) router.replace('/sign-in');
       else setError(e instanceof Error ? e.message : 'Could not load the library.');
@@ -180,7 +190,21 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     }
   }
 
-  if (!sources) return <p className="p-6 text-sm text-muted">Loading the library…</p>;
+  // A failed first load used to leave "Loading the library…" up for good (2026-10-04).
+  if (!sources) {
+    return error ? (
+      <div className="p-6 text-sm">
+        <p role="alert" className="text-warn">
+          {error}
+        </p>
+        <button type="button" className="mt-2 underline" onClick={() => void load()}>
+          Try again
+        </button>
+      </div>
+    ) : (
+      <p className="p-6 text-sm text-muted">Loading the library…</p>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -192,6 +216,15 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
         <span className="text-ink">{title}</span>
         <span>/</span>
         <span>Sources</span>
+        {writeHref ? (
+          <Link
+            href={writeHref}
+            data-testid="back-to-writing"
+            className="ml-auto font-medium text-accent hover:underline"
+          >
+            Back to writing →
+          </Link>
+        ) : null}
       </nav>
 
       <div className="flex flex-wrap items-baseline justify-between gap-4">

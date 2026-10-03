@@ -110,6 +110,9 @@ async function signIn(page: Page, request: APIRequestContext): Promise<void> {
 async function createThesis(page: Page, title: string): Promise<string> {
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();
+  // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  await page.goto('/app');
   await expect(page.getByRole('link', { name: title })).toBeVisible({ timeout: 20_000 });
 
   const href = await page
