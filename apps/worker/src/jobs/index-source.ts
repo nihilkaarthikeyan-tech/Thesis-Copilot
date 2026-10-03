@@ -279,11 +279,11 @@ async function fetchFromOpenAccess(
   log: (event: Record<string, unknown>) => void,
   sourceId: string,
 ): Promise<OpenAccessOutcome> {
-  let pdfUrl: string | null = null;
+  let pdfUrls: string[] = [];
   let unpaywallFailure: FullTextFailure | null = null;
   try {
     const location = await deps.unpaywall.bestOpenAccess(doi);
-    pdfUrl = location?.pdfUrl ?? null;
+    pdfUrls = location?.pdfUrls ?? (location?.pdfUrl ? [location.pdfUrl] : []);
   } catch (error) {
     // A placeholder contact address makes Unpaywall answer 422; the worker warns about that at boot.
     log({ msg: 'unpaywall lookup failed', sourceId, error: String(error) });
@@ -291,13 +291,22 @@ async function fetchFromOpenAccess(
   }
 
   if (!unpaywallFailure) {
-    const result = await fetchOpenAccessPdf(pdfUrl);
-    if (result.ok) return { ok: true, bytes: result.bytes, via: 'unpaywall' };
-    unpaywallFailure = result.reason;
+    // ADR-0050: every copy Unpaywall lists, best first, until one is a real PDF (at most four,
+    // so a paper with a dozen mirrors does not cost a dozen downloads).
+    if (pdfUrls.length === 0) unpaywallFailure = 'no-location';
+    for (const url of pdfUrls.slice(0, 4)) {
+      const result = await fetchOpenAccessPdf(url);
+      if (result.ok) {
+        if (url !== pdfUrls[0]) log({ msg: 'full text from a second open copy', sourceId, url });
+        return { ok: true, bytes: result.bytes, via: 'unpaywall' };
+      }
+      unpaywallFailure ??= result.reason;
+    }
   }
 
   // The fallback. Only reached once Unpaywall has failed, and only when a key was configured.
-  if (!deps.core) return { ok: false, reason: unpaywallFailure };
+  const failure: FullTextFailure = unpaywallFailure ?? 'no-location';
+  if (!deps.core) return { ok: false, reason: failure };
 
   let coreUrl: string | null = null;
   try {
@@ -309,9 +318,9 @@ async function fetchFromOpenAccess(
   } catch (error) {
     // An invalid key answers 401; the fallback is best-effort, so the Unpaywall verdict stands.
     log({ msg: 'core lookup failed', sourceId, error: String(error) });
-    return { ok: false, reason: unpaywallFailure };
+    return { ok: false, reason: failure };
   }
-  if (!coreUrl) return { ok: false, reason: unpaywallFailure };
+  if (!coreUrl) return { ok: false, reason: failure };
 
   const result = await fetchOpenAccessPdf(coreUrl);
   if (result.ok) {

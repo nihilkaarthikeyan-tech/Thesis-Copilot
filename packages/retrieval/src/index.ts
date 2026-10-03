@@ -165,6 +165,7 @@ export {
   parseBibtex,
   parseRis,
 } from './scholarly/bibliography.js';
+export { INDEX_BUDGET, type SearchFn, searchWithinBudget } from './scholarly/budget.js';
 export {
   CORE_REQUESTS_PER_SECOND,
   CORE_SEARCH_LIMIT,

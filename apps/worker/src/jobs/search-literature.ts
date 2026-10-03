@@ -35,6 +35,7 @@ import {
   type OpenAlexDiscovery,
   type PubMedClient,
   type SemanticScholarClient,
+  searchWithinBudget,
   type ThemeDensity,
   themeQuery,
 } from '@tc/retrieval';
@@ -314,27 +315,36 @@ async function discover(
     { name: 'pubmed', client: deps.pubmed },
     { name: 'arxiv', client: deps.arxiv },
   ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
+  //    ADR-0050: each index has a time budget, so a slow or rate-limited one (arXiv) cannot hold
+  //    the run; one index failing or running out of time loses its results, never the run.
   const perIndex = await Promise.all(
     indexes.map(async ({ name, client }) => {
-      const found: DiscoveredWork[][] = [];
-      for (const query of queries) {
-        try {
-          found.push(await client.search(query.q, now()));
-        } catch (error) {
-          // One index failing loses its results, never the run.
-          log({ level: 40, msg: `${name} query failed`, q: query.q, error: String(error) });
-          found.push([]);
-        }
-      }
+      const found = await searchWithinBudget(
+        queries.map((q) => q.q),
+        (q, signal) => client.search(q, now(), signal),
+        { onSkip: (q, reason) => log({ level: 40, msg: `${name} query skipped`, q, reason }) },
+      );
       record.counts[name] = found.reduce((n, list) => n + list.length, 0);
       return found;
     }),
   );
+  //    ADR-0050: one OpenAlex semantic search with the whole scope — papers that share the idea,
+  //    not only the words. Its results go first, so `mergeWorks` keeps OpenAlex's record.
+  const semantic = await searchWithinBudget(
+    [`${scope.workingTitle}. ${scope.problemStatement} ${scope.objectives.join(' ')}`],
+    (q, signal) =>
+      typeof deps.openalex.semanticSearch === 'function'
+        ? deps.openalex.semanticSearch(q, now(), signal)
+        : Promise.resolve([]),
+    { onSkip: (_q, reason) => log({ level: 40, msg: 'openalex semantic skipped', reason }) },
+  );
+  record.counts.semantic = semantic[0]?.length ?? 0;
   // Query by query, OpenAlex first within each: `mergeWorks` keeps the first record it sees of a
   // paper, and OpenAlex's is the one with a citation count and an open-access status.
-  const lists: DiscoveredWork[][] = queries.flatMap((_, q) =>
-    perIndex.map((found) => found[q] ?? []),
-  );
+  const lists: DiscoveredWork[][] = [
+    ...semantic,
+    ...queries.flatMap((_, q) => perIndex.map((found) => found[q] ?? [])),
+  ];
   record.counts.fetched = lists.reduce((n, l) => n + l.length, 0);
 
   // 3. Merge, drop what is already in the library.

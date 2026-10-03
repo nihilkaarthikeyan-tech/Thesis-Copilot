@@ -288,7 +288,12 @@ async function main(): Promise<void> {
     // the API take turns through one slot each in Redis rather than a limiter apiece.
     arxiv: new ArxivClient({
       mailto: env.OPENALEX_MAILTO,
-      gate: sharedGate('arxiv', gateStore, 'scholarly:slot:arxiv', ARXIV.intervalMs),
+      // ADR-0050: a run waits at most 15 s for arXiv's one-request-per-3-s slot and tries twice;
+      // under load the slot was a queue that held every search behind it.
+      attempts: 2,
+      gate: sharedGate('arxiv', gateStore, 'scholarly:slot:arxiv', ARXIV.intervalMs, {
+        maxWaitMs: 15_000,
+      }),
     }),
     pubmed: new PubMedClient({
       mailto: env.OPENALEX_MAILTO,

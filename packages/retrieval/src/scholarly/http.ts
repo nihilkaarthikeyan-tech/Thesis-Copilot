@@ -172,12 +172,15 @@ export class ScholarlyHttp {
         lastError = new ScholarlyError(this.service, response.status, `HTTP ${response.status}`);
         if (attempt < this.attempts && retryable(response.status)) {
           const retryAfter = Number(response.headers.get('retry-after'));
-          await this.pause(
+          const waitMs =
             Number.isFinite(retryAfter) && retryAfter > 0
               ? retryAfter * 1000
-              : 2 ** (attempt - 1) * 500,
-            signal,
-          );
+              : 2 ** (attempt - 1) * 500;
+          // ADR-0050: a service that says "come back in an hour" (OpenAlex when the day's budget
+          // is spent answers 429 with the seconds to midnight UTC) is a failure now, not a wait:
+          // honouring it left a literature search on "Searching…" for as long as it asked.
+          if (waitMs > MAX_RETRY_AFTER_MS) throw lastError;
+          await this.pause(waitMs, signal);
           continue;
         }
         throw lastError;
@@ -189,6 +192,13 @@ export class ScholarlyHttp {
     throw lastError ?? new ScholarlyError(this.service, null, 'exhausted retries');
   }
 }
+
+/**
+ * The longest `Retry-After` a request will wait out; anything longer fails the request. Two
+ * minutes keeps OpenAlex's 60 s "busy" pause (2026-09-25) waited out in the background, and
+ * refuses the hours a spent daily budget asks for.
+ */
+export const MAX_RETRY_AFTER_MS = 120_000;
 
 /**
  * The part of a Redis client `sharedGate` needs — ioredis's `SET key value PX ms NX`. Structural,

@@ -590,13 +590,22 @@ ${papersFor(c.topic)
 async function main(): Promise<void> {
   const name = process.argv[2] as PromptName;
   const samples = Number(process.argv[process.argv.indexOf('--samples') + 1] || 1) || 1;
+  // --model <id>: B is the *current* prompt on another fast-tier model (2026-10-04, choosing the
+  // Assist model). Without it, B is `eval/candidates/<name>.md` on the same model, as before.
+  const modelB = process.argv.includes('--model')
+    ? process.argv[process.argv.indexOf('--model') + 1]
+    : undefined;
   const candidatePath = join(here, 'candidates', `${name}.md`);
-  if (!existsSync(candidatePath)) throw new Error(`No candidate at ${candidatePath}`);
-  const candidate = readFileSync(candidatePath, 'utf8');
+  if (!modelB && !existsSync(candidatePath)) throw new Error(`No candidate at ${candidatePath}`);
+  const candidate = modelB ? null : readFileSync(candidatePath, 'utf8');
 
   const env = loadEnv();
   const meter = metered(createProviders(env).llm);
   const llm = meter.llm;
+  // The judge and side A stay on the configured models; only side B's fast tier changes.
+  const meterB = modelB ? metered(createProviders({ ...env, AI_FAST_MODEL: modelB }).llm) : meter;
+  const llmB = meterB.llm;
+  if (modelB) console.log(`A: ${env.AI_FAST_MODEL}   B: ${modelB}   judge: ${env.AI_STRONG_MODEL}`);
   const only = process.argv.includes('--only')
     ? process.argv[process.argv.indexOf('--only') + 1]
     : undefined;
@@ -609,13 +618,18 @@ async function main(): Promise<void> {
   const scores = { a: 0, b: 0 };
   const stats = { a: { empty: 0, cited: 0, dropped: 0 }, b: { empty: 0, cited: 0, dropped: 0 } };
   let n = 0;
+  const timing = { a: [] as number[], b: [] as number[] };
 
   for (const c of cases) {
     for (let s = 0; s < samples; s++) {
       overridePrompt(name, null);
+      const startA = Date.now();
       const a = await safely(llm, c, 'current');
+      timing.a.push(Date.now() - startA);
       overridePrompt(name, candidate);
-      const b = await safely(llm, c, 'candidate');
+      const startB = Date.now();
+      const b = await safely(llmB, c, 'candidate');
+      timing.b.push(Date.now() - startB);
       overridePrompt(name, null);
 
       const j1 = await steadyJudge(llm, c, a.shown, b.shown);
@@ -663,7 +677,9 @@ async function main(): Promise<void> {
     offeredNothing: { current: stats.a.empty, candidate: stats.b.empty },
     sentencesFiltered: { current: stats.a.dropped, candidate: stats.b.dropped },
     failedCalls: failures,
-    spentRupees: meter.rupees(),
+    medianMs: { current: median(timing.a), candidate: median(timing.b) },
+    ...(modelB ? { models: { current: env.AI_FAST_MODEL, candidate: modelB } } : {}),
+    spentRupees: +(meter.rupees() + (modelB ? meterB.rupees() : 0)).toFixed(2),
   };
   console.log(JSON.stringify(summary, null, 2));
   mkdirSync(join(here, 'results'), { recursive: true });
@@ -671,7 +687,7 @@ async function main(): Promise<void> {
     join(
       here,
       'results',
-      `${name}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`,
+      `${name}${modelB ? `-vs-${modelB}` : ''}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`,
     ),
     `${JSON.stringify({ summary, rows }, null, 2)}\n`,
   );
@@ -692,4 +708,9 @@ async function steadyJudge(llm: LlmProvider, c: Case, first: string, second: str
     }
   }
   return { better: 'EQUAL' as const, firstScore: 0, secondScore: 0, reason: 'judge failed twice' };
+}
+
+function median(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length === 0 ? 0 : (s[Math.floor(s.length / 2)] ?? 0);
 }

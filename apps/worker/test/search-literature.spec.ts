@@ -187,6 +187,7 @@ describe('discover', () => {
       'notInLibrary',
       'openalex',
       'queries',
+      'semantic',
       'themeQueries',
       'themes',
       'thin',

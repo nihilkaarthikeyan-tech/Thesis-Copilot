@@ -370,6 +370,7 @@ describe('UnpaywallClient (FR-2.2)', () => {
 
     expect(location).toEqual({
       pdfUrl: 'https://example.org/paper.pdf',
+      pdfUrls: ['https://example.org/paper.pdf'],
       landingUrl: 'https://example.org/paper',
       oaStatus: 'gold',
       isOa: true,
@@ -377,12 +378,46 @@ describe('UnpaywallClient (FR-2.2)', () => {
     expect(calls[0]).toContain('email=you%40example.com');
   });
 
+  it('ADR-0050: lists every copy with a PDF, best first, when the best location has none', async () => {
+    const { fn } = fakeFetch([
+      {
+        match: 'api.unpaywall.org/v2/',
+        body: {
+          is_oa: true,
+          oa_status: 'green',
+          best_oa_location: { url_for_pdf: null, url: 'https://repo.example/record/1' },
+          oa_locations: [
+            { url_for_pdf: null, url: 'https://repo.example/record/1' },
+            { url_for_pdf: 'https://author.example/paper.pdf', url: 'https://author.example' },
+            {
+              url_for_pdf: 'https://publisher.example/paper.pdf',
+              url: 'https://publisher.example',
+            },
+            { url_for_pdf: 'https://author.example/paper.pdf', url: 'https://author.example' },
+          ],
+        },
+      },
+    ]);
+    const location = await new UnpaywallClient(options(fn)).bestOpenAccess('10.1/ccc');
+    expect(location?.pdfUrls).toEqual([
+      'https://author.example/paper.pdf',
+      'https://publisher.example/paper.pdf',
+    ]);
+    expect(location?.pdfUrl).toBe('https://author.example/paper.pdf');
+  });
+
   it('reports a closed-access record without a PDF', async () => {
     const { fn } = fakeFetch([
       { match: 'api.unpaywall.org/v2/', body: { is_oa: false, oa_status: 'closed' } },
     ]);
     const location = await new UnpaywallClient(options(fn)).bestOpenAccess('10.1/bbb');
-    expect(location).toEqual({ pdfUrl: null, landingUrl: null, oaStatus: 'closed', isOa: false });
+    expect(location).toEqual({
+      pdfUrl: null,
+      pdfUrls: [],
+      landingUrl: null,
+      oaStatus: 'closed',
+      isOa: false,
+    });
   });
 });
 

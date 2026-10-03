@@ -60,6 +60,15 @@ function reasons(modelId: string): boolean {
 }
 
 /**
+ * The effort that turns thinking off. `gpt-5`, `gpt-5-mini` and `gpt-5-nano` call it `minimal`;
+ * the later `gpt-5.x` models (5.1 onwards) refuse `minimal` with a 400 and call it `none`
+ * (2026-10-04: every gpt-5.4-nano call in the Assist comparison failed on it).
+ */
+export function noThinking(modelId: string): 'minimal' | 'none' {
+  return /^gpt-5\.\d/.test(modelId.trim().toLowerCase()) ? 'none' : 'minimal';
+}
+
+/**
  * Room to think, on top of the action's own answer budget, for a model that reasons.
  *
  * `maxTokens` in every builder bounds the *answer*: Assist's 120 tokens is "a sentence or two, not
@@ -212,7 +221,7 @@ export class OpenAiLlmProvider implements LlmProvider {
     // gpt-4o-* and gpt-4.1-* take no reasoning key, and log "not supported" for each one they are
     // sent. A warning on every call is how real warnings stop being read.
     if (reasons(this.models[tier])) {
-      openai.reasoningEffort = tier === 'fast' ? 'minimal' : 'low';
+      openai.reasoningEffort = tier === 'fast' ? noThinking(this.models[tier]) : 'low';
     }
     if (!strict) openai.strictJsonSchema = false;
     return { openai };

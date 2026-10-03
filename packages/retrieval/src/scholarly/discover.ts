@@ -33,7 +33,16 @@ export const DISCOVER = {
   perQuery: 25,
   /** FR-2.8: "`cited_by` (top 10)". */
   citedByTop: 10,
-  types: 'article|preprint|book-chapter',
+  /**
+   * ADR-0050: every kind of work a thesis cites. The list was article, preprint and book-chapter
+   * only, which silently removed conference papers (most of computer science and much of
+   * engineering — ResNet is a `conference-paper`), review articles (the best start for a
+   * literature review), dissertations and books. Reports and standards stay out: they are mostly
+   * grey literature a discipline should opt into.
+   */
+  types: 'article|review|conference-paper|preprint|book-chapter|book|dissertation',
+  /** OpenAlex's semantic search returns at most 50 and allows one request a second. */
+  semanticTop: 50,
 } as const;
 
 type OpenAlexWork = {
@@ -107,10 +116,14 @@ export class OpenAlexDiscovery {
     );
   }
 
-  /** FR-2.5: one keyword query → up to 25 recent articles, preprints and chapters. */
+  /** FR-2.5: one keyword query → up to 25 recent works of the kinds a thesis cites. */
   async search(query: string, now = new Date(), signal?: AbortSignal): Promise<DiscoveredWork[]> {
     const from = now.getUTCFullYear() - DISCOVER.yearsBack;
-    const filter = encodeURIComponent(`type:${DISCOVER.types},from_publication_date:${from}-01-01`);
+    // `is_retracted:false` (ADR-0050): OpenAlex carries Retraction Watch's list; a retracted paper
+    // is never worth offering as a candidate.
+    const filter = encodeURIComponent(
+      `type:${DISCOVER.types},from_publication_date:${from}-01-01,is_retracted:false`,
+    );
     const url = this.base(
       `filter=${filter}&search=${encodeURIComponent(openAlexSearchText(query))}`,
       DISCOVER.perQuery,
@@ -152,9 +165,40 @@ export class OpenAlexDiscovery {
     });
   }
 
+  /**
+   * ADR-0050: OpenAlex's semantic search — the thesis scope as a paragraph, matched by meaning
+   * against the embedded titles and abstracts of the whole index (up to 2,000 characters in, 50
+   * works out). Keyword queries find papers that share our words; this finds the ones that share
+   * the idea. Measured 2026-10-04 on "barriers to rooftop solar PV adoption among Indian
+   * households": semantic search's top results were household-adoption studies in Kerala and
+   * Pakistan, the keyword search's were pilots in South Africa. Same price as `search=`.
+   *
+   * Semantic search accepts `publication_year` but not `from_publication_date`, and cannot be
+   * sorted; relevance is its order.
+   */
+  async semanticSearch(
+    text: string,
+    now = new Date(),
+    signal?: AbortSignal,
+  ): Promise<DiscoveredWork[]> {
+    const from = now.getUTCFullYear() - DISCOVER.yearsBack;
+    const filter = encodeURIComponent(
+      `publication_year:>${from - 1},type:${DISCOVER.types},has_abstract:true,is_retracted:false`,
+    );
+    const q = openAlexSearchText(text).slice(0, 2_000);
+    const url =
+      `https://api.openalex.org/works?per-page=${DISCOVER.semanticTop}&select=${SELECT}` +
+      `&mailto=${encodeURIComponent(this.http.mailto)}&filter=${filter}` +
+      `&search.semantic=${encodeURIComponent(q)}`;
+    const body = await this.http.getJson<OpenAlexList>(url, signal);
+    return (body?.results ?? []).map(fromOpenAlex).filter((w): w is DiscoveredWork => w !== null);
+  }
+
   /** FR-2.8: the works that cite this one, most cited first. */
   async citedBy(openalexId: string, signal?: AbortSignal): Promise<DiscoveredWork[]> {
-    const filter = encodeURIComponent(`cites:${openalexId},type:${DISCOVER.types}`);
+    const filter = encodeURIComponent(
+      `cites:${openalexId},type:${DISCOVER.types},is_retracted:false`,
+    );
     const url = this.base(`filter=${filter}&sort=cited_by_count:desc`, DISCOVER.citedByTop);
     const body = await this.http.getJson<OpenAlexList>(url, signal);
     return (body?.results ?? []).map(fromOpenAlex).filter((w): w is DiscoveredWork => w !== null);

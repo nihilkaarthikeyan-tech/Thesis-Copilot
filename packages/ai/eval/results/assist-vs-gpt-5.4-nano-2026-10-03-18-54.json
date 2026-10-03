@@ -1,0 +1,372 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 30,
+    "wins": {
+      "current": 28,
+      "candidate": 1,
+      "tie": 1
+    },
+    "meanScore": {
+      "current": 7.65,
+      "candidate": 2.43
+    },
+    "answeredWithCitation": {
+      "current": 30,
+      "candidate": 0
+    },
+    "offeredNothing": {
+      "current": 0,
+      "candidate": 30
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 30
+    },
+    "medianMs": {
+      "current": 1466,
+      "candidate": 470
+    },
+    "models": {
+      "current": "gpt-5-nano",
+      "candidate": "gpt-5.4-nano"
+    },
+    "spentRupees": 5.4
+  },
+  "rows": [
+    {
+      "case": "edm-hastelloy-1",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, graphite tool electrodes have become prevalent due to low cost, good machinability, and high sublimation temperature, and recent work shows that electrode grain size influences MRR, TWR, and Ra in Hastelloy C-22, with finer grains reducing roughness but potentially increasing wear under certain conditions (Nowicki et al. 2022). Furthermore, studies applying cryogenic treatments and process parameter optimization indicate peak current, pulse-on time, and material state as key drivers of performance metrics in EDM of nickel-based alloys, suggesting potential pathways to balance removal efficiency and tool wear for Hastelloy components (Nas & Kara 2022).",
+      "b": "",
+      "aRaw": "However, graphite tool electrodes have become prevalent due to low cost, good machinability, and high sublimation temperature, and recent work shows that electrode grain size influences MRR, TWR, and Ra in Hastelloy C-22, with finer grains reducing roughness but potentially increasing wear under certain conditions {{cite:S1#c1}}. Furthermore, studies applying cryogenic treatments and process parameter optimization indicate peak current, pulse-on time, and material state as key drivers of performance metrics in EDM of nickel-based alloys, suggesting potential pathways to balance removal efficiency and tool wear for Hastelloy components {{cite:S2#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, sourced claims about graphite electrode grain size and key EDM parameters, and cites relevant studies (Nowicki et al. and Nas & Kara). However it misstates the Nowicki findings: Nowicki reports that larger-grain graphite yields higher process efficiency and higher relative tool wear, while finer-grained graphite produces the lowest surface roughness. The candidate’s phrase “finer grains ... potentially increasing wear” is therefore inaccurate. Despite this error, the sentence is substantive and grounded in the literature rather than generic filler. The second candidate offered nothing, which is non-harmful but unhelpful for the literature review.",
+      "reason2": "FIRST offered nothing; while silence avoids misinformation, it fails to advance the literature review. SECOND makes specific, source-supported statements: it correctly cites Nowicki et al. on graphite prevalence and the effect of electrode grain size (finer grain → lower Ra but trade-offs in wear) and Nas & Kara on the importance of peak current, pulse-on time, and material state. The second candidate is concise, technical, and directly relevant to the thesis gap, matching the sources’ claims."
+    },
+    {
+      "case": "edm-hastelloy-1",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, graphite tool electrodes are increasingly favored due to low cost and high sublimation temperature, with studies showing that finer graphite grains reduce surface roughness while coarse grains can enhance material removal rate but at the expense of higher tool wear (Nowicki et al. 2022). Electrical discharge machining with graphite electrodes of 1 µm grain (AF-5) and 10 µm grain (S-180) demonstrates that discharge current and pulse duration chiefly govern MRR and Ra, whereas grain size influences tool wear and discharge stability, suggesting a grain-size–dependent trade-off in Hastelloy C-22 processing (Nowicki et al. 2022) (Nowicki et al. 2024).",
+      "b": "",
+      "aRaw": "However, graphite tool electrodes are increasingly favored due to low cost and high sublimation temperature, with studies showing that finer graphite grains reduce surface roughness while coarse grains can enhance material removal rate but at the expense of higher tool wear {{cite:S1#c1}}. Electrical discharge machining with graphite electrodes of 1 µm grain (AF-5) and 10 µm grain (S-180) demonstrates that discharge current and pulse duration chiefly govern MRR and Ra, whereas grain size influences tool wear and discharge stability, suggesting a grain-size–dependent trade-off in Hastelloy C-22 processing {{cite:S1#c1}} {{cite:S3#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, source-supported technical statements (mentions POCO AF-5 and S-180 grain sizes, effects on MRR, TWR, Ra, and the role of discharge current and pulse duration) and correctly cites Nowicki et al. 2022/2024—reading like a completed literature-summary sentence. The second candidate offers nothing and is therefore unhelpful.",
+      "reason2": "The first candidate offered nothing — which is safe but unhelpful for a literature review. The second candidate makes specific, sourced technical claims that match the supplied references (effects of graphite grain size on Ra, MRR and TWR; role of discharge current and pulse duration; trade-offs and discharge stability) and reads like finished review text rather than vague filler. Citations align with the content, so the second is substantially stronger."
+    },
+    {
+      "case": "edm-hastelloy-2",
+      "sample": 0,
+      "verdict": "B",
+      "a": "However, studies show that graphite electrodes can reduce wear compared with copper under certain EDM conditions, while grain size notably influences both wear and surface roughness in Hastelloy C-22. (Nowicki et al. 2024) (Nowicki et al. 2022)",
+      "b": "",
+      "aRaw": "However, studies show that graphite electrodes can reduce wear compared with copper under certain EDM conditions, while grain size notably influences both wear and surface roughness in Hastelloy C-22. {{cite:S3#c1}} {{cite:S1#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The FIRST candidate makes a partly accurate point about graphite grain size affecting wear and surface roughness (correctly reflecting Nowicki et al. 2022/2024) but also includes an unsupported, specific comparative claim that graphite reduces wear compared with copper — that comparison is not supported by the provided sources. It thus contains a factual overreach and a misleading unsupported claim, so rates low. The SECOND candidate offered nothing; while unhelpful, it avoids making incorrect or unsupported claims and is therefore preferable to the incorrect sentence. However, an empty contribution is still not a strong thesis sentence, so it receives a middling score.",
+      "reason2": "The first candidate (no addition) is acceptable because it avoids introducing incorrect or unsupported claims; while offering nothing is not ideal, it is preferable to adding misleading content. The second candidate makes a specific claim that graphite electrodes \"can reduce wear compared with copper under certain EDM conditions,\" which is not supported by the provided source summaries. Although the Nowicki papers do support that graphite grain size influences MRR, TWR, and Ra in Hastelloy C-22, they do not substantiate a graphite-vs-copper comparison; thus the sentence contains an unsupported assertion and an inaccurate use of citations. The second candidate is therefore worse."
+    },
+    {
+      "case": "edm-hastelloy-2",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, recent work shows that graphite electrodes with finer grain sizes reduce tool wear and improve process stability in EDM of Hastelloy C-22, implicating grain size as a key driver of wear and surface outcomes (Nowicki et al. 2024). Conversely, larger grain graphite can enhance material removal efficiency but at the expense of higher relative wear, indicating a trade-off between MRR and TWR that warrants further systematic comparison of composite versus conventional electrode materials (Nowicki et al. 2022).",
+      "b": "",
+      "aRaw": "However, recent work shows that graphite electrodes with finer grain sizes reduce tool wear and improve process stability in EDM of Hastelloy C-22, implicating grain size as a key driver of wear and surface outcomes {{cite:S3#c1}}. Conversely, larger grain graphite can enhance material removal efficiency but at the expense of higher relative wear, indicating a trade-off between MRR and TWR that warrants further systematic comparison of composite versus conventional electrode materials {{cite:S1#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate gives specific, source-supported, technical statements that match the cited papers ( Nowicki et al. 2024 and 2022 ), notes the grain-size trade-off between MRR and TWR, and reads like a finished literature-review statement. The second candidate offered nothing and therefore provides no contribution.",
+      "reason2": "The second candidate provides accurate, source-supported claims that directly follow from the student text: it correctly cites Nowicki et al. (2024) on finer-grained graphite reducing tool wear and improving process effectiveness, and Nowicki et al. (2022) on larger-grain graphite increasing MRR but raising relative tool wear, framing a clear trade-off and a gap motivating comparison with composite electrodes. The wording is concise and appropriate for a literature review, though it could be improved by adding specific grain-size numbers or quantified outcomes. The first candidate offers nothing and therefore, while not harmful, contributes little to the chapter."
+    },
+    {
+      "case": "edm-hastelloy-3",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, the literature consistently shows that graphitic electrodes can enhance process efficiency while incurring higher wear under certain conditions, with grain size and discharge parameters playing decisive roles in both material removal and surface texture (Nowicki et al. 2022) (Nowicki et al. 2024). In contrast, other studies indicate that cryogenic treatment and process parameter optimization can significantly influence Ra and MRR, underscoring the sensitivity of surface integrity to both tool material and machining settings (Nas & Kara 2022).",
+      "b": "",
+      "aRaw": "However, the literature consistently shows that graphitic electrodes can enhance process efficiency while incurring higher wear under certain conditions, with grain size and discharge parameters playing decisive roles in both material removal and surface texture {{cite:S1#c1}} {{cite:S3#c1}}. In contrast, other studies indicate that cryogenic treatment and process parameter optimization can significantly influence Ra and MRR, underscoring the sensitivity of surface integrity to both tool material and machining settings {{cite:S2#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate provides a concise, accurate, and source-supported summary that matches the cited papers (Nowicki et al. on graphite grain size effects and trade-off between efficiency and wear; Nas & Kara on cryogenic treatment effects on Ra and MRR). It reads as a legitimate literature-synthesis sentence appropriate for a literature review. The second candidate offers nothing, which is unhelpful for the thesis.",
+      "reason2": "First: offering nothing is minimally harmful compared with incorrect or generic filler, but it contributes nothing to the literature review and so scores low. Second: the two sentences accurately summarize key findings from the provided sources (Nowicki et al. 2022/2024 on graphite grain size effects; Nas & Kara 2022 on cryogenic treatment and parameter sensitivity). The text is concise and correctly cited, and it follows from the student sentence about surface integrity. It is somewhat general (lacks technical specifics such as numeric conditions, measured Ra/MRR/TWR values, or explicit gaps), so it is not a top-tier thesis sentence, but it is a useful, correct continuation of the literature review."
+    },
+    {
+      "case": "edm-hastelloy-3",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, graphite electrodes reveal a trade-off between process efficiency and tool wear, with larger grain sizes yielding higher MRR but at the cost of greater TWR, while finer grains reduce wear and improve surface finish in Hastelloy C-22 EDM. (Nowicki et al. 2022) (Nowicki et al. 2024)",
+      "b": "",
+      "aRaw": "However, graphite electrodes reveal a trade-off between process efficiency and tool wear, with larger grain sizes yielding higher MRR but at the cost of greater TWR, while finer grains reduce wear and improve surface finish in Hastelloy C-22 EDM. {{cite:S1#c1}} {{cite:S3#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes a specific, technical claim about the trade-off between graphite grain size, MRR, TWR and surface finish and cites relevant Nowicki sources that contain those findings; it reads like a literature-summary sentence rather than filler. The only minor issue is that Nowicki 2024 emphasizes benefits of fine-grained graphite for efficiency as well as wear, so nuances between the two Nowicki papers could be flagged, but the sentence accurately captures the primary experimental observations (larger grains → higher MRR but higher TWR; finer grains → lower Ra/less wear) and therefore is high-quality. The second candidate offers nothing, which is safer than incorrect filler but provides no contribution to the review.",
+      "reason2": "The second candidate makes a concise, specific, and supported technical claim that matches the cited sources (Nowicki et al. 2022, 2024) about the trade-off between graphite grain size, MRR, TWR, and surface finish in EDM of Hastelloy C-22. The first candidate offers nothing and therefore provides no value to the literature review."
+    },
+    {
+      "case": "slm-maraging-1",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, this feature is accompanied by a distinctive microstructure arising from rapid cooling and layer-wise build strategy, which influences subsequent heat-treatment responses and corrosion behaviour. (Tan et al. 2018) (Khan et al. 2022)",
+      "b": "",
+      "aRaw": "However, this feature is accompanied by a distinctive microstructure arising from rapid cooling and layer-wise build strategy, which influences subsequent heat-treatment responses and corrosion behaviour. {{cite:S3#c1}} {{cite:S4#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The FIRST sentence makes a specific, supportable technical claim that follows the student text and correctly cites sources: Tan et al. (2018) documents extremely high cooling rates and resulting microstructure and layer-wise effects, and Khan et al. (2022) discusses how AM-induced microstructures affect heat-treatment response and corrosion. It is concise, relevant, and appropriate for a literature review. The SECOND candidate offers nothing and is therefore unhelpful.",
+      "reason2": "First: offering nothing avoids incorrect or filler content, but provides no added value for a literature review — hence a low score. Second: the sentence correctly and concisely links SLM’s rapid cooling and layer-wise build to distinctive microstructure and downstream effects on heat treatment and corrosion; the cited sources (Tan et al. 2018 on high cooling rates and microstructure, Khan et al. 2022 on layer-wise effects and corrosion) support these claims. The sentence is slightly general but accurate and appropriate for the literature review, so it scores moderately high."
+    },
+    {
+      "case": "slm-maraging-1",
+      "sample": 1,
+      "verdict": "A",
+      "a": "Furthermore, the as-built microstructure of SLM maraging steels strongly depends on rapid solidification, which promotes the formation of fine precipitates and a martensitic matrix that underpin high strength, while leaving potential residual stresses and porosity that influence corrosion behaviour (Tan et al. 2018). In addition, heat treatments tailored to promote Ni3X precipitates and relieve residual stresses can modify corrosion resistance, as evidenced by studies showing altered pitting behavior and overall corrosion performance after aging and intercritical tempering in maraging steels processed by SLM (Tan et al. 2018)(Khan et al. 2022)",
+      "b": "",
+      "aRaw": "Furthermore, the as-built microstructure of SLM maraging steels strongly depends on rapid solidification, which promotes the formation of fine precipitates and a martensitic matrix that underpin high strength, while leaving potential residual stresses and porosity that influence corrosion behaviour {{cite:S3#c1}}. In addition, heat treatments tailored to promote Ni3X precipitates and relieve residual stresses can modify corrosion resistance, as evidenced by studies showing altered pitting behavior and overall corrosion performance after aging and intercritical tempering in maraging steels processed by SLM {{cite:S3#c1}}{{cite:S4#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first response makes specific, technical claims that are supported by the provided sources (Tan et al. 2018 for rapid solidification, fine Ni3X precipitates, martensitic matrix and residual stress relief by heat treatment; Khan et al. 2022 for altered pitting behaviour after intercritical tempering). It reads like a finished literature-review statement, not generic filler. The second candidate offered nothing, which is unhelpful.",
+      "reason2": "First candidate offered nothing; while harmless, it provides no added value to the literature review. The second candidate makes specific, relevant technical claims (rapid solidification → fine precipitates and martensitic matrix; residual stresses/porosity; heat treatments promoting Ni3X precipitates and modifying corrosion/pitting behaviour) and cites appropriate sources (Tan et al. 2018 and Khan et al. 2022) that support these points. The phrasing is concise and reads like finished text rather than a plan, though it is slightly high-level in places (e.g., porosity influence could be more precisely quantified). Overall the second is a solid, correctly cited contribution to the literature review."
+    },
+    {
+      "case": "slm-maraging-2",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, in maraging steels produced by selective laser melting, heat treatment not only strengthens the martensitic matrix through precipitation of Ni-based intermetallics but also influences corrosion behaviour by altering residual stresses, phase fractions, and the distribution of strengthening precipitates. (Tan et al. 2018) (Khan et al. 2022)",
+      "b": "",
+      "aRaw": "However, in maraging steels produced by selective laser melting, heat treatment not only strengthens the martensitic matrix through precipitation of Ni-based intermetallics but also influences corrosion behaviour by altering residual stresses, phase fractions, and the distribution of strengthening precipitates. {{cite:S3#c1}} {{cite:S4#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, technical claims that follow from the provided sources: Tan et al. 2018 documents Ni3X precipitates and heat-treatment strengthening and stress relief, and Khan et al. 2022 links heat-treatment-driven phase changes (reversed austenite/phase fractions) to corrosion performance. The sentence is concise, on-topic for the literature review, and cites appropriate sources. It could be improved by adding numerical details (temperatures, precipitate size/density, quantified corrosion outcomes), but it is a substantially useful thesis-level sentence. The second candidate offers nothing and is therefore unhelpful.",
+      "reason2": "The first candidate offered nothing; while non-harmful and preferable to incorrect filler, it provides no value to the literature review. The second candidate makes a specific, supported statement: Tan et al. (2018) documents Ni-based nanoprecipitates and relief of residual stresses after heat treatment, and Khan et al. (2022) links heat-treatment-induced phase changes (reversed austenite) to altered corrosion/pitting behaviour. The sentence appropriately connects precipitation, residual stress and phase-fraction changes to corrosion, and cites relevant sources. It could be improved by adding more quantitative detail (temperatures, precipitate types/sizes, or corrosion metrics), but it is a solid, correctly cited literature-review sentence rather than generic filler."
+    },
+    {
+      "case": "slm-maraging-2",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, in maraging steels processed by SLM, heat treatment markedly alters the precipitation state and residual stresses, which in turn influence corrosion performance in chloride environments (Tan et al. 2018). For instance, Tan et al. report that heat treatments can relieve residual stress and modify corrosion resistance compared with traditionally produced counterparts, while Khan et al. show that intercritical aging promoting reversed austenite can enhance pitting resistance (Tan et al. 2018) (Khan et al. 2022).",
+      "b": "",
+      "aRaw": "However, in maraging steels processed by SLM, heat treatment markedly alters the precipitation state and residual stresses, which in turn influence corrosion performance in chloride environments {{cite:S3#c1}}. For instance, Tan et al. report that heat treatments can relieve residual stress and modify corrosion resistance compared with traditionally produced counterparts, while Khan et al. show that intercritical aging promoting reversed austenite can enhance pitting resistance {{cite:S3#c1}} {{cite:S4#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, source-supported technical claims: it correctly links heat treatment in SLM maraging steel to changes in precipitation state, residual stress relief and impacts on corrosion (citing Tan et al. 2018) and to improved pitting resistance via reversed austenite (citing Khan et al. 2022). Citations match the sources and the wording reads like finished literature-review text rather than vague filler. It could be slightly more specific (temperatures, precipitate types or quantitative corrosion metrics) but is well grounded. The second candidate provided no content, which—while better than incorrect filler—is unhelpful for the thesis.",
+      "reason2": "FIRST offered nothing, which is unhelpful—better than incorrect filler but still not contributing (low score). SECOND provides concise, source-backed statements that match the cited papers: Tan et al. (2018) report stress relief and changes in corrosion behavior after heat treatment of SLM maraging steel, and Khan et al. (2022) show intercritical aging producing reversed austenite improves pitting resistance in NaCl. The sentences are specific, relevant to the thesis topic, and cite appropriate studies, so they represent a strong, usable literature-review sentence (though brief), hence a high score."
+    },
+    {
+      "case": "slm-maraging-3",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, several analyses indicate that heat treatment and reversed austenite formation can markedly influence corrosion resistance in maraging steels produced by SLM, with certain intercritical treatments yielding higher pitting potentials and lower corrosion currents in NaCl environments (Khan et al. 2022) (Tan et al. 2018). Furthermore, reviews on AM steels note that the unique AM microstructure, including fine precipitates and in situ transformations, can enhance corrosion resistance relative to conventional counterparts, though ductility and fatigue remain challenging (Haghdadi et al. 2020).",
+      "b": "",
+      "aRaw": "However, several analyses indicate that heat treatment and reversed austenite formation can markedly influence corrosion resistance in maraging steels produced by SLM, with certain intercritical treatments yielding higher pitting potentials and lower corrosion currents in NaCl environments {{cite:S4#c1}} {{cite:S3#c1}}. Furthermore, reviews on AM steels note that the unique AM microstructure, including fine precipitates and in situ transformations, can enhance corrosion resistance relative to conventional counterparts, though ductility and fatigue remain challenging {{cite:S6#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, technical claims that match the sources: it correctly cites Khan et al. (2022) for the beneficial effect of an intercritical treatment/reversed austenite on pitting behaviour in NaCl, and cites Haghdadi et al. (2020) for the review conclusion that AM microstructures (fine precipitates, in‑situ transformations) can improve corrosion resistance versus conventional steels. The reference to Tan et al. 2018 is plausible in context (they compared corrosion of as-fabricated and heat-treated SLM maraging steel), though the sentence slightly groups sources (Khan and Tan) under the single point about intercritical treatments; overall the candidate reads like a finished literature-review statement, not filler. The second candidate offered nothing, which is less useful than the cited, specific summary.",
+      "reason2": "The first candidate offers nothing, which is unhelpful in a literature review. The second candidate makes specific, correct, and relevant claims supported by the provided sources: Khan et al. (2022) does report that intercritical treatment producing reversed austenite improved pitting resistance in 3.5 wt% NaCl, and Haghdadi et al. (2020) reasonably summarize that AM microstructures (fine precipitates, in situ transformations) can enhance corrosion resistance versus conventional steels. While the second could be more technical (e.g., temperatures, quantitative corrosion metrics), it is accurate, cited correctly, and appropriate for a literature-review paragraph, so it is substantially better than offering nothing."
+    },
+    {
+      "case": "slm-maraging-3",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, several studies indicate that the corrosion behavior of maraging steels produced by SLM is influenced by heat-treatment-induced microstructural changes, including precipitation and residual stress relief, which can alter passivation and pitting resistance in chloride environments (Tan et al. 2018) (Khan et al. 2022). Furthermore, recent work shows that reversed austenite formation during intercritical tempering can enhance pitting resistance, evidenced by higher pitting potentials and lower corrosion rates in 720°C-tempered specimens (Khan et al. 2022).",
+      "b": "",
+      "aRaw": "However, several studies indicate that the corrosion behavior of maraging steels produced by SLM is influenced by heat-treatment-induced microstructural changes, including precipitation and residual stress relief, which can alter passivation and pitting resistance in chloride environments {{cite:S3#c1}} {{cite:S4#c1}}. Furthermore, recent work shows that reversed austenite formation during intercritical tempering can enhance pitting resistance, evidenced by higher pitting potentials and lower corrosion rates in 720°C-tempered specimens {{cite:S4#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, technical claims tied to the available sources and accurately cites Khan et al. (2022) and Tan et al. (2018). It notes the role of heat-treatment-driven precipitation and residual stress relief and correctly summarizes Khan et al.’s finding that reversed austenite at ~720 °C improves pitting resistance with higher pitting potentials and lower corrosion rates—reading like finished literature-review text. The second candidate is empty and therefore unhelpful; while not harmful, it provides no content for the review.",
+      "reason2": "The second candidate provides specific, technical, and cited statements that accurately reflect the sources (Tan et al. 2018 reports precipitates, residual-stress relief and corrosion characterization; Khan et al. 2022 shows reversed austenite improves pitting resistance in 3.5% NaCl and reports higher pitting potentials/lower corrosion rates at 720°C). It reads as a finished literature-review sentence and is directly relevant. The first candidate offered nothing; while avoiding incorrect claims, it adds no value to the review and is substantially weaker than the cited, specific second sentence."
+    },
+    {
+      "case": "rooftop-solar-india-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "However, household adoption remains constrained by upfront costs, despite policy incentives and subsidies designed to offset these barriers (Parsad et al. 2020). Evidence from Kerala-based survey data underscores that subsidies act as a primary motivator by reducing perceived investment risk, while ongoing concerns about maintenance costs dampen long-term adoption intent (Parsad et al. 2020).",
+      "b": "",
+      "aRaw": "However, household adoption remains constrained by upfront costs, despite policy incentives and subsidies designed to offset these barriers {{cite:S3#c1}}. Evidence from Kerala-based survey data underscores that subsidies act as a primary motivator by reducing perceived investment risk, while ongoing concerns about maintenance costs dampen long-term adoption intent {{cite:S3#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate cites Parsad et al. 2020 correctly on the role of subsidies reducing perceived investment risk, but then asserts that maintenance concerns dampen long-term adoption — which contradicts Parsad et al. (which reports low maintenance cost as a motivator). That misrepresentation and slight overgeneralisation reduce its reliability. The second candidate offered nothing; per the rubric, silence is preferable to incorrect or filler claims. An empty response is not helpful but avoids making inaccurate or unsupported statements, so it rates higher than the first.",
+      "reason2": "The first candidate offers nothing; while non-harmful, it neither advances the literature review nor provides citation-backed content. The second candidate provides concise, source-accurate, specific claims drawn from Parsad et al. (2020) about subsidies reducing perceived investment risk and maintenance-cost concerns—appropriate, relevant, and consistent with the source, fitting a literature-review style."
+    },
+    {
+      "case": "rooftop-solar-india-1",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, evidence from the Indian context identifies cost, subsidies, awareness, and policy design as key determinants shaping household decisions to adopt rooftop PV. (Parsad et al. 2020) (Goel 2016)",
+      "b": "",
+      "aRaw": "However, evidence from the Indian context identifies cost, subsidies, awareness, and policy design as key determinants shaping household decisions to adopt rooftop PV. {{cite:S3#c1}} {{cite:S1#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate offers a concise, correct, and properly cited claim linking Indian evidence to the listed determinants (Parsad et al. 2020; Goel 2016). It is minimal and somewhat generic—lacks technical specifics (numbers, methods, populations) and reads more like a summary sentence than a fully developed literature-review paragraph—so it is not top-tier but is useful and accurate. The second candidate offers nothing, which is unhelpful and scores lowest by the rubric.",
+      "reason2": "FIRST offered nothing, which is safe but unhelpful for a literature review; per guidance this is better than incorrect filler but still far from a useful thesis text. SECOND provides a concise, accurate summary that aligns with the sources (Parsad et al. 2020 identifies cost, subsidies, awareness; Goel 2016 discusses policy instruments and targets). It is somewhat generic and not sufficiently technical (no numbers, methods, or specific findings), so it is not a finished strong thesis paragraph, but it is correct and appropriately cited."
+    },
+    {
+      "case": "rooftop-solar-india-2",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, evidence linking upfront costs and access to finance to adoption decisions remains mixed across contexts. For instance, SEM-based analyses identify subsidies as primary motivators that help overcome initial investment risk, while other studies emphasize low prices and maintenance costs as important financial motivators. (Parsad et al. 2020) (Parsad et al. 2020)",
+      "b": "",
+      "aRaw": "However, evidence linking upfront costs and access to finance to adoption decisions remains mixed across contexts. For instance, SEM-based analyses identify subsidies as primary motivators that help overcome initial investment risk, while other studies emphasize low prices and maintenance costs as important financial motivators. {{cite:S3#c1}} {{cite:S3#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "First: Provides a relevant point and cites Parsad et al. 2020 which does report subsidies, low prices and maintenance as financial motivators; however the claim that evidence is “mixed across contexts” is not supported by the provided source and the sentence is lightly repetitive (same citation twice) and not sufficiently specific (no numbers, populations, or methods cited). This yields a mid-level score. Second: Offered nothing — while avoiding incorrect claims, it provides no help and is therefore scored low.",
+      "reason2": "The first candidate offered nothing; while non-response is preferable to incorrect or filler text, it provides no added literature synthesis or specific evidence and therefore scores low. The second candidate supplies substantive claims and cites Parsad et al. (2020), and those cited findings (subsidies as a key motivator; importance of low prices and maintenance costs; use of SEM/ANN) align with the source. However the phrasing is somewhat generic, makes a broader claim about evidence being \"mixed across contexts\" without support from the provided sources, and repeats the same citation unnecessarily. Thus the second is better but not fully polished or sufficiently specific to be a strong thesis-level literature review sentence."
+    },
+    {
+      "case": "rooftop-solar-india-2",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, subsidies act as primary motivators that help overcome the initial risk of investment in rooftop PV, highlighting the central role of policy in shaping household decisions (Parsad et al. 2020).",
+      "b": "",
+      "aRaw": "However, subsidies act as primary motivators that help overcome the initial risk of investment in rooftop PV, highlighting the central role of policy in shaping household decisions {{cite:S3#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate provides a concise, correctly cited claim directly supported by Parsad et al. (2020) that subsidies are primary motivators for rooftop PV adoption, which is relevant and accurate for the literature review. It is not overly generic or speculative. The second candidate offers nothing; while omission is preferable to incorrect or filler content, it contributes no substance and is therefore much weaker.",
+      "reason2": "The second candidate provides a concise, correctly cited, and relevant claim directly supported by Parsad et al. (2020) — that subsidies are primary motivators reducing initial investment risk — which follows from the student text about financial barriers. It is specific and aligned with the source. The first candidate offered nothing; while harmless compared with incorrect or generic filler, it is less helpful than a correctly cited, substantive sentence. The second could be improved further by adding concrete numbers, contextualizing for rural Indian households, or triangulating with additional sources, but as-is it is a strong, usable literature-review sentence."
+    },
+    {
+      "case": "rooftop-solar-india-3",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, the literature identifies that trust and awareness interact with policy design, influencing adoption decisions beyond price considerations. (Parsad et al. 2020) Substantial evidence shows subsidies act as primary motivators and that knowledge and awareness barriers can dampen investment, signaling that effective policy must pair financial incentives with information dissemination (Parsad et al. 2020).",
+      "b": "",
+      "aRaw": "However, the literature identifies that trust and awareness interact with policy design, influencing adoption decisions beyond price considerations. {{cite:S3#c1}} Substantial evidence shows subsidies act as primary motivators and that knowledge and awareness barriers can dampen investment, signaling that effective policy must pair financial incentives with information dissemination {{cite:S3#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate provides a concise, correctly cited summary of Parsad et al. (2020) noting that subsidies motivate adoption and that knowledge/awareness barriers affect investment decisions. It is slightly generic and makes a mild unsupported claim about trust interacting with policy design (trust is not strongly evidenced in the cited source), and it lacks technical detail (no numbers, sample specifics, or concrete policy implications), so it is not top-tier but is useful. The second candidate offers nothing, which is unhelpful.",
+      "reason2": "FIRST (empty) offers no content; while offering nothing is preferable to incorrect or filler text, it provides no added value to the literature review. SECOND provides correctly cited, relevant claims that align with Parsad et al. (2020): it notes that subsidies are primary motivators and that knowledge/awareness barriers matter, and it links these findings to policy design. The wording is somewhat general (could be more specific about effect sizes, sample, or mechanisms), but it is accurate, supported by the source, and useful for the chapter—hence a substantially higher score."
+    },
+    {
+      "case": "rooftop-solar-india-3",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, studies indicate that trust in installers and awareness of available schemes shape adoption decisions alongside price considerations, with perceived reliability and knowledge gaps acting as additional barriers or motivators in the Indian context (Parsad et al. 2020) (Goel 2016). This interplay suggests that policy design must pair financial incentives with credible information and credible market actors to convert interest into uptake (Parsad et al. 2020).",
+      "b": "",
+      "aRaw": "However, studies indicate that trust in installers and awareness of available schemes shape adoption decisions alongside price considerations, with perceived reliability and knowledge gaps acting as additional barriers or motivators in the Indian context {{cite:S3#c1}} {{cite:S1#c1}}. This interplay suggests that policy design must pair financial incentives with credible information and credible market actors to convert interest into uptake {{cite:S3#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate is a modestly useful literature-review sentence: it correctly cites Parsad et al. (2020) for the role of awareness/knowledge and links policy incentives to non‑financial barriers (which Parsad discusses). However it remains fairly generic and lacks specific, technical detail (e.g., sample sizes, measured effect sizes, exact mechanisms or policy instruments) that would mark a strong thesis-level paragraph. The second candidate offers nothing, which is unhelpful.",
+      "reason2": "The first candidate offered nothing; while non-harmful, it provides no added value for a literature review. The second candidate gives two concise sentences that cite relevant sources and correctly reflect key findings from Parsad et al. (2020) about the roles of subsidies, awareness, and technical/knowledge barriers, and reasonably invokes Goel (2016) regarding the Indian policy context. The wording is somewhat general but is accurate and useful for the chapter; citations are appropriate and not misleading."
+    },
+    {
+      "case": "mhealth-diabetes-1",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, evidence on their effectiveness for glycaemic control remains mixed, with some trials showing no HbA1c benefit in real-world settings despite high engagement in focused subgroups. (Agarwal et al. 2018) (Cafazzo et al. 2012)",
+      "b": "",
+      "aRaw": "However, evidence on their effectiveness for glycaemic control remains mixed, with some trials showing no HbA1c benefit in real-world settings despite high engagement in focused subgroups. {{cite:S6#c1}} {{cite:S2#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate provides a concise, evidence-based statement that aligns with the cited studies: Agarwal et al. (2018) reported no overall HbA1c benefit in a pragmatic RCT and noted subgroup/usage effects, and Cafazzo et al. (2012) documented increased engagement (monitoring frequency) though not demonstrated HbA1c improvement in a small pilot. The sentence is appropriately specific, cites sources, and reads like a finished literature-review claim. The second candidate offers nothing; while silence avoids incorrect or filler material, it adds no value to the review and therefore scores low.",
+      "reason2": "The first candidate offered nothing; while non-harmful, it provides no substantive contribution to the literature review and so rates low. The second candidate makes a concise, specific, and accurate claim about mixed evidence for glycaemic outcomes and correctly cites Agarwal et al. 2018 (pragmatic RCT showing no overall HbA1c benefit but an association between usage and HbA1c and site-level differences) and Cafazzo et al. 2012 (pilot showing behavior change but noting that demonstrating HbA1c improvements requires larger/longer studies). The sentence reads like finished thesis text, is relevant to the student’s topic, and is supported by the sources, so it scores substantially higher."
+    },
+    {
+      "case": "mhealth-diabetes-1",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, systematic reviews indicate mixed effects on glycemic outcomes, with some studies showing improved self-monitoring behaviors and engagement but inconsistent or modest HbA1c improvements across diverse populations (Zhao et al. 2016). Contextual factors, including app design features, user engagement strategies, and site-specific implementation, appear to mediate usage and effectiveness, underscoring the need for high-quality trials that link usage patterns to clinical outcomes (Agarwal et al. 2018) (Peng et al. 2016).",
+      "b": "",
+      "aRaw": "However, systematic reviews indicate mixed effects on glycemic outcomes, with some studies showing improved self-monitoring behaviors and engagement but inconsistent or modest HbA1c improvements across diverse populations {{cite:S4#c1}}. Contextual factors, including app design features, user engagement strategies, and site-specific implementation, appear to mediate usage and effectiveness, underscoring the need for high-quality trials that link usage patterns to clinical outcomes {{cite:S6#c1}} {{cite:S5#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, evidence-based statements and cites appropriate sources that support each claim: Zhao et al. (2016) summarizes mixed and biased evidence for app-driven behavior change, Agarwal et al. (2018) reports a pragmatic RCT with no overall HbA1c benefit but a dose–response link between days of use and HbA1c and site-level variability, and Peng et al. (2016) documents design- and engagement-related factors that influence continued use. The wording is concise, technical, and appropriate for a literature-review paragraph. The second candidate offers nothing, which is preferable to incorrect filler but is unhelpful for the thesis.",
+      "reason2": "The second candidate produces concise, supported claims that match the sources: it correctly characterizes mixed/behavioral effects of health apps and notes inconsistent HbA1c impact (consistent with Zhao et al. 2016 and Agarwal et al. 2018) and links effectiveness to design, engagement and contextual/site factors (supported by Peng et al. 2016 and Agarwal et al. 2018). It is specific, cites appropriate studies, and reads like finished literature review text. The first candidate offered nothing and therefore provides no value."
+    },
+    {
+      "case": "mhealth-diabetes-2",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, in pragmatic and real-world settings, HbA1c effects appear variable and sometimes modest, with one multicenter trial showing no significant HbA1c difference at 3 months despite high variability in app usage across sites (Agarwal et al. 2018). The qualitative and design-oriented studies suggest that sustained engagement hinges on user-centric features, ongoing feedback, and integration with care processes, but direct causal links to glycemic outcomes remain inconsistent across populations (Peng et al. 2016)(Zhao et al. 2016).",
+      "b": "",
+      "aRaw": "However, in pragmatic and real-world settings, HbA1c effects appear variable and sometimes modest, with one multicenter trial showing no significant HbA1c difference at 3 months despite high variability in app usage across sites {{cite:S6#c1}}. The qualitative and design-oriented studies suggest that sustained engagement hinges on user-centric features, ongoing feedback, and integration with care processes, but direct causal links to glycemic outcomes remain inconsistent across populations {{cite:S5#c1}}{{cite:S4#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, verifiable statements tied to the cited studies: it accurately reports Agarwal et al.'s pragmatic RCT result (no significant HbA1c difference at 3 months and site-specific variability in usage) and correctly synthesizes user-centered themes from Peng and Zhao (features like feedback, usability, personalization and clinician integration). It reads like finished literature review text and avoids generic filler. The second candidate offers nothing and therefore provides no value to the thesis.",
+      "reason2": "The second candidate provides specific, accurate, and source-linked statements that match the available studies: it correctly summarizes Agarwal et al. (2018) finding no significant HbA1c difference at 3 months and site-related variability in usage, and it correctly synthesizes themes from Peng et al. (2016) and Zhao et al. (2016) about user-centered features and inconsistent links between engagement and glycemic outcomes. The sentences read like finished literature review text and are appropriately concise. The first candidate offered nothing, which—while preferable to incorrect or filler content—is far less useful than the well-cited, precise second candidate."
+    },
+    {
+      "case": "mhealth-diabetes-2",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, across these trials, improvements in HbA1c are not consistently demonstrated; while some studies report modest or site-dependent reductions, others show no significant glycemic benefit, and adherence to app usage often modulates observed effects (Agarwal et al. 2018) (Cafazzo et al. 2012). Furthermore, several analyses highlight that engagement, including frequency of use and dose of interaction with the app, correlates with observed changes in self-management behaviors and, in some cases, with glycemic outcomes, suggesting that sustained use is a key mediator of any potential benefit (Peng et al. 2016) (Agarwal et al. 2018).",
+      "b": "",
+      "aRaw": "However, across these trials, improvements in HbA1c are not consistently demonstrated; while some studies report modest or site-dependent reductions, others show no significant glycemic benefit, and adherence to app usage often modulates observed effects {{cite:S6#c1}} {{cite:S2#c1}}. Furthermore, several analyses highlight that engagement, including frequency of use and dose of interaction with the app, correlates with observed changes in self-management behaviors and, in some cases, with glycemic outcomes, suggesting that sustained use is a key mediator of any potential benefit {{cite:S5#c1}} {{cite:S6#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, verifiable claims that match the provided sources: it correctly states that trials show inconsistent HbA1c effects, notes site-dependent usage and that adherence/engagement mediates outcomes (Agarwal et al. 2018 supports no overall HbA1c effect and site/usage differences; Cafazzo et al. 2012 documents increased monitoring but not demonstrated HbA1c improvement; Peng et al. 2016 supports factors affecting engagement). The wording is concise, technical, and appropriate for a literature review. The second candidate offers nothing, which is non-harmful but unhelpful and clearly inferior to the properly cited, specific first candidate.",
+      "reason2": "The second candidate provides concise, technical statements that accurately summarize trial findings and mechanisms, cites relevant sources (Agarwal et al. 2018; Peng et al. 2016; Cafazzo et al. 2012) and links engagement/adherence to outcomes—matching the available evidence and reading like finished literature review text. The first candidate offered nothing and is therefore unhelpful."
+    },
+    {
+      "case": "mhealth-diabetes-3",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, qualitative and quantitative analyses indicate that initial engagement is often driven by usability and perceived usefulness, while sustained use hinges on ongoing perceived benefit, personalization, and integration with care routines, as reflected in studies showing variable adherence and usage patterns across sites (Peng et al. 2016) (Agarwal et al. 2018).",
+      "b": "",
+      "aRaw": "However, qualitative and quantitative analyses indicate that initial engagement is often driven by usability and perceived usefulness, while sustained use hinges on ongoing perceived benefit, personalization, and integration with care routines, as reflected in studies showing variable adherence and usage patterns across sites {{cite:S5#c1}} {{cite:S6#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes a specific, supported claim and cites relevant studies: Peng et al. identify usability, perceived usefulness, personalization and barriers/motivators for continued use, and Agarwal et al. demonstrate variable app usage across sites and an association between days of use and HbA1c. The sentence reads as a concise literature-synthesis statement appropriate for a review. The second candidate offers nothing, which is unhelpful.",
+      "reason2": "The first candidate offered nothing; while non-harmful, it adds no evidence or synthesis and is not useful for a literature review. The second candidate concisely synthesizes findings about drivers of initial versus sustained engagement and correctly cites Peng et al. (2016) for qualitative themes (usability, personalization, motivators) and Agarwal et al. (2018) for variable usage across sites and the link between usage and outcomes. It is appropriately evidence-based and directly relevant to the student sentence, though it could be expanded with specific numbers or more direct quotes from the studies for greater technical depth."
+    },
+    {
+      "case": "mhealth-diabetes-3",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, qualitative and quantitative evidence suggests that sustained engagement hinges on design features that support ongoing self-management tasks, real-time feedback, and alignment with users’ information needs and routines (Zhao et al. 2016) (Peng et al. 2016). In real-world settings, variability in usage across sites indicates that contextual factors and implementation conditions strongly shape long-term app use, beyond initial adoption (Agarwal et al. 2018).",
+      "b": "",
+      "aRaw": "However, qualitative and quantitative evidence suggests that sustained engagement hinges on design features that support ongoing self-management tasks, real-time feedback, and alignment with users’ information needs and routines {{cite:S4#c1}} {{cite:S5#c1}}. In real-world settings, variability in usage across sites indicates that contextual factors and implementation conditions strongly shape long-term app use, beyond initial adoption {{cite:S6#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate provides concise, evidence-based statements that follow naturally from the student sentence and correctly cite sources that support the claims: Zhao et al. (2016) identified app features (real-time feedback, individualized elements, low time burden) associated with effectiveness; Peng et al. (2016) mapped user-facing barriers and motivators relevant to continued use; Agarwal et al. (2018) reported substantial site-level variability in app usage in a pragmatic trial. The wording reads like finished literature-review prose rather than a plan or generic filler. The second candidate offers nothing; while withholding incorrect or filler content is preferable to making unsupported claims, it is unhelpful for the student compared with the well-supported first candidate.",
+      "reason2": "The second candidate provides specific, sourced claims that correctly reflect the cited studies: Zhao et al. (2016) identifies app features (real-time feedback, individualized elements) tied to effectiveness, Peng et al. (2016) documents design and engagement themes including barriers to continued use, and Agarwal et al. (2018) reports site-level variability in real-world app usage. These sentences read as polished literature-review content and follow from the student text. The first candidate offered nothing, which is non-misleading but unhelpful for a literature review."
+    },
+    {
+      "case": "microfinance-women-1",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, evidence from mixed-method studies shows that while microfinance-backed entrepreneurship improves multiple empowerment indicators, the gains are uneven across dimensions and contexts (Khan et al. 2022). For instance, entrepreneurial activity enhances economic, social, political, and psychological empowerment but yields smaller or ambiguous effects on political and social empowerment, suggesting that credit alone may not fully translate into broader empowerment without supportive institutional and cultural conditions (Khan et al. 2022).",
+      "b": "",
+      "aRaw": "However, evidence from mixed-method studies shows that while microfinance-backed entrepreneurship improves multiple empowerment indicators, the gains are uneven across dimensions and contexts {{cite:S1#c1}}. For instance, entrepreneurial activity enhances economic, social, political, and psychological empowerment but yields smaller or ambiguous effects on political and social empowerment, suggesting that credit alone may not fully translate into broader empowerment without supportive institutional and cultural conditions {{cite:S1#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate succinctly and accurately summarizes Khan et al. (2022), correctly reflecting its mixed-method findings that entrepreneurship improves multiple empowerment indicators but with smaller effects for political and social dimensions; it draws a justified inference about limits of credit alone without introducing unsupported claims. The second candidate offers nothing, which is unhelpful for the literature review (better than incorrect filler but far inferior to the substantive, correctly cited first candidate).",
+      "reason2": "The first candidate offered nothing—neutral but unhelpful for a literature review. The second candidate provides precise, sourced statements that accurately reflect Khan et al. (2022): it notes mixed-method evidence, specifies uneven gains across empowerment dimensions, and correctly highlights smaller effects on political and social empowerment. The concluding claim that credit alone may be insufficient is a valid synthesis (concise, evidence-based) and reads as finished thesis prose rather than filler."
+    },
+    {
+      "case": "microfinance-women-1",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, the evidence shows that while microfinance-backed entrepreneurship can enhance economic and some aspects of empowerment, its effects on political and social empowerment are more limited and context-dependent (Khan et al. 2022). Moreover, analyses of the broader microfinance landscape indicate that profitability and sustainability do not automatically translate into greater client empowerment, underscoring the need to consider institutional design and social context when evaluating outcomes (Cull et al. 2009).",
+      "b": "",
+      "aRaw": "However, the evidence shows that while microfinance-backed entrepreneurship can enhance economic and some aspects of empowerment, its effects on political and social empowerment are more limited and context-dependent {{cite:S1#c1}}. Moreover, analyses of the broader microfinance landscape indicate that profitability and sustainability do not automatically translate into greater client empowerment, underscoring the need to consider institutional design and social context when evaluating outcomes {{cite:S2#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate correctly cites and summarizes findings from Khan et al. (2022) about stronger economic but limited political/social empowerment and from Cull et al. (2009) about the limits of profitability translating into client empowerment; the statements are accurate and appropriately linked to the sources, though concise. The second candidate offers nothing and is therefore unhelpful.",
+      "reason2": "The second candidate provides concise, accurate, and cited syntheses that follow from the listed sources: the Khan et al. (2022) summary correctly reflects nuanced findings about stronger economic effects and weaker political/social impacts, and the Cull et al. (2009) point about institutional design, profitability, and limits of market solutions aligns with that source. While brief, these sentences are appropriate for a literature review and avoid generic filler. The first candidate offered nothing, which is safer than producing incorrect or vague claims but is unhelpful for a thesis chapter and therefore scores substantially lower."
+    },
+    {
+      "case": "microfinance-women-2",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, evidence suggests that financial access alone does not guarantee comprehensive empowerment or sustained business growth, as outcomes depend on how microfinance interacts with social norms, capabilities, and broader support structures. (Khan et al. 2022) (Haugh & Talwar 2014) (Banerjee & Jackson 2016)",
+      "b": "",
+      "aRaw": "However, evidence suggests that financial access alone does not guarantee comprehensive empowerment or sustained business growth, as outcomes depend on how microfinance interacts with social norms, capabilities, and broader support structures. {{cite:S1#c1}} {{cite:S3#c1}} {{cite:S5#c1}}",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes a concise, accurate claim that aligns with the provided sources: Khan et al. (2022) document limited and uneven empowerment effects and the need for control over businesses, Haugh & Talwar (2014) highlight the mediating role of social norms, and Banerjee & Jackson (2016) show microfinance can exacerbate vulnerabilities. While the sentence is somewhat general and not highly technical, it correctly synthesizes evidence and cites appropriate studies. The second candidate offers nothing and is therefore not useful.",
+      "reason2": "The first candidate offered nothing; while omission is preferable to incorrect or filler content, it gives no added value to the literature review. The second candidate supplies a concise, accurate claim that financial access alone is insufficient, and cites sources whose findings support that claim (Khan et al. on mixed empowerment outcomes, Haugh & Talwar on social norms constraining benefits, Banerjee & Jackson on negative effects such as indebtedness). It is somewhat generic and lacks methodological or numerical specificity that would make it a ‘strong thesis’ sentence, but it is correct and properly cited, so it is clearly better than offering nothing."
+    },
+    {
+      "case": "microfinance-women-2",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, evidence shows that microfinance alone yields mixed empowerment gains and that benefits materialize more fully when entrepreneurship is paired with supportive social norms and broader enabling conditions (Khan et al. 2022) (Haugh & Talwar 2014). This suggests the need to situate credit within a broader framework that attends to social context, institutional access, and ongoing capacity development to sustain women’s enterprise growth (Cull et al. 2009) (Banerjee & Jackson 2016).",
+      "b": "",
+      "aRaw": "However, evidence shows that microfinance alone yields mixed empowerment gains and that benefits materialize more fully when entrepreneurship is paired with supportive social norms and broader enabling conditions {{cite:S1#c1}} {{cite:S3#c1}}. This suggests the need to situate credit within a broader framework that attends to social context, institutional access, and ongoing capacity development to sustain women’s enterprise growth {{cite:S2#c1}} {{cite:S5#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The FIRST candidate provides a concise, well-supported pair of sentences that accurately reflect the cited literature: Khan et al. (2022) and Haugh & Talwar (2014) support the claim that microfinance’s empowerment effects are mixed and mediated by social norms; Cull et al. (2009) and Banerjee & Jackson (2016) justify situating credit within broader institutional and social supports. The phrasing is appropriate for a literature review (not future-tense filler) and the citations match the substance of the sources. It is slightly general rather than highly detailed (e.g., no concrete numbers or explicit mechanisms), hence not a perfect 10, but it is solid thesis-writing. The SECOND candidate offers nothing and therefore scores as minimally useful.",
+      "reason2": "FIRST (nothing): Offering nothing is safe but contributes nothing to the literature review; it is therefore weak as a thesis text. SECOND: The two sentences are concise, cite relevant sources whose findings match the claims, and link microcredit to social norms, institutional context, and broader risks—accurate and appropriate for a literature-review paragraph. It is somewhat high-level rather than highly technical (no sample sizes or numeric results), so not top-tier, but it is correct, cited, and directly builds on the student line that “access to credit is only part of the picture.”"
+    },
+    {
+      "case": "microfinance-women-3",
+      "sample": 0,
+      "verdict": "A",
+      "a": "However, evidence from the Indian context shows that microfinance-enabled entrepreneurship can correlate with broader empowerment, yet the magnitude and dimensions of this empowerment vary by social and cultural norms and by the structure of support beyond credit (Khan et al. 2022). For example, studies suggest that while entrepreneurship enhances economic and psychological indicators, political and social empowerment gains may be uneven, signaling the need for complementary interventions that address local norms and governance within self-help group frameworks (Khan et al. 2022).",
+      "b": "",
+      "aRaw": "However, evidence from the Indian context shows that microfinance-enabled entrepreneurship can correlate with broader empowerment, yet the magnitude and dimensions of this empowerment vary by social and cultural norms and by the structure of support beyond credit {{cite:S1#c1}}. For example, studies suggest that while entrepreneurship enhances economic and psychological indicators, political and social empowerment gains may be uneven, signaling the need for complementary interventions that address local norms and governance within self-help group frameworks {{cite:S1#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate makes specific, citation-supported claims that match Khan et al. (2022): it notes that microfinance-enabled entrepreneurship is associated with broader empowerment but that gains are stronger on economic and psychological dimensions than on political and social dimensions, and it draws a reasonable, relevant implication about needing complementary interventions within SHG contexts. It reads like finished literature-summary text rather than vague filler. The second candidate offers nothing and therefore provides no value to the review.",
+      "reason2": "The second candidate provides concise, specific, and correctly cited findings from Khan et al. (2022) that match the source (greater economic and psychological gains, weaker political/social effects) and draws a reasonable, evidence-backed implication about the need for complementary interventions. It reads like finished literature-review text rather than filler. The first candidate offered nothing; while offering nothing avoids producing incorrect content, it fails to advance the chapter and is therefore substantially less useful than the well-supported second option."
+    },
+    {
+      "case": "microfinance-women-3",
+      "sample": 1,
+      "verdict": "A",
+      "a": "However, evidence shows that the empowerment effects of microfinance-linked entrepreneurship are uneven across dimensions, suggesting that self-help groups alone may not guarantee sustained political or social empowerment without supportive institutional and cultural changes (Khan et al. 2022).",
+      "b": "",
+      "aRaw": "However, evidence shows that the empowerment effects of microfinance-linked entrepreneurship are uneven across dimensions, suggesting that self-help groups alone may not guarantee sustained political or social empowerment without supportive institutional and cultural changes {{cite:S1#c1}}.",
+      "bRaw": "FAILED: OpenAI stream failed",
+      "reason1": "The first candidate provides a concise, accurate, and relevant claim tied to the student sentence and cites Khan et al. (2022), which the source summary supports (the study finds stronger economic/psychological effects but relatively smaller social and political empowerment). The sentence makes a modest, defensible inference about limits of delivery via self-help groups and the need for broader institutional/cultural support; it is not generic filler and reads as a finished literature-review statement. The second candidate offers nothing, which is unhelpful in a literature review and scores near the bottom.",
+      "reason2": "First candidate offered nothing, which is unhelpful for a literature review (though preferable to incorrect or filler text). Second candidate makes a concise, relevant claim that directly follows the student sentence and cites Khan et al. (2022), which reports uneven empowerment impacts with smaller effects on political and social dimensions. The sentence slightly extrapolates—invoking the need for institutional and cultural changes—which goes beyond what Khan et al. explicitly state, and could have been supported by additional sources (e.g., Huis et al. or Haugh & Talwar). Overall the second is a specific, supported addition and reads like a finished literature-review sentence, so it is clearly better than offering nothing."
+    }
+  ]
+}

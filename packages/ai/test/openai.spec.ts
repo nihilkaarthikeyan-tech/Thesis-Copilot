@@ -22,7 +22,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { OpenAiLlmProvider, REASONING_HEADROOM } from '../src/providers/openai.js';
+import { noThinking, OpenAiLlmProvider, REASONING_HEADROOM } from '../src/providers/openai.js';
 import { LlmProviderError, type LlmRequest } from '../src/types.js';
 
 /** The OpenAI responses-API body, in the parts these tests read. */
@@ -134,6 +134,13 @@ describe('room to think', () => {
 
     expect(fast.bodies[0]?.reasoning?.effort).toBe('minimal');
     expect(strong.bodies[0]?.reasoning?.effort).toBe('low');
+  });
+
+  it('turns thinking off with "none" on a gpt-5.x model, which refuses "minimal"', async () => {
+    const fast = await capture(request({ tier: 'fast' }), 'stream', { fastModel: 'gpt-5.4-nano' });
+    expect(fast.bodies[0]?.reasoning?.effort).toBe('none');
+    expect(noThinking('gpt-5-nano')).toBe('minimal');
+    expect(noThinking('gpt-5.1-mini')).toBe('none');
   });
 
   it('sends no reasoning field to a model that has none', async () => {

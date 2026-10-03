@@ -189,6 +189,8 @@ type OpenAlexWork = {
   primary_location?: { source?: { id?: string; display_name?: string } };
   host_venue?: { display_name?: string };
   open_access?: { oa_status?: string };
+  /** ADR-0050: from Retraction Watch; was ignored, every OpenAlex record read as not retracted. */
+  is_retracted?: boolean;
   /** OpenAlex publishes abstracts only as a word -> positions map, for copyright reasons. */
   abstract_inverted_index?: Record<string, number[]>;
 };
@@ -234,7 +236,7 @@ export class OpenAlexClient {
       'https://api.openalex.org/works?per-page=' +
       perPage +
       // Verified against the live API: every one of these is an accepted `select` field.
-      '&select=id,doi,title,display_name,publication_year,cited_by_count,type,authorships,' +
+      '&select=id,doi,title,display_name,publication_year,cited_by_count,type,is_retracted,authorships,' +
       'primary_location,open_access,abstract_inverted_index' +
       '&mailto=' +
       encodeURIComponent(this.http.mailto) +
@@ -253,7 +255,10 @@ export class OpenAlexClient {
       'https://api.openalex.org/works?per-page=' +
       perPage +
       '&filter=' +
-      encodeURIComponent('type:article|preprint|book-chapter') +
+      // The kinds of work a thesis cites (ADR-0050; same list as `DISCOVER.types`).
+      encodeURIComponent(
+        'type:article|review|conference-paper|preprint|book-chapter|book|dissertation,is_retracted:false',
+      ) +
       '&select=id,doi,title,display_name,publication_year,abstract_inverted_index' +
       '&mailto=' +
       encodeURIComponent(this.http.mailto) +
@@ -482,6 +487,8 @@ async function enrichFromOpenAlex(
       venueOpenalexId: venueIdOf(work),
       oaStatus: work.open_access?.oa_status ?? best.oaStatus,
       citationCount: work.cited_by_count ?? best.citationCount,
+      // Crossref's retraction notice, or Retraction Watch's through OpenAlex: either is enough.
+      isRetracted: best.isRetracted || work.is_retracted === true,
       abstract: best.abstract ?? abstractFromInvertedIndex(work.abstract_inverted_index),
     };
   } catch {
@@ -535,7 +542,7 @@ export async function resolveByDoi(
         oaStatus: work.open_access?.oa_status ?? null,
         citationCount: work.cited_by_count ?? null,
         isPreprint: (work.type ?? '') === 'preprint',
-        isRetracted: false,
+        isRetracted: work.is_retracted === true,
         abstract: abstractFromInvertedIndex(work.abstract_inverted_index),
         score: 1,
         via: 'openalex',
@@ -613,7 +620,7 @@ export async function resolveReference(
       oaStatus: work.open_access?.oa_status ?? null,
       citationCount: work.cited_by_count ?? null,
       isPreprint: (work.type ?? '') === 'preprint',
-      isRetracted: false,
+      isRetracted: work.is_retracted === true,
       abstract: abstractFromInvertedIndex(work.abstract_inverted_index),
       score,
       via: 'openalex',
@@ -627,14 +634,27 @@ export async function resolveReference(
 // Unpaywall (FR-2.2)
 // ---------------------------------------------------------------------------------------------
 
+type UnpaywallLocation = {
+  url_for_pdf?: string | null;
+  url?: string;
+  host_type?: string;
+  version?: string;
+};
 type UnpaywallResponse = {
   is_oa?: boolean;
   oa_status?: string;
-  best_oa_location?: { url_for_pdf?: string; url?: string; host_type?: string; version?: string };
+  best_oa_location?: UnpaywallLocation;
+  oa_locations?: UnpaywallLocation[];
 };
 
 export type OpenAccessLocation = {
   pdfUrl: string | null;
+  /**
+   * ADR-0050: every PDF Unpaywall knows of, best first. The best location often has no PDF (a
+   * repository record page) while another — the publisher's, the author's — does; reading only
+   * the best one left such papers abstract-only.
+   */
+  pdfUrls: string[];
   landingUrl: string | null;
   oaStatus: string | null;
   isOa: boolean;
@@ -652,8 +672,13 @@ export class UnpaywallClient {
     const url = `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${encodeURIComponent(this.http.mailto)}`;
     const body = await this.http.getJson<UnpaywallResponse>(url, signal);
     if (!body) return null;
+    const pdfUrls = [body.best_oa_location, ...(body.oa_locations ?? [])]
+      .map((l) => l?.url_for_pdf ?? null)
+      .filter((u): u is string => typeof u === 'string' && u.length > 0)
+      .filter((u, i, all) => all.indexOf(u) === i);
     return {
-      pdfUrl: body.best_oa_location?.url_for_pdf ?? null,
+      pdfUrl: pdfUrls[0] ?? null,
+      pdfUrls,
       landingUrl: body.best_oa_location?.url ?? null,
       oaStatus: body.oa_status ?? null,
       isOa: body.is_oa === true,

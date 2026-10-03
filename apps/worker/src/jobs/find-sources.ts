@@ -28,10 +28,14 @@ import {
   monthlyAutoSearches,
 } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
-import { cosine, type DiscoveredWork, mergeWorks } from '@tc/retrieval';
+import { cosine, type DiscoveredWork, mergeWorks, searchWithinBudget } from '@tc/retrieval';
 import type { FindSourcesJob } from '@tc/types';
 
-type Searcher = { search(query: string, now?: Date): Promise<DiscoveredWork[]> };
+type Searcher = {
+  search(query: string, now?: Date, signal?: AbortSignal): Promise<DiscoveredWork[]>;
+  /** ADR-0050: OpenAlex only; a fake without it simply contributes nothing. */
+  semanticSearch?(text: string, now?: Date, signal?: AbortSignal): Promise<DiscoveredWork[]>;
+};
 
 export type FindSourcesDeps = {
   prisma: PrismaClient;
@@ -148,21 +152,23 @@ export async function runFindSources(
   // finds the field; the section's own words find the part being written. Every result is still
   // scored against the whole of `query` below, so the short searches cost no relevance.
   const searches = [thesis, job.query.slice(0, 300)].filter((q) => q.trim().length > 0);
+  // ADR-0050: a time budget per index, and one semantic search with the whole query.
   const lists = (
-    await Promise.all(
-      indexes.map(async ({ name, client }) => {
-        const found: DiscoveredWork[][] = [];
-        for (const q of searches) {
-          try {
-            found.push(await client.search(q, now));
-          } catch (error) {
-            log({ level: 40, msg: `${name} search failed`, error: String(error) });
-            found.push([]);
-          }
-        }
-        return found;
-      }),
-    )
+    await Promise.all([
+      searchWithinBudget(
+        [job.query.slice(0, 2_000)],
+        (q, signal) =>
+          deps.openalex.semanticSearch
+            ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal)
+            : Promise.resolve([]),
+        { onSkip: (_q, reason) => log({ level: 40, msg: 'openalex semantic skipped', reason }) },
+      ),
+      ...indexes.map(({ name, client }) =>
+        searchWithinBudget(searches, (q, signal) => client.search(q, now, signal), {
+          onSkip: (_q, reason) => log({ level: 40, msg: `${name} search skipped`, reason }),
+        }),
+      ),
+    ])
   ).flat();
 
   // 2. Not already in the library, and with an abstract: a paper with nothing to read cannot be

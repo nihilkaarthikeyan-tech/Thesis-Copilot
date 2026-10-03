@@ -4474,3 +4474,32 @@ service, nothing metered.
   $ pnpm --filter @tc/ui exec vitest run test/diagram.spec.ts   Tests 7 passed
   $ pnpm exec playwright test diagrams.spec.ts charts.spec.ts   3 passed
   ```
+
+## Using OpenAlex properly (2026-10-04, ADR-0050)
+
+An audit against OpenAlex's 2026 documentation and live calls. Discovery now includes conference
+papers, reviews, dissertations and books (it had silently excluded them — ResNet could never
+appear); adds one OpenAlex semantic search per run; skips and records retracted papers; tries
+every open copy Unpaywall lists; and no index can hold a search run past its time budget.
+
+- Also fixed: the OpenAI adapter sent reasoning effort `minimal` to every gpt-5 model; the gpt-5.x
+  models refuse it (`none`), so switching Assist to gpt-5.4-nano would have failed every call.
+- Evidence:
+  ```
+  discover run on real OpenAlex: openalex 50, semantic 50, merged 93, kept 60, filled 15, DONE
+  $ pnpm --filter @tc/retrieval exec vitest run   Tests 349 passed | 1 skipped
+  $ pnpm --filter @tc/worker exec vitest run      Tests 144 passed | 1 skipped
+  $ pnpm --filter @tc/ai exec vitest run test/openai.spec.ts   Tests 18 passed
+  $ pnpm exec playwright test gap-density.spec.ts               1 passed
+  ```
+
+## Choosing the Assist model, measured (2026-10-04)
+
+`packages/ai/eval/run.ts assist --samples 2 --model <id>`: the production Assist request on 15
+real cases × 2, both sides through production's post-processing, judged blind by gpt-5-mini in
+both orders. Against the current gpt-5-nano:
+
+| Candidate | Judge preferred (cur / cand / tie) | Mean score | Cited | Spent |
+|---|---|---|---|---|
+| gpt-4.1-mini | 8 / **14** / 8 | 6.95 → **8.03** | 29 → 30 | ₹14.68 |
+| gpt-5.4-nano (`none`) | 15 / 12 / 3 | 7.32 → 6.82 | 30 → 30 | ₹6.04 |
