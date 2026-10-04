@@ -3,8 +3,8 @@
  *
  * A new document owned by the same student, with its own copies of everything that is the
  * thesis: the chapters, the outline and memory, the settings (citation style, language,
- * template), the library — every source with its metadata, its chunks and their embeddings — the
- * seed papers, the pins and the citations. Never copied: shares, the read link, comments, usage,
+ * template), the library — every source with its metadata, its chunks and their embeddings, and
+ * the student's collections of them — the seed papers, the pins and the citations. Never copied: shares, the read link, comments, usage,
  * exports, version history, coherence flags, viva questions, chapter builds, search runs and
  * suggestion telemetry. Those belong to the original's history or its people, not to its text.
  *
@@ -67,18 +67,31 @@ export class DocumentCopier {
         },
         sources: { orderBy: { createdAt: 'asc' } },
         seedPapers: { orderBy: { createdAt: 'asc' } },
+        sourceCollections: {
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+          include: { items: { select: { sourceId: true } } },
+        },
       },
     });
     if (!original) throw new NotFoundError('That document');
 
     const ids = await this.newIds(
-      1 + original.chapters.length + original.sources.length + original.seedPapers.length,
+      1 +
+        original.chapters.length +
+        original.sources.length +
+        original.seedPapers.length +
+        original.sourceCollections.length,
     );
     const take = () => ids.shift() as string;
     const map = new Map<string, string>();
     const copyId = take();
     map.set(original.id, copyId);
-    for (const row of [...original.chapters, ...original.sources, ...original.seedPapers]) {
+    for (const row of [
+      ...original.chapters,
+      ...original.sources,
+      ...original.seedPapers,
+      ...original.sourceCollections,
+    ]) {
       map.set(row.id, take());
     }
     const idOf = (old: string) => map.get(old) as string;
@@ -180,6 +193,25 @@ export class DocumentCopier {
               )
               SELECT m.old_id::text AS "oldId", m.new_id::text AS "newId" FROM m`;
             for (const pair of chunkPairs) map.set(pair.oldId, pair.newId);
+          }
+
+          // The library's collections, with the copy's own ids for the folders and their papers.
+          if (original.sourceCollections.length > 0) {
+            await tx.sourceCollection.createMany({
+              data: original.sourceCollections.map((collection) => ({
+                id: idOf(collection.id),
+                documentId: copyId,
+                name: collection.name,
+                order: collection.order,
+              })),
+            });
+            const items = original.sourceCollections.flatMap((collection) =>
+              collection.items.map((item) => ({
+                collectionId: idOf(collection.id),
+                sourceId: idOf(item.sourceId),
+              })),
+            );
+            if (items.length > 0) await tx.sourceCollectionItem.createMany({ data: items });
           }
 
           if (original.seedPapers.length > 0) {

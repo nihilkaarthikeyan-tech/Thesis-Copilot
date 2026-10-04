@@ -245,6 +245,8 @@ model Document {
   shares      GuideShare[]
   /// ADR-0057: "anyone with the link can read" — at most one, absent unless the owner turns it on.
   shareLink   ShareLink?
+  /// 2026-10-04: the student's folders in the library ("Methods", "Chapter 2").
+  sourceCollections SourceCollection[]
   versions    DocumentVersion[]
   exportArtifacts ExportArtifact[]
   createdAt   DateTime @default(now())
@@ -339,9 +341,37 @@ model Source {
   pins           ChapterSourcePin[]
   chunks         SourceChunk[]
   citations      Citation[]
+  collectionItems SourceCollectionItem[]
   createdAt      DateTime @default(now())
   @@index([documentId])
   @@index([doi])
+}
+
+/**
+ * A folder in the library (2026-10-04, from the Jenni study): a student's own grouping of papers,
+ * "Methods" or "Chapter 2". A paper may sit in several, or none; removing a collection never
+ * removes a paper. Names are unique per thesis regardless of case — enforced in the service, where
+ * the 409 can say which name clashed.
+ */
+model SourceCollection {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId String   @db.Uuid
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  name       String
+  order      Int      @default(0)
+  items      SourceCollectionItem[]
+  createdAt  DateTime @default(now())
+  @@index([documentId, order])
+}
+
+model SourceCollectionItem {
+  collectionId String @db.Uuid
+  sourceId     String @db.Uuid
+  collection   SourceCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  source       Source           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  @@id([collectionId, sourceId])
+  @@index([sourceId])
 }
 
 model SourceChunk {
