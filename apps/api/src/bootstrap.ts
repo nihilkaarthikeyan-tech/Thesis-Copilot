@@ -187,6 +187,7 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
         search: 'searches',
         export: 'exports',
         link: 'requests to a shared link',
+        copy: 'copies',
       }[kind.heavy];
       if (!heavy.allowed) return refuse(request, reply, heavy, what);
     }

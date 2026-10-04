@@ -111,6 +111,14 @@ export class StorageService implements OnModuleInit {
     return { files, bytes, byPrefix };
   }
 
+  /**
+   * A server-side copy within the bucket (ADR-0057, making a copy of a thesis). The bytes never
+   * pass through the API, and the object's stored metadata — its content type — comes with it.
+   */
+  async copy(sourceKey: string, targetKey: string): Promise<void> {
+    await this.client.copyObject(this.bucket, targetKey, `/${this.bucket}/${sourceKey}`);
+  }
+
   async remove(key: string): Promise<void> {
     await this.client.removeObject(this.bucket, key);
   }

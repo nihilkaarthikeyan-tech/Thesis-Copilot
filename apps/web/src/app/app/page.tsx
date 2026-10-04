@@ -77,6 +77,8 @@ export default function DocumentListPage() {
   /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */
   const [deleting, setDeleting] = useState<DocumentSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  /** ADR-0057: the thesis being copied, while the copy is made. */
+  const [copying, setCopying] = useState<string | null>(null);
 
   // The administrator's home is the admin screen, not a student's thesis list (2026-09-29, the
   // owner's instruction). Every sign-in — code, password or Google — lands on `/app`, so this one
@@ -136,6 +138,27 @@ export default function DocumentListPage() {
       );
     } finally {
       setDeleteBusy(false);
+    }
+  }
+
+  /**
+   * ADR-0057: "Make a copy". The copy has its own chapters, outline and library, none of the
+   * original's shares or comments, and costs no AI allowance. It lands at the top of the list.
+   */
+  async function copy(doc: DocumentSummary) {
+    setCopying(doc.id);
+    setError(null);
+    try {
+      await api(`/documents/${doc.id}/copy`, { method: 'POST', body: '{}' });
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not copy the thesis. Try again.',
+      );
+    } finally {
+      setCopying(null);
     }
   }
 
@@ -384,6 +407,15 @@ export default function DocumentListPage() {
                                   {stage.label}
                                 </Link>
                               ))}
+                              <button
+                                type="button"
+                                disabled={copying !== null}
+                                onClick={() => void copy(d)}
+                                data-testid="copy-thesis"
+                                className="text-left text-muted hover:text-accent disabled:opacity-50"
+                              >
+                                {copying === d.id ? 'Copying…' : 'Make a copy'}
+                              </button>
                             </div>
                           </details>
                           <button

@@ -102,6 +102,8 @@ export const HEAVY_RATE_LIMITS = {
    * IP, and tightly: a reader opens a thesis and a chapter at a time, a guesser sends thousands.
    */
   link: { max: 30, windowSeconds: 60 },
+  /** ADR-0057: making a copy of a thesis copies every row and file it owns. */
+  copy: { max: 5, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type HeavyKind = keyof typeof HEAVY_RATE_LIMITS;
@@ -147,6 +149,7 @@ const HEAVY_ROUTES: ReadonlyArray<{ method: string; pattern: RegExp; kind: Heavy
     kind: 'export',
   },
   { method: 'GET', pattern: new RegExp(`^/api/v1/read/${ID}(/.*)?$`), kind: 'link' },
+  { method: 'POST', pattern: new RegExp(`^/api/v1/documents/${ID}/copy$`), kind: 'copy' },
 ];
 
 /** Routes no limiter counts: the health check and the metrics scrape are the operator's. */

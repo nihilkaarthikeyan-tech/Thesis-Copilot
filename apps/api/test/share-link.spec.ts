@@ -36,7 +36,7 @@ const CHAPTER = {
         },
         {
           type: 'citation',
-          attrs: { nodeKey: 'c1', sourceId: '00000000-0000-0000-0000-000000000000' },
+          attrs: { key: 'c1', sourceId: '00000000-0000-0000-0000-000000000000' },
         },
       ],
     },

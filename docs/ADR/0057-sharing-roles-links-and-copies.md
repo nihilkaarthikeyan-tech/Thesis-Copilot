@@ -71,3 +71,45 @@ re-inviting them, no link, and no copy.
   not leak onward, and `/read/` is in `robots.txt`'s disallow list. The privacy page says links
   exist and what they show.
 - `DocumentEraser` deletes the link with the thesis (the foreign key also cascades).
+
+## 3. Make a copy
+
+- **Owner only, no allowance.** `POST /documents/:id/copy` (scoped by `ownerId`, 404 to anyone
+  else) from the thesis list's "More" menu and the Share dialog. No model call is made, so no
+  cap unit is taken; rate-limited as its own heavy kind, `copy`, 5 a minute.
+- **What is copied:** the document's settings (citation style, language, template, field,
+  institution template, deadline, the proposal meta), the memory (scope, outline, glossary, style
+  profile, gap map), every chapter with its content, word counts and scope note, every source
+  with its metadata and PDF, its chunks *with their embeddings*, the seed papers and their
+  files, the chapter pins, the citations, the chapter chunks, and the figures. Title "Copy of …".
+  The copy starts in `DRAFTING` (ADR-0043) with no version history.
+- **What is not:** shares, the read link, comments, usage, exports, version snapshots, coherence
+  flags, viva questions, chapter builds, search runs, suggestion telemetry, AI call logs. They
+  are the original's history or its people.
+- **Chunks are copied, not re-embedded.** The vector is a function of the text and the model,
+  and neither changes; one `INSERT … SELECT` per table copies them inside Postgres, with a
+  materialised CTE handing back the old→new chunk ids so citations point at the copy's chunks.
+  Re-embedding would spend the student's money for an identical result.
+- **Nothing is shared afterwards.** Every row has a fresh UUID v7 (made by the database, like
+  every id here) and every file a fresh key under the copy's own prefixes (server-side MinIO
+  copies). The ids inside the JSON — `citation.attrs.sourceId/chunkId`, `image.attrs.key`, the
+  gap map's `sourceIds` — are rewritten by exact match, plus id segments of storage keys
+  (`copy-ids.ts`); free text is never touched. This matters beyond tidiness: `DocumentEraser`
+  removes a document's files by the keys its rows hold, so a copy that shared a key with its
+  original would lose its PDF or figure the day the original was deleted. The test erases the
+  original and checks the copy's files are still there.
+- **Failure leaves nothing.** Files are copied first, rows are written in one transaction, and
+  if the transaction fails the copied files are removed. A file that cannot be copied (already
+  gone from storage) leaves that source without a file rather than failing the copy.
+- A source or seed paper that was still being read when the copy was made is copied in that
+  state and is not re-queued (re-queuing would embed, which costs); the student can re-add it.
+
+## Consequences
+
+- Migration `0034_share_links`: `GuideShare.canComment`, table `ShareLink`. New audit kinds
+  `SHARE_LINK_ON`, `SHARE_LINK_OFF`, `DOCUMENT_COPIED`. New heavy rate-limit kinds `link`, `copy`.
+- `StorageService.copy` (MinIO server-side copy, metadata kept).
+- Tests: `apps/api/test/share-roles.spec.ts`, `share-link.spec.ts`, `document-copy.spec.ts`
+  (Testcontainers), and `apps/web/e2e/sharing.spec.ts`.
+- Not built: live cursors are ADR-0028's and unchanged; comment-by-link and edit-by-link are
+  refused above; a link with an expiry date (easy to add as a column if asked).

@@ -117,6 +117,7 @@ export const EVENT_NAMES: Record<string, string> = {
   DELETION_CANCELLED: 'Account deletion cancelled',
   DELETION_COMPLETED: 'Account erased',
   DELETION_REQUESTED: 'Account deletion requested',
+  DOCUMENT_COPIED: 'Thesis copied',
   DOCUMENT_DELETED: 'Thesis deleted',
   EMAIL_CHANGED: 'Email address changed',
   EXPORT_OVERRIDE: 'Export check overridden',
@@ -134,6 +135,8 @@ export const EVENT_NAMES: Record<string, string> = {
   PRIVACY_NOTICE_SENT: 'Privacy notice emailed',
   ROLE_CHANGED: 'Role changed',
   SESSIONS_REVOKED: 'Signed out of every device',
+  SHARE_LINK_OFF: 'Read-only link turned off',
+  SHARE_LINK_ON: 'Read-only link turned on',
   THESIS_VIEWED: 'Thesis opened by an admin',
   TRIAL_EXTENDED: 'Free trial extended',
   TRIAL_EXEMPTED: 'No trial end (account from before the trial)',
@@ -169,6 +172,8 @@ export function describeEvent(kind: string, detail: unknown): string {
       return str(d.code);
     case 'DOCUMENT_DELETED':
       return `“${str(d.title)}”${d.by === 'admin' ? ' by an admin' : d.by === 'owner' ? ' by the student' : ''}${d.reason ? ` · “${str(d.reason)}”` : ''}`;
+    case 'SHARE_LINK_ON':
+      return d.replaced ? 'replacing the previous link' : '';
     case 'DELETION_REQUESTED':
       return d.erasesAt ? `erases on ${day(str(d.erasesAt))}` : '';
     case 'CAPS_RESET':
@@ -193,6 +198,10 @@ const BY_THE_STUDENT = new Set([
   'DELETION_CANCELLED',
   'EMAIL_CHANGED',
   'PASSWORD_RESET',
+  // ADR-0057
+  'SHARE_LINK_ON',
+  'SHARE_LINK_OFF',
+  'DOCUMENT_COPIED',
 ]);
 
 /** Who did it, for the log's "By" column. */

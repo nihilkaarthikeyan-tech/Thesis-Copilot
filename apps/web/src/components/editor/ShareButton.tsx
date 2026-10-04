@@ -21,6 +21,7 @@
  */
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 
@@ -63,6 +64,7 @@ function problemText(e: unknown, fallback: string): string {
 }
 
 export function ShareButton({ documentId }: { documentId: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [shares, setShares] = useState<Share[]>([]);
   const [email, setEmail] = useState('');
@@ -198,6 +200,23 @@ export function ShareButton({ documentId }: { documentId: string }) {
       setNotice('Link copied.');
     } catch {
       setNotice('Select the link and copy it.');
+    }
+  }
+
+  /** ADR-0057: a separate thesis of your own — none of the people here come with it. */
+  async function makeCopy() {
+    setBusy(true);
+    setError(null);
+    try {
+      const copy = await api<{ id: string; firstChapterId: string | null }>(
+        `/documents/${documentId}/copy`,
+        { method: 'POST', body: '{}' },
+      );
+      setOpen(false);
+      router.push(`/app/d/${copy.id}/write/${copy.firstChapterId ?? 'none'}`);
+    } catch (e) {
+      setError(problemText(e, 'Could not make a copy.'));
+      setBusy(false);
     }
   }
 
@@ -408,6 +427,23 @@ export function ShareButton({ documentId }: { documentId: string }) {
                 </button>
               </>
             )}
+          </section>
+
+          <section className="mt-3 border-t border-line pt-2" aria-label="Make a copy">
+            <h3 className="text-xs font-semibold text-ink">Make a copy</h3>
+            <p className="mt-1 text-xs text-muted">
+              A separate thesis of your own with the chapters, outline and library. Nobody above
+              comes with it, and it uses none of your AI allowance.
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void makeCopy()}
+              data-testid="share-make-copy"
+              className="mt-1 rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-ink hover:bg-sunk disabled:opacity-50"
+            >
+              Make a copy
+            </button>
           </section>
 
           <p className="mt-3 border-t border-line pt-2 text-xs text-muted">
