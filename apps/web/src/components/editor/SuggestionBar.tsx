@@ -12,7 +12,12 @@
  * every suggestion does, so the menu says so.
  */
 
-import { type CitationPassage, getGhostState, type SuggestionCitation } from '@tc/ui';
+import {
+  type CitationPassage,
+  getGhostState,
+  type SuggestionCitation,
+  sourceMetricBadges,
+} from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useState } from 'react';
 
@@ -263,6 +268,19 @@ export function SuggestionBar({
                       ? 'We hold only the abstract of this paper.'
                       : null}
                 </p>
+                {evidence.passage.record ? (
+                  <p className="mt-1 flex flex-wrap gap-1" data-testid="evidence-badges">
+                    {sourceMetricBadges(evidence.passage.record).map((b) => (
+                      <span
+                        key={b.kind}
+                        title={b.title}
+                        className="rounded bg-sunk px-1.5 py-0.5 text-[11px] text-muted"
+                      >
+                        {b.label}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
                 <blockquote className="mt-2 max-h-40 overflow-y-auto border-l-2 border-accent/40 pl-2 text-[12.5px]">
                   “{evidence.passage.text.slice(0, 600)}
                   {evidence.passage.text.length > 600 ? '…' : ''}”

@@ -57,6 +57,10 @@ type PassageDto = {
     groundingLevel?: string;
     venue?: string | null;
     doi?: string | null;
+    citationCount?: number | null;
+    oaStatus?: string | null;
+    openAccess?: boolean | null;
+    venueCitedness?: number | null;
   };
   pdfUrl: string | null;
 };
@@ -174,6 +178,10 @@ async function resolvePassage(
         venue: p.source.venue ?? null,
         doi: p.source.doi ?? null,
         grounding: p.source.groundingLevel ?? null,
+        citedByCount: p.source.citationCount ?? null,
+        openAccess: p.source.openAccess ?? null,
+        oaStatus: p.source.oaStatus ?? null,
+        journalCitedness: p.source.venueCitedness ?? null,
       },
     };
   } catch {
