@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Select } from '@/components/ui/primitives';
 import { API_URL, ApiError, api } from '@/lib/api';
+import { chapterLabel } from '@/lib/chapter-label';
 
 type Profile = { disciplineId: string; paradigm: string; universityId: string; language?: string };
 type Profiles = {
@@ -259,9 +260,9 @@ export function BuildScreen({ documentId }: { documentId: string }) {
                 className="mt-1 w-full"
                 data-testid="build-chapter"
               >
-                {overview?.chapters.map((c) => (
+                {overview?.chapters.map((c, i) => (
                   <option key={c.id} value={c.id}>
-                    {c.order + 1}. {c.title}
+                    {chapterLabel(c.title, i)}
                     {c.pendingBuild ? ' (drafts waiting)' : ''}
                   </option>
                 ))}
