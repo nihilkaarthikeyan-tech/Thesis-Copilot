@@ -1,5 +1,10 @@
 # PENDING — work only the human can do
 
+> **Released v0.1.24 on 2026-10-04** (tag on `47e00e8`, CI green, backup
+> `/root/backups/pre-v0.1.24/thesis.dump`): ADRs 0040–0053. Containers on v0.1.24, migration 0029
+> applied, `AI_FAST_MODEL=gpt-4.1-mini`, flags `automaticSuggest` and `autoSources` on, health 200,
+> anonymous admin 401. First-hand Jenni findings: `docs/JENNI-FINDINGS.md`.
+
 The agent builds every phase it can (owner's instruction, 2026-09-04) and lists here everything
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
@@ -16,8 +21,8 @@ and 3".
 
 ## Autocomplete model and allowance (ADR-0051, 2026-10-04)
 
-- [ ] **On the next release, set `AI_FAST_MODEL=gpt-4.1-mini`** in the VPS `.env` (it is a setting,
-      not code). The shakedown passed every fast-tier task on it; a fully active student costs
+- [x] **Done 2026-10-04 with v0.1.24: `AI_FAST_MODEL=gpt-4.1-mini`** in the VPS
+      `infra/compose/.env` (copy kept as `.env.bak-pre-v0.1.24`). The shakedown passed every fast-tier task on it; a fully active student costs
       ₹74.64 against the ₹100 ceiling.
 - [ ] **Decide the monthly suggestion allowance.** Paid plans allow 180 autocomplete suggestions a
       month — fewer than Jenni's *free* plan (10 a day). On `gpt-4.1-mini`, 300 a month costs
