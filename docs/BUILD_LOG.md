@@ -4578,3 +4578,37 @@ converted from the plain file.
 - Found on the way: `docx` 9.7.1 gives every `Bookmark` `w:id="1"`; the finishing pass renumbers.
 - Tests: `packages/export/test/citation-links.spec.ts` (18, reading the XML of the generated files),
   `apps/api/test/citation-mode.spec.ts` (2). Not opened in Microsoft Word — `docs/PENDING.md`.
+
+## Build from the Jenni study — batches 1 and 2 (2026-10-04)
+
+The owner asked for the faults and gaps found in the Jenni study (`docs/JENNI-FIX-LIST.md`,
+`docs/JENNI-STUDENT-JOURNEY.md`, `docs/research/coverage-map.md`) to be built and fixed one by one.
+`docs/JENNI-BUILD-PLAN.md` tracks each item; batch 1 (every fault on the list) and batch 2 (Jenni's
+core flow) are done. Each piece was proved in a browser against the dev stack with the real models,
+or by a new Playwright spec.
+
+- **Never silent.** Suggest with nothing to cite says so, at the foot of the screen, with a Find
+  papers button; an empty answer is explained; screen readers hear the suggestion and how to keep it.
+- **First day.** The proposal's related-work search sends key terms, not the conversation — the same
+  mangrove topic went from 0 related works to 277, all Pichavaram papers — retries broader, and a
+  failed search is shown as failed. The model is told in plain words when nothing was found. The
+  question's options are buttons. Leaving the proposal builds the outline in the background; the
+  thesis lands with all its chapters (the first chapter becomes the outline's first, not a detached
+  copy). The thesis list offers "Continue writing" into the last chapter, and Write first on each card.
+- **Writing.** A suggestion bar (Accept / One word / Refine / Dismiss) works on a phone; refine
+  presets carry the suggestion they revise (Shorter: 509 → 346 characters, one citation). Evidence
+  chips open the paper and passage before accepting. A Papers tab finds, adds and cites papers beside
+  the text (19 s end to end). "/" inserts blocks, an AI declaration and a citation-needed marker; the
+  equation field has examples, a live preview and a cheat sheet. Commands offer Replace / Insert
+  below / Try again / Discard. A student can comment on their own text (no classification call).
+  Every check is listed on the flags tab. Discover shows its steps and a clock.
+- **Words.** No internal terms ("Strong call", "studentName", "VIVA", "D-ENG1") on student pages;
+  "Failed to fetch" became a sentence; chapter labels no longer print "1. Chapter 1 — Introduction";
+  the build page suggests the right discipline from the title.
+- **Found on the way.** Three passages of one paper cited side by side printed "(Jimenez 2021)" three
+  times — the fault the study found in Jenni — now collapsed in suggestions, chat, drafts and
+  commands. OpenAlex stopped returning `x_concepts` for journals, so every journal's topic fit was
+  zero; topics are read instead. Word export can keep citations live (ADR-0055).
+- **Two Playwright specs depend on the mock model** (an unchanged rewrite; a command that keeps its
+  citations exactly): against the real models they fail because the model legitimately shortens or
+  adds citations. They are run against the mock stack, as CI does.
