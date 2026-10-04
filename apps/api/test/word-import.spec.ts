@@ -163,7 +163,12 @@ describe('append (the default)', () => {
     // Imported words are HUMAN words, and the stored count is the count of them.
     const counts = intro?.wordCounts as Record<string, number>;
     expect(counts.HUMAN).toBe(intro?.wordCount);
-    expect(counts.ASSIST + counts.DRAFT + counts.COMMAND + counts.HUMAN_EDITED).toBe(0);
+    expect(
+      (counts.ASSIST ?? 0) +
+        (counts.DRAFT ?? 0) +
+        (counts.COMMAND ?? 0) +
+        (counts.HUMAN_EDITED ?? 0),
+    ).toBe(0);
 
     // Its Heading 2 is a section of its outline node.
     const memory = await h.prisma.documentMemory.findUniqueOrThrow({
