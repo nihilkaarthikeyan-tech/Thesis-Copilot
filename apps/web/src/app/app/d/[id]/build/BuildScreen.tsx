@@ -25,6 +25,7 @@ type Profiles = {
     defaultParadigms: string[];
     entityTypes: Array<{ code: string; label: string }>;
     specialChecks: string[];
+    specialCheckLabels: string[];
     sensitiveNote: string | null;
   }>;
   paradigms: Array<{ id: string; label: string }>;
@@ -352,8 +353,8 @@ export function BuildScreen({ documentId }: { documentId: string }) {
           <p className="mt-3 text-xs text-muted">
             Key terms this discipline looks for:{' '}
             {discipline.entityTypes.map((t) => t.label).join(', ')}.
-            {discipline.specialChecks.length > 0
-              ? ` Extra checks: ${discipline.specialChecks.join(', ')}.`
+            {discipline.specialCheckLabels.length > 0
+              ? ` Also checked for this discipline: ${discipline.specialCheckLabels.join('; ')}.`
               : ''}
             {discipline.sensitiveNote ? ` ${discipline.sensitiveNote}` : ''}
           </p>

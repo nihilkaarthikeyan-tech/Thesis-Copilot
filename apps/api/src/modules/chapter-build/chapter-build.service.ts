@@ -13,6 +13,7 @@ import {
   postProcessEntities,
 } from '@tc/ai';
 import {
+  CHECKS,
   capFor,
   computeCallCost,
   DISCIPLINE_PROFILES,
@@ -75,6 +76,8 @@ export type ProfilesView = {
     defaultParadigms: string[];
     entityTypes: Array<{ code: string; label: string }>;
     specialChecks: string[];
+    /** The same checks in plain words, for the student: the ids are ours, not theirs. */
+    specialCheckLabels: string[];
     sensitiveNote: string | null;
   }>;
   paradigms: Array<{ id: string; label: string }>;
@@ -119,6 +122,7 @@ export class ChapterBuildService {
         defaultParadigms: [...d.defaultParadigms],
         entityTypes: d.entityTypes.map((t) => ({ code: t.code, label: t.label })),
         specialChecks: [...d.specialChecks],
+        specialCheckLabels: d.specialChecks.map((id) => CHECKS[id].label),
         sensitiveNote: d.sensitiveNote ?? null,
       })),
       paradigms: PARADIGMS.map((p) => ({ id: p, label: PARADIGM_LABELS[p] })),
