@@ -52,7 +52,7 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { MathHelp } from './MathHelp';
 
@@ -298,15 +298,29 @@ function BlockStyle({ editor }: { editor: Editor }) {
   );
 }
 
+/**
+ * The toolbar's own actions that open its inline field or its file picker, handed to the "/"
+ * menu (`SlashMenu`) so an item there does exactly what the button does.
+ */
+export type FormatActions = {
+  insertMath: (kind: 'inline' | 'block') => void;
+  footnote: () => void;
+  /** Null when the chapter cannot take an upload. */
+  pickFigure: (() => void) | null;
+};
+
 export function FormatToolbar({
   editor,
   className,
   onInsertImage,
   onInsertChart,
   onInsertDiagram,
+  actionsRef,
 }: {
   editor: Editor | null;
   className?: string;
+  /** Filled with the toolbar's field-opening actions while it is mounted. */
+  actionsRef?: RefObject<FormatActions | null>;
   /** Absent when the chapter cannot take an upload; the button is then hidden rather than dead. */
   onInsertImage?: (file: File) => void;
   /** Opens the chart dialog (ADR-0027) — for a new chart, or the selected one to edit. */
@@ -398,6 +412,18 @@ export function FormatToolbar({
     },
     [editor, prompt],
   );
+
+  useEffect(() => {
+    if (!actionsRef) return;
+    actionsRef.current = {
+      insertMath,
+      footnote,
+      pickFigure: onInsertImage ? () => fileRef.current?.click() : null,
+    };
+    return () => {
+      actionsRef.current = null;
+    };
+  }, [actionsRef, insertMath, footnote, onInsertImage]);
 
   // ADR-0045: an equation is edited by clicking it. The NodeView raises an event with its
   // position and source; the same field that inserted it opens with the source filled in.
