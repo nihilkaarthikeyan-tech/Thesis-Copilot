@@ -162,6 +162,33 @@ download, and in Word for Windows, Word for Mac and Word on the web:
       with the deploy. Nothing to configure; the link is off for every thesis until its owner
       turns it on.
 
+## Jenni study — what only the owner can decide (2026-10-04)
+
+Everything from the Jenni study that needed no decision is built (docs/JENNI-BUILD-PLAN.md). These
+are left, each for a reason the agent should not settle alone:
+
+1. **Count only kept suggestions against the allowance** (Jenni does). Raises AI spend per
+   student; the cost model needs re-running against ₹100 first.
+2. **New prompts** (each needs an ADR and an eval round like ADR-0010): chat that searches beyond
+   the library and shows its steps (coverage rows 40–41), more selection actions
+   (counter-argument, hedge/strengthen, tense, to table, translate), "what changed and why" on a
+   rewrite, an equation described in words (row 70), gap analysis by claim (row 63), tone of voice,
+   and a review of just a selection (row 53; the chapter-level examiner review exists).
+3. **Pictures** — an equation from a photo (row 71) and images in chat (row 42) need a vision
+   model: a new model, a new cost line.
+4. **A live Zotero / Mendeley connection.** PRD FR-2.9 says "via BibTeX/RIS file upload (not
+   OAuth)", which is what exists. A connection changes the spec; Mendeley also needs an app
+   registered with Elsevier.
+5. **Interface languages** (Jenni has 16 incl. Hindi). Which languages, and who checks each
+   translation, is the owner's call; it touches every screen.
+6. **A live demo on the home page.** The landing page is reviewed as a PDF first (owner's rule).
+7. **Live chat support and a community channel** (rows 94, 98): who answers, and where.
+8. **The examiner review's allowance** (6 a month; ADR-0056) and the Word citation fields checked
+   in real Word (ADR-0055) — listed in their own sections above.
+9. **OpenAlex key for the dev machine.** The free daily budget ran out during the 2026-10-04 test
+   runs (HTTP 429 until 00:00 UTC) and three e2e specs failed on it (`gap-density`,
+   `journal-filter`, `path-a`). Adding `OPENALEX_API_KEY` to the dev `.env` stops that.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)
