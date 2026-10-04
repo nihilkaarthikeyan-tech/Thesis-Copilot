@@ -5,11 +5,13 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { CoherenceController } from './coherence.controller.js';
 import { CoherenceService } from './coherence.service.js';
+import { ExaminerReviewController } from './examiner-review.controller.js';
+import { ExaminerReviewService } from './examiner-review.service.js';
 
 @Module({
   imports: [UsageModule],
-  controllers: [CoherenceController],
-  providers: [CoherenceService, QueueService, RedisService, SessionGuard],
+  controllers: [CoherenceController, ExaminerReviewController],
+  providers: [CoherenceService, ExaminerReviewService, QueueService, RedisService, SessionGuard],
   exports: [CoherenceService],
 })
 export class CoherenceModule {}
