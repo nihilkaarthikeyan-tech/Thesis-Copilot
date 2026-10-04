@@ -78,11 +78,27 @@ export class WebScopeService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
+  /**
+   * The indexes a search will ask, by the names a student knows them by, in the order they are
+   * asked — for chat's "Searching OpenAlex, Semantic Scholar…" step (ADR-0060). Semantic Scholar
+   * is only asked when a key is configured, so it is only named then.
+   */
+  indexNames(): string[] {
+    return [
+      'OpenAlex',
+      ...(this.env.SEMANTIC_SCHOLAR_API_KEY ? ['Semantic Scholar'] : []),
+      'PubMed',
+      'arXiv',
+    ];
+  }
+
   async search(
     ownerId: string,
     documentId: string,
     question: string,
     signal?: AbortSignal,
+    /** ADR-0060 asks for more, so eight with abstracts usually survive its filter. */
+    limit: number = WEB_SCOPE.maxResults,
   ): Promise<{ results: WebResult[]; query: string }> {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
@@ -133,7 +149,7 @@ export class WebScopeService {
 
     // Taken in turn, so each index that answered is on the page — eight results would otherwise
     // be eight of OpenAlex's.
-    const works = mergeWorks([interleave(lists)]).slice(0, WEB_SCOPE.maxResults);
+    const works = mergeWorks([interleave(lists)]).slice(0, limit);
 
     // "Already yours" is worth knowing before adding: a student searching the literature will hit
     // their own seed papers constantly, and offering to add one again is how duplicates happen.
