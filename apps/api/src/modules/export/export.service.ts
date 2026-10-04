@@ -19,12 +19,13 @@ import {
   usageToDocx,
   type WordCounts,
 } from '@tc/export';
-import { numberingMap } from '@tc/types';
+import { type CitationMode, numberingMap } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import { CitationsService } from '../chapters/citations.service.js';
+import { citationModeFor } from './citation-mode.js';
 import { loadFigures } from './figure-bytes.js';
 
 export type ExportFormat = 'docx' | 'pdf';
@@ -43,7 +44,12 @@ export class ExportService {
   ) {}
 
   /** FR-8.1. `pdf` converts the same `.docx` through Gotenberg, which is LibreOffice headless. */
-  async chapter(ownerId: string, chapterId: string, format: ExportFormat): Promise<ExportResult> {
+  async chapter(
+    ownerId: string,
+    chapterId: string,
+    format: ExportFormat,
+    citations?: CitationMode,
+  ): Promise<ExportResult> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId } },
       select: {
@@ -73,9 +79,10 @@ export class ExportService {
     const renderedMap = Object.fromEntries(
       Object.entries(rendered.labels).filter(([key]) => citedHere.has(key)),
     );
-    const bibliography = rendered.bibliography
-      .filter((entry) => sourcesHere.has(entry.sourceId))
-      .map((entry) => entry.text);
+    const entries = rendered.bibliography.filter((entry) => sourcesHere.has(entry.sourceId));
+    const bibliography = entries.map((entry) => entry.text);
+    // ADR-0055: linked citations or Word fields in the .docx download; the PDF is always plain.
+    const mode = citationModeFor(format, citations);
 
     const docx = await chapterToDocx(chapter.content, {
       title: chapter.title,
@@ -88,6 +95,30 @@ export class ExportService {
       numberHeadings: true,
       chapterNumber: chapter.order,
       noteStyle: rendered.noteStyle,
+      citationLinks: {
+        mode,
+        entrySources: entries.map((entry) => entry.sourceId),
+        sources:
+          mode === 'word'
+            ? await this.prisma.source.findMany({
+                where: {
+                  documentId: chapter.documentId,
+                  id: { in: entries.map((entry) => entry.sourceId) },
+                },
+                select: {
+                  id: true,
+                  title: true,
+                  authors: true,
+                  year: true,
+                  venue: true,
+                  doi: true,
+                  cslJson: true,
+                  isPreprint: true,
+                  rawReference: true,
+                },
+              })
+            : [],
+      },
     });
 
     const safeTitle = slug(chapter.title);

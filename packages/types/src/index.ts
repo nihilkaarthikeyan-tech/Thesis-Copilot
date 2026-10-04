@@ -25,6 +25,7 @@ export {
   type ParsedDiagram,
   parseDiagram,
 } from './diagram.js';
+export { CITATION_MODES, type CitationMode, citationModeSchema } from './export-options.js';
 export {
   emptyExtraction,
   type Finding,

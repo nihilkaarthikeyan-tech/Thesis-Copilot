@@ -10,7 +10,7 @@
  * Numbering runs through the whole thesis in every format, as Word numbers by default.
  */
 
-import { FootnoteReferenceRun, Paragraph, TextRun } from 'docx';
+import { FootnoteReferenceRun, Paragraph, type ParagraphChild, TextRun } from 'docx';
 
 type Node = { type?: string; attrs?: Record<string, unknown> };
 
@@ -33,18 +33,22 @@ export function footnoteText(node: Node): string {
   return text || '[empty footnote]';
 }
 
-/** The reference mark for `node`, its note recorded against `owner`'s export. */
+/**
+ * The reference mark for `node`, its note recorded against `owner`'s export. `children` replaces
+ * the note's plain text run — a citation note linked to its bibliography entry (ADR-0055).
+ */
 export function footnoteRun(
   owner: object,
   node: Node,
   font?: { name: string; size: number },
+  children?: ParagraphChild[],
 ): FootnoteReferenceRun {
   const notes = notesFor(owner);
   const id = notes.next++;
   notes.entries[String(id)] = {
     children: [
       new Paragraph({
-        children: [
+        children: children ?? [
           new TextRun({
             text: footnoteText(node),
             ...(font ? { font: font.name, size: font.size } : {}),

@@ -6,7 +6,7 @@
  */
 
 import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { thesisDetailsSchema } from '@tc/types';
+import { citationModeSchema, thesisDetailsSchema } from '@tc/types';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -18,6 +18,8 @@ const exportBody = z.object({
   format: z.enum(['docx', 'pdf']).default('docx'),
   /** Which chapter to export. §9.4 exports per chapter in P1; whole-document is Phase 2. */
   chapterId: z.string().uuid(),
+  /** ADR-0055: plain, linked to the bibliography, or Word citation fields. `.docx` only. */
+  citations: citationModeSchema.optional(),
 });
 
 const templateBody = z.object({ templateId: z.string().uuid() });
@@ -25,6 +27,8 @@ const thesisExportBody = z.object({
   // `latex` and `html` are ADR-0021's working formats; only the PDF is compliance-gated.
   format: z.enum(['docx', 'pdf', 'latex', 'html']).default('docx'),
   overrideReason: z.string().trim().min(10).max(500).optional(),
+  /** ADR-0055: plain, linked to the bibliography, or Word citation fields. `.docx` only. */
+  citations: citationModeSchema.optional(),
 });
 
 /** A calendar date, or null to clear it. Shape checked here; meaning checked in the service. */
@@ -115,6 +119,7 @@ export class ExportController {
       documentId,
       parsed.data.format,
       parsed.data.overrideReason,
+      parsed.data.citations,
     );
   }
 
@@ -128,7 +133,12 @@ export class ExportController {
   async exportChapter(@CurrentUser() user: SessionUser, @Body() body: unknown) {
     const parsed = exportBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid export request', parsed.error.issues);
-    return this.exports.chapter(user.id, parsed.data.chapterId, parsed.data.format);
+    return this.exports.chapter(
+      user.id,
+      parsed.data.chapterId,
+      parsed.data.format,
+      parsed.data.citations,
+    );
   }
 
   @Post('export/ai-usage-log')

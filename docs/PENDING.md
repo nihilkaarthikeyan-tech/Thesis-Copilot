@@ -118,6 +118,20 @@ past. The sanctioned route is the Springer Nature Open Access API.
 2. Put it in `.env` as `SPRINGER_NATURE_API_KEY` and tell the agent. The agent reads the API's
    real response with the key, then builds the client the way Europe PMC's was built.
 
+## Word citations in the .docx (ADR-0055, 2026-10-04) — check in real Word
+
+No Microsoft Word on the build machine, so the "Word citations" export is proven only by its XML
+and by LibreOffice. On the Submit screen choose **Citations in the .docx → Word citations**,
+download, and in Word for Windows, Word for Mac and Word on the web:
+
+- [ ] The file opens with no repair prompt, and the citations and reference list read exactly as
+      in the editor (no field codes; Alt+F9 shows `CITATION …` and `BIBLIOGRAPHY`).
+- [ ] References › Manage Sources lists the thesis's sources with authors, titles and years.
+- [ ] Changing References › Style to APA or IEEE restyles the citations and the reference list;
+      Insert Citation offers the same sources.
+- [ ] **Linked to the references**: Ctrl+click on a citation goes to its entry, in Word and after
+      uploading to Google Docs.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

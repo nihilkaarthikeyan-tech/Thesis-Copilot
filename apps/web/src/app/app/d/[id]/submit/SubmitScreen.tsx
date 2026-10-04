@@ -12,6 +12,7 @@
  * checks, and even then an override with a reason is offered rather than a wall.
  */
 
+import type { CitationMode } from '@tc/types';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
@@ -64,6 +65,23 @@ const FIELDS: Array<{ key: keyof Details; label: string; hint?: string }> = [
   { key: 'declarationDate', label: 'Date on the declaration' },
 ];
 
+/**
+ * ADR-0055: how citations are written into the .docx. The PDF is always built from the plain file.
+ */
+const CITATION_CHOICES: Array<{ mode: CitationMode; label: string; hint: string }> = [
+  { mode: 'plain', label: 'Plain text', hint: 'As they appear in the editor.' },
+  {
+    mode: 'linked',
+    label: 'Linked to the references',
+    hint: 'Each citation links to its entry in the reference list. Works in Word, LibreOffice and Google Docs.',
+  },
+  {
+    mode: 'word',
+    label: 'Word citations',
+    hint: 'Your sources go into Word’s References › Manage Sources, and the citations and reference list become Word citations you can restyle or update there. Microsoft Word only: LibreOffice and Google Docs redraw the reference list. A footnote style is written as linked citations instead.',
+  },
+];
+
 /** What to expect from each file, said once it is built. */
 const EXPORT_NOTICE: Record<'docx' | 'pdf' | 'latex' | 'html', string> = {
   docx: 'Built. Word will offer to update the contents pages when you open it — say yes.',
@@ -82,6 +100,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [override, setOverride] = useState('');
   const [showOverride, setShowOverride] = useState(false);
+  const [citationMode, setCitationMode] = useState<CitationMode>('plain');
   const [downloads, setDownloads] = useState<
     Array<{ filename: string; url: string; sha256: string }>
   >([]);
@@ -148,6 +167,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           body: JSON.stringify({
             format,
             ...(format === 'pdf' && override.trim() ? { overrideReason: override.trim() } : {}),
+            ...(format === 'docx' ? { citations: citationMode } : {}),
           }),
         },
       );
@@ -396,6 +416,27 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
           The .docx is always available, whatever the checks say — it is your writing. The PDF waits
           for the checks, because it is what you hand in.
         </p>
+        {/* ADR-0055. Only the .docx: the PDF is always built with plain citations. */}
+        <fieldset className="mt-3" data-testid="citation-mode">
+          <legend className="text-xs font-semibold text-ink">Citations in the .docx</legend>
+          <div className="mt-1 space-y-1">
+            {CITATION_CHOICES.map((choice) => (
+              <label key={choice.mode} className="flex items-start gap-2 text-xs text-muted">
+                <input
+                  type="radio"
+                  name="citation-mode"
+                  value={choice.mode}
+                  checked={citationMode === choice.mode}
+                  onChange={() => setCitationMode(choice.mode)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-semibold text-ink">{choice.label}.</span> {choice.hint}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         {/* ADR-0021. Working formats, like the .docx: not what is handed in, so never gated. */}
         <div className="mt-4 border-t border-line pt-3">
           <p className="text-xs font-semibold text-ink">Other formats</p>

@@ -34,6 +34,7 @@ import {
   withoutPendingDrafts,
 } from '@tc/export';
 import {
+  type CitationMode,
   readTemplateSpec,
   readThesisDetails,
   type TemplateSpec,
@@ -46,6 +47,7 @@ import { StorageService } from '../../common/storage.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 import { CitationsService } from '../chapters/citations.service.js';
 import { StyleStoreService } from '../chapters/style-store.service.js';
+import { citationModeFor } from './citation-mode.js';
 import { loadFigures } from './figure-bytes.js';
 import { type Readiness, readiness } from './readiness.js';
 
@@ -293,6 +295,7 @@ export class ThesisExportService {
     documentId: string,
     format: ThesisExportFormat,
     overrideReason?: string,
+    citations?: CitationMode,
   ): Promise<ThesisExportResult> {
     const document = await this.owned(user.id, documentId);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
@@ -409,6 +412,8 @@ export class ThesisExportService {
       );
       filename = `${base}.html`;
     } else {
+      // ADR-0055: linked citations or Word fields in the .docx download; the PDF is always plain.
+      const mode = citationModeFor(format, citations);
       const docx = await thesisToDocx({
         spec,
         details,
@@ -417,6 +422,12 @@ export class ThesisExportService {
         bibliography: rendered.bibliography.map((b) => b.text),
         images,
         noteStyle: rendered.noteStyle,
+        citationLinks: {
+          mode,
+          entrySources: rendered.bibliography.map((b) => b.sourceId),
+          sources:
+            mode === 'word' ? await this.citedSources(documentId, rendered.bibliography) : [],
+        },
       });
       body = format === 'pdf' ? await this.toPdf(docx, `${base}.docx`) : docx;
       filename = `${base}.${format}`;
@@ -564,6 +575,24 @@ export class ThesisExportService {
       // print in the thesis's reference list; the editor's reference sweep is where those belong.
       bibtex: exportLibrary(sources, 'bib', { statusNotes: false }).body,
     };
+  }
+
+  /** ADR-0055: the bibliography's sources, described for Word's source list. */
+  private citedSources(documentId: string, bibliography: ReadonlyArray<{ sourceId: string }>) {
+    return this.prisma.source.findMany({
+      where: { documentId, id: { in: bibliography.map((entry) => entry.sourceId) } },
+      select: {
+        id: true,
+        title: true,
+        authors: true,
+        year: true,
+        venue: true,
+        doi: true,
+        cslJson: true,
+        isPreprint: true,
+        rawReference: true,
+      },
+    });
   }
 
   /** D.3.2 step 5. Best-effort: a storage hiccup must not fail an export the student has. */

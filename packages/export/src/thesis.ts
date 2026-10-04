@@ -21,7 +21,6 @@ import {
   convertMillimetersToTwip,
   Document,
   Footer,
-  type FootnoteReferenceRun,
   HeadingLevel,
   ImageRun,
   LevelFormat,
@@ -30,6 +29,7 @@ import {
   PageBreak,
   PageNumber,
   Paragraph,
+  type ParagraphChild,
   SectionType,
   Table,
   TableCell,
@@ -40,6 +40,14 @@ import {
   Math as WordMath,
 } from 'docx';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
+import {
+  bibliographyEntryChildren,
+  type CitationLinksInput,
+  citationChild,
+  citationLinksFor,
+  finishCitationLinks,
+  noteChildren,
+} from './citation-links.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
 import { latexToWordMath } from './word-math.js';
@@ -80,6 +88,11 @@ export type ThesisExportInput = {
    * note citeproc wrote (`renderedMap`), not an in-text label.
    */
   noteStyle?: boolean;
+  /**
+   * ADR-0055: how citations are written — plain text (the default), linked to their bibliography
+   * entries, or as Word's own citation fields. Omitted means plain, as before.
+   */
+  citationLinks?: CitationLinksInput;
 };
 
 type Node = {
@@ -135,9 +148,9 @@ function runsFrom(
   nodes: readonly Node[],
   input: ThesisExportInput,
   chapter: ThesisChapter,
-): Array<TextRun | FootnoteReferenceRun | WordMath> {
+): ParagraphChild[] {
   const { spec } = input;
-  const out: Array<TextRun | FootnoteReferenceRun | WordMath> = [];
+  const out: ParagraphChild[] = [];
   for (const node of nodes) {
     // A pending AI draft is not part of the thesis, however deep it sits (see `chapterBlocks`).
     if (node.type === 'draftBlock') continue;
@@ -180,23 +193,37 @@ function runsFrom(
     if (node.type === 'citation' && input.noteStyle) {
       // A note style: the citation is a Word footnote holding the note citeproc wrote.
       const key = String(node.attrs?.key ?? '');
+      const note = chapter.renderedMap[key] ?? '(source missing)';
+      const noteFont = { name: spec.font.body, size: pt(spec.font.sizePt - 2) };
+      const links = citationLinksFor(input);
       out.push(
         footnoteRun(
           input,
-          { attrs: { text: chapter.renderedMap[key] ?? '(source missing)' } },
-          { name: spec.font.body, size: pt(spec.font.sizePt - 2) },
+          { attrs: { text: note } },
+          noteFont,
+          // ADR-0055: in a linked export the note links to its bibliography entry.
+          links.mode === 'plain'
+            ? undefined
+            : noteChildren(
+                node,
+                note,
+                links,
+                (text) => new TextRun({ text, font: noteFont.name, size: noteFont.size }),
+              ),
         ),
       );
       continue;
     }
     if (node.type === 'citation') {
       const key = String(node.attrs?.key ?? '');
+      // ADR-0055: plain text, a link to the entry, or a Word `CITATION` field — the same label.
       out.push(
-        new TextRun({
-          text: chapter.renderedMap[key] ?? '(source missing)',
-          font: spec.font.body,
-          size: pt(spec.font.sizePt),
-        }),
+        citationChild(
+          node,
+          chapter.renderedMap[key] ?? '(source missing)',
+          citationLinksFor(input),
+          (text) => new TextRun({ text, font: spec.font.body, size: pt(spec.font.sizePt) }),
+        ),
       );
       continue;
     }
@@ -699,13 +726,17 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
         ],
       }),
       ...input.bibliography.map(
-        (entry) =>
+        (entry, index) =>
           new Paragraph({
             spacing: spacingFor(spec),
             indent: { left: convertMillimetersToTwip(12), hanging: convertMillimetersToTwip(12) },
-            children: [
+            // ADR-0055: a bookmark for the citations to link to, or the `BIBLIOGRAPHY` field.
+            children: bibliographyEntryChildren(
+              index,
+              input.bibliography.length,
               new TextRun({ text: entry, font: spec.font.body, size: pt(spec.font.sizePt) }),
-            ],
+              citationLinksFor(input),
+            ),
           }),
       ),
     );
@@ -791,7 +822,8 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
     ],
   });
 
-  return Buffer.from(await Packer.toBuffer(document));
+  // ADR-0055: the parts `docx` cannot write (a no-op for plain citations).
+  return finishCitationLinks(Buffer.from(await Packer.toBuffer(document)), citationLinksFor(input));
 }
 
 function pageNumberFooter(spec: TemplateSpec): Footer {
