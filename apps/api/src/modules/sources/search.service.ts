@@ -32,6 +32,8 @@ export type SearchRunView = {
   finishedAt: string | null;
   error: string | null;
   counts: Record<string, number>;
+  /** The step a running search is on; null for runs saved before it was recorded. */
+  stage: string | null;
   queries: Array<{ angle: string; q: string }>;
   /** Set when the `livingGapMap` flag is on: when the stored map was last recomputed. */
   refreshedAt?: string;
@@ -79,6 +81,7 @@ type RunRecord = {
   finishedAt?: string;
   error?: string;
   counts?: Record<string, number>;
+  stage?: string;
   queries?: Array<{ angle: string; q: string }>;
   themeDensity?: Record<string, ThemeDensity>;
 };
@@ -229,6 +232,7 @@ export class SearchService {
       finishedAt: record.finishedAt ?? null,
       error: record.error ?? null,
       counts: record.counts ?? {},
+      stage: record.stage ?? null,
       queries: record.queries ?? [],
       themes: withLibrary
         .map((theme) => {

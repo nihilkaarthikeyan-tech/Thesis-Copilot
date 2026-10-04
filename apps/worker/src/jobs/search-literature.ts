@@ -79,6 +79,9 @@ export type SearchLiteratureDeps = {
 
 export type SearchRunStatus = 'RUNNING' | 'DONE' | 'FAILED';
 
+/** The steps a discover run goes through, in order. */
+export type SearchStage = 'queries' | 'searching' | 'filtering' | 'themes' | 'saving';
+
 export type SearchRunRecord = {
   runId: string;
   mode: 'discover' | 'expand';
@@ -87,6 +90,11 @@ export type SearchRunRecord = {
   finishedAt?: string;
   error?: string;
   counts: Record<string, number>;
+  /**
+   * What the run is doing now, written as each step starts, so the page can show progress
+   * instead of "Searching…" for a minute and a half (2026-10-04).
+   */
+  stage?: SearchStage;
   queries?: Array<{ angle: string; q: string }>;
   /**
    * ADR-0046: per theme, the targeted query and what OpenAlex counts for it, year by year. Kept
@@ -285,6 +293,8 @@ async function discover(
   const library = await libraryKeys(deps.prisma, job.documentId);
 
   // 1. Queries — the run's one Strong call (FR-2.5).
+  record.stage = 'queries';
+  await writeRun(deps.prisma, job.documentId, record);
   const queriesRequest = buildQueriesRequest({
     scope,
     existingTitles: library.titlesList,
@@ -312,6 +322,8 @@ async function discover(
   }
   record.queries = queries;
   record.counts.queries = queries.length;
+  record.stage = 'searching';
+  await writeRun(deps.prisma, job.documentId, record);
   log({ msg: 'search queries', runId: job.runId, queries });
 
   // 2. Search each query in every index. The indexes run side by side, each working through the
@@ -362,6 +374,8 @@ async function discover(
   record.counts.notInLibrary = fresh.length;
 
   // 4. Embedding-similarity filter against the scope: no Strong call (FR-2.5).
+  record.stage = 'filtering';
+  await writeRun(deps.prisma, job.documentId, record);
   const scopeText = `${scope.workingTitle}. ${scope.problemStatement} ${scope.objectives.join(' ')}`;
   const texts = fresh.map((w) => `${w.title}. ${w.abstract ?? ''}`.slice(0, 2_000));
   const vectors: number[][] = [];
@@ -377,6 +391,8 @@ async function discover(
   record.counts.kept = scored.length;
 
   // 5. Themes — the run's one Fast call (FR-2.6).
+  record.stage = 'themes';
+  await writeRun(deps.prisma, job.documentId, record);
   const tempIds = scored.map((_, i) => `c${i + 1}`);
   let themes = normaliseThemes({ themes: [] }, tempIds);
   if (scored.length > 0) {
@@ -431,6 +447,8 @@ async function discover(
   for (const t of themes) for (const id of t.candidateIds) themeOf.set(id, t.name);
 
   // 6. Store the candidates and the gap map.
+  record.stage = 'saving';
+  await writeRun(deps.prisma, job.documentId, record);
   const ids = await storeCandidates(
     deps.prisma,
     job,

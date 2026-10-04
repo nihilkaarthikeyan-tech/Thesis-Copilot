@@ -35,6 +35,8 @@ type Run = {
   finishedAt: string | null;
   error: string | null;
   counts: Record<string, number>;
+  /** The worker's current step while RUNNING; null for older runs. */
+  stage?: string | null;
   queries: Array<{ angle: string; q: string }>;
   /** Present once the `livingGapMap` flag is on: how many of this theme the student kept. */
   themes: Array<{
@@ -127,6 +129,53 @@ const GAP_BLURB: Record<NonNullable<Run['themes'][number]['signal']>['gapClass']
   peripheral: 'Little literature and loosely related.',
   sparse: 'Too few papers here to read a relevance from — a real gap, or a dead end.',
 };
+
+/** The worker's steps (`SearchStage`), in order, in the student's words. */
+const STAGES: Array<{ key: string; label: string }> = [
+  { key: 'queries', label: 'Writing searches from your proposal' },
+  { key: 'searching', label: 'Searching OpenAlex, Semantic Scholar, PubMed and arXiv' },
+  { key: 'filtering', label: 'Keeping the papers closest to your topic' },
+  { key: 'themes', label: 'Grouping them into themes' },
+  { key: 'saving', label: 'Saving the map' },
+];
+
+/**
+ * A running search, step by step with a clock (2026-10-04). It used to say "Searching…" and a row
+ * of raw counts for a minute and a half, which reads as stuck.
+ */
+function SearchProgress({ run }: { run: Run }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = Math.max(0, Math.round((now - Date.parse(run.startedAt)) / 1_000));
+  const current = STAGES.findIndex((s) => s.key === run.stage);
+  const found = run.counts.fetched ?? 0;
+  return (
+    <div className="mt-8 text-sm" data-testid="search-running" role="status">
+      <p className="font-medium">
+        Searching · {seconds} s{' '}
+        <span className="font-normal text-muted">(usually about a minute)</span>
+      </p>
+      <ol className="mt-3 space-y-1">
+        {STAGES.map((stage, i) => {
+          const done = current > i;
+          const active = current === i || (current === -1 && i === 0);
+          return (
+            <li key={stage.key} className={done || active ? 'text-ink' : 'text-faint'}>
+              <span aria-hidden="true">{done ? '✓' : active ? '•' : '○'}</span> {stage.label}
+              {stage.key === 'searching' && done && found > 0 ? ` — ${found} papers found` : ''}
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-3 text-xs text-muted">
+        You can leave this page; the results are kept here when you come back.
+      </p>
+    </div>
+  );
+}
 
 type RunSummary = { runId: string; mode: 'discover' | 'expand'; status: string; startedAt: string };
 
@@ -292,12 +341,7 @@ export function DiscoverPanel({
           No search yet. Discover starts from your saved proposal.
         </p>
       ) : run.status === 'RUNNING' ? (
-        <p className="mt-8 text-sm text-muted" data-testid="search-running">
-          Searching…{' '}
-          {Object.entries(run.counts)
-            .map(([k, v]) => `${k} ${v}`)
-            .join(' · ')}
-        </p>
+        <SearchProgress run={run} />
       ) : run.status === 'FAILED' ? (
         <p role="alert" className="mt-8 text-sm text-warn">
           The search did not finish: {run.error}
