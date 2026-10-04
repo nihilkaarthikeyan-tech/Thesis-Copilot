@@ -187,6 +187,22 @@ export function jobId(...parts: readonly string[]): string {
   return parts.map((part) => part.replace(/:/g, '_')).join('__');
 }
 
+/**
+ * "Is anyone looking at this run?" (2026-10-04, ADR-0058). A page that shows a long job polls the
+ * API while the job runs; each poll from a visible tab stamps this Redis key with the time. The
+ * worker reads it when the job ends and mails the student only if nobody has looked for a while.
+ * In Redis rather than on the run record because the worker rewrites the whole record as it goes,
+ * and a heartbeat written beside it would either be wiped or wipe the worker's own write.
+ */
+export const JOB_WATCH = {
+  /** The key outlives the "still looking" window comfortably and then cleans itself up. */
+  ttlSeconds: 120,
+} as const;
+
+export function jobWatchKey(runId: string): string {
+  return `job-watch:${runId}`;
+}
+
 /** Short stable digest, so producer and consumer derive the same id from the same string. */
 export function jobKeyDigest(text: string): string {
   let h = 2166136261;
