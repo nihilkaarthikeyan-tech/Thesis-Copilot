@@ -23,6 +23,8 @@ export const SNAPSHOT_REASONS = [
   'PRE_RESTORE',
   // ADR-0039: written before a chapter build appends its draft blocks to the chapter.
   'PRE_CHAPTER_BUILD',
+  // Written before merging two library records re-points the chapter's citations (2026-10-04).
+  'PRE_MERGE',
 ] as const;
 export type SnapshotReason = (typeof SNAPSHOT_REASONS)[number];
 

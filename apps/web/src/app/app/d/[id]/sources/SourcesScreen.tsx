@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_URL, ApiError, api } from '@/lib/api';
 import { DiscoverPanel } from './DiscoverPanel';
+import { type DuplicatePair, DuplicatesPanel } from './DuplicatesPanel';
 
 type Source = {
   id: string;
@@ -36,6 +37,8 @@ type Source = {
   rawReference: string | null;
   /** ADR-0037: added by the system because the library had nothing on a section. */
   autoAddedAt?: string | null;
+  /** Why the AI cannot quote it in full, as far as the record shows; null when it can. */
+  noFullTextReason?: string | null;
 };
 
 const POLL_MS = 3_000;
@@ -46,7 +49,8 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const [sources, setSources] = useState<Source[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'full' | 'unresolved'>('all');
+  const [filter, setFilter] = useState<'all' | 'full' | 'missing' | 'unresolved'>('all');
+  const [duplicates, setDuplicates] = useState<DuplicatePair[]>([]);
   const [tab, setTab] = useState<'library' | 'discover'>('library');
   // `?tab=discover` opens on Discover: the editor's empty library links straight to it. Read after
   // mount — on the server there is no address bar, and a state initialiser runs there.
@@ -67,6 +71,10 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
       setTitle(doc.title);
       setSources(rows);
       setError(null);
+      // Library issues are a side panel: if they cannot be loaded, the library still shows.
+      api<DuplicatePair[]>(`/documents/${documentId}/sources/duplicates`)
+        .then(setDuplicates)
+        .catch(() => setDuplicates([]));
       const first = doc.chapters?.[0]?.id;
       if (first) setWriteHref(`/app/d/${documentId}/write/${first}`);
     } catch (e) {
@@ -92,6 +100,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     return {
       total: rows.length,
       fullText: rows.filter((s) => s.groundingLevel === 'FULL_TEXT').length,
+      missing: rows.filter((s) => s.groundingLevel !== 'FULL_TEXT').length,
       unresolved: rows.filter((s) => s.status === 'UNRESOLVED').length,
       pending: rows.filter((s) => s.status === 'PENDING').length,
     };
@@ -100,6 +109,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const visible = useMemo(() => {
     const rows = sources ?? [];
     if (filter === 'full') return rows.filter((s) => s.groundingLevel === 'FULL_TEXT');
+    if (filter === 'missing') return rows.filter((s) => s.groundingLevel !== 'FULL_TEXT');
     if (filter === 'unresolved') return rows.filter((s) => s.status === 'UNRESOLVED');
     return rows;
   }, [sources, filter]);
@@ -154,6 +164,23 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
       );
     } finally {
       setImporting(false);
+    }
+  }
+
+  /** "Add the PDF": the student's copy of a paper we could not read in full, on that exact source. */
+  async function attachPdf(sourceId: string, file: File) {
+    setError(null);
+    setNotice(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      await api(`/sources/${sourceId}/upload`, { method: 'POST', body: form });
+      setNotice('PDF added. It is being read now; the badge changes to Full text when it is done.');
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That upload did not work.',
+      );
     }
   }
 
@@ -343,6 +370,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
               [
                 ['all', `All ${counts.total}`],
                 ['full', `Full text ${counts.fullText}`],
+                ['missing', `Without full text ${counts.missing}`],
                 ['unresolved', `Needs a hand ${counts.unresolved}`],
               ] as const
             ).map(([key, label]) => (
@@ -356,6 +384,21 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
               </button>
             ))}
           </div>
+
+          <DuplicatesPanel
+            pairs={duplicates}
+            onMerged={(message) => {
+              setNotice(message);
+              void load();
+            }}
+          />
+
+          {filter === 'missing' && visible.length > 0 ? (
+            <p className="mt-4 text-sm text-muted">
+              The AI can only quote the abstract of these. If you have the paper, add its PDF and it
+              will be read in full.
+            </p>
+          ) : null}
 
           {visible.length === 0 ? (
             <p className="mt-10 rounded-lg border border-dashed border-line p-8 text-center text-sm text-muted">
@@ -372,6 +415,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                   onRefix={refix}
                   onRemove={remove}
                   onOpen={openPdf}
+                  onAttach={filter === 'missing' ? attachPdf : undefined}
                 />
               ))}
             </ul>
@@ -422,13 +466,17 @@ function SourceRow({
   onRefix,
   onRemove,
   onOpen,
+  onAttach,
 }: {
   source: Source;
   onRefix: (id: string, doi: string) => void;
   onRemove: (id: string) => void;
   onOpen: (id: string) => void;
+  /** Set in the "Without full text" view: offers "Add the PDF" and says why it is missing. */
+  onAttach?: ((id: string, file: File) => Promise<void>) | undefined;
 }) {
   const [fixing, setFixing] = useState(false);
+  const [attaching, setAttaching] = useState(false);
   const [doi, setDoi] = useState('');
 
   const meta = [
@@ -475,6 +523,12 @@ function SourceRow({
             <p className="mt-1 text-xs text-muted">Preprint, not peer reviewed.</p>
           ) : null}
 
+          {onAttach && source.noFullTextReason ? (
+            <p className="mt-1 text-xs text-muted" data-testid="no-full-text-reason">
+              {source.noFullTextReason}
+            </p>
+          ) : null}
+
           {source.status === 'UNRESOLVED' && source.rawReference ? (
             <p className="mt-1 truncate text-xs text-muted" title={source.rawReference}>
               From your paper: {source.rawReference}
@@ -507,6 +561,27 @@ function SourceRow({
           <button type="button" className="underline" onClick={() => onOpen(source.id)}>
             Open PDF
           </button>
+        ) : null}
+        {onAttach ? (
+          <label
+            className="cursor-pointer font-semibold text-accent underline"
+            data-testid="attach-pdf"
+          >
+            {attaching ? 'Uploading…' : source.hasFile ? 'Replace the PDF' : 'Add the PDF'}
+            <input
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              disabled={attaching}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                setAttaching(true);
+                void onAttach(source.id, file).finally(() => setAttaching(false));
+              }}
+            />
+          </label>
         ) : null}
         {source.status === 'UNRESOLVED' ? (
           <button type="button" className="underline" onClick={() => setFixing((v) => !v)}>
