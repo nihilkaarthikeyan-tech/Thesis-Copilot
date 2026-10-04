@@ -8,8 +8,8 @@ every row names the file(s). Paths are relative to the repo root. `web/` = `apps
 Status: **MATCH** (a student gets the same outcome), **PARTIAL** (exists, but the student meets a
 real difference), **MISSING** (no equivalent), **OURS BETTER**.
 
-**Updated after the build (2026-10-04, evening):** 101 rows — 51 MATCH, 27 PARTIAL, 9 MISSING,
-14 OURS BETTER (from 16 / 47 / 24 / 14). Rows marked "Built 2026-10-04" were rechecked against
+**Updated after the build (2026-10-04, evening):** 101 rows — 56 MATCH, 21 PARTIAL, 9 MISSING,
+15 OURS BETTER (from 16 / 47 / 24 / 14). Rows marked "Built 2026-10-04" were rechecked against
 the merged code. The nine still missing wait on the owner (docs/PENDING.md, "Jenni study — what
 only the owner can decide"); PARTIAL rows were not re-audited one by one.
 
@@ -54,7 +54,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 |---|---|---|---|---|---|
 | 21 | Citation hover card | Title, authors, journal, year, cited-by, impact factor, OA badge, quoted passage, Open quote | `ui/citation.ts` (popover: record, DOI link, full-text/abstract depth, passage, "Open PDF at page N"), `api/sources/sources.controller.ts` (`sources/:id/chunks/:chunkId`) | MATCH | Built 2026-10-04: Cited-by, open-access and citedness badges on the card |
 | 22 | Evidence card before accepting a suggestion | Hover a citation inside the ghost text | `ui/ghost-text.ts` (label text only) | MATCH | Built 2026-10-04: Evidence chips and card on the suggestion bar, with badges |
-| 23 | Select → Find citations (search panel: All/Discover/Library, sort, filter, passage, Cite/Save) | ~4 s | `web/components/editor/CiteSuggestions.tsx` (on sentence end, library passages, direct/partial), `web/components/editor/CitePicker.tsx` | PARTIAL | Library-only; no search beyond the library from a sentence |
+| 23 | Select → Find citations (search panel: All/Discover/Library, sort, filter, passage, Cite/Save) | ~4 s | `web/components/editor/CiteSuggestions.tsx` (on sentence end, library passages, direct/partial), `web/components/editor/CitePicker.tsx` | PARTIAL | 2026-10-04: Find papers from a selection now exists (Papers tab: sort, open-access, Add, Cite here); no matching passage shown per result |
 | 24 | `@` cite | Yes | `web/components/editor/CitePicker.tsx`, `api/chapters/citations.controller.ts` (`citations/pick`) | MATCH | — |
 | 25 | Style search across 10,000+ | Search, five popular first | `web/components/editor/StyleSearch.tsx`, `packages/citations/src/catalog.ts`, `api/chapters/citation-styles.controller.ts` | MATCH | Also note styles as footnotes (ADR-0029) |
 | 26 | Style locale, page numbers toggle, live preview | Per style | `packages/citations/src/render.ts` (locale from style only) | PARTIAL | No locale choice, no preview before switching |
@@ -86,7 +86,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 42 | Attachments and images in chat | Attach file/image | none | MISSING | — |
 | 43 | Saved prompts | Yes | `web/components/editor/ChatPrompts.tsx`, `api/prompts/prompts.controller.ts` (`/` in chat) | MATCH | — |
 | 44 | Name a paper in chat | — | `web/components/editor/ChatMentions.tsx` (`@`) | OURS BETTER | — |
-| 45 | Chat history across documents | One account-wide chat | `api/assist/chat.controller.ts` (`chat/:documentId`, `clear`) | PARTIAL | Kept per thesis, not across theses |
+| 45 | Chat history across documents | One account-wide chat | `api/assist/chat.controller.ts` (`chat/:documentId`, `clear`) | PARTIAL | 2026-10-04: Deliberate: chat is per thesis because it answers from that thesis's own library |
 | 46 | Add answer to document | Copy / Add to document | `ChatPanel.tsx` "Add to document" (citations become nodes) | MATCH | Built 2026-10-04: Copy on a chat answer |
 | 47 | Empty chat guidance | Blank | `ChatPanel.tsx` (scope blurb, placeholder per scope) | OURS BETTER | — |
 | 48 | Off-topic refusal | — | `RELEVANCE_FLOOR` in `packages/retrieval`, refund | OURS BETTER | — |
@@ -96,7 +96,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
 | 49 | AI Edit actions (17) | Fluency, paraphrase, simplify, strengthen, counter-argument, tense, lists, prose, table, translate, academic, formality, precision, hedge/increase confidence | `web/components/editor/CommandToolbar.tsx` (Expand, Formalise, Simplify, Shorten, Check consistency), `api/assist/chat.controller.ts` (`commands/run`, `citations/role`) | PARTIAL | 5 vs 17; no hedge, counter-argument, tense, to-table, translate |
-| 50 | Selection → Find citations | Yes | CiteSuggestions fires on sentence end only | PARTIAL | Cannot ask for a citation for a selected older sentence |
+| 50 | Selection → Find citations | Yes | CiteSuggestions fires on sentence end only | MATCH | 2026-10-04: Find papers on a selected sentence opens the Papers tab searching it |
 | 51 | Selection → AI Chat | Yes | none | MATCH | Built 2026-10-04: Ask chat on a selection |
 | 52 | Selection → Comment (by the writer) | Inline box under the text | comments created only by the guide (`web/app/guide/[token]/page.tsx`, `api/feedback/feedback.controller.ts`) | MATCH | Built 2026-10-04: Comment on a selection |
 | 53 | Selection → Review | Yes | none (checks run per chapter) | MISSING | — |
@@ -110,7 +110,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 56 | Source quality | Card | `web/components/editor/ReferenceHealth.tsx` (retracted, stale, duplicate, unverifiable), `web/app/app/d/[id]/citations/CitationReport.tsx` | OURS BETTER | — |
 | 57 | Tone of voice (can take a library PDF as model) | Card | `web/components/onboarding/WritingProfile.tsx`, `api/memory/style.service.ts` (profile steers suggestions) | PARTIAL | No review of existing text against a tone |
 | 58 | Proofread | British spelling | `web/components/editor/ProofreadPanel.tsx`, `api/assist/chat.controller.ts` (`proofread`, `correctionSize` guard) | MATCH | — |
-| 59 | Results as tracked changes, Y/N keys, Accept all | Review mode | per-item diff + Apply (`ProofreadPanel.tsx`, `CommandToolbar.tsx`); j/k/a keys for supervisor comments (`web/app/app/d/[id]/review/ReviewQueue.tsx`) | PARTIAL | No Accept all; AI checks have no keyboard review mode |
+| 59 | Results as tracked changes, Y/N keys, Accept all | Review mode | per-item diff + Apply (`ProofreadPanel.tsx`, `CommandToolbar.tsx`); j/k/a keys for supervisor comments (`web/app/app/d/[id]/review/ReviewQueue.tsx`) | PARTIAL | 2026-10-04: Proofreading has Accept all (one undo) and Y / N keys; coherence and examiner flags do not |
 | 60 | One Review panel | Five cards, one button each | Flags tab, Review tab, coherence, proofreading, `/citations`, `/originality`, `/submit` | MATCH | Built 2026-10-04: Every check in one list on the flags tab |
 | 61 | Paraphrase-closeness check | — | `web/components/editor/ParaphrasePanel.tsx`, `api/chapters/chapters.controller.ts` (`paraphrase`), `/originality` | OURS BETTER | — |
 
@@ -134,7 +134,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 70 | Equation described in words | Yes | none | MISSING | Students who cannot write LaTeX are stuck (the original complaint) |
 | 71 | Equation from a picture | Yes | none | MISSING | — |
 | 72 | Chart | From chat / insert | `web/components/editor/ChartDialog.tsx`, `packages/ui/src/charts/` (ADR-0027) | MATCH | — |
-| 73 | Table of contents in the document | Insert | export only (`packages/export/src/thesis.ts`, real Word TOC) | PARTIAL | Not visible while writing |
+| 73 | Table of contents in the document | Insert | export only (`packages/export/src/thesis.ts`, real Word TOC) | MATCH | 2026-10-04: The open chapter's headings listed under it, live, each a jump |
 | 74 | AI declaration block | Inserts a statement | `api/export/export.controller.ts` (`export/ai-usage-log`), `packages/export/src/ai-usage.ts` | MATCH | Built 2026-10-04: AI declaration block from the “/” menu |
 | 75 | Footnotes, cross-references, diagrams | — | `ui/footnote.ts`, `ui/cross-ref.ts`, `web/components/editor/DiagramDialog.tsx` (ADR-0049) | OURS BETTER | — |
 | 76 | Markdown / KaTeX help tabs | Yes | key hints strip in `ThesisEditor.tsx` | MATCH | Built 2026-10-04: Equation cheat sheet |
@@ -156,9 +156,9 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
 | 84 | Word export with native citation fields or hyperlinks | Linked to Word's References | `packages/export/src/docx.ts`, `packages/export/src/thesis.ts` (citations as plain text) | MATCH | Built 2026-10-04: Live Word citation fields (ADR-0055) |
-| 85 | LaTeX with layouts | Four layouts + options | `packages/export/src/latex.ts` (one, spacing from the template) | PARTIAL | No two-column / manuscript choice |
+| 85 | LaTeX with layouts | Four layouts + options | `packages/export/src/latex.ts` (one, spacing from the template) | OURS BETTER | 2026-10-04: Deliberate: the thesis LaTeX follows the university template (report class, its margins, fonts, numbering); a two-column paper layout does not apply to a thesis |
 | 86 | PDF / university template / compliance | — (no template) | `packages/export/src/compliance.ts`, `api/export/thesis-export.service.ts` (docx/pdf/latex/html), Gotenberg, `packages/export/src/word-math.ts` | OURS BETTER | — |
-| 87 | Copy to clipboard | Copy button | browser copy only | PARTIAL | No formatted Copy with citations |
+| 87 | Copy to clipboard | Copy button | browser copy only | MATCH | 2026-10-04: A copy reads citations as their labels in Word / Docs; pasting back restores them |
 | 88 | Bibliography on free plan | Dropped from free exports | always included | OURS BETTER | — |
 
 ## 13. Settings, account, usage
@@ -167,7 +167,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 |---|---|---|---|---|---|
 | 89 | Interface languages (16 incl. Hindi) | Yes | no i18n library in `apps/web`; document language only (`api/documents/documents.controller.ts` `:id/language`) | MISSING | English-only interface |
 | 90 | Themes (7 incl. high contrast) | Yes | `web/components/theme.tsx` (light / dark / system) | MATCH | Built 2026-10-04: High contrast switch, works with light/dark |
-| 91 | Document defaults (autocomplete, style, font) | One dialog | `web/app/app/settings/page.tsx` (auto-suggest, auto-cite, auto-sources) | PARTIAL | No default style/font; settings and account split |
+| 91 | Document defaults (autocomplete, style, font) | One dialog | `web/app/app/settings/page.tsx` (auto-suggest, auto-cite, auto-sources) | MATCH | 2026-10-04: Default citation style for new theses in Settings (font follows the university template) |
 | 92 | Usage bars per allowance | Account menu | `web/app/app/account/page.tsx` (bars), `api/usage/usage.controller.ts`, editor header meter | MATCH | Refund on relevance-floor refusal |
 | 93 | Account delete / email change | Yes | `api/account/account.controller.ts` (delete with 7-day cancel, email move ADR-0015, password ADR-0033) | OURS BETTER | — |
 
@@ -180,7 +180,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 96 | Documentation | Full docs site | `FirstRunHint.tsx` hints only | MATCH | Built 2026-10-04: /help, nine articles |
 | 97 | Changelog | Every ~2 weeks | none | MATCH | Built 2026-10-04: /changelog |
 | 98 | Community (Discord) | Yes | none | MISSING | — |
-| 99 | Mobile web | Compact bar, floating toolbar | drawers + bottom tab bar in `ThesisEditor.tsx` | PARTIAL | Two banners and two-row toolbar fill the screen; banner speaks of keys |
+| 99 | Mobile web | Compact bar, floating toolbar | drawers + bottom tab bar in `ThesisEditor.tsx` | MATCH | 2026-10-04: One dismissable banner; floating Suggest above the tab bar; key hints hidden on phones |
 | 100 | Screen-reader announcement of suggestions | Reads text + "Press right arrow to accept" | `ui/ghost-text.ts` (`aria-label="suggestion available"`) | MATCH | Built 2026-10-04: The suggestion and how to accept it are announced |
 | 101 | Live product demo on home page | Animated real editor | `web/components/marketing/ProductTour.tsx` (stepped tour), stock photo | PARTIAL | — |
 
