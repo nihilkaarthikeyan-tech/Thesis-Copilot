@@ -8,18 +8,23 @@ every row names the file(s). Paths are relative to the repo root. `web/` = `apps
 Status: **MATCH** (a student gets the same outcome), **PARTIAL** (exists, but the student meets a
 real difference), **MISSING** (no equivalent), **OURS BETTER**.
 
+**Updated after the build (2026-10-04, evening):** 101 rows — 32 MATCH, 46 PARTIAL, 9 MISSING,
+14 OURS BETTER (from 16 / 47 / 24 / 14). Rows marked "Built 2026-10-04" were rechecked against
+the merged code. The nine still missing wait on the owner (docs/PENDING.md, "Jenni study — what
+only the owner can decide"); PARTIAL rows were not re-audited one by one.
+
 ## 1. Starting and landing
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
-| 1 | Return lands in last document | Opens the last document, cursor where it was; document list is a side panel | `web/app/app/page.tsx` (dashboard, cards with ten links) | MISSING | Every return is a choice among ten links; "Write" is ninth |
+| 1 | Return lands in last document | Opens the last document, cursor where it was; document list is a side panel | `web/app/app/page.tsx` (dashboard, cards with ten links) | MATCH | Built 2026-10-04: Continue writing opens the last chapter |
 | 2 | One-click new document | "+" creates Untitled at once; the empty page is the start screen | `web/app/app/new/page.tsx` (title + "paper I have written / topic" + Create) | PARTIAL | Two screens and a form before any writing surface |
 | 3 | Prompt-first start with strength meter | One prompt box, typed example placeholders, Weak→Great meter per keystroke (no AI) | `web/components/proposal/PathAChat.tsx`, `web/app/app/d/[id]/proposal/page.tsx` | PARTIAL | Our proposal conversation is deeper (problem, objectives, gap), but there is no meter, no examples, and options are numbered text to type, not buttons |
 | 4 | Citation preference screen at start | One screen of chips: style, web/library, year, impact factor, cited-by, preprints | Filters exist only in chat "Find papers" (`web/components/editor/ChatPanel.tsx` `Filters`); toggles in `web/app/app/settings/page.tsx` | PARTIAL | Nothing asked at the start; style is set later in the Citations tab |
 | 5 | Heading modes (IMRaD / AI headings / none) | Picker before writing | `packages/config/src/templates.ts` (Empirical, Qualitative, By publication), `api/memory/outline.controller.ts` (`outline/generate`), "Fill it in myself" path | MATCH | Ours are thesis structures rather than IMRaD; equivalent choice |
 | 6 | Land in full document with notes, cursor ready, first cited sentence in ~15 s | Every heading + per-section notes from the prompt; suggestion appears by itself | `web/app/app/d/[id]/outline/page.tsx`, `web/components/editor/ScaffoldPanel.tsx` | PARTIAL | Topic path lands on Chapter 1 under two banners; no first suggestion; study never reached a cited sentence without leaving the editor |
 | 7 | Import from Word to start | "Import from Word (.docx)" puts the text in the document | `api/sources/upload-rules.ts`, `apps/worker/src/jobs/extract-paper.ts` (seed paper → proposal/outline only) | PARTIAL | A student's own .docx shapes the proposal and outline; its text is not imported into chapters (paste only) |
-| 8 | Earlier answers fold into bubbles with Edit | Yes | `web/components/proposal/PathAChat.tsx` | MISSING | Conversation stays above; changing an earlier answer means starting over |
+| 8 | Earlier answers fold into bubbles with Edit | Yes | `web/components/proposal/PathAChat.tsx` | MATCH | Built 2026-10-04: Edit on an earlier answer; the four-turn bound holds |
 
 ## 2. Section prompts
 
@@ -35,20 +40,20 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 |---|---|---|---|---|---|
 | 12 | Ghost text on a pause | < 3 s | `ui/ghost-text.ts`, `api/assist/assist.controller.ts` (ADR-0053 pause trigger, ADR-0051 model) | MATCH | 2.7–3.4 s vs 1.9–2.8 s first word |
 | 13 | Visible Accept / Refine / thumbs on a suggestion | Buttons under the ghost text | `ui/ghost-text.ts` (keys only), Suggest button in `web/components/editor/ThesisEditor.tsx` | PARTIAL | No on-screen Accept/Refine; a phone has no Tab key; no thumbs |
-| 14 | Refine presets | Stay on topic, complete paragraph, novelty, simplify, no citations, Validate supporting evidence, Cite from my library | `web/components/editor/GuidedInput.tsx` (Shift+→ free-text instruction) | MISSING | Student must think up and type the instruction; no "validate evidence" |
-| 15 | Suggestion history / Shift+→ cycle | Arrows step through earlier suggestions | none (Shift+→ is the guided prompt here) | MISSING | A dismissed suggestion is gone |
+| 14 | Refine presets | Stay on topic, complete paragraph, novelty, simplify, no citations, Validate supporting evidence, Cite from my library | `web/components/editor/GuidedInput.tsx` (Shift+→ free-text instruction) | MATCH | Built 2026-10-04: Five presets on the suggestion bar |
+| 15 | Suggestion history / Shift+→ cycle | Arrows step through earlier suggestions | none (Shift+→ is the guided prompt here) | MATCH | Built 2026-10-04: ‹ › on the suggestion bar |
 | 16 | Alt+→ accept one word | Yes | `ui/ghost-text.ts` (`Alt-ArrowRight`) | MATCH | — |
 | 17 | Ctrl+/ suggest on demand | Yes | `ui/ghost-text.ts`, `ThesisEditor.tsx` | PARTIAL | With nothing to cite it does nothing visible (fix list A.1) |
 | 18 | Cited suggestion with an empty library | Cites papers from its own index instantly | `apps/worker/src/jobs/find-sources.ts` (ADR-0037 auto sources), `api/assist/assist.service.ts` (`findingSources`) | PARTIAL | Ours fetches papers into the library first (minutes) and cites only after; Jenni is instant (but cites unadded papers) |
 | 19 | Grounding enforced on suggestions | Not enforced; its own review flags its weak citations | `packages/ai/src/builder/postprocess.ts`, `api/assist/assist.service.ts` (`HALLUCINATED_CITE` stripped) | OURS BETTER | — |
-| 20 | Ctrl+↑/↓ move block | Yes | none found | MISSING | Minor |
+| 20 | Ctrl+↑/↓ move block | Yes | none found | MATCH | Built 2026-10-04: Ctrl+Shift+↑/↓ |
 
 ## 4. Citations and styles
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
 | 21 | Citation hover card | Title, authors, journal, year, cited-by, impact factor, OA badge, quoted passage, Open quote | `ui/citation.ts` (popover: record, DOI link, full-text/abstract depth, passage, "Open PDF at page N"), `api/sources/sources.controller.ts` (`sources/:id/chunks/:chunkId`) | PARTIAL | No cited-by, impact/citedness or open-access badge on the card |
-| 22 | Evidence card before accepting a suggestion | Hover a citation inside the ghost text | `ui/ghost-text.ts` (label text only) | MISSING | Student accepts before seeing the passage |
+| 22 | Evidence card before accepting a suggestion | Hover a citation inside the ghost text | `ui/ghost-text.ts` (label text only) | MATCH | Built 2026-10-04: Evidence chips and card on the suggestion bar, with badges |
 | 23 | Select → Find citations (search panel: All/Discover/Library, sort, filter, passage, Cite/Save) | ~4 s | `web/components/editor/CiteSuggestions.tsx` (on sentence end, library passages, direct/partial), `web/components/editor/CitePicker.tsx` | PARTIAL | Library-only; no search beyond the library from a sentence |
 | 24 | `@` cite | Yes | `web/components/editor/CitePicker.tsx`, `api/chapters/citations.controller.ts` (`citations/pick`) | MATCH | — |
 | 25 | Style search across 10,000+ | Search, five popular first | `web/components/editor/StyleSearch.tsx`, `packages/citations/src/catalog.ts`, `api/chapters/citation-styles.controller.ts` | MATCH | Also note styles as footnotes (ADR-0029) |
@@ -62,7 +67,7 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 |---|---|---|---|---|---|
 | 29 | Find papers panel beside the text | ~3 s, suggested query, sort, filter, passage, Cite / Save / Open quote | `ChatPanel.tsx` scope "Find papers" → `api/assist/chat.controller.ts` (`chat/web`) with year/citations/citedness/preprint filters and Add to library | PARTIAL | No sort, no matching passage, no direct Cite; hidden inside Chat |
 | 30 | Deep discovery / gap map | (gap-analysis workflow, see 63) | `web/app/app/d/[id]/sources/DiscoverPanel.tsx`, `apps/worker/src/jobs/search-literature.ts` (themes, gap class, OpenAlex density trend, snowballing ADR-0052) | OURS BETTER | But ~80 s with only "Searching…", on a separate page |
-| 31 | Library collections | Folders | none | MISSING | One flat list per thesis |
+| 31 | Library collections | Folders | none | MATCH | Built 2026-10-04: Collections strip, bulk add/remove |
 | 32 | Impact factor / cited-by on library items | On each item | `web/app/app/d/[id]/journals/JournalsScreen.tsx` (journal citedness), `DiscoverPanel.tsx` (citationCount on candidates) | PARTIAL | Not shown on library rows or citation cards |
 | 33 | PDF upload | 10 PDFs, 25 MB | `api/sources/sources.controller.ts` (`sources/upload`), `SourcesScreen.tsx` | MATCH | — |
 | 34 | PDF reader: search, side-by-side, open at quote | In-app | `SourcesScreen.tsx` "Open PDF" (signed link, new tab, `#page=N`) | PARTIAL | Browser viewer in another tab; no side-by-side, no quote highlight |
@@ -92,8 +97,8 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 |---|---|---|---|---|---|
 | 49 | AI Edit actions (17) | Fluency, paraphrase, simplify, strengthen, counter-argument, tense, lists, prose, table, translate, academic, formality, precision, hedge/increase confidence | `web/components/editor/CommandToolbar.tsx` (Expand, Formalise, Simplify, Shorten, Check consistency), `api/assist/chat.controller.ts` (`commands/run`, `citations/role`) | PARTIAL | 5 vs 17; no hedge, counter-argument, tense, to-table, translate |
 | 50 | Selection → Find citations | Yes | CiteSuggestions fires on sentence end only | PARTIAL | Cannot ask for a citation for a selected older sentence |
-| 51 | Selection → AI Chat | Yes | none | MISSING | — |
-| 52 | Selection → Comment (by the writer) | Inline box under the text | comments created only by the guide (`web/app/guide/[token]/page.tsx`, `api/feedback/feedback.controller.ts`) | MISSING | Student cannot leave a note to self or to a co-author |
+| 51 | Selection → AI Chat | Yes | none | MATCH | Built 2026-10-04: Ask chat on a selection |
+| 52 | Selection → Comment (by the writer) | Inline box under the text | comments created only by the guide (`web/app/guide/[token]/page.tsx`, `api/feedback/feedback.controller.ts`) | MATCH | Built 2026-10-04: Comment on a selection |
 | 53 | Selection → Review | Yes | none (checks run per chapter) | MISSING | — |
 
 ## 8. Reviews
@@ -122,7 +127,7 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
-| 66 | "/" insert menu | Text, headings, lists, table, image, equation, chart, TOC, AI declaration, placeholder, cite | toolbar `web/components/editor/FormatToolbar.tsx` | MISSING | Everything is a toolbar button; nothing at the cursor |
+| 66 | "/" insert menu | Text, headings, lists, table, image, equation, chart, TOC, AI declaration, placeholder, cite | toolbar `web/components/editor/FormatToolbar.tsx` | MATCH | Built 2026-10-04: “/” menu |
 | 67 | Table | Yes | `FormatToolbar.tsx` (+ merged cells, ADR-0029 era) | MATCH | — |
 | 68 | Image | Yes | `FormatToolbar.tsx` figures, pasted screenshots, `api/chapters` `figures` | MATCH | — |
 | 69 | Equation by LaTeX with examples | KaTeX with Quadratic / Maxwell / Piecewise | `ui/math.ts`, `FormatToolbar.tsx` (one LaTeX line, "E = mc^2") | PARTIAL | No examples or help |
@@ -140,9 +145,9 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 |---|---|---|---|---|---|
 | 77 | Version history with preview and restore | Snapshots, author, Restore | `web/components/editor/VersionHistory.tsx`, `api/chapters/chapters.controller.ts` (`versions`, `restore`, Ctrl+S snapshot, undo banner) | MATCH | Ours adds undo of a restore |
 | 78 | Roles editor / commenter / viewer | By invitation or link | `web/components/editor/ShareButton.tsx` (guide = read+comment, `canEdit` co-author), `api/feedback/feedback.controller.ts` | PARTIAL | No viewer-only role; email-bound only |
-| 79 | Link access ("anyone with the link") | Yes | none (deliberate: "no secret link") | MISSING | — |
+| 79 | Link access ("anyone with the link") | Yes | none (deliberate: "no secret link") | MATCH | Built 2026-10-04: Read-only link, off by default (ADR-0057) |
 | 80 | Live co-editing with named cursors | Yes | `web/lib/collab.ts`, `web/components/editor/CoAuthorEditor.tsx`, `api/collab` (ADR-0028) | PARTIAL | Off by default (flag), only for documents with a co-author; prod needs nginx `/collab/` |
-| 81 | Document cloning | Yes | none in `api/documents/documents.controller.ts` | MISSING | Cannot fork a thesis to try a restructure |
+| 81 | Document cloning | Yes | none in `api/documents/documents.controller.ts` | MATCH | Built 2026-10-04: Make a copy (ADR-0057) |
 | 82 | Read-only sharing | Yes | guide pages `web/app/guide/[token]/`, progress view (`guide/documents/:id/progress`) | MATCH | — |
 | 83 | Comments | Inline box under selection | supervisor comments, `web/components/editor/ReviewPanel.tsx`, review queue, `.docx` comment import (`api/feedback/docx-import.service.ts`) | PARTIAL | Rich supervisor cycle, but the writer cannot comment (row 52) |
 
@@ -150,7 +155,7 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
-| 84 | Word export with native citation fields or hyperlinks | Linked to Word's References | `packages/export/src/docx.ts`, `packages/export/src/thesis.ts` (citations as plain text) | MISSING | Citations go dead in Word; last-minute edits break numbering |
+| 84 | Word export with native citation fields or hyperlinks | Linked to Word's References | `packages/export/src/docx.ts`, `packages/export/src/thesis.ts` (citations as plain text) | MATCH | Built 2026-10-04: Live Word citation fields (ADR-0055) |
 | 85 | LaTeX with layouts | Four layouts + options | `packages/export/src/latex.ts` (one, spacing from the template) | PARTIAL | No two-column / manuscript choice |
 | 86 | PDF / university template / compliance | — (no template) | `packages/export/src/compliance.ts`, `api/export/thesis-export.service.ts` (docx/pdf/latex/html), Gotenberg, `packages/export/src/word-math.ts` | OURS BETTER | — |
 | 87 | Copy to clipboard | Copy button | browser copy only | PARTIAL | No formatted Copy with citations |
@@ -161,7 +166,7 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
 | 89 | Interface languages (16 incl. Hindi) | Yes | no i18n library in `apps/web`; document language only (`api/documents/documents.controller.ts` `:id/language`) | MISSING | English-only interface |
-| 90 | Themes (7 incl. high contrast) | Yes | `web/components/theme.tsx` (light / dark / system) | PARTIAL | No high-contrast |
+| 90 | Themes (7 incl. high contrast) | Yes | `web/components/theme.tsx` (light / dark / system) | MATCH | Built 2026-10-04: High contrast switch, works with light/dark |
 | 91 | Document defaults (autocomplete, style, font) | One dialog | `web/app/app/settings/page.tsx` (auto-suggest, auto-cite, auto-sources) | PARTIAL | No default style/font; settings and account split |
 | 92 | Usage bars per allowance | Account menu | `web/app/app/account/page.tsx` (bars), `api/usage/usage.controller.ts`, editor header meter | MATCH | Refund on relevance-floor refusal |
 | 93 | Account delete / email change | Yes | `api/account/account.controller.ts` (delete with 7-day cancel, email move ADR-0015, password ADR-0033) | OURS BETTER | — |
@@ -172,8 +177,8 @@ real difference), **MISSING** (no equivalent), **OURS BETTER**.
 |---|---|---|---|---|---|
 | 94 | Live chat support | Intercom | Feedback box, `web/app/contact/page.tsx` | MISSING | — |
 | 95 | Video tutorials | 11 by topic | `web/components/onboarding/HowSuggestionsWork.tsx` (one 90-second explainer) | PARTIAL | — |
-| 96 | Documentation | Full docs site | `FirstRunHint.tsx` hints only | MISSING | — |
-| 97 | Changelog | Every ~2 weeks | none | MISSING | — |
+| 96 | Documentation | Full docs site | `FirstRunHint.tsx` hints only | MATCH | Built 2026-10-04: /help, nine articles |
+| 97 | Changelog | Every ~2 weeks | none | MATCH | Built 2026-10-04: /changelog |
 | 98 | Community (Discord) | Yes | none | MISSING | — |
 | 99 | Mobile web | Compact bar, floating toolbar | drawers + bottom tab bar in `ThesisEditor.tsx` | PARTIAL | Two banners and two-row toolbar fill the screen; banner speaks of keys |
 | 100 | Screen-reader announcement of suggestions | Reads text + "Press right arrow to accept" | `ui/ghost-text.ts` (`aria-label="suggestion available"`) | PARTIAL | Text and how to accept are not announced |
