@@ -25,11 +25,20 @@ type Usage = {
   actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
 };
 
+type BeyondChoice = 'off' | 'ask' | 'on';
+const BEYOND_CHOICES: ReadonlyArray<{ value: BeyondChoice; label: string }> = [
+  { value: 'off', label: 'Off' },
+  { value: 'ask', label: 'Ask first' },
+  { value: 'on', label: 'On' },
+];
+
 type Settings = {
   automaticSuggest?: boolean;
   autoCite?: boolean;
   autoSources?: boolean;
   emailWhenJobDone?: boolean;
+  /** ADR-0060. The server answers "ask" until the student chooses. */
+  searchBeyondLibrary?: BeyondChoice;
   defaultCitationStyle?: string | null;
 };
 
@@ -213,6 +222,51 @@ export default function SettingsPage() {
           >
             {settings?.autoSources !== false ? 'On' : 'Off'}
           </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="eyebrow">Search beyond my library</h2>
+            <p className="mt-1 text-sm text-muted">
+              When you ask the chat something your library has nothing on, it can search OpenAlex,
+              Semantic Scholar, PubMed and arXiv instead, read the abstracts of up to eight papers
+              it finds, and answer from those — citing only them, each marked “Not in your library”
+              with an Add button.
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              <strong>Ask first</strong> (the default) offers the search under the chat’s answer;{' '}
+              <strong>On</strong> searches at once; <strong>Off</strong> never searches. It counts
+              as the same one chat question, and costs nothing if the search finds nothing to read.
+            </p>
+          </div>
+          <fieldset
+            data-testid="search-beyond-setting"
+            className="inline-flex shrink-0 rounded-md border border-line bg-surface p-0.5"
+          >
+            <legend className="sr-only">Search beyond my library</legend>
+            {BEYOND_CHOICES.map((choice) => {
+              const current = settings?.searchBeyondLibrary ?? 'ask';
+              return (
+                <button
+                  key={choice.value}
+                  type="button"
+                  aria-pressed={current === choice.value}
+                  disabled={busy || settings === null}
+                  data-testid={`search-beyond-${choice.value}`}
+                  onClick={() => void save({ searchBeyondLibrary: choice.value })}
+                  className={`rounded-sm px-2 py-0.5 text-xs font-semibold transition-colors ${
+                    current === choice.value
+                      ? 'bg-accent text-accent-ink'
+                      : 'text-muted hover:text-ink'
+                  }`}
+                >
+                  {choice.label}
+                </button>
+              );
+            })}
+          </fieldset>
         </div>
       </section>
 
