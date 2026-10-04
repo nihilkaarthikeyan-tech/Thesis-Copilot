@@ -39,6 +39,7 @@ import {
 import { Provenance } from './provenance.js';
 import { TableWithRef } from './ref-ids.js';
 import { ReviewHighlights, type ReviewHighlightsOptions } from './review.js';
+import { SlashMenu } from './slash-menu.js';
 
 export type ThesisEditorOptions = {
   ghostText: Partial<GhostTextOptions> & Pick<GhostTextOptions, 'chapterId' | 'request'>;
@@ -71,6 +72,8 @@ export type ThesisEditorOptions = {
 
 export function thesisExtensions(options: ThesisEditorOptions): Extensions {
   return [
+    // The "/" menu takes ↑ ↓ Enter Tab Esc only while it is open, so it sits above ghost text.
+    SlashMenu,
     // Before everything else: keymap precedence (B.3).
     GhostText.configure(options.ghostText),
 

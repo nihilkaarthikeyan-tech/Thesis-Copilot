@@ -26,7 +26,8 @@ export const NeedsSourceNote = Node.create({
       mergeAttributes(HTMLAttributes, {
         'data-needs-source': '',
         class: 'needs-source-note',
-        title: 'The pinned sources did not cover this',
+        // Also what the "/" menu's "Citation needed" inserts, so the words fit either origin.
+        title: 'No source is cited here yet',
       }),
       `[[NEEDS SOURCE: ${String(node.attrs.text)}]]`,
     ];
