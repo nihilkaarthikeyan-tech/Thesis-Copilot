@@ -23,12 +23,61 @@ type OpenAlexSource = {
   apc_usd?: number | null;
   apc_prices?: Array<{ price?: number; currency?: string }> | null;
   x_concepts?: Array<{ display_name?: string; level?: number; score?: number }> | null;
+  /**
+   * OpenAlex's topics, which replaced concepts: each names its subfield, field and domain, and
+   * `count` is how many of the journal's works carry it. OpenAlex no longer returns `x_concepts`
+   * for sources (seen 2026-10-04), so without these every journal had no subjects at all.
+   */
+  topics?: Array<{
+    display_name?: string;
+    count?: number;
+    subfield?: { display_name?: string } | null;
+    field?: { display_name?: string } | null;
+    domain?: { display_name?: string } | null;
+  }> | null;
 };
 
 type OpenAlexSourceList = { results?: OpenAlexSource[] };
 
 const SELECT =
-  'id,display_name,issn,issn_l,host_organization_name,type,works_count,is_oa,is_in_doaj,summary_stats,apc_usd,apc_prices,x_concepts';
+  'id,display_name,issn,issn_l,host_organization_name,type,works_count,is_oa,is_in_doaj,summary_stats,apc_usd,apc_prices,x_concepts,topics';
+
+type Concept = JournalCandidate['concepts'][number];
+
+/**
+ * The journal's subjects as the scorer reads them. Concepts when OpenAlex gives them; otherwise
+ * its topics, mapped onto the same 0 (broad) → 3 (narrow) levels — domain 0, field 1, subfield 2,
+ * topic 3 — with a topic's share of the journal's works (relative to its largest topic) as the
+ * confidence. A name that appears under several topics keeps its highest confidence.
+ */
+function subjectsOf(source: OpenAlexSource): Concept[] {
+  const concepts = (source.x_concepts ?? [])
+    .filter(
+      (c): c is { display_name: string; level: number; score: number } =>
+        Boolean(c.display_name) && typeof c.level === 'number' && typeof c.score === 'number',
+    )
+    .map((c) => ({ name: c.display_name, level: c.level, score: c.score }));
+  if (concepts.length > 0) return concepts;
+
+  const topics = (source.topics ?? []).filter((t) => t.display_name);
+  const largest = Math.max(1, ...topics.map((t) => t.count ?? 0));
+  const byName = new Map<string, Concept>();
+  const add = (name: string | undefined, level: number, score: number) => {
+    const trimmed = name?.trim();
+    if (!trimmed) return;
+    const key = `${level}:${trimmed.toLowerCase()}`;
+    const seen = byName.get(key);
+    if (!seen || seen.score < score) byName.set(key, { name: trimmed, level, score });
+  };
+  for (const topic of topics) {
+    const score = Math.max(0, Math.min(1, (topic.count ?? 0) / largest));
+    add(topic.display_name, 3, score);
+    add(topic.subfield?.display_name, 2, score);
+    add(topic.field?.display_name, 1, score);
+    add(topic.domain?.display_name, 0, score);
+  }
+  return [...byName.values()];
+}
 
 /** `S4210…` from a full OpenAlex URL or a bare id. */
 export function sourceShortId(id: string | null | undefined): string | null {
@@ -50,12 +99,7 @@ function toCandidate(source: OpenAlexSource): JournalCandidate | null {
     name,
     issn: [...new Set([...(source.issn ?? []), ...(source.issn_l ? [source.issn_l] : [])])],
     publisher: source.host_organization_name?.trim() || null,
-    concepts: (source.x_concepts ?? [])
-      .filter(
-        (c): c is { display_name: string; level: number; score: number } =>
-          Boolean(c.display_name) && typeof c.level === 'number' && typeof c.score === 'number',
-      )
-      .map((c) => ({ name: c.display_name, level: c.level, score: c.score })),
+    concepts: subjectsOf(source),
     worksCount: source.works_count ?? null,
     meanCitedness: source.summary_stats?.['2yr_mean_citedness'] ?? null,
     isOpenAccess: source.is_oa === true,
