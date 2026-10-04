@@ -39,3 +39,22 @@ test('a default style chosen in Settings is pre-selected for a new thesis, and u
   await page.getByTestId('default-citation-style').selectOption('');
   await expect(page.getByTestId('default-citation-style')).toHaveValue('');
 });
+
+/** The long-job email switch (ADR-0058): on by default, and it stays off once turned off. */
+test('the long-job email can be turned off in Settings', async ({ page, request }) => {
+  const session = await establishSession(request, freshEmail('job-email'));
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  await page.goto('/app/settings');
+  const toggle = page.getByRole('switch', { name: 'Email me when a long job finishes' });
+  await expect(toggle).toHaveAttribute('aria-checked', 'true', { timeout: 20_000 });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await page.reload();
+  await expect(
+    page.getByRole('switch', { name: 'Email me when a long job finishes' }),
+  ).toHaveAttribute('aria-checked', 'false', { timeout: 20_000 });
+});
