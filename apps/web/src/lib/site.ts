@@ -49,6 +49,8 @@ export const PUBLIC_ROUTES = [
   '/refunds',
   '/terms',
   '/contact',
+  '/help',
+  '/changelog',
 ] as const;
 
 /**

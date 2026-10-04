@@ -27,6 +27,12 @@ export {
   type LibrarySource,
 } from './library-export.js';
 export {
+  previewStyle,
+  SAMPLE_LABEL,
+  SAMPLE_REFERENCE,
+  type StylePreview,
+} from './preview.js';
+export {
   normaliseTitle,
   type ReferenceHealthFinding,
   type ReferenceHealthKind,

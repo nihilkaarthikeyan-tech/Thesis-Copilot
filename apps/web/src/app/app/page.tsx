@@ -299,6 +299,9 @@ export default function DocumentListPage() {
                 </Link>
               </Button>
             ) : null}
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Link href="/help">Help</Link>
+            </Button>
             <Button asChild variant="ghost" size="sm">
               <Link href="/app/settings">Settings</Link>
             </Button>

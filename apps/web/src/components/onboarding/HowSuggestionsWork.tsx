@@ -120,6 +120,20 @@ export function HowSuggestionsWork({
           Every accepted suggestion is marked with where it came from, and the AI-usage log you can
           export lists each one. Text you type yourself is yours and is marked as such.
         </p>
+
+        <p className="mt-5 border-t border-line pt-3">
+          More on suggestions, citations, checks and sharing:{' '}
+          <a
+            href="/help"
+            target="_blank"
+            rel="noopener"
+            className="underline"
+            data-testid="how-help-link"
+          >
+            Help
+          </a>
+          .
+        </p>
       </section>
     </div>
   );

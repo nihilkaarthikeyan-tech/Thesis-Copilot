@@ -606,7 +606,13 @@ export default function HomePage() {
               <h4>Help</h4>
               <ul>
                 <li>
+                  <Link href="/help">Help</Link>
+                </li>
+                <li>
                   <a href="#faq">Questions</a>
+                </li>
+                <li>
+                  <Link href="/changelog">What changed</Link>
                 </li>
                 <li>
                   <Link href="/contact">Contact</Link>

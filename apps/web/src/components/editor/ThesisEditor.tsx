@@ -1131,6 +1131,15 @@ function ChapterEditor({
                 >
                   How suggestions work
                 </button>
+                <a
+                  href="/help"
+                  target="_blank"
+                  rel="noopener"
+                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  Help
+                </a>
                 <button
                   type="button"
                   className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"

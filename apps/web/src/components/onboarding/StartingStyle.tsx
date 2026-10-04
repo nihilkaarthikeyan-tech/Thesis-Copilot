@@ -9,8 +9,13 @@
  *
  * Saved through the same `PUT /documents/:id/citation-style` the editor's style switch uses, so a
  * choice here is exactly a choice made there.
+ *
+ * Below the choices, a preview of the style the pointer is on, or the one chosen: one citation and
+ * one bibliography entry for an example reference (2026-10-04, `StylePreview`).
  */
 
+import { useState } from 'react';
+import { StylePreview } from '@/components/StylePreview';
 import { Hint } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 
@@ -56,6 +61,8 @@ export function StartingStyle({
     ...STARTING_STYLES,
     { id: 'other', label: 'Other…' },
   ];
+  const [hovered, setHovered] = useState<string | null>(null);
+  const previewed = hovered ?? (value === '' || value === 'other' ? null : value);
   return (
     <fieldset className="flex flex-col gap-2 border-0 p-0" data-testid="starting-style">
       <legend className="mb-1 text-[13px] font-semibold text-ink">
@@ -67,6 +74,8 @@ export function StartingStyle({
           return (
             <label
               key={option.id}
+              onMouseEnter={() => setHovered(option.id === 'other' ? null : option.id)}
+              onMouseLeave={() => setHovered(null)}
               className={`cursor-pointer rounded-full border px-3 py-1.5 text-[13px] transition-colors focus-within:ring-2 focus-within:ring-accent ${
                 checked
                   ? 'border-accent bg-accent-soft font-semibold text-ink'
@@ -86,6 +95,7 @@ export function StartingStyle({
           );
         })}
       </div>
+      <StylePreview styleId={previewed} />
       <Hint>
         {value === 'other'
           ? 'Once the thesis is created, choose from about ten thousand styles in the editor’s Citations tab. Until then it uses APA 7.'

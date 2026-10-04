@@ -40,6 +40,9 @@ export function SiteHeader() {
           <a href="#faq" className="mk-nav-minor">
             Questions
           </a>
+          <Link href="/help" className="mk-nav-minor">
+            Help
+          </Link>
         </nav>
         <div className="mk-nav-end">
           <ThemeToggle />
