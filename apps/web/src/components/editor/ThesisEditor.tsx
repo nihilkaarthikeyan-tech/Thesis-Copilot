@@ -103,13 +103,14 @@ import { DiagramDialog } from './DiagramDialog';
 import { DraftMode } from './DraftMode';
 import { FindPapersPanel } from './FindPapersPanel';
 import { type Flag, FlagsPanel } from './FlagsPanel';
-import { FormatToolbar, WordCount } from './FormatToolbar';
+import { type FormatActions, FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { ProofreadPanel } from './ProofreadPanel';
 import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
+import { SlashMenu } from './SlashMenu';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
 import { SuggestionBar } from './SuggestionBar';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
@@ -660,6 +661,9 @@ function ChapterEditor({
    * to be on, so a figure could reach the exporter with no key and become a placeholder in the
    * submitted thesis.
    */
+  /** The toolbar's field and file-picker actions, for the "/" menu (`SlashMenu`). */
+  const formatActions = useRef<FormatActions | null>(null);
+
   const insertFigure = useCallback((file: File) => {
     setNotice(null);
     editorRef.current?.commands.uploadImage(file);
@@ -1356,8 +1360,17 @@ function ChapterEditor({
             onInsertImage={insertFigure}
             onInsertChart={openChart}
             onInsertDiagram={openDiagram}
+            actionsRef={formatActions}
           />
           <EditorContent editor={editor} />
+          {/* Typing "/" offers the toolbar's blocks at the caret. */}
+          <SlashMenu
+            editor={editor}
+            actionsRef={formatActions}
+            canInsertFigure
+            onInsertChart={openChart}
+            onInsertDiagram={openDiagram}
+          />
           <div className="mx-auto mt-8 flex max-w-[72ch] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[11.5px] text-faint">
             {/* A visible way in (2026-10-04): the only one used to be a shortcut a new student had
                 to have read about. The mouse keeps the cursor where it was. */}

@@ -74,6 +74,12 @@ export type ChapterDensity = {
   citations: number;
   paragraphs: number;
   uncitedParagraphs: number;
+  /**
+   * "Citation needed" markers (`needsSourceNote`) still in the chapter's own text — the ones the
+   * student put in with the "/" menu, or kept from an accepted draft. Pending drafts are not
+   * counted: they are not thesis text yet.
+   */
+  placeholders?: number;
 };
 
 const REVIEW_TITLE =
@@ -118,6 +124,13 @@ export function chapterDensity(chapter: {
     for (const c of node.content ?? []) walk(c);
   };
   walk((chapter.content ?? {}) as PmNode);
+  let placeholders = 0;
+  const findMarkers = (node: PmNode): void => {
+    if (node.type === 'draftBlock') return;
+    if (node.type === 'needsSourceNote') placeholders++;
+    for (const c of node.content ?? []) findMarkers(c);
+  };
+  findMarkers((chapter.content ?? {}) as PmNode);
   return {
     chapterId: chapter.id,
     chapterTitle: chapter.title,
@@ -125,6 +138,7 @@ export function chapterDensity(chapter: {
     citations,
     paragraphs,
     uncitedParagraphs: uncited,
+    placeholders,
   };
 }
 
@@ -270,6 +284,23 @@ export function buildCitationReport(input: ReportInput): CitationReport {
       chapterId: flag.chapterId,
       chapterTitle: flag.chapterTitle,
       ...(flag.positionTrusted ? { from: flag.from, to: flag.to } : {}),
+    });
+  }
+
+  // A place the student marked to come back to. High: it prints as "[NEEDS SOURCE: …]" in
+  // every export, which is right — hiding a gap is worse — but nobody wants an examiner to see it.
+  for (const chapter of input.chapters ?? []) {
+    const n = chapter.placeholders ?? 0;
+    if (n === 0) continue;
+    items.push({
+      key: `citations-placeholder-${chapter.chapterId}`,
+      severity: 'high',
+      check: 'citations',
+      kind: 'CITATION_NEEDED',
+      title: 'Citation still to add',
+      message: `“${chapter.chapterTitle}” has ${plural(n, 'place')} marked “citation needed”. Cite a source there, or rewrite the sentence so it does not need one; until then the marker prints in the exported thesis.`,
+      chapterId: chapter.chapterId,
+      chapterTitle: chapter.chapterTitle,
     });
   }
 

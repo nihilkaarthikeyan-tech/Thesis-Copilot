@@ -84,6 +84,12 @@ export {
   mathText,
 } from './editor/math.js';
 export {
+  insertLatexAt,
+  MATH_CHEAT_SHEET,
+  MATH_EXAMPLES,
+  type MathPattern,
+} from './editor/math-patterns.js';
+export {
   CommentAnchor,
   type ImageResolveUrl,
   type ImageUpload,
@@ -111,4 +117,20 @@ export {
   reviewHighlightsKey,
   textIndexOf,
 } from './editor/review.js';
+export {
+  attachSlashMenu,
+  chooseSlashItem,
+  closeSlashMenu,
+  filterSlashItems,
+  getSlashMenuState,
+  moveSlashSelection,
+  SLASH_ITEMS,
+  type SlashItem,
+  SlashMenu,
+  type SlashMenuOptions,
+  type SlashMenuState,
+  type SlashMenuStorage,
+  slashMenuKey,
+  slashTrigger,
+} from './editor/slash-menu.js';
 export { blockText, CHARS_PER_TOKEN, contextAround, documentText } from './editor/text.js';
