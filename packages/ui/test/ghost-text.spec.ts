@@ -9,6 +9,7 @@ import {
   getGhostState,
   ghostDisplayText,
   jsonContainsText,
+  sectionAt,
   spaceBefore,
 } from '../src/editor/ghost-text.js';
 import { createTestEditor, fakeRequest, pressKey, provenanceRuns, tick } from './helpers.js';
@@ -427,5 +428,37 @@ describe('the joining space', () => {
     await tick(40);
     expect(editor.commands.acceptSuggestionWord()).toBe(true);
     expect(editor.state.doc.textContent).toBe('Intro. Evidence ');
+  });
+});
+
+describe('sectionAt (fix list A21)', () => {
+  it('names the nearest heading above the cursor, and nothing above the first one', () => {
+    editor = createTestEditor(
+      '<p>Opening.</p><h2>2.1 Cost barriers</h2><p>Price matters.</p><h2>2.2 Credit</h2><p>Loans.</p>',
+      { request: streamOf('x').request },
+      [],
+    );
+    const at = (text: string) => {
+      let found = -1;
+      editor.state.doc.descendants((node, pos) => {
+        if (found < 0 && node.isText && node.text?.includes(text)) found = pos + 1;
+      });
+      return found;
+    };
+    expect(sectionAt(editor.state.doc, at('Opening'))).toEqual({});
+    expect(sectionAt(editor.state.doc, at('Price'))).toEqual({ section: '2.1 Cost barriers' });
+    expect(sectionAt(editor.state.doc, at('Loans'))).toEqual({ section: '2.2 Credit' });
+  });
+
+  it('travels with the suggestion request', async () => {
+    const fake = streamOf('alpha');
+    editor = createTestEditor('<h2>Credit</h2><p>Loans </p>', { request: fake.request }, []);
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    editor.commands.requestSuggestion();
+    await tick(20);
+    expect(fake.calls[0]?.payload.cursorContext).toEqual({
+      blockType: 'paragraph',
+      section: 'Credit',
+    });
   });
 });

@@ -101,3 +101,64 @@ test('a suggestion can be read, checked against its passage and kept from the sc
   await expect(bar).toHaveCount(0);
   await expect(editor).toContainText(ghostText.replace(/\s+$/, ''));
 });
+
+test('a refined suggestion keeps the one before it, and ‹ brings that back', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000);
+  const session = await establishSession(request, freshEmail('suggestion-history'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Suggestion history ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await editor.locator('p').first().click();
+  await page.keyboard.type('Rooftop solar uptake in Indian cities ');
+
+  const bar = page.getByTestId('suggestion-bar');
+  const ghost = page.locator('.thesis-editor span.ghost[data-status="shown"]');
+  const suggest = async (start: () => Promise<void>) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await start();
+      try {
+        await expect(ghost).toBeVisible({ timeout: 30_000 });
+        return;
+      } catch (error) {
+        if (attempt === 2) throw error;
+      }
+    }
+  };
+  await suggest(() => page.getByRole('button', { name: 'Suggest', exact: true }).click());
+  const first = (await ghost.innerText()).trim();
+  // One suggestion so far: nothing to step through.
+  await expect(page.getByTestId('suggestion-history')).toHaveCount(0);
+
+  await suggest(async () => {
+    if (await ghost.isVisible()) {
+      await bar.getByRole('button', { name: 'Refine', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Shorter' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Suggest', exact: true }).click();
+    }
+  });
+  const history = page.getByTestId('suggestion-history');
+  await expect(history).toContainText('2 of 2');
+
+  await history.getByRole('button', { name: 'Previous suggestion' }).click();
+  await expect(history).toContainText('1 of 2');
+  await expect(ghost).toHaveText(first);
+  await bar.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect(bar).toHaveCount(0);
+  await expect(editor).toContainText(first.slice(0, 30));
+});

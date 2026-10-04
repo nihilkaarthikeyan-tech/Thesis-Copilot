@@ -33,7 +33,8 @@ export type GhostRequestPayload = {
   before: string;
   after: string;
   guided?: string;
-  cursorContext: { blockType: string };
+  /** `section`: the nearest heading above the cursor, so Assist reads that section's note. */
+  cursorContext: { blockType: string; section?: string };
 };
 
 export type GhostEvent =
@@ -249,6 +250,16 @@ export function charBefore(doc: PmNode, pos: number): string {
  * opening bracket, or when the suggestion itself starts with punctuation that attaches to the
  * previous word (",", ".", ";", ":", ")" …).
  */
+/** The text of the last heading that starts before `pos`, if there is one. */
+export function sectionAt(doc: PmNode, pos: number): { section?: string } {
+  let section: string | undefined;
+  doc.nodesBetween(0, Math.min(pos, doc.content.size), (node, at) => {
+    if (node.type.name === 'heading' && at < pos) section = node.textContent.trim() || section;
+    return !node.isTextblock;
+  });
+  return section ? { section: section.slice(0, 300) } : {};
+}
+
 export function spaceBefore(text: string, previous: string): string {
   const trimmed = text.replace(/^[ \t]+/, '');
   if (trimmed.length === 0) return trimmed;
@@ -677,7 +688,10 @@ export const GhostText = Extension.create<GhostTextOptions>({
               before,
               after,
               ...(instruction ? { guided: instruction } : {}),
-              cursorContext: { blockType: state.selection.$from.parent.type.name },
+              cursorContext: {
+                blockType: state.selection.$from.parent.type.name,
+                ...sectionAt(state.doc, state.selection.from),
+              },
             },
             abort,
             suggestionId,

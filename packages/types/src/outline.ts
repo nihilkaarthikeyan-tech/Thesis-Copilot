@@ -139,3 +139,41 @@ function isFrontOrBackMatter(heading: string): boolean {
     heading,
   );
 }
+
+/** A heading's words without its number or punctuation: "2.1 Cost barriers." → "cost barriers". */
+const headingKey = (title: string): string =>
+  title
+    .toLowerCase()
+    // A Roman numeral only with its full stop, or "civil engineering" would lose "civil".
+    .replace(/^\s*(?:chapter\s+)?(?:\d+(?:\.\d+)*[.):]?|[ivxlc]+[.)])\s+/i, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+/**
+ * The outline section the cursor is writing under (2026-10-04, from the Jenni study: fix list A21).
+ * `heading` is the nearest heading above the cursor in the chapter; the match is on its words,
+ * so a student renumbering "2.1" or adding a full stop still finds the section. Only the chapter's
+ * own sub-sections are searched, and nothing is returned for the chapter heading itself.
+ */
+export function sectionUnderHeading(
+  chapterNode: OutlineNode | undefined,
+  heading: string | undefined,
+): OutlineNode | undefined {
+  const key = heading ? headingKey(heading) : '';
+  if (!chapterNode || !key) return undefined;
+  return walkOutline(chapterNode.children).find((node) => headingKey(node.title) === key);
+}
+
+/**
+ * The scope note Assist reads: the chapter's, then the section's under the cursor when it has
+ * one. Data in the existing scope-note slot, not new prompt wording.
+ */
+export function scopeWithSection(
+  chapterScope: string | null | undefined,
+  section: OutlineNode | undefined,
+): string | null {
+  const note = section?.scopeNote.trim();
+  if (!note) return chapterScope ?? null;
+  const sectionLine = `This section, "${section?.title}": ${note}`;
+  return chapterScope?.trim() ? `${chapterScope.trim()}\n${sectionLine}` : sectionLine;
+}

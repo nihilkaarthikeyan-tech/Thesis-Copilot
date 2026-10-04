@@ -71,6 +71,8 @@ export {
   outlineNodeSchema,
   outlineSchema,
   readOutline,
+  scopeWithSection,
+  sectionUnderHeading,
   walkOutline,
 } from './outline.js';
 export {

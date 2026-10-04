@@ -16,6 +16,8 @@ import {
   outlineNodeId,
   outlineSchema,
   readOutline,
+  scopeWithSection,
+  sectionUnderHeading,
   walkOutline,
 } from '../src/outline.js';
 
@@ -190,5 +192,49 @@ describe('firstChapterOutline (PHASES 3.1, FR-3.3)', () => {
       extraction({ sections: [{ heading: 'Introduction', summary: 'A summary.' }] }),
     );
     expect(outlineSchema.safeParse([outline]).success).toBe(true);
+  });
+});
+
+describe('the section under the cursor (fix list A21)', () => {
+  const chapter: OutlineNode = {
+    id: 'c2',
+    title: 'Literature review',
+    scopeNote: 'What is known about uptake.',
+    children: [
+      { id: 's1', title: '2.1 Cost barriers', scopeNote: 'Price and credit.', children: [] },
+      {
+        id: 's2',
+        title: 'Civil engineering constraints',
+        scopeNote: 'Water supply.',
+        children: [{ id: 's3', title: 'Canal schedules', scopeNote: 'Timing.', children: [] }],
+      },
+      { id: 's4', title: 'Policy', scopeNote: '', children: [] },
+    ],
+  };
+
+  it('matches a heading on its words, whatever its number and punctuation', () => {
+    expect(sectionUnderHeading(chapter, '2.3 Cost barriers.')?.id).toBe('s1');
+    expect(sectionUnderHeading(chapter, 'COST BARRIERS')?.id).toBe('s1');
+    expect(sectionUnderHeading(chapter, 'Civil engineering constraints')?.id).toBe('s2');
+    expect(sectionUnderHeading(chapter, 'ii. Canal schedules')?.id).toBe('s3');
+  });
+
+  it('finds nothing for the chapter heading, an unknown heading or no heading', () => {
+    expect(sectionUnderHeading(chapter, 'Literature review')).toBeUndefined();
+    expect(sectionUnderHeading(chapter, 'Methods')).toBeUndefined();
+    expect(sectionUnderHeading(chapter, undefined)).toBeUndefined();
+    expect(sectionUnderHeading(undefined, 'Policy')).toBeUndefined();
+  });
+
+  it('adds the section note after the chapter note, and only when there is one', () => {
+    const s1 = sectionUnderHeading(chapter, 'Cost barriers');
+    expect(scopeWithSection('What is known.', s1)).toBe(
+      'What is known.\nThis section, "2.1 Cost barriers": Price and credit.',
+    );
+    expect(scopeWithSection(null, s1)).toBe('This section, "2.1 Cost barriers": Price and credit.');
+    expect(scopeWithSection('What is known.', sectionUnderHeading(chapter, 'Policy'))).toBe(
+      'What is known.',
+    );
+    expect(scopeWithSection(null, undefined)).toBeNull();
   });
 });

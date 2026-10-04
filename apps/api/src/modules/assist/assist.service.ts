@@ -11,6 +11,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { buildAssistRequest, type LlmProvider, type Providers, postProcessAssist } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
+import { findOutlineNode, readOutline, scopeWithSection, sectionUnderHeading } from '@tc/types';
 import { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError } from '../../common/errors.js';
@@ -35,7 +36,7 @@ export type SuggestInput = {
   before: string;
   after: string;
   guided?: string;
-  cursorContext?: { blockType?: string };
+  cursorContext?: { blockType?: string; section?: string };
 };
 
 export type SuggestCitation = {
@@ -161,12 +162,25 @@ export class AssistService {
       yield { event: 'start', data: { suggestionId: event.id } };
 
       // §10.3 / §10.4: the cached block and the passages, then A.1 assembled from prompt files.
-      const [memory, retrieved, settings] = await Promise.all([
+      const [memory, retrieved, settings, stored] = await Promise.all([
         this.context.memoryBlock(chapter),
         this.context.retrieve(chapter, input.before, 'ASSIST'),
         // §2.2's citation toggle, per user and independent of automatic-suggest (ADR-0006).
         this.prisma.user.findUnique({ where: { id: user.id }, select: { settings: true } }),
+        this.prisma.documentMemory.findUnique({
+          where: { documentId: chapter.documentId },
+          select: { outline: true },
+        }),
       ]);
+      // Fix list A21 (2026-10-04): under a sub-section heading, that section's own note is read
+      // after the chapter's, so a suggestion in "2.3 Credit" is about credit.
+      const scopeNote = scopeWithSection(
+        chapter.scopeNote,
+        sectionUnderHeading(
+          findOutlineNode(readOutline(stored?.outline), chapter.outlineNodeId),
+          input.cursorContext?.section,
+        ),
+      );
       // ADR-0037: nothing in the library is on this topic, so ask the worker to find papers on
       // it. Started now and awaited only at the end, so the suggestion is not held up by it.
       const findingSources = anyOnTopic(retrieved.passages)
@@ -176,7 +190,7 @@ export class AssistService {
               documentId: chapter.documentId,
               userId: user.id,
               chapterId: chapter.id,
-              query: sourcesQuery(chapter.title, chapter.scopeNote, input.before),
+              query: sourcesQuery(chapter.title, scopeNote, input.before),
             })
             .catch((error: unknown) => {
               this.logger.warn({ err: error }, 'could not start a source search');
@@ -187,7 +201,7 @@ export class AssistService {
       const autoCite = userSettings.autoCite !== false;
       const request = buildAssistRequest({
         memoryBlock: memory.text,
-        chapter: { title: chapter.title, scopeNote: chapter.scopeNote },
+        chapter: { title: chapter.title, scopeNote },
         passages: retrieved.passages,
         before: input.before,
         after: input.after,

@@ -24,7 +24,10 @@ const suggestBody = z.object({
   // 1,500, not 500 (2026-10-04): a refine preset carries the suggestion it revises, which runs
   // to about 600 characters. A typed instruction is still held to 500 by the input.
   guided: z.string().trim().max(1_500).optional(),
-  cursorContext: z.object({ blockType: z.string().optional() }).optional(),
+  // `section`: the heading above the cursor, so the section's own scope note is read (A21).
+  cursorContext: z
+    .object({ blockType: z.string().optional(), section: z.string().max(300).optional() })
+    .optional(),
 });
 
 const outcomeBody = z.object({
