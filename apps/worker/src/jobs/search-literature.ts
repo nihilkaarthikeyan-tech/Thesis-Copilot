@@ -47,6 +47,14 @@ export const SEARCH = {
   /** Embedding batch size, as index-source uses. */
   embedBatch: 64,
   expandTheme: 'Related to your citations',
+  /** ADR-0052: Expand's three groups. */
+  expandThemes: {
+    references: 'Cited by your sources',
+    recent: 'Recent work citing your sources',
+    related: 'Related to your citations',
+  },
+  /** Each group's share of the 60 kept. */
+  expandPerTheme: 20,
   /** ADR-0046: thin themes searched again with their own query, at most this many per run. */
   fillThemes: 4,
   /** Papers a targeted search may add to one thin theme. */
@@ -468,12 +476,24 @@ async function expand(
     take: 40,
   });
   record.counts.sources = sources.length;
-  const lists: DiscoveredWork[][] = [];
+  // ADR-0052: three groups instead of one list sorted by citations, which favoured old famous
+  // papers. Backward: what the student's sources cite, ranked by how many of them cite it — a paper
+  // three of your sources rest on is foundational. Forward: recent work citing them. And
+  // OpenAlex's related works, as before (with the most-cited citing works, FR-2.8).
+  const openalex = deps.openalex as OpenAlexDiscovery & {
+    references?: OpenAlexDiscovery['references'];
+    recentCitedBy?: OpenAlexDiscovery['recentCitedBy'];
+  };
+  const references: DiscoveredWork[][] = [];
+  const recent: DiscoveredWork[][] = [];
+  const related: DiscoveredWork[][] = [];
   for (const source of sources) {
     const id = source.openalexId as string;
     try {
-      lists.push(await deps.openalex.citedBy(id));
-      lists.push(await deps.openalex.related(id));
+      related.push(await deps.openalex.citedBy(id));
+      related.push(await deps.openalex.related(id));
+      if (openalex.references) references.push(await openalex.references(id));
+      if (openalex.recentCitedBy) recent.push(await openalex.recentCitedBy(id, new Date()));
     } catch (error) {
       log({
         level: 40,
@@ -483,24 +503,66 @@ async function expand(
       });
     }
   }
-  record.counts.fetched = lists.reduce((n, l) => n + l.length, 0);
+  record.counts.fetched = [...references, ...recent, ...related].reduce((n, l) => n + l.length, 0);
   const library = await libraryKeys(deps.prisma, job.documentId);
-  const merged = notInLibrary(mergeWorks(lists), library);
-  record.counts.merged = merged.length;
-  const kept = merged
-    .sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0))
-    .slice(0, SEARCH.keep);
-  record.counts.kept = kept.length;
+  const key = (w: DiscoveredWork) => w.doi ?? w.openalexId ?? w.title.toLowerCase();
+
+  // How many of the student's sources cite each reference.
+  const citedTimes = new Map<string, number>();
+  for (const list of references) {
+    for (const w of new Set(list.map(key))) citedTimes.set(w, (citedTimes.get(w) ?? 0) + 1);
+  }
+  const taken = new Set<string>();
+  const pick = (
+    lists: DiscoveredWork[][],
+    order: (a: DiscoveredWork, b: DiscoveredWork) => number,
+  ) =>
+    notInLibrary(mergeWorks(lists), library)
+      .filter((w) => !taken.has(key(w)))
+      .sort(order)
+      .slice(0, SEARCH.expandPerTheme)
+      .map((w) => {
+        taken.add(key(w));
+        return w;
+      });
+  const groups = [
+    {
+      theme: SEARCH.expandThemes.references,
+      works: pick(
+        references,
+        (a, b) =>
+          (citedTimes.get(key(b)) ?? 0) - (citedTimes.get(key(a)) ?? 0) ||
+          (b.citationCount ?? 0) - (a.citationCount ?? 0),
+      ),
+    },
+    {
+      theme: SEARCH.expandThemes.recent,
+      works: pick(
+        recent,
+        (a, b) => (b.year ?? 0) - (a.year ?? 0) || (b.citationCount ?? 0) - (a.citationCount ?? 0),
+      ),
+    },
+    {
+      theme: SEARCH.expandThemes.related,
+      works: pick(related, (a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0)),
+    },
+  ].filter((g) => g.works.length > 0);
+  record.counts.merged = taken.size;
+  record.counts.kept = taken.size;
+  record.counts.references =
+    groups.find((g) => g.theme === SEARCH.expandThemes.references)?.works.length ?? 0;
+  record.counts.recent =
+    groups.find((g) => g.theme === SEARCH.expandThemes.recent)?.works.length ?? 0;
   const ids = await storeCandidates(
     deps.prisma,
     job,
-    kept.map((w) => ({ ...w, theme: SEARCH.expandTheme })),
+    groups.flatMap((g) => g.works.map((w) => ({ ...w, theme: g.theme }))),
   );
   return {
     runId: job.runId,
     mode: 'expand',
     candidates: ids.length,
-    themes: 1,
+    themes: groups.length,
     counts: record.counts,
   };
 }

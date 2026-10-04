@@ -43,6 +43,10 @@ export const DISCOVER = {
   types: 'article|review|conference-paper|preprint|book-chapter|book|dissertation',
   /** OpenAlex's semantic search returns at most 50 and allows one request a second. */
   semanticTop: 50,
+  /** ADR-0052: references read per source in Expand. */
+  referencesMax: 100,
+  /** ADR-0052: "recent" citing works in Expand. */
+  recentYears: 3,
 } as const;
 
 type OpenAlexWork = {
@@ -201,6 +205,53 @@ export class OpenAlexDiscovery {
     );
     const url = this.base(`filter=${filter}&sort=cited_by_count:desc`, DISCOVER.citedByTop);
     const body = await this.http.getJson<OpenAlexList>(url, signal);
+    return (body?.results ?? []).map(fromOpenAlex).filter((w): w is DiscoveredWork => w !== null);
+  }
+
+  /**
+   * ADR-0052: the works this one cites (backward snowballing) — `referenced_works` from the work
+   * itself, then the records in batches of 50. Expand only ever looked forward; the foundational
+   * papers a student's key papers rest on were never offered.
+   */
+  async references(openalexId: string, signal?: AbortSignal): Promise<DiscoveredWork[]> {
+    const work = await this.http.getJson<{ referenced_works?: string[] }>(
+      `https://api.openalex.org/works/${openalexId}?select=id,referenced_works&mailto=${encodeURIComponent(this.http.mailto)}`,
+      signal,
+    );
+    const ids = (work?.referenced_works ?? [])
+      .map(openalexShortId)
+      .filter((id): id is string => id !== null)
+      .slice(0, DISCOVER.referencesMax);
+    const out: DiscoveredWork[] = [];
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      const filter = encodeURIComponent(
+        `openalex_id:${batch.join('|')},type:${DISCOVER.types},is_retracted:false`,
+      );
+      const body = await this.http.getJson<OpenAlexList>(
+        this.base(`filter=${filter}`, batch.length),
+        signal,
+      );
+      out.push(
+        ...(body?.results ?? []).map(fromOpenAlex).filter((w): w is DiscoveredWork => w !== null),
+      );
+    }
+    return out;
+  }
+
+  /**
+   * ADR-0052: works citing this one from the last few years, newest first. `citedBy` sorts by
+   * citation count, which returns the old famous follow-ups and never this year's.
+   */
+  async recentCitedBy(openalexId: string, now = new Date(), signal?: AbortSignal) {
+    const from = now.getUTCFullYear() - DISCOVER.recentYears;
+    const filter = encodeURIComponent(
+      `cites:${openalexId},type:${DISCOVER.types},is_retracted:false,from_publication_date:${from}-01-01`,
+    );
+    const body = await this.http.getJson<OpenAlexList>(
+      this.base(`filter=${filter}&sort=publication_date:desc`, DISCOVER.citedByTop),
+      signal,
+    );
     return (body?.results ?? []).map(fromOpenAlex).filter((w): w is DiscoveredWork => w !== null);
   }
 

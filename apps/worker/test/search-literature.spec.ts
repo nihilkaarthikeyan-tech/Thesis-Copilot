@@ -436,3 +436,33 @@ describe('when something goes wrong', () => {
     expect(f.requests.filter((r) => r.tier === 'fast')).toHaveLength(0);
   });
 });
+
+describe('expand (ADR-0052)', () => {
+  it('groups backward, recent and related, ranking references by how many sources cite them', async () => {
+    const f = fakes();
+    const sources = [{ openalexId: 'W100' }, { openalexId: 'W200' }, { openalexId: 'W300' }];
+    (f.deps.prisma as unknown as { source: { findMany: unknown } }).source.findMany = vi.fn(
+      async (args: { where?: { status?: string } }) => (args?.where?.status ? sources : []),
+    );
+    // W9 is cited by all three sources, W8 by one: W9 must lead its group.
+    const refsOf: Record<string, Work[]> = {
+      W100: [work(8, { citationCount: 9_000 }), work(9, { citationCount: 10 })],
+      W200: [work(9, { citationCount: 10 })],
+      W300: [work(9, { citationCount: 10 })],
+    };
+    Object.assign(f.deps.openalex, {
+      citedBy: vi.fn(async () => [work(20)]),
+      related: vi.fn(async () => [work(21)]),
+      references: vi.fn(async (id: string) => refsOf[id] ?? []),
+      recentCitedBy: vi.fn(async () => [work(30, { year: 2026 }), work(31, { year: 2024 })]),
+    });
+    const result = await runSearchLiterature({ ...JOB, mode: 'expand' as const }, f.deps);
+    expect(result.themes).toBe(3);
+    const byTheme = (t: string) => f.candidates.filter((c) => c.theme === t).map((c) => c.doi);
+    expect(byTheme('Cited by your sources')).toEqual(['10.1000/w9', '10.1000/w8']);
+    expect(byTheme('Recent work citing your sources')).toEqual(['10.1000/w30', '10.1000/w31']);
+    expect(byTheme('Related to your citations')).toEqual(
+      expect.arrayContaining(['10.1000/w20', '10.1000/w21']),
+    );
+  });
+});

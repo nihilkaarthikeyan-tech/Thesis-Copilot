@@ -108,6 +108,17 @@ test('a question can be confined to the papers named with @', async ({ page, req
   await expect(answer).not.toContainText('no readable text yet', { timeout: 120_000 });
   await expect(answer).not.toBeEmpty();
   // Every citation in it points at the named paper — none at the one that was not named.
-  const labels = await answer.locator('button').allTextContents();
+  const labels = (await answer.locator('button').allTextContents()).filter(
+    (l) => l !== 'Add to document',
+  );
   for (const label of labels) expect(label).not.toContain('LeCun');
+
+  // 2026-10-04: the answer goes into the chapter on one press, its citations as real nodes, as
+  // AI-written text.
+  const editor = page.locator('.thesis-editor');
+  await answer.getByTestId('chat-add-to-document').click();
+  await expect(page.getByTestId('notice')).toContainText('Added to the chapter');
+  await expect(editor.locator('[data-provenance="ASSIST"]').first()).toBeVisible();
+  await expect(editor.locator('span.citation')).toHaveCount(labels.length);
+  await expect(editor).not.toContainText('{{cite');
 });

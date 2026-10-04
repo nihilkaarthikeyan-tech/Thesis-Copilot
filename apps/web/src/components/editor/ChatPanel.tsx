@@ -91,10 +91,17 @@ export function ChatPanel({
   documentId,
   onUsageChange,
   onOpenPassage,
+  onAddToDocument,
 }: {
   documentId: string;
   onUsageChange: () => void;
   onOpenPassage: (sourceId: string, chunkId: string) => void;
+  /**
+   * 2026-10-04: puts an answer into the chapter, its citations as real citation nodes. Jenni's chat
+   * has this; ours had no way from an answer to the thesis but retyping it. Only on the student's
+   * press — flag, don't fix.
+   */
+  onAddToDocument?: (text: string, citations: Citation[]) => void;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
@@ -556,6 +563,19 @@ export function ChatPanel({
               <p className="mt-2 text-xs text-muted">
                 Add sources from the Discover tab, then ask again.
               </p>
+            ) : null}
+            {turn.role === 'assistant' &&
+            onAddToDocument &&
+            turn.outcome !== 'not-enough' &&
+            turn.text.trim() ? (
+              <button
+                type="button"
+                data-testid="chat-add-to-document"
+                className="mt-2 text-xs font-medium text-accent underline"
+                onClick={() => onAddToDocument(turn.text, turn.citations ?? [])}
+              >
+                Add to document
+              </button>
             ) : null}
           </div>
         ))}

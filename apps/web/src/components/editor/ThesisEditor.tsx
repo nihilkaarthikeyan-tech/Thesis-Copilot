@@ -15,6 +15,7 @@ import { type ChartSpec, chartSpecSchema, type DiagramSpec, diagramSpecSchema } 
 import {
   type Autosave,
   type AutosaveStatus,
+  aiTextToFragment,
   type CitationPassage,
   createAutosave,
   getGhostState,
@@ -621,6 +622,55 @@ function ChapterEditor({
       else ed.chain().focus().insertFigure(attrs).run();
     },
     [uploadFigure, chart],
+  );
+
+  /**
+   * A chat answer into the chapter (2026-10-04): new paragraphs after the paragraph the cursor was
+   * last in, each `{{cite:KEY}}` a citation node with the label chat showed, each `$…$` an equation,
+   * all marked as AI text so the word counts and the AI-usage export stay truthful.
+   */
+  const addChatAnswer = useCallback(
+    (
+      text: string,
+      citations: Array<{ key: string; sourceId: string; chunkId: string; label: string }>,
+    ) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      const store = (ed.storage as { citation?: { renderedMap?: Record<string, string> } })
+        .citation;
+      const resolved = citations.map((c) => ({ ...c, rendered: `(${c.label})` }));
+      const paragraphType = ed.schema.nodes.paragraph;
+      if (!paragraphType) return;
+      const paragraphs = text
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) =>
+          paragraphType.create(
+            null,
+            aiTextToFragment(ed.schema, p, {
+              provenance: { kind: 'ASSIST', actionId: null },
+              citations: resolved,
+              onCitation: (key, rendered) => {
+                if (store?.renderedMap && rendered) store.renderedMap[key] = rendered;
+              },
+            }),
+          ),
+        );
+      if (paragraphs.length === 0) return;
+      const { $from } = ed.state.selection;
+      // After the top-level block the cursor is in; the end of the chapter if it is nowhere.
+      const at = $from.depth >= 1 ? $from.after(1) : ed.state.doc.content.size;
+      ed.chain()
+        .focus()
+        .command(({ tr, dispatch }) => {
+          if (dispatch) tr.insert(at, paragraphs);
+          return true;
+        })
+        .run();
+      setNotice('Added to the chapter. Read it through — it is marked as AI-written.');
+    },
+    [],
   );
 
   /** ADR-0049: a diagram from the student's own steps and links; opens on a selected one. */
@@ -1258,6 +1308,7 @@ function ChapterEditor({
               <ChatPanel
                 documentId={doc.id}
                 onUsageChange={onUsageChange}
+                onAddToDocument={addChatAnswer}
                 onOpenPassage={(sourceId, chunkId) => {
                   window.open(
                     `/app/d/${doc.id}/sources#source-${sourceId}-${chunkId}`,

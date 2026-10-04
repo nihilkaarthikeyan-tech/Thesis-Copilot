@@ -4530,3 +4530,11 @@ get stuck in many places. Fixed:
   * both expect the "no sources" message with the autoSources flag off; this dev database has had
     it on since 2026-09-30. CI seeds it off.
   ```
+
+## Snowballing both ways; chat answers into the chapter (2026-10-04, ADR-0052)
+
+- Expand now offers what the student's sources cite (ranked by how many cite it), recent work citing
+  them, and related works, as three groups. Live check: ResNet's record lists 81 references.
+- Chat answers have **Add to document**, inserting the answer with real citation nodes, marked as
+  AI-written. Evidence: `chat-mentions.spec.ts` presses it and finds the citation nodes in the
+  chapter; `search-literature.spec.ts` checks the three groups and the ranking.
