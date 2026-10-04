@@ -93,6 +93,7 @@ import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
 import { ChartDialog } from './ChartDialog';
 import { ChatPanel } from './ChatPanel';
+import { ChecksIndex } from './ChecksIndex';
 import { CitationList } from './CitationList';
 import { CitationsPanel, type Rendered } from './CitationsPanel';
 import { CitePicker } from './CitePicker';
@@ -1468,6 +1469,7 @@ function ChapterEditor({
               />
             ) : (
               <>
+                <ChecksIndex documentId={doc.id} onOpenReview={() => setTab('review')} />
                 <FlagsPanel
                   documentId={doc.id}
                   chapterId={chapter.id}
