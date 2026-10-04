@@ -96,6 +96,7 @@ import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ThemeToggle } from '../theme';
 import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
+import { ChapterContents } from './ChapterContents';
 import { ChartDialog } from './ChartDialog';
 import { ChatPanel } from './ChatPanel';
 import { ChecksIndex } from './ChecksIndex';
@@ -1324,6 +1325,7 @@ function ChapterEditor({
                     <span className="tnum shrink-0 text-[11px] text-faint">{c.wordCount}</span>
                   </span>
                 </Link>
+                {c.id === chapter.id ? <ChapterContents editor={editor} /> : null}
               </li>
             ))}
           </ul>
