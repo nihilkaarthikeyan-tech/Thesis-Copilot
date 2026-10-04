@@ -36,6 +36,7 @@ export {
   type DocumentKind,
   detectGutter,
   detectSections,
+  docxToHtml,
   type ExtractedDocument,
   type ExtractedPage,
   extractDocument,

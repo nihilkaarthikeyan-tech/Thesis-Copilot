@@ -98,6 +98,38 @@ export async function extractDocx(data: Uint8Array): Promise<{ text: string }> {
   return { text: result.value };
 }
 
+/**
+ * A `.docx` as mammoth's HTML, for importing a student's own chapters (2026-10-04).
+ *
+ * Headings, lists, tables, bold/italic and footnotes come across as markup. Pictures do not: they
+ * are counted and replaced by an empty `<img>`, because a figure in the editor is an uploaded
+ * object-storage key, never inline base64 (Appendix B.1), and the student re-inserts it as one.
+ */
+export async function docxToHtml(
+  data: Uint8Array,
+): Promise<{ html: string; images: number; warnings: string[] }> {
+  const mammoth = await import('mammoth');
+  let images = 0;
+  const result = await mammoth.convertToHtml(
+    { buffer: Buffer.from(data) },
+    {
+      convertImage: mammoth.images.imgElement(async () => {
+        images++;
+        return { src: '' };
+      }),
+      // An empty paragraph is spacing in Word, not text.
+      ignoreEmptyParagraphs: true,
+      // A file must never make the server read another file or fetch a URL.
+      externalFileAccess: false,
+    },
+  );
+  return {
+    html: result.value,
+    images,
+    warnings: result.messages.map((message) => message.message),
+  };
+}
+
 /** Extracts by file kind. `.docx` has no pages, so it reports one span covering the whole text. */
 export async function extractDocument(
   data: Uint8Array,

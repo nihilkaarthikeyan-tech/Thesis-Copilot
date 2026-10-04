@@ -14,12 +14,20 @@ import { FiguresService } from './figures.service.js';
 import { ParaphraseService } from './paraphrase.service.js';
 import { SnapshotsService } from './snapshots.service.js';
 import { StyleStoreService } from './style-store.service.js';
+import { WordImportController } from './word-import.controller.js';
+import { WordImportService } from './word-import.service.js';
 
 @Module({
   // For `StyleService`: a chapter save is what crosses the FR-4.7 word threshold.
   imports: [MemoryModule],
-  controllers: [ChaptersController, DocumentCitationsController, CitationStylesController],
+  controllers: [
+    ChaptersController,
+    DocumentCitationsController,
+    CitationStylesController,
+    WordImportController,
+  ],
   providers: [
+    WordImportService,
     ChaptersService,
     SnapshotsService,
     CitationsService,
