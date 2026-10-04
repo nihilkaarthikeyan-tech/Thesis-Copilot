@@ -10,6 +10,7 @@ import { SearchController } from './search.controller.js';
 import { SearchService } from './search.service.js';
 import { SourcesController } from './sources.controller.js';
 import { SourcesService } from './sources.service.js';
+import { ZoteroImportService } from './zotero-import.service.js';
 
 @Module({
   // For `livingGapMap` (FR-9.7): the gap map follows the library only when the flag is on.
@@ -20,6 +21,7 @@ import { SourcesService } from './sources.service.js';
     SourcesService,
     SearchService,
     CollectionsService,
+    ZoteroImportService,
     StorageService,
     QueueService,
     SessionGuard,

@@ -4936,3 +4936,38 @@ voice, past tense, present tense, counter-argument (cited from the library's pas
 prompt, `edit.md`, through the section commands' own path and checks. Evaluated on gpt-5-mini in
 two rounds: grounding 18 of 18 both times; round 1's overreach (active dropping a hedge, direct
 changing tense) fixed by two prompt rules and an example, confirmed in round 2 and three reruns.
+## Zotero by key, and "Start writing now" (2026-10-04, ADR-0062, coverage-map rows 36 and 2)
+
+Two of the items ADR-0059 decided on the owner's behalf.
+
+**From Zotero.** Library tab → From Zotero: the student pastes their Zotero user ID and a
+read-only key (the dialog links to zotero.org/settings/keys), Check key lists the collections,
+Import reads the whole library or one collection once. `packages/retrieval/src/scholarly/zotero.ts`
+reads `items/top?format=json&include=data,csljson&itemType=-attachment` 100 at a time, drops
+notes and annotations by `data.itemType`, maps the CSL item with the .bib parser's own
+`rawLine`/`cleanDoi`, and hands the entries to `resolveReferences` — the .bib import's dedupe and
+job ids. A DOI already in the library also counts as present. Over 500 items is refused before
+anything is added. Before writing it, the field list was checked against Zotero's v3 docs and the
+dataserver source (`Item.inc.php` writes `$json['csljson']` for `include=csljson`);
+`format=csljson` alone was rejected because it drops `itemType`. The key is never stored: it
+travels in a POST body (redacted by Pino) and a request header, `ZoteroError` messages are built
+from the status alone with no `cause`, and the API test searches every table, every Redis value
+and every log write for it after a run that includes a network failure whose own text contains
+the key. Mendeley is in `docs/PENDING.md` (needs an Elsevier app). No live Zotero call has been
+made — there is no key.
+
+**Start writing now.** A secondary button on the thesis list's form and on `/app/new`: `POST
+/documents` unchanged (title or "Untitled thesis", `A_TOPIC`), then straight to the first chapter.
+`AddProposalPrompt` reuses `GET /documents/:id/setup`'s `proposal` step: "No proposal yet · Add a
+proposal" on the card, and a dismissible line above the chapter in the editor.
+
+Tests: `packages/retrieval/test/zotero.spec.ts` (12), `apps/api/test/zotero-import.spec.ts` (9,
+testcontainers, Zotero faked at `globalThis.fetch`), a line in `rate-limit.spec.ts`; retrieval 391
+pass, the four touched API files 47 pass; typecheck and lint clean. Playwright: the dev stack on
+:3000/:3001 was in use, so this worktree ran its own (API :3101, web :3100, worker, its own
+Postgres/Redis/MinIO containers, mock AI). `e2e/start-writing-now.spec.ts` (2) and
+`e2e/zotero-import.spec.ts` (2, the API's Zotero routes route-mocked in the browser) pass, as do
+the neighbouring onboarding, setup-checklist, first-minutes, journey, editor, own-comments,
+states, mobile, library-collections and document-defaults specs. `path-a.spec.ts` failed on the
+live related-work search (the gap check said the search "could not run" — an outside index from
+this machine), a screen this change does not touch.

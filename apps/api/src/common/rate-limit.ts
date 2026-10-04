@@ -120,6 +120,12 @@ const HEAVY_ROUTES: ReadonlyArray<{ method: string; pattern: RegExp; kind: Heavy
     pattern: new RegExp(`^/api/v1/documents/${ID}/sources/import$`),
     kind: 'upload',
   },
+  // ADR-0062: both Zotero routes call Zotero with the student's key; limited as imports.
+  {
+    method: 'POST',
+    pattern: new RegExp(`^/api/v1/documents/${ID}/sources/zotero/(collections|import)$`),
+    kind: 'upload',
+  },
   { method: 'POST', pattern: new RegExp(`^/api/v1/documents/${ID}/seed-papers$`), kind: 'upload' },
   { method: 'POST', pattern: new RegExp(`^/api/v1/chapters/${ID}/figures$`), kind: 'upload' },
   {

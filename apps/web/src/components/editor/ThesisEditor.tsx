@@ -91,6 +91,7 @@ function shortRefOf(source: PassageDto['source']): string {
   return 'Source';
 }
 
+import { AddProposalPrompt } from '../AddProposalPrompt';
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ThemeToggle } from '../theme';
@@ -1349,6 +1350,12 @@ function ChapterEditor({
         {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}
         <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
           <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
+          {/* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */}
+          <AddProposalPrompt
+            documentId={doc.id}
+            variant="editor"
+            className="mx-auto mb-4 max-w-[72ch]"
+          />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
             This is your chapter. Write as you normally would.{' '}
             {autoSuggest

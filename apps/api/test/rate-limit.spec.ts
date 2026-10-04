@@ -163,6 +163,12 @@ describe('classifyRequest', () => {
     expect(
       classifyRequest('POST', `/api/v1/documents/${doc}/feedback/comments/import-docx`)?.heavy,
     ).toBe('upload');
+    // ADR-0062: both Zotero routes call Zotero with the student's key.
+    for (const route of ['collections', 'import']) {
+      expect(
+        classifyRequest('POST', `/api/v1/documents/${doc}/sources/zotero/${route}`)?.heavy,
+      ).toBe('upload');
+    }
     expect(classifyRequest('POST', `/api/v1/documents/${doc}/search`)?.heavy).toBe('search');
     expect(classifyRequest('POST', `/api/v1/documents/${doc}/sources/resolve`)?.heavy).toBe(
       'search',

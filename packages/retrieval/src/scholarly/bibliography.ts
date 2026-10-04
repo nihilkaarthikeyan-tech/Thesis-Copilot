@@ -31,7 +31,7 @@ export function detectBibFormat(text: string, filename?: string): BibFormat | nu
   return null;
 }
 
-const cleanDoi = (value: string | null): string | null => {
+export const cleanDoi = (value: string | null): string | null => {
   if (!value) return null;
   const d = value
     .trim()
@@ -41,7 +41,7 @@ const cleanDoi = (value: string | null): string | null => {
 };
 
 /** A citation-shaped line from the fields; what the library shows until resolution fills it. */
-function rawLine(e: Omit<BibEntry, 'raw'>): string {
+export function rawLine(e: Omit<BibEntry, 'raw'>): string {
   const who = e.authors.length
     ? `${e.authors.slice(0, 3).join(', ')}${e.authors.length > 3 ? ', et al.' : ''}`
     : '';

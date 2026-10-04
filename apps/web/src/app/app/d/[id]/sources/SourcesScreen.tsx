@@ -31,6 +31,7 @@ import {
 import { CollectionsStrip } from './CollectionsStrip';
 import { DiscoverPanel } from './DiscoverPanel';
 import { type DuplicatePair, DuplicatesPanel } from './DuplicatesPanel';
+import { ZoteroImport, type ZoteroImportResult } from './ZoteroImport';
 
 type Source = {
   id: string;
@@ -258,6 +259,24 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     }
   }
 
+  /** ADR-0062: the same report as a file import, for a read from Zotero by key. */
+  async function zoteroImported(result: ZoteroImportResult) {
+    setTab('library');
+    setError(null);
+    setNotice(
+      [
+        `Imported ${result.queued} of ${result.entries} references from Zotero; they are being looked up.`,
+        result.alreadyPresent > 0 ? `${result.alreadyPresent} were already in the library.` : '',
+        result.skipped > 0
+          ? `${result.skipped} had no title and no DOI, so there was nothing to look them up by — add those by hand.`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
+    await load();
+  }
+
   /** "Add the PDF": the student's copy of a paper we could not read in full, on that exact source. */
   async function attachPdf(sourceId: string, file: File) {
     setError(null);
@@ -397,6 +416,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
               }}
             />
           </label>
+          <ZoteroImport documentId={documentId} onImported={zoteroImported} />
           <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
             {uploading ? 'Uploading…' : 'Add a PDF'}
             <input

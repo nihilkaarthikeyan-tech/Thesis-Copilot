@@ -257,6 +257,23 @@ export {
   type WorkMetrics,
 } from './scholarly/resolve.js';
 export {
+  type CslItem,
+  cslToBibEntry,
+  listZoteroCollections,
+  nextLink,
+  readZoteroItems,
+  redactKey,
+  ZOTERO_API,
+  ZOTERO_IMPORT_CAP,
+  ZOTERO_KEYS_URL,
+  type ZoteroCollection,
+  type ZoteroCredentials,
+  ZoteroError,
+  type ZoteroFailure,
+  type ZoteroItems,
+  type ZoteroOptions,
+} from './scholarly/zotero.js';
+export {
   type ActualExtraction,
   C3_THRESHOLDS,
   type ExpectedExtraction,
