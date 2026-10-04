@@ -215,3 +215,35 @@ describe('the different-material warning in the report', () => {
     expect(report.items[0]?.title).toBe('Different material or setting');
   });
 });
+
+/**
+ * 2026-10-04: the "/" menu's "Citation needed" inserts a needs-source note. The report lists the
+ * chapters that still have one, and ignores those inside a pending draft (not thesis text yet).
+ */
+describe('citation-needed markers in the report', () => {
+  const marker = { type: 'needsSourceNote', attrs: { text: 'citation needed' } };
+  const content = {
+    type: 'doc',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'Adoption rose. ' }, marker] },
+      { type: 'paragraph', content: [marker] },
+      { type: 'draftBlock', content: [{ type: 'paragraph', content: [marker] }] },
+    ],
+  };
+
+  it('counts the markers in the chapter text, not in pending drafts', () => {
+    expect(chapterDensity({ id: 'c1', title: 'Results', content }).placeholders).toBe(2);
+  });
+
+  it('lists a chapter with markers as a high item', () => {
+    const chapters = [
+      chapterDensity({ id: 'c1', title: 'Results', content }),
+      chapterDensity({ id: 'c2', title: 'Method', content: { type: 'doc', content: [] } }),
+    ];
+    const report = buildCitationReport({ ...empty, chapters });
+    const items = report.items.filter((i) => i.kind === 'CITATION_NEEDED');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ severity: 'high', check: 'citations', chapterId: 'c1' });
+    expect(items[0]?.message).toContain('2 places marked “citation needed”');
+  });
+});
