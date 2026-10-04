@@ -80,6 +80,51 @@ coherence run, proofreading, the citation report, the originality page and the S
 Jenni: compact top bar and a floating toolbar (outline, Cite, undo, redo); usable for reading and
 light edits. Ours: a bottom tab bar (Sources, Citations, Chat, Flags, Review); not re-tested today.
 
+## 8. Research gap analysis (Jenni's second workflow), side by side with our gap map
+
+Same topic. Jenni's setup is three conversational steps (topic with the prompt meter, where to
+search, filters) ending in a button that says how long it takes: "Start gap analysis · 3–6 min".
+
+| | Jenni | Ours (Discover) |
+|---|---|---|
+| While running | Three named stages with a running clock; "Safe to close this tab – you will receive an email". The "detailed steps" rotate generic lines ("Organizing my thoughts", "Exploring possibilities") | "Searching…" |
+| Time | 9 min 54 s (it said 3–6) | ~80 s |
+| Result | A new document: 67 works → **15 claims**, each *under-explored / contested / well-supported*, in a table with supporting and contrasting citations and a suggested direction; then ~3,400 words of evidence with figures from the papers; ends with "Limits of this retrieval" | 70 candidates in **7 themes**, each marked open gap or active area from how many papers there are, with a trend line; papers to tick and add |
+| Fit to the thesis | The four under-explored claims were this thesis's own openings (paired restored-versus-natural cores at Pichavaram; Sentinel-2 SOC there; depth-resolved sampling) | Themes are topical; why a gap is open is left to the student |
+| Faults | Repeats a citation in a row ("(Bourgeois et al., 2024), (Bourgeois et al., 2024)"); its 39 references are behind the paywall | — |
+| After | Opens the document with the Review panel already beside it | Stays on the Sources page |
+
+The difference is the unit: Jenni reasons over **claims** (what papers assert, where they disagree),
+ours over **counts** (how much is published per theme). A committee asks the first question.
+
+## 9. Account, plans, help
+
+| | Jenni | Ours |
+|---|---|---|
+| Usage | The account menu shows a bar per allowance (uploads, autocompletes, edits, chats, reviews, workflows). The failed workflow run was not charged | "Assist 0/50 · Draft 0/2" in the editor header |
+| Settings | One dialog: Account (email, change, delete), Preferences (16 interface languages incl. Hindi and British English; 7 themes incl. high-contrast and "paper"; web/library search Off/Ask/On), Connections (Zotero, Mendeley, Chrome extension), Document defaults (autocomplete, citation style, font) | Settings and Account pages; light/dark |
+| Price (India) | "50% local discount": Plus ₹1,427/month or ₹570.83/month yearly; Pro ₹3,449 or ₹1,379.58. Plus: 5,000 autocompletes, 500 edits, 500 chats, 10 reviews, 10 workflows a month | ₹299 planned |
+| Help | Send a message (live chat), 11 video tutorials by topic, documentation, changelog, Discord | "How suggestions work (90 seconds)", Feedback |
+| Citation style | Search 10,000+ styles, five most popular first, a locale per style, page numbers on/off, live preview of in-text, bibliography and captions | All CSL styles (ADR-0019) |
+| Comments | Select → Comment → a box under the text | Comments with the guide/committee cycle |
+
+## 10. Failure and edge states
+
+- Jenni's failed literature-review run (first pass) said "Something went wrong… Please try again";
+  afterwards the Workflows page showed "No runs yet" — the failure left no trace and no retry.
+- Ours, with the API down, shows the raw words "Failed to fetch" and a link back.
+- Ours, asked for a suggestion with nothing to cite, does nothing visible (section 2).
+- Ours, the proposal's related-work search: it sends the student's whole message ("…Audience:
+  examiners in environmental science. Argue that…" plus their answer "2") to OpenAlex as one search
+  and gets **0**; the words "Pichavaram mangrove soil organic carbon" get **465**. A failed search is
+  also recorded as "0 found", so "nothing exists" and "the search broke" look the same.
+
+## 11. Phone and screen reader (ours)
+
+At 375 px the editor works, but the two banners and a two-row toolbar fill most of the screen before
+the text, and the banner speaks of Ctrl+/ and Tab. Our suggestion is announced to screen readers only
+as "suggestion available"; Jenni reads the suggestion itself and "Press right arrow to accept".
+
 ## What stands out, without concluding
 
 - **Jenni removes decisions.** One place to land, one prompt, defaults on every setting, everything
@@ -92,5 +137,5 @@ light edits. Ours: a bottom tab bar (Sources, Citations, Chat, Flags, Review); n
 - **Jenni is weaker** on a blank chat, on sentences it cites from papers the student never added, and
   on a free plan that hides references and drops the bibliography from exports.
 
-Still to observe: Jenni's error and empty-library states, its onboarding emails and tutorials, how
-review results read on a long document, and our own tool at phone width and with a screen reader.
+Not observed: Jenni's emails (sent to the owner's inbox), an empty-library state (its library is
+per account and already holds a paper), and review results on a long document.
