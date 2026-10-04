@@ -45,7 +45,10 @@ export function ScaffoldPanel({
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    setOpen(!isHintDismissed(`scaffold-${outlineNodeId}`));
+    // Folded on a phone (2026-10-04): open, it and the first-run hint filled most of a 375 px
+    // screen before the student's own text began. One tap opens it.
+    const wide = typeof window === 'undefined' || window.matchMedia('(min-width: 640px)').matches;
+    setOpen(wide && !isHintDismissed(`scaffold-${outlineNodeId}`));
     api<{ outline: Node[] }>(`/documents/${documentId}/outline`)
       .then((view) => setNode(findNode(view.outline, outlineNodeId)))
       .catch(() => undefined);

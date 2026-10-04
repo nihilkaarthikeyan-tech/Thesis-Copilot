@@ -57,7 +57,9 @@ test.describe('§6.2 states, forced through the mock', () => {
 
     // Not an error: the suggestion arrived, and the hint says what would make the next one cited.
     await expect(page.getByTestId('notice')).toContainText('no sources to draw on');
-    await expect(page.getByTestId('notice')).toContainText('Add papers in the Sources panel');
+    await expect(page.getByTestId('notice')).toContainText('Find papers to get cited text');
+    // 2026-10-04: the notice now carries the next step as a link, not an instruction.
+    await expect(page.getByRole('link', { name: 'Find papers' })).toBeVisible();
     await expect(page.locator('.thesis-editor span.ghost')).toBeVisible();
   });
 

@@ -106,7 +106,7 @@ import { ProofreadPanel } from './ProofreadPanel';
 import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
-import { SourcePins } from './SourcePins';
+import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 
 type ExportResult = { url: string; filename: string; bytes: number };
@@ -146,6 +146,13 @@ const STATUS_LABEL: Record<AutosaveStatus, string> = {
   conflict: 'Changed elsewhere',
   error: 'Save failed — retrying',
 };
+
+/**
+ * A short message to the student, with an optional next step. It sits at the foot of the screen:
+ * above the toolbar it was off-screen whenever the student had scrolled down to the Suggest bar,
+ * and a 4 s fade meant Ctrl+/ looked like it did nothing (2026-10-04 journey).
+ */
+type Notice = { text: string; action: 'findPapers' | null };
 
 export function ThesisEditor({ documentId, chapterId }: { documentId: string; chapterId: string }) {
   const router = useRouter();
@@ -241,7 +248,15 @@ function ChapterEditor({
   const [status, setStatus] = useState<AutosaveStatus>('idle');
   const [conflict, setConflict] = useState(false);
   const [timing, setTiming] = useState<Timing | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  /**
+   * A short message to the student, with an optional next step. It sits at the foot of the
+   * screen: above the toolbar it was off-screen whenever the student had scrolled down to the
+   * Suggest bar, and a 4 s fade meant Ctrl+/ looked like it did nothing (2026-10-04 journey).
+   */
+  const [noticeRaw, setNotice] = useState<string | Notice | null>(null);
+  const noticeState: Notice | null =
+    typeof noticeRaw === 'string' ? { text: noticeRaw, action: null } : noticeRaw;
+  const notice = noticeState?.text ?? null;
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
   const [tab, setTab] = useState<'sources' | 'citations' | 'chat' | 'flags' | 'review'>('sources');
   const [autoSuggest, setAutoSuggest] = useState(false);
@@ -388,24 +403,42 @@ function ChapterEditor({
             // names the gap instead of padding the page.
             const gap = info.needsSource ? `: ${info.needsSource}` : '';
             if (info.findingSources) {
+              // The Sources panel looks again now and once the search has had time to land.
+              window.dispatchEvent(new Event(LIBRARY_CHANGED));
+              setTimeout(() => window.dispatchEvent(new Event(LIBRARY_CHANGED)), 60_000);
               setNotice(
                 `No source in your library covers this yet${gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.`,
               );
               return;
             }
             if (info.needsSource) {
-              setNotice(
-                `No source in your library covers this yet${gap}. Add sources on it in the Sources panel to continue.`,
-              );
+              setNotice({
+                text: `No source in your library covers this yet${gap}. Find papers on it to continue.`,
+                action: 'findPapers',
+              });
               return;
             }
             // Empty-grounding state: the suggestion had no passage to draw on. Not an error —
             // a hint about what would make the next one better.
             if (!info.grounded) {
+              if (info.pinned === 0) {
+                setNotice({
+                  text: info.empty
+                    ? 'Your library has nothing to cite yet, so there was no suggestion. Find papers for this thesis first.'
+                    : 'That suggestion had no sources to draw on. Find papers to get cited text.',
+                  action: 'findPapers',
+                });
+              } else {
+                setNotice(
+                  'None of the pinned sources matched this passage, so the suggestion cites nothing.',
+                );
+              }
+              return;
+            }
+            // Grounded but the model wrote nothing: Suggest must never look like it did nothing.
+            if (info.empty) {
               setNotice(
-                info.pinned === 0
-                  ? 'That suggestion had no sources to draw on. Add papers in the Sources panel to get cited text.'
-                  : 'None of the pinned sources matched this passage, so the suggestion cites nothing.',
+                'No suggestion this time. Write a sentence or two of your own, then ask again.',
               );
             }
           },
@@ -824,10 +857,13 @@ function ChapterEditor({
   }, [editor, live, chapter.id, chapter.version]);
 
   useEffect(() => {
-    if (!notice) return;
-    const t = setTimeout(() => setNotice(null), 4000);
+    if (!noticeRaw) return;
+    // Keyed on the stored value, not the derived object, which is new on every render.
+    const lingers = typeof noticeRaw !== 'string' && noticeRaw.action !== null;
+    // Long enough to read a sentence; longer when there is something to do about it.
+    const t = setTimeout(() => setNotice(null), lingers ? 15_000 : 8_000);
     return () => clearTimeout(t);
-  }, [notice]);
+  }, [noticeRaw]);
 
   /**
    * FR-5.2: a style switch re-renders every citation without touching the document — the labels
@@ -925,18 +961,24 @@ function ChapterEditor({
           whole page down a line under the student's pointer. A click that started on a button
           ended on whatever moved there, and was lost. The title truncates instead. */}
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 lg:flex-nowrap">
-        <div className="flex min-w-0 flex-1 items-baseline gap-2 text-[13px]">
+        {/* A floor on the width (2026-10-04): with a long title and a crowded right side the
+            breadcrumb shrank to "Theses / /". Now it wraps to its own line before it vanishes. */}
+        <div className="flex min-w-[14rem] flex-1 items-baseline gap-2 text-[13px]">
           <Link href="/app" className="shrink-0 text-muted hover:text-accent">
             Theses
           </Link>
           <span className="shrink-0 text-faint" aria-hidden="true">
             /
           </span>
-          <span className="truncate font-semibold text-ink">{doc.title}</span>
+          <span className="min-w-[5rem] truncate font-semibold text-ink" title={doc.title}>
+            {doc.title}
+          </span>
           <span className="shrink-0 text-faint" aria-hidden="true">
             /
           </span>
-          <span className="truncate text-muted">{chapter.title}</span>
+          <span className="min-w-[4rem] truncate text-muted" title={chapter.title}>
+            {chapter.title}
+          </span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1 lg:shrink-0 lg:flex-nowrap">
           <span
@@ -1201,21 +1243,49 @@ function ChapterEditor({
         <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
           <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
-            This is your chapter. Write as you normally would; press <kbd>Ctrl+/</kbd> (or Suggest,
-            below) when you want a suggestion, and <kbd>Tab</kbd> to keep it. It cites the papers in
-            your library — pin some under Sources only if you want to narrow it.{' '}
+            This is your chapter. Write as you normally would.{' '}
+            {autoSuggest
+              ? 'A suggestion appears when you pause'
+              : 'Press Suggest, below, when you want a suggestion'}
+            {autoSuggest ? null : (
+              <span className="hidden sm:inline">
+                {' '}
+                (or <kbd>Ctrl+/</kbd>)
+              </span>
+            )}
+            .{' '}
+            <span className="hidden sm:inline">
+              <kbd>Tab</kbd> keeps it and <kbd>Esc</kbd> dismisses it.{' '}
+            </span>
+            It cites only the papers in your library.{' '}
             <button type="button" className="underline" onClick={() => setHowOpen(true)}>
               How suggestions work (90 seconds)
             </button>
           </FirstRunHint>
-          {notice ? (
-            <p
-              data-testid="notice"
-              role="status"
-              className="mx-auto mb-4 max-w-[72ch] text-xs text-muted"
-            >
-              {notice}
-            </p>
+          {noticeState ? (
+            <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center px-4 lg:bottom-20">
+              <div className="pointer-events-auto flex max-w-xl items-start gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm shadow-lg">
+                <p data-testid="notice" role="status" className="flex-1">
+                  {noticeState.text}
+                </p>
+                {noticeState.action === 'findPapers' ? (
+                  <a
+                    href={`/app/d/${doc.id}/sources?tab=discover`}
+                    className="shrink-0 rounded bg-accent px-2 py-1 text-xs font-medium text-paper"
+                  >
+                    Find papers
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  aria-label="Close message"
+                  className="shrink-0 text-xs text-muted underline"
+                  onClick={() => setNotice(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           ) : null}
           <FormatToolbar
             editor={editor}

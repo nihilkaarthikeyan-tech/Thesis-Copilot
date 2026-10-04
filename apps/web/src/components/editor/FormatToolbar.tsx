@@ -202,7 +202,9 @@ function Tool({
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
-        'inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors',
+        // h-7 with a 7-unit floor, not a fixed square: a worded tool ("Chart", "Diagram") ran into
+        // its neighbour inside a 28 px box (2026-10-04).
+        'inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md px-1 transition-colors',
         'disabled:pointer-events-none disabled:opacity-35',
         active ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-sunk hover:text-ink',
       )}

@@ -17,6 +17,10 @@ import { ApiError, api } from '@/lib/api';
 
 /** Resolution and indexing run in the background; the panel keeps looking until they settle. */
 const POLL_MS = 3_000;
+/** An empty library is looked at less often: papers found for it arrive within a minute or so. */
+const EMPTY_POLL_MS = 20_000;
+/** Dispatched on `window` when something may have added papers (a search for sources started). */
+export const LIBRARY_CHANGED = 'tc:library-changed';
 
 type PinnableSource = {
   id: string;
@@ -56,12 +60,31 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
 
   // A source's grounding level is decided by two background jobs, so a panel opened seconds after
   // an upload sees every source as "nothing to quote" and stays wrong until the student reloads.
+  // An empty library is also polled: automatic sources (ADR-0037) add papers in the background,
+  // and the panel said "No papers yet" while the Sources page already listed five (2026-10-04).
   const settling = sources?.some((s) => s.status === 'PENDING');
+  const empty = sources?.length === 0;
   useEffect(() => {
-    if (!settling) return;
-    const timer = setInterval(() => void load(), POLL_MS);
+    if (!settling && !empty) return;
+    const timer = setInterval(() => void load(), settling ? POLL_MS : EMPTY_POLL_MS);
     return () => clearInterval(timer);
-  }, [settling, load]);
+  }, [settling, empty, load]);
+
+  // Coming back to the tab (after adding papers on the Sources page) or the editor saying a
+  // search for papers has started both mean the library may have changed.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener(LIBRARY_CHANGED, refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener(LIBRARY_CHANGED, refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
 
   const save = useCallback(
     async (next: Set<string>) => {

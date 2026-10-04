@@ -297,16 +297,27 @@ function buildDecorations(
           const span = document.createElement('span');
           span.className = 'ghost';
           span.setAttribute('contenteditable', 'false');
-          span.setAttribute('aria-live', 'polite');
-          span.setAttribute('role', 'status');
-          span.setAttribute('aria-label', 'suggestion available');
+          const shownText = ghostDisplayText(ghost.text, ghost.citations);
+          // A screen reader hears the suggestion itself and how to keep it, once it is final;
+          // "suggestion available" told a blind student nothing they could act on (2026-10-04).
+          // While streaming it is not a live region, so it is not read out a word at a time.
+          if (ghost.status === 'shown') {
+            span.setAttribute('aria-live', 'polite');
+            span.setAttribute('role', 'status');
+            span.setAttribute(
+              'aria-label',
+              `Suggestion: ${shownText} Press Tab to keep it or Escape to dismiss it.`,
+            );
+          } else {
+            span.setAttribute('aria-label', 'Writing a suggestion');
+          }
           // `streaming` while tokens arrive, `shown` once the text is final. Tab is inert until
           // then — accepting half a sentence would put half a sentence in the thesis — so this is
           // the signal anything driving the editor has to wait for. It was only visible on a
           // development-only overlay, which a production build (and so CI) does not render.
           span.dataset.status = ghost.status;
           span.style.userSelect = 'none';
-          span.textContent = ghostDisplayText(ghost.text, ghost.citations);
+          span.textContent = shownText;
           return span;
         },
         // The status is in the key so the widget is redrawn when streaming ends, not only when
