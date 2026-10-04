@@ -276,6 +276,12 @@ export function FlagsPanel({
         </p>
       ) : null}
 
+      {flags.length > 1 ? (
+        <p className="mt-3 text-[11px] text-muted" data-testid="flags-keys">
+          Tab to a flag, then G to go to it, R to resolve, I to ignore, J and K to move.
+        </p>
+      ) : null}
+
       <div className="mt-3 space-y-4">
         {[...byChapter.entries()].map(([title, list]) => (
           <div key={title}>
@@ -286,7 +292,42 @@ export function FlagsPanel({
                   key={flag.id}
                   data-testid="flag"
                   data-type={flag.type}
-                  className={`rounded-md border bg-surface p-2 text-xs ${SEVERITY_CLASS[flag.severity] ?? 'border-line'}`}
+                  // biome-ignore lint/a11y/noNoninteractiveTabindex: a focusable row for keyboard review
+                  tabIndex={0}
+                  aria-label={`${flagLabel(flag)}: ${flag.description}. G to go to it, R to resolve, I to ignore, J and K for the next and previous.`}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    const key = e.key.toLowerCase();
+                    // Keyboard review (2026-10-04, from the Jenni study): the flags can be
+                    // worked through without the mouse, one at a time.
+                    const rows = [
+                      ...(e.currentTarget
+                        .closest('[data-testid="flags-panel"]')
+                        ?.querySelectorAll<HTMLElement>('[data-testid="flag"]') ?? []),
+                    ];
+                    const at = rows.indexOf(e.currentTarget);
+                    if (key === 'j' || key === 'k') {
+                      e.preventDefault();
+                      rows[at + (key === 'j' ? 1 : -1)]?.focus();
+                    } else if (key === 'r' || key === 'i') {
+                      e.preventDefault();
+                      (rows[at + 1] ?? rows[at - 1])?.focus();
+                      void act(flag, key === 'r' ? 'RESOLVE' : 'IGNORE');
+                    } else if (
+                      key === 'g' &&
+                      flag.chapterId === chapterId &&
+                      editor &&
+                      flag.positionTrusted
+                    ) {
+                      e.preventDefault();
+                      editor
+                        .chain()
+                        .setTextSelection({ from: flag.from, to: flag.to })
+                        .scrollIntoView()
+                        .run();
+                    }
+                  }}
+                  className={`rounded-md border bg-surface p-2 text-xs focus:outline focus:outline-2 focus:outline-accent ${SEVERITY_CLASS[flag.severity] ?? 'border-line'}`}
                 >
                   <p className="font-medium">
                     {flagLabel(flag)}

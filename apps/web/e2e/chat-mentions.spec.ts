@@ -113,7 +113,7 @@ test('a question can be confined to the papers named with @', async ({
   await expect(answer).not.toBeEmpty();
   // Every citation in it points at the named paper — none at the one that was not named.
   const labels = (await answer.locator('button').allTextContents()).filter(
-    (l) => l !== 'Add to document' && l !== 'Copy',
+    (l) => l.trim() !== '' && l !== 'Add to document' && l !== 'Copy',
   );
   for (const label of labels) expect(label).not.toContain('LeCun');
 
@@ -125,6 +125,15 @@ test('a question can be confined to the papers named with @', async ({
   expect(copied.length).toBeGreaterThan(0);
   expect(copied).not.toContain('{{cite');
   for (const label of labels) expect(copied).toContain(label);
+
+  // Thumbs on an answer the server stored (a refusal is not stored, and has none).
+  const thumbsDown = answer.getByRole('button', { name: 'Not a useful answer' });
+  if ((await thumbsDown.count()) > 0) {
+    const rated = page.waitForResponse((r) => r.url().includes('/rating'));
+    await thumbsDown.click();
+    expect((await rated).status()).toBe(200);
+    await expect(thumbsDown).toHaveAttribute('aria-pressed', 'true');
+  }
 
   // 2026-10-04: the answer goes into the chapter on one press, its citations as real nodes, as
   // AI-written text.

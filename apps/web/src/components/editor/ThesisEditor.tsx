@@ -567,6 +567,15 @@ function ChapterEditor({
             }).catch(() => undefined);
             void draftId;
           },
+          // A draft is a suggestion event like any other, so the same rating route takes it.
+          onRate: (draftId, rating) =>
+            api('/assist/rating', {
+              method: 'POST',
+              body: JSON.stringify({ suggestionId: draftId, rating }),
+            }).then(
+              () => true,
+              () => false,
+            ),
         },
         // PHASES 3.5: the hover popover reads the real passage behind a citation.
         citation: {

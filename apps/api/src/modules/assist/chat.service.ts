@@ -62,6 +62,8 @@ export type ChatEvent =
   | {
       event: 'done';
       data: {
+        /** The stored answer's id, which the panel rates it by; absent on a refusal. */
+        turnId?: string;
         text: string;
         outcome: string;
         citations: Array<{ key: string; sourceId: string; chunkId: string; label: string }>;
@@ -80,7 +82,8 @@ const KEEP_TURNS = CHAT.keepTurns * 2;
  * A turn as stored on the document. The thread is trimmed from the front (KEEP_TURNS), so an
  * index is not an identity; the id is what the panel keys its list on.
  */
-export type StoredTurn = ChatTurn & { id: string };
+/** `rating`: the student's thumbs on an answer (2026-10-04); absent when not rated. */
+export type StoredTurn = ChatTurn & { id: string; rating?: 1 | -1 };
 
 @Injectable()
 export class ChatService {
@@ -322,12 +325,13 @@ export class ChatService {
         : [];
     });
 
+    const answerId = randomUUID();
     const turns: StoredTurn[] = [
       ...history,
       { id: randomUUID(), role: 'user' as const, text: input.message },
       // The citations stay with the turn (ADR-0045): without them the history rendered no
       // citation after a reload, and the stale `{{cite:S1#c1}}` ids went back to the model.
-      { id: randomUUID(), role: 'assistant' as const, text: processed.text, citations },
+      { id: answerId, role: 'assistant' as const, text: processed.text, citations },
     ].slice(-KEEP_TURNS);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
     await this.prisma.document.update({
@@ -338,6 +342,7 @@ export class ChatService {
     yield {
       event: 'done',
       data: {
+        turnId: answerId,
         text: processed.text,
         outcome: processed.outcome,
         citations,
@@ -397,6 +402,32 @@ export class ChatService {
     });
     if (!document) throw new NotFoundError('That document');
     return document;
+  }
+
+  /**
+   * Thumbs on an answer (2026-10-04, from the Jenni study). Kept on the turn in the stored
+   * conversation, and logged, because the turn itself rolls off after four. No model call.
+   */
+  async rate(
+    ownerId: string,
+    documentId: string,
+    turnId: string,
+    rating: 1 | -1 | 0,
+  ): Promise<{ ok: true }> {
+    const document = await this.owned(ownerId, documentId);
+    const turns = readTurns(document.meta);
+    const turn = turns.find((t) => t.id === turnId && t.role === 'assistant');
+    if (!turn) throw new NotFoundError('That answer');
+    const next = turns.map((t) =>
+      t.id === turnId ? { ...t, rating: rating === 0 ? undefined : rating } : t,
+    );
+    const meta = (document.meta as Record<string, unknown> | null) ?? {};
+    await this.prisma.document.update({
+      where: { id: documentId },
+      data: { meta: { ...meta, chat: { turns: next } } },
+    });
+    this.logger.log({ documentId, turnId, rating }, 'chat answer rated');
+    return { ok: true };
   }
 
   private async log(

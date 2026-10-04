@@ -13,6 +13,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Fragment, Node as PmNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import { useState } from 'react';
 
 export type DraftStatus = 'pending' | 'accepted';
 
@@ -23,6 +24,11 @@ export type DraftBlockOptions = {
   onRegenerate?: (draftId: string) => void;
   /** Regenerate is disabled in week 1 (PHASES 1.6). */
   regenerateEnabled: boolean;
+  /**
+   * Thumbs on a draft (2026-10-04, from the Jenni study), apart from keeping it. Shown only when
+   * given; resolves false when the rating could not be saved, so the button goes back.
+   */
+  onRate?: (draftId: string, rating: 1 | -1 | 0) => Promise<boolean>;
 };
 
 declare module '@tiptap/core' {
@@ -90,6 +96,16 @@ function DraftBlockView(props: {
   const draftId = String(props.node.attrs.draftId);
   const pending = props.node.attrs.status === 'pending';
   const options = props.extension.options;
+  const [rating, setRating] = useState<1 | -1 | 0>(0);
+  const rate = (value: 1 | -1) => {
+    if (!options.onRate) return;
+    const next = rating === value ? 0 : value;
+    const before = rating;
+    setRating(next);
+    void options.onRate(draftId, next).then((ok) => {
+      if (!ok) setRating(before);
+    });
+  };
 
   return (
     <NodeViewWrapper
@@ -117,6 +133,26 @@ function DraftBlockView(props: {
             >
               Regenerate
             </button>
+            {options.onRate ? (
+              <>
+                <button
+                  type="button"
+                  aria-pressed={rating === 1}
+                  data-testid="draft-rate-up"
+                  onClick={() => rate(1)}
+                >
+                  Useful
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={rating === -1}
+                  data-testid="draft-rate-down"
+                  onClick={() => rate(-1)}
+                >
+                  Not useful
+                </button>
+              </>
+            ) : null}
           </span>
         </div>
       ) : null}

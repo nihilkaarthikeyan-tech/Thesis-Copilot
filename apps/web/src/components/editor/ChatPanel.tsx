@@ -10,6 +10,7 @@
 
 import { tokenizeAiText } from '@tc/ui';
 import katex from 'katex';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { answerPlainText } from '@/lib/chat-copy';
@@ -31,6 +32,9 @@ type Turn = {
   outcome?: string;
   /** The scope the question was asked in, which the advice under a refusal depends on. */
   scope?: Scope;
+  /** The student's thumbs; only answers the server stored (it sent their id) can be rated. */
+  rating?: 1 | -1;
+  stored?: boolean;
 };
 
 type Filters = {
@@ -136,7 +140,7 @@ export function ChatPanel({
 
   useEffect(() => {
     api<{ turns: Turn[] }>(`/chat/${documentId}`)
-      .then((h) => setTurns(h.turns))
+      .then((h) => setTurns(h.turns.map((t) => ({ ...t, stored: true }))))
       .catch(() => undefined);
     api<{ chatFilters?: Filters }>('/settings')
       .then((s) => setFilters(s.chatFilters ?? {}))
@@ -182,6 +186,22 @@ export function ChatPanel({
    * Copies an answer as plain text: citations as the labels on screen, equations as their LaTeX
    * (`lib/chat-copy.ts`). Jenni's chat has Copy; ours only had "Add to document".
    */
+  /** Thumbs on an answer (2026-10-04, from the Jenni study); pressing again takes it back. */
+  async function rate(turn: Turn, value: 1 | -1) {
+    const next = turn.rating === value ? 0 : value;
+    const set = (rating: 1 | -1 | undefined) =>
+      setTurns((list) => list.map((t) => (t.id === turn.id ? { ...t, rating } : t)));
+    set(next === 0 ? undefined : next);
+    try {
+      await api(`/chat/${documentId}/turns/${turn.id}/rating`, {
+        method: 'POST',
+        body: JSON.stringify({ rating: next }),
+      });
+    } catch {
+      set(turn.rating);
+    }
+  }
+
   async function copyAnswer(turn: Turn) {
     try {
       await navigator.clipboard.writeText(answerPlainText(turn.text, turn.citations ?? []));
@@ -278,7 +298,8 @@ export function ChatPanel({
             setTurns((list) => [
               ...list,
               {
-                id: crypto.randomUUID(),
+                id: typeof data.turnId === 'string' ? data.turnId : crypto.randomUUID(),
+                stored: typeof data.turnId === 'string',
                 role: 'assistant',
                 text: String(data.text ?? text),
                 citations: (data.citations as Citation[]) ?? [],
@@ -626,6 +647,28 @@ export function ChatPanel({
                 >
                   {copied?.id === turn.id ? copied.message : 'Copy'}
                 </button>
+                {turn.stored ? (
+                  <span className="ml-auto flex items-center gap-0.5" data-testid="chat-rating">
+                    <button
+                      type="button"
+                      aria-label="Useful answer"
+                      aria-pressed={turn.rating === 1}
+                      onClick={() => void rate(turn, 1)}
+                      className={`rounded p-1 hover:bg-sunk ${turn.rating === 1 ? 'text-accent' : 'text-muted'}`}
+                    >
+                      <ThumbsUp size={13} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Not a useful answer"
+                      aria-pressed={turn.rating === -1}
+                      onClick={() => void rate(turn, -1)}
+                      className={`rounded p-1 hover:bg-sunk ${turn.rating === -1 ? 'text-accent' : 'text-muted'}`}
+                    >
+                      <ThumbsDown size={13} aria-hidden />
+                    </button>
+                  </span>
+                ) : null}
               </div>
             ) : null}
           </div>

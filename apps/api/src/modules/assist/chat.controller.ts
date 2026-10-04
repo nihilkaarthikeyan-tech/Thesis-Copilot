@@ -194,6 +194,22 @@ export class ChatController {
    * one, the `automaticSuggest` flag sets the default (ADR-0053, 2026-10-04: on in production, as
    * Jenni suggests on a pause; the flag was seeded and never read).
    */
+  /** Thumbs on a chat answer (2026-10-04). No model call, no unit. */
+  @Post('chat/:documentId/turns/:turnId/rating')
+  @HttpCode(200)
+  rateAnswer(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Param('turnId') turnId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = z
+      .object({ rating: z.union([z.literal(1), z.literal(-1), z.literal(0)]) })
+      .safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid rating', parsed.error.issues);
+    return this.chat.rate(user.id, documentId, turnId, parsed.data.rating);
+  }
+
   @Get('settings')
   async settings(@CurrentUser() user: SessionUser) {
     const row = await this.prisma.user.findUnique({
