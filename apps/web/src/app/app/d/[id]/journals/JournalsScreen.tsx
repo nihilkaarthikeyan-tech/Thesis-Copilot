@@ -27,6 +27,8 @@ type JournalScore = {
   total: number;
   breakdown: { scope: number; citedHere: number; impact: number; access: number };
   alignmentLevel: AlignmentLevel;
+  /** False when OpenAlex listed no subjects: then `none` means unknown, not "no overlap". */
+  subjectsCompared: boolean;
   impactTier: ImpactTier;
   meanCitedness: number | null;
   citedHereCount: number;
@@ -37,7 +39,12 @@ type JournalScore = {
 };
 
 type JournalsView = {
-  basis: { keywords: string[]; field: string | null; citedVenueCount: number };
+  basis: {
+    keywords: string[];
+    field: string | null;
+    libraryVenueCount: number;
+    citedVenueCount: number;
+  };
   eligible: JournalScore[];
   ruledOut: JournalScore[];
   thin: boolean;
@@ -89,9 +96,11 @@ function JournalRow({ j }: { j: JournalScore }) {
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <Badge tone={j.alignmentLevel === 'none' ? 'neutral' : 'accent'}>
-          {ALIGNMENT_LABEL[j.alignmentLevel]}
-        </Badge>
+        {j.alignmentLevel !== 'none' || j.subjectsCompared ? (
+          <Badge tone={j.alignmentLevel === 'none' ? 'neutral' : 'accent'}>
+            {ALIGNMENT_LABEL[j.alignmentLevel]}
+          </Badge>
+        ) : null}
         {j.citedHereCount > 0 ? (
           <Badge tone="ok">
             Published {j.citedHereCount} of your {j.citedHereCount === 1 ? 'source' : 'sources'}
@@ -169,9 +178,9 @@ export function JournalsScreen({ documentId }: { documentId: string }) {
         Where to submit
       </h1>
       <p className="mt-1 text-sm text-muted">
-        Journals ranked by fit with your topic and by how many you already cite. Citedness is from
-        OpenAlex, not an impact factor. Nothing here is advice to submit, and this page never
-        changes your thesis.
+        Journals ranked by fit with your topic and by how many of your sources each one published.
+        Citedness is from OpenAlex, not an impact factor. Nothing here is advice to submit, and this
+        page never changes your thesis.
       </p>
 
       <section className="mt-5 flex flex-wrap items-end gap-3 rounded-md border border-line bg-sunk p-3">
@@ -216,8 +225,11 @@ export function JournalsScreen({ documentId }: { documentId: string }) {
           <p className="mt-4 text-xs text-muted">
             Matched on {view.basis.field ? `${view.basis.field}, ` : ''}
             {view.basis.keywords.length} key {view.basis.keywords.length === 1 ? 'term' : 'terms'}
+            {view.basis.libraryVenueCount > 0
+              ? `, and the ${view.basis.libraryVenueCount} ${view.basis.libraryVenueCount === 1 ? 'journal' : 'journals'} your library’s sources come from`
+              : ''}
             {view.basis.citedVenueCount > 0
-              ? `, and the ${view.basis.citedVenueCount} ${view.basis.citedVenueCount === 1 ? 'journal' : 'journals'} you already cite`
+              ? ` (you cite from ${view.basis.citedVenueCount} of them)`
               : ''}
             .
           </p>
