@@ -57,7 +57,8 @@ const unknown: Row = {
 function service(rows: Row[]) {
   const prisma = {
     document: { findFirst: async () => ({ id: 'doc-1' }) },
-    source: { findMany: async () => rows },
+    // The library query also selects each row's collection memberships (migration 0036).
+    source: { findMany: async () => rows.map((r) => ({ ...r, collectionItems: [] })) },
     sourceChunk: {
       findFirst: async ({ where }: { where: { sourceId: string } }) => {
         const source = rows.find((r) => r.id === where.sourceId);

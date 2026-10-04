@@ -69,6 +69,13 @@ export type CitationOptions = {
   resolvePassage?: (sourceId: string, chunkId: string | null) => Promise<CitationPassage | null>;
   /** Hover delay before the popover is fetched and shown. */
   hoverDelayMs?: number;
+  /**
+   * "Read beside" (2026-10-04): opens the source's PDF in a pane next to the chapter. The popover
+   * offers it beside "Open PDF" when this is set and `canReadBeside` (if given) says the screen
+   * is wide enough; otherwise only the new-tab link shows, as before.
+   */
+  readBeside?: (target: { sourceId: string; page: number | null; label: string }) => void;
+  canReadBeside?: () => boolean;
 };
 
 export type CitationStorage = {
@@ -363,6 +370,24 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           link.textContent =
             passage.page !== null ? `Open PDF at page ${passage.page}` : 'Open PDF';
           el.appendChild(link);
+
+          const sourceId = (current.attrs as CitationAttrs).sourceId;
+          if (options.readBeside && sourceId && (options.canReadBeside?.() ?? true)) {
+            const beside = document.createElement('button');
+            beside.type = 'button';
+            beside.className = 'citation-popover__beside';
+            beside.setAttribute('data-testid', 'citation-read-beside');
+            beside.textContent = 'Read beside';
+            // Not a selection change in the editor: the atom must not be selected by this press.
+            beside.addEventListener('mousedown', (event) => event.preventDefault());
+            beside.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              options.readBeside?.({ sourceId, page: passage.page, label: passage.shortRef });
+              closePopover();
+            });
+            el.appendChild(beside);
+          }
         }
 
         dom.appendChild(el);

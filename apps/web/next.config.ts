@@ -4,8 +4,9 @@ import type { NextConfig } from 'next';
  * Content-Security-Policy (2026-09-28). The browser refuses anything this list does not name:
  * scripts, styles and fonts come only from this site; images from this site (figures and exports
  * are served through it, `S3_PUBLIC_URL`) plus inline `data:`/`blob:` ones; network calls only to
- * the API and its live-editing socket. No plugins, no other site may frame a page, a form may only
- * post here, and a `<base>` tag cannot re-point relative links.
+ * the API and its live-editing socket; frames only this site and the storage origin (a source's
+ * PDF read beside the chapter). No plugins, no other site may frame a page, a form may only post
+ * here, and a `<base>` tag cannot re-point relative links.
  *
  * Scripts keep `'unsafe-inline'`: Next.js writes its own bootstrap inline, and so does the theme
  * script that stops a dark-mode flash. A nonce would remove it but make every page dynamically
@@ -38,7 +39,9 @@ function contentSecurityPolicy(): string {
       .filter((v, i, all) => all.indexOf(v) === i)
       .join(' '),
     "worker-src 'self' blob:",
-    "frame-src 'self'",
+    // "Read beside" (2026-10-04) shows a source's PDF in an iframe on its signed link: only the
+    // storage origin is added, the one already allowed for images and fetches.
+    ["frame-src 'self'", ...storage].join(' '),
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

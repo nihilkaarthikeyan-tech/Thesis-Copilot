@@ -74,6 +74,9 @@ export type SourceView = {
   noFullTextReason: string | null;
 };
 
+/** A library row as `GET /documents/:id/sources` lists it: with the collections it is in. */
+export type LibrarySourceView = SourceView & { collectionIds: string[] };
+
 /** One side of a possible duplicate, with what the thesis does with it. */
 export type DuplicateSide = SourceView & { citeCount: number; pinCount: number };
 
@@ -293,14 +296,18 @@ export class SourcesService {
   }
 
   /** PRD §9.2 `GET /documents/:id/sources` — the library, with grounding badges (FR-2.2 AC). */
-  async listSources(ownerId: string, documentId: string): Promise<SourceView[]> {
+  async listSources(ownerId: string, documentId: string): Promise<LibrarySourceView[]> {
     await this.ownedDocument(ownerId, documentId);
     const rows = await this.prisma.source.findMany({
       where: { documentId },
       orderBy: [{ status: 'asc' }, { year: 'desc' }, { createdAt: 'asc' }],
-      select: SOURCE_VIEW_SELECT,
+      select: { ...SOURCE_VIEW_SELECT, collectionItems: { select: { collectionId: true } } },
     });
-    return rows.map(toView);
+    // The collections each paper is in, so the screen can filter and count without a second call.
+    return rows.map(({ collectionItems, ...row }) => ({
+      ...toView(row),
+      collectionIds: collectionItems.map((item) => item.collectionId),
+    }));
   }
 
   /**
@@ -837,6 +844,18 @@ export class SourcesService {
             skipDuplicates: true,
           });
           pinsMoved = pins.length;
+        }
+
+        // The kept record joins every collection the removed one was in (2026-10-04).
+        const memberships = await tx.sourceCollectionItem.findMany({
+          where: { sourceId: drop.id },
+          select: { collectionId: true },
+        });
+        if (memberships.length > 0) {
+          await tx.sourceCollectionItem.createMany({
+            data: memberships.map((m) => ({ collectionId: m.collectionId, sourceId: keep.id })),
+            skipDuplicates: true,
+          });
         }
 
         if (fileMoved) {

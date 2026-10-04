@@ -59,6 +59,9 @@ export class DocumentEraser {
     if (sourceIds.length > 0) {
       await tx.sourceChunk.deleteMany({ where: { sourceId: { in: sourceIds } } });
     }
+    // Collections (0036): the memberships first, then the folders themselves.
+    await tx.sourceCollectionItem.deleteMany({ where: { collection: inDocs } });
+    await tx.sourceCollection.deleteMany({ where: inDocs });
     await tx.coherenceFlag.deleteMany({ where: inDocs });
     await tx.comment.deleteMany({ where: inDocs });
     await tx.guideShare.deleteMany({ where: inDocs });
