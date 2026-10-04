@@ -10,6 +10,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
+import {
+  StartingStyle,
+  type StartingStyleChoice,
+  saveStartingStyle,
+} from '@/components/onboarding/StartingStyle';
 import { Button } from '@/components/ui/button';
 import { ApiError, api } from '@/lib/api';
 
@@ -34,6 +39,7 @@ export default function NewThesisPage() {
   const router = useRouter();
   const [entryPath, setEntryPath] = useState<EntryPath>('B_PAPER');
   const [title, setTitle] = useState('');
+  const [citationStyle, setCitationStyle] = useState<StartingStyleChoice>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +52,7 @@ export default function NewThesisPage() {
         method: 'POST',
         body: JSON.stringify({ title: title.trim(), entryPath }),
       });
+      await saveStartingStyle(document.id, citationStyle);
       router.push(`/app/d/${document.id}/proposal`);
     } catch (e) {
       setError(
@@ -116,6 +123,10 @@ export default function NewThesisPage() {
           <p className="mt-1 text-xs text-muted">
             {PATHS.find((p) => p.value === entryPath)?.next} You can change the title later.
           </p>
+        </div>
+
+        <div className="rounded-md border border-line bg-surface p-4">
+          <StartingStyle value={citationStyle} onChange={setCitationStyle} />
         </div>
 
         {error ? (

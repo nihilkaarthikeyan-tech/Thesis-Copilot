@@ -6,7 +6,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { signInAs } from './_session.js';
+import { API_URL, signInAs } from './_session.js';
 
 test('the first message of the topic path has a strength meter that reacts as the student types', async ({
   page,
@@ -49,4 +49,47 @@ test('the first message of the topic path has a strength meter that reacts as th
   await chat.getByRole('button', { name: 'Send' }).click();
   await expect(chat.locator('[data-role="assistant"]')).toHaveCount(1, { timeout: 20_000 });
   await expect(chat.getByTestId('topic-meter')).toHaveCount(0);
+});
+
+test('the citation style chosen when a thesis is created is the style the thesis uses', async ({
+  page,
+  request,
+}) => {
+  const s = await signInAs(page, request);
+  const cookie = `${s.cookieName}=${s.cookieValue}`;
+  await page.goto('/app');
+  const styles = page.getByTestId('starting-style');
+  await expect(styles).toBeVisible({ timeout: 20_000 });
+  // The five most common first, then Other.
+  for (const name of ['APA 7', 'Harvard', 'IEEE', 'Vancouver', 'Chicago author-date', 'Other…']) {
+    await expect(styles.getByText(name, { exact: true })).toBeVisible();
+  }
+  await styles.getByText('Other…', { exact: true }).click();
+  await expect(styles).toContainText('Citations tab');
+  await styles.getByText('IEEE', { exact: true }).click();
+
+  await page.getByLabel('Working title').fill(`Style at the start ${Date.now()}`);
+  await page.getByRole('button', { name: 'Create thesis' }).click();
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  const documentId = /\/app\/d\/([0-9a-f-]{36})\//.exec(page.url())?.[1] ?? '';
+  const rendered = (await (
+    await request.get(`${API_URL}/api/v1/documents/${documentId}/citations`, {
+      headers: { cookie },
+    })
+  ).json()) as { style: string };
+  expect(rendered.style).toBe('ieee');
+
+  // Skipped, the thesis keeps the default as before.
+  await page.goto('/app/new');
+  await page.getByLabel(/Start from a topic/).check();
+  await page.getByLabel('Working title').fill(`Style skipped ${Date.now()}`);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+  const skippedId = /\/app\/d\/([0-9a-f-]{36})\//.exec(page.url())?.[1] ?? '';
+  const skipped = (await (
+    await request.get(`${API_URL}/api/v1/documents/${skippedId}/citations`, {
+      headers: { cookie },
+    })
+  ).json()) as { style: string };
+  expect(skipped.style).toBe('apa');
 });

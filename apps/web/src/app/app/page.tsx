@@ -17,6 +17,11 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { LogoMark } from '@/components/LogoMark';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
+import {
+  StartingStyle,
+  type StartingStyleChoice,
+  saveStartingStyle,
+} from '@/components/onboarding/StartingStyle';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { TrialNotice } from '@/components/TrialNotice';
 import { ThemeToggle } from '@/components/theme';
@@ -72,6 +77,7 @@ export default function DocumentListPage() {
   }, []);
   const [title, setTitle] = useState('');
   const [entryPath, setEntryPath] = useState<'A_TOPIC' | 'B_PAPER'>('B_PAPER');
+  const [citationStyle, setCitationStyle] = useState<StartingStyleChoice>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */
@@ -110,6 +116,7 @@ export default function DocumentListPage() {
         method: 'POST',
         body: JSON.stringify({ title, entryPath }),
       });
+      await saveStartingStyle(created.id, citationStyle);
       // Straight on to the proposal (2026-10-04): creating used to clear the field and leave the
       // student on this list, choosing between nine links on the new card.
       router.push(`/app/d/${created.id}/proposal`);
@@ -298,6 +305,8 @@ export default function DocumentListPage() {
                   })}
                 </div>
               </fieldset>
+
+              <StartingStyle value={citationStyle} onChange={setCitationStyle} />
 
               <Button
                 type="submit"
