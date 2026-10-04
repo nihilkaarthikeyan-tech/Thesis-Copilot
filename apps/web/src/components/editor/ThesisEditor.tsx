@@ -150,6 +150,34 @@ const STATUS_LABEL: Record<AutosaveStatus, string> = {
   error: 'Save failed — retrying',
 };
 
+/** The passage behind a citation and its paper's record, for the hover card and the evidence card. */
+async function resolvePassage(
+  sourceId: string,
+  chunkId: string | null,
+): Promise<CitationPassage | null> {
+  if (!chunkId) return null;
+  try {
+    const p = await api<PassageDto>(`/sources/${sourceId}/chunks/${chunkId}`);
+    return {
+      text: p.text,
+      page: p.page,
+      section: p.section,
+      shortRef: shortRefOf(p.source),
+      pdfUrl: p.pdfUrl,
+      record: {
+        title: p.source.title,
+        authors: authorLine(p.source.authors),
+        year: p.source.year,
+        venue: p.source.venue ?? null,
+        doi: p.source.doi ?? null,
+        grounding: p.source.groundingLevel ?? null,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * A short message to the student, with an optional next step. It sits at the foot of the screen:
  * above the toolbar it was off-screen whenever the student had scrolled down to the Suggest bar,
@@ -521,29 +549,7 @@ function ChapterEditor({
         },
         // PHASES 3.5: the hover popover reads the real passage behind a citation.
         citation: {
-          resolvePassage: async (sourceId, chunkId): Promise<CitationPassage | null> => {
-            if (!chunkId) return null;
-            try {
-              const p = await api<PassageDto>(`/sources/${sourceId}/chunks/${chunkId}`);
-              return {
-                text: p.text,
-                page: p.page,
-                section: p.section,
-                shortRef: shortRefOf(p.source),
-                pdfUrl: p.pdfUrl,
-                record: {
-                  title: p.source.title,
-                  authors: authorLine(p.source.authors),
-                  year: p.source.year,
-                  venue: p.source.venue ?? null,
-                  doi: p.source.doi ?? null,
-                  grounding: p.source.groundingLevel ?? null,
-                },
-              };
-            } catch {
-              return null;
-            }
-          },
+          resolvePassage,
         },
         imageUpload: uploadFigure,
         ...(live
@@ -1526,7 +1532,11 @@ function ChapterEditor({
       </nav>
 
       {guided.element}
-      <SuggestionBar editor={editor} onRefine={guided.controller.ask} />
+      <SuggestionBar
+        editor={editor}
+        onRefine={guided.controller.ask}
+        resolvePassage={resolvePassage}
+      />
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} documentId={doc.id} />
       <ChartDialog
         open={chart !== null}

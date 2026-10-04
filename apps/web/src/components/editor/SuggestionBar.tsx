@@ -12,7 +12,7 @@
  * every suggestion does, so the menu says so.
  */
 
-import { getGhostState } from '@tc/ui';
+import { type CitationPassage, getGhostState, type SuggestionCitation } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useState } from 'react';
 
@@ -43,17 +43,34 @@ type Status = 'idle' | 'requesting' | 'streaming' | 'shown' | string;
 export function SuggestionBar({
   editor,
   onRefine,
+  resolvePassage,
 }: {
   editor: Editor | null;
   /** Asks the student for their own instruction (the guided input) and resolves with it. */
   onRefine: () => Promise<string | null>;
+  /** The passage behind a citation, the same lookup as the hover card on a placed citation. */
+  resolvePassage: (sourceId: string, chunkId: string | null) => Promise<CitationPassage | null>;
 }) {
   const [status, setStatus] = useState<Status>('idle');
   const [menu, setMenu] = useState(false);
+  const [citations, setCitations] = useState<SuggestionCitation[]>([]);
+  /**
+   * The evidence card (2026-10-04, from the Jenni study): the paper and the passage behind a
+   * suggested citation, readable before the suggestion is accepted, not only after.
+   */
+  const [evidence, setEvidence] = useState<{
+    key: string;
+    passage: CitationPassage | null;
+    loading: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (!editor) return;
-    const update = () => setStatus(getGhostState(editor)?.status ?? 'idle');
+    const update = () => {
+      const ghost = getGhostState(editor);
+      setStatus(ghost?.status ?? 'idle');
+      setCitations(ghost?.citations ?? []);
+    };
     update();
     editor.on('transaction', update);
     return () => {
@@ -62,7 +79,10 @@ export function SuggestionBar({
   }, [editor]);
 
   useEffect(() => {
-    if (status === 'idle') setMenu(false);
+    if (status === 'idle') {
+      setMenu(false);
+      setEvidence(null);
+    }
   }, [status]);
 
   if (!editor || status === 'idle') return null;
@@ -81,6 +101,22 @@ export function SuggestionBar({
   };
 
   const shown = status === 'shown';
+  // One chip per paper: two passages of the same paper are one source to the student.
+  const chips = citations.filter(
+    (c, i) => c.sourceId && citations.findIndex((d) => d.sourceId === c.sourceId) === i,
+  );
+  const openEvidence = (citation: SuggestionCitation) => {
+    if (evidence?.key === citation.key) {
+      setEvidence(null);
+      return;
+    }
+    setEvidence({ key: citation.key, passage: null, loading: true });
+    void resolvePassage(citation.sourceId ?? '', citation.chunkId).then((passage) =>
+      setEvidence((current) =>
+        current?.key === citation.key ? { key: citation.key, passage, loading: false } : current,
+      ),
+    );
+  };
   const button =
     'rounded-md border border-line px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-sunk disabled:opacity-40';
 
@@ -91,6 +127,23 @@ export function SuggestionBar({
         className="pointer-events-auto relative flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 shadow-lg"
       >
         <span className="text-[12px] text-muted">{shown ? 'Suggestion' : 'Writing…'}</span>
+        {shown && chips.length > 0 ? (
+          <span className="flex flex-wrap items-center gap-1" data-testid="suggestion-evidence">
+            <span className="text-[11px] text-muted">Evidence:</span>
+            {chips.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                aria-expanded={evidence?.key === c.key}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => openEvidence(c)}
+                className="rounded bg-accent/10 px-1.5 py-0.5 text-[11.5px] text-accent underline"
+              >
+                {c.rendered || 'source'}
+              </button>
+            ))}
+          </span>
+        ) : null}
         <button
           type="button"
           disabled={!shown}
@@ -127,6 +180,65 @@ export function SuggestionBar({
         >
           Dismiss
         </button>
+        {evidence ? (
+          <div
+            data-testid="evidence-card"
+            className="absolute bottom-full left-0 mb-2 w-[min(32rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-[13px] shadow-lg"
+          >
+            {evidence.loading ? (
+              <p className="text-muted">Opening the passage…</p>
+            ) : !evidence.passage ? (
+              <p className="text-muted">This passage could not be opened.</p>
+            ) : (
+              <>
+                <p className="font-semibold">
+                  {evidence.passage.record?.title ?? evidence.passage.shortRef}
+                </p>
+                <p className="mt-0.5 text-[12px] text-muted">
+                  {[
+                    evidence.passage.record?.authors,
+                    evidence.passage.record?.year,
+                    evidence.passage.record?.venue,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                <p className="mt-1 text-[11.5px]">
+                  {evidence.passage.record?.grounding === 'FULL_TEXT'
+                    ? 'We hold the full text of this paper.'
+                    : evidence.passage.record?.grounding === 'ABSTRACT'
+                      ? 'We hold only the abstract of this paper.'
+                      : null}
+                </p>
+                <blockquote className="mt-2 max-h-40 overflow-y-auto border-l-2 border-accent/40 pl-2 text-[12.5px]">
+                  “{evidence.passage.text.slice(0, 600)}
+                  {evidence.passage.text.length > 600 ? '…' : ''}”
+                </blockquote>
+                <p className="mt-1 text-[11.5px] text-muted">
+                  {[
+                    evidence.passage.section,
+                    evidence.passage.page ? `page ${evidence.passage.page}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  {evidence.passage.pdfUrl ? (
+                    <>
+                      {' · '}
+                      <a
+                        href={`${evidence.passage.pdfUrl}${evidence.passage.page ? `#page=${evidence.passage.page}` : ''}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        Open PDF
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+              </>
+            )}
+          </div>
+        ) : null}
         {menu ? (
           <div
             role="menu"
