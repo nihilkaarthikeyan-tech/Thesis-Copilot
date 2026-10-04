@@ -125,6 +125,64 @@ At 375 px the editor works, but the two banners and a two-row toolbar fill most 
 the text, and the banner speaks of Ctrl+/ and Tab. Our suggestion is announced to screen readers only
 as "suggestion available"; Jenni reads the suggestion itself and "Press right arrow to accept".
 
+## 12. Inserting things (equations, tables, declarations)
+
+Jenni's "/" menu: Text, H1–H4, bulleted and numbered lists, code, **Table, Image, Equation, Chart**,
+quote, divider, **Table of Contents**, **AI Declaration**, Placeholder Citation, Cite.
+
+- **Equation** opens a dialog with three ways in: **KaTeX** (with "Quadratic", "Maxwell's",
+  "Piecewise" examples), **Describe** ("describe your equation in plain English", with "Quadratic
+  formula", "Integral of sin x", "Matrix 2×2" to try) and **Image** (a picture of an equation). A
+  student who does not know LaTeX can still write one.
+- **AI Declaration** inserts a "Declaration of AI Usage" heading and the standard journal-style
+  statement (used Jenni AI for clarity; reviewed and takes full responsibility).
+- Ours: a toolbar button opens one LaTeX line with "E = mc^2" as the placeholder — no examples, no
+  words-to-equation, no picture. (Our AI-usage report exists, inside the export.)
+
+## 13. First impression (public home page)
+
+| | Jenni | Ours |
+|---|---|---|
+| Hero | "Meet Your Intelligent Research Assistant"; one button "Start writing – it's free"; "Loved by over 6 million academics" | "A thesis editor that only cites papers you've read"; "Made for master's and PhD students in India"; two buttons; "14-day free trial, no card · Nothing deleted if you stop paying" |
+| Below the fold | The real editor, **animated**: a chat answer types itself out with citations beside a cited abstract | A stock photograph of a student with one static evidence card |
+| Signed in | The app is on its own domain and opens the last document | A signed-in student opening the site sees the sales page and "Start writing free" |
+| At ~800 px | Clean | Our navigation wraps ("Thesis / Copilot", "Sign / in", "How it / works") |
+
+## 14. What students say about Jenni (outside the product)
+
+From review sites and threads (summarised, 2026-10): Trustpilot 3.6–3.8 from ~150 reviews. The most
+frequent complaints are **billing**: renewals without clear notice, a cancel button hard to find,
+charges after cancelling, refunds refused ("generally not refundable"; cancelling is desktop-only per
+its own docs). On Reddit the most repeated complaint is **citations that are wrong or do not exist**,
+then prose that reads worse than general chatbots, and a free tier too small to judge it by. Praise
+goes to the library, PDF chat and saving time on citations. A journalism piece reported thousands of
+undisclosed paid TikTok promotions for AI study apps including Jenni.
+
+## 15. Their documentation and release pace
+
+- Docs: Getting started, Writing (editor, headings, maths, images, version history), AI tools
+  (autocomplete, section prompts, chat, saved prompts, editing, reviews), Research (citations,
+  library, PDF reader, browser extension, open-access papers, academic terminology), Collaboration
+  (sharing, comments, read-only sharing, **document cloning**), Export/Import, Account (plans,
+  settings, language, login, mobile, privacy).
+- **Sharing has roles** — Editor, Commenter, Viewer — by invitation or by link, and live co-editing
+  with named cursors (the roles shipped 2026-09-23; the share dialog shows them once an email is
+  entered). *This corrects the first pass, which said "no roles".*
+- Reviews open as tracked changes with a review mode: Y accept, N reject, arrows, Accept all.
+  Proofread follows British spelling; Tone of Voice can take a library PDF as the model; Peer Review
+  gives ratings, strengths, weaknesses, questions and comment threads.
+- Privacy page: "Your writing is not used to train Jenni models"; providers not named.
+- Free plan: autocompletes 10 a day; AI edits 5, chats 5, workflows 3 — **one-time, not monthly**.
+- Changelog, roughly every two weeks: viewer/commenter roles (09-23), charts from chat (09-09),
+  prompt guidance (08-26), citation filters (08-12), concept visuals from chat (07-29).
+- Its "open access" copies include ResearchGate uploads (a link seen in the gap-analysis document),
+  and the gap analysis cited 39 papers without adding any to the student's library.
+
+## 16. Speed
+
+Not compared fairly yet: our local page is the unminified development build. Needs the same
+measurement against our production site.
+
 ## What stands out, without concluding
 
 - **Jenni removes decisions.** One place to land, one prompt, defaults on every setting, everything

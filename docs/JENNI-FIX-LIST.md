@@ -38,6 +38,13 @@ collects every finding so nothing is lost before then. Evidence for each is in
 19. Our Word export writes citations as plain text, not Word citation fields.
 20. Chat answers only from the library; no search beyond it.
 21. Autocomplete reads the chapter scope note, not a note for the section under the cursor.
+22. Equations: one LaTeX line with "E = mc^2" as the only hint — no examples, no "describe it in
+    words", no picture of an equation. (The original complaint was formulas students could not
+    understand.)
+23. The public home page shows a stock photo where Jenni shows its product working; the navigation
+    wraps at ~800 px; a signed-in student opening the site lands on the sales page.
+24. No AI-declaration block a student can insert into the text (our AI-usage report lives only in
+    the export).
 
 ## B. What Jenni does that makes it easy (observed, not yet decided)
 
@@ -69,6 +76,13 @@ collects every finding so nothing is lost before then. Evidence for each is in
 - Word export with native citation fields or hyperlinks; LaTeX with four layouts.
 - Style picker: search 10,000+ styles, locale, page numbers, live preview.
 - Inline comment box under the selection.
+- "/" insert menu: table, image, equation, chart, table of contents, AI Declaration, placeholder
+  citation.
+- Equation by LaTeX, by plain-English description, or from a picture, with examples.
+- A live, animated product demo on the home page.
+- Document cloning; read-only links; viewer/commenter/editor roles.
+- Review mode with Y/N keys and Accept all.
+- "How was this document?" thumbs after a workflow.
 - Suggestions read aloud to screen readers with how to accept.
 
 ## C. Where Jenni is weak (keep ours better here)
@@ -80,5 +94,8 @@ collects every finding so nothing is lost before then. Evidence for each is in
   page).
 - A failed workflow leaves no trace and no retry; generic "Organizing my thoughts" step lines.
 - Gap analysis took 9 min 54 s against a promised 3–6.
-- No roles in sharing, no supervisor or committee workflow, no university templates or compliance
-  checks, no viva preparation, no Indian-rupee plan at our price.
+- Sharing has Editor/Commenter/Viewer roles and live co-editing (corrected 2026-10-04 from the
+  docs), but no supervisor or committee workflow, no university templates or compliance checks, no
+  viva preparation, no Indian-rupee plan at our price.
+- Billing is its most-complained-about area (renewals, cancel only on desktop, no refunds).
+- Its open-access copies include ResearchGate uploads — a licensing grey area we should not copy.
