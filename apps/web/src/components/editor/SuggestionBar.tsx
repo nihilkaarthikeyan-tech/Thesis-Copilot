@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react';
 
 /** The presets: each is an instruction the guided suggestion already accepts. */
 export const REFINE_PRESETS: Array<{ label: string; instruction: string }> = [
-  { label: 'Shorter', instruction: 'Say the same thing in fewer words.' },
+  { label: 'Shorter', instruction: 'Make it shorter: the same point in fewer words.' },
   { label: 'More formal', instruction: 'Use a more formal academic register.' },
   {
     label: 'Stay closer to my topic',
@@ -34,6 +34,9 @@ export const REFINE_PRESETS: Array<{ label: string; instruction: string }> = [
       'Give a finding from the sources that contrasts with or qualifies the previous sentence, if one exists.',
   },
 ];
+
+/** `{{cite:KEY}}` markers in the streamed text; the revised suggestion cites afresh. */
+const CITE_MARKER = /\{\{cite:[^}]+\}\}/g;
 
 type Status = 'idle' | 'requesting' | 'streaming' | 'shown' | string;
 
@@ -66,8 +69,15 @@ export function SuggestionBar({
 
   const ask = (instruction: string) => {
     setMenu(false);
+    // The model never sees a dismissed suggestion, so "shorter" alone meant nothing to it and it
+    // wrote nothing (2026-10-04). The preset carries the text it revises, citation markers out.
+    const current = (getGhostState(editor)?.text ?? '').replace(CITE_MARKER, '').trim();
     editor.commands.dismissSuggestion();
-    editor.commands.requestSuggestion(instruction);
+    editor.commands.requestSuggestion(
+      current
+        ? `${instruction}\n\nRevise this suggestion: "${current.slice(0, 900)}"`
+        : instruction,
+    );
   };
 
   const shown = status === 'shown';

@@ -238,8 +238,8 @@ export function CommandToolbar({
       ) : (
         <>
           <p className="text-xs text-muted">
-            {selection ? `${selection.text.trim().split(/\s+/).length} words selected` : ''} · one
-            Strong call each, counted against your Command allowance
+            {selection ? `${selection.text.trim().split(/\s+/).length} words selected` : ''} · each
+            uses one of your section commands this month
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {COMMANDS.map((c) => (

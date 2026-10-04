@@ -21,7 +21,9 @@ const suggestBody = z.object({
   chapterId: z.string().uuid(),
   before: z.string().max(40_000).default(''),
   after: z.string().max(10_000).default(''),
-  guided: z.string().trim().max(500).optional(),
+  // 1,500, not 500 (2026-10-04): a refine preset carries the suggestion it revises, which runs
+  // to about 600 characters. A typed instruction is still held to 500 by the input.
+  guided: z.string().trim().max(1_500).optional(),
   cursorContext: z.object({ blockType: z.string().optional() }).optional(),
 });
 
