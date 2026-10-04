@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, api } from '../src/lib/api.js';
+import { ApiError, api, isNetworkFailure, NETWORK_FAILURE_MESSAGE } from '../src/lib/api.js';
 
 function stubFetch(response: Response) {
   const spy = vi.fn(async () => response);
@@ -65,5 +65,38 @@ describe('api()', () => {
   it('treats 204 as no content rather than failing to parse it', async () => {
     stubFetch(new Response(null, { status: 204 }));
     await expect(api('/sources/src-1')).resolves.toBeUndefined();
+  });
+
+  // The write page printed "Failed to fetch · Back to your theses" with the API down.
+  it('turns an unreachable server into a sentence a student can act on', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    const error = await api('/documents').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(isNetworkFailure(error)).toBe(true);
+    expect((error as ApiError).message).toBe(NETWORK_FAILURE_MESSAGE);
+    expect((error as ApiError).problem.title).toBe(NETWORK_FAILURE_MESSAGE);
+    expect((error as ApiError).message).not.toContain('Failed to fetch');
+  });
+
+  it('passes an abort through unchanged: the caller cancelled it', async () => {
+    const abort = new DOMException('The operation was aborted.', 'AbortError');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw abort;
+      }),
+    );
+    await expect(api('/documents')).rejects.toBe(abort);
+  });
+
+  it('does not call an answer from the server a network failure', async () => {
+    stubFetch(json({ type: 'CAP_EXCEEDED', title: 'Monthly limit reached', status: 429 }, 429));
+    const error = await api('/assist').catch((e: unknown) => e);
+    expect(isNetworkFailure(error)).toBe(false);
   });
 });
