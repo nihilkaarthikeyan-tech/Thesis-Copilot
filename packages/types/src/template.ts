@@ -200,4 +200,14 @@ export const FIELD_LABELS: Record<string, string> = {
   hodName: 'Head of department',
   monthYear: 'Month and year of submission',
   date: 'Date',
+  declarationDate: 'Date of the declaration',
 };
+
+/** A front-matter field in the student's words: "Your name", never `studentName`. */
+export function fieldLabel(key: string): string {
+  const known = FIELD_LABELS[key];
+  if (known) return known;
+  // A field an installed template names that we have no label for: split the camel case.
+  const words = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}

@@ -79,6 +79,7 @@ export {
   FRONT_MATTER_IDS,
   type FrontMatterId,
   type FrontMatterSection,
+  fieldLabel,
   fontSchema,
   frontMatterSectionSchema,
   headingsSchema,
