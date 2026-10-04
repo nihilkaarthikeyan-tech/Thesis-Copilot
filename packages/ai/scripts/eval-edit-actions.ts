@@ -27,11 +27,13 @@ const PASSAGES = [
   {
     id: 'S1#c1',
     shortRef: 'Rao 2021',
+    page: null,
     text: 'In a panel of 600 households, falling panel prices did not raise adoption where subsidy approval took more than six months.',
   },
   {
     id: 'S2#c4',
     shortRef: 'Iyer 2020',
+    page: null,
     text: 'Credit access raised adoption only among households above the median income.',
   },
 ];
