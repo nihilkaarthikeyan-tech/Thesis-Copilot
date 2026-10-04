@@ -13,11 +13,11 @@ import { formatRef, type NumberedTarget } from '@tc/types';
 import {
   AlignmentType,
   Document,
-  type FootnoteReferenceRun,
   HeadingLevel,
   ImageRun,
   Packer,
   Paragraph,
+  type ParagraphChild,
   Table,
   TableCell,
   TableRow,
@@ -25,6 +25,14 @@ import {
   Math as WordMath,
 } from 'docx';
 import { captionOf } from './captions.js';
+import {
+  bibliographyEntryChildren,
+  type CitationLinksInput,
+  citationChild,
+  citationLinksFor,
+  finishCitationLinks,
+  noteChildren,
+} from './citation-links.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
 import { latexToWordMath } from './word-math.js';
@@ -73,6 +81,8 @@ export type ExportOptions = {
    * implementation and one bug, and the student would learn about it from their examiner.
    */
   refTargets?: ReadonlyMap<string, NumberedTarget>;
+  /** ADR-0055: plain (the default), linked to the bibliography, or Word citation fields. */
+  citationLinks?: CitationLinksInput;
 };
 
 /** Running heading counters for one export (H2 within the chapter, H3 within the H2). */
@@ -114,11 +124,8 @@ function citationLabel(node: PmNode, renderedMap: Record<string, string>): strin
   return renderedMap[key] ?? '(source missing)';
 }
 
-function runsFrom(
-  nodes: readonly PmNode[],
-  options: ExportOptions,
-): Array<TextRun | FootnoteReferenceRun | WordMath> {
-  const runs: Array<TextRun | FootnoteReferenceRun | WordMath> = [];
+function runsFrom(nodes: readonly PmNode[], options: ExportOptions): ParagraphChild[] {
+  const runs: ParagraphChild[] = [];
   const renderedMap = options.renderedMap ?? {};
 
   for (const node of nodes) {
@@ -128,11 +135,31 @@ function runsFrom(
     }
     if (node.type === 'citation' && options.noteStyle) {
       // ADR-0029: in a note style the citation is a footnote holding its note.
-      runs.push(footnoteRun(options, { attrs: { text: citationLabel(node, renderedMap) } }));
+      const note = citationLabel(node, renderedMap);
+      const links = citationLinksFor(options);
+      runs.push(
+        footnoteRun(
+          options,
+          { attrs: { text: note } },
+          undefined,
+          // ADR-0055: in a linked export the note links to its bibliography entry.
+          links.mode === 'plain'
+            ? undefined
+            : noteChildren(node, note, links, (text) => new TextRun({ text })),
+        ),
+      );
       continue;
     }
     if (node.type === 'citation') {
-      runs.push(new TextRun({ text: citationLabel(node, renderedMap) }));
+      // ADR-0055: plain text, a link to the entry, or a Word `CITATION` field — the same label.
+      runs.push(
+        citationChild(
+          node,
+          citationLabel(node, renderedMap),
+          citationLinksFor(options),
+          (text) => new TextRun({ text }),
+        ),
+      );
       continue;
     }
     if (node.type === 'needsSourceNote') {
@@ -376,8 +403,17 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
     body.push(
       new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun('References')] }),
       ...bibliography.map(
-        (entry) =>
-          new Paragraph({ children: [new TextRun(entry)], indent: { left: 720, hanging: 720 } }),
+        (entry, index) =>
+          new Paragraph({
+            // ADR-0055: a bookmark for the citations to link to, or the `BIBLIOGRAPHY` field.
+            children: bibliographyEntryChildren(
+              index,
+              bibliography.length,
+              new TextRun(entry),
+              citationLinksFor(options),
+            ),
+            indent: { left: 720, hanging: 720 },
+          }),
       ),
     );
   }
@@ -400,5 +436,6 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
     sections: [{ children: body }],
   });
 
-  return Packer.toBuffer(document);
+  // ADR-0055: the parts `docx` cannot write (a no-op for plain citations).
+  return finishCitationLinks(await Packer.toBuffer(document), citationLinksFor(options));
 }

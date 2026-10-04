@@ -10,6 +10,7 @@ export {
   type WordCounts,
 } from './ai-usage.js';
 export { captionOf, typedCaption, withCaption, withCaptionsResolved } from './captions.js';
+export { type CitationLinksInput, wordSourcesXml } from './citation-links.js';
 export {
   CHECK_LABELS,
   type CheckId,
