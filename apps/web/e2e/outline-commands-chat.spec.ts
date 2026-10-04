@@ -183,7 +183,8 @@ test.describe('FR-4.8 — section commands', () => {
 
     const diff = page.getByTestId('command-diff');
     await expect(diff).toBeVisible({ timeout: 30_000 });
-    await expect(toolbar).toContainText('Nothing is applied until you press Apply.');
+    // 2026-10-04: Apply became Replace, beside Insert below and Try again.
+    await expect(toolbar).toContainText('Nothing changes until you press Replace or Insert below.');
     // The chapter still reads exactly as the student left it.
     await expect(editor).toContainText(sentence);
 

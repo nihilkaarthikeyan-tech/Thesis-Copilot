@@ -15,7 +15,7 @@ import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
 import type { PromptPassage } from './assist.js';
-import { CITE_RE, normalizeBareCitations } from './postprocess.js';
+import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
 export const COMMANDS = ['expand', 'formalise', 'simplify', 'shorten', 'consistency'] as const;
 export type CommandName = (typeof COMMANDS)[number];
@@ -136,16 +136,20 @@ export function postProcessCommand(
   const allowed = new Set([...inSelection, ...allowedPassageIds]);
 
   const hallucinated: string[] = [];
-  const text = normalizeBareCitations(raw)
-    .replace(CITE_RE, (match, id: string) => {
-      const key = id.trim();
-      if (allowed.has(key)) return match;
-      hallucinated.push(key);
-      return '';
-    })
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\s+([.,;:])/g, '$1')
-    .trim();
+  // One paper's passages side by side print as one label repeated (2026-10-04). The selection's
+  // own citations carry editor keys with no `#`, so they never merge with each other here.
+  const text = collapseSameSourceRuns(
+    normalizeBareCitations(raw)
+      .replace(CITE_RE, (match, id: string) => {
+        const key = id.trim();
+        if (allowed.has(key)) return match;
+        hallucinated.push(key);
+        return '';
+      })
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\s+([.,;:])/g, '$1')
+      .trim(),
+  );
 
   const kept = new Set(keysIn(text));
   const dropped = [...inSelection].filter((k) => !kept.has(k));

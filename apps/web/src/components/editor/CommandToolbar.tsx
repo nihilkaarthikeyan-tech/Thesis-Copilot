@@ -115,10 +115,14 @@ export function CommandToolbar({
     };
   }, [editor]);
 
+  /** The command the preview came from, for "Try again". */
+  const [lastCommand, setLastCommand] = useState<string | null>(null);
+
   const run = useCallback(
     async (command: string) => {
       if (!editor || !selection) return;
       setBusy(command);
+      setLastCommand(command);
       try {
         const before = editor.state.doc.textBetween(
           Math.max(0, selection.from - 800),
@@ -157,6 +161,39 @@ export function CommandToolbar({
     },
     [editor, selection, chapterId, onUsageChange, onNotice],
   );
+
+  /**
+   * Places the rewrite after the selected passage instead of over it (2026-10-04, from the Jenni
+   * study: Replace / Insert below / Try again / Discard). The original stays; the student keeps
+   * the better of the two.
+   */
+  function insertBelow() {
+    if (!editor || !selection || !result) return;
+    const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
+      .citation;
+    const fragment = aiTextToFragment(editor.schema, result.text, {
+      provenance: { kind: 'COMMAND', actionId: null },
+      existing: citationsInRange(editor.state.doc, selection.from, selection.to),
+      citations: result.citations ?? [],
+      onCitation: (key, rendered) => {
+        if (store?.renderedMap && rendered) store.renderedMap[key] = rendered;
+      },
+    });
+    const $to = editor.state.doc.resolve(selection.to);
+    const after = $to.after($to.depth);
+    const paragraph = editor.schema.nodes.paragraph?.create(null, fragment);
+    if (!paragraph) return;
+    editor
+      .chain()
+      .focus()
+      .command(({ tr, dispatch }) => {
+        if (dispatch) tr.insert(after, paragraph);
+        return true;
+      })
+      .run();
+    setResult(null);
+    setSelection(null);
+  }
 
   function apply() {
     if (!editor || !selection || !result) return;
@@ -201,7 +238,9 @@ export function CommandToolbar({
             <p className="font-medium">
               {result.command} · {result.originalWords} → {result.words} words
             </p>
-            <span className="text-xs text-muted">Nothing is applied until you press Apply.</span>
+            <span className="text-xs text-muted">
+              Nothing changes until you press Replace or Insert below.
+            </span>
           </div>
           {/* Ops are positional by nature: the key pairs the op's own text with its offset. */}
           <div
@@ -234,6 +273,26 @@ export function CommandToolbar({
             <button type="button" className="underline" onClick={() => setResult(null)}>
               Discard
             </button>
+            {lastCommand ? (
+              <button
+                type="button"
+                className="underline"
+                disabled={busy !== null}
+                data-testid="command-retry"
+                onClick={() => void run(lastCommand)}
+              >
+                {busy ? 'Working…' : 'Try again'}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="underline disabled:opacity-40"
+              disabled={result.unchanged}
+              data-testid="command-insert-below"
+              onClick={insertBelow}
+            >
+              Insert below
+            </button>
             <button
               type="button"
               onClick={apply}
@@ -241,7 +300,7 @@ export function CommandToolbar({
               className="rounded-md px-3 py-1 disabled:opacity-40 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
               data-testid="command-apply"
             >
-              Apply
+              Replace
             </button>
           </div>
         </>
