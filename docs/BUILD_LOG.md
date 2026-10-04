@@ -4655,3 +4655,31 @@ ADR-0051's Assist model). Migration `0031_examiner_review`.
   rows hold; the copy test erases the original and checks the copy's files survive.
 - Tests: three Testcontainers specs (32 cases) pass, and the whole API suite (46 files, 499 tests); `apps/web/e2e/sharing.spec.ts` written, not
   run (dev stack in use; `docs/PENDING.md`).
+
+## Jenni study build, batch 3 and fix-list items (2026-10-04, evening)
+
+Built here: suggestion history (‹ › on the suggestion bar; `restoreSuggestion` brings an earlier
+one back under its own id, so keeping it overwrites the earlier REJECTED), Assist reading the
+note of the sub-section under the cursor (fix list A21: the editor sends the nearest heading, the
+API matches it to the chapter's outline by its words and adds that note after the chapter's — data
+in the existing slot, no prompt change), "Ask chat" on a selection, and the citation badges on the
+evidence card. Merged from agents: library duplicates and the without-full-text view, the start
+flow (topic meter, style at creation, signed-in header, list first), cited-by / open-access /
+citedness badges and chat Copy, examiner review (ADR-0056, migration 0031) and sharing roles,
+read-only links and copies (ADR-0057, migration 0034).
+
+Faults found on the way:
+
+- **The mock e2e stack mailed real codes.** Every e2e sign-in on `api-mock` sent its OTP through
+  Hostinger SMTP to `example.com`-style addresses (554 "reserved for documentation"), and later
+  timed out. `api-mock`/`worker-mock` now blank `SMTP_HOST` and `RESEND_API_KEY`, so codes go to
+  the console mailer and `/auth/dev/last-otp` as intended.
+- **`node --watch` restarted the API mid-run.** A package `dist` rebuild during an e2e run
+  restarted the watched API, and two full batches failed on ECONNREFUSED. `api-mock` runs
+  `node dist/main.js` without `--watch`; restart it by hand after a build.
+- **Not classifying a student's own comment broke "suggest a revision" on it.** A.14 answers by
+  class, and a null class defaulted to CLARIFICATION, which needs input. The class is now taken
+  when a revision is asked for (one fast-tier call, logged as before), not when the note is written.
+- **OpenAlex's free daily budget ran out** (HTTP 429 until 00:00 UTC) while two agents and the e2e
+  suite shared this machine's IP; `gap-density.spec.ts` fails until it resets. The dev `.env` has
+  no `OPENALEX_API_KEY`.
