@@ -175,7 +175,7 @@ intake questions before the unit is taken; the build searches for sources it lac
 the QA report downloads as PDF or HTML. **Released as v0.1.23 on 2026-10-01** (backup `pre-v0.1.23`). The university profiles are
 unconfirmed and the new prompts unevaluated — `docs/PENDING.md`.
 
-**The Jenni study build (2026-10-04/05, ADRs 0054–0067), on main, NOT released.** Studied Jenni
+**The Jenni study build (2026-10-04/05, ADRs 0054–0067), released as v0.1.25 on 2026-10-05** (backup `/root/backups/pre-v0.1.25/`; CI and release green; migrations 0031–0038 applied). Studied Jenni
 end to end (docs/JENNI-*.md, docs/research/coverage-map.md: now 63 match, 15 ours better, 20
 partial, 3 missing), then built what it showed, the owner having delegated the product calls
 (ADR-0059). Among it: suggestion bar (Accept/One word/Refine presets/thumbs/‹ › history), evidence
@@ -187,7 +187,7 @@ key, Start writing now (ADR-0062), Hindi interface beta (ADR-0061), citation loc
 long-job email (ADR-0058, `@tc/mail`), help/changelog, home-page demo. **A real fault found on the
 way: a library PDF a student uploaded was never read** (pdf.js refuses a Buffer; fixed 26a3974) —
 after release, re-index them (PENDING). The mock e2e stack (`api-mock`) runs without `--watch` and
-with mail blanked. Still the owner's: the usage-limit rebalance (option 1 recommended), the release.
+with mail blanked. Still the owner's: the usage-limit rebalance (option 1 recommended); re-indexing previously uploaded PDFs; the host nginx `X-Frame-Options` change that "read beside" needs (until then it falls back to a new tab).
 
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
