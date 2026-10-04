@@ -248,6 +248,8 @@ export {
 export {
   buildProposalRequest,
   clarifiedTopic,
+  GAP_CHECK_FAILED,
+  GAP_CHECK_NONE,
   type GapCheckInput,
   type GapCheckWork,
   MOCK_KEEP_ASKING,

@@ -14,7 +14,7 @@ import { normalise, similarity } from '../text.js';
 import type { ArxivEntry } from './arxiv.js';
 import { arxivIdFromDoi } from './arxiv-id.js';
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
-import { openAlexSearchText } from './keywords.js';
+import { openAlexSearchText, topicSearchTerms } from './keywords.js';
 import { personName } from './names.js';
 import { plainText } from './xml.js';
 
@@ -272,6 +272,30 @@ export class OpenAlexClient {
       doi: work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, '') : null,
     }));
     return { count: body?.meta?.count ?? works.length, works };
+  }
+
+  /**
+   * The gap check as a proposal conversation runs it: the student's description reduced to its
+   * subject words (OpenAlex ranks prose on every word, and a whole paragraph plus an answer like
+   * "2" found nothing where its key words found 465), and, if that finds nothing, one broader
+   * search with fewer of them. Both share the caller's `signal`, so one time limit bounds the pair.
+   */
+  async searchTopicTerms(
+    description: string,
+    perPage = 8,
+    signal?: AbortSignal,
+  ): Promise<GapCheck & { query: string }> {
+    const searches = topicSearchTerms(description);
+    if (searches.length === 0) {
+      const query = openAlexSearchText(description);
+      return { ...(await this.searchTopic(query, perPage, signal)), query };
+    }
+    let result: GapCheck & { query: string } = { count: 0, works: [], query: '' };
+    for (const query of searches) {
+      result = { ...(await this.searchTopic(query, perPage, signal)), query };
+      if (result.count > 0) break;
+    }
+    return result;
   }
 
   async byDoi(doi: string, signal?: AbortSignal): Promise<OpenAlexWork | null> {

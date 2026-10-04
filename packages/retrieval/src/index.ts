@@ -205,7 +205,7 @@ export {
   type SlotStore,
   sharedGate,
 } from './scholarly/http.js';
-export { keywordsOf, openAlexSearchText } from './scholarly/keywords.js';
+export { keywordsOf, openAlexSearchText, topicSearchTerms } from './scholarly/keywords.js';
 export { personName } from './scholarly/names.js';
 export {
   isNotASource,

@@ -22,8 +22,21 @@ const STOPWORDS = new Set(
   ).split(' '),
 );
 
+/**
+ * Words a student uses to describe a thesis rather than its subject: the degree, the kind of
+ * document, who will read it, what it sets out to do. "MSc thesis on mangroves … Audience:
+ * examiners … Argue that …" sent whole to OpenAlex found 0 works; its subject words found 465
+ * (2026-10-04, docs/JENNI-FIX-LIST.md item 2).
+ */
+const THESIS_NOISE = new Set(
+  (
+    'msc mphil phd thesis dissertation proposal topic audience examiner examiners argue argues ' +
+    'arguing using comparing compare'
+  ).split(' '),
+);
+
 /** Up to `max` distinct content words, in the order the student wrote them. */
-export function keywordsOf(text: string, max = 6): string[] {
+export function keywordsOf(text: string, max = 6, extraStopwords?: ReadonlySet<string>): string[] {
   const out: string[] = [];
   for (const token of text.split(/[^\p{L}\p{N}-]+/u)) {
     const word = token.replace(/^-+|-+$/g, '');
@@ -31,11 +44,27 @@ export function keywordsOf(text: string, max = 6): string[] {
     const lower = word.toLowerCase();
     // Short words are almost always function words; an acronym ("AI", "5G") is the exception.
     const acronym = word.length === 2 && (word === word.toUpperCase() || /\d/.test(word));
-    if ((word.length < 3 && !acronym) || STOPWORDS.has(lower)) continue;
+    if ((word.length < 3 && !acronym) || STOPWORDS.has(lower) || extraStopwords?.has(lower)) {
+      continue;
+    }
     if (!out.includes(lower)) out.push(lower);
     if (out.length === max) break;
   }
   return out;
+}
+
+/**
+ * The searches for a proposal's early gap check (FR-1.5), most specific first: the topic's subject
+ * words, then — only when there were more than two — the first half of them, which in a student's
+ * description is the subject before the setting and method. Empty when nothing is left to search.
+ */
+export function topicSearchTerms(text: string, max = 6): string[] {
+  const words = keywordsOf(text, max, THESIS_NOISE);
+  if (words.length === 0) return [];
+  const searches = [words.join(' ')];
+  if (words.length > 2)
+    searches.push(words.slice(0, Math.max(2, Math.ceil(words.length / 2))).join(' '));
+  return searches;
 }
 
 /**
