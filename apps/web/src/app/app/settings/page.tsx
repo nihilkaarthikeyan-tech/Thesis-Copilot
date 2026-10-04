@@ -14,6 +14,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useHighContrast } from '@/components/theme';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 
@@ -29,6 +30,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [busy, setBusy] = useState(false);
+  const [highContrast, setHighContrast] = useHighContrast();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -203,6 +205,30 @@ export default function SettingsPage() {
             }`}
           >
             {settings?.autoSources !== false ? 'On' : 'Off'}
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="eyebrow">High contrast</h2>
+            <p className="mt-1 text-sm">
+              Darker text and stronger lines, in light or dark. Kept on this device only.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={highContrast}
+            aria-label="High contrast"
+            data-testid="high-contrast"
+            onClick={() => setHighContrast(!highContrast)}
+            className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
+              highContrast ? 'bg-accent text-accent-ink' : 'border border-line text-muted'
+            }`}
+          >
+            {highContrast ? 'On' : 'Off'}
           </button>
         </div>
       </section>
