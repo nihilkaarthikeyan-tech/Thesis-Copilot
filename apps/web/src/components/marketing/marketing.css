@@ -331,6 +331,16 @@
 .mk .mk-ghost {
   color: var(--mk-muted);
 }
+/* The hero demo (HeroDemo.tsx): the suggestion once Tab has kept it, and the key as it is pressed. */
+.mk .mk-kept {
+  color: inherit;
+  transition: color 0.25s ease;
+}
+.mk .mk-key-pressed kbd {
+  background: var(--mk-accent);
+  color: #fff;
+  transform: translateY(1px);
+}
 .mk .mk-cite {
   color: var(--mk-accent);
   background: var(--mk-accent-soft);

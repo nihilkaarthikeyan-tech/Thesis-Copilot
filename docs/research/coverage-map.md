@@ -8,7 +8,7 @@ every row names the file(s). Paths are relative to the repo root. `web/` = `apps
 Status: **MATCH** (a student gets the same outcome), **PARTIAL** (exists, but the student meets a
 real difference), **MISSING** (no equivalent), **OURS BETTER**.
 
-**Updated after the build (2026-10-04, evening):** 101 rows — 56 MATCH, 21 PARTIAL, 9 MISSING,
+**Updated after the build (2026-10-04, evening):** 101 rows — 63 MATCH, 20 PARTIAL, 3 MISSING,
 15 OURS BETTER (from 16 / 47 / 24 / 14). Rows marked "Built 2026-10-04" were rechecked against
 the merged code. The nine still missing wait on the owner (docs/PENDING.md, "Jenni study — what
 only the owner can decide"); PARTIAL rows were not re-audited one by one.
@@ -182,7 +182,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 98 | Community (Discord) | Yes | none | MISSING | — |
 | 99 | Mobile web | Compact bar, floating toolbar | drawers + bottom tab bar in `ThesisEditor.tsx` | MATCH | 2026-10-04: One dismissable banner; floating Suggest above the tab bar; key hints hidden on phones |
 | 100 | Screen-reader announcement of suggestions | Reads text + "Press right arrow to accept" | `ui/ghost-text.ts` (`aria-label="suggestion available"`) | MATCH | Built 2026-10-04: The suggestion and how to accept it are announced |
-| 101 | Live product demo on home page | Animated real editor | `web/components/marketing/ProductTour.tsx` (stepped tour), stock photo | PARTIAL | — |
+| 101 | Live product demo on home page | Animated real editor | `web/components/marketing/ProductTour.tsx` (stepped tour), stock photo | MATCH | 2026-10-05: The hero card plays a scripted suggestion — typed, streamed with its citation, kept with Tab; still for reduced motion. Not released: owner sees it first |
 
 ## 15. What Thesis Copilot has that Jenni lacks
 

@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { Brand } from '@/components/marketing/Brand';
 import { satoshi } from '@/components/marketing/fonts';
+import { HeroDemo } from '@/components/marketing/HeroDemo';
 import { ProductTour } from '@/components/marketing/ProductTour';
 import { SiteHeader } from '@/components/marketing/SiteHeader';
 import '@/components/marketing/marketing.css';
@@ -163,27 +164,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="mk-frag mk-frag-write" aria-hidden="true">
-                <div className="mk-frag-doc">
-                  …households that could afford a rooftop system still delay the decision.
-                  <span className="mk-caret" />
-                  <span className="mk-ghost">
-                    {' '}
-                    This chapter examines the gap between affordability and uptake, using the
-                    factors identified in prior work
-                  </span>{' '}
-                  <span className="mk-cite">(Shakeel et al., 2023)</span>
-                </div>
-                <div className="mk-frag-bar">
-                  <span>
-                    <kbd>Tab</kbd> keep
-                  </span>
-                  <span>
-                    <kbd>Esc</kbd> dismiss
-                  </span>
-                  <span className="mk-push">Cites your library only</span>
-                </div>
-              </div>
+              <HeroDemo />
             </div>
           </div>
         </section>
