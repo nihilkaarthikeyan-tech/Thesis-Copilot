@@ -51,6 +51,12 @@ export function StyleSearch({
 }) {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<SearchResult | null>(null);
+  /**
+   * The query `result` answers. Without it the unfiltered first load showed as "results" for the
+   * first 200 ms of typing, and a pointer resting there previewed a style the student never
+   * searched for (2026-10-04).
+   */
+  const [resultQuery, setResultQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The result the pointer or keyboard is on: what the preview shows instead of `current`. */
@@ -74,7 +80,10 @@ export function StyleSearch({
       api<SearchResult>(`/citation-styles?q=${encodeURIComponent(q)}&limit=30`)
         .then((found) => {
           // Only the newest query's answer is shown; an older one arriving late is discarded.
-          if (ticket === latest.current) setResult(found);
+          if (ticket === latest.current) {
+            setResult(found);
+            setResultQuery(q);
+          }
         })
         .catch((e: unknown) => {
           if (ticket === latest.current)
@@ -88,7 +97,7 @@ export function StyleSearch({
   }, [query]);
 
   const searching = query.trim().length >= MIN_QUERY;
-  const results = searching ? (result?.results ?? []) : [];
+  const results = searching && resultQuery === query.trim() ? (result?.results ?? []) : [];
 
   return (
     <div className="mt-2" data-testid="style-search">

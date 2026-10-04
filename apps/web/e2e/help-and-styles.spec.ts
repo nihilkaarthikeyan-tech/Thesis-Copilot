@@ -25,6 +25,8 @@ test('help opens without signing in, and every article is reachable from it', as
     await expect(index.getByRole('link', { name: new RegExp(`^${title}`) })).toBeVisible();
   }
   await index.getByRole('link', { name: /^Suggestions/ }).click();
+  // 20 s: in a dev-server run the article route compiles on its first visit.
+  await expect(page).toHaveURL(/\/help\/[a-z-]+$/, { timeout: 20_000 });
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Suggestions');
   await expect(page.getByTestId('help-article')).toContainText('Refine');
 
@@ -79,6 +81,9 @@ test('the Citations tab previews the style in use, from an example reference', a
 
   // Highlighting a search result previews that style instead.
   await page.getByPlaceholder(/Search all/).fill('ieee');
+  await expect(page.getByTestId('style-result').first()).toContainText('IEEE', {
+    timeout: 15_000,
+  });
   await page.getByTestId('style-result').first().hover();
   await expect(preview).toContainText('IEEE', { timeout: 15_000 });
 });
