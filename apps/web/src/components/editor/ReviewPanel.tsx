@@ -296,6 +296,12 @@ export function ReviewPanel({
                 >
                   {busy === comment.id ? 'Applying…' : 'Accept'}
                 </button>
+              ) : comment.class === 'SUBSTANTIVE' ? (
+                // Same rule as the review queue (2026-10-04): a comment asking for a different
+                // argument is the student's to write, so no model revision is offered for it.
+                <span className="text-muted" data-testid="review-write-yourself">
+                  This one asks you to change an argument — write it yourself.
+                </span>
               ) : comment.quotedText ? (
                 <button
                   type="button"
