@@ -858,21 +858,297 @@ export function disciplineProfile(id: string | null | undefined): DisciplineProf
 }
 
 /**
- * Suggests a discipline from the thesis's free-text field ("Mechanical Engineering",
- * "Commerce"). Word match against the departments and the display name; null when nothing
- * matches, so the screen asks rather than guesses.
+ * Word stems that say what a thesis is about, per discipline — for suggesting one from the
+ * title when the field is empty or vague. A word counts when it starts with a stem. Kept to
+ * words that point one way: "carbon", "learning", "organic" or "novel" would each pull a thesis
+ * towards the wrong discipline as often as the right one, so they are not here.
  */
-export function suggestDiscipline(field: string | null | undefined): DisciplineProfile | null {
-  if (!field) return null;
-  const words = field
+const TOPIC_STEMS: Readonly<Record<string, readonly string[]>> = {
+  engineering_core_v1: [
+    'mechanical',
+    'civil',
+    'structural',
+    'concrete',
+    'cement',
+    'machining',
+    'manufactur',
+    'weld',
+    'alloy',
+    'composite',
+    'turbine',
+    'aerospace',
+    'automobil',
+    'automotive',
+    'metallurg',
+    'corrosion',
+    'tribolog',
+    'geotechn',
+    'thermodynam',
+    'heat transfer',
+  ],
+  electrical_cs_v1: [
+    'electric',
+    'electronic',
+    'comput',
+    'software',
+    'network',
+    'algorithm',
+    'neural',
+    'dataset',
+    'wireless',
+    'antenna',
+    'circuit',
+    'semiconductor',
+    'robot',
+    'cyber',
+    'iot',
+    'vlsi',
+    'blockchain',
+    'cloud',
+  ],
+  pure_sciences_v1: [
+    'physics',
+    'chemistry',
+    'mathemat',
+    'statistic',
+    'quantum',
+    'spectroscop',
+    'crystal',
+    'polymer',
+    'nanopartic',
+    'catalys',
+    'molecul',
+    'microbial',
+    'microbiolog',
+    'biotechnolog',
+    'genom',
+    'protein',
+    'enzym',
+  ],
+  medicine_health_v1: [
+    'patient',
+    'clinic',
+    'hospital',
+    'nursing',
+    'nurse',
+    'disease',
+    'diabet',
+    'cancer',
+    'therap',
+    'surgical',
+    'surgery',
+    'dental',
+    'medic',
+    'physiotherap',
+    'maternal',
+    'pregnan',
+    'paediatric',
+    'pediatric',
+    'hypertens',
+    'epidemiolog',
+    'mortality',
+    'glycaem',
+    'glycem',
+  ],
+  pharmacy_v1: [
+    'pharma',
+    'drug',
+    'formulation',
+    'tablet',
+    'dosage',
+    'bioavailab',
+    'phytochemi',
+    'excipient',
+  ],
+  agriculture_environment_v1: [
+    'soil',
+    'crop',
+    'agricult',
+    'agronom',
+    'farm',
+    'mangrove',
+    'forest',
+    'fisher',
+    'aquacultur',
+    'ecolog',
+    'ecosystem',
+    'environment',
+    'climat',
+    'pollut',
+    'wetland',
+    'biodivers',
+    'irrigat',
+    'livestock',
+    'horticult',
+    'fertili',
+    'pesticid',
+    'sediment',
+    'estuar',
+    'coastal',
+    'watershed',
+  ],
+  management_commerce_v1: [
+    'marketing',
+    'consumer',
+    'financ',
+    'banking',
+    'investor',
+    'investment',
+    'employee',
+    'organisational',
+    'organizational',
+    'brand',
+    'retail',
+    'entrepreneur',
+    'accounting',
+    'audit',
+    'taxation',
+    'customer',
+    'supply chain',
+    'leadership',
+    'msme',
+    'startup',
+    'business',
+    'managerial',
+  ],
+  social_sciences_education_v1: [
+    'educat',
+    'teacher',
+    'school',
+    'learner',
+    'pedagog',
+    'curricul',
+    'psycholog',
+    'sociolog',
+    'economic',
+    'politic',
+    'gender',
+    'poverty',
+    'adolescen',
+    'wellbeing',
+    'well-being',
+    'anxiety',
+  ],
+  law_v1: [
+    'law',
+    'legal',
+    'legislat',
+    'statut',
+    'court',
+    'judici',
+    'judgment',
+    'constitution',
+    'jurisprud',
+    'criminal',
+    'tort',
+    'arbitrat',
+    'doctrin',
+    'litigat',
+  ],
+  humanities_arts_v1: [
+    'poet',
+    'poem',
+    'fiction',
+    'narrative',
+    'histor',
+    'philosoph',
+    'linguist',
+    'translat',
+    'music',
+    'dance',
+    'theatre',
+    'theater',
+    'cinema',
+    'folklore',
+    'myth',
+    'colonial',
+    'diaspor',
+    'feminis',
+  ],
+};
+
+/** Words that carry no subject, in a field or a title. */
+const NO_SUBJECT = new Set([
+  'a',
+  'an',
+  'and',
+  'as',
+  'at',
+  'by',
+  'for',
+  'from',
+  'in',
+  'into',
+  'of',
+  'on',
+  'or',
+  'the',
+  'to',
+  'with',
+  'versus',
+  'vs',
+  'among',
+  'between',
+  'using',
+  'based',
+  'study',
+  'analysis',
+  'effect',
+  'effects',
+  'role',
+  'impact',
+  // Department words that name no subject on their own ("Allied Health", "PhD Law").
+  'science',
+  'sciences',
+  'allied',
+  'phd',
+  'core',
+  'public',
+]);
+
+/** Lowercased words, without place names that read like a subject ("Tamil Nadu" is not Tamil). */
+function subjectWords(text: string): string[] {
+  return text
     .toLowerCase()
+    .replace(/tamil\s+nadu/g, ' ')
     .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 1);
-  if (words.length === 0) return null;
+    .filter((word) => word.length > 1 && !NO_SUBJECT.has(word));
+}
+
+/**
+ * Suggests a discipline from the thesis's free-text field ("Mechanical Engineering",
+ * "Commerce") and, when it is given, its title. A field word counts against the departments and
+ * display name (whole words, or a 4+ letter beginning: "Mech") and the topic stems; a title word
+ * only against the topic stems, since a title is about a subject, not a department. The field
+ * weighs three times a title word. Null when nothing matches, so the screen asks rather than
+ * guesses.
+ */
+export function suggestDiscipline(
+  field: string | null | undefined,
+  title?: string | null,
+): DisciplineProfile | null {
+  const fieldText = field ?? '';
+  const titleText = title ?? '';
+  const fieldWords = subjectWords(fieldText);
+  const titleWords = subjectWords(titleText);
+  if (fieldWords.length === 0 && titleWords.length === 0) return null;
+
   let best: { profile: DisciplineProfile; score: number } | null = null;
   for (const profile of DISCIPLINE_PROFILES) {
-    const haystack = [profile.displayName, ...profile.departments].join(' ').toLowerCase();
-    const score = words.filter((word) => haystack.includes(word)).length;
+    const named = subjectWords([profile.displayName, ...profile.departments].join(' '));
+    const stems = TOPIC_STEMS[profile.id] ?? [];
+    // A two-word stem ("supply chain") is matched against the text, not one word.
+    const onTopic = (word: string) => stems.some((stem) => word.startsWith(stem));
+    const phraseHits = (text: string) =>
+      stems.filter((stem) => stem.includes(' ') && text.toLowerCase().includes(stem)).length;
+    const fieldHits =
+      fieldWords.filter(
+        (word) =>
+          onTopic(word) ||
+          named.some((name) => name === word || (word.length >= 4 && name.startsWith(word))),
+      ).length + phraseHits(fieldText);
+    const titleHits = titleWords.filter(onTopic).length + phraseHits(titleText);
+    const score = 3 * fieldHits + titleHits;
     if (score > 0 && (!best || score > best.score)) best = { profile, score };
   }
   return best?.profile ?? null;

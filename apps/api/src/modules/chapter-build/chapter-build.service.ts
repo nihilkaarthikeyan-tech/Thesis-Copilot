@@ -153,15 +153,15 @@ export class ChapterBuildService {
     return document;
   }
 
-  /** The saved profile, or one suggested from the thesis's field. */
-  profileFor(document: { field: string | null; language: string; meta: unknown }): {
+  /** The saved profile, or one suggested from the thesis's field and title. */
+  profileFor(document: { title: string; field: string | null; language: string; meta: unknown }): {
     profile: ChapterProfile;
     suggested: boolean;
   } {
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
     const saved = chapterProfileSchema.safeParse(meta.chapterProfile);
     if (saved.success) return { profile: saved.data, suggested: false };
-    const discipline = suggestDiscipline(document.field) ?? disciplineProfile(null);
+    const discipline = suggestDiscipline(document.field, document.title) ?? disciplineProfile(null);
     return {
       profile: {
         disciplineId: discipline.id,
