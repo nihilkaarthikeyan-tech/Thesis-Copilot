@@ -5,15 +5,24 @@
  * Every query is scoped by the document owner (PRD §12.1); nothing is fetched by id alone.
  */
 
+import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { exportLibrary, type LibraryFile, type LibraryFormat } from '@tc/citations';
 import type { Plan } from '@tc/config';
 import type { Prisma } from '@tc/db';
 import { jobId, jobKeyDigest } from '@tc/types';
-import { AppError, NotFoundError } from '../../common/errors.js';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { StorageService } from '../../common/storage.service.js';
+import { SnapshotsService } from '../chapters/snapshots.service.js';
+import {
+  type DuplicatePair,
+  findDuplicates,
+  type HygieneSource,
+  repointCitations,
+  whyNoFullText,
+} from './library-hygiene.js';
 import {
   checkLibraryQuota,
   checkSeedPaperQuota,
@@ -56,7 +65,81 @@ export type SourceView = {
   rawReference: string | null;
   /** ADR-0037: when the system added it because the library had nothing on a section. */
   autoAddedAt: Date | null;
+  /** Why the AI cannot quote it in full, as far as the record shows; null when it can. */
+  noFullTextReason: string | null;
 };
+
+/** One side of a possible duplicate, with what the thesis does with it. */
+export type DuplicateSide = SourceView & { citeCount: number; pinCount: number };
+
+export type DuplicateView = {
+  reason: DuplicatePair['reason'];
+  keep: DuplicateSide;
+  drop: DuplicateSide;
+};
+
+export type MergeResult = {
+  keptId: string;
+  removedId: string;
+  /** Citation nodes in chapters that now point at the kept source. */
+  citationsMoved: number;
+  /** Of those, the ones whose passage could not be matched in the kept source. */
+  passagesCleared: number;
+  pinsMoved: number;
+  chaptersChanged: number;
+  /** True when the removed record's PDF now belongs to the kept one (it had none). */
+  fileMoved: boolean;
+};
+
+const SOURCE_VIEW_SELECT = {
+  id: true,
+  status: true,
+  title: true,
+  authors: true,
+  year: true,
+  venue: true,
+  doi: true,
+  groundingLevel: true,
+  citationCount: true,
+  venueCitedness: true,
+  isPreprint: true,
+  isRetracted: true,
+  fileKey: true,
+  rawReference: true,
+  autoAddedAt: true,
+} as const;
+
+type SourceViewRow = {
+  id: string;
+  status: string;
+  title: string | null;
+  authors: unknown;
+  year: number | null;
+  venue: string | null;
+  doi: string | null;
+  groundingLevel: string;
+  citationCount: number | null;
+  venueCitedness: number | null;
+  isPreprint: boolean;
+  isRetracted: boolean;
+  fileKey: string | null;
+  rawReference: string | null;
+  autoAddedAt: Date | null;
+};
+
+function toView({ fileKey, ...rest }: SourceViewRow): SourceView {
+  const hasFile = Boolean(fileKey);
+  return {
+    ...rest,
+    hasFile,
+    noFullTextReason: whyNoFullText({
+      status: rest.status,
+      groundingLevel: rest.groundingLevel,
+      doi: rest.doi,
+      hasFile,
+    }),
+  };
+}
 
 @Injectable()
 export class SourcesService {
@@ -66,6 +149,7 @@ export class SourcesService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly queue: QueueService,
+    private readonly snapshots: SnapshotsService,
   ) {}
 
   private async ownedDocument(ownerId: string, documentId: string): Promise<{ id: string }> {
@@ -206,25 +290,9 @@ export class SourcesService {
     const rows = await this.prisma.source.findMany({
       where: { documentId },
       orderBy: [{ status: 'asc' }, { year: 'desc' }, { createdAt: 'asc' }],
-      select: {
-        id: true,
-        status: true,
-        title: true,
-        authors: true,
-        year: true,
-        venue: true,
-        doi: true,
-        groundingLevel: true,
-        citationCount: true,
-        venueCitedness: true,
-        isPreprint: true,
-        isRetracted: true,
-        fileKey: true,
-        rawReference: true,
-        autoAddedAt: true,
-      },
+      select: SOURCE_VIEW_SELECT,
     });
-    return rows.map(({ fileKey, ...rest }) => ({ ...rest, hasFile: Boolean(fileKey) }));
+    return rows.map(toView);
   }
 
   /**
@@ -376,26 +444,9 @@ export class SourcesService {
 
     const view = await this.prisma.source.findFirstOrThrow({
       where: { id: source.id },
-      select: {
-        id: true,
-        status: true,
-        title: true,
-        authors: true,
-        year: true,
-        venue: true,
-        doi: true,
-        groundingLevel: true,
-        citationCount: true,
-        venueCitedness: true,
-        isPreprint: true,
-        isRetracted: true,
-        fileKey: true,
-        rawReference: true,
-        autoAddedAt: true,
-      },
+      select: SOURCE_VIEW_SELECT,
     });
-    const { fileKey, ...rest } = view;
-    return { ...rest, hasFile: Boolean(fileKey) };
+    return toView(view);
   }
 
   /**
@@ -523,6 +574,279 @@ export class SourcesService {
     });
     if (!source?.fileKey) throw new NotFoundError('A file for that source');
     return { url: await this.storage.signedUrl(source.fileKey) };
+  }
+
+  /**
+   * "Add the PDF" for a source already in the library (2026-10-04, the Jenni "Missing PDFs" tab):
+   * the student's copy of a paper the system could only read the abstract of.
+   *
+   * The object key carries a digest of the bytes, and so does the job id: `index-source` reads the
+   * file, so the job keys on the file (CLAUDE.md, "a job id must key on what the job will read").
+   * The same file twice is one job; a different file is a new one, even for the same source.
+   */
+  async attachPdf(input: {
+    ownerId: string;
+    plan: Plan;
+    sourceId: string;
+    filename: string;
+    bytes: Uint8Array;
+  }): Promise<SourceView> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: input.sourceId, document: { ownerId: input.ownerId } },
+      select: { id: true, documentId: true, fileKey: true },
+    });
+    if (!source) throw new NotFoundError('That source');
+
+    const check = checkUpload({ filename: input.filename, bytes: input.bytes, plan: input.plan });
+    if (!check.ok) throw new UploadRejected(check.reason, check.detail);
+    if (check.kind !== 'pdf') {
+      throw new UploadRejected('UNSUPPORTED_TYPE', 'Attach a PDF. Convert the file first.');
+    }
+
+    // Replacing this source's own file does not take another slot of the allowance.
+    if (!source.fileKey) {
+      const existing = await this.prisma.source.count({
+        where: { documentId: source.documentId, fileKey: { not: null } },
+      });
+      const quota = checkLibraryQuota(existing, input.plan);
+      if (!quota.ok) throw new UploadRejected(quota.reason, quota.detail);
+    }
+
+    const digest = createHash('sha256').update(input.bytes).digest('hex').slice(0, 16);
+    const key = `sources/${source.documentId}/${source.id}-${digest}.pdf`;
+    await this.storage.put(key, Buffer.from(input.bytes), { 'Content-Type': 'application/pdf' });
+    await this.prisma.source.update({ where: { id: source.id }, data: { fileKey: key } });
+    if (source.fileKey && source.fileKey !== key) {
+      await this.storage.remove(source.fileKey).catch(() => undefined);
+    }
+
+    await this.queue.enqueue(
+      'index-source',
+      {
+        sourceId: source.id,
+        documentId: source.documentId,
+        userId: input.ownerId,
+        contentKey: key,
+      },
+      { jobId: jobId('index-source', source.id, jobKeyDigest(key)) },
+    );
+
+    const view = await this.prisma.source.findFirstOrThrow({
+      where: { id: source.id },
+      select: SOURCE_VIEW_SELECT,
+    });
+    return toView(view);
+  }
+
+  /** Every source's use in the thesis: citation nodes (as rows) and chapter pins. */
+  private async usage(
+    documentId: string,
+  ): Promise<{ cites: Map<string, number>; pins: Map<string, number> }> {
+    const [cites, pins] = await Promise.all([
+      this.prisma.citation.groupBy({
+        by: ['sourceId'],
+        where: { chapter: { documentId } },
+        _count: { _all: true },
+      }),
+      this.prisma.chapterSourcePin.groupBy({
+        by: ['sourceId'],
+        where: { chapter: { documentId } },
+        _count: { _all: true },
+      }),
+    ]);
+    return {
+      cites: new Map(cites.map((c) => [c.sourceId, c._count._all])),
+      pins: new Map(pins.map((p) => [p.sourceId, p._count._all])),
+    };
+  }
+
+  /** Possible duplicates in one library (the Jenni "Library Issues" view). Nothing is changed. */
+  async listDuplicates(ownerId: string, documentId: string): Promise<DuplicateView[]> {
+    await this.ownedDocument(ownerId, documentId);
+    const [rows, usage] = await Promise.all([
+      this.prisma.source.findMany({
+        where: { documentId },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: { ...SOURCE_VIEW_SELECT, createdAt: true },
+      }),
+      this.usage(documentId),
+    ]);
+
+    const sides = new Map<string, DuplicateSide>();
+    const hygiene: HygieneSource[] = [];
+    for (const { createdAt, ...row } of rows) {
+      const view = toView(row);
+      const citeCount = usage.cites.get(row.id) ?? 0;
+      const pinCount = usage.pins.get(row.id) ?? 0;
+      sides.set(row.id, { ...view, citeCount, pinCount });
+      hygiene.push({
+        id: row.id,
+        title: row.title,
+        year: row.year,
+        doi: row.doi,
+        authors: row.authors,
+        status: row.status,
+        groundingLevel: row.groundingLevel,
+        hasFile: view.hasFile,
+        citeCount,
+        pinCount,
+        createdAt,
+      });
+    }
+
+    return findDuplicates(hygiene).map((pair) => ({
+      reason: pair.reason,
+      keep: sides.get(pair.keepId) as DuplicateSide,
+      drop: sides.get(pair.dropId) as DuplicateSide,
+    }));
+  }
+
+  /**
+   * Merges `dropId` into `keepId` and removes `dropId`, without losing anything the student did
+   * with it:
+   *
+   *   - every citation node of it, in every chapter, is pointed at the kept source (its passage
+   *     moves to the kept source's chunk with the same text, or is cleared), and its `Citation`
+   *     rows follow;
+   *   - every chapter pin moves to the kept source;
+   *   - its PDF moves too when the kept record has none.
+   *
+   * Each chapter it touches is snapshotted first (`PRE_MERGE`, one click from undone in History),
+   * and written only at the version that was read: if the student saves in between, nothing is
+   * written and the merge answers 409, so an edit is never overwritten. The chapter's version goes
+   * up, so an open editor or a live room reloads onto the new text instead of saving over it.
+   */
+  async mergeSources(ownerId: string, keepId: string, dropId: string): Promise<MergeResult> {
+    if (keepId === dropId) throw new ValidationError('Choose two different sources to merge.');
+    const [keep, drop] = await Promise.all(
+      [keepId, dropId].map((id) =>
+        this.prisma.source.findFirst({
+          where: { id, document: { ownerId } },
+          select: { id: true, documentId: true, fileKey: true },
+        }),
+      ),
+    );
+    if (!keep || !drop) throw new NotFoundError('That source');
+    if (keep.documentId !== drop.documentId) {
+      throw new ValidationError('Those two sources are in different theses.');
+    }
+    const documentId = keep.documentId;
+
+    // A citation's passage is a chunk of the removed source; the kept one may hold the same text.
+    const [dropChunks, keepChunks] = await Promise.all([
+      this.prisma.sourceChunk.findMany({
+        where: { sourceId: drop.id },
+        select: { id: true, text: true },
+      }),
+      this.prisma.sourceChunk.findMany({
+        where: { sourceId: keep.id },
+        select: { id: true, text: true },
+      }),
+    ]);
+    const keepByText = new Map(keepChunks.map((c) => [c.text, c.id]));
+    const chunkMap = new Map<string, string>();
+    for (const chunk of dropChunks) {
+      const match = keepByText.get(chunk.text);
+      if (match) chunkMap.set(chunk.id, match);
+    }
+
+    // Every chapter is read, not only those with `Citation` rows: the rows mirror the document
+    // and the document is the truth (B.2).
+    const chapters = await this.prisma.chapter.findMany({
+      where: { documentId },
+      select: { id: true, content: true, version: true },
+    });
+    const rewrites = chapters
+      .map((chapter) => ({
+        chapter,
+        ...repointCitations(chapter.content, drop.id, keep.id, chunkMap),
+      }))
+      .filter((r) => r.changed > 0);
+
+    for (const { chapter } of rewrites) {
+      await this.snapshots.write({
+        documentId,
+        chapterId: chapter.id,
+        content: chapter.content,
+        reason: 'PRE_MERGE',
+      });
+    }
+
+    const fileMoved = !keep.fileKey && Boolean(drop.fileKey);
+    let pinsMoved = 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const { chapter, doc } of rewrites) {
+        const written = await tx.chapter.updateMany({
+          where: { id: chapter.id, version: chapter.version },
+          data: { content: doc as Prisma.InputJsonValue, version: { increment: 1 } },
+        });
+        if (written.count === 0) {
+          throw new ConflictError(
+            'A chapter was saved while the merge was running. Nothing was changed — try again.',
+          );
+        }
+      }
+
+      const rows = await tx.citation.findMany({
+        where: { sourceId: drop.id },
+        select: { id: true, chunkId: true },
+      });
+      for (const row of rows) {
+        await tx.citation.update({
+          where: { id: row.id },
+          data: {
+            sourceId: keep.id,
+            chunkId: row.chunkId ? (chunkMap.get(row.chunkId) ?? null) : null,
+          },
+        });
+      }
+
+      const pins = await tx.chapterSourcePin.findMany({
+        where: { sourceId: drop.id },
+        select: { chapterId: true },
+      });
+      if (pins.length > 0) {
+        await tx.chapterSourcePin.createMany({
+          data: pins.map((p) => ({ chapterId: p.chapterId, sourceId: keep.id })),
+          skipDuplicates: true,
+        });
+        pinsMoved = pins.length;
+      }
+
+      if (fileMoved) {
+        await tx.source.update({ where: { id: drop.id }, data: { fileKey: null } });
+        await tx.source.update({ where: { id: keep.id }, data: { fileKey: drop.fileKey } });
+      }
+
+      // Pins and chunks of the removed record go with it (cascade); its citations moved above.
+      await tx.source.delete({ where: { id: drop.id } });
+    });
+
+    if (fileMoved && drop.fileKey) {
+      await this.queue.enqueue(
+        'index-source',
+        { sourceId: keep.id, documentId, userId: ownerId, contentKey: drop.fileKey },
+        { jobId: jobId('index-source', keep.id, jobKeyDigest(drop.fileKey)) },
+      );
+    } else if (drop.fileKey) {
+      await this.storage.remove(drop.fileKey).catch(() => undefined);
+    }
+
+    this.logger.log(
+      { documentId, keptId: keep.id, removedId: drop.id, chapters: rewrites.length },
+      'sources merged',
+    );
+
+    return {
+      keptId: keep.id,
+      removedId: drop.id,
+      citationsMoved: rewrites.reduce((n, r) => n + r.changed, 0),
+      passagesCleared: rewrites.reduce((n, r) => n + r.passagesCleared, 0),
+      pinsMoved,
+      chaptersChanged: rewrites.length,
+      fileMoved,
+    };
   }
 
   /** PRD §9.2 `DELETE /sources/:id`. The citation nodes that pointed at it go red, never deleted (B.5). */

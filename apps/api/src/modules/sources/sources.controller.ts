@@ -29,6 +29,8 @@ import { SourcesService, UploadRejected } from './sources.service.js';
 
 const refixBody = z.object({ doi: z.string().trim().min(3).max(200) });
 
+const mergeBody = z.object({ duplicateId: z.string().uuid() });
+
 const exportFormat = z.enum(['bib', 'ris', 'csv']);
 
 const resolveBody = z.object({
@@ -148,6 +150,38 @@ export class SourcesController {
       ownerId: user.id,
       plan: planOf(user),
       documentId,
+      filename,
+      bytes,
+    });
+  }
+
+  /** Possible duplicates in the library — the same DOI, or the same title, year and first author. */
+  @Get('documents/:id/sources/duplicates')
+  duplicates(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.sources.listDuplicates(user.id, documentId);
+  }
+
+  /** Keeps `:id`, moves the duplicate's citations, pins and PDF onto it, and removes the duplicate. */
+  @Post('sources/:id/merge')
+  merge(@CurrentUser() user: SessionUser, @Param('id') keepId: string, @Body() body: unknown) {
+    const parsed = mergeBody.safeParse(body);
+    if (!parsed.success)
+      throw new ValidationError('Name the duplicate to merge', parsed.error.issues);
+    return this.sources.mergeSources(user.id, keepId, parsed.data.duplicateId);
+  }
+
+  /** "Add the PDF" to a source already in the library, which is then read again. */
+  @Post('sources/:id/upload')
+  async attachPdf(
+    @CurrentUser() user: SessionUser,
+    @Param('id') sourceId: string,
+    @Req() request: FastifyRequest,
+  ) {
+    const { filename, bytes } = await readUpload(request);
+    return this.sources.attachPdf({
+      ownerId: user.id,
+      plan: planOf(user),
+      sourceId,
       filename,
       bytes,
     });
