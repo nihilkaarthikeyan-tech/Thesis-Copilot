@@ -4683,3 +4683,33 @@ Faults found on the way:
 - **OpenAlex's free daily budget ran out** (HTTP 429 until 00:00 UTC) while two agents and the e2e
   suite shared this machine's IP; `gap-density.spec.ts` fails until it resets. The dev `.env` has
   no `OPENALEX_API_KEY`.
+
+## Help pages, a changelog and style previews (2026-10-04)
+
+From the Jenni study (Jenni has a help centre, a changelog and style previews).
+
+- `/help` and nine articles (`apps/web/src/content/help.tsx`): getting started, suggestions,
+  citations and styles, the library, chat, checks before submission, working with your guide,
+  allowances and the trial, privacy. Each label was checked against the screen that prints it;
+  the allowance table and PDF limits are read from `@tc/config`. Left out because the code did not
+  settle them: the trial's `export: 'BODY_ONLY'` (declared in `plans.ts`, enforced nowhere found)
+  and the Chrome add-on (not published). Linked from the home header and footer, the theses
+  header, the editor's phone More menu and the "How suggestions work" panel.
+- `/changelog` from `apps/web/src/content/changelog.ts`: v0.1.10 to v0.1.24 from the tags and this
+  log, plus "Coming in the next release" for what is merged on main after v0.1.24.
+- `GET /citation-styles/:id/preview` renders one citation and one bibliography entry for a fixed
+  example reference (`@tc/citations` `previewStyle`; invented, labelled "not a real paper", no DOI)
+  through the same citeproc pass a thesis uses; cached per style, 404 for an unknown style, no model
+  call. Shown under the Citations tab's style search (the highlighted result, else the style in
+  use) and the start-of-thesis style choice (the hovered or chosen pill).
+- Evidence:
+  ```
+  $ pnpm --filter @tc/citations exec vitest run      Tests 101 passed
+  $ apps/api: vitest run test/style-preview.spec.ts   Tests 6 passed (testcontainers)
+  $ pnpm --filter @tc/web exec vitest run             Tests 100 passed
+  $ next build (worktree)                             compiled; /help/* and /changelog prerendered
+  ```
+  `e2e/help-and-styles.spec.ts` was written but not run: the dev stack on :3000/:3001 runs main's
+  API, which has no preview endpoint. /help and /changelog were checked in a browser on a separate
+  dev server, desktop and phone width.
+

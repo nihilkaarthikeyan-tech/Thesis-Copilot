@@ -71,6 +71,9 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Start flow: topic meter with examples, citation style at creation, signed-in home header, list first | Done 2026-10-04 |
 | Cited-by, open-access and journal-citedness badges (library, hover card, evidence card); Copy on a chat answer | Done 2026-10-04 |
 | Sharing: roles (guide / co-author / reader), a read-only link, make a copy | Done 2026-10-04 (ADR-0057) |
+| Help pages at /help: nine task-based articles checked against the screens, linked from the site and the editor | Done 2026-10-04 |
+| A changelog at /changelog, from typed data (`apps/web/src/content/changelog.ts`) | Done 2026-10-04 |
+| Citation style preview (one in-text citation, one bibliography entry, an example reference) in the editor's style search and at thesis creation; `GET /citation-styles/:id/preview` | Done 2026-10-04 |
 
 ## Also fixed on the way (found while building)
 
