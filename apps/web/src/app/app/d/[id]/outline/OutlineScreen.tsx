@@ -439,7 +439,7 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                     : 'Generate outline'}
               </button>
               <span className="text-xs text-muted">
-                One Strong call. Chapters you have written in are never overwritten or deleted.
+                Chapters you have written in are never overwritten or deleted.
               </span>
             </div>
           </section>
