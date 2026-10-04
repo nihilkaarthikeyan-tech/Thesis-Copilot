@@ -24,7 +24,13 @@
  */
 
 import { numberTargets } from '@tc/types';
-import { latexError, MATH_EDIT_EVENT, type MathEditDetail, wordCountByProvenance } from '@tc/ui';
+import {
+  insertLatexAt,
+  latexError,
+  MATH_EDIT_EVENT,
+  type MathEditDetail,
+  wordCountByProvenance,
+} from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import {
   Bold,
@@ -48,6 +54,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { MathHelp } from './MathHelp';
 
 /**
  * Re-renders the caller on any editor change.
@@ -87,6 +94,8 @@ type Ask = {
   onDone: (value: string | null) => void;
   /** Shown under the field while it is non-null; Apply waits until it is (ADR-0045). */
   validate?: (value: string) => string | null;
+  /** An equation: examples, a live preview and the cheat sheet under the field (item 22). */
+  math?: { display: boolean };
 };
 
 function useInlinePrompt() {
@@ -114,6 +123,22 @@ function useInlinePrompt() {
   );
   const problem = ask?.validate && value.trim() ? ask.validate(value.trim()) : null;
 
+  /** Puts `snippet` at the field's caret (or over its selection) and keeps the caret after it. */
+  const insert = useCallback(
+    (snippet: string) => {
+      const field = inputRef.current;
+      const start = field?.selectionStart ?? value.length;
+      const end = field?.selectionEnd ?? start;
+      const next = insertLatexAt(value, snippet, start, end);
+      setValue(next.value);
+      requestAnimationFrame(() => {
+        field?.focus();
+        field?.setSelectionRange(next.caret, next.caret);
+      });
+    },
+    [value],
+  );
+
   const element = ask ? (
     // A plain div with an explicit Enter handler and a visible Apply button, rather than a
     // `<form>` whose only affordance was implicit submission. Both routes are exercised and both
@@ -125,7 +150,10 @@ function useInlinePrompt() {
       // toolbar sets `backdrop-blur`, which makes it a containing block for fixed descendants —
       // so the panel landed above the bar instead of where the class said — and anchoring to the
       // button that opened it is the behaviour actually wanted.
-      className="absolute left-1/2 top-full z-40 mt-1 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 rounded-md border border-line bg-surface p-3 shadow-lg"
+      className={cn(
+        'absolute left-1/2 top-full z-40 mt-1 -translate-x-1/2 rounded-md border border-line bg-surface p-3 shadow-lg',
+        ask.math ? 'w-[min(36rem,calc(100vw-2rem))]' : 'w-[min(30rem,calc(100vw-2rem))]',
+      )}
     >
       <label className="text-xs text-muted" htmlFor="inline-prompt-field">
         {ask.label}
@@ -162,11 +190,21 @@ function useInlinePrompt() {
       </div>
       {problem ? (
         <p className="mt-1 text-xs text-danger" role="alert">
-          {problem}
+          {ask.math
+            ? `This cannot be drawn yet: ${problem}. Check that every { has its }.`
+            : problem}
         </p>
       ) : (
         <p className="mt-1 text-xs text-muted">Enter to apply · Esc to cancel</p>
       )}
+      {ask.math ? (
+        <MathHelp
+          value={value.trim()}
+          problem={problem}
+          display={ask.math.display}
+          onInsert={insert}
+        />
+      ) : null}
     </div>
   ) : null;
 
@@ -347,9 +385,10 @@ export function FormatToolbar({
       if (!editor) return;
       prompt.open({
         label: kind === 'inline' ? 'Equation (LaTeX)' : 'Display equation (LaTeX)',
-        hint: 'E = mc^2',
+        hint: 'E = mc^2, or pick an example below',
         initial: '',
         validate: latexError,
+        math: { display: kind === 'block' },
         onDone: (latex) => {
           if (!latex) return;
           if (kind === 'inline') editor.chain().focus().insertMathInline(latex).run();
@@ -370,9 +409,10 @@ export function FormatToolbar({
       if (!detail) return;
       prompt.open({
         label: detail.display ? 'Display equation (LaTeX)' : 'Equation (LaTeX)',
-        hint: 'E = mc^2',
+        hint: 'E = mc^2, or pick an example below',
         initial: detail.latex,
         validate: latexError,
+        math: { display: detail.display },
         onDone: (latex) => {
           if (!latex || latex === detail.latex) return;
           editor.chain().focus().setMathLatex(detail.pos, latex).run();
