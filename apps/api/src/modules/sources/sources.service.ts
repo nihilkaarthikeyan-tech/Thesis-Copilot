@@ -775,53 +775,57 @@ export class SourcesService {
     const fileMoved = !keep.fileKey && Boolean(drop.fileKey);
     let pinsMoved = 0;
 
-    await this.prisma.$transaction(async (tx) => {
-      for (const { chapter, doc } of rewrites) {
-        const written = await tx.chapter.updateMany({
-          where: { id: chapter.id, version: chapter.version },
-          data: { content: doc as Prisma.InputJsonValue, version: { increment: 1 } },
-        });
-        if (written.count === 0) {
-          throw new ConflictError(
-            'A chapter was saved while the merge was running. Nothing was changed — try again.',
-          );
+    await this.prisma.$transaction(
+      async (tx) => {
+        for (const { chapter, doc } of rewrites) {
+          const written = await tx.chapter.updateMany({
+            where: { id: chapter.id, version: chapter.version },
+            data: { content: doc as Prisma.InputJsonValue, version: { increment: 1 } },
+          });
+          if (written.count === 0) {
+            throw new ConflictError(
+              'A chapter was saved while the merge was running. Nothing was changed — try again.',
+            );
+          }
         }
-      }
 
-      const rows = await tx.citation.findMany({
-        where: { sourceId: drop.id },
-        select: { id: true, chunkId: true },
-      });
-      for (const row of rows) {
-        await tx.citation.update({
-          where: { id: row.id },
-          data: {
-            sourceId: keep.id,
-            chunkId: row.chunkId ? (chunkMap.get(row.chunkId) ?? null) : null,
-          },
+        const rows = await tx.citation.findMany({
+          where: { sourceId: drop.id },
+          select: { id: true, chunkId: true },
         });
-      }
+        for (const row of rows) {
+          await tx.citation.update({
+            where: { id: row.id },
+            data: {
+              sourceId: keep.id,
+              chunkId: row.chunkId ? (chunkMap.get(row.chunkId) ?? null) : null,
+            },
+          });
+        }
 
-      const pins = await tx.chapterSourcePin.findMany({
-        where: { sourceId: drop.id },
-        select: { chapterId: true },
-      });
-      if (pins.length > 0) {
-        await tx.chapterSourcePin.createMany({
-          data: pins.map((p) => ({ chapterId: p.chapterId, sourceId: keep.id })),
-          skipDuplicates: true,
+        const pins = await tx.chapterSourcePin.findMany({
+          where: { sourceId: drop.id },
+          select: { chapterId: true },
         });
-        pinsMoved = pins.length;
-      }
+        if (pins.length > 0) {
+          await tx.chapterSourcePin.createMany({
+            data: pins.map((p) => ({ chapterId: p.chapterId, sourceId: keep.id })),
+            skipDuplicates: true,
+          });
+          pinsMoved = pins.length;
+        }
 
-      if (fileMoved) {
-        await tx.source.update({ where: { id: drop.id }, data: { fileKey: null } });
-        await tx.source.update({ where: { id: keep.id }, data: { fileKey: drop.fileKey } });
-      }
+        if (fileMoved) {
+          await tx.source.update({ where: { id: drop.id }, data: { fileKey: null } });
+          await tx.source.update({ where: { id: keep.id }, data: { fileKey: drop.fileKey } });
+        }
 
-      // Pins and chunks of the removed record go with it (cascade); its citations moved above.
-      await tx.source.delete({ where: { id: drop.id } });
-    });
+        // Pins and chunks of the removed record go with it (cascade); its citations moved above.
+        await tx.source.delete({ where: { id: drop.id } });
+        // A much-cited paper is one update per citation row; Prisma's 5 s default is too tight.
+      },
+      { timeout: 30_000 },
+    );
 
     if (fileMoved && drop.fileKey) {
       await this.queue.enqueue(
