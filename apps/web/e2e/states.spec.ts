@@ -59,7 +59,7 @@ test.describe('§6.2 states, forced through the mock', () => {
     await expect(page.getByTestId('notice')).toContainText('no sources to draw on');
     await expect(page.getByTestId('notice')).toContainText('Find papers to get cited text');
     // 2026-10-04: the notice now carries the next step as a link, not an instruction.
-    await expect(page.getByRole('link', { name: 'Find papers' })).toBeVisible();
+    await expect(page.getByTestId('notice-action')).toHaveText('Find papers');
     await expect(page.locator('.thesis-editor span.ghost')).toBeVisible();
   });
 
@@ -81,7 +81,8 @@ test.describe('§6.2 states, forced through the mock', () => {
     await guided.getByLabel('Guide this suggestion').fill('[[mock:error]]');
     await page.keyboard.press('Enter');
     await expect(editor.locator('span.ghost')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('notice')).toHaveCount(0);
+    // A fresh chapter has no sources, so the no-sources hint may show; no error may.
+    await expect(page.getByText('did not answer')).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     // In the chapter text itself it travels with every request, including the retry.

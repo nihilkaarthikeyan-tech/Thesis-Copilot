@@ -40,6 +40,15 @@ const CITE_MARKER = /\{\{cite:[^}]+\}\}/g;
 
 type Status = 'idle' | 'requesting' | 'streaming' | 'shown' | string;
 
+type HistoryEntry = { suggestionId: string; text: string; citations: SuggestionCitation[] };
+/**
+ * Earlier suggestions at the same place (2026-10-04, from the Jenni study). Jenni keeps the
+ * suggestions it has offered and steps between them with arrows; a refined suggestion here used to
+ * replace the one before it for good. Kept in the page only, for the one cursor position.
+ */
+type History = { anchor: number | null; entries: HistoryEntry[]; index: number };
+const NO_HISTORY: History = { anchor: -1, entries: [], index: -1 };
+
 export function SuggestionBar({
   editor,
   onRefine,
@@ -54,6 +63,7 @@ export function SuggestionBar({
   const [status, setStatus] = useState<Status>('idle');
   const [menu, setMenu] = useState(false);
   const [citations, setCitations] = useState<SuggestionCitation[]>([]);
+  const [history, setHistory] = useState<History>(NO_HISTORY);
   /**
    * The evidence card (2026-10-04, from the Jenni study): the paper and the passage behind a
    * suggested citation, readable before the suggestion is accepted, not only after.
@@ -70,6 +80,16 @@ export function SuggestionBar({
       const ghost = getGhostState(editor);
       setStatus(ghost?.status ?? 'idle');
       setCitations(ghost?.citations ?? []);
+      if (ghost?.status !== 'shown' || !ghost.suggestionId) return;
+      const { suggestionId, anchorPos, text } = ghost;
+      setHistory((h) => {
+        const at = h.entries.findIndex((e) => e.suggestionId === suggestionId);
+        if (at >= 0) return at === h.index ? h : { ...h, index: at };
+        // A suggestion somewhere else starts a new history; one word kept moves the anchor too.
+        const entries = h.anchor === anchorPos ? h.entries : [];
+        const entry = { suggestionId, text, citations: ghost.citations ?? [] };
+        return { anchor: anchorPos, entries: [...entries, entry], index: entries.length };
+      });
     };
     update();
     editor.on('transaction', update);
@@ -101,6 +121,12 @@ export function SuggestionBar({
   };
 
   const shown = status === 'shown';
+  const step = (delta: number) => {
+    const target = history.entries[history.index + delta];
+    if (!target) return;
+    editor.commands.dismissSuggestion();
+    editor.commands.restoreSuggestion(target);
+  };
   // One chip per paper: two passages of the same paper are one source to the student.
   const chips = citations.filter(
     (c, i) => c.sourceId && citations.findIndex((d) => d.sourceId === c.sourceId) === i,
@@ -127,6 +153,33 @@ export function SuggestionBar({
         className="pointer-events-auto relative flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 shadow-lg"
       >
         <span className="text-[12px] text-muted">{shown ? 'Suggestion' : 'Writing…'}</span>
+        {shown && history.entries.length > 1 ? (
+          <span className="flex items-center gap-0.5" data-testid="suggestion-history">
+            <button
+              type="button"
+              aria-label="Previous suggestion"
+              disabled={history.index <= 0}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => step(-1)}
+              className="rounded px-1.5 py-0.5 text-[13px] hover:bg-sunk disabled:opacity-40"
+            >
+              ‹
+            </button>
+            <span className="text-[11.5px] tabular-nums text-muted">
+              {history.index + 1} of {history.entries.length}
+            </span>
+            <button
+              type="button"
+              aria-label="Next suggestion"
+              disabled={history.index >= history.entries.length - 1}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => step(1)}
+              className="rounded px-1.5 py-0.5 text-[13px] hover:bg-sunk disabled:opacity-40"
+            >
+              ›
+            </button>
+          </span>
+        ) : null}
         {shown && chips.length > 0 ? (
           <span className="flex flex-wrap items-center gap-1" data-testid="suggestion-evidence">
             <span className="text-[11px] text-muted">Evidence:</span>

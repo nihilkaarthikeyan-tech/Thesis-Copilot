@@ -1338,6 +1338,7 @@ function ChapterEditor({
                 </p>
                 {noticeState.action === 'findPapers' ? (
                   <a
+                    data-testid="notice-action"
                     href={`/app/d/${doc.id}/sources?tab=discover`}
                     className="shrink-0 rounded bg-accent px-2 py-1 text-xs font-medium text-paper"
                   >

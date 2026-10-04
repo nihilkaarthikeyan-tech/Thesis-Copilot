@@ -182,6 +182,35 @@ describe('ghost text (Appendix B.3)', () => {
     expect(editor.state.doc.textContent).toBe('x');
   });
 
+  it('restoreSuggestion brings back an earlier suggestion, and Tab keeps it under its own id', async () => {
+    const outcomes: Array<{ suggestionId: string; outcome: string; keptChars: number }> = [];
+    const fake = streamOf('alpha beta');
+    editor = createTestEditor('<p>x</p>', { request: fake.request }, outcomes);
+    editor.commands.setTextSelection(2);
+    editor.commands.requestSuggestion();
+    await tick(20);
+    // Not while one is showing.
+    const earlier = {
+      suggestionId: 'sug-7',
+      text: 'gamma delta',
+      citations: [{ key: 'S4#c2', sourceId: 'src-4', chunkId: 'chunk-2', rendered: '(Rao, 2021)' }],
+    };
+    expect(editor.commands.restoreSuggestion(earlier)).toBe(false);
+    pressKey(editor, 'Escape');
+    expect(editor.commands.restoreSuggestion(earlier)).toBe(true);
+    const ghost = getGhostState(editor);
+    expect(ghost?.status).toBe('shown');
+    expect(ghost?.suggestionId).toBe('sug-7');
+    expect(ghost?.text.trim()).toBe('gamma delta');
+    expect(editor.state.doc.textContent).toBe('x');
+    expect(pressKey(editor, 'Tab')).toBe(true);
+    expect(editor.state.doc.textContent).toBe('x gamma delta');
+    expect(outcomes.map((o) => [o.suggestionId, o.outcome])).toEqual([
+      ['sug-42', 'REJECTED'],
+      ['sug-7', 'ACCEPTED'],
+    ]);
+  });
+
   it('Alt+→ accepts one word at a time and reports PARTIAL on dismiss', async () => {
     const outcomes: Array<{ suggestionId: string; outcome: string; keptChars: number }> = [];
     const fake = streamOf('alpha beta gamma');

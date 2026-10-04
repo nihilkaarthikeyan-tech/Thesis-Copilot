@@ -154,7 +154,18 @@ type GhostMeta =
       fade: { from: number; to: number } | null;
     }
   | { type: 'reset' }
-  | { type: 'fadeEnd' };
+  | { type: 'fadeEnd' }
+  /**
+   * An earlier suggestion shown again at the cursor (2026-10-04, from the Jenni study: arrows step
+   * through earlier suggestions). Its id is kept, so its outcome is recorded against it.
+   */
+  | {
+      type: 'restore';
+      anchorPos: number;
+      suggestionId: string;
+      text: string;
+      citations: SuggestionCitation[];
+    };
 
 const IDLE: Omit<GhostState, 'decorations'> = {
   status: 'idle',
@@ -176,6 +187,12 @@ declare module '@tiptap/core' {
       acceptSuggestion: () => ReturnType;
       acceptSuggestionWord: () => ReturnType;
       dismissSuggestion: () => ReturnType;
+      /** Shows an earlier suggestion again at the cursor; only when nothing else is showing. */
+      restoreSuggestion: (entry: {
+        suggestionId: string;
+        text: string;
+        citations: SuggestionCitation[];
+      }) => ReturnType;
     };
   }
 }
@@ -422,6 +439,19 @@ export const GhostText = Extension.create<GhostTextOptions>({
                     finalText.length === 0
                       ? { ...IDLE }
                       : { ...prev, text: finalText, status: 'shown', citations: meta.citations };
+                  break;
+                }
+                case 'restore': {
+                  const restored = spaceBefore(meta.text, charBefore(newState.doc, meta.anchorPos));
+                  next = {
+                    ...IDLE,
+                    status: 'shown',
+                    suggestionId: meta.suggestionId,
+                    text: restored,
+                    anchorPos: meta.anchorPos,
+                    citations: meta.citations,
+                    shownChars: restored.length,
+                  };
                   break;
                 }
                 case 'accepted':
@@ -739,6 +769,24 @@ export const GhostText = Extension.create<GhostTextOptions>({
             } satisfies GhostMeta);
           }
           scheduleFadeEnd(editor);
+          return true;
+        },
+
+      restoreSuggestion:
+        (entry) =>
+        ({ state, tr, dispatch }) => {
+          const ghost = ghostTextKey.getState(state);
+          if (ghost?.status !== 'idle' || !cursorEligible(state) || !entry.text.trim())
+            return false;
+          if (dispatch) {
+            tr.setMeta(ghostTextKey, {
+              type: 'restore',
+              anchorPos: state.selection.from,
+              suggestionId: entry.suggestionId,
+              text: entry.text,
+              citations: entry.citations,
+            } satisfies GhostMeta);
+          }
           return true;
         },
 
