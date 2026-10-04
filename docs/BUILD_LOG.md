@@ -4538,3 +4538,9 @@ get stuck in many places. Fixed:
 - Chat answers have **Add to document**, inserting the answer with real citation nodes, marked as
   AI-written. Evidence: `chat-mentions.spec.ts` presses it and finds the citation nodes in the
   chapter; `search-literature.spec.ts` checks the three groups and the ranking.
+
+## Suggestions on a pause and automatic sources on (2026-10-04, ADR-0053)
+
+The owner turned both on. `GET /settings` now takes its `automaticSuggest` default from the
+`automaticSuggest` flag (seeded in FR-9.7 and never read before); a student's own choice still
+wins. Both flags are switched on in production at release; they stay seeded off.

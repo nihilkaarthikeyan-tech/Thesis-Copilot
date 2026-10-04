@@ -23,10 +23,9 @@ and 3".
       month — fewer than Jenni's *free* plan (10 a day). On `gpt-4.1-mini`, 300 a month costs
       ₹85.87 per fully active student; 500 would break the ₹100 ceiling. Say the number and it is
       one line in `packages/config/src/plans.ts`.
-- [ ] **Turn automatic suggestions and automatic sources on for new students?** Both features
-      exist and are off by default (`automaticSuggest` setting, `autoSources` flag). Jenni suggests
-      on a pause by default. On means more suggestions used per student, so decide it together with
-      the allowance above.
+- [x] **Decided 2026-10-04: automatic suggestions and automatic sources are on** (ADR-0053), by
+      the `automaticSuggest` and `autoSources` flags in production. Pause suggestions count against
+      the allowance above, which makes that decision more pressing.
 
 ## Citations and equations (ADR-0045, 2026-10-03) — what a person should do
 

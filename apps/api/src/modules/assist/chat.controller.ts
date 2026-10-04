@@ -24,6 +24,7 @@ import { ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { ChatService } from './chat.service.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
@@ -103,6 +104,7 @@ export class ChatController {
     private readonly web: WebScopeService,
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
+    private readonly flags: FlagsService,
   ) {}
 
   /** FR-4.9. SSE over POST, like `/assist/suggest` (Appendix B.8). */
@@ -179,7 +181,11 @@ export class ChatController {
     return this.citeRoles.run(user, parsed.data);
   }
 
-  /** FR-4.6: automatic-suggest is per user and off by default (ADR-0006). */
+  /**
+   * FR-4.6: automatic-suggest is per user (ADR-0006). A student's own choice wins; until they make
+   * one, the `automaticSuggest` flag sets the default (ADR-0053, 2026-10-04: on in production, as
+   * Jenni suggests on a pause; the flag was seeded and never read).
+   */
   @Get('settings')
   async settings(@CurrentUser() user: SessionUser) {
     const row = await this.prisma.user.findUnique({
@@ -187,8 +193,10 @@ export class ChatController {
       select: { settings: true },
     });
     const settings = (row?.settings as Record<string, unknown> | null) ?? {};
+    const autoDefault = await this.flags.isEnabled('automaticSuggest');
     return {
-      automaticSuggest: settings.automaticSuggest === true,
+      automaticSuggest:
+        typeof settings.automaticSuggest === 'boolean' ? settings.automaticSuggest : autoDefault,
       // Unlike automatic-suggest, citations are on by default: a grounded suggestion that shows
       // where it came from is the product's whole argument, and turning that off is the choice.
       autoCite: settings.autoCite !== false,
