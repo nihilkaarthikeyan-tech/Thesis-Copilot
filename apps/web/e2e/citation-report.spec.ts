@@ -57,7 +57,8 @@ test('the report lists every weak citation, worst first, and each opens at its s
   // Reached from the submit screen, where a student goes the week before.
   await page.goto(`/app/d/${doc.id}/submit`);
   await page.getByTestId('open-citation-report').click();
-  await expect(page).toHaveURL(new RegExp(`/app/d/${doc.id}/citations$`));
+  // 20 s: in a long dev-server run the report page compiles on its first visit.
+  await expect(page).toHaveURL(new RegExp(`/app/d/${doc.id}/citations$`), { timeout: 20_000 });
 
   await expect(page.getByTestId('citation-report-headline')).toHaveText(
     '1 to fix before anyone reads it, 1 worth fixing.',
