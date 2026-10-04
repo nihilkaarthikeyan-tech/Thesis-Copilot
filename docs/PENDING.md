@@ -118,6 +118,22 @@ past. The sanctioned route is the Springer Nature Open Access API.
 2. Put it in `.env` as `SPRINGER_NATURE_API_KEY` and tell the agent. The agent reads the API's
    real response with the key, then builds the client the way Europe PMC's was built.
 
+## Examiner review of a written chapter (ADR-0056, 2026-10-04)
+
+Built and tested against the mock examiner only. Before it is relied on:
+
+1. **Release it** (migration `0031_examiner_review` adds two enum values; the worker gains the
+   `examiner-review` queue, so restart the worker as well as the API).
+2. **Run it on a real thesis with the real models.** Open a chapter the student wrote (with
+   citations made through Assist or Draft, so they carry a passage), Flags tab → Examiner review.
+   Check: it finishes in a few minutes; each flag's "Go to" selects the sentence it is about; the
+   blocking/warning split and the corrections read as an examiner's would; and the issues on
+   cited sentences are fair to the passages. Note anything that is plainly wrong — the prompt was
+   evaluated on built chapters, not on students' own (ADR-0056, Consequences).
+3. **Check the spend** in Admin → AI calls (`EXAMINER_REVIEW`) against the priced ₹1.86 a review.
+4. Run `pnpm e2e -- examiner-review checks-index` with the dev stack up (web, API, worker,
+   Compose); the agent could not run Playwright.
+
 ## Word citations in the .docx (ADR-0055, 2026-10-04) — check in real Word
 
 No Microsoft Word on the build machine, so the "Word citations" export is proven only by its XML

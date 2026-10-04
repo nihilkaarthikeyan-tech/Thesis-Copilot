@@ -23,6 +23,13 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > level) it would be ₹85.87; at 500, ₹104.58, over the ceiling. `gpt-4.1-mini` was priced from
 > OpenAI's page on 2026-10-04 ($0.40 in, $0.10 cached, $1.60 out per million tokens).
 >
+> **2026-10-04 — examiner reviews (ADR-0056).** A ninth allowance: 6 examiner reviews a month on
+> the paid plans (1 on the trial). One review is priced for its worst case of 8 sections, each one
+> examiner call of the chapter build's shape on the strong model (5,500 in, 4,000 cached, 600 out):
+> ₹1.8618 a review, ₹11.17 a month. A fully active student goes from ₹52.72 to **₹63.89** with
+> `gpt-5-nano` on the fast tier, and from ₹74.64 to **₹85.82** with ADR-0051's `gpt-4.1-mini` —
+> both within the ₹100 ceiling. `pnpm ai:verify` prints it.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.
