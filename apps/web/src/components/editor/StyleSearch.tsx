@@ -13,9 +13,13 @@
  *
  * Footnote styles can be chosen since the editor has footnotes (ADR-0029): each citation then
  * becomes a numbered note, in the editor and in every export.
+ *
+ * Under the search, a preview of the style the pointer or keyboard is on — or, with nothing
+ * highlighted, the style in use — rendered from an example reference (2026-10-04).
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { StylePreview } from '@/components/StylePreview';
 import { ApiError, api } from '@/lib/api';
 
 type StyleOption = {
@@ -49,6 +53,8 @@ export function StyleSearch({
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The result the pointer or keyboard is on: what the preview shows instead of `current`. */
+  const [highlighted, setHighlighted] = useState<string | null>(null);
   const latest = useRef(0);
 
   // The count for the placeholder, before anyone types.
@@ -96,6 +102,7 @@ export function StyleSearch({
         onChange={(e) => {
           setQuery(e.target.value);
           setError(null);
+          setHighlighted(null);
         }}
         placeholder={
           result ? `Search all ${result.available.toLocaleString()} styles…` : 'Search all styles…'
@@ -118,9 +125,16 @@ export function StyleSearch({
                     type="button"
                     data-testid="style-result"
                     disabled={!style.selectable || busy || style.id === current}
+                    onMouseEnter={() => {
+                      if (style.selectable) setHighlighted(style.id);
+                    }}
+                    onFocus={() => {
+                      if (style.selectable) setHighlighted(style.id);
+                    }}
                     onClick={() => {
                       onChoose(style.id);
                       setQuery('');
+                      setHighlighted(null);
                     }}
                     className="w-full px-2 py-1.5 text-left hover:bg-sunk disabled:cursor-default disabled:hover:bg-transparent"
                   >
@@ -153,6 +167,7 @@ export function StyleSearch({
           {error}
         </p>
       ) : null}
+      <StylePreview styleId={(searching && highlighted) || current} />
       {result ? (
         <p className="mt-1 text-[10.5px] text-faint">{result.credit.text} (CC BY-SA 3.0).</p>
       ) : null}
