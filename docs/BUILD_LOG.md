@@ -4561,3 +4561,20 @@ Tables are kept row by row. Chat answers now show `$…$` as typeset maths, not 
   correct.
 - Tests: `europepmc.spec.ts` (9, on recorded responses), three index-source cases, four cookie
   cases in `fulltext.spec.ts`. Retrieval 361 passed, worker 148 passed.
+
+## Citations that stay connected in the Word export (2026-10-04, ADR-0055)
+
+The Submit screen now asks how citations go into the `.docx`: plain text (the default, unchanged),
+linked to their reference-list entries (internal hyperlinks to bookmarks), or Word citations
+(sources in Word's source list, `CITATION` fields and a `BIBLIOGRAPHY` field, every result
+pre-filled with our rendered text). A note style writes the linked file instead. The PDF is always
+converted from the plain file.
+
+- Evidence: all six combinations (three modes, author-date and note style) converted through the
+  dev Gotenberg. Plain and linked gave identical text and no field codes. Word citations showed the
+  in-text results correctly, but LibreOffice rebuilt the `BIBLIOGRAPHY` field as its own index
+  ("Kumar, 2021: , (Kumar, 2021),"), with or without `updateIndexes` — which is why the PDF is
+  always plain, and why the screen says "Microsoft Word only".
+- Found on the way: `docx` 9.7.1 gives every `Bookmark` `w:id="1"`; the finishing pass renumbers.
+- Tests: `packages/export/test/citation-links.spec.ts` (18, reading the XML of the generated files),
+  `apps/api/test/citation-mode.spec.ts` (2). Not opened in Microsoft Word — `docs/PENDING.md`.
