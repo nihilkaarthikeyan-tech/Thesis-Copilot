@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Select } from '@/components/ui/primitives';
 import { API_URL, ApiError, api } from '@/lib/api';
+import { chapterLabel } from '@/lib/chapter-label';
 
 type Profile = { disciplineId: string; paradigm: string; universityId: string; language?: string };
 type Profiles = {
@@ -24,6 +25,7 @@ type Profiles = {
     defaultParadigms: string[];
     entityTypes: Array<{ code: string; label: string }>;
     specialChecks: string[];
+    specialCheckLabels: string[];
     sensitiveNote: string | null;
   }>;
   paradigms: Array<{ id: string; label: string }>;
@@ -259,9 +261,9 @@ export function BuildScreen({ documentId }: { documentId: string }) {
                 className="mt-1 w-full"
                 data-testid="build-chapter"
               >
-                {overview?.chapters.map((c) => (
+                {overview?.chapters.map((c, i) => (
                   <option key={c.id} value={c.id}>
-                    {c.order + 1}. {c.title}
+                    {chapterLabel(c.title, i)}
                     {c.pendingBuild ? ' (drafts waiting)' : ''}
                   </option>
                 ))}
@@ -351,8 +353,8 @@ export function BuildScreen({ documentId }: { documentId: string }) {
           <p className="mt-3 text-xs text-muted">
             Key terms this discipline looks for:{' '}
             {discipline.entityTypes.map((t) => t.label).join(', ')}.
-            {discipline.specialChecks.length > 0
-              ? ` Extra checks: ${discipline.specialChecks.join(', ')}.`
+            {discipline.specialCheckLabels.length > 0
+              ? ` Also checked for this discipline: ${discipline.specialCheckLabels.join('; ')}.`
               : ''}
             {discipline.sensitiveNote ? ` ${discipline.sensitiveNote}` : ''}
           </p>

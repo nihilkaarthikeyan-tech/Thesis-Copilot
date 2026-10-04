@@ -318,8 +318,8 @@ export function DiscoverPanel({
         ) : null}
       </div>
       <p className="mt-2 text-xs text-muted">
-        One search costs one Strong call and one Fast call; nothing enters your library until you
-        add it. Results come from OpenAlex, last 15 years, articles, preprints and chapters.
+        Nothing enters your library until you add it. Results come from OpenAlex, last 15 years,
+        articles, preprints and chapters.
       </p>
 
       {error ? (

@@ -59,6 +59,12 @@ export type JournalScore = {
   total: number;
   breakdown: { scope: number; citedHere: number; impact: number; access: number };
   alignmentLevel: AlignmentLevel;
+  /**
+   * True when there was something to compare: the thesis had key terms and OpenAlex listed the
+   * journal's subjects. `alignmentLevel: 'none'` means "no overlap" only when this is true;
+   * otherwise it means "not known", and a screen must not say the subjects differ.
+   */
+  subjectsCompared: boolean;
   impactTier: ImpactTier;
   /** Mean citedness as OpenAlex reports it, for display; null when unknown. */
   meanCitedness: number | null;
@@ -181,6 +187,10 @@ export function scoreJournal(
   profile: JournalMatchProfile,
 ): JournalScore {
   const scope = scopeAlignment(candidate, profile);
+  const subjectsCompared =
+    candidate.concepts.length > 0 &&
+    (profile.keywords.some((k) => tokensOf(k).length > 0) ||
+      (profile.field !== null && tokensOf(profile.field).length > 0));
   const citedHereCount = profile.citedVenues[candidate.id] ?? 0;
   const citedHere = Math.min(
     JOURNAL_MATCH.citedHereMax,
@@ -201,11 +211,17 @@ export function scoreJournal(
     reason = `Not a journal (OpenAlex type: ${candidate.type}).`;
   } else if (scope.level === 'none' && citedHereCount === 0) {
     eligible = false;
-    reason =
-      'Off-topic: its subject does not overlap the thesis and it has published none of your cited sources.';
+    reason = subjectsCompared
+      ? 'Off-topic: its subjects do not overlap the thesis and it has published none of your sources.'
+      : 'OpenAlex lists no subjects to compare, and it has published none of your sources.';
   } else {
     const bits: string[] = [];
-    if (citedHereCount > 0) bits.push(`publishes ${citedHereCount} of your cited source(s)`);
+    // "Your sources", not "your cited sources": the count is over the library, cited or not.
+    if (citedHereCount > 0) {
+      bits.push(
+        `published ${citedHereCount} of your ${citedHereCount === 1 ? 'source' : 'sources'}`,
+      );
+    }
     if (scope.level !== 'none') bits.push(`${scope.level}-level subject match`);
     if (impact.tier !== 'unknown') bits.push(`${impact.tier} citedness`);
     reason = `Fits: ${bits.join(', ')}.`;
@@ -222,6 +238,7 @@ export function scoreJournal(
     total,
     breakdown: { scope: scope.points, citedHere, impact: impact.points, access },
     alignmentLevel: scope.level,
+    subjectsCompared,
     impactTier: impact.tier,
     meanCitedness: candidate.meanCitedness,
     citedHereCount,

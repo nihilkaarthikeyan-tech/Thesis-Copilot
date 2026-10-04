@@ -1267,7 +1267,7 @@ function ChapterEditor({
             </Link>
           </p>
           <ul className="grid list-none gap-0.5 p-0">
-            {doc.chapters.map((c) => (
+            {doc.chapters.map((c, index) => (
               <li key={c.id}>
                 <Link
                   href={`/app/d/${doc.id}/write/${c.id}`}
@@ -1279,7 +1279,7 @@ function ChapterEditor({
                   }`}
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate">{chapterLabel(c.order, c.title)}</span>
+                    <span className="truncate">{chapterLabel(c.title, index)}</span>
                     <span className="tnum shrink-0 text-[11px] text-faint">{c.wordCount}</span>
                   </span>
                 </Link>

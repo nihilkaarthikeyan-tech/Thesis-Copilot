@@ -142,8 +142,15 @@ describe('1–2. front matter and title-page fields', () => {
     const names = findings(result, 'TITLE_PAGE_FIELDS')
       .map((f) => f.message)
       .join(' ');
-    expect(names).toContain('studentName');
-    expect(names).toContain('degree');
+    expect(names).toContain('“Your name”');
+    expect(names).toContain('“Degree”');
+  });
+
+  it('names a field in the student’s words, never by its key', () => {
+    const result = runComplianceChecks({ ...clean(), details: readThesisDetails({}) });
+    for (const finding of findings(result, 'TITLE_PAGE_FIELDS')) {
+      expect(finding.message, finding.message).not.toMatch(/studentName|rollNo|hodName|guideName/);
+    }
   });
 
   it('a filled form passes both', () => {
@@ -159,7 +166,7 @@ describe('1–2. front matter and title-page fields', () => {
     });
     const rows = findings(result, 'TITLE_PAGE_FIELDS');
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.message).toContain('hodName');
+    expect(rows[0]?.message).toContain('Head of department');
   });
 });
 

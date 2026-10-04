@@ -14,7 +14,14 @@ import { PrismaService } from '../../common/prisma.service.js';
 
 export type JournalsView = {
   /** The key terms and field the match was run on, so the student sees what it used. */
-  basis: { keywords: string[]; field: string | null; citedVenueCount: number };
+  basis: {
+    keywords: string[];
+    field: string | null;
+    /** Journals the library's sources were published in. */
+    libraryVenueCount: number;
+    /** Of those, the journals of sources the thesis cites in its text. */
+    citedVenueCount: number;
+  };
   eligible: JournalScore[];
   ruledOut: JournalScore[];
   /** True when the library had no resolved venue and nothing to search: the student should add sources. */
@@ -53,15 +60,20 @@ export class JournalsService {
     });
     if (!document) throw new NotFoundError('That document');
 
-    // The venues the thesis's own cited sources were published in — the grounded fit signal.
-    const cited = await this.prisma.source.findMany({
+    // The venues the thesis's library sources were published in — the grounded fit signal. The
+    // whole library counts, cited in the text or not; `citedVenueCount` says how many of those
+    // venues carry a source the thesis actually cites, so the screen does not say "you cite"
+    // of a library nobody has cited from yet.
+    const library = await this.prisma.source.findMany({
       where: { documentId, status: 'RESOLVED', venueOpenalexId: { not: null } },
-      select: { venueOpenalexId: true },
+      select: { venueOpenalexId: true, _count: { select: { citations: true } } },
     });
     const citedVenues: Record<string, number> = {};
-    for (const s of cited) {
-      if (s.venueOpenalexId)
-        citedVenues[s.venueOpenalexId] = (citedVenues[s.venueOpenalexId] ?? 0) + 1;
+    const venuesCitedInText = new Set<string>();
+    for (const s of library) {
+      if (!s.venueOpenalexId) continue;
+      citedVenues[s.venueOpenalexId] = (citedVenues[s.venueOpenalexId] ?? 0) + 1;
+      if (s._count.citations > 0) venuesCitedInText.add(s.venueOpenalexId);
     }
 
     const keywords = this.keywordsFor(document);
@@ -85,7 +97,12 @@ export class JournalsService {
     });
 
     return {
-      basis: { keywords, field: document.field, citedVenueCount: Object.keys(citedVenues).length },
+      basis: {
+        keywords,
+        field: document.field,
+        libraryVenueCount: Object.keys(citedVenues).length,
+        citedVenueCount: venuesCitedInText.size,
+      },
       eligible: ranked.filter((r) => r.eligible),
       ruledOut: ranked.filter((r) => !r.eligible),
       thin: candidates.length === 0,

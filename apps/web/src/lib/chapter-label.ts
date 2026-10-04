@@ -1,8 +1,15 @@
 /**
- * A chapter's label in a list: "1. Introduction", but "Chapter 1 — Introduction" left as it is.
- * A new thesis's first chapter is titled "Chapter 1 — Introduction", and the list showed
- * "1. Chapter 1 — Introduction" (2026-10-04, found comparing with Jenni).
+ * A chapter as a picker shows it: its own title, once, numbered correctly.
+ *
+ * A title that already carries its number ("Chapter 1 — Introduction", "1. Introduction") is shown
+ * as it is. Any other is numbered by its place in the thesis — the list arrives in order — and
+ * never by the stored `order`, which is a sort key and may start at 1.
  */
-export function chapterLabel(order: number, title: string): string {
-  return /^\s*(chapter|ch\.?)\s*\d+\b/i.test(title) ? title.trim() : `${order}. ${title.trim()}`;
+
+const NUMBERED = /^(?:chapter|ch\.)\s*[0-9ivxlc]+\b|^[0-9]+\s*[.):—–-]/i;
+
+export function chapterLabel(title: string, index: number): string {
+  const trimmed = title.trim();
+  if (NUMBERED.test(trimmed)) return trimmed;
+  return `${index + 1}. ${trimmed || 'Untitled chapter'}`;
 }

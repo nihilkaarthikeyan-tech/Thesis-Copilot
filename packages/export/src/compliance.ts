@@ -13,7 +13,7 @@
  * product (§12.2). It is the PDF, the thing they hand in, that waits.
  */
 
-import type { TemplateSpec, ThesisDetails } from '@tc/types';
+import { fieldLabel, type TemplateSpec, type ThesisDetails } from '@tc/types';
 import { captionOf, withCaptionsResolved } from './captions.js';
 
 export type CheckId =
@@ -238,7 +238,10 @@ export function runComplianceChecks(input: ComplianceInput): ComplianceResult {
           ? input.documentTitle
           : ((details as unknown as Record<string, unknown>)[key] as string | undefined);
       if (!String(value ?? '').trim()) {
-        add('TITLE_PAGE_FIELDS', `The ${sectionName(section.id)} needs “${key}”, which is empty.`);
+        add(
+          'TITLE_PAGE_FIELDS',
+          `The ${sectionName(section.id)} needs “${fieldLabel(key)}”, which is empty.`,
+        );
       }
     }
   }
