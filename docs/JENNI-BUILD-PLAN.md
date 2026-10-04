@@ -58,8 +58,15 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Gap analysis by claim (supported / contested / under-explored) on top of the theme map | |
 | Chat that can search beyond the library (asks first), shows its steps | |
 | More selection actions (counter-argument, hedge/strengthen a claim, tense, to table, translate) | |
-| Library: duplicate detection, missing-PDF view | |
+| Library: duplicate detection, missing-PDF view | Done 2026-10-04 — possible duplicates with Merge (snapshots first), "Without full text" with Add the PDF |
 | Interface language (Hindi, Tamil…) | |
+
+## Beyond the batches (fix list items, 2026-10-04)
+
+| Item | Status |
+|---|---|
+| Earlier suggestions kept: ‹ › on the suggestion bar steps back to one before Refine replaced it | Done 2026-10-04 |
+| Assist reads the note of the sub-section under the cursor, not only the chapter's (A21) | Done 2026-10-04 |
 
 ## Also fixed on the way (found while building)
 

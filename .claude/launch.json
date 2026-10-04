@@ -27,12 +27,24 @@
     {
       "name": "api-mock",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@tc/api", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@tc/api",
+        "exec",
+        "dotenv",
+        "-e",
+        "../../.env",
+        "--",
+        "node",
+        "dist/main.js"
+      ],
       "port": 3001,
       "env": {
         "AI_PROVIDER": "mock",
         "EMBED_PROVIDER": "mock",
-        "AUTH_RATE_LIMIT_PER_MINUTE": "600"
+        "AUTH_RATE_LIMIT_PER_MINUTE": "600",
+        "SMTP_HOST": "",
+        "RESEND_API_KEY": ""
       }
     },
     {
@@ -43,7 +55,9 @@
       "env": {
         "AI_PROVIDER": "mock",
         "EMBED_PROVIDER": "mock",
-        "AUTH_RATE_LIMIT_PER_MINUTE": "600"
+        "AUTH_RATE_LIMIT_PER_MINUTE": "600",
+        "SMTP_HOST": "",
+        "RESEND_API_KEY": ""
       }
     }
   ]
