@@ -12,12 +12,15 @@
 
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { questionOptions } from '@/lib/question-options';
 
 export type ProposalView = {
   visible: Array<{ role: 'user' | 'assistant'; text: string; at: string }>;
   gapCheck: {
     count: number;
     works: Array<{ title: string; year: number | null; abstract: string; doi?: string | null }>;
+    /** The search could not run; absent on conversations stored before it was recorded. */
+    failed?: boolean;
   } | null;
   skeleton: {
     workingTitle: string;
@@ -47,6 +50,7 @@ export function PathAChat({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api<ProposalView>(`/documents/${documentId}/proposal`)
@@ -66,9 +70,13 @@ export function PathAChat({
     endRef.current?.scrollIntoView({ block: 'nearest' });
   }, [shown]);
 
-  async function send(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
-    const message = draft.trim();
+    void send(draft);
+  }
+
+  async function send(text: string) {
+    const message = text.trim();
     if (!message || busy) return;
     setBusy(true);
     setError(null);
@@ -103,6 +111,10 @@ export function PathAChat({
 
   if (!view) return <p className="mt-8 text-sm text-muted">Loading…</p>;
 
+  // The question being answered offers its options as buttons (docs/JENNI-FIX-LIST.md item 14).
+  const last = view.visible.at(-1);
+  const options = !view.done && last?.role === 'assistant' ? questionOptions(last.text) : [];
+
   return (
     <section className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]" data-testid="path-a-chat">
       <div className="rounded-md border border-line bg-surface">
@@ -125,22 +137,55 @@ export function PathAChat({
               {m.text}
             </div>
           ))}
+          {options.length > 0 && !busy ? (
+            <fieldset className="flex flex-wrap gap-2" data-testid="question-options">
+              <legend className="sr-only">Choose an answer</legend>
+              {options.map((option) =>
+                option.other ? (
+                  <button
+                    key={option.text}
+                    type="button"
+                    onClick={() => inputRef.current?.focus()}
+                    className="rounded-full border border-line px-3 py-1.5 text-left text-sm text-muted hover:bg-paper"
+                  >
+                    {option.text} — type it below
+                  </button>
+                ) : (
+                  <button
+                    key={option.text}
+                    type="button"
+                    onClick={() => void send(option.text)}
+                    className="rounded-full border border-accent px-3 py-1.5 text-left text-sm hover:bg-paper"
+                  >
+                    {option.text}
+                  </button>
+                ),
+              )}
+            </fieldset>
+          ) : null}
           {busy ? <p className="text-xs text-muted">Thinking…</p> : null}
           <div ref={endRef} />
         </div>
         {!view.done ? (
-          <form onSubmit={send} className="flex gap-2 border-t border-line p-3">
+          <form onSubmit={submit} className="flex gap-2 border-t border-line p-3">
             <label className="sr-only" htmlFor="path-a-message">
               Your message
             </label>
             <input
+              ref={inputRef}
               id="path-a-message"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               disabled={busy}
               maxLength={2000}
               className="h-10 flex-1 rounded-md border border-line px-3 text-sm"
-              placeholder={view.visible.length === 0 ? 'Your topic…' : 'Your answer…'}
+              placeholder={
+                view.visible.length === 0
+                  ? 'Your topic…'
+                  : options.length > 0
+                    ? 'Choose above, or type your own answer…'
+                    : 'Your answer…'
+              }
             />
             <button
               type="submit"
@@ -164,7 +209,13 @@ export function PathAChat({
 
       <aside className="rounded-md border border-line bg-paper p-4 text-sm" data-testid="gap-check">
         <p className="text-xs uppercase tracking-wide text-muted">Related work</p>
-        {view.gapCheck ? (
+        {view.gapCheck?.failed ? (
+          <p className="mt-1">
+            The related-work search could not run this time, so the proposal skeleton is drafted
+            without it. This does not mean nothing has been written on your topic: find papers for
+            it on the Sources page once the proposal is saved.
+          </p>
+        ) : view.gapCheck ? (
           <>
             <p className="mt-1 font-medium">
               {view.gapCheck.count.toLocaleString()} related work
