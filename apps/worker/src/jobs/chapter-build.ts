@@ -154,6 +154,10 @@ export type ChapterBuildResult = {
   drafted: number;
   blockingOpen: number;
   spentInr: number;
+  /** True when this run gave the `CHAPTER_BUILD` unit back (the refund statement succeeded). */
+  refunded?: boolean;
+  /** True when the job did nothing: the build was not QUEUED (a retry, or already handled). */
+  skipped?: boolean;
 };
 
 // --------------------------------------------------------------------------------------------
@@ -192,6 +196,7 @@ export async function runChapterBuild(
       drafted: 0,
       blockingOpen: 0,
       spentInr: 0,
+      skipped: true,
     };
   }
 
@@ -217,7 +222,12 @@ export async function runChapterBuild(
         ...(data.error ? { error: data.error.slice(0, 1000) } : {}),
       },
     });
-    if (status !== 'DONE') await deps.refund(job.userId).catch(() => undefined);
+    const refunded =
+      status !== 'DONE' &&
+      (await deps.refund(job.userId).then(
+        () => true,
+        () => false,
+      ));
     log({
       msg: 'chapter build finished',
       buildId: job.buildId,
@@ -225,7 +235,7 @@ export async function runChapterBuild(
       ...counts,
       spentInr: spentMicro / 1e6,
     });
-    return { buildId: job.buildId, status, ...counts, spentInr: spentMicro / 1e6 };
+    return { buildId: job.buildId, status, ...counts, spentInr: spentMicro / 1e6, refunded };
   };
 
   try {

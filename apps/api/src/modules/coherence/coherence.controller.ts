@@ -24,6 +24,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ENV } from '../../common/env.token.js';
 import { ValidationError } from '../../common/errors.js';
+import { isWatching, JobWatchService } from '../../common/job-watch.js';
 import { RedisService } from '../../common/redis.service.js';
 import { streamSse } from '../assist/sse.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -49,6 +50,7 @@ export class CoherenceController {
     private readonly coherence: CoherenceService,
     private readonly redis: RedisService,
     @Inject(ENV) private readonly env: Env,
+    private readonly jobWatch: JobWatchService,
   ) {}
 
   /** What the next run would cost, so the button can say it before it is pressed. */
@@ -87,13 +89,21 @@ export class CoherenceController {
     return this.coherence.act(user.id, documentId, flagId, parsed.data.action, parsed.data.reason);
   }
 
+  /**
+   * The run's state. The Flags tab polls this with `?watching=1` while the check runs and the tab
+   * is visible, which marks the run as looked at (ADR-0058); the SSE stream does not, because an
+   * open stream says nothing about whether anyone can see it.
+   */
   @Get(':runId')
-  run(
+  async run(
     @CurrentUser() user: SessionUser,
     @Param('id') documentId: string,
     @Param('runId') runId: string,
+    @Query('watching') watching?: string,
   ) {
-    return this.coherence.run(user.id, documentId, runId);
+    const view = await this.coherence.run(user.id, documentId, runId);
+    if (isWatching(watching) && view.status === 'RUNNING') await this.jobWatch.touch([runId]);
+    return view;
   }
 
   /**

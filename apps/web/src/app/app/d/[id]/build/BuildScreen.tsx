@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge, Select } from '@/components/ui/primitives';
 import { API_URL, ApiError, api } from '@/lib/api';
 import { chapterLabel } from '@/lib/chapter-label';
+import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 
 type Profile = { disciplineId: string; paradigm: string; universityId: string; language?: string };
 type Profiles = {
@@ -170,7 +171,7 @@ export function BuildScreen({ documentId }: { documentId: string }) {
 
   const load = useCallback(async () => {
     const [next, doc] = await Promise.all([
-      api<Overview>(`/documents/${documentId}/chapter-build`),
+      api<Overview>(`/documents/${documentId}/chapter-build${watchingParam()}`),
       api<{ title: string }>(`/documents/${documentId}`),
     ]);
     setOverview(next);
@@ -495,9 +496,14 @@ function BuildDetail({
     'checks',
   );
 
+  const emailOn = useJobEmailSetting();
+
   const load = useCallback(async () => {
     try {
-      setView(await api<BuildView>(`/documents/${documentId}/chapter-build/${buildId}`));
+      // ADR-0058: a visible tab's poll tells the worker someone is looking, so no email.
+      setView(
+        await api<BuildView>(`/documents/${documentId}/chapter-build/${buildId}${watchingParam()}`),
+      );
     } catch (e) {
       setError(problem(e, 'Could not load the build.'));
     }
@@ -552,8 +558,9 @@ function BuildDetail({
             />
           </div>
         ) : null}
-        <p className="mt-3 text-xs text-muted">
-          A chapter takes a few minutes. You can leave this page; the build carries on.
+        <p className="mt-3 text-xs text-muted" data-testid="job-email-note">
+          A chapter takes a few minutes.{' '}
+          {emailOn ? JOB_EMAIL_NOTE : 'You can leave this page; the build carries on.'}
         </p>
       </section>
     );

@@ -120,7 +120,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 |---|---|---|---|---|---|
 | 62 | Literature review workflow | Topic → filters → 4 stages, 15–20 min, per-section expert brief (failed in test) | `web/app/app/d/[id]/build/page.tsx`, `api/chapter-build/chapter-build.service.ts`, `apps/worker/src/jobs/chapter-build.ts`, `packages/ai/src/checks/` | OURS BETTER | Ours checks and delivers pending blocks with a QA report; lacks Jenni's topic-specific brief per section |
 | 63 | Research gap analysis by claims | 15 claims: under-explored / contested / well-supported, supporting + contrasting citations, direction, "Limits" note | `DiscoverPanel.tsx` (themes by counts, ADR-0041/0046) | PARTIAL | We reason over counts, not claims; "why open" left to the student |
-| 64 | Run in background with stages, clock, "we will email you" | Yes | chapter build in worker (stages on build screen); no completion email found | PARTIAL | Student must keep watching; Discover shows only "Searching…" |
+| 64 | Run in background with stages, clock, "we will email you" | Yes | chapter build in worker (stages on build screen); Discover shows stages and a clock; since 2026-10-04 (ADR-0058) one email when a search, build, examiner review or coherence check ends after a minute with no visible tab watching | MATCH | Email unverified against a real mailbox (`docs/PENDING.md`) |
 | 65 | "How was this document?" thumbs | After a workflow | `api/assist/assist.controller.ts` (`outcome` telemetry), Feedback box | PARTIAL | No per-result rating |
 
 ## 10. Inserting things

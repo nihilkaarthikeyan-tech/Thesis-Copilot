@@ -29,6 +29,7 @@ type Settings = {
   automaticSuggest?: boolean;
   autoCite?: boolean;
   autoSources?: boolean;
+  emailWhenJobDone?: boolean;
   defaultCitationStyle?: string | null;
 };
 
@@ -211,6 +212,36 @@ export default function SettingsPage() {
             }`}
           >
             {settings?.autoSources !== false ? 'On' : 'Off'}
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="eyebrow">Email me when a long job finishes</h2>
+            <p className="mt-1 text-sm text-muted">
+              On by default. A literature search, a chapter build, an examiner review or a coherence
+              check can take a few minutes. If it runs for more than a minute and its page is not
+              open, we send you one short email with a link to the result, so you can close the tab
+              and come back when it is ready.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.emailWhenJobDone !== false}
+            aria-label="Email me when a long job finishes"
+            disabled={busy || settings === null}
+            onClick={() => void save({ emailWhenJobDone: settings?.emailWhenJobDone === false })}
+            data-testid="job-email-toggle"
+            className={`shrink-0 rounded-full px-3 py-1 text-xs ${
+              settings?.emailWhenJobDone !== false
+                ? 'bg-accent text-accent-ink'
+                : 'border border-line text-muted'
+            }`}
+          >
+            {settings?.emailWhenJobDone !== false ? 'On' : 'Off'}
           </button>
         </div>
       </section>

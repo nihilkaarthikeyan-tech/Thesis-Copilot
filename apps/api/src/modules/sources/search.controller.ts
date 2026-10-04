@@ -2,9 +2,10 @@
  * `/documents/:id/search*` — PRD §9.2, FR-2.5–2.8, PHASES v2 W7.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
+import { isWatching, JobWatchService } from '../../common/job-watch.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { SearchService } from './search.service.js';
@@ -15,7 +16,10 @@ const selectBody = z.object({ candidateIds: z.array(z.string().uuid()).min(1).ma
 @Controller('documents/:id/search')
 @UseGuards(SessionGuard)
 export class SearchController {
-  constructor(private readonly search: SearchService) {}
+  constructor(
+    private readonly search: SearchService,
+    private readonly watch: JobWatchService,
+  ) {}
 
   /** `{ mode: 'discover' | 'expand' }` → job `search-literature`. */
   @Post()
@@ -31,14 +35,20 @@ export class SearchController {
     return this.search.list(user.id, documentId);
   }
 
-  /** Results grouped by sub-theme — the gap map (FR-2.6). */
+  /**
+   * Results grouped by sub-theme — the gap map (FR-2.6). `?watching=1` from a visible tab marks a
+   * running search as looked at (ADR-0058).
+   */
   @Get(':runId')
-  get(
+  async get(
     @CurrentUser() user: SessionUser,
     @Param('id') documentId: string,
     @Param('runId') runId: string,
+    @Query('watching') watching?: string,
   ) {
-    return this.search.get(user.id, documentId, runId);
+    const view = await this.search.get(user.id, documentId, runId);
+    if (isWatching(watching) && view.status === 'RUNNING') await this.watch.touch([runId]);
+    return view;
   }
 
   /** FR-2.7: `{ candidateIds[] }` → library → index jobs. Nothing is selected automatically. */

@@ -84,6 +84,8 @@ export type ExaminerReviewResult = {
   blocking: number;
   flagsWritten: number;
   spentInr: number;
+  /** True when this run gave the `EXAMINER_REVIEW` unit back (the refund statement succeeded). */
+  refunded?: boolean;
 };
 
 /** The chapter's examiner review records, keyed by chapter id, on the document's meta. */
@@ -185,9 +187,14 @@ export async function runExaminerReview(
 
   const fail = async (error: string, refund: boolean): Promise<ExaminerReviewResult> => {
     await writeState(prisma, job, { status: 'FAILED', finishedAt: now().toISOString(), error });
-    if (refund) await deps.refund(job.userId).catch(() => undefined);
-    log({ msg: 'examiner review failed', runId: job.runId, error, refunded: refund });
-    return { ...empty, status: 'FAILED', spentInr: spentMicro / 1e6 };
+    const refunded =
+      refund &&
+      (await deps.refund(job.userId).then(
+        () => true,
+        () => false,
+      ));
+    log({ msg: 'examiner review failed', runId: job.runId, error, refunded });
+    return { ...empty, status: 'FAILED', spentInr: spentMicro / 1e6, refunded };
   };
 
   try {

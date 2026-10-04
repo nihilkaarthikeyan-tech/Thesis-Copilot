@@ -27,6 +27,7 @@ import {
 } from '@tc/ai';
 import { computeCallCost, computeEmbeddingCost, type Env, loadEnv } from '@tc/config';
 import { PrismaClient } from '@tc/db';
+import { createMailer } from '@tc/mail';
 import {
   ARXIV,
   ArxivClient,
@@ -63,6 +64,16 @@ import {
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
+import {
+  chapterBuildFinished,
+  coherenceFinished,
+  examinerReviewFinished,
+  type FinishedJob,
+  failedAfterRetries,
+  notifyJobFinished,
+  redisWatchStore,
+  searchFinished,
+} from './job-email.js';
 import { runChapterBuild } from './jobs/chapter-build.js';
 import { runCoherence } from './jobs/coherence-run.js';
 import { runCrossPaper } from './jobs/cross-paper.js';
@@ -235,6 +246,30 @@ async function main(): Promise<void> {
   await prisma.$connect();
 
   const providers = providersFor(env);
+
+  // ADR-0058: one email when a long job ends with nobody watching. The same mailer the API uses
+  // (`@tc/mail`); without RESEND_API_KEY or SMTP_* it is the console mailer, which only logs.
+  const mail = createMailer(env);
+  log({ msg: `mail: ${mail.provider}` });
+  const emailDeps = {
+    prisma,
+    mailer: mail.mailer,
+    // Its own connection: some workers block on `connection`.
+    watch: redisWatchStore(connection.duplicate()),
+    appUrl: env.APP_URL,
+    log,
+  };
+  const notify = (finished: FinishedJob | null) =>
+    finished ? notifyJobFinished(emailDeps, finished) : Promise.resolve(null);
+  /** The chapter a coherence email links to: the thesis's first, where the Flags tab is. */
+  const firstChapterId = async (documentId: string): Promise<string | null> =>
+    (
+      await prisma.chapter.findFirst({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true },
+      })
+    )?.id ?? null;
   const storage = storageFor(env);
 
   const resolveQueue = new Queue(QUEUE_RESOLVE_REFERENCE, {
@@ -534,6 +569,16 @@ async function main(): Promise<void> {
             log: (event) => log({ jobId: job.id, ...event }),
           });
           log({ msg: 'coherence finished', jobId: job.id, ...result });
+          if (job.data.triggeredBy === 'MANUAL') {
+            await notify(
+              coherenceFinished(
+                job.data,
+                result,
+                job.timestamp,
+                await firstChapterId(job.data.documentId),
+              ),
+            );
+          }
           return result;
         } catch (error) {
           // The document must never be left with a run stuck at RUNNING: that would refuse every
@@ -652,6 +697,7 @@ async function main(): Promise<void> {
           log: (event) => log({ jobId: job.id, ...event }),
         });
         log({ msg: 'chapter build finished', jobId: job.id, ...result });
+        await notify(chapterBuildFinished(job.data, result, job.timestamp));
         return result;
       },
       // One build at a time: up to thirty strong-tier calls, each holding a section and its passages.
@@ -702,6 +748,7 @@ async function main(): Promise<void> {
           log: (event) => log({ jobId: job.id, ...event }),
         });
         log({ msg: 'examiner review finished', jobId: job.id, ...result });
+        await notify(examinerReviewFinished(job.data, result, job.timestamp));
         return result;
       },
       // Each review makes up to three strong-tier calls at once; two reviews at a time.
@@ -747,6 +794,7 @@ async function main(): Promise<void> {
           log: (event) => log({ jobId: job.id, ...event }),
         });
         log({ msg: 'search-literature finished', jobId: job.id, ...result });
+        await notify(searchFinished(job.data, result, job.timestamp));
         return result;
       },
       { connection, concurrency: 2 },
@@ -767,6 +815,23 @@ async function main(): Promise<void> {
           error: error.message,
         }),
       );
+
+      // ADR-0058: a search or coherence check that failed for good. Earlier attempts say nothing:
+      // a retry may still succeed, and then the "ready" email is the one that goes.
+      if (
+        (worker.name === QUEUE_SEARCH_LITERATURE || worker.name === QUEUE_COHERENCE) &&
+        job &&
+        isRetryExhausted(job.attemptsMade, job.opts.attempts)
+      ) {
+        void (async () => {
+          const data = job.data as { documentId?: string };
+          const chapterId =
+            worker.name === QUEUE_COHERENCE && data.documentId
+              ? await firstChapterId(data.documentId).catch(() => null)
+              : null;
+          await notify(failedAfterRetries(worker.name, job.data, job.timestamp, chapterId));
+        })();
+      }
 
       // A resolve job that has burned its last attempt would otherwise leave the source at
       // PENDING for good, and the library would show "Looking it up…" forever with no way out.

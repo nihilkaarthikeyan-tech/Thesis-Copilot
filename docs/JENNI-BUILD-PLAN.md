@@ -77,6 +77,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Import from Word: a `.docx` becomes chapters at each Heading 1 (append, or replace an empty thesis) | Done 2026-10-04 |
 | Library collections (folders): strip with counts, filter, tick rows → add / remove, rename, delete (papers stay); copied with a thesis | Done 2026-10-04 (migration 0036); browser spec not yet run |
 | Read a paper's PDF beside the chapter (hover card "Read beside", Sources tab "Read PDF"), at the cited page, resizable; new tab on a phone | Done 2026-10-04; production needs the host vhost's `X-Frame-Options` → `SAMEORIGIN` (`docs/PENDING.md`) |
+| "Safe to close — we'll email you": one email when a literature search, chapter build, examiner review or coherence check ends after more than a minute with no visible tab watching; a setting to turn it off (coverage-map row 64) | Done 2026-10-04 (ADR-0058); Playwright not run |
 | Chat scoped to a collection | Not done: chat takes at most ten `sourceIds` (the `@` mentions); a collection needs its own server-side scope |
 
 ## Also fixed on the way (found while building)

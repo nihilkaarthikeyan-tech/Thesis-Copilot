@@ -1,0 +1,35 @@
+{
+  "name": "@tc/mail",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@tc/config": "workspace:*",
+    "nodemailer": "^10.0.13",
+    "resend": "^6.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "@types/nodemailer": "^8.0.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  },
+  "files": [
+    "dist"
+  ]
+}

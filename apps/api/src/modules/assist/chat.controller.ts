@@ -83,6 +83,11 @@ const settingsBody = z.object({
   /** ADR-0037: find papers on the section when the library has none. On unless turned off. */
   autoSources: z.boolean().optional(),
   /**
+   * ADR-0058: one email when a long job (search, chapter build, examiner review, coherence check)
+   * finishes while its page is closed. On unless turned off; the worker reads it.
+   */
+  emailWhenJobDone: z.boolean().optional(),
+  /**
    * 2026-10-04 (Jenni's "document defaults"): the style a new thesis starts on. Only the five
    * the start screen offers; null clears it (APA 7, as before).
    */
@@ -225,6 +230,7 @@ export class ChatController {
       // where it came from is the product's whole argument, and turning that off is the choice.
       autoCite: settings.autoCite !== false,
       autoSources: settings.autoSources !== false,
+      emailWhenJobDone: settings.emailWhenJobDone !== false,
       ...settings,
     };
   }

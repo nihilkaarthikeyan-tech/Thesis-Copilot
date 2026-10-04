@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 
 type Candidate = {
   id: string;
@@ -145,6 +146,7 @@ const STAGES: Array<{ key: string; label: string }> = [
  */
 function SearchProgress({ run }: { run: Run }) {
   const [now, setNow] = useState(() => Date.now());
+  const emailOn = useJobEmailSetting();
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(timer);
@@ -170,8 +172,10 @@ function SearchProgress({ run }: { run: Run }) {
           );
         })}
       </ol>
-      <p className="mt-3 text-xs text-muted">
-        You can leave this page; the results are kept here when you come back.
+      <p className="mt-3 text-xs text-muted" data-testid="job-email-note">
+        {emailOn
+          ? JOB_EMAIL_NOTE
+          : 'You can leave this page; the results are kept here when you come back.'}
       </p>
     </div>
   );
@@ -201,7 +205,8 @@ export function DiscoverPanel({
   const loadRun = useCallback(
     async (runId: string) => {
       try {
-        setRun(await api<Run>(`/documents/${documentId}/search/${runId}`));
+        // ADR-0058: a visible tab's poll tells the worker someone is looking, so no email.
+        setRun(await api<Run>(`/documents/${documentId}/search/${runId}${watchingParam()}`));
       } catch (e) {
         setError(e instanceof ApiError ? e.problem.title : 'Could not load that search.');
       }
