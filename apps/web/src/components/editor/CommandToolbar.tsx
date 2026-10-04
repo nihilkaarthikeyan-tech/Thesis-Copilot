@@ -70,15 +70,25 @@ const COMMANDS = [
 
 export function CommandToolbar({
   editor,
+  documentId,
   chapterId,
   onUsageChange,
   onNotice,
 }: {
   editor: Editor | null;
+  documentId: string;
   chapterId: string;
   onUsageChange: () => void;
   onNotice: (message: string) => void;
 }) {
+  /**
+   * A note on the selected passage (2026-10-04, from the Jenni study): only a guide could
+   * comment, so a student could not leave themselves a "check this figure" on their own text.
+   * The note is an ordinary comment, found again from its quoted text like a guide's.
+   */
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [note, setNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
   const [selection, setSelection] = useState<{ from: number; to: number; text: string } | null>(
     null,
   );
@@ -242,6 +252,15 @@ export function CommandToolbar({
             uses one of your section commands this month
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="comment-on-selection"
+              aria-expanded={noteOpen}
+              onClick={() => setNoteOpen((open) => !open)}
+              className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+            >
+              Comment
+            </button>
             {COMMANDS.map((c) => (
               <button
                 key={c.key}
@@ -254,6 +273,54 @@ export function CommandToolbar({
               </button>
             ))}
           </div>
+          {noteOpen && selection ? (
+            <form
+              className="mt-2 grid gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const body = note.trim();
+                if (!body) return;
+                setSavingNote(true);
+                void api(`/documents/${documentId}/feedback/comments`, {
+                  method: 'POST',
+                  body: JSON.stringify({ chapterId, body, quotedText: selection.text.trim() }),
+                })
+                  .then(() => {
+                    setNote('');
+                    setNoteOpen(false);
+                    onNotice('Comment added. It is listed under Review, on the passage.');
+                  })
+                  .catch((error: unknown) =>
+                    onNotice(
+                      error instanceof ApiError
+                        ? (error.problem.detail ?? error.problem.title)
+                        : 'The comment was not saved. Try again.',
+                    ),
+                  )
+                  .finally(() => setSavingNote(false));
+              }}
+            >
+              <label className="text-xs text-muted" htmlFor="own-comment">
+                Your comment on the selected text
+              </label>
+              <textarea
+                id="own-comment"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={2000}
+                rows={2}
+                className="rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+                placeholder="e.g. check this figure against the 2023 report"
+              />
+              <button
+                type="submit"
+                disabled={savingNote || !note.trim()}
+                className="justify-self-start rounded-md bg-accent px-3 py-1 text-sm font-semibold text-accent-ink disabled:opacity-50"
+              >
+                {savingNote ? 'Saving…' : 'Save comment'}
+              </button>
+            </form>
+          ) : null}
         </>
       )}
     </aside>

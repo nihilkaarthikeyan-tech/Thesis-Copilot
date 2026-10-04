@@ -1632,6 +1632,7 @@ function ChapterEditor({
 
       <CommandToolbar
         editor={editor}
+        documentId={doc.id}
         chapterId={chapter.id}
         onUsageChange={onUsageChange}
         onNotice={setNotice}

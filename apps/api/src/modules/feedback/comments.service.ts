@@ -105,7 +105,7 @@ export class CommentsService {
       anchorKey?: string | null;
     },
   ): Promise<CommentView> {
-    await this.access(user, documentId);
+    const { isOwner } = await this.access(user, documentId);
     if (input.chapterId) {
       const chapter = await this.prisma.chapter.findFirst({
         where: { id: input.chapterId, documentId },
@@ -125,9 +125,13 @@ export class CommentsService {
       },
     });
 
-    void this.classify(user, documentId, comment.id).catch((error: unknown) =>
-      this.logger.warn({ err: error, commentId: comment.id }, 'classification failed'),
-    );
+    // A student's note on their own text is not feedback to triage: no classification, and so no
+    // model call (2026-10-04). A guide's comment is classified as before (D.2.3).
+    if (!isOwner) {
+      void this.classify(user, documentId, comment.id).catch((error: unknown) =>
+        this.logger.warn({ err: error, commentId: comment.id }, 'classification failed'),
+      );
+    }
 
     const views = await this.list(user, documentId);
     return views.find((c) => c.id === comment.id) as CommentView;
