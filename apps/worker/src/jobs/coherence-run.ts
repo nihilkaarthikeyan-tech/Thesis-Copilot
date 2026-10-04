@@ -1210,8 +1210,14 @@ async function reconcile(
     fingerprint: flagFingerprint(draft.type, draft.chapterId, draft.flaggedText),
   }));
 
+  // The examiner review's flags (ADR-0056) share the table but not the run: a coherence run that
+  // did not reproduce them must not clear them.
   const existing = await prisma.coherenceFlag.findMany({
-    where: { documentId: job.documentId, chapterId: { in: chapterIds } },
+    where: {
+      documentId: job.documentId,
+      chapterId: { in: chapterIds },
+      type: { not: 'EXAMINER' },
+    },
     select: { id: true, status: true, fingerprint: true },
   });
   const ignored = new Set(existing.filter((f) => f.status === 'IGNORED').map((f) => f.fingerprint));
