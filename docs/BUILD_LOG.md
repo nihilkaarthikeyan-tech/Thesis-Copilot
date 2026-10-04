@@ -4838,3 +4838,36 @@ leaving accounts, mail fault swallowed, each job's adapter, the Redis store), `p
 finished run / someone else's run do not; the setting). Worker 184 pass, API 572 + 6 pass,
 typecheck and lint clean. Playwright not run (dev stack in use by someone else). No email has
 been sent through a real provider yet — `docs/PENDING.md`.
+
+## Chat beyond the library (2026-10-04, ADR-0060, coverage-map rows 39–41)
+
+A library question the library has nothing on used to end at the off-topic refusal. Now, by the
+new "Search beyond my library" setting (Off / Ask first, the default / On), it can go to the
+scholarly search `POST /chat/web` already runs; the abstracts that come back (only ones the index
+returned, up to eight, cut at a sentence end under 1,800 characters) become the passages of the
+existing A.4 chat prompt, so `postProcessChat` grounds the answer exactly as before. No new prompt.
+
+- **What the student sees.** Ask first: under the refusal, one button, "Search beyond your library
+  for this?". On: the search starts at once. While it runs: "Searching OpenAlex, PubMed, arXiv…"
+  (Semantic Scholar too when keyed), "Reading N abstracts", "Writing the answer". Each citation is
+  a dashed label ("Title start…, 2022", no invented authors), and under the answer: "From the
+  abstracts of 8 papers not in your library — add the ones you use." and each cited paper with
+  "Not in your library" and Add (the ordinary resolve path). No "Add to document" on such an
+  answer.
+- **Metering.** One CHAT unit, taken before any call; refunded when nothing returned has an
+  abstract, or the search or model fails. Under On, the unit taken for the library question is the
+  one the answer uses. Off refuses `scope: 'beyond'` with 403 before the unit is taken.
+- **Cost, from the builder:** eight capped abstracts give a 3,802-token user message, eight library
+  chunks 3,098; `ACTION_PROFILES.CHAT` prices 4,000, and a test now fails if the worst case
+  exceeds it. `docs/COSTING.md` unchanged.
+- A.4's "Your library does not contain enough" reply is replaced, on this path only, by a reply
+  about the search; the prompt file is untouched.
+
+Tests: `apps/api/test/chat-beyond.spec.ts` (13, pure: only records with abstracts, eight max, ids,
+"not in library" marking, filters, grounding strips an id not sent, cost bound, setting default),
+`apps/api/test/chat-beyond-api.spec.ts` (8, real HTTP + Postgres + Redis, mock model, search
+spied: offer without charge, one unit with steps, refund on empty and on failure, On, Off, cap).
+API suite 601 pass (58 files); typecheck and lint clean. `apps/web/e2e/chat-beyond.spec.ts`
+written (chat streams and resolve route-mocked; Settings against the real API) but **not run**:
+the dev stack on :3000/:3001 was someone else's, running `main`. No real-model answer yet —
+`docs/PENDING.md`.
