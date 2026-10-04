@@ -30,7 +30,7 @@ import { computeCallCost, type Env } from '@tc/config';
 import { OpenAlexClient } from '@tc/retrieval';
 import { z } from 'zod';
 import { ENV } from '../../common/env.token.js';
-import { ConflictError, NotFoundError } from '../../common/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
@@ -85,6 +85,7 @@ export type ProposalView = ProposalChat & {
   questionsAsked: number;
   maxQuestions: number;
   done: boolean;
+  turnsLeft: number;
 };
 
 /** Reads `meta.proposalChat`, tolerating a document that has none yet. */
@@ -92,6 +93,29 @@ function readChat(meta: unknown): ProposalChat {
   const value = (meta as { proposalChat?: unknown } | null)?.proposalChat;
   const parsed = proposalChatSchema.safeParse(value ?? {});
   return parsed.success ? parsed.data : proposalChatSchema.parse({});
+}
+
+/**
+ * Rewinds the conversation to just before the student's message at `visibleIndex`, so a new
+ * answer can replace it (2026-10-04, from the Jenni study: earlier answers could not be changed
+ * without starting the thesis again). The related-work search and any skeleton are cleared,
+ * because both were drawn from what is being changed. `modelTurns` is NOT reset: ADR-0005 bounds
+ * the conversation per document, and rewinding must not become a way around that bound.
+ */
+export function rewind(chat: ProposalChat, visibleIndex: number): void {
+  if (chat.modelTurns >= PROPOSAL.maxModelTurns) {
+    throw new ConflictError(
+      'This conversation has used its four turns, so an answer cannot be changed here. Edit the proposal below instead.',
+    );
+  }
+  let seen = -1;
+  const at = chat.messages.findIndex((m) => !m.hidden && ++seen === visibleIndex);
+  if (at < 0 || chat.messages[at]?.role !== 'user') {
+    throw new ValidationError('Only one of your own answers can be changed.');
+  }
+  chat.messages = chat.messages.slice(0, at);
+  chat.gapCheck = null;
+  chat.skeleton = null;
 }
 
 @Injectable()
@@ -116,9 +140,15 @@ export class ProposalService {
   }
 
   /** One student message in, one model turn out (or the skeleton). */
-  async turn(user: SessionUser, documentId: string, message: string): Promise<ProposalView> {
+  async turn(
+    user: SessionUser,
+    documentId: string,
+    message: string,
+    editIndex?: number,
+  ): Promise<ProposalView> {
     const document = await this.ownedDocument(user.id, documentId);
     const chat = readChat(document.meta);
+    if (editIndex !== undefined) rewind(chat, editIndex);
     if (chat.skeleton) {
       throw new ConflictError('This conversation has already produced a proposal skeleton.');
     }
@@ -183,6 +213,8 @@ export class ProposalService {
       questionsAsked: questionsAsked(chat.messages.filter((m) => !m.hidden).map(asTurn)),
       maxQuestions: PROPOSAL.maxQuestions,
       done: chat.skeleton !== null,
+      // Whether an earlier answer can still be changed (see `rewind`).
+      turnsLeft: Math.max(0, PROPOSAL.maxModelTurns - chat.modelTurns),
     };
   }
 

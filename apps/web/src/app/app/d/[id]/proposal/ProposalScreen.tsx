@@ -143,8 +143,11 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
   }, [doc, extraction, scope]);
 
   // FR-1.5: the conversation ends in the same skeleton as FR-1.4, shown in the same form.
-  const onSkeleton = useCallback((view: ProposalView) => {
-    if (view.skeleton) setScope((current) => current ?? view.skeleton);
+  // A skeleton redrafted after the student changed an earlier answer replaces the form's values;
+  // the edit banner says so before they send it.
+  const onSkeleton = useCallback((view: ProposalView, replace = false) => {
+    if (view.skeleton)
+      setScope((current) => (replace ? view.skeleton : (current ?? view.skeleton)));
   }, []);
   const pathA = doc?.entryPath === 'A_TOPIC';
 

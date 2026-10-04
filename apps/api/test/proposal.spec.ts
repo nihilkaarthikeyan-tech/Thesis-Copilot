@@ -25,6 +25,7 @@ type View = {
   maxQuestions: number;
   modelTurns: number;
   done: boolean;
+  turnsLeft: number;
 };
 
 async function newTopicDocument(title: string): Promise<string> {
@@ -35,10 +36,14 @@ async function newTopicDocument(title: string): Promise<string> {
   return ((await created.json()) as { id: string }).id;
 }
 
-async function say(documentId: string, message: string): Promise<{ status: number; view: View }> {
+async function say(
+  documentId: string,
+  message: string,
+  editIndex?: number,
+): Promise<{ status: number; view: View }> {
   const response = await h.api(`/documents/${documentId}/proposal`, {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...(editIndex === undefined ? {} : { editIndex }) }),
   });
   return { status: response.status, view: (await response.json()) as View };
 }
@@ -52,6 +57,31 @@ afterAll(async () => {
 });
 
 describe('POST /documents/:id/proposal', () => {
+  it('changes an earlier answer by rewinding to it, without resetting the turn bound', async () => {
+    const id = await newTopicDocument('Rooftop solar');
+    await say(id, 'Rooftop solar uptake in Indian cities');
+    const t2 = await say(id, 'Household adoption');
+    expect(t2.view.turnsLeft).toBe(2);
+    expect(t2.view.visible.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+
+    // Answer the first question again: index 2 is that answer.
+    const edited = await say(id, 'Policy and subsidies', 2);
+    expect(edited.status).toBe(200);
+    const users = edited.view.visible.filter((m) => m.role === 'user').map((m) => m.text);
+    expect(users).toEqual(['Rooftop solar uptake in Indian cities', 'Policy and subsidies']);
+    // The bound counts every model turn ever taken on the document, rewound or not.
+    expect(edited.view.turnsLeft).toBe(1);
+
+    // An assistant message cannot be "edited", nor an index past the end.
+    expect((await say(id, 'x', 1)).status).toBe(400);
+    expect((await say(id, 'x', 40)).status).toBe(400);
+
+    // With no turns left, an edit is refused rather than starting a fifth model turn.
+    const last = await say(id, 'A survey');
+    expect(last.view.turnsLeft).toBe(0);
+    expect((await say(id, 'Something else', 0)).status).toBe(409);
+  });
+
   it('asks one question per turn and ends in an editable skeleton after the third answer', async () => {
     const id = await newTopicDocument('Drip irrigation');
 

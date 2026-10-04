@@ -13,7 +13,14 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { ProposalService } from './proposal.service.js';
 
-const turnBody = z.object({ message: z.string().trim().min(1).max(2_000) });
+const turnBody = z.object({
+  message: z.string().trim().min(1).max(2_000),
+  /**
+   * 2026-10-04: answer an earlier question again. The index of one of the student's own messages
+   * in `visible`; the conversation is rewound to just before it and this message replaces it.
+   */
+  editIndex: z.number().int().min(0).max(50).optional(),
+});
 
 @Controller('documents/:id/proposal')
 @UseGuards(SessionGuard)
@@ -30,6 +37,6 @@ export class ProposalController {
   turn(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Body() body: unknown) {
     const parsed = turnBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Say something first', parsed.error.issues);
-    return this.proposal.turn(user, documentId, parsed.data.message);
+    return this.proposal.turn(user, documentId, parsed.data.message, parsed.data.editIndex);
   }
 }
