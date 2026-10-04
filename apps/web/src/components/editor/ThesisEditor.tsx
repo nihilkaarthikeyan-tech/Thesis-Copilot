@@ -100,6 +100,7 @@ import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
 import { DiagramDialog } from './DiagramDialog';
 import { DraftMode } from './DraftMode';
+import { FindPapersPanel } from './FindPapersPanel';
 import { type Flag, FlagsPanel } from './FlagsPanel';
 import { FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
@@ -327,7 +328,9 @@ function ChapterEditor({
     typeof noticeRaw === 'string' ? { text: noticeRaw, action: null } : noticeRaw;
   const notice = noticeState?.text ?? null;
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
-  const [tab, setTab] = useState<'sources' | 'citations' | 'chat' | 'flags' | 'review'>('sources');
+  const [tab, setTab] = useState<'sources' | 'papers' | 'citations' | 'chat' | 'flags' | 'review'>(
+    'sources',
+  );
   const [autoSuggest, setAutoSuggest] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
@@ -1404,7 +1407,7 @@ function ChapterEditor({
             </button>
           </div>
           <div className="flex border-b border-line" role="tablist">
-            {(['sources', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
+            {(['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -1424,6 +1427,8 @@ function ChapterEditor({
           <div className="p-3 text-[13px] text-muted">
             {tab === 'sources' ? (
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
+            ) : tab === 'papers' ? (
+              <FindPapersPanel documentId={doc.id} documentTitle={doc.title} editor={editor} />
             ) : tab === 'citations' ? (
               <>
                 <CitationList editor={editor} chapterId={chapter.id} />
@@ -1509,7 +1514,7 @@ function ChapterEditor({
         >
           Chapters
         </button>
-        {(['sources', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
+        {(['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
           <button
             key={t}
             type="button"
