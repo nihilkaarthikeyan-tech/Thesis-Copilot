@@ -12,6 +12,7 @@
  * and needs no library. Drag can come later without changing the contract.
  */
 
+import { LANGUAGES } from '@tc/config';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,29 +28,6 @@ type Node = {
   mappedFromPaperSection?: string;
   children: Node[];
 };
-
-/**
- * The languages the picker offers. Not every language a student might write in — the API accepts
- * any valid IETF tag — but the ones a pilot in India is most likely to need, plus the European
- * ones, so the common case is one click rather than typing a tag.
- */
-const LANGUAGES = [
-  { tag: 'en', name: 'English' },
-  { tag: 'hi', name: 'Hindi' },
-  { tag: 'bn', name: 'Bengali' },
-  { tag: 'ta', name: 'Tamil' },
-  { tag: 'te', name: 'Telugu' },
-  { tag: 'mr', name: 'Marathi' },
-  { tag: 'gu', name: 'Gujarati' },
-  { tag: 'kn', name: 'Kannada' },
-  { tag: 'ml', name: 'Malayalam' },
-  { tag: 'pa', name: 'Punjabi' },
-  { tag: 'ur', name: 'Urdu' },
-  { tag: 'fr', name: 'French' },
-  { tag: 'de', name: 'German' },
-  { tag: 'es', name: 'Spanish' },
-  { tag: 'pt', name: 'Portuguese' },
-] as const;
 
 type View = {
   template: string | null;
@@ -403,8 +381,8 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
               className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm md:w-72 font-semibold text-ink transition-colors hover:bg-sunk"
             >
               {LANGUAGES.map((l) => (
-                <option key={l.tag} value={l.tag}>
-                  {l.name}
+                <option key={l.id} value={l.id}>
+                  {l.label}
                 </option>
               ))}
             </select>
