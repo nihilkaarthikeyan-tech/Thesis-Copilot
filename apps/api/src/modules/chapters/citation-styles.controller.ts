@@ -10,6 +10,7 @@ import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import {
   catalogSource,
   findStyle,
+  isCitationLocale,
   previewStyle,
   STYLES,
   STYLES_DIR,
@@ -17,7 +18,7 @@ import {
   searchCatalog,
   selectableCount,
 } from '@tc/citations';
-import { NotFoundError } from '../../common/errors.js';
+import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { StyleStoreService } from './style-store.service.js';
 
@@ -52,16 +53,24 @@ export class CitationStylesController {
    * fixed example reference, so a student sees a style before choosing it (2026-10-04, from the
    * Jenni study). Rendered by citeproc, no model call. A catalogue style's XML is made available
    * the same way choosing it would (`StyleStoreService.ensure`).
+   *
+   * `?locale=en-GB` renders it in a citation locale (ADR-0058) — the editor passes the one the
+   * thesis renders in, so the preview shows the student's own "and" or "&". Absent, the style's
+   * own locale, as before.
    */
   @Get(':id/preview')
-  async preview(@Param('id') id: string): Promise<StylePreview> {
-    const cached = this.previews.get(id);
+  async preview(@Param('id') id: string, @Query('locale') locale?: string): Promise<StylePreview> {
+    if (locale !== undefined && !isCitationLocale(locale)) {
+      throw new ValidationError(`Unknown citation locale: ${locale.slice(0, 20)}`);
+    }
+    const key = `${id}|${locale ?? ''}`;
+    const cached = this.previews.get(key);
     if (cached) return cached;
     if (id.length > 200 || !findStyle(id)) throw new NotFoundError('That citation style');
     await this.styles.ensure(id);
-    const preview = previewStyle(id);
+    const preview = previewStyle(id, undefined, locale ?? null);
     if (this.previews.size >= PREVIEW_CACHE_MAX) this.previews.clear();
-    this.previews.set(id, preview);
+    this.previews.set(key, preview);
     return preview;
   }
 

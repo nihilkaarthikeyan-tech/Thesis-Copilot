@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   citationKeys,
+  citationLocaleFor,
   citationNodesIn,
   exportLibrary,
   isKnownStyle,
@@ -108,6 +109,7 @@ export class ThesisExportService {
         title: true,
         meta: true,
         citationStyle: true,
+        citationLocale: true,
         institutionTemplateId: true,
         submissionDeadline: true,
         language: true,
@@ -389,6 +391,8 @@ export class ThesisExportService {
             ? 'numeric'
             : 'authoryear',
         styleLabel: style.label,
+        // ADR-0058: biblatex in the citation locale; automatic English leaves it as before.
+        citationLocale: citationLocaleFor(document.citationLocale, document.language),
         exportedOn,
       });
       filename = `${base}-latex.zip`;

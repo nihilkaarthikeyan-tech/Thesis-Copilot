@@ -45,17 +45,25 @@ export type StylePreview = {
   /** The sample as the bibliography prints it. */
   bibliography: string;
   sampleLabel: string;
+  /** The CSL locale the preview was rendered in (ADR-0058). */
+  locale: string;
 };
 
 /**
  * The preview for one style. The caller has already made the style renderable (the API's
  * `StyleStoreService.ensure` for a catalogue style); an unknown id renders the default style,
- * exactly as `renderCitations` does, so callers should check the id first.
+ * exactly as `renderCitations` does, so callers should check the id first. `locale` is the one
+ * the student's thesis renders in, so the preview shows the "and" or "&" they will get.
  */
-export function previewStyle(styleId: string, stylesDir?: string): StylePreview {
+export function previewStyle(
+  styleId: string,
+  stylesDir?: string,
+  locale?: string | null,
+): StylePreview {
   const result = renderCitations(
     {
       style: styleId,
+      locale,
       sources: [SAMPLE_REFERENCE],
       citations: [{ key: 'example', sourceId: SAMPLE_REFERENCE.id }],
     },
@@ -69,5 +77,6 @@ export function previewStyle(styleId: string, stylesDir?: string): StylePreview 
     inText: result.labels.example ?? '',
     bibliography: result.bibliography[0]?.text ?? '',
     sampleLabel: SAMPLE_LABEL,
+    locale: result.locale,
   };
 }

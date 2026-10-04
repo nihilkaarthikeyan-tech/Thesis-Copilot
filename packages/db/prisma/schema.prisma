@@ -220,6 +220,9 @@ model Document {
   field       String?
   language    String    @default("en")
   citationStyle String  @default("apa")
+  /// ADR-0058: the CSL locale citations render in ("en-GB"…). Null follows `language`, and plain
+  /// English keeps the style's own locale — what every thesis rendered in before the choice existed.
+  citationLocale String?
   /// ADR-0043: the validated lifecycle state. Transitions are decided by @tc/types, not here.
   lifecycle   DocumentLifecycle @default(DRAFTING)
   /// When the thesis was marked submitted, for the progress view; null until it is.

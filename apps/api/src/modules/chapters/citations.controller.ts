@@ -27,6 +27,7 @@ import { CiteParseService } from './cite-parse.service.js';
 // 160, not 60: 336 of the catalogue's journal style ids are longer than 60 characters (the longest
 // is 119), and the old limit refused them before the style was ever looked up.
 const styleBody = z.object({ style: z.string().trim().min(1).max(160) });
+const localeBody = z.object({ locale: z.string().trim().min(2).max(20).nullable() });
 const parseBody = z.object({ text: z.string().trim().min(4).max(20_000) });
 const acceptBody = z.object({
   reference: z.string().trim().min(4).max(1_000),
@@ -87,6 +88,22 @@ export class DocumentCitationsController {
     const parsed = styleBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Pick a style', parsed.error.issues);
     return this.citations.setStyle(user.id, documentId, parsed.data.style);
+  }
+
+  /**
+   * ADR-0058: the citation locale — `{ locale: "en-GB" }`, or `{ locale: null }` for automatic
+   * (follows the document language; plain English keeps the style's own). Global and instant,
+   * like the style.
+   */
+  @Put('citation-locale')
+  setLocale(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = localeBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Pick a language', parsed.error.issues);
+    return this.citations.setLocale(user.id, documentId, parsed.data.locale);
   }
 
   /** FR-5.5: parse a pasted reference (or a whole pasted list) and verify each against Crossref. */

@@ -27,6 +27,16 @@ export {
   type LibrarySource,
 } from './library-export.js';
 export {
+  CITATION_LOCALES,
+  type CitationLocale,
+  citationLocaleFor,
+  citationLocaleLabel,
+  ensureLocalesRegistered,
+  FALLBACK_LOCALE,
+  isCitationLocale,
+  isLocaleLoadable,
+} from './locales.js';
+export {
   previewStyle,
   SAMPLE_LABEL,
   SAMPLE_REFERENCE,
