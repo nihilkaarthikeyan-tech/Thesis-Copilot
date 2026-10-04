@@ -72,7 +72,8 @@ describe('scoreJournal', () => {
     const withEvidence = scoreJournal(journal({}), profile({ citedVenues: { S1: 3 } }));
     expect(withEvidence.citedHereCount).toBe(3);
     expect(withEvidence.breakdown.citedHere).toBe(3 * JOURNAL_MATCH.pointsPerCitedSource);
-    expect(withEvidence.reason).toContain('3 of your cited');
+    // "Your sources": the count is over the library, cited in the text or not.
+    expect(withEvidence.reason).toContain('3 of your sources');
   });
 
   it('impact tier comes from mean citedness, and unknown scores zero and is never guessed', () => {
@@ -100,6 +101,24 @@ describe('scoreJournal', () => {
       profile({ citedVenues: { S9: 2 } }),
     );
     expect(r.eligible).toBe(true);
+    // The subjects were compared and differ: "no overlap" is true here.
+    expect(r.alignmentLevel).toBe('none');
+    expect(r.subjectsCompared).toBe(true);
+  });
+
+  it('does not claim "no overlap" for a journal whose subjects OpenAlex did not list', () => {
+    const unlisted = scoreJournal(
+      journal({ id: 'S9', concepts: [] }),
+      profile({ citedVenues: { S9: 1 } }),
+    );
+    expect(unlisted.eligible).toBe(true);
+    expect(unlisted.alignmentLevel).toBe('none');
+    expect(unlisted.subjectsCompared).toBe(false);
+
+    const ruledOut = scoreJournal(journal({ concepts: [] }), profile());
+    expect(ruledOut.eligible).toBe(false);
+    expect(ruledOut.reason).not.toContain('Off-topic');
+    expect(ruledOut.reason).toContain('no subjects to compare');
   });
 
   it('rules out a non-journal venue', () => {
