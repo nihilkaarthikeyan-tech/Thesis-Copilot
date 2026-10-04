@@ -13,6 +13,8 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { questionOptions } from '@/lib/question-options';
+import { EXAMPLE_TOPICS } from '@/lib/topic-strength';
+import { TopicMeter } from './TopicMeter';
 
 export type ProposalView = {
   visible: Array<{ role: 'user' | 'assistant'; text: string; at: string }>;
@@ -34,6 +36,8 @@ export type ProposalView = {
 };
 
 const CLOSEST = 5;
+/** How long each example topic stays in the empty box before the next one. */
+const EXAMPLE_MS = 4000;
 
 export function PathAChat({
   documentId,
@@ -51,6 +55,8 @@ export function PathAChat({
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Which example topic the empty first-message box shows (coverage-map row 3). */
+  const [example, setExample] = useState(0);
 
   useEffect(() => {
     api<ProposalView>(`/documents/${documentId}/proposal`)
@@ -65,6 +71,14 @@ export function PathAChat({
   }, [documentId, initialTitle, onSkeleton]);
 
   const shown = view?.visible.length ?? 0;
+  const firstMessage = view !== null && !view.done && shown === 0;
+  // The examples rotate only while the box is empty and nothing has been sent.
+  const rotate = firstMessage && draft.length === 0;
+  useEffect(() => {
+    if (!rotate) return;
+    const timer = setInterval(() => setExample((n) => (n + 1) % EXAMPLE_TOPICS.length), EXAMPLE_MS);
+    return () => clearInterval(timer);
+  }, [rotate]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when the list grows
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' });
@@ -181,7 +195,7 @@ export function PathAChat({
               className="h-10 flex-1 rounded-md border border-line px-3 text-sm"
               placeholder={
                 view.visible.length === 0
-                  ? 'Your topic…'
+                  ? `e.g. ${EXAMPLE_TOPICS[example]}`
                   : options.length > 0
                     ? 'Choose above, or type your own answer…'
                     : 'Your answer…'
@@ -196,6 +210,7 @@ export function PathAChat({
             </button>
           </form>
         ) : null}
+        {firstMessage ? <TopicMeter text={draft} example={EXAMPLE_TOPICS[example]} /> : null}
         <p className="border-t border-line px-3 py-2 text-xs text-muted">
           {view.questionsAsked} of {view.maxQuestions} questions asked
           {view.done ? ' · skeleton ready below' : ''}
