@@ -1424,7 +1424,8 @@ function ChapterEditor({
               ['@', 'cite'],
               ['Ctrl+S', 'snapshot'],
             ].map(([key, what]) => (
-              <span key={key} className="flex items-center gap-1.5">
+              // Keys mean nothing on a touch screen, so they start at the small-tablet width.
+              <span key={key} className="hidden items-center gap-1.5 sm:flex">
                 <Kbd>{key}</Kbd>
                 {what}
               </span>

@@ -119,7 +119,24 @@ export function SuggestionBar({
     }
   }, [status]);
 
-  if (!editor || status === 'idle') return null;
+  if (!editor) return null;
+  if (status === 'idle') {
+    // On a phone the Suggest button at the foot of the chapter is below the screen, under
+    // everything the student has written (2026-10-04, found at 390 px wide). This one floats
+    // above the tab bar, and only while no suggestion is showing.
+    return (
+      <button
+        type="button"
+        data-testid="suggest-floating"
+        aria-label="Suggest a continuation"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => editor.chain().focus().requestSuggestion().run()}
+        className="fixed right-4 bottom-16 z-30 rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-accent-ink shadow-lg hover:bg-accent-hover lg:hidden"
+      >
+        Suggest
+      </button>
+    );
+  }
 
   const ask = (instruction: string) => {
     setMenu(false);
