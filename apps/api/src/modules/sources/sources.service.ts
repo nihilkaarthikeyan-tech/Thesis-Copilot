@@ -9,6 +9,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { exportLibrary, type LibraryFile, type LibraryFormat } from '@tc/citations';
 import type { Plan } from '@tc/config';
 import type { Prisma } from '@tc/db';
+import { openAccessFromStatus } from '@tc/retrieval';
 import { jobId, jobKeyDigest } from '@tc/types';
 import { AppError, NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -50,6 +51,10 @@ export type SourceView = {
   citationCount: number | null;
   /** ADR-0022: the journal's 2-year mean citedness (OpenAlex); null when not known. */
   venueCitedness: number | null;
+  /** The open-access route as OpenAlex / Unpaywall named it; null when not looked up. */
+  oaStatus: string | null;
+  /** Free to read (true), closed (false), not known (null) — from `oaStatus`. */
+  openAccess: boolean | null;
   isPreprint: boolean;
   isRetracted: boolean;
   hasFile: boolean;
@@ -217,6 +222,7 @@ export class SourcesService {
         groundingLevel: true,
         citationCount: true,
         venueCitedness: true,
+        oaStatus: true,
         isPreprint: true,
         isRetracted: true,
         fileKey: true,
@@ -224,7 +230,11 @@ export class SourcesService {
         autoAddedAt: true,
       },
     });
-    return rows.map(({ fileKey, ...rest }) => ({ ...rest, hasFile: Boolean(fileKey) }));
+    return rows.map(({ fileKey, ...rest }) => ({
+      ...rest,
+      openAccess: openAccessFromStatus(rest.oaStatus),
+      hasFile: Boolean(fileKey),
+    }));
   }
 
   /**
@@ -387,6 +397,7 @@ export class SourcesService {
         groundingLevel: true,
         citationCount: true,
         venueCitedness: true,
+        oaStatus: true,
         isPreprint: true,
         isRetracted: true,
         fileKey: true,
@@ -395,7 +406,7 @@ export class SourcesService {
       },
     });
     const { fileKey, ...rest } = view;
-    return { ...rest, hasFile: Boolean(fileKey) };
+    return { ...rest, openAccess: openAccessFromStatus(rest.oaStatus), hasFile: Boolean(fileKey) };
   }
 
   /**
@@ -469,6 +480,15 @@ export class SourcesService {
       /** The record behind the citation, shown in the citation card (2026-09-30). */
       venue: string | null;
       doi: string | null;
+      /**
+       * What was fetched about the paper when it was resolved (coverage map rows 21, 32, 46).
+       * Null means not known, never zero. The client maps them onto `CitationPassage.record`.
+       */
+      citationCount: number | null;
+      oaStatus: string | null;
+      openAccess: boolean | null;
+      /** ADR-0022: the journal's 2-year mean citedness, from OpenAlex. */
+      venueCitedness: number | null;
     };
     /** Signed, time-limited; null when there is no PDF. The client appends `#page=N`. */
     pdfUrl: string | null;
@@ -490,6 +510,9 @@ export class SourcesService {
             fileKey: true,
             venue: true,
             doi: true,
+            citationCount: true,
+            oaStatus: true,
+            venueCitedness: true,
           },
         },
       },
@@ -510,6 +533,10 @@ export class SourcesService {
         hasFile: Boolean(chunk.source.fileKey),
         venue: chunk.source.venue,
         doi: chunk.source.doi,
+        citationCount: chunk.source.citationCount,
+        oaStatus: chunk.source.oaStatus,
+        openAccess: openAccessFromStatus(chunk.source.oaStatus),
+        venueCitedness: chunk.source.venueCitedness,
       },
       pdfUrl: chunk.source.fileKey ? await this.storage.signedUrl(chunk.source.fileKey) : null,
     };

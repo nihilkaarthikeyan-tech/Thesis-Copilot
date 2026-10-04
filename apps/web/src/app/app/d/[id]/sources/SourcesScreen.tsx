@@ -13,6 +13,7 @@
  */
 
 import type { CslAuthor } from '@tc/retrieval';
+import { sourceMetricBadges } from '@tc/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,6 +31,9 @@ type Source = {
   groundingLevel: 'NONE' | 'ABSTRACT' | 'FULL_TEXT' | string;
   citationCount: number | null;
   venueCitedness: number | null;
+  /** Free to read (true), closed (false), not known (null); `oaStatus` names the route. */
+  openAccess?: boolean | null;
+  oaStatus?: string | null;
   isPreprint: boolean;
   isRetracted: boolean;
   hasFile: boolean;
@@ -431,18 +435,15 @@ function SourceRow({
   const [fixing, setFixing] = useState(false);
   const [doi, setDoi] = useState('');
 
-  const meta = [
-    source.year ? String(source.year) : null,
-    source.venue,
-    source.citationCount !== null ? `${source.citationCount} citations` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  // ADR-0022. OpenAlex's figure, named as OpenAlex's — not Clarivate's Journal Impact Factor.
-  const citedness =
-    source.venueCitedness !== null && source.venueCitedness !== undefined
-      ? source.venueCitedness.toFixed(1)
-      : null;
+  const meta = [source.year ? String(source.year) : null, source.venue].filter(Boolean).join(' · ');
+  // Coverage map rows 21, 32, 46: only facts that were fetched get a badge. Citedness is
+  // OpenAlex's figure (ADR-0022), named as OpenAlex's — not Clarivate's Journal Impact Factor.
+  const metrics = sourceMetricBadges({
+    citedByCount: source.citationCount,
+    openAccess: source.openAccess ?? null,
+    oaStatus: source.oaStatus ?? null,
+    journalCitedness: source.venueCitedness,
+  });
 
   return (
     <li className="px-4 py-3">
@@ -452,18 +453,24 @@ function SourceRow({
           {authorLine(source.authors) ? (
             <p className="text-sm text-muted">{authorLine(source.authors)}</p>
           ) : null}
-          {meta || citedness ? (
-            <p className="text-xs text-muted">
-              {meta}
-              {citedness ? (
-                <span
-                  data-testid="journal-citedness"
-                  title="The journal's 2-year mean citedness, from OpenAlex: citations last year to what it published in the two years before, per paper. It is the idea behind an impact factor, computed on OpenAlex's data — not Clarivate's Journal Impact Factor."
+          {meta ? <p className="text-xs text-muted">{meta}</p> : null}
+          {metrics.length > 0 ? (
+            <ul className="mt-1 flex flex-wrap gap-1" aria-label="About this paper">
+              {metrics.map((m) => (
+                <li
+                  key={m.kind}
+                  data-testid={m.kind === 'citedness' ? 'journal-citedness' : `source-${m.kind}`}
+                  title={m.title}
+                  className={`cursor-help rounded-full border px-2 py-0.5 text-[11px] ${
+                    m.kind === 'open-access'
+                      ? 'border-accent/30 text-accent'
+                      : 'border-line text-muted'
+                  }`}
                 >
-                  {meta ? ' · ' : ''}journal citedness {citedness}
-                </span>
-              ) : null}
-            </p>
+                  {m.label}
+                </li>
+              ))}
+            </ul>
           ) : null}
 
           {source.isRetracted ? (

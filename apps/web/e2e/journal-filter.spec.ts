@@ -78,7 +78,9 @@ test('a journal figure is shown, and the chat filter keeps to it', async ({ page
 
   await page.goto(`/app/d/${doc.id}/sources`);
   await expect(page.getByTestId('journal-citedness')).toHaveCount(1, { timeout: 30_000 });
-  await expect(page.getByTestId('journal-citedness')).toContainText('journal citedness');
+  await expect(page.getByTestId('journal-citedness')).toContainText('Journal citedness');
+  // The citation count OpenAlex sent with the record is a badge on the row too (coverage map 21).
+  await expect(page.getByTestId('source-cited').first()).toContainText(/^Cited by [\d,]+$/);
 
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
