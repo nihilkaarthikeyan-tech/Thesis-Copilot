@@ -71,6 +71,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Start flow: topic meter with examples, citation style at creation, signed-in home header, list first | Done 2026-10-04 |
 | Cited-by, open-access and journal-citedness badges (library, hover card, evidence card); Copy on a chat answer | Done 2026-10-04 |
 | Sharing: roles (guide / co-author / reader), a read-only link, make a copy | Done 2026-10-04 (ADR-0057) |
+| Import from Word: a `.docx` becomes chapters at each Heading 1 (append, or replace an empty thesis) | Done 2026-10-04 |
 
 ## Also fixed on the way (found while building)
 
