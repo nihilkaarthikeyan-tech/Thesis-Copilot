@@ -238,6 +238,67 @@ describe('citation passage popover and rendered labels (PHASES 3.5)', () => {
     expect(node.querySelector('.citation-popover')).toBeNull();
   });
 
+  it('shows cited-by, open access and journal citedness only when they were fetched', async () => {
+    const withRecord = (record: Record<string, unknown>) => ({
+      ...passage,
+      record: {
+        title: 'Solar adoption',
+        authors: 'Kumar, A.',
+        year: 2021,
+        venue: 'Energy Policy',
+        doi: '10.1/x',
+        grounding: 'ABSTRACT',
+        ...record,
+      },
+    });
+    const hover = async (p: ReturnType<typeof withRecord>) => {
+      editor?.destroy();
+      editor = createTestEditor(
+        {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { ...cite('c_m', 'src-5'), attrs: { ...cite('c_m', 'src-5').attrs, chunkId: 'k' } },
+              ],
+            },
+          ],
+        },
+        {},
+        [],
+        { hoverDelayMs: 0, resolvePassage: async () => p },
+      );
+      const node = editor.view.dom.querySelector('span.citation') as HTMLElement;
+      node.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+      await new Promise((r) => setTimeout(r, 5));
+      await Promise.resolve();
+      return node.querySelector('.citation-popover') as HTMLElement;
+    };
+
+    const full = await hover(
+      withRecord({
+        citedByCount: 1234,
+        openAccess: true,
+        oaStatus: 'gold',
+        journalCitedness: 3.14,
+      }),
+    );
+    const chips = [...full.querySelectorAll('.citation-popover__metric')];
+    expect(chips.map((c) => c.textContent)).toEqual([
+      'Cited by 1,234',
+      'Open access',
+      'Journal citedness 3.1',
+    ]);
+    expect((chips[2] as HTMLElement).title).toContain('Mean citations per paper for this journal');
+
+    // Not fetched, or closed: no chip at all — never "Cited by 0" invented, never "Closed".
+    const none = await hover(withRecord({ citedByCount: null, openAccess: false }));
+    expect(none.querySelector('.citation-popover__metrics')).toBeNull();
+    const older = await hover(withRecord({}));
+    expect(older.querySelector('.citation-popover__metrics')).toBeNull();
+  });
+
   it('does not fetch when the pointer leaves before the delay, or when there is no source', async () => {
     let fetched = 0;
     editor = createTestEditor(

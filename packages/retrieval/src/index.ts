@@ -230,8 +230,13 @@ export {
   firstLine,
   type GapCheck,
   groundingLevelFor,
+  journalCitednessOf,
   type OpenAccessLocation,
   OpenAlexClient,
+  type OpenAlexSource,
+  type OpenAlexWork,
+  openAccessFromStatus,
+  openAlexWorkMetrics,
   openalexSourceId,
   plainAbstract,
   RESOLUTION_THRESHOLD,
@@ -242,6 +247,7 @@ export {
   resolveReference,
   UNRESOLVED,
   UnpaywallClient,
+  type WorkMetrics,
 } from './scholarly/resolve.js';
 export {
   type ActualExtraction,

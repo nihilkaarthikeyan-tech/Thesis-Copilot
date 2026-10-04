@@ -133,4 +133,10 @@ export {
   slashMenuKey,
   slashTrigger,
 } from './editor/slash-menu.js';
+export {
+  CITEDNESS_EXPLAINED,
+  type SourceMetricBadge,
+  type SourceMetricFacts,
+  sourceMetricBadges,
+} from './editor/source-metrics.js';
 export { blockText, CHARS_PER_TOKEN, contextAround, documentText } from './editor/text.js';

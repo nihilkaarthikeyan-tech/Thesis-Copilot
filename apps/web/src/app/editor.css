@@ -253,6 +253,23 @@
   font-size: 0.75rem;
   color: var(--color-muted);
 }
+/* Cited by / Open access / Journal citedness: facts fetched about the paper, each a small chip. */
+.thesis-editor .citation-popover__metrics {
+  margin-top: 0.25rem;
+}
+.thesis-editor .citation-popover__metric {
+  padding: 0 0.375rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+  white-space: nowrap;
+  cursor: help;
+}
+.thesis-editor .citation-popover__metric--open-access {
+  color: var(--color-accent);
+}
 .thesis-editor .citation-popover__doi {
   display: inline-block;
   margin-top: 0.25rem;

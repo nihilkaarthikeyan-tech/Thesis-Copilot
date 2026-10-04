@@ -11,6 +11,7 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
 import { nanoid } from 'nanoid';
+import { sourceMetricBadges } from './source-metrics.js';
 
 export type CitationAttrs = {
   key: string;
@@ -44,6 +45,19 @@ export type CitationPassage = {
     doi: string | null;
     /** `FULL_TEXT` or `ABSTRACT`: what the citation could have been drawn from. */
     grounding: string | null;
+    /**
+     * Coverage map rows 21, 32, 46: what was fetched about the paper when it was looked up.
+     * Optional and null alike mean "not known", and show no badge — never a 0. Render them with
+     * `sourceMetricBadges(record)`, which gives the wording and the tooltips.
+     */
+    /** Times cited (OpenAlex `cited_by_count`, or Crossref's count when OpenAlex lacked it). */
+    citedByCount?: number | null;
+    /** Free to read (true), closed (false), not known (null). */
+    openAccess?: boolean | null;
+    /** The open-access route as OpenAlex / Unpaywall name it: `gold`, `green`, `closed` … */
+    oaStatus?: string | null;
+    /** The journal's 2-year mean citedness, from OpenAlex (ADR-0022). Not an impact factor. */
+    journalCitedness?: number | null;
   };
 };
 
@@ -305,6 +319,22 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
                 ? 'Drawn from the full text'
                 : 'Abstract only: we could read the abstract, not the whole paper';
             record.appendChild(depth);
+          }
+          const badges = sourceMetricBadges(r);
+          if (badges.length > 0) {
+            const row = document.createElement('span');
+            row.className = 'citation-popover__metrics';
+            row.style.display = 'flex';
+            row.style.flexWrap = 'wrap';
+            row.style.gap = '0.25rem';
+            for (const badge of badges) {
+              const chip = document.createElement('span');
+              chip.className = `citation-popover__metric citation-popover__metric--${badge.kind}`;
+              chip.textContent = badge.label;
+              chip.title = badge.title;
+              row.appendChild(chip);
+            }
+            record.appendChild(row);
           }
           if (r.doi) {
             const doi = document.createElement('a');

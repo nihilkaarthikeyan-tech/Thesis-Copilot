@@ -23,7 +23,11 @@ const BIB = `@article{lecun,
 
 type Source = { id: string; status: string; groundingLevel: string; year: number | null };
 
-test('a question can be confined to the papers named with @', async ({ page, request }) => {
+test('a question can be confined to the papers named with @', async ({
+  page,
+  request,
+  context,
+}) => {
   test.setTimeout(300_000);
   const session = await establishSession(request, freshEmail('mentions'));
   const cookie = `${session.cookieName}=${session.cookieValue}`;
@@ -109,9 +113,18 @@ test('a question can be confined to the papers named with @', async ({ page, req
   await expect(answer).not.toBeEmpty();
   // Every citation in it points at the named paper — none at the one that was not named.
   const labels = (await answer.locator('button').allTextContents()).filter(
-    (l) => l !== 'Add to document',
+    (l) => l !== 'Add to document' && l !== 'Copy',
   );
   for (const label of labels) expect(label).not.toContain('LeCun');
+
+  // Copy gives plain text: the citation labels the student sees, never a `{{cite:…}}` marker.
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await answer.getByTestId('chat-copy').click();
+  await expect(answer.getByTestId('chat-copy')).toHaveText('Copied');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied.length).toBeGreaterThan(0);
+  expect(copied).not.toContain('{{cite');
+  for (const label of labels) expect(copied).toContain(label);
 
   // 2026-10-04: the answer goes into the chapter on one press, its citations as real nodes, as
   // AI-written text.
