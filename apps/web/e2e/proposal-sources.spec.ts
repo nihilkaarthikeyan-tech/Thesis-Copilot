@@ -108,6 +108,8 @@ async function signIn(page: Page, request: APIRequestContext): Promise<void> {
 
 /** Creates a thesis from the list screen and returns its id, taken from the Proposal link. */
 async function createThesis(page: Page, title: string): Promise<string> {
+  // With theses already on the list the form is collapsed below it; `?new=1` opens it.
+  await page.goto('/app?new=1');
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();
   // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
