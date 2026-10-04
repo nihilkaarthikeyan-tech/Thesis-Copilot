@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/primitives';
 import { ApiError, api } from '@/lib/api';
 import { signOut, useSession } from '@/lib/auth-client';
+import { type LastChapter, readLastChapter } from '@/lib/last-chapter';
 
 type DocumentSummary = {
   id: string;
@@ -64,6 +65,11 @@ export default function DocumentListPage() {
   // The admin screens are SUPERADMIN-only; the link is the only way a student home says so.
   const isAdmin = (session.data?.user as { role?: string } | undefined)?.role === 'SUPERADMIN';
   const [documents, setDocuments] = useState<DocumentSummary[] | null>(null);
+  /** The chapter last open in this browser, offered first (2026-10-04, from the Jenni study). */
+  const [lastChapter, setLastChapter] = useState<LastChapter | null>(null);
+  useEffect(() => {
+    setLastChapter(readLastChapter());
+  }, []);
   const [title, setTitle] = useState('');
   const [entryPath, setEntryPath] = useState<'A_TOPIC' | 'B_PAPER'>('B_PAPER');
   const [busy, setBusy] = useState(false);
@@ -134,20 +140,32 @@ export default function DocumentListPage() {
   }
 
   /** The stages of PRD §6.1, in the order a thesis actually moves through them. */
-  const stages = (id: string, firstChapterId: string | null) => [
+  const stages = (id: string) => [
     { href: `/app/d/${id}/proposal`, label: 'Proposal' },
     { href: `/app/d/${id}/sources`, label: 'Sources' },
     { href: `/app/d/${id}/outline`, label: 'Outline' },
-    // ADR-0039: a chapter planned, written, checked and delivered as drafts to accept.
-    { href: `/app/d/${id}/build`, label: 'Build' },
     { href: `/app/d/${id}/review`, label: 'Review' },
     { href: `/app/d/${id}/submit`, label: 'Submit' },
+  ];
+  /**
+   * Used less often, so behind "More" (2026-10-04): ten links on every card made the one a
+   * student wants most — writing — the ninth thing to read.
+   */
+  const moreStages = (id: string) => [
+    // ADR-0039: a chapter planned, written, checked and delivered as drafts to accept.
+    { href: `/app/d/${id}/build`, label: 'Build a chapter' },
     // ADR-0040: a grounded, un-metered ranking of where to submit.
     { href: `/app/d/${id}/journals`, label: 'Journals' },
     // ADR-0030: after submission comes the defence.
-    { href: `/app/d/${id}/viva`, label: 'Viva' },
-    { href: `/app/d/${id}/write/${firstChapterId ?? 'none'}`, label: 'Write' },
+    { href: `/app/d/${id}/viva`, label: 'Viva practice' },
   ];
+  /** The chapter to write in: the last one open here for this thesis, else the first. */
+  const writeHref = (d: DocumentSummary) =>
+    lastChapter?.documentId === d.id
+      ? `/app/d/${d.id}/write/${lastChapter.chapterId}`
+      : `/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`;
+  const continueWith =
+    lastChapter && documents?.some((d) => d.id === lastChapter.documentId) ? lastChapter : null;
 
   // Until the session says who this is, show nothing rather than flash a student's list at an
   // administrator on their way to /admin.
@@ -202,6 +220,25 @@ export default function DocumentListPage() {
             </Button>
           }
         />
+
+        {continueWith ? (
+          <Card className="mt-6 border-accent/40" data-testid="continue-writing">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <div className="eyebrow">Continue writing</div>
+                <p className="mt-1 truncate text-[15px] font-semibold text-ink">
+                  {continueWith.documentTitle}
+                </p>
+                <p className="truncate text-[12.5px] text-muted">{continueWith.chapterTitle}</p>
+              </div>
+              <Button asChild size="sm">
+                <Link href={`/app/d/${continueWith.documentId}/write/${continueWith.chapterId}`}>
+                  Continue writing
+                </Link>
+              </Button>
+            </div>
+          </Card>
+        ) : null}
 
         <TrialNotice className="mt-6" />
 
@@ -301,7 +338,7 @@ export default function DocumentListPage() {
                       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
                         <div className="min-w-0">
                           <Link
-                            href={`/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`}
+                            href={writeHref(d)}
                             className="text-[16px] font-bold text-ink hover:text-accent"
                           >
                             {d.title}
@@ -321,7 +358,10 @@ export default function DocumentListPage() {
                           </p>
                         </div>
                         <nav className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
-                          {stages(d.id, d.firstChapterId).map((stage) => (
+                          <Button asChild size="sm">
+                            <Link href={writeHref(d)}>Write</Link>
+                          </Button>
+                          {stages(d.id).map((stage) => (
                             <Link
                               key={stage.label}
                               href={stage.href}
@@ -330,6 +370,22 @@ export default function DocumentListPage() {
                               {stage.label}
                             </Link>
                           ))}
+                          <details className="relative">
+                            <summary className="cursor-pointer list-none text-muted hover:text-accent">
+                              More
+                            </summary>
+                            <div className="absolute right-0 z-10 mt-1 flex w-40 flex-col gap-1 rounded-md border border-line bg-surface p-2 shadow-lg">
+                              {moreStages(d.id).map((stage) => (
+                                <Link
+                                  key={stage.label}
+                                  href={stage.href}
+                                  className="text-muted hover:text-accent"
+                                >
+                                  {stage.label}
+                                </Link>
+                              ))}
+                            </div>
+                          </details>
                           <button
                             type="button"
                             onClick={() => setDeleting(d)}

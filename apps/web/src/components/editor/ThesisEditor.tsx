@@ -32,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL, ApiError, api } from '@/lib/api';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
+import { rememberLastChapter } from '@/lib/last-chapter';
 import { assistRequest } from '@/lib/sse';
 
 /** §6.2: the cap resets at 00:00 UTC on the 1st; shown in the student's own timezone. */
@@ -262,6 +263,16 @@ function ChapterEditor({
   const [autoSuggest, setAutoSuggest] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
+
+  // The thesis list offers "Continue writing" back into this chapter.
+  useEffect(() => {
+    rememberLastChapter({
+      documentId: doc.id,
+      chapterId: chapter.id,
+      documentTitle: doc.title,
+      chapterTitle: chapter.title,
+    });
+  }, [doc.id, doc.title, chapter.id, chapter.title]);
 
   // FR-4.6: automatic-suggest is per user and off by default (ADR-0006).
   useEffect(() => {
