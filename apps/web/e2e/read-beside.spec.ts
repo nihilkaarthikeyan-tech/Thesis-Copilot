@@ -85,16 +85,17 @@ test('on a wide screen the Sources tab opens the PDF in a pane beside the chapte
   await expect(frame).toHaveAttribute('src', /\/sources\/.+X-Amz-Signature=/);
   await expect(page.getByTestId('read-beside-new-tab')).toHaveAttribute('target', '_blank');
 
-  // Dragging the edge widens the pane.
+  // Dragging the edge resizes the pane. At 1440 px it opens at its widest (the chapter list, the
+  // tools and a readable page keep the rest), so the drag narrows it.
   const before = (await pane.boundingBox())?.width ?? 0;
   const handle = page.getByTestId('read-beside-resize');
   const box = await handle.boundingBox();
   if (!box) throw new Error('the resize handle has no box');
   await page.mouse.move(box.x + box.width / 2, box.y + 100);
   await page.mouse.down();
-  await page.mouse.move(box.x - 60, box.y + 100, { steps: 5 });
+  await page.mouse.move(box.x + 80, box.y + 100, { steps: 5 });
   await page.mouse.up();
-  await expect.poll(async () => (await pane.boundingBox())?.width ?? 0).toBeGreaterThan(before);
+  await expect.poll(async () => (await pane.boundingBox())?.width ?? 0).toBeLessThan(before);
 
   // The chapter is still there and still editable beside it.
   await expect(page.locator('.thesis-editor')).toBeVisible();
@@ -115,9 +116,15 @@ test('on a phone "Read PDF" opens the PDF in a new tab instead', async ({ page, 
   const read = page.getByTestId('source-read-pdf');
   await expect(read).toBeVisible({ timeout: 30_000 });
 
+  // A new tab asks for the signed PDF link. (Headless Chromium downloads a PDF rather than
+  // showing it, so the request is what can be checked, not the tab's address.)
   const popup = page.waitForEvent('popup');
+  const signed = page.context().waitForEvent('request', {
+    predicate: (r) => r.url().includes('X-Amz-Signature='),
+    timeout: 20_000,
+  });
   await read.click();
-  const tab = await popup;
-  expect(tab.url()).toMatch(/\/sources\/.+X-Amz-Signature=/);
+  await popup;
+  expect((await signed).url()).toContain('/sources/');
   await expect(page.getByTestId('read-beside')).toHaveCount(0);
 });

@@ -40,8 +40,21 @@ type PinnableSource = {
 async function readPdf(source: PinnableSource): Promise<void> {
   const label = source.title ? source.title.slice(0, 60) : null;
   if (requestReadBeside({ sourceId: source.id, page: null, label })) return;
-  const { url } = await api<{ url: string }>(`/sources/${source.id}/file`);
-  window.open(url, '_blank', 'noopener,noreferrer');
+  // The tab is opened inside the press, before the link is fetched: a window opened after an
+  // `await` is no longer a user gesture, and phone browsers block it as a pop-up.
+  const tab = window.open('about:blank', '_blank');
+  try {
+    const { url } = await api<{ url: string }>(`/sources/${source.id}/file`);
+    if (tab) {
+      tab.opener = null;
+      tab.location.href = url;
+    } else {
+      window.location.assign(url);
+    }
+  } catch (error) {
+    tab?.close();
+    throw error;
+  }
 }
 
 export function SourcePins({ documentId, chapterId }: { documentId: string; chapterId: string }) {

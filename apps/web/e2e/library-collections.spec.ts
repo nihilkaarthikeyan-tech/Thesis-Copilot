@@ -57,11 +57,11 @@ test('a student groups papers into a collection, filters by it, renames and dele
   await page.getByTestId('new-collection').click();
   await page.getByTestId('collection-name').fill('methods');
   await page.getByTestId('collection-save').click();
-  await expect(page.getByRole('alert')).toContainText('already a collection called "Methods"');
+  await expect(strip.getByRole('alert')).toContainText('already a collection called "Methods"');
   await page.getByRole('button', { name: 'Cancel' }).click();
 
   // Tick the methods paper under All and add it.
-  await strip.getByRole('button', { name: /^All 2$/ }).click();
+  await strip.getByRole('button', { name: /^All papers 2$/ }).click();
   const row = page.getByTestId('library-row').filter({ hasText: 'Aquifer recharge methods' });
   await row.getByTestId('select-source').check();
   await expect(page.getByTestId('selection-bar')).toContainText('1 selected');

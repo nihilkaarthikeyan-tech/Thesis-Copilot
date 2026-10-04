@@ -121,7 +121,7 @@ export function CollectionsStrip({
           className={chip(filter.kind === 'all')}
           onClick={() => onFilter({ kind: 'all' })}
         >
-          All {total}
+          All papers {total}
         </button>
         {collections.map((c) => (
           <button
