@@ -237,6 +237,23 @@ since each re-index spends a little on embeddings).
 - [ ] **Not run:** the Playwright suite (the dev stack was in use); no browser spec was written for
       this — the switch and the note are covered by typecheck only.
 
+## Zotero by key and "Start writing now" (ADR-0062, 2026-10-04)
+
+- [ ] **One real Zotero import.** No Zotero account or key exists in this project, so the client
+      has only been run against fixtures written from Zotero's documentation. With any Zotero
+      account: zotero.org/settings/keys → new private key, library read only → Library tab →
+      From Zotero → Check key (collections should list) → Import a small collection. Check the
+      references appear and resolve. Then save one real `items/top?format=json&include=data,csljson`
+      response (key removed) over `packages/retrieval/test/fixtures/zotero.ts` and rerun
+      `pnpm --filter @tc/retrieval test`.
+- [ ] **Mendeley: not built.** Mendeley's API needs an application registered with Elsevier
+      (dev.mendeley.com, OAuth client id/secret and a redirect URL) — only the owner can register
+      it, and it would be OAuth, which FR-2.9 rules out unless the owner decides otherwise.
+      Until then Mendeley users export .ris / .bib, which works today.
+- [ ] **Release.** Nothing to configure: no migration, no new variable. The API calls
+      `https://api.zotero.org` from the server, so the production host must allow outbound HTTPS
+      to it (it already reaches OpenAlex and Crossref the same way).
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)
