@@ -9,7 +9,8 @@
  */
 
 import { mergeAttributes, Node } from '@tiptap/core';
-import type { Node as PmNode } from '@tiptap/pm/model';
+import { DOMSerializer, type Node as PmNode } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { nanoid } from 'nanoid';
 import { sourceMetricBadges } from './source-metrics.js';
 
@@ -152,6 +153,32 @@ function labelFor(node: PmNode, storage: CitationStorage): string {
   return storage.numeric || NUMERIC_PLACEHOLDER.has(storage.style) ? '[·]' : '(Source, n.d.)';
 }
 
+/** The data attributes a citation carries in HTML, so a paste inside the app restores it. */
+function citationDomAttrs(a: CitationAttrs): Record<string, string | null> {
+  return {
+    'data-citation': '',
+    'data-key': a.key,
+    'data-source-id': a.sourceId,
+    'data-chunk-id': a.chunkId,
+    'data-role': a.role,
+    'data-locator': a.locator,
+    'data-prefix': a.prefix,
+    'data-suffix': a.suffix,
+  };
+}
+
+/**
+ * The label a citation reads as outside the app. A note style's citation shows nothing in the
+ * line, so a copy carries its note text in brackets rather than vanishing.
+ */
+function copiedLabel(node: PmNode, storage: CitationStorage): string {
+  if (storage.noteStyle) {
+    const note = storage.renderedMap[String(node.attrs.key)];
+    return note ? ` [${note}]` : '';
+  }
+  return labelFor(node, storage);
+}
+
 export const Citation = Node.create<CitationOptions, CitationStorage>({
   name: 'citation',
 
@@ -211,16 +238,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
     const a = node.attrs as CitationAttrs;
     return [
       'span',
-      mergeAttributes(HTMLAttributes, {
-        'data-citation': '',
-        'data-key': a.key,
-        'data-source-id': a.sourceId,
-        'data-chunk-id': a.chunkId,
-        'data-role': a.role,
-        'data-locator': a.locator,
-        'data-prefix': a.prefix,
-        'data-suffix': a.suffix,
-      }),
+      mergeAttributes(HTMLAttributes, citationDomAttrs(a)),
       // Copy/paste within the app carries the attrs; the label is recomputed on paste.
       `{{cite:${a.key}}}`,
     ];
@@ -241,6 +259,42 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
     return extension.name === 'citation'
       ? { leafText: (node: PmNode) => `{{cite:${String(node.attrs.key)}}}` }
       : {};
+  },
+
+  /**
+   * Copying out of the editor (2026-10-04, from the Jenni study: "Copy" keeps citations). A
+   * copy pasted into Word, Google Docs or an email read `{{cite:c_9}}`; it now reads as the label
+   * the student sees — "(Rao, 2021)" or "[3]". The HTML still carries the data attributes, so a
+   * paste back into the editor restores the citation itself, as before.
+   */
+  addProseMirrorPlugins() {
+    const storage = this.storage;
+    const base = DOMSerializer.fromSchema(this.editor.schema);
+    const serializer = new DOMSerializer(
+      {
+        ...base.nodes,
+        citation: (node: PmNode) => [
+          'span',
+          citationDomAttrs(node.attrs as CitationAttrs),
+          copiedLabel(node, storage),
+        ],
+      },
+      base.marks,
+    );
+    return [
+      new Plugin({
+        key: new PluginKey('citationClipboard'),
+        props: {
+          clipboardSerializer: serializer,
+          clipboardTextSerializer: (slice) =>
+            slice.content.textBetween(0, slice.content.size, '\n\n', (leaf) =>
+              leaf.type.name === 'citation'
+                ? copiedLabel(leaf, storage)
+                : (leaf.type.spec.leafText?.(leaf) ?? ''),
+            ),
+        },
+      }),
+    ];
   },
 
   addNodeView() {
