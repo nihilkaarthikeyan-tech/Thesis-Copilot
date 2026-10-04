@@ -17,15 +17,32 @@ import type { LlmRequest } from '../types.js';
 import type { PromptPassage } from './assist.js';
 import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
-export const COMMANDS = ['expand', 'formalise', 'simplify', 'shorten', 'consistency'] as const;
+/**
+ * ADR-0066: edit actions with their own prompt (`edit.md`), run through exactly the same path,
+ * checks and allowance as the five section commands of A.11.
+ */
+export const EDIT_ACTIONS = ['hedge', 'direct', 'active', 'past', 'present', 'counter'] as const;
+export type EditAction = (typeof EDIT_ACTIONS)[number];
+
+export const COMMANDS = [
+  'expand',
+  'formalise',
+  'simplify',
+  'shorten',
+  'consistency',
+  ...EDIT_ACTIONS,
+] as const;
 export type CommandName = (typeof COMMANDS)[number];
+
+export const isEditAction = (command: CommandName): command is EditAction =>
+  (EDIT_ACTIONS as readonly string[]).includes(command);
 
 export const COMMAND = {
   tier: 'strong',
   maxTokens: 900,
   temperature: 0.3,
   /** A.11 gives passages only to the commands that can use them. */
-  needsPassages: ['expand', 'consistency'] as readonly CommandName[],
+  needsPassages: ['expand', 'consistency', 'counter'] as readonly CommandName[],
   /** §10.4 top_k when passages are sent. */
   topK: 6,
   /** A.11: "reduce to about 60% of the length" / "may grow to 2x". */
@@ -46,6 +63,15 @@ export const COMMAND_LABELS: Readonly<Record<CommandName, { label: string; hint:
   consistency: {
     label: 'Check consistency',
     hint: 'Fix only terminology or claims that conflict with the section and glossary.',
+  },
+  hedge: { label: 'Hedge', hint: 'More cautious claims where the evidence is limited.' },
+  direct: { label: 'More direct', hint: 'Fewer needless qualifiers, on cited claims only.' },
+  active: { label: 'Active voice', hint: 'Active voice where the doer is named or obvious.' },
+  past: { label: 'Past tense', hint: 'For reporting what a study or this research did.' },
+  present: { label: 'Present tense', hint: 'For what is known and what the text argues.' },
+  counter: {
+    label: 'Counter-argument',
+    hint: 'Adds a counter-argument from your library, cited; keeps your text.',
   },
 };
 
@@ -93,7 +119,7 @@ export function buildCommandRequest(input: CommandBuildInput): LlmRequest {
   return {
     tier: COMMAND.tier,
     system: {
-      cached: `${loadPrompt('_preamble').system}\n\n${input.memoryBlock}\n\n${loadPrompt('command').system}`,
+      cached: `${loadPrompt('_preamble').system}\n\n${input.memoryBlock}\n\n${loadPrompt(isEditAction(input.command) ? 'edit' : 'command').system}`,
     },
     messages: [{ role: 'user', content: commandUserMessage(input) }],
     maxTokens: COMMAND.maxTokens,
@@ -282,8 +308,14 @@ export function mockCommandFor(req: { messages: ReadonlyArray<{ content: string 
         last.endsWith('.') ? '' : '.'
       }`;
     }
+    case 'hedge':
+      // ADR-0066: the mechanical half of hedging, enough to see a change on the screen.
+      return selection.replace(/\bshows\b/g, 'suggests').replace(/\bproves\b/g, 'indicates');
+    case 'direct':
+      return selection.replace(/\bit could (perhaps )?be argued that\s*/gi, '');
     default:
-      // consistency: A.11 says output the selection unchanged when nothing conflicts.
+      // consistency: A.11 says output the selection unchanged when nothing conflicts. The other
+      // edit actions are left as they are by the mock: their changes are the model's to make.
       return selection;
   }
 }

@@ -4928,3 +4928,11 @@ API suite 601 pass (58 files); typecheck and lint clean. `apps/web/e2e/chat-beyo
 written (chat streams and resolve route-mocked; Settings against the real API) but **not run**:
 the dev stack on :3000/:3001 was someone else's, running `main`. No real-model answer yet —
 `docs/PENDING.md`.
+
+## More edit actions on a selection (2026-10-04, ADR-0066)
+
+"More edits" under the selection toolbar: hedge, more direct (only on a cited selection), active
+voice, past tense, present tense, counter-argument (cited from the library's passages). A new
+prompt, `edit.md`, through the section commands' own path and checks. Evaluated on gpt-5-mini in
+two rounds: grounding 18 of 18 both times; round 1's overreach (active dropping a hedge, direct
+changing tense) fixed by two prompt rules and an example, confirmed in round 2 and three reruns.

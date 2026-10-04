@@ -79,6 +79,8 @@ export const PROMPT_NAMES = [
   'equation',
   // An equation read from a photo — docs/ADR/0064.
   'equation_image',
+  // Edit actions beyond A.11's section commands — docs/ADR/0066.
+  'edit',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

@@ -113,3 +113,38 @@ test('"Find papers" on a selection opens the Papers tab searching for that sente
     message: 'Managed aquifer recharge raises groundwater levels.',
   });
 });
+
+/** More edits on a selection (ADR-0066): hedge rewrites, and "More direct" needs a citation. */
+test('"More edits" hedges a selection through the same diff and Replace', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const session = await establishSession(request, freshEmail('more-edits'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `More edits ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await editor.locator('p').first().click();
+  await page.keyboard.type('The survey shows that cost is the main barrier to adoption.');
+  await page.keyboard.press('Shift+Home');
+
+  const more = page.getByTestId('more-edits');
+  await more.locator('summary').click();
+  // No citation in the selection: "More direct" waits for one.
+  await expect(more.getByRole('button', { name: 'More direct' })).toBeDisabled();
+  await more.getByRole('button', { name: 'Hedge' }).click();
+  await page.getByRole('button', { name: 'Replace' }).click();
+  await expect(editor).toContainText('The survey suggests that cost is the main barrier');
+});

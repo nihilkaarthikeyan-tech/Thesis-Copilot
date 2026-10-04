@@ -68,6 +68,24 @@ const COMMANDS = [
   { key: 'consistency', label: 'Check consistency' },
 ] as const;
 
+/** ADR-0066: more edits, behind one disclosure so the row stays short. */
+const MORE_EDITS = [
+  { key: 'hedge', label: 'Hedge', title: 'More cautious claims where the evidence is limited' },
+  {
+    key: 'direct',
+    label: 'More direct',
+    title: 'Fewer needless qualifiers — only on claims that carry a citation',
+  },
+  { key: 'active', label: 'Active voice', title: 'Active voice where the doer is named' },
+  { key: 'past', label: 'Past tense', title: 'For reporting what a study did' },
+  { key: 'present', label: 'Present tense', title: 'For what is known and argued' },
+  {
+    key: 'counter',
+    label: 'Counter-argument',
+    title: 'Adds a cited counter-argument from your library after your text',
+  },
+] as const;
+
 export function CommandToolbar({
   editor,
   documentId,
@@ -357,6 +375,29 @@ export function CommandToolbar({
                 {busy === c.key ? 'Working…' : c.label}
               </button>
             ))}
+            <details className="w-full" data-testid="more-edits">
+              <summary className="cursor-pointer text-xs font-semibold text-muted hover:text-ink">
+                More edits
+              </summary>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {MORE_EDITS.map((c) => {
+                  // "More direct" only firms up claims that already carry a citation.
+                  const needsCite = c.key === 'direct' && !selection?.text.includes('{{cite:');
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      title={needsCite ? 'Select a sentence that carries a citation' : c.title}
+                      disabled={busy !== null || needsCite}
+                      onClick={() => void run(c.key)}
+                      className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
+                    >
+                      {busy === c.key ? 'Working…' : c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </details>
           </div>
           {noteOpen && selection ? (
             <form

@@ -95,7 +95,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
-| 49 | AI Edit actions (17) | Fluency, paraphrase, simplify, strengthen, counter-argument, tense, lists, prose, table, translate, academic, formality, precision, hedge/increase confidence | `web/components/editor/CommandToolbar.tsx` (Expand, Formalise, Simplify, Shorten, Check consistency), `api/assist/chat.controller.ts` (`commands/run`, `citations/role`) | PARTIAL | 5 vs 17; no hedge, counter-argument, tense, to-table, translate |
+| 49 | AI Edit actions (17) | Fluency, paraphrase, simplify, strengthen, counter-argument, tense, lists, prose, table, translate, academic, formality, precision, hedge/increase confidence | `web/components/editor/CommandToolbar.tsx` (Expand, Formalise, Simplify, Shorten, Check consistency), `api/assist/chat.controller.ts` (`commands/run`, `citations/role`) | PARTIAL | 2026-10-04: 11 now — the five section commands plus hedge, more direct, active, past, present, counter-argument (ADR-0066); no to-table or translate |
 | 50 | Selection → Find citations | Yes | CiteSuggestions fires on sentence end only | MATCH | 2026-10-04: Find papers on a selected sentence opens the Papers tab searching it |
 | 51 | Selection → AI Chat | Yes | none | MATCH | Built 2026-10-04: Ask chat on a selection |
 | 52 | Selection → Comment (by the writer) | Inline box under the text | comments created only by the guide (`web/app/guide/[token]/page.tsx`, `api/feedback/feedback.controller.ts`) | MATCH | Built 2026-10-04: Comment on a selection |
