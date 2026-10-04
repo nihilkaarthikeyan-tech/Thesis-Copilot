@@ -178,6 +178,47 @@ export function ProofreadPanel({
     setItems((list) => list.filter((x) => idOf(x) !== idOf(c)));
   }
 
+  /**
+   * Accept every correction still listed, in one step that one Undo takes back (2026-10-04, from
+   * the Jenni study: "Accept all"). Still the student's explicit action on corrections they can
+   * read above; a correction whose words have gone is skipped and stays listed.
+   */
+  function acceptAll() {
+    if (!editor) return;
+    const placed: Array<{ c: Correction; from: number; to: number }> = [];
+    for (const c of items) {
+      const span = place(c);
+      if (span) placed.push({ c, ...span });
+    }
+    // Last first, so each edit leaves the positions before it untouched; overlapping spans are
+    // left for a second pass rather than guessed at.
+    placed.sort((a, b) => b.from - a.from);
+    const applied: typeof placed = [];
+    let floor = Number.POSITIVE_INFINITY;
+    for (const p of placed) {
+      if (p.to > floor) continue;
+      applied.push(p);
+      floor = p.from;
+    }
+    if (applied.length === 0) return;
+    let chain = editor.chain().focus();
+    for (const { c, from, to } of applied) {
+      chain = chain.command(({ tr, dispatch }) => {
+        if (dispatch) tr.insertText(c.replacement, from, to);
+        return true;
+      });
+      if (c.replacement.length > 0) {
+        chain = chain.setProvenance(from, from + c.replacement.length, {
+          kind: 'COMMAND',
+          actionId: null,
+        });
+      }
+    }
+    chain.run();
+    const done = new Set(applied.map((p) => idOf(p.c)));
+    setItems((list) => list.filter((x) => !done.has(idOf(x))));
+  }
+
   function dismiss(c: Correction) {
     const dismissed = readDismissed(chapterId);
     dismissed.add(keyOf(c));
@@ -242,6 +283,23 @@ export function ProofreadPanel({
         </p>
       ) : null}
 
+      {items.length > 1 ? (
+        <p className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+          <button
+            type="button"
+            disabled={!editor}
+            data-testid="proofread-accept-all"
+            onClick={acceptAll}
+            className="rounded-md border border-line-strong bg-surface px-2 py-0.5 font-semibold text-ink hover:bg-sunk disabled:opacity-50"
+          >
+            Accept all {items.length}
+          </button>
+          <span className="text-muted">
+            One Undo takes them all back. Or Tab to one and press Y to accept, N to dismiss.
+          </span>
+        </p>
+      ) : null}
+
       {items.length > 0 ? (
         <ul className="mt-2 grid list-none gap-2 p-0" data-testid="proofread-corrections">
           {items.map((c) => {
@@ -251,7 +309,21 @@ export function ProofreadPanel({
               <li
                 key={id}
                 data-testid="proofread-correction"
-                className="rounded-md border border-line bg-surface p-2 text-xs"
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: a focusable row for Y / N review
+                tabIndex={0}
+                aria-label={`${KIND_LABEL[c.kind] ?? c.kind}: ${c.original} to ${c.replacement}. Y to accept, N to dismiss.`}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  const key = e.key.toLowerCase();
+                  if (key === 'y' && !gone) {
+                    e.preventDefault();
+                    accept(c);
+                  } else if (key === 'n') {
+                    e.preventDefault();
+                    dismiss(c);
+                  }
+                }}
+                className="rounded-md border border-line bg-surface p-2 text-xs focus:outline focus:outline-2 focus:outline-accent"
               >
                 <p className="font-medium text-ink">{KIND_LABEL[c.kind] ?? c.kind}</p>
                 <p className="mt-1">

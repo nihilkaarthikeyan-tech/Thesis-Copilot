@@ -110,3 +110,57 @@ test('the student proofreads a chapter and accepts one correction at a time', as
     'This chapter examines why adoption was slow in both districts.',
   );
 });
+
+test('Accept all takes every correction in one step that one Undo reverses; Y accepts one', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000);
+  const session = await establishSession(request, freshEmail('proofread-all'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Proofread all ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+  const chapter = (await (
+    await request.get(`${API_URL}/api/v1/chapters/${doc.firstChapterId}`, { headers: { cookie } })
+  ).json()) as { version: number };
+  await request.put(`${API_URL}/api/v1/chapters/${doc.firstChapterId}`, {
+    headers: { cookie },
+    data: { content: CHAPTER, baseVersion: chapter.version },
+  });
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('tab', { name: 'flags' }).click();
+  const panel = page.getByTestId('proofread-panel');
+  await panel.getByTestId('proofread-run').click();
+  await expect(panel.getByTestId('proofread-summary')).toBeVisible({ timeout: 90_000 });
+
+  await panel.getByTestId('proofread-accept-all').click();
+  await expect(editor).toContainText('The farmers received the subsidy');
+  await expect(editor).toContainText('environment');
+  await expect(panel.getByTestId('proofread-correction')).toHaveCount(0);
+
+  // One Undo puts both back.
+  await editor.click();
+  await page.keyboard.press('Control+z');
+  await expect(editor).toContainText('recieved');
+  await expect(editor).toContainText('enviroment');
+
+  // Run again and take one with the keyboard.
+  await panel.getByTestId('proofread-run').click();
+  const received = panel.getByTestId('proofread-correction').filter({ hasText: 'recieved' });
+  await expect(received).toHaveCount(1, { timeout: 90_000 });
+  await received.focus();
+  await page.keyboard.press('y');
+  await expect(editor).toContainText('The farmers received the subsidy');
+  await expect(received).toHaveCount(0);
+});
