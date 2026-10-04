@@ -49,3 +49,27 @@ below was seen on screen; timings are from screenshots, not claims.
 3. **Citation cards** with cited-by, journal citedness (ADR-0040 already fetches it) and open access.
 4. **Prompt-first start**: one prompt → outline with per-section notes → editor, with the cursor in
    the first section (our proposal + outline, merged into one screen).
+
+## Literature review workflow (Jenni's "Workflows", BETA)
+
+Topic → web/library switches → filters (year, impact factor, cited-by, preprints) → "Start literature
+review · 15–20 min". Four visible stages: Searching → Selecting literature (ranked on relevance,
+recency and citations) → Drafting sections → Assembling and citing; "safe to close this tab — you will
+receive an email". Before drafting, it wrote a **topic-specific expert brief per section** (quality
+indicators TVB-N, TMA-N, water activity; Page / Henderson-Pabis / Midilli models; women and
+self-help groups in dried-fish chains). **It failed** after 24 minutes in the last stage: "Something
+went wrong while generating the literature review. Please try again." Not rerun.
+
+What to take: the per-section brief written by the model from the topic before any drafting. Our
+chapter build plans from discipline blueprints and the key terms; a topic-specific brief per section
+(one strong call, checked against the passages found) is the cheapest large quality gain available.
+
+## Their stack, from the student's own browser (2026-10-04)
+
+Next.js App Router frontend; a typed RPC backend (`app.backend.jenni.ai/…/jenni.Service`,
+snake_case methods such as `search_library`, `get_library_aggregates` — likely Python); Firebase Auth
+and Firestore (real-time document and job state); PostHog through their own domain (flags,
+experiments, surveys); Sentry; Microsoft Clarity session recordings; Intercom; Stripe with Churnkey;
+marketing pixels. The model vendor and prompts are server-side and not visible. Nothing here is
+exotic: the lead is product engineering — a pre-built full-text index, agentic review and chat,
+topic-specific planning — and measuring every session.
