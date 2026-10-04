@@ -93,3 +93,39 @@ test('the citation style chosen when a thesis is created is the style the thesis
   ).json()) as { style: string };
   expect(skipped.style).toBe('apa');
 });
+
+test('a signed-in visitor to the home page is offered their theses, not a sign-up', async ({
+  page,
+  request,
+}) => {
+  await signInAs(page, request);
+  await page.goto('/');
+  const header = page.locator('header.mk-nav');
+  const go = header.getByRole('link', { name: 'Go to your theses' });
+  await expect(go).toBeVisible({ timeout: 20_000 });
+  await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0);
+  await expect(header.getByRole('link', { name: 'Start writing free' })).toHaveCount(0);
+  await go.click();
+  await expect(page).toHaveURL(/\/app$/);
+});
+
+test('the home page header stays on one line at about 800px wide', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 });
+  await page.goto('/');
+  const header = page.locator('header.mk-nav');
+  // Signed out: the sales page as before.
+  await expect(header.getByRole('link', { name: 'Start writing free' })).toBeVisible();
+  const oneLine = async (name: string) => {
+    const box = await header.getByRole('link', { name, exact: true }).boundingBox();
+    expect(box, name).not.toBeNull();
+    // One line of 15–17px text, or the 40px button; two lines would be well over this.
+    expect(box?.height ?? 0, name).toBeLessThan(44);
+  };
+  await oneLine('Thesis Copilot');
+  await oneLine('Sign in');
+  await oneLine('How it works');
+  await oneLine('Start writing free');
+  // The least needed links step aside at this width rather than squeeze the rest.
+  await expect(header.getByRole('link', { name: 'For guides' })).toBeHidden();
+  await expect(header.getByRole('link', { name: 'Questions' })).toBeHidden();
+});

@@ -149,6 +149,8 @@
 /* ------------------------------------------------------------------- brand */
 .mk .mk-brand {
   display: inline-flex;
+  flex-shrink: 0;
+  white-space: nowrap;
   align-items: center;
   gap: 10px;
   font-weight: 700;
@@ -186,6 +188,7 @@
 .mk .mk-nav-links a {
   color: var(--mk-body);
   text-decoration: none;
+  white-space: nowrap;
 }
 .mk .mk-nav-links a:hover {
   color: var(--mk-ink);
@@ -201,6 +204,24 @@
 .mk .mk-nav-end .mk-signin {
   color: var(--mk-ink);
   text-decoration: none;
+  white-space: nowrap;
+}
+/* Medium widths (around 800px): the header wrapped "Thesis / Copilot", "Sign / in" and
+   "How it / works" onto two lines. Nothing wraps now, and the two links a visitor needs least
+   step aside until there is room for them. */
+@media (max-width: 1099px) {
+  .mk .mk-nav-row {
+    gap: 24px;
+  }
+  .mk .mk-nav-links {
+    gap: 20px;
+  }
+  .mk .mk-nav-end {
+    gap: 14px;
+  }
+  .mk .mk-nav-links .mk-nav-minor {
+    display: none;
+  }
 }
 
 /* -------------------------------------------------------------------- hero */
