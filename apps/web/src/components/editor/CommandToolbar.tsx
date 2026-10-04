@@ -74,12 +74,15 @@ export function CommandToolbar({
   chapterId,
   onUsageChange,
   onNotice,
+  onAskChat,
 }: {
   editor: Editor | null;
   documentId: string;
   chapterId: string;
   onUsageChange: () => void;
   onNotice: (message: string) => void;
+  /** Opens the chat with the selected text in the box (2026-10-04, from the Jenni study). */
+  onAskChat?: (text: string) => void;
 }) {
   /**
    * A note on the selected passage (2026-10-04, from the Jenni study): only a guide could
@@ -320,6 +323,16 @@ export function CommandToolbar({
             >
               Comment
             </button>
+            {onAskChat ? (
+              <button
+                type="button"
+                data-testid="ask-chat-on-selection"
+                onClick={() => selection && onAskChat(selection.text)}
+                className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Ask chat
+              </button>
+            ) : null}
             {COMMANDS.map((c) => (
               <button
                 key={c.key}

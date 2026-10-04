@@ -362,6 +362,8 @@ function ChapterEditor({
    * tablet lost sources, citations, chat, flags and review with no way to reach any of them.
    */
   const [drawer, setDrawer] = useState<'chapters' | 'panel' | null>(null);
+  /** Text the student chose to ask the chat about; a new nonce each time, so the same text refills. */
+  const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => {
     if (!drawer && !moreOpen) return;
@@ -1459,6 +1461,7 @@ function ChapterEditor({
                 documentId={doc.id}
                 onUsageChange={onUsageChange}
                 onAddToDocument={addChatAnswer}
+                prefill={chatPrefill}
                 onOpenPassage={(sourceId, chunkId) => {
                   window.open(
                     `/app/d/${doc.id}/sources#source-${sourceId}-${chunkId}`,
@@ -1650,6 +1653,11 @@ function ChapterEditor({
         chapterId={chapter.id}
         onUsageChange={onUsageChange}
         onNotice={setNotice}
+        onAskChat={(text) => {
+          setChatPrefill({ text, nonce: Date.now() });
+          setTab('chat');
+          setDrawer('panel');
+        }}
       />
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />

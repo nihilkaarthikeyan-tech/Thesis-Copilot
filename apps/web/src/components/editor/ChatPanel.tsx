@@ -94,8 +94,14 @@ export function ChatPanel({
   onUsageChange,
   onOpenPassage,
   onAddToDocument,
+  prefill,
 }: {
   documentId: string;
+  /**
+   * A passage the student chose to ask about (2026-10-04, from the Jenni study: select text, ask
+   * the chat). It goes into the box with the cursor after it; nothing is sent until they press Ask.
+   */
+  prefill?: { text: string; nonce: number } | null;
   onUsageChange: () => void;
   onOpenPassage: (sourceId: string, chunkId: string) => void;
   /**
@@ -113,6 +119,19 @@ export function ChatPanel({
   const [filters, setFilters] = useState<Filters>({});
   const [showFilters, setShowFilters] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!prefill?.text) return;
+    setDraft(`About this passage: "${prefill.text.slice(0, 1_500)}" — `);
+    // After the panel has rendered the new value.
+    requestAnimationFrame(() => {
+      const box = boxRef.current;
+      if (!box) return;
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+    });
+  }, [prefill]);
 
   useEffect(() => {
     api<{ turns: Turn[] }>(`/chat/${documentId}`)
@@ -620,6 +639,7 @@ export function ChatPanel({
         </label>
         <input
           id="chat-message"
+          ref={boxRef}
           value={draft}
           disabled={busy}
           maxLength={2000}

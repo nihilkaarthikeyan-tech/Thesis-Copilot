@@ -35,3 +35,39 @@ test('a student leaves a comment on a passage and finds it under Review', async 
   await page.getByRole('tab', { name: 'review', exact: true }).click();
   await expect(page.getByText('Check against the IMD series')).toBeVisible({ timeout: 15_000 });
 });
+
+/** Selected text can be taken to the chat (2026-10-04, from the Jenni study). */
+test('"Ask chat" on a selection opens the chat with the passage in the box, unsent', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const session = await establishSession(request, freshEmail('ask-chat'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Ask chat ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await editor.locator('p').first().click();
+  await page.keyboard.type('Groundwater tables fell fastest in hard-rock districts.');
+  await page.keyboard.press('Shift+Home');
+
+  await page.getByTestId('ask-chat-on-selection').click();
+  await expect(page.getByRole('tab', { name: 'chat', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  const box = page.locator('#chat-message');
+  await expect(box).toHaveValue(/^About this passage: "Groundwater tables fell fastest/);
+  await expect(box).toBeFocused();
+});
