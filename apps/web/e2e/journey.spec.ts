@@ -62,3 +62,23 @@ test('a new thesis opens its proposal; a new chapter is ready to write and says 
   await page.getByTestId('back-to-writing').click();
   await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/);
 });
+
+test('on the topic path the proposal can be filled in by hand, and Continue opens the editor', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const s = await establishSession(request, freshEmail('byhand'));
+  await page
+    .context()
+    .addCookies([{ name: s.cookieName, value: s.cookieValue, domain: 'localhost', path: '/' }]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie: `${s.cookieName}=${s.cookieValue}` },
+    data: { title: `By hand ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const { id } = (await created.json()) as { id: string };
+  await page.goto(`/app/d/${id}/proposal`);
+  await page.getByTestId('proposal-by-hand').click();
+  await page.getByRole('button', { name: 'Continue to the editor' }).click();
+  await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+});

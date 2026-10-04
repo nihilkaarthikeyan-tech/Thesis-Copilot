@@ -232,7 +232,28 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
       ) : null}
 
       {pathA ? (
-        <PathAChat documentId={documentId} initialTitle={doc.title} onSkeleton={onSkeleton} />
+        <>
+          <PathAChat documentId={documentId} initialTitle={doc.title} onSkeleton={onSkeleton} />
+          {/* The conversation is a help, not a gate (2026-10-04): when it fails the API says "fill
+              the proposal in by hand", and until now there was no form to fill. */}
+          {scope ? null : (
+            <button
+              type="button"
+              data-testid="proposal-by-hand"
+              className="mt-3 text-sm underline"
+              onClick={() =>
+                setScope({
+                  workingTitle: doc.title,
+                  problemStatement: '',
+                  objectives: [],
+                  whyOpen: '',
+                })
+              }
+            >
+              Fill it in myself instead
+            </button>
+          )}
+        </>
       ) : (
         <PaperStatus papers={papers} uploading={uploading} onUpload={upload} />
       )}
