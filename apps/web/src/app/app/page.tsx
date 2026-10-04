@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { AddProposalPrompt } from '@/components/AddProposalPrompt';
 import { LogoMark } from '@/components/LogoMark';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
@@ -145,6 +146,32 @@ export default function DocumentListPage() {
     }
   }
 
+  /**
+   * ADR-0062 (ADR-0059 row 2): "Start writing now". The thesis is made with the title typed, or
+   * "Untitled thesis", and opens on its first chapter; the proposal waits, offered again on this
+   * list and in the editor. `A_TOPIC` because there is no paper: the topic path's proposal is the
+   * one that can start from the student's own words later.
+   */
+  async function startWriting() {
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await api<{ id: string; firstChapterId: string | null }>('/documents', {
+        method: 'POST',
+        body: JSON.stringify({ title: title.trim() || 'Untitled thesis', entryPath: 'A_TOPIC' }),
+      });
+      await saveStartingStyle(created.id, citationStyle);
+      router.push(
+        created.firstChapterId
+          ? `/app/d/${created.id}/write/${created.firstChapterId}`
+          : `/app/d/${created.id}/outline`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create the document.');
+      setBusy(false);
+    }
+  }
+
   async function remove(doc: DocumentSummary) {
     setDeleteBusy(true);
     setError(null);
@@ -267,9 +294,23 @@ export default function DocumentListPage() {
 
           <StartingStyle value={citationStyle} onChange={setCitationStyle} />
 
-          <Button type="submit" disabled={busy || title.trim().length === 0} className="self-start">
-            {busy ? 'Creating…' : 'Create thesis'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" disabled={busy || title.trim().length === 0}>
+              {busy ? 'Creating…' : 'Create thesis'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void startWriting()}
+              data-testid="start-writing-now"
+            >
+              Start writing now
+            </Button>
+          </div>
+          <Hint>
+            Start writing now skips the proposal and opens a blank chapter; the title can wait too.
+          </Hint>
         </form>
       </CardBody>
     </Card>
@@ -399,6 +440,7 @@ export default function DocumentListPage() {
                             <Badge tone="neutral">
                               {d.entryPath === 'B_PAPER' ? 'From a paper' : 'From a topic'}
                             </Badge>
+                            <AddProposalPrompt documentId={d.id} variant="list" />
                             <span>
                               updated{' '}
                               {new Date(d.updatedAt).toLocaleDateString(undefined, {

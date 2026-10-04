@@ -72,6 +72,33 @@ export default function NewThesisPage() {
     }
   }
 
+  /**
+   * ADR-0062 (ADR-0059 row 2): "Start writing now" — no proposal, no title needed, straight into
+   * a blank first chapter. `A_TOPIC` whatever is ticked above: there is no paper to read, and the
+   * topic path's proposal can start from the student's own words when they come back to it.
+   */
+  async function startWriting() {
+    setBusy(true);
+    setError(null);
+    try {
+      const document = await api<{ id: string; firstChapterId: string | null }>('/documents', {
+        method: 'POST',
+        body: JSON.stringify({ title: title.trim() || 'Untitled thesis', entryPath: 'A_TOPIC' }),
+      });
+      await saveStartingStyle(document.id, citationStyle);
+      router.push(
+        document.firstChapterId
+          ? `/app/d/${document.id}/write/${document.firstChapterId}`
+          : `/app/d/${document.id}/outline`,
+      );
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not create it.',
+      );
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
       <nav className="text-xs text-muted">
@@ -157,10 +184,23 @@ export default function NewThesisPage() {
           >
             Create and import from Word
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => void startWriting()}
+            data-testid="start-writing-now"
+          >
+            Start writing now
+          </Button>
         </div>
         <p className="text-xs text-muted">
           Already writing in Word? Import brings each Heading 1 in as a chapter; the proposal can
           wait.
+        </p>
+        <p className="text-xs text-muted">
+          Know what you are writing? Start writing now opens a blank chapter straight away; the
+          title and the proposal can come later.
         </p>
       </form>
     </main>
