@@ -89,6 +89,19 @@ export function FlagsPanel({
   const [running, setRunning] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * False when the plan has no coherence checks (the free trial): the button is replaced by a
+   * plain line instead of a refusal after the press (2026-10-04, found writing the help pages).
+   */
+  const [included, setIncluded] = useState(true);
+  useEffect(() => {
+    api<{ actions: Array<{ action: string; cap: number; used: number }> }>('/usage/me')
+      .then((u) => {
+        const line = u.actions.find((a) => a.action === 'COHERENCE');
+        setIncluded(!line || line.cap > 0 || line.used > 0);
+      })
+      .catch(() => undefined);
+  }, []);
   const [estimate, setEstimate] = useState<{
     changedChapters: number;
     estimatedInr: number;
@@ -198,9 +211,18 @@ export function FlagsPanel({
             ? `Last checked ${new Date(data.lastRunAt).toLocaleString()}`
             : 'Not checked yet'}
         </p>
+        {included ? null : (
+          <p className="text-xs text-muted" data-testid="coherence-not-included">
+            Coherence checks are not included in your plan.{' '}
+            <a href="/pricing" className="underline">
+              See plans
+            </a>
+          </p>
+        )}
         <button
           type="button"
           disabled={running}
+          hidden={!included}
           onClick={() => void run()}
           data-testid="run-coherence"
           className="rounded-md px-3 py-1 text-xs disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"

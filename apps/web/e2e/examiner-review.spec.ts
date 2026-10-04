@@ -61,6 +61,11 @@ test('a chapter is reviewed by the examiner from the flags tab', async ({ page, 
   await review.getByTestId('run-examiner-review').click();
   await expect(review.getByRole('alert')).toContainText('has not changed');
 
-  // The coherence check is still beside it.
-  await expect(page.getByTestId('run-coherence')).toBeVisible();
+  // The coherence check is still beside it — or, on a plan without it (the trial), a plain line
+  // saying so instead of a button that would only be refused.
+  await expect(
+    page
+      .getByTestId('coherence-not-included')
+      .or(page.locator('[data-testid="run-coherence"]:visible')),
+  ).toBeVisible();
 });

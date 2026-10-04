@@ -1,6 +1,8 @@
 export {
   AI_ACTIONS,
   type AiAction,
+  ALLOWANCE_NAMES,
+  capRefusalDetail,
   isMetered,
   METERED_ACTIONS,
   type MeteredAction,

@@ -1,3 +1,5 @@
+import { ALLOWANCE_NAMES } from '@tc/config';
+
 /**
  * The AI actions in plain words, for the admin screens (2026-09-25). The codes are what the call
  * log records (PRD §8 `AiAction`); nobody running the service should have to know them.
@@ -27,22 +29,8 @@ export const ACTION_NAMES: Record<string, string> = {
 
 export const actionName = (code: string): string => ACTION_NAMES[code] ?? code;
 
-/**
- * The monthly allowances in the student's words — one map for the Account, Settings and Pricing
- * pages, which had a copy each and printed "VIVA" and "CHAPTER_BUILD" for the two none of them
- * knew.
- */
-export const ALLOWANCE_NAMES: Record<string, string> = {
-  ASSIST: 'Assist suggestions',
-  DRAFT: 'Draft sections',
-  CITE: 'Citation suggestions',
-  CHAT: 'Questions to your library',
-  COMMAND: 'Section commands',
-  COHERENCE: 'Coherence checks',
-  VIVA: 'Viva practice',
-  CHAPTER_BUILD: 'Chapter builds',
-  EXAMINER_REVIEW: 'Examiner reviews',
-};
+/** The monthly allowances in the student's words: one map, in `@tc/config`, shared with the API. */
+export { ALLOWANCE_NAMES };
 
 export const allowanceName = (code: string): string =>
   ALLOWANCE_NAMES[code] ?? ACTION_NAMES[code] ?? code;

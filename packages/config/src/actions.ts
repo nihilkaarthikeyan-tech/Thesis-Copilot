@@ -98,3 +98,26 @@ export function isMetered(action: AiAction): action is MeteredAction {
 
 /** LLM tiers (PRD §10.1). `embed` is the embedding model, priced separately. */
 export type Tier = 'fast' | 'strong';
+
+/**
+ * The monthly allowances in the student's words — the one source for every screen and for the
+ * API's refusals, which until 2026-10-04 said "You have used all 0 COHERENCE actions".
+ */
+export const ALLOWANCE_NAMES: Readonly<Record<string, string>> = {
+  ASSIST: 'Assist suggestions',
+  DRAFT: 'Draft sections',
+  CITE: 'Citation suggestions',
+  CHAT: 'Questions to your library',
+  COMMAND: 'Section commands',
+  COHERENCE: 'Coherence checks',
+  VIVA: 'Viva practice',
+  CHAPTER_BUILD: 'Chapter builds',
+  EXAMINER_REVIEW: 'Examiner reviews',
+};
+
+/** A refused metered action, said plainly: not on the plan at all, or used up this month. */
+export function capRefusalDetail(action: string, cap: number): string {
+  const name = ALLOWANCE_NAMES[action] ?? 'AI actions of this kind';
+  if (cap <= 0) return `${name} are not included in your plan.`;
+  return `You have used all ${cap} of this month's ${name.toLowerCase()}.`;
+}

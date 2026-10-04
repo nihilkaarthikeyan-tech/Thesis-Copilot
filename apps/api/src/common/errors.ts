@@ -6,6 +6,7 @@
  */
 
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { capRefusalDetail } from '@tc/config';
 
 /** RFC 9457 problem details, plus the extension members this API adds. */
 export type ProblemDetails = {
@@ -40,7 +41,7 @@ export class CapExceededError extends AppError {
       'CAP_EXCEEDED',
       'Monthly limit reached',
       HttpStatus.TOO_MANY_REQUESTS,
-      `You have used all ${cap} ${action} actions for this month.`,
+      capRefusalDetail(action, cap),
       { action, cap, resetsAt: resetsAt.toISOString() },
     );
   }
