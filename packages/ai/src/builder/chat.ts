@@ -12,7 +12,7 @@ import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest, Message } from '../types.js';
 import type { PromptPassage } from './assist.js';
-import { CITE_RE, normalizeBareCitations } from './postprocess.js';
+import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
 export const CHAT = {
   tier: 'fast',
@@ -181,20 +181,23 @@ export type ChatPostProcess = {
  */
 export function postProcessChat(raw: string, allowedIds: readonly string[]): ChatPostProcess {
   const allowed = new Set(allowedIds);
-  const cited: string[] = [];
+  const seen: string[] = [];
   const hallucinated: string[] = [];
-  const text = normalizeBareCitations(raw)
+  const marked = normalizeBareCitations(raw)
     .replace(CITE_RE, (match, id: string) => {
       const key = id.trim();
       if (!allowed.has(key)) {
         hallucinated.push(key);
         return '';
       }
-      if (!cited.includes(key)) cited.push(key);
+      if (!seen.includes(key)) seen.push(key);
       return match;
     })
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
+  // One paper's passages side by side print as one label repeated (2026-10-04).
+  const text = collapseSameSourceRuns(marked);
+  const cited = seen.filter((key) => text.includes(`{{cite:${key}}}`));
 
   const outcome: ChatOutcome = text.startsWith(NOT_ENOUGH_PREFIX)
     ? 'not-enough'

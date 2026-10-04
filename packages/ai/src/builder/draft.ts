@@ -20,7 +20,7 @@ import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
 import type { PromptPassage } from './assist.js';
 import { displayEquationOf, tokenizeNotation } from './notation.js';
-import { stripUnknownCitations } from './postprocess.js';
+import { collapseSameSourceRuns, stripUnknownCitations } from './postprocess.js';
 import { filterSentences } from './quality.js';
 
 /**
@@ -249,7 +249,14 @@ export function postProcessDraft(
     if (note.length > 0 && !needsSource.includes(note)) needsSource.push(note);
   }
 
-  const stripped = stripUnknownCitations(markdown, passageIds);
+  const unknownStripped = stripUnknownCitations(markdown, passageIds);
+  // One paper's passages side by side print as one label repeated (2026-10-04).
+  const collapsedText = collapseSameSourceRuns(unknownStripped.text);
+  const stripped = {
+    ...unknownStripped,
+    text: collapsedText,
+    cited: unknownStripped.cited.filter((id) => collapsedText.includes(`{{cite:${id}}}`)),
+  };
 
   // Count uses before removing the markers, so the limit is measured on what the model wrote.
   const uses = new Map<string, number>();

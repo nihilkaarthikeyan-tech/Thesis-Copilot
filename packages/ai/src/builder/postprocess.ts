@@ -111,6 +111,34 @@ export function stripUnknownCitations(
   };
 }
 
+/** The source part of a passage id: `S3` in `S3#c2`. */
+function sourceOf(passageId: string): string {
+  return passageId.split('#')[0] ?? passageId;
+}
+
+const ADJACENT_MARKERS = /\{\{cite:[^}]+\}\}(?:[ \t]*[;,]?[ \t]*\{\{cite:[^}]+\}\})+/g;
+
+/**
+ * After step (1), 2026-10-04: three passages of one paper cited side by side printed as
+ * "(Jimenez 2021) (Jimenez 2021) (Jimenez 2021)" — the same fault the Jenni study found in Jenni's
+ * generated text. In a run of adjacent markers only the first for each source is kept; markers for
+ * different sources in the same run all stay.
+ */
+export function collapseSameSourceRuns(output: string): string {
+  return output.replace(ADJACENT_MARKERS, (run) => {
+    const seen = new Set<string>();
+    const kept: string[] = [];
+    for (const match of run.matchAll(CITE_RE)) {
+      const id = (match[1] ?? '').trim();
+      const source = sourceOf(id);
+      if (seen.has(source)) continue;
+      seen.add(source);
+      kept.push(match[0]);
+    }
+    return kept.join('');
+  });
+}
+
 const MIN_OVERLAP_WORDS = 6;
 
 /**
@@ -203,7 +231,7 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   const stripped = suppressed
     ? { ...stripUnknownCitations(output, []), hallucinated: [], cited: [] }
     : stripUnknownCitations(output, input.passageIds);
-  const overlap = removeLeadingOverlap(stripped.text, input.before);
+  const overlap = removeLeadingOverlap(collapseSameSourceRuns(stripped.text), input.before);
   const cut = cutAfterSecondSentence(overlap.text);
   const filtered = filterSentences({
     text: cut.text,

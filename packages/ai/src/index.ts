@@ -219,6 +219,7 @@ export {
 } from './builder/outline.js';
 export {
   CITE_RE,
+  collapseSameSourceRuns,
   cutAfterSecondSentence,
   normalizeBareCitations,
   type PostProcessInput,
