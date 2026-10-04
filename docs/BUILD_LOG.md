@@ -4810,3 +4810,31 @@ browsers block as a pop-up (it now opens inside the press).
 
 Full suite after the merges: 2,205 unit tests pass; Playwright 109 of 112, the three failures
 being OpenAlex's free daily budget (HTTP 429) on this machine.
+
+## "We'll email you when it is ready" (2026-10-04, ADR-0058, coverage-map row 64)
+
+Jenni says a long job is safe to close; ours made the student watch. Now a literature search, a
+chapter build, an examiner review or a coherence check the student pressed sends one plain email
+when it ends — if it took over a minute, no visible tab polled it in the last 30 s, the new
+"Email me when a long job finishes" setting is on (default), and no email has gone for that run.
+The running screens say "You can close this — we’ll email you when it is ready." while the setting
+is on.
+
+- **Mail moved into `@tc/mail`** so the worker can send. `apps/api/src/common/mailer.ts` is now a
+  re-export plus the Nest token; the console mailer's line is a function the caller passes, so the
+  package has no Nest. `resend` and `nodemailer` moved with it.
+- **The heartbeat is a Redis key, not a field on the run.** The worker rewrites `Document.meta`
+  whole as a run progresses; a `lastWatchedAt` beside it would be wiped, or would wipe the
+  worker's terminal status. Polls carry `?watching=1` only from a visible tab; the coherence tab,
+  which streams, adds a ten-second visible-only poll while a check runs.
+- **Failures:** a search or coherence check is reported failed only after BullMQ's last attempt.
+  "Nothing was charged" is written only when the run's refund statement succeeded — the chapter
+  build and examiner review now return `refunded` for that. A failed search or coherence email
+  claims nothing about charges.
+
+Tests: `apps/worker/test/job-email.spec.ts` (22: the rule, once per run, opt-out, short, watched,
+leaving accounts, mail fault swallowed, each job's adapter, the Redis store), `packages/mail/test`
+(2), `apps/api/test/job-watch.spec.ts` (6, real HTTP + Redis: visible poll stamps, hidden poll /
+finished run / someone else's run do not; the setting). Worker 184 pass, API 572 + 6 pass,
+typecheck and lint clean. Playwright not run (dev stack in use by someone else). No email has
+been sent through a real provider yet — `docs/PENDING.md`.

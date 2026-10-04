@@ -222,6 +222,21 @@ then queue `index-source` for each (Admin → Background jobs can retry failed o
 finished as "nothing to index" need a fresh job — a one-off script, run with the owner's go-ahead,
 since each re-index spends a little on embeddings).
 
+## "We'll email you when it is ready" (ADR-0058, 2026-10-04)
+
+- [ ] **Nothing to configure for the release, but check one thing after it.** The worker now
+      sends mail. In production it reads the same `infra/compose/.env` as the API (`env_file:
+      .env` on both services, and the worker already refuses to start without `RESEND_API_KEY` or
+      `SMTP_HOST` + `SMTP_PORT` + `SMTP_FROM`). After the deploy, the worker's log should say
+      `"msg":"mail: smtp"` (or `resend`) once at start — `docker compose logs worker | grep
+      '"mail:'`. If it says `console`, the worker is not seeing the mail variables and no job
+      email will go out.
+- [ ] **Try it once for real.** Start a literature search, close the tab, wait for the email
+      (it goes only if the search took over a minute). Check it arrives from `no-reply@rademics.ai`
+      and the link opens the Discover tab.
+- [ ] **Not run:** the Playwright suite (the dev stack was in use); no browser spec was written for
+      this — the switch and the note are covered by typecheck only.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)
