@@ -109,6 +109,7 @@ import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
+import { SuggestionBar } from './SuggestionBar';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 
 type ExportResult = { url: string; filename: string; bytes: number };
@@ -1525,6 +1526,7 @@ function ChapterEditor({
       </nav>
 
       {guided.element}
+      <SuggestionBar editor={editor} onRefine={guided.controller.ask} />
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} documentId={doc.id} />
       <ChartDialog
         open={chart !== null}
