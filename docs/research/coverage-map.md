@@ -80,9 +80,9 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
-| 39 | Scopes Web / Library / Current document | Chips, combinable | `ChatPanel.tsx` (Library / This thesis / Find papers; ADR-0016) | PARTIAL | One scope at a time; "Find papers" returns papers, not an answer |
-| 40 | Off / Ask / On permission per source | Asks before searching the web | none (explicit scope choice) | MISSING | — (ours is safer but cannot combine) |
-| 41 | Agentic answer with visible steps | Plans, searches several times, verifies (~90 s) | single grounded call, `api/assist/chat.service.ts` | MISSING | Cannot answer beyond the library |
+| 39 | Scopes Web / Library / Current document | Chips, combinable | `ChatPanel.tsx` (Library / This thesis / Find papers; ADR-0016); since 2026-10-04 (ADR-0060) a library question the library has nothing on is answered from the abstracts a scholarly search returns, through the same A.4 prompt, each cited paper marked "Not in your library" with Add | PARTIAL | Built 2026-10-04 (ADR-0060). Still one scope at a time: beyond-library is reached from a library refusal, not combined with the library in one answer |
+| 40 | Off / Ask / On permission per source | Asks before searching the web | Settings → "Search beyond my library": Off / Ask first (default) / On (ADR-0060, `beyond-library.ts`) | MATCH | Built 2026-10-04. One setting for the search, not one per source |
+| 41 | Agentic answer with visible steps | Plans, searches several times, verifies (~90 s) | one search + one grounded A.4 call, steps streamed ("Searching OpenAlex…", "Reading 8 abstracts", "Writing the answer"), `api/assist/chat.service.ts` `answerBeyond` (ADR-0060) | PARTIAL | Built 2026-10-04. One search, not a multi-step agent; answers from abstracts, not full text. Real-model check pending (`docs/PENDING.md`) |
 | 42 | Attachments and images in chat | Attach file/image | none | MISSING | — |
 | 43 | Saved prompts | Yes | `web/components/editor/ChatPrompts.tsx`, `api/prompts/prompts.controller.ts` (`/` in chat) | MATCH | — |
 | 44 | Name a paper in chat | — | `web/components/editor/ChatMentions.tsx` (`@`) | OURS BETTER | — |

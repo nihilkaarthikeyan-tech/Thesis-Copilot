@@ -26,6 +26,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsService } from '../flags/flags.service.js';
+import { BEYOND_SETTINGS, beyondSettingOf } from './beyond-library.js';
 import { ChatService } from './chat.service.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
@@ -37,8 +38,11 @@ import { WebScopeService } from './web-scope.service.js';
 const chatBody = z.object({
   documentId: z.string().uuid(),
   message: z.string().trim().min(1).max(2_000),
-  /** Where the answer may come from. Defaults to the library, which is what it has always been. */
-  scope: z.enum(['library', 'document']).default('library'),
+  /**
+   * Where the answer may come from. Defaults to the library, which is what it has always been.
+   * 'beyond' (ADR-0060) answers from the abstracts a scholarly search returns.
+   */
+  scope: z.enum(['library', 'document', 'beyond']).default('library'),
   /** Papers named with `@`: the answer comes from these alone. Ten is more than a question needs. */
   sourceIds: z.array(z.string().uuid()).max(10).optional(),
   filters: z
@@ -97,6 +101,11 @@ const settingsBody = z.object({
     .enum(['apa', 'harvard', 'ieee', 'vancouver', 'chicago-author-date'])
     .nullable()
     .optional(),
+  /**
+   * ADR-0060: when a library question finds nothing, search the scholarly indexes and answer from
+   * their abstracts — never, after asking (the default), or at once.
+   */
+  searchBeyondLibrary: z.enum(BEYOND_SETTINGS).optional(),
   chatFilters: z
     .object({
       yearFrom: z.number().int().nullish(),
@@ -272,6 +281,7 @@ export class ChatController {
       autoSources: settings.autoSources !== false,
       emailWhenJobDone: settings.emailWhenJobDone !== false,
       ...settings,
+      searchBeyondLibrary: beyondSettingOf(settings),
     };
   }
 

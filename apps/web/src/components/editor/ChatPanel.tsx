@@ -22,7 +22,24 @@ import { PromptPicker, SavePromptForm, useSavedPrompts } from './ChatPrompts';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-type Citation = { key: string; sourceId: string; chunkId: string; label: string };
+/** ADR-0060: a paper the search found, which an answer from abstracts cites. */
+type BeyondPaper = {
+  title: string;
+  year: number | null;
+  venue: string | null;
+  doi: string | null;
+  inLibrary: boolean;
+  reference: { raw: string; doi?: string };
+};
+
+type Citation = {
+  key: string;
+  sourceId: string;
+  chunkId: string;
+  label: string;
+  /** Present when the citation is a search abstract, not a library passage (ADR-0060). */
+  beyond?: BeyondPaper;
+};
 
 type Turn = {
   id: string;
@@ -31,7 +48,13 @@ type Turn = {
   citations?: Citation[];
   outcome?: string;
   /** The scope the question was asked in, which the advice under a refusal depends on. */
-  scope?: Scope;
+  scope?: Scope | 'beyond';
+  /** ADR-0060, "Ask first": the refusal may be searched beyond the library. */
+  offerBeyond?: boolean;
+  /** The question a refusal answered, so the offer can send it again. */
+  question?: string;
+  /** ADR-0060: written from search abstracts; the line under the answer says so. */
+  beyond?: { papers: number; outsideLibrary: number; note: string };
   /** The student's thumbs; only answers the server stored (it sent their id) can be rated. */
   rating?: 1 | -1;
   stored?: boolean;
@@ -213,6 +236,10 @@ export function ChatPanel({
   }
   const [webResults, setWebResults] = useState<WebResult[] | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
+  /** ADR-0060: what a beyond-library question is doing right now, in order. */
+  const [steps, setSteps] = useState<string[]>([]);
+  /** Papers from an answer's abstracts the student has added, by DOI or title. */
+  const [addedPapers, setAddedPapers] = useState<Set<string>>(() => new Set());
 
   const shown = turns.length;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when the thread grows
@@ -224,14 +251,33 @@ export function ChatPanel({
     event.preventDefault();
     const message = draft.trim();
     if (!message || busy) return;
-    setBusy(true);
-    setError(null);
     setDraft('');
     setSavingPrompt(null);
+    await send(message, scope);
+  }
+
+  /**
+   * ADR-0060: the offer under a refused library question. The question is already in the thread,
+   * so it is not added again; the server stores it with the answer.
+   */
+  async function searchBeyond(turn: Turn) {
+    if (!turn.question || busy) return;
+    setTurns((list) => list.map((t) => (t.id === turn.id ? { ...t, offerBeyond: false } : t)));
+    await send(turn.question, 'beyond', { repeat: true });
+  }
+
+  async function send(
+    message: string,
+    askScope: Scope | 'beyond',
+    options: { repeat?: boolean } = {},
+  ) {
+    setBusy(true);
+    setError(null);
+    setSteps([]);
 
     // The web scope is not a conversation. It returns papers, so it does not join the thread,
     // does not stream, and costs no cap unit — there is no model call behind it.
-    if (scope === 'web') {
+    if (askScope === 'web') {
       try {
         const found = await api<{ results: WebResult[] }>('/chat/web', {
           method: 'POST',
@@ -250,7 +296,9 @@ export function ChatPanel({
 
     // The server assigns its own id when it stores the turn; this one only has to be unique
     // in this list until the thread is reloaded.
-    setTurns((list) => [...list, { id: crypto.randomUUID(), role: 'user', text: message }]);
+    if (!options.repeat) {
+      setTurns((list) => [...list, { id: crypto.randomUUID(), role: 'user', text: message }]);
+    }
     setStreaming('');
 
     try {
@@ -262,8 +310,8 @@ export function ChatPanel({
           documentId,
           message,
           filters,
-          scope,
-          ...(scope === 'library' && mentions.mentions.length > 0
+          scope: askScope,
+          ...(askScope === 'library' && mentions.mentions.length > 0
             ? { sourceIds: mentions.mentions.map((m) => m.id) }
             : {}),
         }),
@@ -291,10 +339,15 @@ export function ChatPanel({
           const dataLine = /^data:\s*(.*)$/m.exec(frame)?.[1];
           if (!eventName || !dataLine) continue;
           const data = JSON.parse(dataLine) as Record<string, unknown>;
-          if (eventName === 'token') {
+          if (eventName === 'step') {
+            // ADR-0060: searching, reading N abstracts, writing — each replaces "now" and the
+            // earlier ones stay ticked.
+            setSteps((list) => [...list, String(data.text ?? '')]);
+          } else if (eventName === 'token') {
             text += String(data.t ?? '');
             setStreaming(text);
           } else if (eventName === 'done') {
+            const beyond = data.beyond as Turn['beyond'] | undefined;
             setTurns((list) => [
               ...list,
               {
@@ -304,10 +357,14 @@ export function ChatPanel({
                 text: String(data.text ?? text),
                 citations: (data.citations as Citation[]) ?? [],
                 outcome: String(data.outcome ?? 'answered'),
-                scope,
+                // An automatic search ("On") answers a library question from abstracts.
+                scope: beyond ? 'beyond' : askScope,
+                ...(beyond ? { beyond } : {}),
+                ...(data.offerBeyond === true ? { offerBeyond: true, question: message } : {}),
               },
             ]);
             setStreaming('');
+            setSteps([]);
           } else if (eventName === 'error') {
             throw new Error(String(data.message ?? 'The answer did not finish.'));
           }
@@ -319,6 +376,7 @@ export function ChatPanel({
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : (e as Error).message,
       );
       setStreaming('');
+      setSteps([]);
     } finally {
       setBusy(false);
     }
@@ -335,14 +393,38 @@ export function ChatPanel({
     setAdding(result.title);
     setError(null);
     try {
-      await api(`/documents/${documentId}/sources/resolve`, {
-        method: 'POST',
-        body: JSON.stringify({ references: [result.reference] }),
-      });
+      await resolveReference(result.reference);
       setWebResults(
         (list) =>
           list?.map((r) => (r.title === result.title ? { ...r, inLibrary: true } : r)) ?? null,
       );
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not add that paper.',
+      );
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  function resolveReference(reference: { raw: string; doi?: string }) {
+    return api(`/documents/${documentId}/sources/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ references: [reference] }),
+    });
+  }
+
+  /**
+   * ADR-0060: Add on a paper an answer read from its abstract. The same resolve path; once the
+   * paper is fetched and read it is an ordinary library source, and a Library question cites it.
+   */
+  async function addBeyondPaper(paper: BeyondPaper) {
+    const key = paper.doi ?? paper.title;
+    setAdding(key);
+    setError(null);
+    try {
+      await resolveReference(paper.reference);
+      setAddedPapers((set) => new Set(set).add(key));
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not add that paper.',
@@ -627,9 +709,31 @@ export function ChatPanel({
                 Add sources from the Discover tab, then ask again.
               </p>
             ) : null}
+            {/* ADR-0060, "Ask first": one press sends the same question to the search. */}
+            {turn.offerBeyond && turn.question ? (
+              <button
+                type="button"
+                data-testid="chat-search-beyond"
+                disabled={busy}
+                onClick={() => void searchBeyond(turn)}
+                className="mt-2 rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+              >
+                Search beyond your library for this?
+              </button>
+            ) : null}
+            {turn.beyond ? (
+              <BeyondPapers
+                turn={turn}
+                added={addedPapers}
+                adding={adding}
+                onAdd={(paper) => void addBeyondPaper(paper)}
+              />
+            ) : null}
             {turn.role === 'assistant' && turn.text.trim() ? (
               <div className="mt-2 flex items-center gap-3 text-xs">
-                {onAddToDocument && turn.outcome !== 'not-enough' ? (
+                {/* An answer from abstracts cites papers that are not sources yet; it goes into
+                    the thesis only once they are added and asked about on Library. */}
+                {onAddToDocument && turn.outcome !== 'not-enough' && !turn.beyond ? (
                   <button
                     type="button"
                     data-testid="chat-add-to-document"
@@ -673,6 +777,18 @@ export function ChatPanel({
             ) : null}
           </div>
         ))}
+        {steps.length > 0 ? (
+          <ol data-testid="chat-steps" className="space-y-0.5 px-1 text-xs text-muted">
+            {steps.map((step, i) => (
+              <li key={step} data-done={i < steps.length - 1}>
+                <span aria-hidden className="mr-1.5 inline-block w-3">
+                  {i < steps.length - 1 ? '✓' : '·'}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        ) : null}
         {streaming ? (
           <div className="rounded-lg bg-surface px-3 py-2 text-sm text-muted">{streaming}</div>
         ) : null}
@@ -817,6 +933,20 @@ function AnswerText({
         }
         const citation = citations.find((c) => c.key === token.key);
         if (!citation) return null;
+        // ADR-0060: an abstract the search found has no passage to open; it is labelled for what
+        // it is, and the list under the answer is where it is added.
+        if (citation.beyond) {
+          return (
+            <span
+              key={`c-${at}`}
+              data-testid="chat-beyond-cite"
+              title={citation.beyond.inLibrary ? 'In your library' : 'Not in your library'}
+              className="mx-0.5 rounded border border-dashed border-line-strong px-1 text-muted"
+            >
+              {citation.label}
+            </span>
+          );
+        }
         return (
           <button
             key={`c-${at}`}
@@ -829,5 +959,80 @@ function AnswerText({
         );
       })}
     </p>
+  );
+}
+
+/**
+ * ADR-0060: under an answer written from search abstracts — the line that says so, and each paper
+ * it cited, marked "Not in your library" with Add. Adding goes through the ordinary resolve path;
+ * once the paper is read it is a library source, and the same question on Library cites it.
+ */
+function BeyondPapers({
+  turn,
+  added,
+  adding,
+  onAdd,
+}: {
+  turn: Turn;
+  added: ReadonlySet<string>;
+  adding: string | null;
+  onAdd: (paper: BeyondPaper) => void;
+}) {
+  const cited = new Map<string, BeyondPaper>();
+  for (const citation of turn.citations ?? []) {
+    if (citation.beyond) cited.set(citation.beyond.doi ?? citation.beyond.title, citation.beyond);
+  }
+  return (
+    <div data-testid="chat-beyond" className="mt-2 border-t border-line pt-2">
+      <p data-testid="chat-beyond-note" className="text-xs text-muted">
+        {turn.beyond?.note}
+      </p>
+      {cited.size > 0 ? (
+        <ul className="mt-1.5 space-y-1.5">
+          {[...cited].map(([key, paper]) => (
+            <li key={key} data-testid="chat-beyond-paper" className="text-xs">
+              <span className="font-medium text-ink">{paper.title}</span>
+              <span className="text-muted">
+                {[paper.venue, paper.year].filter(Boolean).length > 0
+                  ? ` · ${[paper.venue, paper.year].filter(Boolean).join(' · ')}`
+                  : ''}
+              </span>
+              <span className="mt-0.5 flex items-center gap-3">
+                {paper.inLibrary ? (
+                  <span className="text-ok">In your library</span>
+                ) : added.has(key) ? (
+                  <span className="text-ok">
+                    Added. Once it has been read, ask on Library to cite it.
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-warn">Not in your library</span>
+                    <button
+                      type="button"
+                      data-testid="chat-beyond-add"
+                      disabled={adding === key}
+                      onClick={() => onAdd(paper)}
+                      className="font-semibold text-accent underline disabled:opacity-50"
+                    >
+                      {adding === key ? 'Adding…' : 'Add'}
+                    </button>
+                  </>
+                )}
+                {paper.doi ? (
+                  <a
+                    href={`https://doi.org/${paper.doi}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted underline hover:text-ink"
+                  >
+                    View paper
+                  </a>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }

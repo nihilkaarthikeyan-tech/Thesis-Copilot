@@ -56,7 +56,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 |---|---|
 | One-button peer review of any text: scores, weaknesses, strengths, questions, anchored comments | Done 2026-10-04 — Examiner review of a chapter, flags on each sentence (ADR-0056; the chapter build's examiner, no new prompt) |
 | Gap analysis by claim (supported / contested / under-explored) on top of the theme map | |
-| Chat that can search beyond the library (asks first), shows its steps | |
+| Chat that can search beyond the library (asks first), shows its steps | Done 2026-10-04 — ADR-0060: the off-topic refusal offers the search (or runs it, setting On); answers from up to 8 abstracts through the existing A.4 prompt, steps shown, each paper "Not in your library" with Add. Playwright spec written, not run; real-model check in PENDING |
 | More selection actions (counter-argument, hedge/strengthen a claim, tense, to table, translate) | |
 | Library: duplicate detection, missing-PDF view | Done 2026-10-04 — possible duplicates with Merge (snapshots first), "Without full text" with Add the PDF |
 | Interface language (Hindi, Tamil…) | |

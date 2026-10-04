@@ -242,6 +242,17 @@ since each re-index spends a little on embeddings).
 - [ ] The prompt was evaluated on typeset images only (8 of 8). Take three or four phone photos —
       a handwritten equation, a textbook page, a whiteboard — and try "Or take a photo of it" in
       the equation field. The agent will not fabricate handwriting to test with.
+## Chat beyond the library (ADR-0060, 2026-10-04)
+
+- [ ] **Run `apps/web/e2e/chat-beyond.spec.ts`** with the stack up on :3000/:3001 from this
+      branch. It was written but not run: the dev stack was in use by someone else, running
+      `main`. It mocks the two chat streams and `/sources/resolve`; the Settings test uses the
+      real API.
+- [ ] **One real question, on the real models, before release.** Ask something a fresh library
+      has nothing on (Ask first → press the offer). Check the steps show, the answer cites only
+      the papers listed under it, and that A.4 (written for library passages, evaluated on them in
+      ADR-0038) answers sensibly from abstracts. The mock provider proves the plumbing, not the
+      answer. Costs one CHAT unit (~₹0.03) and one search from the OpenAlex daily budget.
 
 ## Accounts, keys and services
 

@@ -23,7 +23,7 @@ import {
 import { computeCallCost, type Env } from '@tc/config';
 import { isOffTopic } from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
-import { NotFoundError } from '../../common/errors.js';
+import { ForbiddenError, NotFoundError } from '../../common/errors.js';
 import {
   aiCallLatency,
   aiCostMicroInr,
@@ -35,10 +35,29 @@ import {
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
+import {
+  BEYOND,
+  BEYOND_EMPTY_REPLY,
+  BEYOND_NOT_ENOUGH_REPLY,
+  type BeyondPaper,
+  type BeyondSetting,
+  beyondFilters,
+  beyondNote,
+  beyondSettingOf,
+  passagesFromWebResults,
+  readingStep,
+  searchingStep,
+  WRITING_STEP,
+} from './beyond-library.js';
 import { ContextService } from './context.service.js';
 import { passagesFromChapters } from './document-scope.js';
+import { WebScopeService } from './web-scope.service.js';
 
-export type ChatScope = 'library' | 'document';
+/**
+ * 'beyond' (ADR-0060) answers from the abstracts a scholarly search returns, through the same
+ * A.4 prompt, when the library has nothing on the question.
+ */
+export type ChatScope = 'library' | 'document' | 'beyond';
 
 export type ChatInput = {
   documentId: string;
@@ -56,8 +75,25 @@ export type ChatInput = {
   sourceIds?: string[];
 };
 
+/**
+ * A citation in an answer. A library one opens its passage; a `beyond` one (ADR-0060) is a paper
+ * the search found, with an empty `sourceId` — not citable in the thesis until it is added.
+ */
+export type ChatCitation = {
+  key: string;
+  sourceId: string;
+  chunkId: string;
+  label: string;
+  beyond?: BeyondPaper;
+};
+
+/** What a beyond-library answer read, for the line under it. */
+export type BeyondSummary = { papers: number; outsideLibrary: number; note: string };
+
 export type ChatEvent =
   | { event: 'start'; data: { turn: number } }
+  /** ADR-0060: what a beyond-library question is doing, shown while it runs. */
+  | { event: 'step'; data: { id: 'search' | 'read' | 'write'; text: string } }
   | { event: 'token'; data: { t: string } }
   | {
       event: 'done';
@@ -66,9 +102,16 @@ export type ChatEvent =
         turnId?: string;
         text: string;
         outcome: string;
-        citations: Array<{ key: string; sourceId: string; chunkId: string; label: string }>;
+        citations: ChatCitation[];
         passagesUsed: number;
         latencyMs: number;
+        /**
+         * ADR-0060, "Ask first": a library question refused as off-topic may be searched beyond
+         * the library, on the student's press.
+         */
+        offerBeyond?: boolean;
+        /** Present on an answer written from search abstracts. */
+        beyond?: BeyondSummary;
       };
     };
 
@@ -83,7 +126,15 @@ const KEEP_TURNS = CHAT.keepTurns * 2;
  * index is not an identity; the id is what the panel keys its list on.
  */
 /** `rating`: the student's thumbs on an answer (2026-10-04); absent when not rated. */
-export type StoredTurn = ChatTurn & { id: string; rating?: 1 | -1 };
+export type StoredTurn = ChatTurn & {
+  id: string;
+  rating?: 1 | -1;
+  citations?: ChatCitation[];
+  /** ADR-0060: the answer was written from search abstracts, not the library. */
+  beyond?: BeyondSummary;
+};
+
+type ChapterForChat = Parameters<ContextService['memoryBlock']>[0];
 
 @Injectable()
 export class ChatService {
@@ -93,6 +144,7 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
     private readonly context: ContextService,
+    private readonly web: WebScopeService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -138,6 +190,16 @@ export class ChatService {
     });
     if (!chapter) throw new NotFoundError('That document has no chapters yet');
 
+    const scope: ChatScope = input.scope ?? 'library';
+    const beyondSetting = scope === 'document' ? 'off' : await this.beyondSetting(user.id);
+    // Refused before the unit is taken, so it answers as JSON (`streamSse` pulls the first event
+    // before the stream opens) and costs nothing.
+    if (scope === 'beyond' && beyondSetting === 'off') {
+      throw new ForbiddenError(
+        'Searching beyond your library is turned off. Turn it on in Settings to ask this way.',
+      );
+    }
+
     const cap = await this.usage.consume(
       user.id,
       user.plan as Parameters<UsageService['consume']>[1],
@@ -152,7 +214,11 @@ export class ChatService {
     yield { event: 'start', data: { turn: history.length / 2 + 1 } };
 
     const startedAt = Date.now();
-    const scope: ChatScope = input.scope ?? 'library';
+
+    if (scope === 'beyond') {
+      yield* this.answerBeyond(user, input, document, chapter, history, startedAt, signal);
+      return;
+    }
 
     // The document scope answers from the student's own chapters, which are passed directly
     // rather than retrieved: they change on every keystroke, so an index of them would be stale
@@ -213,6 +279,16 @@ export class ChatService {
       // Named papers with no text at all: neither off-topic nor filtered, and the fix is different.
       const namedEmpty =
         scope === 'library' && (input.sourceIds?.length ?? 0) > 0 && retrieved.candidates === 0;
+      // ADR-0060. Only the off-topic refusal is offered beyond the library: a filtered-out or a
+      // named-empty question is about the library, and its fix is on this screen.
+      const offTopic = scope === 'library' && !filteredOut && !namedEmpty;
+      if (offTopic && beyondSetting === 'on') {
+        // "On": the same question goes to the search, on the unit already taken — still one CHAT
+        // unit a question, refunded there if the search has nothing to read.
+        chatOffTopic.inc();
+        yield* this.answerBeyond(user, input, document, chapter, history, startedAt, signal);
+        return;
+      }
       await this.usage.refund(user.id, 'CHAT');
       const latencyMs = Date.now() - startedAt;
       const best = passages.reduce((m, p) => Math.max(m, p.cosine), 0);
@@ -249,6 +325,7 @@ export class ChatService {
           citations: [],
           passagesUsed: 0,
           latencyMs,
+          ...(offTopic && beyondSetting === 'ask' ? { offerBeyond: true } : {}),
         },
       };
       return;
@@ -265,47 +342,13 @@ export class ChatService {
       signal,
     });
 
-    let raw = '';
-    let ttfbMs: number | null = null;
-    let modelId = this.providers.llm.modelIdFor('fast');
-    try {
-      for await (const chunk of this.providers.llm.stream(request)) {
-        if (signal.aborted) break;
-        if (chunk.type === 'text') {
-          if (ttfbMs === null) {
-            ttfbMs = Date.now() - startedAt;
-            aiTtfb.observe({ action: 'CHAT' }, ttfbMs);
-          }
-          raw += chunk.text;
-          yield { event: 'token', data: { t: chunk.text } };
-        } else {
-          modelId = chunk.modelId;
-          await this.log(
-            user.id,
-            input.documentId,
-            modelId,
-            chunk.usage,
-            Date.now() - startedAt,
-            true,
-          );
-        }
-      }
-    } catch (error) {
-      await this.usage.refund(user.id, 'CHAT');
-      await this.log(
-        user.id,
-        input.documentId,
-        modelId,
-        null,
-        Date.now() - startedAt,
-        false,
-        error,
-      );
-      throw error;
-    }
-
-    const latencyMs = Date.now() - startedAt;
-    aiCallLatency.observe({ action: 'CHAT', tier: 'fast' }, latencyMs);
+    const { raw, latencyMs } = yield* this.stream(
+      user.id,
+      input.documentId,
+      request,
+      startedAt,
+      signal,
+    );
 
     const processed = postProcessChat(
       raw,
@@ -317,7 +360,7 @@ export class ChatService {
     }
 
     // The keys map back to real ids so a citation in the answer opens the passage (FR-4.9).
-    const citations = processed.cited.flatMap((key) => {
+    const citations: ChatCitation[] = processed.cited.flatMap((key) => {
       const real = retrieved.byKey.get(key);
       const passage = passages.find((p) => p.id === key);
       return real
@@ -350,6 +393,183 @@ export class ChatService {
         latencyMs,
       },
     };
+  }
+
+  /**
+   * ADR-0060: the question goes to the scholarly search (`WebScopeService`, the path
+   * `POST /chat/web` uses — no model), the abstracts it returns become A.4's passages, and the
+   * answer is written by the same chat prompt, so `postProcessChat` strips any citation that is
+   * not one of those abstracts exactly as it does for the library (§10.6).
+   *
+   * The CHAT unit has already been taken by the caller; it is refunded here when the search gives
+   * nothing to read, and on a failure, as the library path does.
+   */
+  private async *answerBeyond(
+    user: { id: string },
+    input: ChatInput,
+    document: { meta: unknown },
+    chapter: ChapterForChat,
+    history: StoredTurn[],
+    startedAt: number,
+    signal: AbortSignal,
+  ): AsyncGenerator<ChatEvent> {
+    yield { event: 'step', data: { id: 'search', text: searchingStep(this.web.indexNames()) } };
+
+    const filters = beyondFilters(input.filters ?? {});
+    let built: ReturnType<typeof passagesFromWebResults>;
+    let memory: Awaited<ReturnType<ContextService['memoryBlock']>>;
+    try {
+      const [found, block] = await Promise.all([
+        this.web.search(user.id, input.documentId, input.message, signal, BEYOND.candidates),
+        this.context.memoryBlock(chapter),
+      ]);
+      built = passagesFromWebResults(found.results, filters);
+      memory = block;
+    } catch (error) {
+      await this.usage.refund(user.id, 'CHAT');
+      throw error;
+    }
+
+    if (built.passages.length === 0) {
+      // Nothing to read, so no model call and no charge — the relevance floor's refund.
+      await this.usage.refund(user.id, 'CHAT');
+      this.logger.log({ documentId: input.documentId }, 'chat beyond: nothing with an abstract');
+      yield {
+        event: 'done',
+        data: {
+          text: BEYOND_EMPTY_REPLY,
+          outcome: 'beyond-empty',
+          citations: [],
+          passagesUsed: 0,
+          latencyMs: Date.now() - startedAt,
+        },
+      };
+      return;
+    }
+
+    yield { event: 'step', data: { id: 'read', text: readingStep(built.passages.length) } };
+
+    const request = buildChatRequest({
+      memoryBlock: memory.text,
+      question: input.message,
+      history,
+      passages: built.passages,
+      filters,
+      userId: user.id,
+      documentId: input.documentId,
+      signal,
+    });
+    yield { event: 'step', data: { id: 'write', text: WRITING_STEP } };
+
+    const { raw, latencyMs } = yield* this.stream(
+      user.id,
+      input.documentId,
+      request,
+      startedAt,
+      signal,
+    );
+
+    const processed = postProcessChat(
+      raw,
+      built.passages.map((p) => p.id),
+    );
+    for (const key of processed.hallucinated) {
+      hallucinatedCite.inc();
+      this.logger.warn({ documentId: input.documentId, key }, 'HALLUCINATED_CITE');
+    }
+    // A.4's "not enough" reply names the library; here it was the search that had nothing.
+    const notEnough = processed.outcome === 'not-enough';
+    const text = notEnough ? BEYOND_NOT_ENOUGH_REPLY : processed.text;
+    const citations: ChatCitation[] = notEnough
+      ? []
+      : processed.cited.flatMap((key) => {
+          const paper = built.papers.get(key);
+          const passage = built.passages.find((p) => p.id === key);
+          return paper
+            ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }]
+            : [];
+        });
+    const outsideLibrary = [...built.papers.values()].filter((p) => !p.inLibrary).length;
+    const beyond: BeyondSummary = {
+      papers: built.passages.length,
+      outsideLibrary,
+      note: beyondNote(built.passages.length, outsideLibrary),
+    };
+
+    const answerId = randomUUID();
+    const turns: StoredTurn[] = [
+      ...history,
+      { id: randomUUID(), role: 'user' as const, text: input.message },
+      {
+        id: answerId,
+        role: 'assistant' as const,
+        text,
+        citations,
+        ...(notEnough ? {} : { beyond }),
+      },
+    ].slice(-KEEP_TURNS);
+    const meta = (document.meta as Record<string, unknown> | null) ?? {};
+    await this.prisma.document.update({
+      where: { id: input.documentId },
+      data: { meta: { ...meta, chat: { turns } } },
+    });
+
+    yield {
+      event: 'done',
+      data: {
+        turnId: answerId,
+        text,
+        outcome: notEnough ? 'beyond-not-enough' : processed.outcome,
+        citations,
+        passagesUsed: built.passages.length,
+        latencyMs,
+        ...(notEnough ? {} : { beyond }),
+      },
+    };
+  }
+
+  /** The model call and its logging, shared by the library and beyond paths. */
+  private async *stream(
+    userId: string,
+    documentId: string,
+    request: ReturnType<typeof buildChatRequest>,
+    startedAt: number,
+    signal: AbortSignal,
+  ): AsyncGenerator<ChatEvent, { raw: string; latencyMs: number }> {
+    let raw = '';
+    let ttfbMs: number | null = null;
+    let modelId = this.providers.llm.modelIdFor('fast');
+    try {
+      for await (const chunk of this.providers.llm.stream(request)) {
+        if (signal.aborted) break;
+        if (chunk.type === 'text') {
+          if (ttfbMs === null) {
+            ttfbMs = Date.now() - startedAt;
+            aiTtfb.observe({ action: 'CHAT' }, ttfbMs);
+          }
+          raw += chunk.text;
+          yield { event: 'token', data: { t: chunk.text } };
+        } else {
+          modelId = chunk.modelId;
+          await this.log(userId, documentId, modelId, chunk.usage, Date.now() - startedAt, true);
+        }
+      }
+    } catch (error) {
+      await this.usage.refund(userId, 'CHAT');
+      await this.log(userId, documentId, modelId, null, Date.now() - startedAt, false, error);
+      throw error;
+    }
+    const latencyMs = Date.now() - startedAt;
+    aiCallLatency.observe({ action: 'CHAT', tier: 'fast' }, latencyMs);
+    return { raw, latencyMs };
+  }
+
+  private async beyondSetting(userId: string): Promise<BeyondSetting> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    return beyondSettingOf(row?.settings);
   }
 
   /**
