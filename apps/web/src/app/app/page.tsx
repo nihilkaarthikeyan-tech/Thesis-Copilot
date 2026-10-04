@@ -21,6 +21,7 @@ import {
   StartingStyle,
   type StartingStyleChoice,
   saveStartingStyle,
+  useDefaultStartingStyle,
 } from '@/components/onboarding/StartingStyle';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { TrialNotice } from '@/components/TrialNotice';
@@ -78,6 +79,7 @@ export default function DocumentListPage() {
   const [title, setTitle] = useState('');
   const [entryPath, setEntryPath] = useState<'A_TOPIC' | 'B_PAPER'>('B_PAPER');
   const [citationStyle, setCitationStyle] = useState<StartingStyleChoice>('');
+  useDefaultStartingStyle(citationStyle, setCitationStyle);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */

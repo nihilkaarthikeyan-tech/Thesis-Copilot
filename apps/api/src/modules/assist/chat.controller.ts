@@ -82,6 +82,14 @@ const settingsBody = z.object({
   autoCite: z.boolean().optional(),
   /** ADR-0037: find papers on the section when the library has none. On unless turned off. */
   autoSources: z.boolean().optional(),
+  /**
+   * 2026-10-04 (Jenni's "document defaults"): the style a new thesis starts on. Only the five
+   * the start screen offers; null clears it (APA 7, as before).
+   */
+  defaultCitationStyle: z
+    .enum(['apa', 'harvard', 'ieee', 'vancouver', 'chicago-author-date'])
+    .nullable()
+    .optional(),
   chatFilters: z
     .object({
       yearFrom: z.number().int().nullish(),

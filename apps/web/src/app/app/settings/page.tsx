@@ -14,6 +14,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { STARTING_STYLES } from '@/components/onboarding/StartingStyle';
 import { useHighContrast } from '@/components/theme';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
@@ -24,7 +25,12 @@ type Usage = {
   actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
 };
 
-type Settings = { automaticSuggest?: boolean; autoCite?: boolean; autoSources?: boolean };
+type Settings = {
+  automaticSuggest?: boolean;
+  autoCite?: boolean;
+  autoSources?: boolean;
+  defaultCitationStyle?: string | null;
+};
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -206,6 +212,33 @@ export default function SettingsPage() {
           >
             {settings?.autoSources !== false ? 'On' : 'Off'}
           </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="eyebrow">Citation style for new theses</h2>
+            <p className="mt-1 text-sm">
+              Chosen for you when you start a thesis; you can still change it there or in the
+              Citations tab. Theses you already have keep their own style.
+            </p>
+          </div>
+          <select
+            aria-label="Citation style for new theses"
+            data-testid="default-citation-style"
+            disabled={busy || settings === null}
+            value={settings?.defaultCitationStyle ?? ''}
+            onChange={(e) => void save({ defaultCitationStyle: e.target.value || null })}
+            className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+          >
+            <option value="">APA 7 (the default)</option>
+            {STARTING_STYLES.filter((style) => style.id !== 'apa').map((style) => (
+              <option key={style.id} value={style.id}>
+                {style.label}
+              </option>
+            ))}
+          </select>
         </div>
       </section>
 

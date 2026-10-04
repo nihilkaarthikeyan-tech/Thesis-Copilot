@@ -14,6 +14,7 @@ import {
   StartingStyle,
   type StartingStyleChoice,
   saveStartingStyle,
+  useDefaultStartingStyle,
 } from '@/components/onboarding/StartingStyle';
 import { Button } from '@/components/ui/button';
 import { ApiError, api } from '@/lib/api';
@@ -40,6 +41,7 @@ export default function NewThesisPage() {
   const [entryPath, setEntryPath] = useState<EntryPath>('B_PAPER');
   const [title, setTitle] = useState('');
   const [citationStyle, setCitationStyle] = useState<StartingStyleChoice>('');
+  useDefaultStartingStyle(citationStyle, setCitationStyle);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

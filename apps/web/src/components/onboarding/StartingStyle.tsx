@@ -14,7 +14,7 @@
  * one bibliography entry for an example reference (2026-10-04, `StylePreview`).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StylePreview } from '@/components/StylePreview';
 import { Hint } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
@@ -48,6 +48,34 @@ export async function saveStartingStyle(
   } catch {
     // Deliberately ignored; see above.
   }
+}
+
+/**
+ * Pre-selects the student's default style from Settings (2026-10-04, "document defaults"), once,
+ * and only while nothing has been chosen on this form.
+ */
+export function useDefaultStartingStyle(
+  value: StartingStyleChoice,
+  onChange: (next: StartingStyleChoice) => void,
+): void {
+  const [applied, setApplied] = useState(false);
+  useEffect(() => {
+    if (applied) return;
+    let live = true;
+    api<{ defaultCitationStyle?: string | null }>('/settings')
+      .then((s) => {
+        if (!live) return;
+        setApplied(true);
+        const id = s.defaultCitationStyle;
+        if (value === '' && id && STARTING_STYLES.some((style) => style.id === id)) {
+          onChange(id as StartingStyleChoice);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [applied, value, onChange]);
 }
 
 export function StartingStyle({
