@@ -12,6 +12,7 @@ import { tokenizeAiText } from '@tc/ui';
 import katex from 'katex';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { answerPlainText } from '@/lib/chat-copy';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
 import { matchPrompts, promptQuery, type SavedPrompt, suggestPromptTitle } from '@/lib/prompts';
 import { cn } from '@/lib/utils';
@@ -151,6 +152,26 @@ export function ChatPanel({
     const timer = setTimeout(() => setPromptNotice(null), 5_000);
     return () => clearTimeout(timer);
   }, [promptNotice]);
+  /** Which answer was just copied, and what to say on its button for a moment. */
+  const [copied, setCopied] = useState<{ id: string; message: string } | null>(null);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(null), 2_000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  /**
+   * Copies an answer as plain text: citations as the labels on screen, equations as their LaTeX
+   * (`lib/chat-copy.ts`). Jenni's chat has Copy; ours only had "Add to document".
+   */
+  async function copyAnswer(turn: Turn) {
+    try {
+      await navigator.clipboard.writeText(answerPlainText(turn.text, turn.citations ?? []));
+      setCopied({ id: turn.id, message: 'Copied' });
+    } catch {
+      // No clipboard permission (an insecure origin, or the browser refused): say so plainly.
+      setCopied({ id: turn.id, message: 'Could not copy' });
+    }
+  }
   const [webResults, setWebResults] = useState<WebResult[] | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
@@ -566,18 +587,27 @@ export function ChatPanel({
                 Add sources from the Discover tab, then ask again.
               </p>
             ) : null}
-            {turn.role === 'assistant' &&
-            onAddToDocument &&
-            turn.outcome !== 'not-enough' &&
-            turn.text.trim() ? (
-              <button
-                type="button"
-                data-testid="chat-add-to-document"
-                className="mt-2 text-xs font-medium text-accent underline"
-                onClick={() => onAddToDocument(turn.text, turn.citations ?? [])}
-              >
-                Add to document
-              </button>
+            {turn.role === 'assistant' && turn.text.trim() ? (
+              <div className="mt-2 flex items-center gap-3 text-xs">
+                {onAddToDocument && turn.outcome !== 'not-enough' ? (
+                  <button
+                    type="button"
+                    data-testid="chat-add-to-document"
+                    className="font-medium text-accent underline"
+                    onClick={() => onAddToDocument(turn.text, turn.citations ?? [])}
+                  >
+                    Add to document
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  data-testid="chat-copy"
+                  className="text-muted underline hover:text-ink"
+                  onClick={() => void copyAnswer(turn)}
+                >
+                  {copied?.id === turn.id ? copied.message : 'Copy'}
+                </button>
+              </div>
             ) : null}
           </div>
         ))}
