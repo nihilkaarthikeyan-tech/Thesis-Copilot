@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react';
 import { StylePreview } from '@/components/StylePreview';
 import { Hint } from '@/components/ui/primitives';
+import { useT } from '@/i18n/react';
 import { api } from '@/lib/api';
 
 export const STARTING_STYLES = [
@@ -85,16 +86,17 @@ export function StartingStyle({
   value: StartingStyleChoice;
   onChange: (next: StartingStyleChoice) => void;
 }) {
+  const { t } = useT();
   const options: Array<{ id: Exclude<StartingStyleChoice, ''>; label: string }> = [
     ...STARTING_STYLES,
-    { id: 'other', label: 'Other…' },
+    { id: 'other', label: t('style.other') },
   ];
   const [hovered, setHovered] = useState<string | null>(null);
   const previewed = hovered ?? (value === '' || value === 'other' ? null : value);
   return (
     <fieldset className="flex flex-col gap-2 border-0 p-0" data-testid="starting-style">
       <legend className="mb-1 text-[13px] font-semibold text-ink">
-        Citation style <span className="font-normal text-muted">(optional)</span>
+        {t('style.legend')} <span className="font-normal text-muted">{t('style.optional')}</span>
       </legend>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
@@ -124,11 +126,7 @@ export function StartingStyle({
         })}
       </div>
       <StylePreview styleId={previewed} />
-      <Hint>
-        {value === 'other'
-          ? 'Once the thesis is created, choose from about ten thousand styles in the editor’s Citations tab. Until then it uses APA 7.'
-          : 'The five most asked for. Skip it to keep APA 7; you can change it at any time and every citation follows.'}
-      </Hint>
+      <Hint>{value === 'other' ? t('style.hintOther') : t('style.hintDefault')}</Hint>
     </fieldset>
   );
 }

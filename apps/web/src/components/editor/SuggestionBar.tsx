@@ -21,6 +21,8 @@ import {
 import type { Editor } from '@tiptap/react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { MessageKey } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { api } from '@/lib/api';
 
 /** The presets: each is an instruction the guided suggestion already accepts. */
@@ -56,6 +58,18 @@ type HistoryEntry = { suggestionId: string; text: string; citations: SuggestionC
 type History = { anchor: number | null; entries: HistoryEntry[]; index: number };
 const NO_HISTORY: History = { anchor: -1, entries: [], index: -1 };
 
+/**
+ * What each preset's button says on screen (ADR-0061). The preset's `instruction` is what the
+ * model reads and stays in English whatever the interface language is.
+ */
+const REFINE_LABEL: Record<string, MessageKey> = {
+  Shorter: 'suggest.preset.shorter',
+  'More formal': 'suggest.preset.formal',
+  'Stay closer to my topic': 'suggest.preset.onTopic',
+  'Complete this paragraph': 'suggest.preset.complete',
+  'A contrasting finding': 'suggest.preset.contrast',
+};
+
 export function SuggestionBar({
   editor,
   onRefine,
@@ -67,6 +81,7 @@ export function SuggestionBar({
   /** The passage behind a citation, the same lookup as the hover card on a placed citation. */
   resolvePassage: (sourceId: string, chunkId: string | null) => Promise<CitationPassage | null>;
 }) {
+  const { t } = useT();
   const [status, setStatus] = useState<Status>('idle');
   const [menu, setMenu] = useState(false);
   const [citations, setCitations] = useState<SuggestionCitation[]>([]);
@@ -128,12 +143,12 @@ export function SuggestionBar({
       <button
         type="button"
         data-testid="suggest-floating"
-        aria-label="Suggest a continuation"
+        aria-label={t('suggest.floating')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.chain().focus().requestSuggestion().run()}
         className="fixed right-4 bottom-16 z-30 rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-accent-ink shadow-lg hover:bg-accent-hover lg:hidden"
       >
-        Suggest
+        {t('editor.suggest')}
       </button>
     );
   }
@@ -200,12 +215,14 @@ export function SuggestionBar({
         data-testid="suggestion-bar"
         className="pointer-events-auto relative flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 shadow-lg"
       >
-        <span className="text-[12px] text-muted">{shown ? 'Suggestion' : 'Writing…'}</span>
+        <span className="text-[12px] text-muted">
+          {shown ? t('suggest.suggestion') : t('suggest.writing')}
+        </span>
         {shown && history.entries.length > 1 ? (
           <span className="flex items-center gap-0.5" data-testid="suggestion-history">
             <button
               type="button"
-              aria-label="Previous suggestion"
+              aria-label={t('suggest.previous')}
               disabled={history.index <= 0}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => step(-1)}
@@ -214,11 +231,11 @@ export function SuggestionBar({
               ‹
             </button>
             <span className="text-[11.5px] tabular-nums text-muted">
-              {history.index + 1} of {history.entries.length}
+              {t('suggest.position', { n: history.index + 1, total: history.entries.length })}
             </span>
             <button
               type="button"
-              aria-label="Next suggestion"
+              aria-label={t('suggest.next')}
               disabled={history.index >= history.entries.length - 1}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => step(1)}
@@ -230,7 +247,7 @@ export function SuggestionBar({
         ) : null}
         {shown && chips.length > 0 ? (
           <span className="flex flex-wrap items-center gap-1" data-testid="suggestion-evidence">
-            <span className="text-[11px] text-muted">Evidence:</span>
+            <span className="text-[11px] text-muted">{t('suggest.evidence')}</span>
             {chips.map((c) => (
               <button
                 key={c.key}
@@ -240,7 +257,7 @@ export function SuggestionBar({
                 onClick={() => openEvidence(c)}
                 className="rounded bg-accent/10 px-1.5 py-0.5 text-[11.5px] text-accent underline"
               >
-                {c.rendered || 'source'}
+                {c.rendered || t('suggest.source')}
               </button>
             ))}
           </span>
@@ -252,7 +269,7 @@ export function SuggestionBar({
           onClick={() => editor.commands.acceptSuggestion()}
           className="rounded-md bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-accent-ink disabled:opacity-40"
         >
-          Accept
+          {t('suggest.accept')}
         </button>
         <button
           type="button"
@@ -261,7 +278,7 @@ export function SuggestionBar({
           onClick={() => editor.commands.acceptSuggestionWord()}
           className={button}
         >
-          One word
+          {t('suggest.oneWord')}
         </button>
         <button
           type="button"
@@ -271,7 +288,7 @@ export function SuggestionBar({
           onClick={() => setMenu((open) => !open)}
           className={button}
         >
-          Refine
+          {t('suggest.refine')}
         </button>
         <button
           type="button"
@@ -279,13 +296,13 @@ export function SuggestionBar({
           onClick={() => editor.commands.dismissSuggestion()}
           className={button}
         >
-          Dismiss
+          {t('common.dismiss')}
         </button>
         {shown && currentId ? (
           <span className="flex items-center gap-0.5" data-testid="suggestion-rating">
             <button
               type="button"
-              aria-label="Useful suggestion"
+              aria-label={t('suggest.useful')}
               aria-pressed={rating === 1}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => rate(1)}
@@ -295,7 +312,7 @@ export function SuggestionBar({
             </button>
             <button
               type="button"
-              aria-label="Not a useful suggestion"
+              aria-label={t('suggest.notUseful')}
               aria-pressed={rating === -1}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => rate(-1)}
@@ -311,9 +328,9 @@ export function SuggestionBar({
             className="absolute bottom-full left-0 mb-2 w-[min(32rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-[13px] shadow-lg"
           >
             {evidence.loading ? (
-              <p className="text-muted">Opening the passage…</p>
+              <p className="text-muted">{t('suggest.opening')}</p>
             ) : !evidence.passage ? (
-              <p className="text-muted">This passage could not be opened.</p>
+              <p className="text-muted">{t('suggest.couldNotOpen')}</p>
             ) : (
               <>
                 <p className="font-semibold">
@@ -330,9 +347,9 @@ export function SuggestionBar({
                 </p>
                 <p className="mt-1 text-[11.5px]">
                   {evidence.passage.record?.grounding === 'FULL_TEXT'
-                    ? 'We hold the full text of this paper.'
+                    ? t('suggest.fullText')
                     : evidence.passage.record?.grounding === 'ABSTRACT'
-                      ? 'We hold only the abstract of this paper.'
+                      ? t('suggest.abstractOnly')
                       : null}
                 </p>
                 {evidence.passage.record ? (
@@ -355,7 +372,7 @@ export function SuggestionBar({
                 <p className="mt-1 text-[11.5px] text-muted">
                   {[
                     evidence.passage.section,
-                    evidence.passage.page ? `page ${evidence.passage.page}` : null,
+                    evidence.passage.page ? t('suggest.page', { n: evidence.passage.page }) : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
@@ -368,7 +385,7 @@ export function SuggestionBar({
                         rel="noopener noreferrer"
                         className="underline"
                       >
-                        Open PDF
+                        {t('suggest.openPdf')}
                       </a>
                     </>
                   ) : null}
@@ -391,7 +408,9 @@ export function SuggestionBar({
                 onClick={() => ask(preset.instruction)}
                 className="block w-full rounded px-2 py-1.5 text-left text-[13px] hover:bg-sunk"
               >
-                {preset.label}
+                {REFINE_LABEL[preset.label]
+                  ? t(REFINE_LABEL[preset.label] as MessageKey)
+                  : preset.label}
               </button>
             ))}
             <button
@@ -409,11 +428,9 @@ export function SuggestionBar({
               }}
               className="block w-full rounded px-2 py-1.5 text-left text-[13px] hover:bg-sunk"
             >
-              Your own instruction…
+              {t('suggest.ownInstruction')}
             </button>
-            <p className="mt-1 px-2 text-[11px] text-muted">
-              Each refined suggestion uses one of your Assist suggestions.
-            </p>
+            <p className="mt-1 px-2 text-[11px] text-muted">{t('suggest.refineCost')}</p>
           </div>
         ) : null}
       </div>

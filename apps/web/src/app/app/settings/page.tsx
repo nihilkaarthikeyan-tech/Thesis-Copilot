@@ -16,6 +16,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { STARTING_STYLES } from '@/components/onboarding/StartingStyle';
 import { useHighContrast } from '@/components/theme';
+import { LANGUAGES, type Language, tNow } from '@/i18n';
+import { useLanguage, useT } from '@/i18n/react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 
@@ -31,6 +33,8 @@ type Settings = {
   autoSources?: boolean;
   emailWhenJobDone?: boolean;
   defaultCitationStyle?: string | null;
+  /** ADR-0061: the language of the screens, not of the thesis. */
+  interfaceLanguage?: Language;
 };
 
 export default function SettingsPage() {
@@ -38,6 +42,8 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [busy, setBusy] = useState(false);
   const [highContrast, setHighContrast] = useHighContrast();
+  const { t, rich } = useT();
+  const [language, setLanguage] = useLanguage();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -45,7 +51,7 @@ export default function SettingsPage() {
     api<Settings>('/settings')
       .then(setSettings)
       .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.problem.title : 'Could not load your settings.'),
+        setError(e instanceof ApiError ? e.problem.title : tNow('settings.loadError')),
       );
     api<Usage>('/usage/me')
       .then(setUsage)
@@ -64,7 +70,9 @@ export default function SettingsPage() {
       setSettings(updated);
       setSaved(true);
     } catch (e) {
-      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not save.');
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('settings.saveError'),
+      );
     } finally {
       setBusy(false);
     }
@@ -76,12 +84,12 @@ export default function SettingsPage() {
     <main className="mx-auto max-w-2xl px-6 py-12">
       <nav className="text-xs text-muted">
         <Link href="/app" className="hover:underline">
-          Theses
+          {t('common.theses')}
         </Link>{' '}
-        / Settings
+        / {t('common.settings')}
       </nav>
       <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
-        Settings
+        {t('common.settings')}
       </h1>
 
       {error ? (
@@ -91,31 +99,56 @@ export default function SettingsPage() {
       ) : null}
 
       <section className="mt-8 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="eyebrow">{t('settings.language')}</h2>
+            <p className="mt-1 text-sm text-muted">{t('settings.languageBody')}</p>
+          </div>
+          <select
+            aria-label={t('settings.language')}
+            data-testid="interface-language"
+            value={language}
+            onChange={(e) => {
+              const next = e.target.value as Language;
+              // The screen changes at once; the account keeps it for the next device.
+              setLanguage(next);
+              void save({ interfaceLanguage: next });
+            }}
+            className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+          >
+            {LANGUAGES.map((option) => (
+              <option key={option.id} value={option.id} lang={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="eyebrow">Suggest without my asking</h2>
+            <h2 className="eyebrow">{t('settings.auto.title')}</h2>
             <p className="mt-1 text-sm text-muted">
-              When this is on, a suggestion appears about a second after you stop typing, instead of
-              only when you press <kbd>Ctrl+/</kbd>. It never interrupts you mid-word, and it never
-              fires while a suggestion is already showing.
+              {rich('settings.auto.body', { key: <kbd>Ctrl+/</kbd> })}
             </p>
             {settings ? (
               <p className="mt-2 text-sm text-muted" data-testid="auto-suggest-state">
-                {settings.automaticSuggest
-                  ? 'It is on for you now. Turn it off here whenever you would rather ask for each suggestion yourself.'
-                  : 'It is off for you now. Turn it on here if you would like suggestions without asking.'}
+                {settings.automaticSuggest ? t('settings.auto.on') : t('settings.auto.off')}
               </p>
             ) : null}
             <p className="mt-2 text-sm">
-              <strong>What it costs:</strong> every suggestion counts as one Assist action, whether
-              you keep it or dismiss it — the same as pressing <kbd>Ctrl+/</kbd> yourself. Leaving
-              this on typically spends the month's allowance several times faster.
+              <strong>{t('settings.auto.costLabel')}</strong>{' '}
+              {rich('settings.auto.cost', { key: <kbd>Ctrl+/</kbd> })}
             </p>
             {assist ? (
               <p className="mt-2 text-sm text-muted" data-testid="assist-allowance">
-                You have used {assist.used} of {assist.cap} Assist suggestions this month —{' '}
-                {assist.remaining} left, resetting on{' '}
-                {usage ? new Date(usage.resetsAt).toLocaleDateString() : '—'}.
+                {t('settings.auto.allowance', {
+                  used: assist.used,
+                  cap: assist.cap,
+                  remaining: assist.remaining,
+                  date: usage ? new Date(usage.resetsAt).toLocaleDateString() : '—',
+                })}
               </p>
             ) : null}
           </div>
@@ -123,7 +156,7 @@ export default function SettingsPage() {
             type="button"
             role="switch"
             aria-checked={settings?.automaticSuggest === true}
-            aria-label="Suggest without my asking"
+            aria-label={t('settings.auto.title')}
             disabled={busy || settings === null}
             onClick={() => void save({ automaticSuggest: settings?.automaticSuggest !== true })}
             data-testid="auto-suggest-toggle"
@@ -133,12 +166,12 @@ export default function SettingsPage() {
                 : 'border border-line text-muted'
             }`}
           >
-            {settings?.automaticSuggest ? 'On' : 'Off'}
+            {settings?.automaticSuggest ? t('common.on') : t('common.off')}
           </button>
         </div>
         {saved ? (
           <p role="status" className="mt-3 text-xs text-muted">
-            Saved. It takes effect the next time you open a chapter.
+            {t('settings.saved')}
           </p>
         ) : null}
       </section>
@@ -146,27 +179,22 @@ export default function SettingsPage() {
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="eyebrow">Cite my library automatically</h2>
-            <p className="mt-1 text-sm text-muted">
-              On by default. When a suggestion draws on a paper in your library, it arrives with the
-              citation already attached, so you can see which source it came from.
-            </p>
+            <h2 className="eyebrow">{t('settings.cite.title')}</h2>
+            <p className="mt-1 text-sm text-muted">{t('settings.cite.body')}</p>
             <p className="mt-2 text-sm">
-              <strong>Turning this off does not make suggestions less grounded.</strong> Your
-              sources are still what the suggestion is written from and it still may not claim
-              anything they do not say — you simply get the sentence without the marker, and add the
-              citation yourself.
+              <strong>{t('settings.cite.groundedLabel')}</strong> {t('settings.cite.grounded')}
             </p>
             <p className="mt-2 text-sm text-muted">
-              Costs nothing either way. Citation <em>suggestions</em>, which you ask for with the
-              cite button, are a separate action and are unaffected.
+              {rich('settings.cite.cost', {
+                suggestions: <em>{t('settings.cite.suggestionsWord')}</em>,
+              })}
             </p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={settings?.autoCite !== false}
-            aria-label="Cite my library automatically"
+            aria-label={t('settings.cite.title')}
             disabled={busy || settings === null}
             onClick={() => void save({ autoCite: settings?.autoCite === false })}
             data-testid="auto-cite-toggle"
@@ -176,7 +204,7 @@ export default function SettingsPage() {
                 : 'border border-line text-muted'
             }`}
           >
-            {settings?.autoCite !== false ? 'On' : 'Off'}
+            {settings?.autoCite !== false ? t('common.on') : t('common.off')}
           </button>
         </div>
       </section>
@@ -184,24 +212,15 @@ export default function SettingsPage() {
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="eyebrow">Find sources for me</h2>
-            <p className="mt-1 text-sm text-muted">
-              On by default. When nothing in your library covers what you are writing, we search
-              OpenAlex, Semantic Scholar, arXiv and PubMed for papers on it and add the few that are
-              clearly on topic to your library, marked “Added automatically”. Your suggestions can
-              then cite them.
-            </p>
-            <p className="mt-2 text-sm text-muted">
-              Every paper added is a real, published record you can open and check, and you can
-              remove any of them from your library. A few searches a month are included in your
-              plan.
-            </p>
+            <h2 className="eyebrow">{t('settings.sources.title')}</h2>
+            <p className="mt-1 text-sm text-muted">{t('settings.sources.body')}</p>
+            <p className="mt-2 text-sm text-muted">{t('settings.sources.real')}</p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={settings?.autoSources !== false}
-            aria-label="Find sources for me"
+            aria-label={t('settings.sources.title')}
             disabled={busy || settings === null}
             onClick={() => void save({ autoSources: settings?.autoSources === false })}
             data-testid="auto-sources-toggle"
@@ -211,7 +230,7 @@ export default function SettingsPage() {
                 : 'border border-line text-muted'
             }`}
           >
-            {settings?.autoSources !== false ? 'On' : 'Off'}
+            {settings?.autoSources !== false ? t('common.on') : t('common.off')}
           </button>
         </div>
       </section>
@@ -219,19 +238,14 @@ export default function SettingsPage() {
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="eyebrow">Email me when a long job finishes</h2>
-            <p className="mt-1 text-sm text-muted">
-              On by default. A literature search, a chapter build, an examiner review or a coherence
-              check can take a few minutes. If it runs for more than a minute and its page is not
-              open, we send you one short email with a link to the result, so you can close the tab
-              and come back when it is ready.
-            </p>
+            <h2 className="eyebrow">{t('settings.email.title')}</h2>
+            <p className="mt-1 text-sm text-muted">{t('settings.email.body')}</p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={settings?.emailWhenJobDone !== false}
-            aria-label="Email me when a long job finishes"
+            aria-label={t('settings.email.title')}
             disabled={busy || settings === null}
             onClick={() => void save({ emailWhenJobDone: settings?.emailWhenJobDone === false })}
             data-testid="job-email-toggle"
@@ -241,7 +255,7 @@ export default function SettingsPage() {
                 : 'border border-line text-muted'
             }`}
           >
-            {settings?.emailWhenJobDone !== false ? 'On' : 'Off'}
+            {settings?.emailWhenJobDone !== false ? t('common.on') : t('common.off')}
           </button>
         </div>
       </section>
@@ -249,21 +263,18 @@ export default function SettingsPage() {
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="eyebrow">Citation style for new theses</h2>
-            <p className="mt-1 text-sm">
-              Chosen for you when you start a thesis; you can still change it there or in the
-              Citations tab. Theses you already have keep their own style.
-            </p>
+            <h2 className="eyebrow">{t('settings.style.title')}</h2>
+            <p className="mt-1 text-sm">{t('settings.style.body')}</p>
           </div>
           <select
-            aria-label="Citation style for new theses"
+            aria-label={t('settings.style.title')}
             data-testid="default-citation-style"
             disabled={busy || settings === null}
             value={settings?.defaultCitationStyle ?? ''}
             onChange={(e) => void save({ defaultCitationStyle: e.target.value || null })}
             className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
           >
-            <option value="">APA 7 (the default)</option>
+            <option value="">{t('settings.style.default')}</option>
             {STARTING_STYLES.filter((style) => style.id !== 'apa').map((style) => (
               <option key={style.id} value={style.id}>
                 {style.label}
@@ -276,29 +287,27 @@ export default function SettingsPage() {
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="eyebrow">High contrast</h2>
-            <p className="mt-1 text-sm">
-              Darker text and stronger lines, in light or dark. Kept on this device only.
-            </p>
+            <h2 className="eyebrow">{t('settings.contrast.title')}</h2>
+            <p className="mt-1 text-sm">{t('settings.contrast.body')}</p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={highContrast}
-            aria-label="High contrast"
+            aria-label={t('settings.contrast.title')}
             data-testid="high-contrast"
             onClick={() => setHighContrast(!highContrast)}
             className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
               highContrast ? 'bg-accent text-accent-ink' : 'border border-line text-muted'
             }`}
           >
-            {highContrast ? 'On' : 'Off'}
+            {highContrast ? t('common.on') : t('common.off')}
           </button>
         </div>
       </section>
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
-        <h2 className="eyebrow">This month</h2>
+        <h2 className="eyebrow">{t('common.thisMonth')}</h2>
         {usage ? (
           <>
             <ul className="mt-2 space-y-1 text-sm" data-testid="usage-list">
@@ -313,17 +322,14 @@ export default function SettingsPage() {
             </ul>
             {notIncluded(usage.actions) ? (
               <p className="mt-2 text-xs text-muted">
-                Not included in your plan: {notIncluded(usage.actions)}.
+                {t('common.notIncluded', { list: notIncluded(usage.actions) })}
               </p>
             ) : null}
           </>
         ) : (
-          <p className="mt-2 text-sm text-muted">Loading…</p>
+          <p className="mt-2 text-sm text-muted">{t('common.loading')}</p>
         )}
-        <p className="mt-3 text-xs text-muted">
-          Everything the AI does for you is counted here and nowhere else. Dismissing a suggestion
-          still counts: the text was written before you saw it.
-        </p>
+        <p className="mt-3 text-xs text-muted">{t('settings.month.note')}</p>
       </section>
     </main>
   );

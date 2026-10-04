@@ -11,6 +11,8 @@
  */
 
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { tNow } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import { questionOptions } from '@/lib/question-options';
 import { EXAMPLE_TOPICS } from '@/lib/topic-strength';
@@ -51,6 +53,7 @@ export function PathAChat({
   initialTitle: string;
   onSkeleton: (view: ProposalView, replace?: boolean) => void;
 }) {
+  const { t } = useT();
   const [view, setView] = useState<ProposalView | null>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -73,7 +76,7 @@ export function PathAChat({
         if (v.done) onSkeleton(v);
       })
       .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.problem.title : 'Could not load the conversation.'),
+        setError(e instanceof ApiError ? e.problem.title : tNow('pathA.loadError')),
       );
   }, [documentId, initialTitle, onSkeleton]);
 
@@ -125,9 +128,7 @@ export function PathAChat({
       if (next.done) onSkeleton(next, editIndex !== null);
     } catch (e) {
       setError(
-        e instanceof ApiError
-          ? (e.problem.detail ?? e.problem.title)
-          : 'That did not send. Try again.',
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('pathA.sendError'),
       );
       setDraft(message);
       // The server kept the old conversation; show it again rather than the optimistic one.
@@ -141,7 +142,7 @@ export function PathAChat({
     }
   }
 
-  if (!view) return <p className="mt-8 text-sm text-muted">Loading…</p>;
+  if (!view) return <p className="mt-8 text-sm text-muted">{t('common.loading')}</p>;
 
   // The question being answered offers its options as buttons (docs/JENNI-FIX-LIST.md item 14).
   const last = view.visible.at(-1);
@@ -155,9 +156,9 @@ export function PathAChat({
         <div className="max-h-[28rem] space-y-3 overflow-y-auto p-4" aria-live="polite">
           {view.visible.length === 0 ? (
             <p className="text-sm text-muted">
-              Describe the topic in a sentence or two. You will be asked{' '}
-              {view.maxQuestions === 1 ? 'one question' : `up to ${view.maxQuestions} questions`}{' '}
-              before a proposal skeleton is drafted — and you edit every word of it.
+              {view.maxQuestions === 1
+                ? t('pathA.introOne')
+                : t('pathA.introMany', { n: view.maxQuestions })}
             </p>
           ) : null}
           {view.visible.map((m, index) => (
@@ -184,14 +185,14 @@ export function PathAChat({
                   }}
                   className="mt-0.5 text-xs text-muted underline"
                 >
-                  Edit
+                  {t('common.edit')}
                 </button>
               ) : null}
             </div>
           ))}
           {options.length > 0 && !busy ? (
             <fieldset className="flex flex-wrap gap-2" data-testid="question-options">
-              <legend className="sr-only">Choose an answer</legend>
+              <legend className="sr-only">{t('pathA.chooseAnswer')}</legend>
               {options.map((option) =>
                 option.other ? (
                   <button
@@ -200,7 +201,7 @@ export function PathAChat({
                     onClick={() => inputRef.current?.focus()}
                     className="rounded-full border border-line px-3 py-1.5 text-left text-sm text-muted hover:bg-paper"
                   >
-                    {option.text} — type it below
+                    {t('pathA.typeBelow', { option: option.text })}
                   </button>
                 ) : (
                   <button
@@ -215,7 +216,7 @@ export function PathAChat({
               )}
             </fieldset>
           ) : null}
-          {busy ? <p className="text-xs text-muted">Thinking…</p> : null}
+          {busy ? <p className="text-xs text-muted">{t('pathA.thinking')}</p> : null}
           <div ref={endRef} />
         </div>
         {editing !== null ? (
@@ -223,10 +224,7 @@ export function PathAChat({
             className="flex items-center justify-between gap-2 border-t border-line px-3 py-2 text-xs"
             data-testid="editing-answer"
           >
-            <span>
-              Changing an earlier answer. What came after it is asked again
-              {view.done ? ', and the proposal below is redrafted' : ''}.
-            </span>
+            <span>{view.done ? t('pathA.editingDone') : t('pathA.editing')}</span>
             <button
               type="button"
               className="underline"
@@ -235,14 +233,14 @@ export function PathAChat({
                 setDraft('');
               }}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </p>
         ) : null}
         {!view.done || editing !== null ? (
           <form onSubmit={submit} className="flex gap-2 border-t border-line p-3">
             <label className="sr-only" htmlFor="path-a-message">
-              Your message
+              {t('pathA.yourMessage')}
             </label>
             <input
               ref={inputRef}
@@ -254,10 +252,10 @@ export function PathAChat({
               className="h-10 flex-1 rounded-md border border-line px-3 text-sm"
               placeholder={
                 view.visible.length === 0
-                  ? `e.g. ${EXAMPLE_TOPICS[example]}`
+                  ? t('pathA.examplePlaceholder', { example: EXAMPLE_TOPICS[example] ?? '' })
                   : options.length > 0
-                    ? 'Choose above, or type your own answer…'
-                    : 'Your answer…'
+                    ? t('pathA.chooseOrType')
+                    : t('pathA.yourAnswer')
               }
             />
             <button
@@ -265,14 +263,14 @@ export function PathAChat({
               disabled={busy || draft.trim().length === 0}
               className="rounded-md px-4 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
             >
-              Send
+              {t('common.send')}
             </button>
           </form>
         ) : null}
         {firstMessage ? <TopicMeter text={draft} example={EXAMPLE_TOPICS[example]} /> : null}
         <p className="border-t border-line px-3 py-2 text-xs text-muted">
-          {view.questionsAsked} of {view.maxQuestions} questions asked
-          {view.done ? ' · skeleton ready below' : ''}
+          {t('pathA.asked', { asked: view.questionsAsked, max: view.maxQuestions })}
+          {view.done ? t('pathA.skeletonReady') : ''}
         </p>
         {error ? (
           <p role="alert" className="px-3 pb-3 text-sm text-warn">
@@ -282,7 +280,7 @@ export function PathAChat({
       </div>
 
       <aside className="rounded-md border border-line bg-paper p-4 text-sm" data-testid="gap-check">
-        <p className="text-xs uppercase tracking-wide text-muted">Related work</p>
+        <p className="text-xs uppercase tracking-wide text-muted">{t('pathA.relatedWork')}</p>
         {view.gapCheck?.failed ? (
           <p className="mt-1">
             The related-work search could not run this time, so the proposal skeleton is drafted
@@ -313,7 +311,7 @@ export function PathAChat({
             </p>
           </>
         ) : (
-          <p className="mt-1 text-muted">Appears after your first answer.</p>
+          <p className="mt-1 text-muted">{t('pathA.appearsAfter')}</p>
         )}
       </aside>
     </section>

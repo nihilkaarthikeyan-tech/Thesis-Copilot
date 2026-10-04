@@ -14,6 +14,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { TrialNotice } from '@/components/TrialNotice';
+import { tNow } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/auth-client';
@@ -57,6 +59,7 @@ const PLAN_LABEL: Record<string, string> = {
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : '—');
 
 export default function AccountPage() {
+  const { t, rich } = useT();
   const [billing, setBilling] = useState<Billing | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -92,7 +95,7 @@ export default function AccountPage() {
     api<Billing>('/billing')
       .then(setBilling)
       .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.problem.title : 'Could not load your plan.'),
+        setError(e instanceof ApiError ? e.problem.title : tNow('account.loadError')),
       );
     api<Usage>('/usage/me')
       .then(setUsage)
@@ -131,21 +134,19 @@ export default function AccountPage() {
           method: 'POST',
           body: JSON.stringify({ newPassword: pwNew }),
         });
-        setPwNotice('Your password is set. You can sign in with it or with an emailed code.');
+        setPwNotice(tNow('account.pwSet'));
       } else {
         await api<{ ok: true }>('/account/password/change', {
           method: 'POST',
           body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
         });
-        setPwNotice('Your password is changed, and every other device has been signed out.');
+        setPwNotice(tNow('account.pwChanged'));
       }
       setHasPassword(true);
       resetPasswordForm();
     } catch (e) {
       setPwError(
-        e instanceof ApiError
-          ? (e.problem.detail ?? e.problem.title)
-          : 'Could not save the password. Try again.',
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('account.pwSaveError'),
       );
     } finally {
       setBusy(false);
@@ -161,11 +162,11 @@ export default function AccountPage() {
       const updated = await api<Billing>('/billing/cancel', { method: 'POST', body: '{}' });
       setBilling(updated);
       setConfirming(false);
-      setNotice(
-        `Cancelled. You keep everything until ${date(updated.currentPeriodEnd)}, and nothing is deleted after that.`,
-      );
+      setNotice(tNow('account.cancelDone', { date: date(updated.currentPeriodEnd) }));
     } catch (e) {
-      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not cancel.');
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('account.cancelError'),
+      );
     } finally {
       setBusy(false);
     }
@@ -188,7 +189,7 @@ export default function AccountPage() {
       setError(
         e instanceof ApiError
           ? (e.problem.detail ?? e.problem.title)
-          : 'Could not schedule the deletion.',
+          : tNow('account.scheduleError'),
       );
     } finally {
       setBusy(false);
@@ -201,9 +202,11 @@ export default function AccountPage() {
     try {
       setDeletion(await api<Deletion>('/account/deletion/cancel', { method: 'POST', body: '{}' }));
       setSignedOut(false);
-      setNotice('Your account is staying. Nothing was deleted.');
+      setNotice(tNow('account.staying'));
     } catch (e) {
-      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not cancel.');
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('account.cancelError'),
+      );
     } finally {
       setBusy(false);
     }
@@ -227,7 +230,9 @@ export default function AccountPage() {
       setNotice(null);
     } catch (e) {
       setError(
-        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not send the code.',
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : tNow('account.sendCodeError'),
       );
     } finally {
       setBusy(false);
@@ -244,12 +249,12 @@ export default function AccountPage() {
       });
       setEmailChanged(result.email);
       resetEmailChange();
-      setNotice(`You now sign in with ${result.email}.`);
+      setNotice(tNow('account.nowSignIn', { email: result.email }));
     } catch (e) {
       setError(
         e instanceof ApiError
           ? (e.problem.detail ?? e.problem.title)
-          : 'Could not change the address.',
+          : tNow('account.changeEmailError'),
       );
     } finally {
       setBusy(false);
@@ -269,7 +274,9 @@ export default function AccountPage() {
       window.location.href = `https://api.razorpay.com/v1/checkout/embedded?subscription_id=${encodeURIComponent(handle.subscriptionId)}&key_id=${encodeURIComponent(handle.keyId)}`;
     } catch (e) {
       setError(
-        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not start checkout.',
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : tNow('account.checkoutError'),
       );
       setBusy(false);
     }
@@ -279,12 +286,12 @@ export default function AccountPage() {
     <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-12">
       <nav className="text-xs text-muted">
         <Link href="/app" className="hover:underline">
-          Theses
+          {t('common.theses')}
         </Link>{' '}
-        / Account
+        / {t('common.account')}
       </nav>
       <h1 className="mt-2 text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
-        Account
+        {t('common.account')}
       </h1>
 
       {error ? (
@@ -302,15 +309,15 @@ export default function AccountPage() {
         className="mt-6 rounded-md border border-line bg-surface p-4"
         data-testid="plan-card"
       >
-        <p className="text-xs text-muted">Your plan</p>
+        <p className="text-xs text-muted">{t('account.yourPlan')}</p>
         <p className="mt-1 text-lg">{PLAN_LABEL[billing?.plan ?? ''] ?? billing?.plan ?? '…'}</p>
         {billing?.currentPeriodEnd && billing.status !== null ? (
           <p className="mt-1 text-sm text-muted">
             {billing.cancelAtPeriodEnd
-              ? `Cancelled — access continues until ${date(billing.currentPeriodEnd)}.`
+              ? t('account.cancelled', { date: date(billing.currentPeriodEnd) })
               : billing.status === 'past_due'
-                ? `Payment did not go through. You keep everything for three days after ${date(billing.currentPeriodEnd)}, then move to the free allowances. Nothing is deleted.`
-                : `Renews on ${date(billing.currentPeriodEnd)}. We will email you three days before.`}
+                ? t('account.pastDue', { date: date(billing.currentPeriodEnd) })
+                : t('account.renews', { date: date(billing.currentPeriodEnd) })}
           </p>
         ) : null}
 
@@ -318,11 +325,7 @@ export default function AccountPage() {
         {billing?.status && !billing.cancelAtPeriodEnd && billing.plan !== 'FREE_TRIAL' ? (
           confirming ? (
             <div className="mt-3 rounded-md border border-line p-3 text-sm">
-              <p>
-                Cancel your subscription? It will not renew. You keep everything until{' '}
-                {date(billing.currentPeriodEnd)}, and your theses, sources and exports stay exactly
-                as they are.
-              </p>
+              <p>{t('account.cancelConfirm', { date: date(billing.currentPeriodEnd) })}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -331,14 +334,14 @@ export default function AccountPage() {
                   data-testid="confirm-cancel"
                   className="rounded-md bg-warn px-4 py-2 text-sm text-paper disabled:opacity-50"
                 >
-                  {busy ? 'Cancelling…' : 'Yes, cancel'}
+                  {busy ? t('account.cancelling') : t('account.yesCancel')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirming(false)}
                   className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
                 >
-                  Keep it
+                  {t('account.keepIt')}
                 </button>
               </div>
             </div>
@@ -349,7 +352,7 @@ export default function AccountPage() {
               data-testid="cancel-subscription"
               className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm sm:w-auto font-semibold text-ink transition-colors hover:bg-sunk"
             >
-              Cancel subscription
+              {t('account.cancelSubscription')}
             </button>
           )
         ) : null}
@@ -357,11 +360,12 @@ export default function AccountPage() {
 
       {billing && (billing.plan === 'FREE_TRIAL' || billing.cancelAtPeriodEnd) ? (
         <section className="mt-6">
-          <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">Plans</h2>
+          <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
+            {t('account.plans')}
+          </h2>
           {billing.unavailableReason ? (
             <p className="mt-2 text-sm text-muted">
-              {billing.unavailableReason} During the pilot your allowances are set by hand — email
-              us and we will move you.
+              {billing.unavailableReason} {t('account.pilotNote')}
             </p>
           ) : null}
           <ul className="mt-3 space-y-3">
@@ -372,7 +376,7 @@ export default function AccountPage() {
                   <p className="text-lg">
                     ₹{plan.priceInr}
                     <span className="text-xs text-muted">
-                      {plan.period === 'yearly' ? ' / year' : ' / month'}
+                      {plan.period === 'yearly' ? t('account.perYear') : t('account.perMonth')}
                     </span>
                   </p>
                 </div>
@@ -383,15 +387,15 @@ export default function AccountPage() {
                   onClick={() => void subscribe(plan.plan)}
                   className="mt-3 w-full rounded-md px-4 py-2 text-sm disabled:opacity-50 sm:w-auto bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
                 >
-                  Choose {PLAN_LABEL[plan.plan] ?? plan.plan}
+                  {t('account.choose', { plan: PLAN_LABEL[plan.plan] ?? plan.plan })}
                 </button>
               </li>
             ))}
           </ul>
           <p className="mt-3 text-xs text-muted">
-            Payment is handled by Razorpay. We never see your card or UPI details.{' '}
+            {t('account.razorpay')}{' '}
             <Link href="/refunds" className="underline">
-              Refund policy
+              {t('account.refundPolicy')}
             </Link>
             .
           </p>
@@ -401,7 +405,7 @@ export default function AccountPage() {
       <TrialNotice className="mt-6" />
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
-        <h2 className="eyebrow">This month</h2>
+        <h2 className="eyebrow">{t('common.thisMonth')}</h2>
         {usage ? (
           <>
             <ul className="mt-2 space-y-1 text-sm" data-testid="account-usage">
@@ -429,22 +433,21 @@ export default function AccountPage() {
             </ul>
             {notIncluded(usage.actions) ? (
               <p className="mt-2 text-xs text-muted" data-testid="account-not-included">
-                Not included in your plan: {notIncluded(usage.actions)}.
+                {t('common.notIncluded', { list: notIncluded(usage.actions) })}
               </p>
             ) : null}
             <p className="mt-3 text-xs text-muted">
-              Resets on {date(usage.resetsAt)}. A suggestion counts when it is generated, whether
-              you keep it or dismiss it — the tokens were spent either way. Nothing you type counts.
+              {t('account.resets', { date: date(usage.resetsAt) })}
             </p>
           </>
         ) : (
-          <p className="mt-2 text-sm text-muted">Loading…</p>
+          <p className="mt-2 text-sm text-muted">{t('common.loading')}</p>
         )}
       </section>
 
       {invoices.length > 0 ? (
         <section className="mt-6 rounded-md border border-line bg-surface p-4">
-          <h2 className="eyebrow">Invoices</h2>
+          <h2 className="eyebrow">{t('account.invoices')}</h2>
           <ul className="mt-2 space-y-1 text-sm" data-testid="invoices">
             {invoices.map((invoice) => (
               <li key={invoice.id} className="flex items-baseline justify-between gap-3">
@@ -463,7 +466,7 @@ export default function AccountPage() {
                         body: '{}',
                       })
                         .then(({ url }) => window.open(url, '_blank', 'noopener,noreferrer'))
-                        .catch(() => setError('That invoice could not be produced.'));
+                        .catch(() => setError(tNow('account.invoiceError')));
                     }}
                   >
                     PDF
@@ -479,17 +482,17 @@ export default function AccountPage() {
         className="mt-6 rounded-md border border-line bg-surface p-4"
         data-testid="email-card"
       >
-        <h2 className="eyebrow">Email address</h2>
+        <h2 className="eyebrow">{t('account.emailTitle')}</h2>
         <p className="mt-2 text-sm">
-          You sign in with <strong data-testid="current-email">{currentEmail ?? '…'}</strong>.
+          {rich('account.signInWith', {
+            email: <strong data-testid="current-email">{currentEmail ?? '…'}</strong>,
+          })}
         </p>
 
         {emailStage === 'idle' ? (
           <>
             <p className="mt-2 text-sm text-muted">
-              {hasPassword
-                ? 'The code we email you and your password both belong to this address, so changing it changes how you sign in. Move it before you lose access to a university mailbox.'
-                : 'There is no password on this account — the code we email you is how you get in. So changing this address changes how you sign in. Move it before you lose access to a university mailbox.'}
+              {hasPassword ? t('account.emailWithPassword') : t('account.emailNoPassword')}
             </p>
             <button
               type="button"
@@ -497,13 +500,13 @@ export default function AccountPage() {
               data-testid="change-email"
               className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk sm:w-auto"
             >
-              Change email
+              {t('account.changeEmail')}
             </button>
           </>
         ) : emailStage === 'address' ? (
           <div className="mt-3 rounded-md border border-line p-3 text-sm">
             <label htmlFor="new-email" className="block text-xs text-muted">
-              The address you want to sign in with
+              {t('account.newEmailLabel')}
             </label>
             <input
               id="new-email"
@@ -515,8 +518,9 @@ export default function AccountPage() {
               className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
             />
             <p className="mt-2 text-muted">
-              We will send a code there to check you can read it. Nothing changes until you enter
-              it, and we will tell {currentEmail ?? 'your current address'} that this was asked for.
+              {t('account.newEmailNote', {
+                current: currentEmail ?? t('account.yourCurrentAddress'),
+              })}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -526,28 +530,23 @@ export default function AccountPage() {
                 data-testid="send-email-code"
                 className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
               >
-                {busy ? 'Sending…' : 'Send the code'}
+                {busy ? t('common.sending') : t('account.sendCode')}
               </button>
               <button
                 type="button"
                 onClick={resetEmailChange}
                 className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                Never mind
+                {t('common.neverMind')}
               </button>
             </div>
           </div>
         ) : (
           <div className="mt-3 rounded-md border border-line p-3 text-sm">
-            <p>
-              We sent a six-digit code to <strong>{newEmail}</strong>. It expires in ten minutes.
-            </p>
-            <p className="mt-2 text-muted">
-              If nothing arrives, check that the address is right — for your safety this page does
-              not say whether an address already belongs to another account.
-            </p>
+            <p>{rich('account.codeSent', { email: <strong>{newEmail}</strong> })}</p>
+            <p className="mt-2 text-muted">{t('account.codeSafety')}</p>
             <label htmlFor="email-otp" className="mt-3 block text-xs text-muted">
-              The code from that inbox
+              {t('account.codeLabel')}
             </label>
             <input
               id="email-otp"
@@ -566,14 +565,14 @@ export default function AccountPage() {
                 data-testid="confirm-email-change"
                 className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
               >
-                {busy ? 'Changing…' : 'Change my address'}
+                {busy ? t('account.changing') : t('account.changeMyAddress')}
               </button>
               <button
                 type="button"
                 onClick={resetEmailChange}
                 className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                Never mind
+                {t('common.neverMind')}
               </button>
             </div>
           </div>
@@ -584,15 +583,13 @@ export default function AccountPage() {
         className="mt-6 rounded-md border border-line bg-surface p-4"
         data-testid="password-card"
       >
-        <h2 className="eyebrow">Password</h2>
+        <h2 className="eyebrow">{t('account.passwordTitle')}</h2>
         {hasPassword === null ? (
-          <p className="mt-2 text-sm text-muted">Checking…</p>
+          <p className="mt-2 text-sm text-muted">{t('account.checking')}</p>
         ) : pwStage === 'idle' ? (
           <>
             <p className="mt-2 text-sm text-muted" data-testid="password-status">
-              {hasPassword
-                ? 'You can sign in with your password or with an emailed code.'
-                : 'This account has no password: the code we email you is how you sign in, and that keeps working. Add a password if you would rather type one.'}
+              {hasPassword ? t('account.hasPassword') : t('account.noPassword')}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button
@@ -604,14 +601,14 @@ export default function AccountPage() {
                 data-testid={hasPassword ? 'change-password' : 'add-password'}
                 className="w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk sm:w-auto"
               >
-                {hasPassword ? 'Change password' : 'Add a password'}
+                {hasPassword ? t('account.changePassword') : t('account.addPassword')}
               </button>
               {hasPassword ? (
                 <Link
                   href="/forgot-password"
                   className="text-sm text-muted underline underline-offset-2 hover:text-ink"
                 >
-                  Forgotten it? Reset by email
+                  {t('account.forgotten')}
                 </Link>
               ) : null}
             </div>
@@ -621,7 +618,7 @@ export default function AccountPage() {
             {pwStage === 'change' ? (
               <>
                 <label htmlFor="pw-current" className="block text-xs text-muted">
-                  Current password
+                  {t('account.currentPassword')}
                 </label>
                 <input
                   id="pw-current"
@@ -635,7 +632,7 @@ export default function AccountPage() {
               </>
             ) : null}
             <label htmlFor="pw-new" className="mt-3 block text-xs text-muted">
-              New password — at least 10 characters; a short sentence is ideal
+              {t('account.newPassword')}
             </label>
             <input
               id="pw-new"
@@ -647,7 +644,7 @@ export default function AccountPage() {
               className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
             />
             <label htmlFor="pw-repeat" className="mt-3 block text-xs text-muted">
-              The same again
+              {t('account.repeatPassword')}
             </label>
             <input
               id="pw-repeat"
@@ -659,9 +656,7 @@ export default function AccountPage() {
               className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink"
             />
             {pwStage === 'change' ? (
-              <p className="mt-2 text-muted">
-                Every other device is signed out when the password changes.
-              </p>
+              <p className="mt-2 text-muted">{t('account.otherDevices')}</p>
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -676,14 +671,18 @@ export default function AccountPage() {
                 data-testid="save-password"
                 className="rounded-md bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50"
               >
-                {busy ? 'Saving…' : pwStage === 'set' ? 'Save password' : 'Change password'}
+                {busy
+                  ? t('common.saving')
+                  : pwStage === 'set'
+                    ? t('account.savePassword')
+                    : t('account.changePassword')}
               </button>
               <button
                 type="button"
                 onClick={resetPasswordForm}
                 className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                Never mind
+                {t('common.neverMind')}
               </button>
             </div>
           </div>
@@ -701,39 +700,34 @@ export default function AccountPage() {
       </section>
 
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
-        <h2 className="eyebrow">Delete your account</h2>
+        <h2 className="eyebrow">{t('account.deleteTitle')}</h2>
 
         {deletion?.requestedAt && signedOut ? (
           <>
             <p className="mt-2 text-sm">
-              Scheduled. Your account and everything in it will be erased on{' '}
-              <strong>{date(deletion.erasesAt)}</strong>.
+              {rich('account.scheduled', { date: <strong>{date(deletion.erasesAt)}</strong> })}
             </p>
+            <p className="mt-2 text-sm text-muted">{t('account.signedOutEverywhere')}</p>
             <p className="mt-2 text-sm text-muted">
-              You have been signed out on every device, including this one. That is deliberate: if
-              this request was not yours, whoever made it no longer has a way in.
-            </p>
-            <p className="mt-2 text-sm text-muted">
-              To undo it, sign in again with your email and choose <strong>Keep my account</strong>.
-              Nothing is deleted until {date(deletion.erasesAt)}.
+              {rich('account.toUndo', {
+                keep: <strong>{t('account.keepMyAccount')}</strong>,
+                date: date(deletion.erasesAt),
+              })}
             </p>
             <Link
               href="/sign-in"
               data-testid="deletion-signin"
               className="mt-3 inline-block rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
             >
-              Sign in again
+              {t('account.signInAgain')}
             </Link>
           </>
         ) : deletion?.requestedAt ? (
           <>
             <p className="mt-2 text-sm">
-              Your account and everything in it will be erased on{' '}
-              <strong>{date(deletion.erasesAt)}</strong>.
+              {rich('account.willErase', { date: <strong>{date(deletion.erasesAt)}</strong> })}
             </p>
-            <p className="mt-2 text-sm text-muted">
-              Change your mind any time before then and nothing is lost.
-            </p>
+            <p className="mt-2 text-sm text-muted">{t('account.changeMind')}</p>
             <button
               type="button"
               disabled={busy}
@@ -741,22 +735,20 @@ export default function AccountPage() {
               data-testid="cancel-deletion"
               className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50 sm:w-auto"
             >
-              {busy ? 'Cancelling…' : 'Keep my account'}
+              {busy ? t('account.cancelling') : t('account.keepMyAccount')}
             </button>
           </>
         ) : deleting ? (
           <div className="mt-3 rounded-md border border-line p-3 text-sm">
             <p>
-              This deletes your theses, chapters, sources, uploaded PDFs, exports and comments.{' '}
-              <strong>It cannot be undone once it runs.</strong> Export anything you want to keep
-              first — that works on any plan.
+              {t('account.deleteWarning')} <strong>{t('account.cannotUndo')}</strong>{' '}
+              {t('account.exportFirst')}
             </p>
             <p className="mt-2 text-muted">
-              Nothing happens for {deletion?.graceDays ?? 7} days. Until then you can change your
-              mind here. Your payment records are kept, because the law requires it.
+              {t('account.graceNote', { days: deletion?.graceDays ?? 7 })}
             </p>
             <label htmlFor="confirm-email" className="mt-3 block text-xs text-muted">
-              Type your email address to confirm
+              {t('account.typeEmail')}
             </label>
             <input
               id="confirm-email"
@@ -775,7 +767,7 @@ export default function AccountPage() {
                 data-testid="confirm-delete"
                 className="rounded-md bg-danger px-4 py-2 text-sm text-paper disabled:opacity-50"
               >
-                {busy ? 'Scheduling…' : 'Delete my account'}
+                {busy ? t('account.scheduling') : t('account.deleteMyAccount')}
               </button>
               <button
                 type="button"
@@ -785,15 +777,14 @@ export default function AccountPage() {
                 }}
                 className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                Never mind
+                {t('common.neverMind')}
               </button>
             </div>
           </div>
         ) : (
           <>
             <p className="mt-2 text-sm text-muted">
-              Erases your theses, sources, files and exports. You get {deletion?.graceDays ?? 7}{' '}
-              days to change your mind.
+              {t('account.erasesSummary', { days: deletion?.graceDays ?? 7 })}
             </p>
             <button
               type="button"
@@ -801,7 +792,7 @@ export default function AccountPage() {
               data-testid="delete-account"
               className="mt-3 w-full rounded-md border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-sunk sm:w-auto"
             >
-              Delete account
+              {t('account.deleteAccount')}
             </button>
           </>
         )}
@@ -809,15 +800,15 @@ export default function AccountPage() {
 
       <p className="mt-6 text-xs text-muted">
         <Link href="/app/settings" className="underline">
-          Settings
+          {t('common.settings')}
         </Link>{' '}
         ·{' '}
         <Link href="/privacy" className="underline">
-          Privacy
+          {t('common.privacy')}
         </Link>{' '}
         ·{' '}
         <Link href="/pricing" className="underline">
-          Pricing
+          {t('common.pricing')}
         </Link>
       </p>
     </main>

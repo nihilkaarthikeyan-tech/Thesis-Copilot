@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Spectral } from 'next/font/google';
+import { Noto_Sans_Devanagari, Spectral } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { satoshi } from '@/components/marketing/fonts';
 import { ThemeScript } from '@/components/theme';
@@ -20,6 +20,19 @@ const spectral = Spectral({
   style: ['normal', 'italic'],
   variable: '--font-spectral',
   display: 'swap',
+});
+
+/**
+ * Devanagari for the Hindi interface (ADR-0061). Satoshi has no Devanagari glyphs, and the
+ * system fallback on many Windows and Android machines draws matras badly. Only referenced from
+ * `html[lang="hi"]` in globals.css, and not preloaded, so an English page never downloads it.
+ */
+const devanagari = Noto_Sans_Devanagari({
+  subsets: ['devanagari'],
+  weight: ['400', '500', '700'],
+  variable: '--font-devanagari',
+  display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -44,7 +57,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${spectral.variable} ${satoshi.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${spectral.variable} ${satoshi.variable} ${devanagari.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <ThemeScript />
       </head>

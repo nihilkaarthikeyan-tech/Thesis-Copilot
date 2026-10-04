@@ -13,6 +13,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useT } from '@/i18n/react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ type Trial = { endsAt: string; ended: boolean; daysLeft: number } | null;
 const URGENT_DAYS = 3;
 
 export function TrialNotice({ className }: { className?: string }) {
+  const { t } = useT();
   const [trial, setTrial] = useState<Trial>(null);
 
   useEffect(() => {
@@ -53,20 +55,18 @@ export function TrialNotice({ className }: { className?: string }) {
       <p className="min-w-0">
         {trial.ended ? (
           <>
-            <strong>Your free trial ended on {date}.</strong> Your theses are safe and you can keep
-            writing, editing and exporting. Subscribe to use the AI features again.
+            <strong>{t('trial.ended', { date })}</strong> {t('trial.endedBody')}
           </>
         ) : (
           <>
             <strong>
               {trial.daysLeft <= 1
-                ? 'Your 14-day free trial ends today.'
+                ? t('trial.endsToday')
                 : trial.daysLeft <= 14
-                  ? `Free trial: ${trial.daysLeft} of 14 days left.`
-                  : `Free trial: ${trial.daysLeft} days left.`}
+                  ? t('trial.daysOf14', { n: trial.daysLeft })
+                  : t('trial.days', { n: trial.daysLeft })}
             </strong>{' '}
-            It ends on {date}. After that your theses stay and you can keep writing; the AI features
-            need a plan.
+            {t('trial.endsOn', { date })}
           </>
         )}
       </p>
@@ -74,7 +74,7 @@ export function TrialNotice({ className }: { className?: string }) {
         href="/pricing"
         className="shrink-0 font-bold text-accent underline underline-offset-4 hover:text-accent-hover"
       >
-        See plans
+        {t('trial.seePlans')}
       </Link>
     </div>
   );

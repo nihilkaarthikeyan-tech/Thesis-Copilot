@@ -245,6 +245,14 @@ body {
   @apply bg-paper text-ink font-sans antialiased;
 }
 
+/* The Hindi interface (ADR-0061): Satoshi still draws the Latin letters and digits, and Noto Sans
+   Devanagari takes every glyph Satoshi lacks. Only here, so English never loads it. The thesis
+   text keeps --font-serif. */
+html[lang="hi"] {
+  --font-sans:
+    var(--font-satoshi), var(--font-devanagari), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+
 /* One visible focus treatment everywhere. PRD §6.4 requires every AI action to be
    keyboard-reachable, which is worth nothing if the focus ring cannot be seen. */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
@@ -277,4 +285,10 @@ body {
 /* The uppercase micro-label used for panel and section headers. */
 .eyebrow {
   @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-faint;
+}
+
+/* Letter-spacing pulls Devanagari conjuncts apart ("अ ध्या य"); Hindi has no capitals to space. */
+html[lang="hi"] .eyebrow {
+  letter-spacing: 0;
+  font-size: 12px;
 }
