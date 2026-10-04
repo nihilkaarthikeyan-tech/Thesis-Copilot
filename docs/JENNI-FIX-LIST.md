@@ -45,6 +45,10 @@ collects every finding so nothing is lost before then. Evidence for each is in
     wraps at ~800 px; a signed-in student opening the site lands on the sales page.
 24. No AI-declaration block a student can insert into the text (our AI-usage report lives only in
     the export).
+25. No one-button review of any text that returns scores, weaknesses, strengths, questions and
+    sentence-anchored comments with severity (ours lives inside the chapter build and viva).
+26. Our selection commands write straight into a draft block; Jenni's AI Edit shows a preview with
+    "what changed and why", a comparison, and Replace / Insert below / Try again / Discard.
 
 ## B. What Jenni does that makes it easy (observed, not yet decided)
 
@@ -83,6 +87,10 @@ collects every finding so nothing is lost before then. Evidence for each is in
 - Document cloning; read-only links; viewer/commenter/editor roles.
 - Review mode with Y/N keys and Accept all.
 - "How was this document?" thumbs after a workflow.
+- Peer Review as an agent: its own searches, scores (soundness, presentation, contribution, /10),
+  weaknesses, strengths, questions for the authors, 24 anchored comments tagged Major/Minor.
+- AI Edit preview with explanation and four outcomes.
+- Library details drawer with step-through arrows and Ask AI.
 - Suggestions read aloud to screen readers with how to accept.
 
 ## C. Where Jenni is weak (keep ours better here)
@@ -90,6 +98,9 @@ collects every finding so nothing is lost before then. Evidence for each is in
 - A new chat is blank, with no examples.
 - Cites papers the student never added; its own review then flags them.
 - Repeats a citation back to back in generated text.
+- Closing "Find citations" leaves a stray "@" in the student's text.
+- AI Edit's counter-argument came without a citation.
+- Inviting collaborators by email is not available on the free plan.
 - Free plan hides references and drops the bibliography from exports (though the list is in the
   page).
 - A failed workflow leaves no trace and no retry; generic "Organizing my thoughts" step lines.

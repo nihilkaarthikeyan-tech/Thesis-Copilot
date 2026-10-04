@@ -183,6 +183,46 @@ undisclosed paid TikTok promotions for AI study apps including Jenni.
 Not compared fairly yet: our local page is the unminified development build. Needs the same
 measurement against our production site.
 
+## 17. Peer Review (run once on the 3,430-word gap analysis)
+
+- Runs as an agent with a "0/12 sections" counter and named steps ticked off ("Analyzing
+  Manuscript Claims", "Assessing Sentinel-2 Potential", "Validating SOC Data"…), including **its own
+  database searches** (expandable queries such as "Pichavaram mangrove restoration soil…").
+- 1 min 35 s. A "review completed" toast; a download button.
+- Result: scores — Soundness 2/4, Presentation 3/4, Contribution 3/4, **overall 7/10**; a summary
+  ("major revisions are needed…"); Weaknesses (5), Strengths (4), **Questions for the authors (4)**.
+  The weaknesses were substantive: optical Sentinel-2 sees only the top ~5 cm of soil, which
+  contradicts the deep-carbon emphasis; regional Indian Sundarbans evidence (found by its own search)
+  challenges the global "75% plateau"; the title wrongly suggests primary fieldwork.
+- **24 comments anchored to sentences** (7 Major, 17 Minor) from "Jenni AI", each with thumbs and
+  resolve; clicking one scrolls to the highlighted sentence and expands it with citations; the list
+  sorts and filters.
+- Ours: the chapter build's examiner review and the viva questions do parts of this, but only inside
+  a chapter build; there is no one-button review of any text with scores, anchored comments and
+  questions.
+
+## 18. AI Edit (one run: "Add a counter argument")
+
+- ~4 s. The result appears as a **preview card under the selection**, not in the text: "Thought for 4
+  seconds", "See edits" (a comparison), "What changed and why", thumbs, a follow-up prompt box with
+  Web/Library switches, and four choices — **Replace selection, Insert below, Try again, Discard**.
+- The counter-argument (open drying is cheap and accessible to small fishers) came with **no
+  citation**.
+
+## 19. Smaller surfaces
+
+- **Find citations** on a selected sentence: results in under 6 s with the matching passage; on
+  topic but not local (Lake Victoria, Bangladesh). **Bug:** closing it leaves a stray "@" in the
+  text (the source of the "spoilage@" seen earlier; both removed).
+- **Share** on the free plan: no invite-by-email field at all — only Restricted / Anyone with the
+  link. Roles appear to be paid (the docs do not say so).
+- **Chat** is remembered per document (reopening the document restored its conversation); "All
+  Chats" lists them with search, titled by the first question.
+- **Saved prompts**: an empty state "Create your first saved prompt" with one button.
+- **Library details drawer**: Ask AI, Edit, previous/next arrows, cited-by, impact factor, volume and
+  issue, accessed date, the PDF file (open, delete), collections, DOI and URL with copy, abstract.
+- **After a workflow**: "How was this document?" thumbs prompt, shown again later in the document.
+
 ## What stands out, without concluding
 
 - **Jenni removes decisions.** One place to land, one prompt, defaults on every setting, everything
