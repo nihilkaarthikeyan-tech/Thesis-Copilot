@@ -84,6 +84,12 @@ export {
   mathText,
 } from './editor/math.js';
 export {
+  insertLatexAt,
+  MATH_CHEAT_SHEET,
+  MATH_EXAMPLES,
+  type MathPattern,
+} from './editor/math-patterns.js';
+export {
   CommentAnchor,
   type ImageResolveUrl,
   type ImageUpload,
