@@ -88,6 +88,12 @@ const settingsBody = z.object({
    */
   emailWhenJobDone: z.boolean().optional(),
   /**
+   * ADR-0061: the language of the screens (menus, buttons, labels). Not the thesis's language,
+   * which is the document's own (§2.2) and decides what the AI writes; nothing server-side reads
+   * this one. Absent means English.
+   */
+  interfaceLanguage: z.enum(['en', 'hi']).optional(),
+  /**
    * 2026-10-04 (Jenni's "document defaults"): the style a new thesis starts on. Only the five
    * the start screen offers; null clears it (APA 7, as before).
    */
