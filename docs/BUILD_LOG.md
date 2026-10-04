@@ -4783,3 +4783,30 @@ replace refused with text, replace with snapshots, 404 for another user, wrong-f
   erase, delete keeps papers) passes; `packages/ui/test/citation-read-beside.spec.ts` and two web
   unit specs pass. `apps/web/e2e/library-collections.spec.ts` and `read-beside.spec.ts` are
   written, not run (dev stack in use; `docs/PENDING.md`).
+
+## A student's uploaded PDF was never read (found 2026-10-04, fixed in 26a3974)
+
+The read-beside e2e uploaded a one-page PDF and waited for the worker to read it; it never did.
+The worker log said `stored pdf could not be read: Please provide binary data as Uint8Array,
+rather than Buffer`. `index-source` passed storage's Node `Buffer` straight to `extractPdf`, and
+pdf.js (inside `unpdf`) refuses a Buffer. The seed-paper path never had the fault because it
+wraps the bytes in `new Uint8Array(...)` first.
+
+The path dates from 2026-09-05 (4061a142), and nothing ever tested it end to end: the worker's
+unit tests fake `extract`, and no e2e read an uploaded library PDF until today. So in production a
+PDF a student uploaded to the library has most likely never been read: no full text, no
+passages, and a "Add the PDF" on a paper that has only an abstract would not have helped either.
+A paper with a DOI still got its abstract or open-access full text from the network, which is
+why the library looked as if it worked.
+
+`extractPdf` now copies its input into a plain `Uint8Array` (also stopping pdf.js from detaching
+a buffer the caller holds), with a test that hands it a Buffer and fails without the fix. After
+the release, sources with a `fileKey` and `groundingLevel = NONE` should be re-indexed — listed
+in docs/PENDING.md.
+
+Also from the full run: the collections strip's "All N" read the same as the grounding filter's
+(now "All papers N"), and "Read PDF" on a phone opened its tab after an `await`, which phone
+browsers block as a pop-up (it now opens inside the press).
+
+Full suite after the merges: 2,205 unit tests pass; Playwright 109 of 112, the three failures
+being OpenAlex's free daily budget (HTTP 429) on this machine.

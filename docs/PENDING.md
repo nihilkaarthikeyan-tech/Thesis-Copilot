@@ -208,6 +208,20 @@ are left, each for a reason the agent should not settle alone:
       `SourceCollectionItem`, and a unique index on `lower(name)` per thesis) runs with the deploy.
       Nothing to configure.
 
+## Re-read uploaded PDFs after the next release (2026-10-04)
+
+Until 26a3974 every PDF a student uploaded to the library failed to be read (docs/BUILD_LOG.md,
+"A student's uploaded PDF was never read"). After the release, re-index them on the server:
+
+```sql
+-- how many are affected
+select count(*) from "Source" where "fileKey" is not null and "groundingLevel" = 'NONE';
+```
+
+then queue `index-source` for each (Admin → Background jobs can retry failed ones; sources that
+finished as "nothing to index" need a fresh job — a one-off script, run with the owner's go-ahead,
+since each re-index spends a little on embeddings).
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)
