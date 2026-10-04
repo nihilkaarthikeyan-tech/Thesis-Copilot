@@ -14,7 +14,12 @@ import { numberingMap, readTemplateSpec, readThesisDetails } from '@tc/types';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { escapeHtml, thesisToHtml } from '../src/html.js';
-import { escapeLatex, thesisToLatexFiles, thesisToLatexZip } from '../src/latex.js';
+import {
+  biblatexLanguage,
+  escapeLatex,
+  thesisToLatexFiles,
+  thesisToLatexZip,
+} from '../src/latex.js';
 
 const SPEC = readTemplateSpec(
   JSON.parse(
@@ -176,6 +181,29 @@ describe('the LaTeX project', () => {
     expect(main).toContain('\\usepackage[style=authoryear,backend=biber]{biblatex}');
     expect(main).toContain('\\addbibresource{references.bib}');
     expect(files.find((f) => f.path === 'references.bib')?.data).toContain('@article{kumar2021');
+  });
+
+  it('tells biblatex the citation locale when there is one (ADR-0058)', () => {
+    const british = thesisToLatexFiles({
+      spec: SPEC,
+      details: DETAILS,
+      documentTitle: 'Why farmers do not drip',
+      chapters: [CHAPTER],
+      bibliography: [],
+      images: IMAGES,
+      citeKeys: { c1: 'kumar2021', c2: 'rao2019' },
+      bibtex: '@article{kumar2021, title = {Drip}}\n',
+      bibStyle: 'authoryear',
+      citationLocale: 'en-GB',
+      styleLabel: 'APA 7th edition',
+      exportedOn: '2026-09-24',
+    });
+    expect(String(british.find((f) => f.path === 'main.tex')?.data)).toContain(
+      '\\usepackage[style=authoryear,backend=biber,language=british]{biblatex}',
+    );
+    expect(biblatexLanguage('de-DE')).toBe('german');
+    expect(biblatexLanguage('pt-BR')).toBeNull();
+    expect(biblatexLanguage(null)).toBeNull();
   });
 
   it('numbers figures as the editor does, and points cross-references at them', () => {

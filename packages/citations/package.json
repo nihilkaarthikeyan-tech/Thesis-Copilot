@@ -25,7 +25,8 @@
   },
   "files": [
     "dist",
-    "styles"
+    "styles",
+    "locales"
   ],
   "dependencies": {
     "@citation-js/core": "^0.8.2",

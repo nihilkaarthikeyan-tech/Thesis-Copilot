@@ -18,6 +18,7 @@
 import { plugins } from '@citation-js/core';
 import '@citation-js/plugin-csl';
 import { type CslItem, type SourceLike, toCslItem } from './csl.js';
+import { FALLBACK_LOCALE, isLocaleLoadable } from './locales.js';
 import { DEFAULT_STYLE, resolveStyle, type StyleEntry, styleXml } from './styles.js';
 
 /** One citation node, in the order it appears in the document. */
@@ -51,7 +52,12 @@ export type RenderInput = {
   citations: readonly CitationRef[];
   /** `text` for the editor and the export; `html` when the caller renders markup. */
   format?: 'text' | 'html';
-  locale?: string;
+  /**
+   * The CSL locale (ADR-0065): `citationLocaleFor(document.citationLocale, document.language)`.
+   * Absent or null renders in the style's own locale, else en-US — the behaviour before the
+   * choice existed.
+   */
+  locale?: string | null;
 };
 
 export type BibliographyEntry = { sourceId: string; text: string };
@@ -70,6 +76,8 @@ export type RenderResult = {
    * exporter writes the citation as a footnote (ADR-0029).
    */
   noteStyle: boolean;
+  /** The locale citeproc was given: the caller's, else the style's own, else en-US. */
+  locale: string;
 };
 
 type CiteprocEngine = {
@@ -119,6 +127,12 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
 
   const styleId = ensureRegistered(style, stylesDir);
   const noteStyle = isNoteStyle(style, stylesDir);
+  // A journal style can declare its own locale (a German journal's "Hrsg."); the caller's wins.
+  // One citeproc cannot load (a catalogue journal's pt-BR or de-CH) is not passed on: the plugin
+  // drops an unknown id and citeproc then throws reading the missing locale's terms, so those
+  // journal styles failed to render at all before ADR-0065. They render with en-US terms instead.
+  const requested = input.locale || style.locale || FALLBACK_LOCALE;
+  const locale = isLocaleLoadable(requested) ? requested : FALLBACK_LOCALE;
 
   const empty: RenderResult = {
     style,
@@ -126,6 +140,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     bibliography: [],
     missingSourceIds: [...missing],
     noteStyle,
+    locale,
   };
   if (used.length === 0) return empty;
 
@@ -134,8 +149,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
   const data = [...citedIds].map((id) => toCslItem(known.get(id) as SourceLike));
 
   const format = input.format ?? 'text';
-  // A journal style can declare its own locale (a German journal's "Hrsg."); the caller's wins.
-  const engine = config().engine(data, styleId, input.locale ?? style.locale ?? 'en-US', format);
+  const engine = config().engine(data, styleId, locale, format);
 
   const clusters = used.map((citation, index) => ({
     citationID: `c${index}`,
@@ -170,7 +184,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     text: clean(text),
   }));
 
-  return { style, labels, bibliography, missingSourceIds: [...missing], noteStyle };
+  return { style, labels, bibliography, missingSourceIds: [...missing], noteStyle, locale };
 }
 
 const noteStyles = new Map<string, boolean>();

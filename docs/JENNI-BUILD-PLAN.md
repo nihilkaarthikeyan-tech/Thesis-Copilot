@@ -78,6 +78,8 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Library collections (folders): strip with counts, filter, tick rows → add / remove, rename, delete (papers stay); copied with a thesis | Done 2026-10-04 (migration 0036); browser spec not yet run |
 | Read a paper's PDF beside the chapter (hover card "Read beside", Sources tab "Read PDF"), at the cited page, resizable; new tab on a phone | Done 2026-10-04; production needs the host vhost's `X-Frame-Options` → `SAMEORIGIN` (`docs/PENDING.md`) |
 | "Safe to close — we'll email you": one email when a literature search, chapter build, examiner review or coherence check ends after more than a minute with no visible tab watching; a setting to turn it off (coverage-map row 64) | Done 2026-10-04 (ADR-0058); Playwright not run |
+| Citation locale (coverage-map row 26): "Language of the citations" in the Citations tab — Automatic, English (UK), English (US), German, French, Spanish, Dutch; bibliography, labels, preview and every export follow it | Done 2026-10-04 (ADR-0065, migration 0038); browser spec written, not run |
+| Matching passage on each Find papers result (row 23): the abstract's best-matching sentence(s), verbatim, labelled "From the abstract", searched words in bold | Done 2026-10-04; browser spec extended, not run |
 | Chat scoped to a collection | Not done: chat takes at most ten `sourceIds` (the `@` mentions); a collection needs its own server-side scope |
 
 ## Also fixed on the way (found while building)

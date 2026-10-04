@@ -14,8 +14,11 @@
 import { Injectable } from '@nestjs/common';
 import {
   type BibliographyEntry,
+  CITATION_LOCALES,
   type CitationFinding,
+  citationLocaleFor,
   citationNodesIn,
+  isCitationLocale,
   isKnownStyle,
   notesIn,
   type ReferenceHealthFinding,
@@ -51,6 +54,15 @@ export type RenderedCitations = {
   missingSourceIds: string[];
   findings: CitationFinding[];
   counts: { citations: number; sources: number; orphans: number; unused: number; untagged: number };
+  /**
+   * ADR-0065. `citationLocale` is the student's choice (null: automatic); `localeOverride` is
+   * what the document asks citeproc for — the choice, else its language's, else null for the
+   * style's own; `locale` is the one citeproc actually rendered in; `locales` can be chosen.
+   */
+  citationLocale: string | null;
+  localeOverride: string | null;
+  locale: string;
+  locales: ReadonlyArray<{ id: string; label: string }>;
 };
 
 export type RenderOptions = {
@@ -78,10 +90,15 @@ export class CitationsService {
   private async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
-      select: { id: true, citationStyle: true },
+      select: { id: true, citationStyle: true, citationLocale: true, language: true },
     });
     if (!document) throw new NotFoundError('That document');
     return document;
+  }
+
+  /** The locale to hand citeproc for this document, or null for the style's own (ADR-0065). */
+  private localeOf(document: { citationLocale: string | null; language: string }): string | null {
+    return citationLocaleFor(document.citationLocale, document.language);
   }
 
   /** FR-5.2 + FR-5.4 in one read: the editor needs the labels, the panel needs the rest. */
@@ -147,8 +164,10 @@ export class CitationsService {
 
     // A catalogue style's XML must be in this process before citeproc can use it (style-store).
     await this.styleStore.ensure(resolveStyle(styleId).id);
+    const localeOverride = this.localeOf(document);
     const rendered = renderCitations({
       style: styleId,
+      locale: localeOverride,
       sources,
       citations: ordered.map((c) => ({ ...c, locator: locators.get(c.key) ?? c.locator ?? null })),
     });
@@ -178,6 +197,10 @@ export class CitationsService {
         unused: findings.filter((f) => f.kind === 'UNUSED').length,
         untagged: findings.filter((f) => f.kind === 'UNTAGGED').length,
       },
+      citationLocale: document.citationLocale,
+      localeOverride,
+      locale: rendered.locale,
+      locales: CITATION_LOCALES,
     };
   }
 
@@ -362,6 +385,7 @@ export class CitationsService {
       ? null
       : renderCitations({
           style: document.citationStyle,
+          locale: this.localeOf(document),
           sources: matches,
           citations: probes.map((p) => ({ ...p, locator: null })),
         });
@@ -399,6 +423,27 @@ export class CitationsService {
     await this.prisma.document.update({
       where: { id: documentId },
       data: { citationStyle: style },
+    });
+    return this.render(ownerId, documentId);
+  }
+
+  /**
+   * ADR-0065: the language of the style's terms and dates — "and" or "und", "edn" or "ed.",
+   * "2 January 2024" or "January 2, 2024". Null goes back to automatic. Like a style switch it
+   * changes one column and no chapter; every label and the bibliography are re-rendered from it.
+   */
+  async setLocale(
+    ownerId: string,
+    documentId: string,
+    locale: string | null,
+  ): Promise<RenderedCitations> {
+    await this.owned(ownerId, documentId);
+    if (locale !== null && !isCitationLocale(locale)) {
+      throw new ValidationError(`Unknown citation locale: ${locale}`);
+    }
+    await this.prisma.document.update({
+      where: { id: documentId },
+      data: { citationLocale: locale },
     });
     return this.render(ownerId, documentId);
   }

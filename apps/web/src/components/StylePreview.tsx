@@ -20,54 +20,74 @@ export type StylePreviewData = {
   inText: string;
   bibliography: string;
   sampleLabel: string;
+  /** The CSL locale it was rendered in (ADR-0065). */
+  locale?: string;
 };
 
-/** One request per style per page load, however often the student moves between styles. */
+/** One request per style and locale per page load, however often the student moves between them. */
 const cache = new Map<string, Promise<StylePreviewData>>();
 
-export function loadStylePreview(styleId: string): Promise<StylePreviewData> {
-  const known = cache.get(styleId);
+/**
+ * `locale` (ADR-0065) is the citation locale the thesis renders in, so the preview shows the
+ * student's own "and" or "&"; absent, the style's own locale.
+ */
+export function loadStylePreview(
+  styleId: string,
+  locale?: string | null,
+): Promise<StylePreviewData> {
+  const key = `${styleId}|${locale ?? ''}`;
+  const known = cache.get(key);
   if (known) return known;
+  const query = locale ? `?locale=${encodeURIComponent(locale)}` : '';
   const pending = api<StylePreviewData>(
-    `/citation-styles/${encodeURIComponent(styleId)}/preview`,
+    `/citation-styles/${encodeURIComponent(styleId)}/preview${query}`,
   ).catch((error: unknown) => {
     // A failure is not kept, so moving back to the style tries again.
-    cache.delete(styleId);
+    cache.delete(key);
     throw error;
   });
-  cache.set(styleId, pending);
+  cache.set(key, pending);
   return pending;
 }
 
-export function StylePreview({ styleId }: { styleId: string | null }) {
+export function StylePreview({
+  styleId,
+  locale,
+}: {
+  styleId: string | null;
+  locale?: string | null;
+}) {
   const [state, setState] = useState<{
-    styleId: string;
+    key: string;
     data: StylePreviewData | null;
     failed: boolean;
   } | null>(null);
 
+  const key = `${styleId ?? ''}|${locale ?? ''}`;
+
   useEffect(() => {
     if (!styleId) return;
+    const wanted = `${styleId}|${locale ?? ''}`;
     let live = true;
     // A short pause so moving the pointer down a list asks for the style it stops on, not every
     // style it crosses.
     const timer = window.setTimeout(() => {
-      loadStylePreview(styleId)
+      loadStylePreview(styleId, locale)
         .then((data) => {
-          if (live) setState({ styleId, data, failed: false });
+          if (live) setState({ key: wanted, data, failed: false });
         })
         .catch(() => {
-          if (live) setState({ styleId, data: null, failed: true });
+          if (live) setState({ key: wanted, data: null, failed: true });
         });
     }, 120);
     return () => {
       live = false;
       window.clearTimeout(timer);
     };
-  }, [styleId]);
+  }, [styleId, locale]);
 
   if (!styleId) return null;
-  const current = state?.styleId === styleId ? state : null;
+  const current = state?.key === key ? state : null;
 
   return (
     <div

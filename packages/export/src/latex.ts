@@ -46,6 +46,13 @@ export type LatexExportInput = ThesisExportInput & {
   /** biblatex's nearest built-in style to the thesis's own. */
   /** `verbose-ibid` for a note style (ADR-0029): every citation a `\footcite`. */
   bibStyle: 'authoryear' | 'numeric' | 'verbose-ibid';
+  /**
+   * The citation locale the student chose, or the document language implies (ADR-0058), as a
+   * CSL id ("en-GB"). Absent — every thesis on automatic English — leaves biblatex on its own
+   * default, as before. Passed to biblatex as `language=`, which loads that language's `.lbx`
+   * without babel, so "edn" and "and" follow the student's choice here as in the editor.
+   */
+  citationLocale?: string | null;
   /** The style the editor uses, named in the note at the top of `main.tex`. */
   styleLabel: string;
   /** `YYYY-MM-DD`, for the header comment. */
@@ -53,6 +60,30 @@ export type LatexExportInput = ThesisExportInput & {
 };
 
 export type LatexFile = { path: string; data: string | Uint8Array };
+
+/**
+ * biblatex's language name for each citation locale the editor offers (ADR-0058): the names of
+ * the `.lbx` files biblatex ships (british, american, german, french, spanish, dutch). No TeX
+ * installation on the build machine, so a compile with each is not yet proven (BUILD_LOG).
+ */
+const BIBLATEX_LANGUAGE: Readonly<Record<string, string>> = {
+  'en-GB': 'british',
+  'en-US': 'american',
+  'de-DE': 'german',
+  'fr-FR': 'french',
+  'es-ES': 'spanish',
+  'nl-NL': 'dutch',
+};
+
+/** The language biblatex is told to use, or null to leave it on its default. */
+export function biblatexLanguage(locale: string | null | undefined): string | null {
+  return (locale && BIBLATEX_LANGUAGE[locale]) || null;
+}
+
+function biblatexOptions(input: Pick<LatexExportInput, 'bibStyle' | 'citationLocale'>): string {
+  const language = biblatexLanguage(input.citationLocale);
+  return `style=${input.bibStyle},backend=biber${language ? `,language=${language}` : ''}`;
+}
 
 const SPECIALS: Record<string, string> = {
   '\\': '\\textbackslash{}',
@@ -568,7 +599,7 @@ function preamble(input: LatexExportInput): string[] {
     `\\titleformat{\\chapter}[display]{\\normalfont${chapter.bold ? '\\bfseries' : ''}\\Large${align}}{${chapterLabel}}{1em}{${chapter.caps ? '\\MakeUppercase' : ''}}`,
     `\\renewcommand{\\thesection}{${sectionNumber}}`,
     `\\renewcommand{\\thesubsection}{${subsectionNumber}}`,
-    `\\usepackage[style=${input.bibStyle},backend=biber]{biblatex}`,
+    `\\usepackage[${biblatexOptions(input)}]{biblatex}`,
     '\\addbibresource{references.bib}',
     '\\usepackage[hidelinks]{hyperref}',
     `\\title{${escapeLatex(input.documentTitle)}}`,

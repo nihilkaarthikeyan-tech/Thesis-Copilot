@@ -8,6 +8,11 @@
  * a Cite button on each result. This panel does the same on the search chat's web scope already
  * uses (`POST /chat/web`: OpenAlex, Semantic Scholar, PubMed, arXiv — no model call, no allowance).
  *
+ * Under each result, the sentence or two of its abstract that match the search, labelled "From
+ * the abstract", with the searched words in bold (coverage-map row 23). The API picks them,
+ * verbatim, from the abstract the index returned; with no match the abstract's opening shows as
+ * before, unlabelled.
+ *
  * Citing stays honest: a paper can be cited only once it is in the library and resolved, because a
  * citation here must point at a record the student has (§10.6). "Add" fetches it; "Cite here"
  * appears when it is ready.
@@ -17,10 +22,13 @@ import { newCitationKey } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { type MatchedPassage, passageRuns } from '@/lib/passage';
 
 type Result = {
   title: string;
   abstract: string | null;
+  /** The abstract's sentences that match the query, verbatim; null when none do. */
+  matchedPassage?: MatchedPassage | null;
   year: number | null;
   venue: string | null;
   doi: string | null;
@@ -332,7 +340,28 @@ export function FindPapersPanel({
               {result.citationCount !== null ? ` · ${result.citationCount} citations` : ''}
               {result.openAccess ? ' · open access' : ''}
             </p>
-            {result.abstract ? (
+            {result.matchedPassage ? (
+              <div data-testid="paper-passage" className="mt-1 border-l-2 border-line pl-2">
+                <p className="text-[10.5px] uppercase tracking-wide text-faint">
+                  From the abstract
+                </p>
+                <p className="text-xs text-ink">
+                  {result.matchedPassage.clippedStart ? '… ' : ''}
+                  {passageRuns(result.matchedPassage).map((run, i) =>
+                    run.match ? (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: runs are fixed for a result
+                      <strong key={i} className="font-semibold">
+                        {run.text}
+                      </strong>
+                    ) : (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: runs are fixed for a result
+                      <span key={i}>{run.text}</span>
+                    ),
+                  )}
+                  {result.matchedPassage.clippedEnd ? ' …' : ''}
+                </p>
+              </div>
+            ) : result.abstract ? (
               <p className="mt-1 line-clamp-3 text-xs text-muted">{result.abstract}</p>
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-3">

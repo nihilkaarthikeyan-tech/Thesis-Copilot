@@ -42,10 +42,13 @@ const MIN_QUERY = 2;
 
 export function StyleSearch({
   current,
+  locale,
   busy,
   onChoose,
 }: {
   current: string;
+  /** The citation locale the thesis renders in; the preview uses it too (ADR-0065). */
+  locale?: string | null;
   busy: boolean;
   onChoose: (styleId: string) => void;
 }) {
@@ -176,7 +179,7 @@ export function StyleSearch({
           {error}
         </p>
       ) : null}
-      <StylePreview styleId={(searching && highlighted) || current} />
+      <StylePreview styleId={(searching && highlighted) || current} locale={locale} />
       {result ? (
         <p className="mt-1 text-[10.5px] text-faint">{result.credit.text} (CC BY-SA 3.0).</p>
       ) : null}

@@ -15,6 +15,7 @@ import type { Editor } from '@tiptap/core';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { automaticLocaleLabel } from '@/lib/citation-locale';
 import { ReadingDepth } from './ReadingDepth';
 import { ReferenceHealth } from './ReferenceHealth';
 import { StyleSearch } from './StyleSearch';
@@ -40,6 +41,13 @@ export type Rendered = {
     text?: string;
   }>;
   counts: { citations: number; sources: number; orphans: number; unused: number; untagged: number };
+  /** ADR-0065: the student's locale choice (null: automatic). */
+  citationLocale?: string | null;
+  /** What the thesis asks citeproc for; null means the style's own locale. */
+  localeOverride?: string | null;
+  /** The locale the labels and bibliography were actually rendered in. */
+  locale?: string;
+  locales?: Array<{ id: string; label: string }>;
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -78,6 +86,23 @@ export function CitationsPanel({
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function switchLocale(locale: string | null) {
+    setBusy(true);
+    setError(null);
+    try {
+      const rendered = await api<Rendered>(`/documents/${documentId}/citation-locale`, {
+        method: 'PUT',
+        body: JSON.stringify({ locale }),
+      });
+      setData(rendered);
+      onRendered(rendered);
+    } catch (e) {
+      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not switch.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function switchStyle(style: string) {
     setBusy(true);
@@ -121,8 +146,39 @@ export function CitationsPanel({
             </option>
           ))}
         </select>
+        {data?.locales && data.locales.length > 0 ? (
+          <div className="mt-2">
+            <label className="text-xs text-muted" htmlFor="citation-locale">
+              Language of the citations
+            </label>
+            <select
+              id="citation-locale"
+              data-testid="locale-switcher"
+              disabled={busy}
+              value={data.citationLocale ?? ''}
+              onChange={(e) => void switchLocale(e.target.value || null)}
+              className="mt-1 w-full rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink"
+            >
+              <option value="">{automaticLocaleLabel(data)}</option>
+              {data.locales.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-muted">
+              The words and dates in each citation: “and” or “&amp;”, “edn” or “ed.”, “2 January
+              2024” or “January 2, 2024”.
+            </p>
+          </div>
+        ) : null}
         {data ? (
-          <StyleSearch current={data.style} busy={busy} onChoose={(id) => void switchStyle(id)} />
+          <StyleSearch
+            current={data.style}
+            locale={data.localeOverride ?? null}
+            busy={busy}
+            onChoose={(id) => void switchStyle(id)}
+          />
         ) : null}
         {data?.styles.find((s) => s.id === data.style)?.note ? (
           <p className="mt-1 text-xs text-muted">

@@ -4846,3 +4846,45 @@ usable comes back. The LaTeX must render in KaTeX before it is offered; it fills
 back in plain words, and goes in only on Apply. Evaluation on gpt-5-mini: 14 of 14 correct (13 an
 exact match, one an equivalent `\bigl(…\bigr)` form), ~570 tokens a call. Tests: packages/ai
 `equation.spec.ts`, API `equation.spec.ts` (incl. the cap test), the maths e2e.
+## Citation locale and the matching passage on Find papers (2026-10-04, coverage-map rows 26 and 23)
+
+**Citation locale (ADR-0065, migration `0038_citation_locale`).** The Citations tab has a
+"Language of the citations" choice under the style: Automatic (it names what that means, e.g.
+"Automatic: English (US), the style's own"), English (UK), English (US), German, French,
+Spanish, Dutch. `PUT /documents/:id/citation-locale` `{ locale | null }` changes one column and
+re-renders, like the style. Labels, bibliography, the `@` picker, chapter and thesis
+`.docx`/PDF/HTML and compliance all follow, because they all read `CitationsService.render`;
+LaTeX passes `language=british` (etc.) to biblatex; `GET /citation-styles/:id/preview?locale=`
+renders the preview in it, and the editor passes the thesis's.
+
+- **Found on the way.** `@citation-js/plugin-csl` 0.8.2 bundles five locales and silently turns
+  any other id into "none", so en-GB rendered exactly as en-US. `locales-en-GB.xml` is now
+  vendored verbatim from the CSL locales repo (pinned commit, CC BY-SA). And 14 catalogue
+  journal styles whose `default-locale` citeproc lacks (pt-BR, da-DK, de-CH, ...) threw a
+  `TypeError` and could not render at all; they now fall back to en-US terms.
+- **Default unchanged for English theses.** Plain `en` keeps the style's own locale. A thesis
+  whose language is German/French/Spanish/Dutch, or exactly `en-GB`, now follows it; that
+  change is why there is an ADR.
+- Tests: `packages/citations/test/locales.spec.ts` (13: every offered locale loadable; Harvard
+  en-US vs en-GB strings read off citeproc; APA "2nd ed." vs "2nd edn"; de/fr terms; a journal's
+  own locale; the pt-BR journal renders; preview; automatic rules), the `packages/export` LaTeX
+  option, `apps/api/test/citation-locale.spec.ts` (7, testcontainers), one web unit spec: all
+  pass. `apps/web/e2e/citation-locale.spec.ts` is written, not run (dev stack in use).
+- Not proven: a LaTeX compile with `language=british`; no TeX on this machine.
+
+**Matching passage (Find papers).** Each `POST /chat/web` result carries `matchedPassage`: the
+one or two abstract sentences matching the most of the question's content words
+(`matchingPassage` in `@tc/retrieval`: `keywordsOf` terms, a light suffix stem, the earlier
+sentence on a tie, an adjacent matching sentence joined when the pair stays under 420
+characters, a longer sentence clipped round its first match), with the matched words' offsets.
+It is always `abstract.slice(...)` of the record the index returned, and null when there is no
+abstract or nothing in it matches: no first sentence passed off as a match. The panel shows it
+labelled "From the abstract" with the words in bold; with no passage, the abstract's opening
+shows as before. No model, no embedding, no allowance.
+
+- Tests: `packages/retrieval/test/passage.spec.ts` (8, on the recorded arXiv and PubMed
+  fixtures, the verbatim invariant checked on every case), `apps/api/test/web-passage.spec.ts`
+  (5, testcontainers; arXiv and PubMed answer with the recorded fixtures through the app's own
+  clients, OpenAlex with nothing: there is no recorded OpenAlex search and none was recorded),
+  one web unit spec: all pass. `apps/web/e2e/find-papers.spec.ts` now checks the passage;
+  written, not run.

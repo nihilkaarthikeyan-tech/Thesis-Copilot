@@ -30,6 +30,8 @@ import {
   type DiscoveredWork,
   interleave,
   keywordsOf,
+  type MatchedPassage,
+  matchingPassage,
   mergeWorks,
   OpenAlexDiscovery,
   SemanticScholarClient,
@@ -43,6 +45,12 @@ import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 export type WebResult = {
   title: string;
   abstract: string | null;
+  /**
+   * The one or two sentences of `abstract` that best match the student's question, verbatim,
+   * with the matching words marked (coverage-map row 23). Null when there is no abstract or
+   * nothing in it matches: never text that was not in the fetched record.
+   */
+  matchedPassage: MatchedPassage | null;
   year: number | null;
   venue: string | null;
   doi: string | null;
@@ -62,6 +70,34 @@ export const WEB_SCOPE = {
   /** Per index. One slow index costs its own results, never the whole answer. */
   timeoutMs: 12_000,
 } as const;
+
+/** What the library already holds, to mark a result "already yours". */
+export type LibraryKeys = { dois: ReadonlySet<string>; titles: ReadonlySet<string> };
+
+/** One discovered work as the panel shows it. Pure, so the shape is tested without a network. */
+export function webResultOf(work: DiscoveredWork, question: string, have: LibraryKeys): WebResult {
+  return {
+    title: work.title,
+    abstract: work.abstract,
+    matchedPassage: matchingPassage(work.abstract, question),
+    year: work.year,
+    venue: work.venue,
+    doi: work.doi,
+    citationCount: work.citationCount,
+    isPreprint: work.isPreprint,
+    // §2: whether the full text can actually be fetched decides whether a source can ever
+    // reach FULL_TEXT grounding, so it is shown before the student spends a slot on it.
+    openAccess: Boolean(work.oaStatus && work.oaStatus !== 'closed'),
+    inLibrary:
+      (work.doi ? have.dois.has(work.doi.toLowerCase()) : false) ||
+      have.titles.has(work.title.trim().toLowerCase()),
+    via: work.via,
+    reference: {
+      raw: referenceLineOf(work),
+      ...(work.doi ? { doi: work.doi } : {}),
+    },
+  };
+}
 
 /** A reference line good enough for the resolver to match on when there is no DOI. */
 export function referenceLineOf(work: DiscoveredWork): string {
@@ -150,26 +186,9 @@ export class WebScopeService {
 
     return {
       query: question,
-      results: works.map((work) => ({
-        title: work.title,
-        abstract: work.abstract,
-        year: work.year,
-        venue: work.venue,
-        doi: work.doi,
-        citationCount: work.citationCount,
-        isPreprint: work.isPreprint,
-        // §2: whether the full text can actually be fetched decides whether a source can ever
-        // reach FULL_TEXT grounding, so it is shown before the student spends a slot on it.
-        openAccess: Boolean(work.oaStatus && work.oaStatus !== 'closed'),
-        inLibrary:
-          (work.doi ? haveDoi.has(work.doi.toLowerCase()) : false) ||
-          haveTitle.has(work.title.trim().toLowerCase()),
-        via: work.via,
-        reference: {
-          raw: referenceLineOf(work),
-          ...(work.doi ? { doi: work.doi } : {}),
-        },
-      })),
+      results: works.map((work) =>
+        webResultOf(work, question, { dois: haveDoi, titles: haveTitle }),
+      ),
     };
   }
 }

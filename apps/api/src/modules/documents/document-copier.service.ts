@@ -136,6 +136,7 @@ export class DocumentCopier {
               field: original.field,
               language: original.language,
               citationStyle: original.citationStyle,
+              citationLocale: original.citationLocale,
               submissionDeadline: original.submissionDeadline,
               institutionTemplateId: original.institutionTemplateId,
               meta: json(remapIds(original.meta, map)),

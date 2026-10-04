@@ -38,6 +38,17 @@ test('a paper can be found, added and cited without leaving the chapter', async 
   const results = panel.getByTestId('paper-result');
   await expect(results.first()).toBeVisible({ timeout: 60_000 });
 
+  // Under a result, the abstract's sentence that matches the search, with the searched words in
+  // bold (coverage-map row 23). Every word in bold is a form of one of the query's.
+  const passage = panel.getByTestId('paper-passage').first();
+  await expect(passage).toContainText('From the abstract');
+  const marked = await passage.locator('strong').allTextContents();
+  expect(marked.length).toBeGreaterThan(0);
+  const stems = ['protein', 'structur', 'predict', 'deep', 'learn'];
+  for (const word of marked) {
+    expect(stems.some((stem) => word.toLowerCase().startsWith(stem))).toBe(true);
+  }
+
   await results.first().getByTestId('paper-add').click();
   const cite = results.first().getByTestId('paper-cite');
   await expect(cite).toBeVisible({ timeout: 120_000 });
