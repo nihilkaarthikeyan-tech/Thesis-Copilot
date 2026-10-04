@@ -6,6 +6,19 @@ collects every finding so nothing is lost before then. Evidence for each is in
 `docs/JENNI-UX-STUDY.md` (journeys), `docs/JENNI-FINDINGS.md` (features and stack) and
 `docs/JENNI-COMPARISON.md` (test sheet). Not ranked; no decision is taken here.
 
+Research files (2026-10-04, by helper agents; read before building):
+- `docs/research/coverage-map.md` — 101 Jenni capabilities checked against our code with file paths:
+  16 match, 47 partial, 24 missing, 14 ours better; missing/partial ordered by how often a student
+  meets them. The **build checklist**.
+- `docs/research/jenni-docs-digest.md` — all 36 Jenni help articles, ending in ~190 capabilities.
+- `docs/research/jenni-public-surfaces.md` — pricing truths, changelog, blog, extension, company.
+- `docs/research/jenni-user-voice.md` — what users praise and complain about, with counts and the
+  limits of the evidence.
+
+Corrections from that research: our browser extension already exists (`apps/extension`, ADR-0031);
+usage bars already exist on our Account page; our document language exists but the interface is
+English only.
+
 ## A. Faults in ours, seen on screen
 
 1. A suggestion asked for with nothing to cite (Ctrl+/ or Suggest) does nothing visible — no message.
@@ -49,6 +62,14 @@ collects every finding so nothing is lost before then. Evidence for each is in
     sentence-anchored comments with severity (ours lives inside the chapter build and viva).
 26. Our selection commands write straight into a draft block; Jenni's AI Edit shows a preview with
     "what changed and why", a comparison, and Replace / Insert below / Try again / Discard.
+27. A suggestion has no on-screen Accept / Refine / thumbs — keys only, so a phone has no way to
+    accept it.
+28. A student cannot comment on their own text (only a guide can); no viewer role, link access or
+    document cloning; co-editing is behind a flag.
+29. No duplicate detection or "missing PDFs" view in the library; no automatic figure/table numbering
+    with cross-references that survive export (check against the coverage map).
+30. Users' most-hated Jenni area is billing (silent renewals, desktop-only cancel, no refunds) — ours
+    must make renewal, cancellation and refunds obvious before launch with Razorpay.
 
 ## B. What Jenni does that makes it easy (observed, not yet decided)
 

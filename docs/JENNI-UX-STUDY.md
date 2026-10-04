@@ -101,7 +101,7 @@ ours over **counts** (how much is published per theme). A committee asks the fir
 
 | | Jenni | Ours |
 |---|---|---|
-| Usage | The account menu shows a bar per allowance (uploads, autocompletes, edits, chats, reviews, workflows). The failed workflow run was not charged | "Assist 0/50 · Draft 0/2" in the editor header |
+| Usage | The account menu shows a bar per allowance (uploads, autocompletes, edits, chats, reviews, workflows). The failed workflow run was not charged | Usage bars on the Account page; "Assist 0/50 · Draft 0/2" in the editor header |
 | Settings | One dialog: Account (email, change, delete), Preferences (16 interface languages incl. Hindi and British English; 7 themes incl. high-contrast and "paper"; web/library search Off/Ask/On), Connections (Zotero, Mendeley, Chrome extension), Document defaults (autocomplete, citation style, font) | Settings and Account pages; light/dark |
 | Price (India) | "50% local discount": Plus ₹1,427/month or ₹570.83/month yearly; Pro ₹3,449 or ₹1,379.58. Plus: 5,000 autocompletes, 500 edits, 500 chats, 10 reviews, 10 workflows a month | ₹299 planned |
 | Help | Send a message (live chat), 11 video tutorials by topic, documentation, changelog, Discord | "How suggestions work (90 seconds)", Feedback |
