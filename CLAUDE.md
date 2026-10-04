@@ -175,6 +175,20 @@ intake questions before the unit is taken; the build searches for sources it lac
 the QA report downloads as PDF or HTML. **Released as v0.1.23 on 2026-10-01** (backup `pre-v0.1.23`). The university profiles are
 unconfirmed and the new prompts unevaluated — `docs/PENDING.md`.
 
+**The Jenni study build (2026-10-04/05, ADRs 0054–0067), on main, NOT released.** Studied Jenni
+end to end (docs/JENNI-*.md, docs/research/coverage-map.md: now 63 match, 15 ours better, 20
+partial, 3 missing), then built what it showed, the owner having delegated the product calls
+(ADR-0059). Among it: suggestion bar (Accept/One word/Refine presets/thumbs/‹ › history), evidence
+card, Papers tab with Cite here, "/" menu, equation from words (ADR-0063) and from a photo (ADR-0064:
+`Message.images`, the first image input in the product), more edit actions (ADR-0066), examiner
+review of a chapter (ADR-0056) and of a selection (ADR-0067), chat beyond the library (ADR-0060,
+no new prompt), sharing roles/link/copy (ADR-0057), Word import, collections, read-beside, Zotero by
+key, Start writing now (ADR-0062), Hindi interface beta (ADR-0061), citation locale (ADR-0065),
+long-job email (ADR-0058, `@tc/mail`), help/changelog, home-page demo. **A real fault found on the
+way: a library PDF a student uploaded was never read** (pdf.js refuses a Buffer; fixed 26a3974) —
+after release, re-index them (PENDING). The mock e2e stack (`api-mock`) runs without `--watch` and
+with mail blanked. Still the owner's: the usage-limit rebalance (option 1 recommended), the release.
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.

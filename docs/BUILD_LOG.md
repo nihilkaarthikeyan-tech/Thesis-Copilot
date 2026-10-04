@@ -5013,3 +5013,14 @@ range for one COMMAND unit; only the flags inside the range are replaced. Also f
 and footnote specs that found the equation field as "the textbox" — the field now has the "describe
 it in words" box beside it, so they address `#inline-prompt-field`. Full Playwright run before this
 item: 123 of 130; the rest were these specs and OpenAlex's daily budget.
+
+## Verification after the Jenni build (2026-10-05)
+
+Everything merged on main (ADRs 0054–0067): `pnpm turbo typecheck` and `pnpm lint` clean; **2,355
+unit and integration tests pass** (api 630, ai 470, retrieval 399, worker 186, ui 132, export 132,
+web 131, citations 114, config 83, types 64, extension 10, mail 2, db 2; 3 skipped on absent
+fixtures); **Playwright 129 of 132** on the mock stack. The three that fail (`gap-density`,
+`journal-filter`, `path-a`) depend on OpenAlex answering, and its free daily budget on this machine
+returned HTTP 429 — the worker log shows it; an `OPENALEX_API_KEY` in the dev `.env` removes it.
+Coverage against Jenni (docs/research/coverage-map.md): 63 match, 15 ours better, 20 partial, 3
+missing (live chat support, a community channel, interface languages beyond Hindi).
