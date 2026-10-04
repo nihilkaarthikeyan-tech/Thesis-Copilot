@@ -62,6 +62,7 @@ export class DocumentEraser {
     await tx.coherenceFlag.deleteMany({ where: inDocs });
     await tx.comment.deleteMany({ where: inDocs });
     await tx.guideShare.deleteMany({ where: inDocs });
+    await tx.shareLink.deleteMany({ where: inDocs });
     await tx.documentVersion.deleteMany({ where: inDocs });
     await tx.suggestionEvent.deleteMany({ where: inDocs });
     await tx.searchCandidate.deleteMany({ where: inDocs });

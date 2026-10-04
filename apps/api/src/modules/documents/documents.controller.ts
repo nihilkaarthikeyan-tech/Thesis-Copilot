@@ -29,6 +29,7 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
+import { DocumentCopier } from './document-copier.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
 import { ProgressService } from './progress.service.js';
@@ -116,6 +117,7 @@ export class DocumentsController {
     private readonly progressService: ProgressService,
     private readonly flags: FlagsService,
     private readonly deletion: OwnThesisDeletion,
+    private readonly copier: DocumentCopier,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -246,6 +248,16 @@ export class DocumentsController {
       liveEditing: document.shares.length > 0 && (await this.flags.isEnabled('collaboration')),
       ownerEmail: user.email,
     };
+  }
+
+  /**
+   * ADR-0057: "Make a copy". A new thesis with its own copies of the chapters, memory, settings
+   * and library; no shares, comments, usage or exports. No model call, so no allowance.
+   */
+  @Post(':id/copy')
+  @HttpCode(200)
+  async copy(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.copier.copy(user.id, id);
   }
 
   /**

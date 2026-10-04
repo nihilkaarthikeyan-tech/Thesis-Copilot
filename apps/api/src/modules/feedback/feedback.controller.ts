@@ -14,26 +14,33 @@ import {
   HttpCode,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ValidationError } from '../../common/errors.js';
+import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { CommentsService } from './comments.service.js';
 import { DocxImportService } from './docx-import.service.js';
 import { FeedbackExportService } from './feedback-export.service.js';
 import { ReviewService } from './review.service.js';
+import { ShareLinkService } from './share-link.service.js';
+import { requestedRole, shareRole } from './share-roles.js';
 import { SharesService } from './shares.service.js';
 
 const shareBody = z.object({
   guideEmail: z.string().trim().email().max(200),
-  /** ADR-0028: a co-author who may type in the chapter live, rather than a commenting guide. */
+  /** ADR-0057: Guide (comments), Co-author (edits live) or Reader (reads). */
+  role: shareRole.optional(),
+  /** ADR-0028's checkbox, from before `role`: true means Co-author. */
   canEdit: z.boolean().optional(),
 });
+
+const roleBody = z.object({ role: shareRole });
 
 const commentBody = z.object({
   chapterId: z.string().uuid().nullable().optional(),
@@ -69,6 +76,7 @@ export class FeedbackController {
     private readonly review: ReviewService,
     private readonly exports: FeedbackExportService,
     private readonly docx: DocxImportService,
+    private readonly links: ShareLinkService,
   ) {}
 
   // ---- shares (student only) ----------------------------------------------------------------
@@ -87,7 +95,20 @@ export class FeedbackController {
   ) {
     const parsed = shareBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Enter your guide’s email', parsed.error.issues);
-    return this.shares.create(user, documentId, parsed.data.guideEmail, parsed.data.canEdit);
+    return this.shares.create(user, documentId, parsed.data.guideEmail, requestedRole(parsed.data));
+  }
+
+  /** ADR-0057: change what someone may do — Guide, Co-author or Reader. */
+  @Put('shares/:shareId')
+  setShareRole(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('shareId') shareId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = roleBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Choose a role', parsed.error.issues);
+    return this.shares.setRole(user.id, documentId, shareId, parsed.data.role);
   }
 
   @Delete('shares/:shareId')
@@ -97,6 +118,26 @@ export class FeedbackController {
     @Param('shareId') shareId: string,
   ) {
     return this.shares.revoke(user.id, documentId, shareId);
+  }
+
+  // ---- "anyone with the link can read" (student only, ADR-0057) -----------------------------
+
+  @Get('link')
+  linkStatus(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.links.status(user.id, documentId);
+  }
+
+  /** Turns the link on, or replaces it with a new one; the answer is the only time the URL shows. */
+  @Post('link')
+  @HttpCode(200)
+  enableLink(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.links.enable(user.id, documentId);
+  }
+
+  /** Turns it off. The old URL stops working at once. */
+  @Delete('link')
+  disableLink(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.links.disable(user.id, documentId);
   }
 
   // ---- comments (student or guide) ------------------------------------------------------------
@@ -302,5 +343,28 @@ export class GuideController {
   @Get('documents/:documentId')
   document(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
     return this.shares.documentFor(user, documentId);
+  }
+}
+
+const chapterIdParam = z.string().uuid();
+
+/**
+ * ADR-0057: what a "can read" link opens. No session guard — the token is the whole of the
+ * permission — and only GETs: there is no route here, or anywhere, that a link token can write
+ * through. Rate-limited per IP as `link` (common/rate-limit.ts).
+ */
+@Controller('read')
+export class ReadLinkController {
+  constructor(private readonly links: ShareLinkService) {}
+
+  @Get(':token')
+  document(@Param('token') token: string) {
+    return this.links.document(token);
+  }
+
+  @Get(':token/chapters/:chapterId')
+  chapter(@Param('token') token: string, @Param('chapterId') chapterId: string) {
+    if (!chapterIdParam.safeParse(chapterId).success) throw new NotFoundError('That chapter');
+    return this.links.chapter(token, chapterId);
   }
 }

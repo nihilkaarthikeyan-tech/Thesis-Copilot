@@ -4637,3 +4637,21 @@ ADR-0051's Assist model). Migration `0031_examiner_review`.
   refusals for nothing, the job id, refund when it cannot be queued, owner only, flags with
   corrections), `cost-model.spec.ts` (both totals), the web labels, and a Playwright spec
   (`e2e/examiner-review.spec.ts`) not run here — it needs the dev stack (`docs/PENDING.md`).
+
+## Sharing roles, a read-only link, and copies (2026-10-04, ADR-0057)
+
+- **Roles.** The Share dialog lists everyone with access as Guide / committee, Co-author or Reader
+  (new: `GuideShare.canComment = false`) and the owner changes or removes each in place. A Reader
+  is refused every comment route, reading included.
+- **Link.** "Anyone with the link can read", off by default: a 256-bit token, only its SHA-256
+  stored, compared in constant time; off deletes the row so the old URL dies at once. The page
+  gets text flattened on the server (no e-mail, sources, comments, figures or pending drafts),
+  has no write verb, and is rate-limited per IP.
+- **Copy.** "Make a copy" (thesis list More menu, Share dialog): chapters, memory, settings and
+  the library with chunks *and their vectors* copied in SQL, files copied server-side under new
+  keys, every id inside the JSON rewritten. No shares, comments, usage or exports; no model call.
+- **Found on the way.** A copy that kept the original's file keys would have lost its PDFs and
+  figures the day the original was deleted, because `DocumentEraser` removes files by the keys
+  rows hold; the copy test erases the original and checks the copy's files survive.
+- Tests: three Testcontainers specs (32 cases) pass, and the whole API suite (46 files, 499 tests); `apps/web/e2e/sharing.spec.ts` written, not
+  run (dev stack in use; `docs/PENDING.md`).

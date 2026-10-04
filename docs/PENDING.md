@@ -148,6 +148,20 @@ download, and in Word for Windows, Word for Mac and Word on the web:
 - [ ] **Linked to the references**: Ctrl+click on a citation goes to its entry, in Word and after
       uploading to Google Docs.
 
+## Sharing roles, read-only links and copies (ADR-0057, 2026-10-04)
+
+- [ ] **Run the browser spec.** `apps/web/e2e/sharing.spec.ts` (link on → a stranger reads it →
+      off kills it; Reader role changed in place; "Make a copy" from the thesis list) was written
+      but not run: the dev stack was in use. `pnpm e2e -- sharing` with web, API, worker and
+      Compose up.
+- [ ] **Read the privacy page change.** "Who can see it" now says a document may be shared with a
+      chosen role and that a read-only link, if the owner turns one on, lets anyone holding it
+      read the text until it is turned off. It belongs in the privacy notice you have yet to send
+      ("Decisions and reviews" below), and the wording is yours to approve.
+- [ ] **Release.** Migration `0034_share_links` (a column on `GuideShare`, table `ShareLink`) runs
+      with the deploy. Nothing to configure; the link is off for every thesis until its owner
+      turns it on.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

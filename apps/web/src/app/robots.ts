@@ -21,7 +21,16 @@ import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/site';
 
 /** Nothing here is secret; it is where the product's own data lives, and it needs a session. */
-const PRIVATE = ['/app/', '/admin/', '/institution/', '/guide/', '/sign-in', '/sign-up'];
+const PRIVATE = [
+  '/app/',
+  '/admin/',
+  '/institution/',
+  '/guide/',
+  // ADR-0057: a "can read" link. The page also says noindex; this says it before the fetch.
+  '/read/',
+  '/sign-in',
+  '/sign-up',
+];
 
 export default function robots(): MetadataRoute.Robots {
   return {

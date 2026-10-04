@@ -182,7 +182,13 @@ export async function registerPlugins(app: NestFastifyApplication, env: Env): Pr
         identity,
         HEAVY_RATE_LIMITS[kind.heavy],
       );
-      const what = { upload: 'uploads', search: 'searches', export: 'exports' }[kind.heavy];
+      const what = {
+        upload: 'uploads',
+        search: 'searches',
+        export: 'exports',
+        link: 'requests to a shared link',
+        copy: 'copies',
+      }[kind.heavy];
       if (!heavy.allowed) return refuse(request, reply, heavy, what);
     }
   });

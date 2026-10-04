@@ -243,6 +243,8 @@ model Document {
   chapterBuilds ChapterBuild[]
   comments    Comment[]
   shares      GuideShare[]
+  /// ADR-0057: "anyone with the link can read" — at most one, absent unless the owner turns it on.
+  shareLink   ShareLink?
   versions    DocumentVersion[]
   exportArtifacts ExportArtifact[]
   createdAt   DateTime @default(now())
@@ -557,7 +559,31 @@ model GuideShare {
    * alongside the student; still no AI actions, uploads or exports, which stay the owner's.
    */
   canEdit    Boolean  @default(false)
+  /**
+   * ADR-0057: false makes this a Reader — the thesis, read-only, and nothing else: no comment box,
+   * no comments of anyone else's. A co-author (`canEdit`) always comments too.
+   */
+  canComment Boolean  @default(true)
   createdAt  DateTime @default(now())
+}
+
+/**
+ * ADR-0057: a link that lets anyone who has it read the thesis — the text, nothing else.
+ *
+ * Only a SHA-256 of the token is stored; the token itself is shown to the owner once, when the
+ * link is made. Turning the link off deletes the row, so the old token matches nothing ever
+ * again; turning it back on mints a new one. There is no column that could make a link writable.
+ */
+model ShareLink {
+  id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId   String    @unique @db.Uuid
+  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  /// Lowercase hex SHA-256 of the token in the URL.
+  tokenHash    String    @unique
+  /// How many times the thesis was opened through the link, and when last — shown to the owner.
+  views        Int       @default(0)
+  lastViewedAt DateTime?
+  createdAt    DateTime  @default(now())
 }
 
 model Comment {
