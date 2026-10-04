@@ -53,6 +53,21 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(budget.withinCeiling).toBe(true);
   });
 
+  it('examiner reviews are priced and the whole budget still fits (ADR-0056)', () => {
+    const budget = computeMonthlyBudget('STUDENT_MONTHLY', { models: PRODUCTION_MODELS });
+    const line = budget.lines.find((l) => l.label === 'Examiner reviews');
+    expect(line?.count).toBe(6);
+    // Eight sections, each one examiner call of the chapter build's shape, on gpt-5-mini.
+    expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(1.8618, 4);
+    expect(budget.totalInr).toBeCloseTo(63.89, 2);
+    // ADR-0051 moved the fast tier to gpt-4.1-mini for Assist; the ceiling holds there too.
+    const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
+      models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
+    });
+    expect(assistModel.totalInr).toBeCloseTo(85.82, 2);
+    expect(assistModel.withinCeiling).toBe(true);
+  });
+
   it('STUDENT_ANNUAL and INSTITUTION_SEAT are within the ceiling too, on both bases', () => {
     for (const plan of ['STUDENT_ANNUAL', 'INSTITUTION_SEAT'] as const) {
       const prd = computeMonthlyBudget(plan, { actions: PRD_METERED_ACTIONS });
@@ -118,6 +133,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       VIVA: 3,
       // ADR-0039: one chapter build to see what it does.
       CHAPTER_BUILD: 1,
+      // ADR-0056: one examiner review to see what it does.
+      EXAMINER_REVIEW: 1,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
     expect(PLAN_LIMITS.FREE_TRIAL.libraryPdfs).toBe(10);
@@ -143,6 +160,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       VIVA: 30,
       // ADR-0039: three planned, checked chapters a month.
       CHAPTER_BUILD: 3,
+      // ADR-0056: six examiner reviews a month.
+      EXAMINER_REVIEW: 6,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);
