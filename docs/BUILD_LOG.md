@@ -4888,3 +4888,11 @@ shows as before. No model, no embedding, no allowance.
   clients, OpenAlex with nothing: there is no recorded OpenAlex search and none was recorded),
   one web unit spec: all pass. `apps/web/e2e/find-papers.spec.ts` now checks the passage;
   written, not run.
+
+## An equation read from a photo (2026-10-04, ADR-0064)
+
+The AI layer can now send a picture with a turn (file parts; OpenAI `input_image`, asserted on the
+wire). "Or take a photo of it" in the equation field sends one PNG/JPEG/WebP (sniffed, ≤ 4 MB,
+shrunk to 1,600 px in the browser) for one COMMAND unit, refunded when nothing usable comes back;
+the LaTeX is KaTeX-checked, read back, and inserted only on Apply. Evaluated on gpt-5-mini over 8
+typeset equations: 8 of 8, ~570 tokens a picture. Real photos and handwriting are in PENDING.

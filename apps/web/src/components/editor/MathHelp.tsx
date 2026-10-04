@@ -13,7 +13,7 @@
 import { MATH_CHEAT_SHEET, MATH_EXAMPLES, type MathPattern } from '@tc/ui';
 import katex from 'katex';
 import { useMemo, useState } from 'react';
-import type { DescribeEquation } from './FormatToolbar';
+import type { DescribeEquation, ReadEquationPhoto } from './FormatToolbar';
 
 /** KaTeX's drawing of `latex`; broken LaTeX comes out as KaTeX's own red source, never a throw. */
 function Tex({ latex, display = false }: { latex: string; display?: boolean }) {
@@ -73,6 +73,7 @@ export function MathHelp({
   onInsert,
   onReplace,
   describe,
+  photo,
 }: {
   value: string;
   /** KaTeX's complaint about `value`, or null when it draws. */
@@ -83,10 +84,34 @@ export function MathHelp({
   onReplace?: (latex: string) => void;
   /** ADR-0063: LaTeX from a description in words. Absent hides the box. */
   describe?: DescribeEquation;
+  /** ADR-0064: LaTeX read from a photo. Absent hides the button. */
+  photo?: ReadEquationPhoto;
 }) {
   const [words, setWords] = useState('');
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<{ reading: string; refusal: string | null } | null>(null);
+
+  async function fromPhoto(file: File) {
+    if (!photo || !onReplace || asking) return;
+    setAsking(true);
+    setAnswer(null);
+    try {
+      const result = await photo(await shrinkImage(file));
+      if (result.ok) {
+        onReplace(result.latex);
+        setAnswer({ reading: result.reading, refusal: null });
+      } else {
+        setAnswer({ reading: result.reading, refusal: result.refusal });
+      }
+    } catch (error) {
+      setAnswer({
+        reading: '',
+        refusal: error instanceof Error ? error.message : 'That picture could not be read.',
+      });
+    } finally {
+      setAsking(false);
+    }
+  }
 
   async function fromWords() {
     if (!describe || !onReplace || !words.trim() || asking) return;
@@ -143,6 +168,24 @@ export function MathHelp({
               {asking ? 'Writing…' : 'Write it'}
             </button>
           </div>
+          {photo ? (
+            <label className="mt-1 inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-accent underline">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                capture="environment"
+                className="sr-only"
+                data-testid="math-photo"
+                disabled={asking}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void fromPhoto(file);
+                }}
+              />
+              Or take a photo of it
+            </label>
+          ) : null}
           {answer?.refusal ? (
             <p className="mt-1 text-xs text-warn" role="alert">
               {answer.refusal}
@@ -204,4 +247,27 @@ export function MathHelp({
       </details>
     </div>
   );
+}
+
+/**
+ * Shrinks a photo to at most 1,600 px on its long side as a JPEG before it is sent: a phone camera's
+ * 12 MP original is several megabytes the model does not need to read one equation.
+ */
+async function shrinkImage(file: File): Promise<Blob> {
+  const MAX = 1600;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size < 1_500_000) return file;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve) =>
+      canvas.toBlob((blob) => resolve(blob ?? file), 'image/jpeg', 0.9),
+    );
+  } catch {
+    // A browser that cannot decode it sends the original; the server says if it is too large.
+    return file;
+  }
 }

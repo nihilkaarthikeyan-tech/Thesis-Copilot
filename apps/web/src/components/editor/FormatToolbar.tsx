@@ -95,8 +95,15 @@ type Ask = {
   /** Shown under the field while it is non-null; Apply waits until it is (ADR-0045). */
   validate?: (value: string) => string | null;
   /** An equation: examples, a live preview and the cheat sheet under the field (item 22). */
-  math?: { display: boolean; describe?: DescribeEquation };
+  math?: { display: boolean; describe?: DescribeEquation; photo?: ReadEquationPhoto };
 };
+
+/** ADR-0064: LaTeX read from a photo of the equation, for the student to check before Apply. */
+export type ReadEquationPhoto = (
+  image: Blob,
+) => Promise<
+  { ok: true; latex: string; reading: string } | { ok: false; refusal: string; reading: string }
+>;
 
 /** ADR-0063: LaTeX from a description in words, for the student to check before Apply. */
 export type DescribeEquation = (
@@ -213,6 +220,7 @@ function useInlinePrompt() {
           onInsert={insert}
           onReplace={(latex) => setValue(latex)}
           {...(ask.math.describe ? { describe: ask.math.describe } : {})}
+          {...(ask.math.photo ? { photo: ask.math.photo } : {})}
         />
       ) : null}
     </div>
@@ -327,8 +335,11 @@ export function FormatToolbar({
   onInsertDiagram,
   actionsRef,
   describeEquation,
+  readEquationPhoto,
 }: {
   editor: Editor | null;
+  /** ADR-0064: an equation read from a photo (one COMMAND unit); absent hides the button. */
+  readEquationPhoto?: ReadEquationPhoto;
   /** ADR-0063: an equation described in words (one COMMAND unit); absent hides the box. */
   describeEquation?: DescribeEquation;
   className?: string;
@@ -418,6 +429,7 @@ export function FormatToolbar({
         math: {
           display: kind === 'block',
           ...(describeEquation ? { describe: describeEquation } : {}),
+          ...(readEquationPhoto ? { photo: readEquationPhoto } : {}),
         },
         onDone: (latex) => {
           if (!latex) return;
@@ -426,7 +438,7 @@ export function FormatToolbar({
         },
       });
     },
-    [editor, prompt, describeEquation],
+    [editor, prompt, describeEquation, readEquationPhoto],
   );
 
   useEffect(() => {
@@ -457,6 +469,7 @@ export function FormatToolbar({
         math: {
           display: detail.display,
           ...(describeEquation ? { describe: describeEquation } : {}),
+          ...(readEquationPhoto ? { photo: readEquationPhoto } : {}),
         },
         onDone: (latex) => {
           if (!latex || latex === detail.latex) return;
@@ -466,7 +479,7 @@ export function FormatToolbar({
     };
     dom.addEventListener(MATH_EDIT_EVENT, onEdit);
     return () => dom.removeEventListener(MATH_EDIT_EVENT, onEdit);
-  }, [editor, prompt, describeEquation]);
+  }, [editor, prompt, describeEquation, readEquationPhoto]);
 
   if (!editor) return null;
 

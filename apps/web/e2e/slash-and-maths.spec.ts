@@ -61,4 +61,17 @@ test('"/" inserts blocks without leaving debris, and an equation can be built wi
   await expect(help.getByTestId('math-words-reading')).toContainText('alpha over n');
   await expect(page.locator('#inline-prompt-field')).toHaveValue(String.raw`\frac{\alpha}{n}`);
   await expect(page.getByTestId('math-preview').locator('.katex')).toBeVisible();
+
+  // ADR-0064: a photo of the equation fills the field the same way (the mock reads E = mc^2).
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  await help.getByTestId('math-photo').setInputFiles({
+    name: 'equation.png',
+    mimeType: 'image/png',
+    buffer: png,
+  });
+  await expect(help.getByTestId('math-words-reading')).toContainText('E equals m c squared');
+  await expect(page.locator('#inline-prompt-field')).toHaveValue('E = mc^{2}');
 });

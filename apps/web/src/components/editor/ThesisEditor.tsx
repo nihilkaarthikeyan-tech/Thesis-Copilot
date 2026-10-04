@@ -1397,6 +1397,17 @@ function ChapterEditor({
           ) : null}
           <FormatToolbar
             editor={editor}
+            readEquationPhoto={(image) => {
+              const form = new FormData();
+              form.append('file', image, 'equation');
+              return api<
+                | { ok: true; latex: string; reading: string }
+                | { ok: false; refusal: string; reading: string }
+              >(`/equations/from-photo?documentId=${doc.id}`, {
+                method: 'POST',
+                body: form,
+              }).finally(onUsageChange);
+            }}
             describeEquation={(description, current) =>
               api<
                 | { ok: true; latex: string; reading: string }

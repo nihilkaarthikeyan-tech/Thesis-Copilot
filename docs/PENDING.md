@@ -237,6 +237,12 @@ since each re-index spends a little on embeddings).
 - [ ] **Not run:** the Playwright suite (the dev stack was in use); no browser spec was written for
       this — the switch and the note are covered by typecheck only.
 
+## Equation from a photo — try real photos (ADR-0064, 2026-10-04)
+
+- [ ] The prompt was evaluated on typeset images only (8 of 8). Take three or four phone photos —
+      a handwritten equation, a textbook page, a whiteboard — and try "Or take a photo of it" in
+      the equation field. The agent will not fabricate handwriting to test with.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

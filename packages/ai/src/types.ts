@@ -30,7 +30,8 @@ export function sdkContent(m: Message): unknown {
   if (!m.images?.length || m.role !== 'user') return m.content;
   return [
     { type: 'text', text: m.content },
-    ...m.images.map((img) => ({ type: 'image', image: img.data, mediaType: img.mediaType })),
+    // A `file` part with an image media type; the SDK's `image` part is deprecated (AI SDK 7).
+    ...m.images.map((img) => ({ type: 'file', data: img.data, mediaType: img.mediaType })),
   ];
 }
 
