@@ -159,7 +159,8 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
 
 test('the chapter exports as a .docx from the header', async ({ page, request }) => {
   await signIn(page, request);
-  await page.goto('/app');
+  // The first test left a thesis on the list, so the form is collapsed; `?new=1` opens it.
+  await page.goto('/app?new=1');
   const title = `Export ${Date.now()}`;
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();

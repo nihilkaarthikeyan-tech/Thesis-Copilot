@@ -28,6 +28,8 @@ async function signIn(page: Page, request: APIRequestContext) {
 
 /** A fresh thesis with no library, opened in the editor. */
 async function openFreshChapter(page: Page, title: string): Promise<void> {
+  // With theses already on the list the form is collapsed below it; `?new=1` opens it.
+  await page.goto('/app?new=1');
   await page.getByLabel('Working title').fill(title);
   await page.getByRole('button', { name: 'Create thesis' }).click();
   // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.
@@ -172,6 +174,8 @@ test.describe('§6.2 states, forced through the mock', () => {
     request,
   }) => {
     await signIn(page, request);
+    // With theses already on the list the form is collapsed below it; `?new=1` opens it.
+    await page.goto('/app?new=1');
     await page.getByLabel('Working title').fill(`States upload ${Date.now()}`);
     await page.getByRole('button', { name: 'Create thesis' }).click();
     // Creating opens the new thesis's proposal (2026-10-04); this test continues from the list.

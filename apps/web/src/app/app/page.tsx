@@ -83,6 +83,20 @@ export default function DocumentListPage() {
   /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */
   const [deleting, setDeleting] = useState<DocumentSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  /**
+   * With theses on the list, the new-thesis form waits behind "Start another thesis" below them
+   * (2026-10-04, from the Jenni journey study): a returning student came back to a form, not to
+   * their work. `?new=1` opens it, so a link can still go straight to creating one. Read from
+   * `window` after mount rather than `useSearchParams`, which would need a Suspense boundary.
+   */
+  const [formOpen, setFormOpen] = useState(false);
+  const [focusForm, setFocusForm] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') setFormOpen(true);
+  }, []);
+  useEffect(() => {
+    if (formOpen && focusForm) document.getElementById('title')?.focus();
+  }, [formOpen, focusForm]);
 
   // The administrator's home is the admin screen, not a student's thesis list (2026-09-29, the
   // owner's instruction). Every sign-in — code, password or Google — lands on `/app`, so this one
@@ -174,6 +188,68 @@ export default function DocumentListPage() {
   const continueWith =
     lastChapter && documents?.some((d) => d.id === lastChapter.documentId) ? lastChapter : null;
 
+  /** Above the empty list for a first thesis; below the list, on request, for another. */
+  const createForm = (
+    <Card className="mt-4" data-testid="new-thesis-form">
+      <CardBody>
+        <form onSubmit={create} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="title">Working title</Label>
+            <Input
+              id="title"
+              name="title"
+              required
+              maxLength={300}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Low-cost solar dryers for smallholder farms"
+            />
+          </div>
+
+          <fieldset className="flex flex-col gap-2 border-0 p-0">
+            <legend className="mb-1 text-[13px] font-semibold text-ink">Start from</legend>
+            <div className="flex flex-wrap gap-2">
+              {ENTRY_PATHS.map((option) => {
+                const checked = entryPath === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex min-w-[15rem] flex-1 cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors ${
+                      checked
+                        ? 'border-accent bg-accent-soft'
+                        : 'border-line hover:border-line-strong'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="entryPath"
+                      value={option.value}
+                      checked={checked}
+                      onChange={() => setEntryPath(option.value)}
+                      className="mt-0.5 accent-accent"
+                    />
+                    <span>
+                      <span className="block text-[13.5px] font-semibold text-ink">
+                        {option.label}
+                      </span>
+                      <Hint className="mt-0.5">{option.hint}</Hint>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <StartingStyle value={citationStyle} onChange={setCitationStyle} />
+
+          <Button type="submit" disabled={busy || title.trim().length === 0} className="self-start">
+            {busy ? 'Creating…' : 'Create thesis'}
+          </Button>
+        </form>
+      </CardBody>
+    </Card>
+  );
+
   // Until the session says who this is, show nothing rather than flash a student's list at an
   // administrator on their way to /admin.
   if (session.isPending || isAdmin) {
@@ -256,68 +332,7 @@ export default function DocumentListPage() {
           </FirstRunHint>
         ) : null}
 
-        <Card className="mt-6">
-          <CardBody>
-            <form onSubmit={create} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="title">Working title</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  required
-                  maxLength={300}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Low-cost solar dryers for smallholder farms"
-                />
-              </div>
-
-              <fieldset className="flex flex-col gap-2 border-0 p-0">
-                <legend className="mb-1 text-[13px] font-semibold text-ink">Start from</legend>
-                <div className="flex flex-wrap gap-2">
-                  {ENTRY_PATHS.map((option) => {
-                    const checked = entryPath === option.value;
-                    return (
-                      <label
-                        key={option.value}
-                        className={`flex min-w-[15rem] flex-1 cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors ${
-                          checked
-                            ? 'border-accent bg-accent-soft'
-                            : 'border-line hover:border-line-strong'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="entryPath"
-                          value={option.value}
-                          checked={checked}
-                          onChange={() => setEntryPath(option.value)}
-                          className="mt-0.5 accent-accent"
-                        />
-                        <span>
-                          <span className="block text-[13.5px] font-semibold text-ink">
-                            {option.label}
-                          </span>
-                          <Hint className="mt-0.5">{option.hint}</Hint>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
-
-              <StartingStyle value={citationStyle} onChange={setCitationStyle} />
-
-              <Button
-                type="submit"
-                disabled={busy || title.trim().length === 0}
-                className="self-start"
-              >
-                {busy ? 'Creating…' : 'Create thesis'}
-              </Button>
-            </form>
-          </CardBody>
-        </Card>
+        {documents && documents.length === 0 ? <div className="mt-6">{createForm}</div> : null}
 
         {error ? (
           <p
@@ -422,6 +437,27 @@ export default function DocumentListPage() {
             </>
           )}
         </section>
+
+        {documents && documents.length > 0 ? (
+          <section className="mt-8" data-testid="start-another">
+            {formOpen ? (
+              <>
+                <h2 className="text-[15px] font-semibold text-ink">Start another thesis</h2>
+                {createForm}
+              </>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFormOpen(true);
+                  setFocusForm(true);
+                }}
+              >
+                Start another thesis
+              </Button>
+            )}
+          </section>
+        ) : null}
 
         <Dialog
           open={deleting !== null}

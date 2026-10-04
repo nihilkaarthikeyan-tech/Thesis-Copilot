@@ -129,3 +129,32 @@ test('the home page header stays on one line at about 800px wide', async ({ page
   await expect(header.getByRole('link', { name: 'For guides' })).toBeHidden();
   await expect(header.getByRole('link', { name: 'Questions' })).toBeHidden();
 });
+
+test('a returning student sees their theses first, with the new-thesis form behind a button below', async ({
+  page,
+  request,
+}) => {
+  await signInAs(page, request);
+  await page.goto('/app');
+  // No theses yet: the form is open at once.
+  const title = `Returning ${Date.now()}`;
+  await page.getByLabel('Working title').fill(title);
+  await page.getByRole('button', { name: 'Create thesis' }).click();
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/proposal$/, { timeout: 20_000 });
+
+  await page.goto('/app');
+  await expect(page.getByRole('link', { name: title })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel('Working title')).toHaveCount(0);
+  const another = page.getByRole('button', { name: 'Start another thesis' });
+  await expect(another).toBeVisible();
+  // Below the list, not above it.
+  const listBox = await page.getByRole('link', { name: title }).boundingBox();
+  const buttonBox = await another.boundingBox();
+  expect(buttonBox?.y ?? 0).toBeGreaterThan(listBox?.y ?? 0);
+  await another.click();
+  await expect(page.getByLabel('Working title')).toBeFocused();
+
+  // A link can still go straight to the form.
+  await page.goto('/app?new=1');
+  await expect(page.getByLabel('Working title')).toBeVisible({ timeout: 20_000 });
+});
