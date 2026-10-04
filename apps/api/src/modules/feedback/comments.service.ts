@@ -350,6 +350,22 @@ export class CommentsService {
     const cap = await this.usage.consume(user.id, user.plan as Plan, 'COMMAND');
     if (!cap.ok) throw refusal('COMMAND', cap);
 
+    // A student's own note is not classified when it is written (2026-10-04), but A.14 answers
+    // by the class, so it is classified now, when a revision is actually asked for.
+    let commentClass = comment.class;
+    if (!commentClass) {
+      await this.classify(user, documentId, comment.id).catch((error: unknown) =>
+        this.logger.warn({ err: error, commentId: comment.id }, 'classification failed'),
+      );
+      commentClass =
+        (
+          await this.prisma.comment.findUnique({
+            where: { id: comment.id },
+            select: { class: true },
+          })
+        )?.class ?? null;
+    }
+
     const memory = await this.context.memoryBlock(chapter);
     // A.14 wants six passages for the target text; `CHAT` retrieves eight and the slice below
     // takes six — the same shape the section commands use, for the same reason.
@@ -359,7 +375,7 @@ export class CommentsService {
     const request = buildReviseRequest({
       memoryBlock: memory.text,
       comment: comment.body,
-      commentClass: (comment.class ?? 'CLARIFICATION') as CommentClass,
+      commentClass: (commentClass ?? 'CLARIFICATION') as CommentClass,
       target,
       contextBefore,
       contextAfter,
