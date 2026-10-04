@@ -59,7 +59,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Chat that can search beyond the library (asks first), shows its steps | |
 | More selection actions (counter-argument, hedge/strengthen a claim, tense, to table, translate) | |
 | Library: duplicate detection, missing-PDF view | Done 2026-10-04 — possible duplicates with Merge (snapshots first), "Without full text" with Add the PDF |
-| Interface language (Hindi, Tamil…) | |
+| Interface language (Hindi, Tamil…) | Done 2026-10-05 — Hindi (beta) on the student's main screens, English fallback (ADR-0061); Tamil after the Hindi review (PENDING) |
 
 ## Beyond the batches (fix list items, 2026-10-04)
 

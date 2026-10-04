@@ -179,8 +179,8 @@ are left, each for a reason the agent should not settle alone:
 4. **A live Zotero / Mendeley connection.** PRD FR-2.9 says "via BibTeX/RIS file upload (not
    OAuth)", which is what exists. A connection changes the spec; Mendeley also needs an app
    registered with Elsevier.
-5. **Interface languages** (Jenni has 16 incl. Hindi). Which languages, and who checks each
-   translation, is the owner's call; it touches every screen.
+5. **Interface languages** — decided in ADR-0059 (Hindi first) and built in ADR-0061; what is
+   left is the review, in its own section below.
 6. **A live demo on the home page.** The landing page is reviewed as a PDF first (owner's rule).
 7. **Live chat support and a community channel** (rows 94, 98): who answers, and where.
 8. **The examiner review's allowance** (6 a month; ADR-0056) and the Word citation fields checked
@@ -236,6 +236,19 @@ since each re-index spends a little on embeddings).
       and the link opens the Discover tab.
 - [ ] **Not run:** the Playwright suite (the dev stack was in use); no browser spec was written for
       this — the switch and the note are covered by typecheck only.
+
+## Hindi interface, beta (ADR-0061, 2026-10-05)
+
+- [ ] **Hindi leaves beta after a native speaker reviews docs/i18n/hi-review.md.** It lists every
+      translated string (459) beside its English source with a column for corrections. Ask
+      someone who has studied in Hindi at an Indian university to read every row: natural, simple
+      Hindi; the academic words students actually use (थीसिस or शोध-प्रबंध, साइटेशन or उद्धरण);
+      buttons that read as actions. Corrections go into `apps/web/src/i18n/hi.ts`, then
+      `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` rewrites the sheet. When it is done, drop
+      "(बीटा)" from `LANGUAGES` in `apps/web/src/i18n/index.ts` (and the test that checks it).
+- [ ] **Decide the next language** (Tamil was named in ADR-0059). Same route: a catalogue, a sheet,
+      a reviewer.
+- [ ] **Nothing to configure for the release.** No migration (the choice is in `User.settings`).
 
 ## Accounts, keys and services
 

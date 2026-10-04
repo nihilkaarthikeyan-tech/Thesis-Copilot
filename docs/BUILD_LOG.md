@@ -4838,3 +4838,38 @@ leaving accounts, mail fault swallowed, each job's adapter, the Redis store), `p
 finished run / someone else's run do not; the setting). Worker 184 pass, API 572 + 6 pass,
 typecheck and lint clean. Playwright not run (dev stack in use by someone else). No email has
 been sent through a real provider yet — `docs/PENDING.md`.
+
+## Interface languages, Hindi first, as beta (2026-10-05, ADR-0061, coverage-map row 89)
+
+ADR-0059 row 89 delegated it: the mechanism, Hindi first, the student's main screens, "(बीटा)",
+English for anything not yet translated. Built without a library: typed catalogues
+(`apps/web/src/i18n/en.ts` the source, `hi.ts` a `Partial` of it), `t()` / `rich()` from
+`useT()`, and `tNow()` for notices set from callbacks. The choice is a `tc-lang` cookie (read by
+new server layouts for `/app/**` and `/sign-in`, so the first paint is already Hindi and `<html
+lang>` is set before paint), a localStorage copy, and `interfaceLanguage` in the account's
+settings JSON (no migration), adopted once per tab on the signed-in screens. Picker in Settings
+("Interface language") and a switcher at the foot of sign-in. Noto Sans Devanagari through
+`next/font`, used only under `html[lang="hi"]`.
+
+- **459 strings translated** across the list and header, new thesis, starting style, proposal and
+  its topic conversation, the editor's chrome (header, banners, rail, tabs, hints, notices,
+  feedback, formatting toolbar tooltips, suggestion bar, selection toolbar), Settings, Account,
+  the trial notice and sign-in. Two left in English on purpose (the Assist/Draft meter, Suggest).
+  Every English value is the old text byte for byte — two first came out with a curly apostrophe
+  where the screen had a straight one, caught by reading the diff, not by a test.
+- **Found in a browser, not by a test:** the hint sentence ended with a hard-coded "." after a
+  Hindi clause (now `editor.hint.stop`, a danda in Hindi), and `.eyebrow`'s letter spacing pulled
+  Devanagari conjuncts apart ("अ ध्या य"; spacing off under `lang="hi"`).
+- **The review sheet is generated.** `docs/i18n/hi-review.md` comes from `src/i18n/review.ts`, and
+  `test/i18n-review.spec.ts` fails when it is stale (`UPDATE_I18N_REVIEW=1` rewrites it).
+
+Tests: `apps/web/test/i18n.spec.ts` (12: no orphan Hindi keys, no empty values, placeholders kept,
+English fallback for every missing key, `splitTemplate`, the beta label) and the sheet test — web
+125 pass; `apps/api/test/interface-language.spec.ts` (2, real HTTP: kept, `'ta'` refused) pass;
+web and API typecheck and `pnpm lint` clean. Playwright `e2e/interface-language.spec.ts` (Settings
+→ Hindi relabels the editor, survives a reload, saved to the account; the sign-in switcher) passed
+against this branch's own web (:3010) and API (:3011, mock AI) — the shared stack on :3000/:3001
+was in use. The existing specs for the touched screens (editor, states, suggestion-bar,
+onboarding, own-comments, document-defaults, high-contrast, mobile, proposal-edit-answer,
+first-minutes, smoke) passed there too; `flags-keys` and `password`'s reset case failed only
+because they hard-code the `http://localhost:3000` origin.
