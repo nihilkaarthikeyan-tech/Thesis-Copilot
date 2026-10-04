@@ -215,6 +215,12 @@ export {
 export { keywordsOf, openAlexSearchText, topicSearchTerms } from './scholarly/keywords.js';
 export { personName } from './scholarly/names.js';
 export {
+  type MatchedPassage,
+  matchingPassage,
+  PASSAGE,
+  stemOf,
+} from './scholarly/passage.js';
+export {
   isNotASource,
   PUBMED,
   PubMedClient,
