@@ -8,7 +8,7 @@ every row names the file(s). Paths are relative to the repo root. `web/` = `apps
 Status: **MATCH** (a student gets the same outcome), **PARTIAL** (exists, but the student meets a
 real difference), **MISSING** (no equivalent), **OURS BETTER**.
 
-**Updated after the build (2026-10-04, evening):** 101 rows — 63 MATCH, 20 PARTIAL, 3 MISSING,
+**Updated after the build (2026-10-04, evening):** 101 rows — 65 MATCH, 18 PARTIAL, 3 MISSING,
 15 OURS BETTER (from 16 / 47 / 24 / 14). Rows marked "Built 2026-10-04" were rechecked against
 the merged code. The nine still missing wait on the owner (docs/PENDING.md, "Jenni study — what
 only the owner can decide"); PARTIAL rows were not re-audited one by one.
@@ -57,7 +57,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 23 | Select → Find citations (search panel: All/Discover/Library, sort, filter, passage, Cite/Save) | ~4 s | `web/components/editor/CiteSuggestions.tsx` (on sentence end, library passages, direct/partial), `web/components/editor/CitePicker.tsx` | PARTIAL | 2026-10-04: Find papers from a selection now exists (Papers tab: sort, open-access, Add, Cite here); no matching passage shown per result |
 | 24 | `@` cite | Yes | `web/components/editor/CitePicker.tsx`, `api/chapters/citations.controller.ts` (`citations/pick`) | MATCH | — |
 | 25 | Style search across 10,000+ | Search, five popular first | `web/components/editor/StyleSearch.tsx`, `packages/citations/src/catalog.ts`, `api/chapters/citation-styles.controller.ts` | MATCH | Also note styles as footnotes (ADR-0029) |
-| 26 | Style locale, page numbers toggle, live preview | Per style | `packages/citations/src/render.ts` (locale from style only) | PARTIAL | No locale choice, no preview before switching |
+| 26 | Style locale, page numbers toggle, live preview | Per style | `packages/citations/src/render.ts` (locale from style only) | MATCH | 2026-10-04: Citation language (Automatic, UK/US English, German, French, Spanish, Dutch) and a live preview of the style (ADR-0065) |
 | 27 | Automatic reference list | At document end; locked on free plan | `web/components/editor/CitationList.tsx`, `packages/export/src/thesis.ts` | OURS BETTER | Never paywalled |
 | 28 | Placeholder citation | "/" inserts a placeholder | needs-source notes in draft blocks (`DraftMode.tsx`, `web/app/editor.css` `.needs-source-note`) | MATCH | Built 2026-10-04: Citation-needed placeholder in the “/” menu |
 
@@ -70,7 +70,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 31 | Library collections | Folders | none | MATCH | Built 2026-10-04: Collections strip, bulk add/remove |
 | 32 | Impact factor / cited-by on library items | On each item | `web/app/app/d/[id]/journals/JournalsScreen.tsx` (journal citedness), `DiscoverPanel.tsx` (citationCount on candidates) | MATCH | Built 2026-10-04: Badges on library rows |
 | 33 | PDF upload | 10 PDFs, 25 MB | `api/sources/sources.controller.ts` (`sources/upload`), `SourcesScreen.tsx` | MATCH | — |
-| 34 | PDF reader: search, side-by-side, open at quote | In-app | `SourcesScreen.tsx` "Open PDF" (signed link, new tab, `#page=N`) | PARTIAL | Browser viewer in another tab; no side-by-side, no quote highlight |
+| 34 | PDF reader: search, side-by-side, open at quote | In-app | `SourcesScreen.tsx` "Open PDF" (signed link, new tab, `#page=N`) | PARTIAL | 2026-10-04: Read beside the chapter at the cited page (wide screens); the browser viewer searches; no highlight of the quoted passage |
 | 35 | .bib / .ris / ID import | Yes | `api/sources/sources.controller.ts` (`sources/import`, `sources/resolve`), `packages/retrieval/src/scholarly/bibliography.ts` | MATCH | Plus library export (`sources/export`, `packages/citations/src/library-export.ts`) |
 | 36 | Zotero / Mendeley account connection | OAuth import | `SourcesScreen.tsx` "From Zotero" (`ZoteroImport.tsx`), `packages/retrieval/src/scholarly/zotero.ts`, `POST /documents/:id/sources/zotero/{collections,import}` | PARTIAL | Built 2026-10-04 (ADR-0062): Zotero by pasted read-only key, whole library or one collection, up to 500 items, read once, key never stored. Not a live sync (by decision, ADR-0059). Mendeley still file-only (needs an Elsevier app, `docs/PENDING.md`); no live Zotero call made yet |
 | 37 | Browser extension | Chrome extension | `apps/extension` (ADR-0031) | MATCH | — |
@@ -121,7 +121,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 62 | Literature review workflow | Topic → filters → 4 stages, 15–20 min, per-section expert brief (failed in test) | `web/app/app/d/[id]/build/page.tsx`, `api/chapter-build/chapter-build.service.ts`, `apps/worker/src/jobs/chapter-build.ts`, `packages/ai/src/checks/` | OURS BETTER | Ours checks and delivers pending blocks with a QA report; lacks Jenni's topic-specific brief per section |
 | 63 | Research gap analysis by claims | 15 claims: under-explored / contested / well-supported, supporting + contrasting citations, direction, "Limits" note | `DiscoverPanel.tsx` (themes by counts, ADR-0041/0046) | PARTIAL | We reason over counts, not claims; "why open" left to the student |
 | 64 | Run in background with stages, clock, "we will email you" | Yes | chapter build in worker (stages on build screen); Discover shows stages and a clock; since 2026-10-04 (ADR-0058) one email when a search, build, examiner review or coherence check ends after a minute with no visible tab watching | MATCH | Email unverified against a real mailbox (`docs/PENDING.md`) |
-| 65 | "How was this document?" thumbs | After a workflow | `api/assist/assist.controller.ts` (`outcome` telemetry), Feedback box | PARTIAL | No per-result rating |
+| 65 | "How was this document?" thumbs | After a workflow | `api/assist/assist.controller.ts` (`outcome` telemetry), Feedback box | MATCH | 2026-10-04: Thumbs on suggestions, chat answers and drafted sections |
 
 ## 10. Inserting things
 
