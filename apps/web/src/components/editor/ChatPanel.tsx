@@ -8,6 +8,8 @@
  * replies A.4 specifies are rendered as states with an action rather than as plain text.
  */
 
+import { tokenizeAiText } from '@tc/ui';
+import katex from 'katex';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
@@ -670,7 +672,11 @@ export function ChatPanel({
   );
 }
 
-/** Renders `{{cite:ID}}` as a button that opens the passage it stands on. */
+/**
+ * Renders an answer: `{{cite:ID}}` as a button that opens the passage it stands on, and `$…$` /
+ * `$$…$$` as typeset maths. Equations used to show as their LaTeX source — "$7.44735 \\times
+ * 10^{-10}$" — the formula complaint, in chat (found 2026-10-04 comparing with Jenni).
+ */
 function AnswerText({
   text,
   citations,
@@ -682,17 +688,41 @@ function AnswerText({
 }) {
   // Keyed by where the part starts in the answer: unique, and stable while the text is.
   let offset = 0;
-  const parts = text.split(/(\{\{cite:[^}]+\}\})/g).map((part) => {
+  const parts = tokenizeAiText(text).map((token) => {
     const at = offset;
-    offset += part.length;
-    return { part, at };
+    offset +=
+      token.type === 'text'
+        ? token.text.length
+        : token.type === 'cite'
+          ? token.key.length + 8
+          : token.latex.length + 2;
+    return { token, at };
   });
   return (
     <p className="whitespace-pre-wrap">
-      {parts.map(({ part, at }) => {
-        const key = /^\{\{cite:([^}]+)\}\}$/.exec(part)?.[1];
-        if (!key) return <span key={`t-${at}`}>{part}</span>;
-        const citation = citations.find((c) => c.key === key);
+      {parts.map(({ token, at }) => {
+        if (token.type === 'text') return <span key={`t-${at}`}>{token.text}</span>;
+        if (token.type === 'math') {
+          let html = '';
+          try {
+            html = katex.renderToString(token.latex, {
+              displayMode: token.display,
+              throwOnError: false,
+              output: 'html',
+            });
+          } catch {
+            return <code key={`m-${at}`}>{token.latex}</code>;
+          }
+          return (
+            <span
+              key={`m-${at}`}
+              className={token.display ? 'my-1 block text-center' : undefined}
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output from the answer's own LaTeX
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          );
+        }
+        const citation = citations.find((c) => c.key === token.key);
         if (!citation) return null;
         return (
           <button
