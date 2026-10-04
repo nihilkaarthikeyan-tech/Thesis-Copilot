@@ -18,6 +18,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_URL, ApiError, api } from '@/lib/api';
+import {
+  addedSummary,
+  type Collection,
+  type CollectionFilter,
+  collectionCounts,
+  inCollection,
+  pruneSelection,
+  selectionState,
+  toggleAll,
+} from '@/lib/collections';
+import { CollectionsStrip } from './CollectionsStrip';
 import { DiscoverPanel } from './DiscoverPanel';
 import { type DuplicatePair, DuplicatesPanel } from './DuplicatesPanel';
 
@@ -43,6 +54,8 @@ type Source = {
   autoAddedAt?: string | null;
   /** Why the AI cannot quote it in full, as far as the record shows; null when it can. */
   noFullTextReason?: string | null;
+  /** The collections (folders) this paper is in (2026-10-04). */
+  collectionIds?: string[];
 };
 
 const POLL_MS = 3_000;
@@ -55,6 +68,10 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'full' | 'missing' | 'unresolved'>('all');
   const [duplicates, setDuplicates] = useState<DuplicatePair[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>({ kind: 'all' });
+  /** Rows ticked for "Add to collection…" / "Remove from collection". */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<'library' | 'discover'>('library');
   // `?tab=discover` opens on Discover: the editor's empty library links straight to it. Read after
   // mount — on the server there is no address bar, and a state initialiser runs there.
@@ -79,6 +96,10 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
       api<DuplicatePair[]>(`/documents/${documentId}/sources/duplicates`)
         .then(setDuplicates)
         .catch(() => setDuplicates([]));
+      // Collections likewise: without them the strip is empty and the library still works.
+      api<Collection[]>(`/documents/${documentId}/collections`)
+        .then(setCollections)
+        .catch(() => setCollections([]));
       const first = doc.chapters?.[0]?.id;
       if (first) setWriteHref(`/app/d/${documentId}/write/${first}`);
     } catch (e) {
@@ -110,13 +131,79 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     };
   }, [sources]);
 
+  // A collection that was deleted (here or in another tab) falls back to "All".
+  const activeFilter: CollectionFilter = useMemo(
+    () =>
+      collectionFilter.kind === 'one' && !collections.some((c) => c.id === collectionFilter.id)
+        ? { kind: 'all' }
+        : collectionFilter,
+    [collectionFilter, collections],
+  );
+  const byCollection = useMemo(() => collectionCounts(sources ?? []), [sources]);
+
+  // The collection chosen in the strip, then the full-text filter, both at once.
   const visible = useMemo(() => {
-    const rows = sources ?? [];
+    const rows = inCollection(sources ?? [], activeFilter);
     if (filter === 'full') return rows.filter((s) => s.groundingLevel === 'FULL_TEXT');
     if (filter === 'missing') return rows.filter((s) => s.groundingLevel !== 'FULL_TEXT');
     if (filter === 'unresolved') return rows.filter((s) => s.status === 'UNRESOLVED');
     return rows;
-  }, [sources, filter]);
+  }, [sources, filter, activeFilter]);
+
+  const visibleIds = useMemo(() => visible.map((s) => s.id), [visible]);
+  // A ticked row that a filter hides is unticked, so an action never reaches a paper off screen.
+  useEffect(() => {
+    setSelected((current) => pruneSelection(current, visibleIds));
+  }, [visibleIds]);
+  const ticked = selectionState(selected, visibleIds);
+  const collectionName = (id: string) => collections.find((c) => c.id === id)?.name ?? null;
+
+  async function reloadCollections(message?: string) {
+    if (message) setNotice(message);
+    await load();
+  }
+
+  async function addToCollection(collectionId: string) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setError(null);
+    try {
+      const result = await api<{ added: number; count: number }>(
+        `/collections/${collectionId}/sources`,
+        { method: 'POST', body: JSON.stringify({ sourceIds: ids }) },
+      );
+      setSelected(new Set());
+      setNotice(addedSummary(result.added, ids.length, collectionName(collectionId) ?? 'it'));
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not add them.',
+      );
+    }
+  }
+
+  async function removeFromCollection(collectionId: string) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setError(null);
+    try {
+      const result = await api<{ removed: number }>(`/collections/${collectionId}/sources/remove`, {
+        method: 'POST',
+        body: JSON.stringify({ sourceIds: ids }),
+      });
+      setSelected(new Set());
+      setNotice(
+        `Took ${result.removed} ${result.removed === 1 ? 'paper' : 'papers'} out of ${
+          collectionName(collectionId) ?? 'the collection'
+        }. ${result.removed === 1 ? 'It is' : 'They are'} still in your library.`,
+      );
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not take them out.',
+      );
+    }
+  }
 
   async function upload(file: File) {
     setUploading(true);
@@ -369,6 +456,19 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
 
       {tab === 'library' ? (
         <>
+          {counts.total > 0 ? (
+            <CollectionsStrip
+              documentId={documentId}
+              collections={collections}
+              counts={byCollection}
+              total={counts.total}
+              filter={activeFilter}
+              onFilter={setCollectionFilter}
+              onChanged={reloadCollections}
+              onError={setError}
+            />
+          ) : null}
+
           <div className="mt-6 flex gap-2 text-sm">
             {(
               [
@@ -404,18 +504,45 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             </p>
           ) : null}
 
+          {visible.length > 0 ? (
+            <SelectionBar
+              state={ticked}
+              count={selected.size}
+              collections={collections}
+              activeCollectionId={activeFilter.kind === 'one' ? activeFilter.id : null}
+              onToggleAll={() => setSelected((current) => toggleAll(current, visibleIds))}
+              onAdd={(id) => void addToCollection(id)}
+              onRemove={(id) => void removeFromCollection(id)}
+              onClear={() => setSelected(new Set())}
+            />
+          ) : null}
+
           {visible.length === 0 ? (
             <p className="mt-10 rounded-lg border border-dashed border-line p-8 text-center text-sm text-muted">
               {counts.total === 0
                 ? 'Nothing here yet. Upload your paper on the proposal screen and its references land here automatically.'
-                : 'Nothing matches that filter.'}
+                : activeFilter.kind === 'one' && (byCollection.byId.get(activeFilter.id) ?? 0) === 0
+                  ? 'This collection is empty. Tick papers under All and choose "Add to collection…".'
+                  : 'Nothing matches that filter.'}
             </p>
           ) : (
-            <ul className="mt-6 divide-y divide-line rounded-md border border-line">
+            <ul className="mt-3 divide-y divide-line rounded-md border border-line">
               {visible.map((source) => (
                 <SourceRow
                   key={source.id}
                   source={source}
+                  selected={selected.has(source.id)}
+                  onSelect={(on) =>
+                    setSelected((current) => {
+                      const next = new Set(current);
+                      if (on) next.add(source.id);
+                      else next.delete(source.id);
+                      return next;
+                    })
+                  }
+                  collectionNames={(source.collectionIds ?? [])
+                    .map(collectionName)
+                    .filter((n): n is string => n !== null)}
                   onRefix={refix}
                   onRemove={remove}
                   onOpen={openPdf}
@@ -465,14 +592,105 @@ function authorLine(authors: CslAuthor[] | null): string {
   return `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`;
 }
 
+/**
+ * Ticks and what to do with them: "Add to collection…" (a list of the collections) and, inside a
+ * collection, "Remove from <it>". Shown above the list whenever there is a list.
+ */
+function SelectionBar({
+  state,
+  count,
+  collections,
+  activeCollectionId,
+  onToggleAll,
+  onAdd,
+  onRemove,
+  onClear,
+}: {
+  state: 'none' | 'some' | 'all';
+  count: number;
+  collections: Collection[];
+  activeCollectionId: string | null;
+  onToggleAll: () => void;
+  onAdd: (collectionId: string) => void;
+  onRemove: (collectionId: string) => void;
+  onClear: () => void;
+}) {
+  const active = collections.find((c) => c.id === activeCollectionId) ?? null;
+  return (
+    <div
+      className="mt-6 flex flex-wrap items-center gap-3 px-4 text-sm"
+      data-testid="selection-bar"
+    >
+      <label className="flex items-center gap-2 text-muted">
+        <input
+          type="checkbox"
+          data-testid="select-all"
+          checked={state === 'all'}
+          ref={(el) => {
+            if (el) el.indeterminate = state === 'some';
+          }}
+          onChange={onToggleAll}
+        />
+        {count > 0 ? `${count} selected` : 'Select'}
+      </label>
+      {count > 0 ? (
+        <>
+          {collections.length > 0 ? (
+            <select
+              aria-label="Add the selected papers to a collection"
+              data-testid="add-to-collection"
+              className="rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) onAdd(e.target.value);
+              }}
+            >
+              <option value="">Add to collection…</option>
+              {collections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-xs text-muted">
+              Make a collection above (+ New collection) to put these in it.
+            </span>
+          )}
+          {active ? (
+            <button
+              type="button"
+              data-testid="remove-from-collection"
+              className="underline hover:text-warn"
+              onClick={() => onRemove(active.id)}
+            >
+              Remove from {active.name}
+            </button>
+          ) : null}
+          <button type="button" className="text-muted underline" onClick={onClear}>
+            Clear
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function SourceRow({
   source,
+  selected,
+  onSelect,
+  collectionNames,
   onRefix,
   onRemove,
   onOpen,
   onAttach,
 }: {
   source: Source;
+  selected: boolean;
+  onSelect: (on: boolean) => void;
+  /** The names of the collections this paper is in, shown small under its title. */
+  collectionNames: string[];
   onRefix: (id: string, doi: string) => void;
   onRemove: (id: string) => void;
   onOpen: (id: string) => void;
@@ -494,14 +712,34 @@ function SourceRow({
   });
 
   return (
-    <li className="px-4 py-3">
+    <li className="px-4 py-3" data-testid="library-row">
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <input
+          type="checkbox"
+          className="mt-1.5 shrink-0"
+          data-testid="select-source"
+          aria-label={`Select ${source.title ?? source.rawReference ?? 'this source'}`}
+          checked={selected}
+          onChange={(e) => onSelect(e.target.checked)}
+        />
+        <div className="min-w-0 flex-1">
           <p className="font-medium">{source.title ?? source.rawReference ?? 'Untitled source'}</p>
           {authorLine(source.authors) ? (
             <p className="text-sm text-muted">{authorLine(source.authors)}</p>
           ) : null}
           {meta ? <p className="text-xs text-muted">{meta}</p> : null}
+          {collectionNames.length > 0 ? (
+            <p className="mt-1 flex flex-wrap gap-1" data-testid="row-collections">
+              {collectionNames.map((name) => (
+                <span
+                  key={name}
+                  className="rounded-sm bg-sunk px-1.5 py-0.5 text-[11px] font-medium text-muted"
+                >
+                  {name}
+                </span>
+              ))}
+            </p>
+          ) : null}
           {metrics.length > 0 ? (
             <ul className="mt-1 flex flex-wrap gap-1" aria-label="About this paper">
               {metrics.map((m) => (
