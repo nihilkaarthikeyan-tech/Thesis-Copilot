@@ -26,6 +26,15 @@ import { ApiError, api } from '@/lib/api';
 
 type Role = 'GUIDE' | 'COAUTHOR' | 'READER';
 
+/** ADR-0057: "anyone with the link can read". `url` is present only on the answer that made it. */
+type LinkStatus = {
+  enabled: boolean;
+  createdAt: string | null;
+  views: number;
+  lastViewedAt: string | null;
+  url?: string;
+};
+
 type Share = {
   id: string;
   guideEmail: string;
@@ -63,6 +72,9 @@ export function ShareButton({ documentId }: { documentId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   /** ADR-0028: Co-author is offered only when live editing is on. */
   const [liveAvailable, setLiveAvailable] = useState(false);
+  const [link, setLink] = useState<LinkStatus | null>(null);
+  /** The URL, held only in this panel's memory: the server keeps a hash, never the link. */
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api<Share[]>(`/documents/${documentId}/feedback/shares`)
@@ -70,6 +82,9 @@ export function ShareButton({ documentId }: { documentId: string }) {
       .catch(() => undefined);
     api<Record<string, boolean>>('/flags')
       .then((flags) => setLiveAvailable(flags.collaboration === true))
+      .catch(() => undefined);
+    api<LinkStatus>(`/documents/${documentId}/feedback/link`)
+      .then(setLink)
       .catch(() => undefined);
   }, [documentId]);
 
@@ -135,6 +150,54 @@ export function ShareButton({ documentId }: { documentId: string }) {
       setError(problemText(e, 'Could not revoke.'));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function turnLinkOn() {
+    setBusy(true);
+    setError(null);
+    try {
+      const made = await api<LinkStatus>(`/documents/${documentId}/feedback/link`, {
+        method: 'POST',
+        body: '{}',
+      });
+      setLink(made);
+      setLinkUrl(made.url ?? null);
+      setNotice(
+        link?.enabled
+          ? 'A new link is ready. The old one no longer works.'
+          : 'Anyone with this link can now read the thesis. Copy it now — it is shown only once.',
+      );
+    } catch (e) {
+      setError(problemText(e, 'Could not make a link.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function turnLinkOff() {
+    setBusy(true);
+    setError(null);
+    try {
+      setLink(
+        await api<LinkStatus>(`/documents/${documentId}/feedback/link`, { method: 'DELETE' }),
+      );
+      setLinkUrl(null);
+      setNotice('The link is off. Anyone who had it can no longer open the thesis.');
+    } catch (e) {
+      setError(problemText(e, 'Could not turn the link off.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!linkUrl) return;
+    try {
+      await navigator.clipboard.writeText(linkUrl);
+      setNotice('Link copied.');
+    } catch {
+      setNotice('Select the link and copy it.');
     }
   }
 
@@ -266,6 +329,85 @@ export function ShareButton({ documentId }: { documentId: string }) {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section
+            className="mt-3 border-t border-line pt-2"
+            aria-label="Anyone with the link"
+            data-testid="share-link"
+          >
+            <h3 className="text-xs font-semibold text-ink">Anyone with the link</h3>
+            {link?.enabled ? (
+              <>
+                <p className="mt-1 text-xs text-muted">
+                  On — anyone who has the link can read the text. No comments, no AI, no sources, no
+                  email.{' '}
+                  {link.views > 0
+                    ? `Opened ${link.views} ${link.views === 1 ? 'time' : 'times'}.`
+                    : 'Not opened yet.'}
+                </p>
+                {linkUrl ? (
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      readOnly
+                      value={linkUrl}
+                      aria-label="The read-only link"
+                      onFocus={(e) => e.currentTarget.select()}
+                      data-testid="share-link-url"
+                      className="h-7 min-w-0 flex-1 rounded-md border border-line bg-paper px-2 text-xs text-ink"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void copyLink()}
+                      className="shrink-0 rounded-md border border-line-strong bg-surface px-2 text-xs text-ink hover:bg-sunk"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-faint">
+                    For safety the link is shown only when it is made. Lost it? Make a new one — the
+                    old one stops working.
+                  </p>
+                )}
+                <div className="mt-1 flex gap-3 text-xs">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void turnLinkOn()}
+                    data-testid="share-link-new"
+                    className="text-ink underline disabled:opacity-50"
+                  >
+                    Make a new link
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void turnLinkOff()}
+                    data-testid="share-link-off"
+                    className="text-danger underline disabled:opacity-50"
+                  >
+                    Turn off
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-muted">
+                  Off. Turn it on to let anyone who has the link read the thesis — read only, never
+                  edit.
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void turnLinkOn()}
+                  data-testid="share-link-on"
+                  className="mt-1 rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-ink hover:bg-sunk disabled:opacity-50"
+                >
+                  Turn on a read-only link
+                </button>
+              </>
+            )}
           </section>
 
           <p className="mt-3 border-t border-line pt-2 text-xs text-muted">

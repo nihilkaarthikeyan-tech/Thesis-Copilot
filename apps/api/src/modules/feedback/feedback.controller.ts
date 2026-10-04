@@ -21,13 +21,14 @@ import {
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ValidationError } from '../../common/errors.js';
+import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { CommentsService } from './comments.service.js';
 import { DocxImportService } from './docx-import.service.js';
 import { FeedbackExportService } from './feedback-export.service.js';
 import { ReviewService } from './review.service.js';
+import { ShareLinkService } from './share-link.service.js';
 import { requestedRole, shareRole } from './share-roles.js';
 import { SharesService } from './shares.service.js';
 
@@ -75,6 +76,7 @@ export class FeedbackController {
     private readonly review: ReviewService,
     private readonly exports: FeedbackExportService,
     private readonly docx: DocxImportService,
+    private readonly links: ShareLinkService,
   ) {}
 
   // ---- shares (student only) ----------------------------------------------------------------
@@ -116,6 +118,26 @@ export class FeedbackController {
     @Param('shareId') shareId: string,
   ) {
     return this.shares.revoke(user.id, documentId, shareId);
+  }
+
+  // ---- "anyone with the link can read" (student only, ADR-0057) -----------------------------
+
+  @Get('link')
+  linkStatus(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.links.status(user.id, documentId);
+  }
+
+  /** Turns the link on, or replaces it with a new one; the answer is the only time the URL shows. */
+  @Post('link')
+  @HttpCode(200)
+  enableLink(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.links.enable(user.id, documentId);
+  }
+
+  /** Turns it off. The old URL stops working at once. */
+  @Delete('link')
+  disableLink(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.links.disable(user.id, documentId);
   }
 
   // ---- comments (student or guide) ------------------------------------------------------------
@@ -321,5 +343,28 @@ export class GuideController {
   @Get('documents/:documentId')
   document(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
     return this.shares.documentFor(user, documentId);
+  }
+}
+
+const chapterIdParam = z.string().uuid();
+
+/**
+ * ADR-0057: what a "can read" link opens. No session guard — the token is the whole of the
+ * permission — and only GETs: there is no route here, or anywhere, that a link token can write
+ * through. Rate-limited per IP as `link` (common/rate-limit.ts).
+ */
+@Controller('read')
+export class ReadLinkController {
+  constructor(private readonly links: ShareLinkService) {}
+
+  @Get(':token')
+  document(@Param('token') token: string) {
+    return this.links.document(token);
+  }
+
+  @Get(':token/chapters/:chapterId')
+  chapter(@Param('token') token: string, @Param('chapterId') chapterId: string) {
+    if (!chapterIdParam.safeParse(chapterId).success) throw new NotFoundError('That chapter');
+    return this.links.chapter(token, chapterId);
   }
 }

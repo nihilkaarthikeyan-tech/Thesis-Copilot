@@ -97,6 +97,11 @@ export const HEAVY_RATE_LIMITS = {
   search: { max: 20, windowSeconds: 60 },
   /** A .docx, PDF, LaTeX or log export — each one builds a whole document. */
   export: { max: 10, windowSeconds: 60 },
+  /**
+   * ADR-0057: the public read-only link. Anyone can call it without signing in, so it counts per
+   * IP, and tightly: a reader opens a thesis and a chapter at a time, a guesser sends thousands.
+   */
+  link: { max: 30, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type HeavyKind = keyof typeof HEAVY_RATE_LIMITS;
@@ -141,6 +146,7 @@ const HEAVY_ROUTES: ReadonlyArray<{ method: string; pattern: RegExp; kind: Heavy
     pattern: new RegExp(`^/api/v1/documents/${ID}/sources/export$`),
     kind: 'export',
   },
+  { method: 'GET', pattern: new RegExp(`^/api/v1/read/${ID}(/.*)?$`), kind: 'link' },
 ];
 
 /** Routes no limiter counts: the health check and the metrics scrape are the operator's. */
