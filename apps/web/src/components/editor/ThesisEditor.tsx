@@ -118,6 +118,7 @@ import { SlashMenu } from './SlashMenu';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
 import { SuggestionBar } from './SuggestionBar';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
+import { WordImport } from './WordImport';
 
 type ExportResult = { url: string; filename: string; bytes: number };
 
@@ -1315,6 +1316,7 @@ function ChapterEditor({
               Building your chapters from the proposal… they appear here in a minute.
             </p>
           ) : null}
+          <WordImport documentId={doc.id} />
         </aside>
 
         {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}

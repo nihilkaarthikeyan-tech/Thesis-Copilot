@@ -45,15 +45,23 @@ export default function NewThesisPage() {
 
   async function create(event: FormEvent) {
     event.preventDefault();
+    // "Create and import from Word" (2026-10-04): the thesis opens on its chapter with the import
+    // dialog up, for a student whose chapters are already written in Word.
+    const fromWord =
+      (event.nativeEvent as SubmitEvent).submitter?.getAttribute('data-word-import') === 'true';
     setBusy(true);
     setError(null);
     try {
-      const document = await api<{ id: string }>('/documents', {
+      const document = await api<{ id: string; firstChapterId: string | null }>('/documents', {
         method: 'POST',
         body: JSON.stringify({ title: title.trim(), entryPath }),
       });
       await saveStartingStyle(document.id, citationStyle);
-      router.push(`/app/d/${document.id}/proposal`);
+      router.push(
+        fromWord && document.firstChapterId
+          ? `/app/d/${document.id}/write/${document.firstChapterId}?import=word`
+          : `/app/d/${document.id}/proposal`,
+      );
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not create it.',
@@ -135,9 +143,23 @@ export default function NewThesisPage() {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={busy || title.trim().length === 0}>
-          {busy ? 'Creating…' : 'Continue'}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={busy || title.trim().length === 0}>
+            {busy ? 'Creating…' : 'Continue'}
+          </Button>
+          <Button
+            type="submit"
+            variant="secondary"
+            data-word-import="true"
+            disabled={busy || title.trim().length === 0}
+          >
+            Create and import from Word
+          </Button>
+        </div>
+        <p className="text-xs text-muted">
+          Already writing in Word? Import brings each Heading 1 in as a chapter; the proposal can
+          wait.
+        </p>
       </form>
     </main>
   );
