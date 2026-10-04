@@ -50,6 +50,7 @@ import {
   type ChapterBuildJob,
   type CoherenceRunJob,
   type DraftSectionJob,
+  type ExaminerReviewJob,
   type ExtractPaperJob,
   type FindSourcesJob,
   type GenerateOutlineJob,
@@ -66,6 +67,7 @@ import { runChapterBuild } from './jobs/chapter-build.js';
 import { runCoherence } from './jobs/coherence-run.js';
 import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
+import { runExaminerReview } from './jobs/examiner-review.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
 import { runFindSources, startFindSources } from './jobs/find-sources.js';
 import { runGenerateOutline } from './jobs/generate-outline.js';
@@ -82,6 +84,7 @@ import {
   QUEUE_CHAPTER_BUILD,
   QUEUE_COHERENCE,
   QUEUE_DRAFT_SECTION,
+  QUEUE_EXAMINER_REVIEW,
   QUEUE_EXTRACT_PAPER,
   QUEUE_FIND_SOURCES,
   QUEUE_GENERATE_OUTLINE,
@@ -126,6 +129,11 @@ function providersFor(env: Env): Providers {
             match: (req: LlmRequest) =>
               req.action === 'CHAPTER_BUILD' &&
               req.messages.some((m) => m.content.startsWith('<review')),
+            respond: mockExaminerFor,
+          },
+          // ADR-0056: the same examiner, reviewing a chapter the student wrote.
+          {
+            match: (req: LlmRequest) => req.action === 'EXAMINER_REVIEW',
             respond: mockExaminerFor,
           },
           mockExtractionResponse,
@@ -648,6 +656,56 @@ async function main(): Promise<void> {
       },
       // One build at a time: up to thirty strong-tier calls, each holding a section and its passages.
       { connection: connection.duplicate(), concurrency: 1 },
+    ),
+    // ADR-0056: a strict examiner reads each section of a chapter the student wrote.
+    new Worker(
+      QUEUE_EXAMINER_REVIEW,
+      async (job: Job<ExaminerReviewJob>) => {
+        const result = await runExaminerReview(job.data, {
+          prisma,
+          llm: providers.llm,
+          logCall: async (call) => {
+            const cost =
+              call.ok && call.usage && env.AI_PROVIDER !== 'mock'
+                ? computeCallCost({ tier: 'strong', modelId: call.modelId, usage: call.usage })
+                : 0;
+            await prisma.aiCallLog.create({
+              data: {
+                userId: call.userId,
+                documentId: call.documentId,
+                action: 'EXAMINER_REVIEW',
+                model: call.modelId,
+                inputTokens: call.usage?.inputTokens ?? 0,
+                cachedInputTokens: call.usage?.cachedInputTokens ?? 0,
+                cacheWriteTokens: call.usage?.cacheWriteTokens ?? 0,
+                outputTokens: call.usage?.outputTokens ?? 0,
+                costMicroInr: BigInt(cost),
+                latencyMs: call.latencyMs,
+                ok: call.ok,
+                error: call.error ?? null,
+              },
+            });
+            return cost;
+          },
+          // `UsageService.refund`'s statement: a review that reviewed nothing costs no unit.
+          refund: async (userId) => {
+            const now = new Date();
+            const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+            await prisma.$executeRawUnsafe(
+              `UPDATE "UsageLedger" SET "count" = "count" - 1
+               WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = 'EXAMINER_REVIEW'::"AiAction" AND "count" > 0`,
+              userId,
+              period,
+            );
+          },
+          assertBudget: assertPlatformBudget(prisma, env),
+          log: (event) => log({ jobId: job.id, ...event }),
+        });
+        log({ msg: 'examiner review finished', jobId: job.id, ...result });
+        return result;
+      },
+      // Each review makes up to three strong-tier calls at once; two reviews at a time.
+      { connection: connection.duplicate(), concurrency: 2 },
     ),
     // ADR-0037: the library had nothing on the section being written.
     new Worker(

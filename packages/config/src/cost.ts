@@ -112,7 +112,22 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
     cachedInputTokens: 35 * 4_000,
     outputTokens: 14 * (800 + 600) + 7 * 900,
   },
+  /**
+   * ADR-0056. One unit is one examiner review of a chapter the student wrote, priced for its
+   * worst case: `EXAMINER_REVIEW_MAX_SECTIONS` sections, each examined once with the chapter
+   * build's examiner shape (section + cited passages + pitfalls: 5.5k in, 600 out, the 4k cached
+   * block counted once per call). No writing, no fix, no proofread.
+   */
+  EXAMINER_REVIEW: {
+    tier: 'strong',
+    inputTokens: 8 * 5_500,
+    cachedInputTokens: 8 * 4_000,
+    outputTokens: 8 * 600,
+  },
 };
+
+/** The most sections one examiner review sends (ADR-0056); the cost row above is priced on it. */
+export const EXAMINER_REVIEW_MAX_SECTIONS = 8;
 
 /** One-time per-document operations, amortised over 4 months in PRD §11.4. */
 export const ONE_TIME_PROFILES = {
@@ -241,6 +256,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
       ['Coherence', 'COHERENCE'],
       ['Viva preparation', 'VIVA'],
       ['Chapter builds', 'CHAPTER_BUILD'],
+      ['Examiner reviews', 'EXAMINER_REVIEW'],
     ] as const
   )
     .filter(([, action]) => !options.actions || options.actions.includes(action))

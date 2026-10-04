@@ -186,6 +186,18 @@ export {
   postProcessDraft,
 } from './builder/draft.js';
 export {
+  buildExaminerReviewRequest,
+  EXAMINER_REVIEW,
+  ownSentenceCount,
+  type ReviewChapter,
+  type ReviewCitation,
+  type ReviewPassage,
+  type ReviewSection,
+  type ReviewSentence,
+  reviewChapter,
+  sectionInput,
+} from './builder/examiner-review.js';
+export {
   buildMemoryBlock,
   type GlossaryEntry,
   MEMORY_BUDGET_TOKENS,

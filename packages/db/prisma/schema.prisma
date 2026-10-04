@@ -87,6 +87,7 @@ enum AiAction {
   CROSS_PAPER   // ADR-0005: multi-paper consistency pass (A.16)
   VIVA          // ADR-0030: viva preparation — a question set, or feedback on one answer
   CHAPTER_BUILD // ADR-0039: one planned, checked chapter, delivered as drafts to accept
+  EXAMINER_REVIEW // ADR-0056: a strict examiner's reading of a chapter the student wrote
 }
 enum FlagType {
   TERM_DRIFT
@@ -95,6 +96,7 @@ enum FlagType {
   CITATION_INTEGRITY
   OUTLINE_DRIFT
   CITATION_SUPPORT // ADR-0023: whether the cited passage supports what the sentence says
+  EXAMINER         // ADR-0056: an issue the examiner review found in one sentence
 }
 enum Severity {
   INFO

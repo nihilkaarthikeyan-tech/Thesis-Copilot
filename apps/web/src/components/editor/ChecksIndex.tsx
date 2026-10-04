@@ -28,6 +28,11 @@ export function ChecksIndex({
       action: <span className={here}>Below — “Check coherence”</span>,
     },
     {
+      name: 'Examiner review',
+      what: 'A strict examiner reads each section against the passages it cites.',
+      action: <span className={here}>Below — “Examiner review”</span>,
+    },
+    {
       name: 'Proofreading',
       what: 'Spelling, grammar and punctuation, without changing your words.',
       action: <span className={here}>Below</span>,

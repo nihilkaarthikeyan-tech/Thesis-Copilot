@@ -19,6 +19,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
+import { readExaminerReviews } from './examiner-review.service.js';
 
 /** D.1.1: the autosave hook may start a run at most this often. */
 export const AUTOSAVE_INTERVAL_MS = 15 * 60_000;
@@ -46,6 +47,8 @@ export type FlagView = {
   type: string;
   severity: string;
   description: string;
+  /** The examiner's correction (ADR-0056); null for the coherence checks, which offer none. */
+  suggestion: string | null;
   from: number;
   to: number;
   status: string;
@@ -200,7 +203,8 @@ export class CoherenceService {
     documentId: string,
     status: 'OPEN' | 'ALL' = 'OPEN',
   ): Promise<{ flags: FlagView[]; counts: Record<string, number>; lastRunAt: string | null }> {
-    await this.owned(ownerId, documentId);
+    const document = await this.owned(ownerId, documentId);
+    const reviews = readExaminerReviews(document.meta);
     const [rows, chapters] = await Promise.all([
       this.prisma.coherenceFlag.findMany({
         where: { documentId, ...(status === 'OPEN' ? { status: 'OPEN' } : {}) },
@@ -210,7 +214,14 @@ export class CoherenceService {
       }),
       this.prisma.chapter.findMany({
         where: { documentId },
-        select: { id: true, title: true, order: true, updatedAt: true, lastCheckedAt: true },
+        select: {
+          id: true,
+          title: true,
+          order: true,
+          updatedAt: true,
+          lastCheckedAt: true,
+          version: true,
+        },
       }),
     ]);
     const byId = new Map(chapters.map((c) => [c.id, c]));
@@ -218,7 +229,15 @@ export class CoherenceService {
     const flags: FlagView[] = rows.map((row) => {
       const chapter = byId.get(row.chapterId);
       const related = row.relatedChapterId ? byId.get(row.relatedChapterId) : undefined;
-      const moved = chapter?.lastCheckedAt ? chapter.updatedAt > chapter.lastCheckedAt : true;
+      // An examiner flag (ADR-0056) belongs to its chapter's last review, not to the coherence
+      // run's `lastCheckedAt`: its range holds while the chapter is the version that review read.
+      const review = reviews[row.chapterId];
+      const moved =
+        row.type === 'EXAMINER'
+          ? !(review && review.runId === row.runId && review.version === chapter?.version)
+          : chapter?.lastCheckedAt
+            ? chapter.updatedAt > chapter.lastCheckedAt
+            : true;
       return {
         id: row.id,
         chapterId: row.chapterId,
@@ -228,6 +247,7 @@ export class CoherenceService {
         type: row.type,
         severity: row.severity,
         description: row.description,
+        suggestion: row.suggestion ?? null,
         from: row.from,
         to: row.to,
         status: row.status,

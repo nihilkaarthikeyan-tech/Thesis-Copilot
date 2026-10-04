@@ -27,6 +27,8 @@ export const QUEUE_NAMES = [
   'find-sources',
   // ADR-0039: one chapter planned, written section by section, checked and delivered as drafts.
   'chapter-build',
+  // ADR-0056: a strict examiner reads each section of a chapter the student wrote.
+  'examiner-review',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -109,6 +111,38 @@ export type FindSourcesJob = {
   query: string;
 };
 
+/**
+ * `examiner-review` — ADR-0056. One chapter, as saved at `version`, read section by section by
+ * the chapter build's examiner; its issues become `EXAMINER` flags. `runId` is the record in
+ * `Document.meta.examinerReviews[chapterId]` the worker finishes.
+ */
+export type ExaminerReviewJob = {
+  documentId: string;
+  chapterId: string;
+  userId: string;
+  runId: string;
+  /** The chapter version the API saw when it took the unit; the job reads the chapter as saved. */
+  version: number;
+};
+
+/** One chapter's last examiner review, kept in `Document.meta.examinerReviews[chapterId]`. */
+export type ExaminerReviewRecord = {
+  runId: string;
+  status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED';
+  version: number;
+  /** Re-runs of the same saved version after a failure; part of the job id. */
+  attempt: number;
+  startedAt: string;
+  finishedAt?: string;
+  sections?: number;
+  sectionsReviewed?: number;
+  /** Sections whose examiner call failed or timed out, by heading. */
+  failedSections?: string[];
+  issues?: number;
+  blocking?: number;
+  error?: string;
+};
+
 export type JobPayloads = {
   noop: Record<string, never>;
   'extract-paper': ExtractPaperJob;
@@ -120,6 +154,7 @@ export type JobPayloads = {
   coherence: CoherenceRunJob;
   'find-sources': FindSourcesJob;
   'chapter-build': ChapterBuildJob;
+  'examiner-review': ExaminerReviewJob;
 };
 
 /**

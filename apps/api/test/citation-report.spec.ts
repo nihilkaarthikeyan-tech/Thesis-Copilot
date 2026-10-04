@@ -24,6 +24,7 @@ const flag = (over: Partial<FlagView>): FlagView => ({
   type: 'CITATION_SUPPORT',
   severity: 'ERROR',
   description: 'The passage reports a fall, not a rise.',
+  suggestion: null,
   from: 10,
   to: 40,
   status: 'OPEN',

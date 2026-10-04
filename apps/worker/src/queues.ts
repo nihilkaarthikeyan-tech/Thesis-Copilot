@@ -21,6 +21,7 @@ export const QUEUE_GENERATE_OUTLINE = 'generate-outline' satisfies QueueName;
 export const QUEUE_COHERENCE = 'coherence' satisfies QueueName;
 export const QUEUE_FIND_SOURCES = 'find-sources' satisfies QueueName;
 export const QUEUE_CHAPTER_BUILD = 'chapter-build' satisfies QueueName;
+export const QUEUE_EXAMINER_REVIEW = 'examiner-review' satisfies QueueName;
 
 /**
  * Three attempts with exponential backoff from 1s. Jobs are kept after completion and failure so

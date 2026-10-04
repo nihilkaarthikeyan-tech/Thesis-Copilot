@@ -4612,3 +4612,28 @@ or by a new Playwright spec.
 - **Two Playwright specs depend on the mock model** (an unchanged rewrite; a command that keeps its
   citations exactly): against the real models they fail because the model legitimately shortens or
   adds citations. They are run against the mock stack, as CI does.
+
+## Examiner review of a chapter the student wrote (2026-10-04, ADR-0056)
+
+From the Jenni study: their Peer Review reads any document and pins comments to sentences; our
+stricter examiner only ever saw chapters the build wrote. Now a Flags-tab button sends the open
+chapter, section by section (at most eight), to the same examiner with the passages its citations
+point at, and every issue becomes an `EXAMINER` flag on its sentence ("Examiner: blocking" /
+"Examiner: warning", with the suggested correction). New metered action `EXAMINER_REVIEW` (6 a
+month paid, 1 trial), ₹1.86 a review; a fully active student is ₹63.89 a month (₹85.82 with
+ADR-0051's Assist model). Migration `0031_examiner_review`.
+
+- Found on the way: a coherence run's reconciliation deleted every OPEN flag in a changed chapter
+  that it did not reproduce, whatever its type — it would have cleared the examiner's flags on
+  every run. It now reads only its own types.
+- Sentences carry exact ProseMirror ranges from the editor's node sizes (citation atoms, lists and
+  skipped pending drafts included), so the examiner's sentence id maps straight to a range. The
+  coherence run's `sentencesOf` counts text characters only and drifts by one position per
+  citation atom earlier in the block, which is why it was not reused for positions.
+- Tests: `packages/ai/test/examiner-review.spec.ts` (9: sections, exact ranges, pending drafts,
+  the eight-section bound, passage numbering), `apps/worker/test/examiner-review.spec.ts` (10: time
+  limits, passages, flag writing, ignored issues, a timed-out section, refunds, stale jobs) and one
+  coherence case, `apps/api/test/examiner-review.spec.ts` (7, testcontainers: the cap test,
+  refusals for nothing, the job id, refund when it cannot be queued, owner only, flags with
+  corrections), `cost-model.spec.ts` (both totals), the web labels, and a Playwright spec
+  (`e2e/examiner-review.spec.ts`) not run here — it needs the dev stack (`docs/PENDING.md`).

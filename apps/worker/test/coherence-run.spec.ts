@@ -20,7 +20,7 @@
 
 import type { LlmProvider, LlmRequest } from '@tc/ai';
 import { EMBEDDING_DIMENSIONS } from '@tc/retrieval';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, type Mock, vi } from 'vitest';
 import {
   type CoherenceRunDeps,
   estimateRun,
@@ -248,6 +248,19 @@ describe('a run over a changed chapter', () => {
     const runs = f.meta().coherenceRuns as Record<string, Record<string, unknown>>;
     expect(runs['run-1']?.status).toBe('DONE');
     expect(runs['run-1']).toHaveProperty('totals');
+  });
+
+  it('leaves the examiner review’s flags alone (ADR-0056)', async () => {
+    // They share the table, not the run: reconciliation never even reads them, so a coherence
+    // run that did not reproduce an examiner issue cannot delete it.
+    const f = fakes();
+    await runCoherence(JOB, f.deps);
+    const findMany = (f.deps.prisma as unknown as { coherenceFlag: { findMany: Mock } })
+      .coherenceFlag.findMany;
+    expect(findMany).toHaveBeenCalled();
+    for (const [args] of findMany.mock.calls) {
+      expect(args.where.type).toEqual({ not: 'EXAMINER' });
+    }
   });
 
   it('announces each check to the stream, started and done', async () => {
