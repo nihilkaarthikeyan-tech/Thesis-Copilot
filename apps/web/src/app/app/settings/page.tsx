@@ -86,10 +86,17 @@ export default function SettingsPage() {
           <div>
             <h2 className="eyebrow">Suggest without my asking</h2>
             <p className="mt-1 text-sm text-muted">
-              Off by default. When it is on, a suggestion appears about a second after you stop
-              typing, instead of only when you press <kbd>Ctrl+/</kbd>. It never interrupts you
-              mid-word, and it never fires while a suggestion is already showing.
+              When this is on, a suggestion appears about a second after you stop typing, instead of
+              only when you press <kbd>Ctrl+/</kbd>. It never interrupts you mid-word, and it never
+              fires while a suggestion is already showing.
             </p>
+            {settings ? (
+              <p className="mt-2 text-sm text-muted" data-testid="auto-suggest-state">
+                {settings.automaticSuggest
+                  ? 'It is on for you now. Turn it off here whenever you would rather ask for each suggestion yourself.'
+                  : 'It is off for you now. Turn it on here if you would like suggestions without asking.'}
+              </p>
+            ) : null}
             <p className="mt-2 text-sm">
               <strong>What it costs:</strong> every suggestion counts as one Assist action, whether
               you keep it or dismiss it — the same as pressing <kbd>Ctrl+/</kbd> yourself. Leaving
