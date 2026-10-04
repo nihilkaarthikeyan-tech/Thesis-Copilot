@@ -34,6 +34,7 @@ import { API_URL, ApiError, api } from '@/lib/api';
 import { chapterLabel } from '@/lib/chapter-label';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
 import { rememberLastChapter } from '@/lib/last-chapter';
+import { canReadBeside, requestReadBeside } from '@/lib/read-beside';
 import { assistRequest } from '@/lib/sse';
 
 /** §6.2: the cap resets at 00:00 UTC on the 1st; shown in the student's own timezone. */
@@ -111,6 +112,7 @@ import { type FormatActions, FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { ProofreadPanel } from './ProofreadPanel';
+import { ReadBesidePane } from './ReadBesidePane';
 import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
@@ -565,6 +567,9 @@ function ChapterEditor({
         // PHASES 3.5: the hover popover reads the real passage behind a citation.
         citation: {
           resolvePassage,
+          // "Read beside": the PDF in a pane next to the chapter, on a wide enough screen.
+          readBeside: requestReadBeside,
+          canReadBeside: () => canReadBeside(window.innerWidth),
         },
         imageUpload: uploadFigure,
         ...(live
@@ -1412,6 +1417,8 @@ function ChapterEditor({
             <WordCount editor={editor} className="ml-auto" />
           </div>
         </main>
+
+        <ReadBesidePane />
 
         <aside
           data-testid="tool-panel"

@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { requestReadBeside } from '@/lib/read-beside';
 
 /** Resolution and indexing run in the background; the panel keeps looking until they settle. */
 const POLL_MS = 3_000;
@@ -29,7 +30,19 @@ type PinnableSource = {
   year: number | null;
   status: string;
   groundingLevel: 'NONE' | 'ABSTRACT' | 'FULL_TEXT' | string;
+  hasFile?: boolean;
 };
+
+/**
+ * "Read PDF" (2026-10-04): beside the chapter on a wide screen (`ReadBesidePane`), in a new tab
+ * on anything narrower, as "Open PDF" always did.
+ */
+async function readPdf(source: PinnableSource): Promise<void> {
+  const label = source.title ? source.title.slice(0, 60) : null;
+  if (requestReadBeside({ sourceId: source.id, page: null, label })) return;
+  const { url } = await api<{ url: string }>(`/sources/${source.id}/file`);
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 export function SourcePins({ documentId, chapterId }: { documentId: string; chapterId: string }) {
   const [sources, setSources] = useState<PinnableSource[] | null>(null);
@@ -196,6 +209,18 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
                 {source.groundingLevel === 'FULL_TEXT' ? 'Full text' : 'Abstract only'}
               </span>
             </label>
+            {source.hasFile ? (
+              <button
+                type="button"
+                data-testid="source-read-pdf"
+                className="ml-auto shrink-0 self-start text-xs text-accent underline"
+                onClick={() =>
+                  void readPdf(source).catch(() => setError('That PDF could not be opened.'))
+                }
+              >
+                Read PDF
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
