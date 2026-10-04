@@ -16,6 +16,8 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { examinerLabel } from '@/lib/examiner-review';
+import { ExaminerReview } from './ExaminerReview';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -28,6 +30,8 @@ export type Flag = {
   type: string;
   severity: string;
   description: string;
+  /** The examiner's suggested correction (ADR-0056); null for the coherence checks. */
+  suggestion?: string | null;
   from: number;
   to: number;
   status: string;
@@ -50,7 +54,15 @@ const TYPE_LABEL: Record<string, string> = {
   // ADR-0023: whether the cited passage says what the sentence says it does.
   CITATION_SUPPORT: 'Source support',
   OUTLINE_DRIFT: 'Scope',
+  // ADR-0056: the examiner review's issues, one per sentence.
+  EXAMINER: 'Examiner',
 };
+
+/** A flag's heading: the examiner's carry their severity in words, the others their type. */
+export function flagLabel(flag: Pick<Flag, 'type' | 'severity'>): string {
+  if (flag.type === 'EXAMINER') return examinerLabel(flag.severity);
+  return TYPE_LABEL[flag.type] ?? flag.type;
+}
 
 const SEVERITY_ORDER: Record<string, number> = { ERROR: 0, WARN: 1, INFO: 2 };
 
@@ -179,6 +191,7 @@ export function FlagsPanel({
 
   return (
     <section data-testid="flags-panel">
+      <ExaminerReview chapterId={chapterId} onFinished={load} />
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-xs text-muted">
           {data?.lastRunAt
@@ -236,7 +249,7 @@ export function FlagsPanel({
       {data && flags.length === 0 ? (
         <p className="mt-4 text-xs text-muted">
           {(data.counts.total ?? 0) === 0
-            ? 'No open flags. A check looks for contradictions between chapters, terms used against your own glossary, claims with no citation, and scope drift.'
+            ? 'No open flags. A coherence check looks for contradictions between chapters, terms used against your own glossary, claims with no citation, and scope drift; an examiner review reads one chapter against its sources.'
             : 'Nothing of that type.'}
         </p>
       ) : null}
@@ -254,10 +267,15 @@ export function FlagsPanel({
                   className={`rounded-md border bg-surface p-2 text-xs ${SEVERITY_CLASS[flag.severity] ?? 'border-line'}`}
                 >
                   <p className="font-medium">
-                    {TYPE_LABEL[flag.type] ?? flag.type}
-                    <span className="ml-2 font-normal text-muted">{flag.severity}</span>
+                    {flagLabel(flag)}
+                    {flag.type === 'EXAMINER' ? null : (
+                      <span className="ml-2 font-normal text-muted">{flag.severity}</span>
+                    )}
                   </p>
                   <p className="mt-1">{flag.description}</p>
+                  {flag.suggestion ? (
+                    <p className="mt-1 text-muted">Suggested correction: {flag.suggestion}</p>
+                  ) : null}
                   {flag.relatedChapterTitle ? (
                     <p className="mt-1 text-muted">Against {flag.relatedChapterTitle}</p>
                   ) : null}

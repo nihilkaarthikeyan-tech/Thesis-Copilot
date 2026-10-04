@@ -24,6 +24,7 @@ test('the flags tab lists every check with a way to open it', async ({ page, req
   await index.getByText('Every check, in one list').click();
   for (const name of [
     'Coherence and claim support',
+    'Examiner review',
     'Proofreading',
     'Too close to a source',
     'Citation report',

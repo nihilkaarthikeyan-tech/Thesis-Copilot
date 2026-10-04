@@ -15,6 +15,7 @@ describe('allowanceName', () => {
     }
     expect(allowanceName('VIVA')).toBe('Viva practice');
     expect(allowanceName('CHAPTER_BUILD')).toBe('Chapter builds');
+    expect(allowanceName('EXAMINER_REVIEW')).toBe('Examiner reviews');
   });
 });
 

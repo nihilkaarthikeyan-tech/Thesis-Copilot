@@ -12,6 +12,7 @@ export const ACTION_NAMES: Record<string, string> = {
   COHERENCE: 'Consistency check',
   VIVA: 'Viva preparation',
   CHAPTER_BUILD: 'Chapter builds',
+  EXAMINER_REVIEW: 'Examiner reviews',
   PROPOSAL: 'Proposal conversation',
   OUTLINE: 'Outline',
   STYLE_PROFILE: 'Writing profile',
@@ -40,6 +41,7 @@ export const ALLOWANCE_NAMES: Record<string, string> = {
   COHERENCE: 'Coherence checks',
   VIVA: 'Viva practice',
   CHAPTER_BUILD: 'Chapter builds',
+  EXAMINER_REVIEW: 'Examiner reviews',
 };
 
 export const allowanceName = (code: string): string =>
