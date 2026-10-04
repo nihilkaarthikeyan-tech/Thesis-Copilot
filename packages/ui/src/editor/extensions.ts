@@ -27,6 +27,7 @@ import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
 import { Footnote } from './footnote.js';
 import { GhostText, type GhostTextOptions } from './ghost-text.js';
 import { MathBlock, MathInline } from './math.js';
+import { MoveBlock } from './move-block.js';
 import {
   CommentAnchor,
   type ImageResolveUrl,
@@ -74,6 +75,7 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
   return [
     // The "/" menu takes ↑ ↓ Enter Tab Esc only while it is open, so it sits above ghost text.
     SlashMenu,
+    MoveBlock,
     // Before everything else: keymap precedence (B.3).
     GhostText.configure(options.ghostText),
 
