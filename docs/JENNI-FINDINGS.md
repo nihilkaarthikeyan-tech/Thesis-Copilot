@@ -86,3 +86,33 @@ topic-specific planning — and measuring every session.
 What remains: Springer Nature papers outside PMC need the Springer Nature Open Access API key
 (`docs/PENDING.md`). Jenni's chat is slower but searches beyond the library; ours answers only from
 what the student has added.
+
+## The remaining features, first-hand (2026-10-04, second pass)
+
+Used sparingly: one section Generate and one "Validate supporting evidence" refine, neither
+accepted. Free-plan usage after both passes: 1 autocomplete accepted, 2 chats, 1 review, 1 AI Edit,
+1 workflow run (failed), 1 PDF import.
+
+| Feature | What Jenni does | Ours |
+|---|---|---|
+| Section prompts | A side panel: a document prompt, and per heading the bullet notes written at the start. Each has **Configure context** (switch sources off, or pin chosen sources) and **Generate** | Chapter scope notes (outline), used by Assist for the whole chapter; no note per sub-section, no per-section source pinning |
+| Generate | ~5 s, **one sentence** shown as an autocomplete suggestion (Accept / Refine), guided by the section's notes, citing two papers not in the library. Not a section draft | Draft mode writes a section; chapter build writes a chapter |
+| Refine suggestion | A prompt box and presets: Stay on topic, Complete this paragraph, Increase novelty, Simplify language, Re-write without citations, **Validate supporting evidence**, Cite from my library. Validate took ~15 s ("Thinking", "Analyzing") and returned a reworded sentence with a second citation. Arrows step through earlier suggestions | Shift+→ asks for a suggestion with a typed instruction; no presets, no history of suggestions |
+| AI Edit (Ctrl+J) | 17 actions: Improve fluency, Paraphrase, Simplify, Strengthen argument, Add a counter argument; Change tense, bullet / numbered list, prose, table, Translate; Academic style, Increase formality, Technical precision, Increase / Hedge claim confidence; Web and Library switches | 5: Expand, Formalise, Simplify, Shorten, Check consistency |
+| Shortcuts | → accept, Shift+→ next suggestion, Alt+→ one word, Ctrl+/ suggest, Ctrl+J edit or chat, Ctrl+↑/↓ move block, @ cite. Markdown and KaTeX help tabs | → / Tab accept, Alt+→ one word, Ctrl+/ suggest, Shift+→ guided suggestion |
+| Version history | Automatic snapshots minutes apart, author, read-only preview, Restore. No diff shown | Version history exists (ADR-0018) |
+| Share | Collaborators and owner; general access Restricted or anyone with the link. No roles, no supervisor workflow | Guide/committee shares with comments, scoped revisions, review queue, co-author |
+| Export | Word with **native Word citation fields** (linked to Word's References) or hyperlinks; LaTeX with four layouts (default, double-spaced manuscript, two-column, thesis with contents) and advanced options. Free plan exports without the bibliography | Word, PDF, LaTeX, HTML; university template and compliance checks; citations written as plain text |
+| Library | Upload up to 10 PDFs (25 MB, 150 pages each), **Zotero and Mendeley account import**, .bib/.ris, paste an ID; collections; impact factor on each item | .bib/.ris (exported from Zotero/Mendeley), DOI, PDF; no account link |
+| Paywall | "References are a paid feature" is a blur: the full reference list is already in the page | Not applicable |
+
+**Worth building, in order of value to a thesis student:**
+1. **Word citation fields on export.** Students finish in Word; citations that stay live in Word's
+   References survive their last-minute edits. Ours become dead text.
+2. **Refine presets on a suggestion**, especially "Validate supporting evidence" (we have the
+   citation-support check, ADR-0023, to back it) and "Cite from my library".
+3. **Sub-section notes** that Assist reads for the section under the cursor, with per-section
+   source pinning.
+4. **More selection actions**: counter argument, hedge / strengthen a claim, convert to table,
+   change tense, translate. Each is a prompt, so each needs an Appendix-A-style prompt and an eval.
+5. Zotero account import (OAuth, their API) — lower value: the file route works today.
