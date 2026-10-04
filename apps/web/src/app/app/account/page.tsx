@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { TrialNotice } from '@/components/TrialNotice';
+import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/auth-client';
 import { passwordProblem } from '@/lib/password';
@@ -51,15 +52,6 @@ const PLAN_LABEL: Record<string, string> = {
   STUDENT_MONTHLY: 'Student, monthly',
   STUDENT_ANNUAL: 'Student, annual',
   INSTITUTION_SEAT: 'Institution seat',
-};
-
-const ACTION_LABEL: Record<string, string> = {
-  ASSIST: 'Assist suggestions',
-  DRAFT: 'Draft sections',
-  CITE: 'Citation suggestions',
-  CHAT: 'Questions to your library',
-  COMMAND: 'Section commands',
-  COHERENCE: 'Coherence checks',
 };
 
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : '—');
@@ -413,9 +405,9 @@ export default function AccountPage() {
         {usage ? (
           <>
             <ul className="mt-2 space-y-1 text-sm" data-testid="account-usage">
-              {usage.actions.map((a) => (
+              {includedAllowances(usage.actions).map((a) => (
                 <li key={a.action} className="flex items-baseline justify-between gap-3">
-                  <span>{ACTION_LABEL[a.action] ?? a.action}</span>
+                  <span>{allowanceName(a.action)}</span>
                   <span className="flex items-center gap-2">
                     <span
                       aria-hidden
@@ -435,6 +427,11 @@ export default function AccountPage() {
                 </li>
               ))}
             </ul>
+            {notIncluded(usage.actions) ? (
+              <p className="mt-2 text-xs text-muted" data-testid="account-not-included">
+                Not included in your plan: {notIncluded(usage.actions)}.
+              </p>
+            ) : null}
             <p className="mt-3 text-xs text-muted">
               Resets on {date(usage.resetsAt)}. A suggestion counts when it is generated, whether
               you keep it or dismiss it — the tokens were spent either way. Nothing you type counts.

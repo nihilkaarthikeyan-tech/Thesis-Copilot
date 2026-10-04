@@ -14,6 +14,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 
 type Usage = {
@@ -96,8 +97,8 @@ export default function SettingsPage() {
             </p>
             {assist ? (
               <p className="mt-2 text-sm text-muted" data-testid="assist-allowance">
-                You have used {assist.used} of {assist.cap} Assist actions this month
-                {usage ? ` on ${usage.plan}` : ''} — {assist.remaining} left, resetting on{' '}
+                You have used {assist.used} of {assist.cap} Assist suggestions this month —{' '}
+                {assist.remaining} left, resetting on{' '}
                 {usage ? new Date(usage.resetsAt).toLocaleDateString() : '—'}.
               </p>
             ) : null}
@@ -202,16 +203,23 @@ export default function SettingsPage() {
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <h2 className="eyebrow">This month</h2>
         {usage ? (
-          <ul className="mt-2 space-y-1 text-sm" data-testid="usage-list">
-            {usage.actions.map((a) => (
-              <li key={a.action} className="flex items-baseline justify-between gap-4">
-                <span>{LABELS[a.action] ?? a.action}</span>
-                <span className={a.remaining === 0 ? 'text-warn' : 'text-muted'}>
-                  {a.used} / {a.cap}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="mt-2 space-y-1 text-sm" data-testid="usage-list">
+              {includedAllowances(usage.actions).map((a) => (
+                <li key={a.action} className="flex items-baseline justify-between gap-4">
+                  <span>{allowanceName(a.action)}</span>
+                  <span className={a.remaining === 0 ? 'text-warn' : 'text-muted'}>
+                    {a.used} / {a.cap}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {notIncluded(usage.actions) ? (
+              <p className="mt-2 text-xs text-muted">
+                Not included in your plan: {notIncluded(usage.actions)}.
+              </p>
+            ) : null}
+          </>
         ) : (
           <p className="mt-2 text-sm text-muted">Loading…</p>
         )}
@@ -223,13 +231,3 @@ export default function SettingsPage() {
     </main>
   );
 }
-
-/** Plain names for the metered actions (PRD §11.3). */
-const LABELS: Record<string, string> = {
-  ASSIST: 'Assist suggestions',
-  DRAFT: 'Draft sections',
-  CITE: 'Citation suggestions',
-  CHAT: 'Questions to your library',
-  COMMAND: 'Section commands',
-  COHERENCE: 'Coherence checks',
-};

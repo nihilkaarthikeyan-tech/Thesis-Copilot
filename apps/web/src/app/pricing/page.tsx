@@ -7,6 +7,7 @@
 
 import { METERED_ACTIONS, PLAN_LIMITS, PRICING } from '@tc/config';
 import Link from 'next/link';
+import { allowanceName } from '@/lib/action-names';
 
 export const metadata = {
   title: 'Pricing — Thesis Copilot',
@@ -88,7 +89,7 @@ export default function PricingPage() {
           <tbody>
             {METERED_ACTIONS.map((action) => (
               <tr key={action} className="border-t border-line">
-                <td className="px-3 py-2">{ACTION_LABEL[action] ?? action}</td>
+                <td className="px-3 py-2">{ACTION_LABEL[action] ?? allowanceName(action)}</td>
                 {PLANS.map((plan) => (
                   <td key={plan} className="px-3 py-2">
                     {PLAN_LIMITS[plan].caps[action] || '—'}
