@@ -383,6 +383,34 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
     expect(updated.keptChars).toBe(42);
   });
 
+  it('records a thumbs up or down on a suggestion, and clears it', async () => {
+    const suggestion = await prisma.suggestionEvent.findFirstOrThrow({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const rate = (rating: number) =>
+      api('/assist/rating', {
+        method: 'POST',
+        body: JSON.stringify({ suggestionId: suggestion.id, rating }),
+      });
+    const ratingOf = async () =>
+      (await prisma.suggestionEvent.findUniqueOrThrow({ where: { id: suggestion.id } })).rating;
+
+    expect((await rate(-1)).status).toBe(201);
+    expect(await ratingOf()).toBe(-1);
+    expect((await rate(1)).status).toBe(201);
+    expect(await ratingOf()).toBe(1);
+    expect((await rate(0)).status).toBe(201);
+    expect(await ratingOf()).toBeNull();
+    // Only 1, -1 or 0; and only one's own suggestion.
+    expect((await rate(5)).status).toBe(400);
+    const other = await api('/assist/rating', {
+      method: 'POST',
+      body: JSON.stringify({ suggestionId: '01a10000-0000-7000-8000-000000000000', rating: 1 }),
+    });
+    expect(other.status).toBe(404);
+  });
+
   it('disconnecting the client aborts the provider stream (assert on the mock)', async () => {
     const { AssistService } = await import('../src/modules/assist/assist.service.js');
     const assist = app.get(AssistService);

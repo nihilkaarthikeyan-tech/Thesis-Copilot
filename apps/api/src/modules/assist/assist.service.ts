@@ -372,6 +372,15 @@ export class AssistService {
     suggestionOutcome.inc({ outcome });
   }
 
+  /** A thumbs up (1), down (-1) or cleared (0) on the student's own suggestion. */
+  async recordRating(userId: string, suggestionId: string, rating: 1 | -1 | 0): Promise<void> {
+    const updated = await this.prisma.suggestionEvent.updateMany({
+      where: { id: suggestionId, userId },
+      data: { rating: rating === 0 ? null : rating },
+    });
+    if (updated.count === 0) throw new NotFoundError('That suggestion');
+  }
+
   private async logCall(
     userId: string,
     documentId: string,

@@ -19,7 +19,9 @@ import {
   sourceMetricBadges,
 } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 /** The presets: each is an instruction the guided suggestion already accepts. */
 export const REFINE_PRESETS: Array<{ label: string; instruction: string }> = [
@@ -70,6 +72,12 @@ export function SuggestionBar({
   const [citations, setCitations] = useState<SuggestionCitation[]>([]);
   const [history, setHistory] = useState<History>(NO_HISTORY);
   /**
+   * Thumbs on a suggestion (2026-10-04, from the Jenni study), kept apart from whether it was
+   * kept: a suggestion can be dismissed and still have been useful to read. No model call.
+   */
+  const [ratings, setRatings] = useState<Record<string, 1 | -1>>({});
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  /**
    * The evidence card (2026-10-04, from the Jenni study): the paper and the passage behind a
    * suggested citation, readable before the suggestion is accepted, not only after.
    */
@@ -85,6 +93,7 @@ export function SuggestionBar({
       const ghost = getGhostState(editor);
       setStatus(ghost?.status ?? 'idle');
       setCitations(ghost?.citations ?? []);
+      setCurrentId(ghost?.suggestionId ?? null);
       if (ghost?.status !== 'shown' || !ghost.suggestionId) return;
       const { suggestionId, anchorPos, text } = ghost;
       setHistory((h) => {
@@ -126,6 +135,23 @@ export function SuggestionBar({
   };
 
   const shown = status === 'shown';
+  const rating = currentId ? ratings[currentId] : undefined;
+  const rate = (value: 1 | -1) => {
+    if (!currentId) return;
+    const id = currentId;
+    const next = rating === value ? 0 : value;
+    const before = ratings;
+    setRatings((r) => {
+      const copy = { ...r };
+      if (next === 0) delete copy[id];
+      else copy[id] = next;
+      return copy;
+    });
+    void api('/assist/rating', {
+      method: 'POST',
+      body: JSON.stringify({ suggestionId: id, rating: next }),
+    }).catch(() => setRatings(before));
+  };
   const step = (delta: number) => {
     const target = history.entries[history.index + delta];
     if (!target) return;
@@ -238,6 +264,30 @@ export function SuggestionBar({
         >
           Dismiss
         </button>
+        {shown && currentId ? (
+          <span className="flex items-center gap-0.5" data-testid="suggestion-rating">
+            <button
+              type="button"
+              aria-label="Useful suggestion"
+              aria-pressed={rating === 1}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => rate(1)}
+              className={`rounded p-1.5 hover:bg-sunk ${rating === 1 ? 'text-accent' : 'text-muted'}`}
+            >
+              <ThumbsUp size={14} aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label="Not a useful suggestion"
+              aria-pressed={rating === -1}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => rate(-1)}
+              className={`rounded p-1.5 hover:bg-sunk ${rating === -1 ? 'text-accent' : 'text-muted'}`}
+            >
+              <ThumbsDown size={14} aria-hidden />
+            </button>
+          </span>
+        ) : null}
         {evidence ? (
           <div
             data-testid="evidence-card"

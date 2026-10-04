@@ -48,6 +48,7 @@ export class FeedbackService {
         keptChars: true,
         ttfbMs: true,
         latencyMs: true,
+        rating: true,
         createdAt: true,
       },
     });
@@ -55,7 +56,8 @@ export class FeedbackService {
     const lines = events.map(
       (e) =>
         `  ${e.createdAt.toISOString()}  ${e.action.padEnd(6)} ${e.outcome.padEnd(9)} ` +
-        `shown ${e.shownChars} kept ${e.keptChars} ttfb ${e.ttfbMs ?? '–'} ms  (${e.id})`,
+        `shown ${e.shownChars} kept ${e.keptChars} ttfb ${e.ttfbMs ?? '–'} ms` +
+        `${e.rating === 1 ? '  rated useful' : e.rating === -1 ? '  rated not useful' : ''}  (${e.id})`,
     );
     const text = [
       `From: ${user.email} (user ${user.id})`,

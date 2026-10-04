@@ -30,6 +30,12 @@ const suggestBody = z.object({
     .optional(),
 });
 
+const ratingBody = z.object({
+  suggestionId: z.string().uuid(),
+  // 0 clears a rating the student changed their mind about.
+  rating: z.union([z.literal(1), z.literal(-1), z.literal(0)]),
+});
+
 const outcomeBody = z.object({
   suggestionId: z.string().uuid(),
   outcome: z.enum(OUTCOMES),
@@ -71,6 +77,15 @@ export class AssistController {
       parsed.data.outcome,
       parsed.data.keptChars,
     );
+    return { ok: true };
+  }
+
+  /** Thumbs on a suggestion (2026-10-04, from the Jenni study). No model call, no unit. */
+  @Post('rating')
+  async rating(@CurrentUser() user: SessionUser, @Body() body: unknown): Promise<{ ok: true }> {
+    const parsed = ratingBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid rating payload', parsed.error.issues);
+    await this.assist.recordRating(user.id, parsed.data.suggestionId, parsed.data.rating);
     return { ok: true };
   }
 }

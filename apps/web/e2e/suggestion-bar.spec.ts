@@ -155,6 +155,17 @@ test('a refined suggestion keeps the one before it, and ‹ brings that back', a
   const history = page.getByTestId('suggestion-history');
   await expect(history).toContainText('2 of 2');
 
+  // Thumbs: recorded on the server, and pressed again to take back.
+  const useful = bar.getByRole('button', { name: 'Useful suggestion', exact: true });
+  const rated = page.waitForResponse(
+    (r) => r.url().endsWith('/assist/rating') && r.request().method() === 'POST',
+  );
+  await useful.click();
+  expect((await rated).status()).toBe(201);
+  await expect(useful).toHaveAttribute('aria-pressed', 'true');
+  await useful.click();
+  await expect(useful).toHaveAttribute('aria-pressed', 'false');
+
   await history.getByRole('button', { name: 'Previous suggestion' }).click();
   await expect(history).toContainText('1 of 2');
   await expect(ghost).toHaveText(first);

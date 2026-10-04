@@ -432,6 +432,8 @@ model SuggestionEvent {
   latencyMs   Int
   ttfbMs      Int?
   guided      Boolean  @default(false)
+  // 2026-10-04: the student's thumbs, apart from whether it was kept. 1 | -1 | null (not rated).
+  rating      Int?     @db.SmallInt
   createdAt   DateTime @default(now())
   @@index([userId, createdAt])
   @@index([documentId, createdAt])
