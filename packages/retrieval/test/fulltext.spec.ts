@@ -38,11 +38,28 @@ describe('fetchOpenAccessPdf', () => {
   });
 
   it('follows redirects, because repositories always redirect', async () => {
-    // Typed with the parameters, so `calls[0][1]` is the init rather than an empty tuple.
-    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => respondWith(PDF));
-    await fetchOpenAccessPdf('https://doi.org/10.1/x', { fetch: fetchFn });
-    const init = fetchFn.mock.calls[0]?.[1];
-    expect(init?.redirect).toBe('follow');
+    // Followed by hand since 2026-10-04 (to carry cookies), so the chain is what is checked.
+    const fetchFn = vi.fn(async (url: string, _init?: RequestInit) =>
+      url === 'https://doi.org/10.1/x'
+        ? new Response(null, { status: 301, headers: { location: 'https://repo.example/p.pdf' } })
+        : respondWith(PDF),
+    );
+    const result = await fetchOpenAccessPdf('https://doi.org/10.1/x', { fetch: fetchFn });
+    expect(result.ok).toBe(true);
+    expect(fetchFn.mock.calls.map((c) => c[0])).toEqual([
+      'https://doi.org/10.1/x',
+      'https://repo.example/p.pdf',
+    ]);
+  });
+
+  it('gives up on a redirect loop instead of following it for ever', async () => {
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(null, { status: 302, headers: { location: 'https://loop.example/' } }),
+    );
+    const result = await fetchOpenAccessPdf('https://loop.example/', { fetch: fetchFn });
+    expect(result).toEqual({ ok: false, reason: 'network' });
+    expect(fetchFn.mock.calls.length).toBeLessThanOrEqual(6);
   });
 
   it('has nothing to fetch when Unpaywall listed no PDF', async () => {
@@ -141,5 +158,53 @@ describe('readableFullTextReason', () => {
       // A student reads these; they must not name the service that failed or a status code.
       expect(sentence, reason).not.toMatch(/HTTP|\d{3}|Unpaywall/);
     }
+  });
+});
+
+describe('cookies across redirects (2026-10-04)', () => {
+  it('sends back the cookie a publisher set before redirecting, as Springer requires', async () => {
+    const pdf = Buffer.from('%PDF-1.4 a real paper');
+    const seen: Array<{ url: string; cookie: string | null }> = [];
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      const cookie = new Headers(init?.headers).get('cookie');
+      seen.push({ url, cookie });
+      if (!url.includes('error=cookies')) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: `${url}?error=cookies_not_supported`,
+            'set-cookie': 'sid=abc123; Path=/; HttpOnly',
+          },
+        });
+      }
+      return cookie?.includes('sid=abc123')
+        ? new Response(pdf, { status: 200, headers: { 'content-type': 'application/pdf' } })
+        : new Response('<!DOCTYPE html><html></html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' },
+          });
+    }) as typeof fetch;
+    const result = await fetchOpenAccessPdf('https://link.springer.example/content/pdf/x.pdf', {
+      fetch: fetchFn,
+    });
+    expect(result.ok).toBe(true);
+    expect(seen).toHaveLength(2);
+    expect(seen[1]?.cookie).toBe('sid=abc123');
+  });
+
+  it("never sends one host's cookie to another", async () => {
+    const seen: Array<string | null> = [];
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get('cookie'));
+      if (url.startsWith('https://a.example')) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: 'https://b.example/p.pdf', 'set-cookie': 'secret=1' },
+        });
+      }
+      return new Response(Buffer.from('%PDF-1.4'), { status: 200 });
+    }) as typeof fetch;
+    await fetchOpenAccessPdf('https://a.example/p.pdf', { fetch: fetchFn });
+    expect(seen).toEqual([null, null]);
   });
 });

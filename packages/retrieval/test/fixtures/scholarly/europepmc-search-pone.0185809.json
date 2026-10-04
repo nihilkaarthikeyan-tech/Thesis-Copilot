@@ -1,0 +1,48 @@
+{
+  "version": "6.9",
+  "hitCount": 1,
+  "request": {
+    "queryString": "DOI:\"10.1371/journal.pone.0185809\"",
+    "resultType": "lite",
+    "cursorMark": "*",
+    "pageSize": 5,
+    "sort": "",
+    "synonym": false
+  },
+  "resultList": {
+    "result": [
+      {
+        "id": "29045418",
+        "source": "MED",
+        "pmid": "29045418",
+        "pmcid": "PMC5646769",
+        "fullTextIdList": { "fullTextId": ["PMC5646769"] },
+        "doi": "10.1371/journal.pone.0185809",
+        "title": "More than 75 percent decline over 27 years in total flying insect biomass in protected areas.",
+        "authorString": "Hallmann CA, Sorg M, Jongejans E, Siepel H, Hofland N, Schwan H, Stenmans W, Müller A, Sumser H, Hörren T, Goulson D, de Kroon H.",
+        "journalTitle": "PLoS One",
+        "issue": "10",
+        "journalVolume": "12",
+        "pubYear": "2017",
+        "journalIssn": "1932-6203",
+        "pageInfo": "e0185809",
+        "pubType": "research-article; journal article",
+        "isOpenAccess": "Y",
+        "inEPMC": "Y",
+        "inPMC": "Y",
+        "citedByCount": 1261,
+        "hasReferences": "Y",
+        "hasTextMinedTerms": "Y",
+        "hasDbCrossReferences": "N",
+        "hasPDF": "Y",
+        "hasBook": "N",
+        "hasSuppl": "Y",
+        "hasLabsLinks": "Y",
+        "hasTMAccessionNumbers": "Y",
+        "tmAccessionTypeList": { "accessionType": ["doi"] },
+        "firstPublicationDate": "2017-10-18",
+        "firstIndexDate": "2017-10-19"
+      }
+    ]
+  }
+}

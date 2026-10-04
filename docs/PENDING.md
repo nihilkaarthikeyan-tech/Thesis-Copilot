@@ -108,6 +108,16 @@ These shipped grounded and un-metered; none blocks anything. The human steps onl
       is what says whether the checks (spelling pairs, abbreviations, terminology) need language
       variants.
 
+## Springer Nature open-access full text (ADR-0054, 2026-10-04)
+
+Springer, Nature, BMC and SpringerOpen papers that are open access but not in PubMed Central stay
+abstract-only. Springer's site now blocks server downloads with a bot check, which we must not get
+past. The sanctioned route is the Springer Nature Open Access API.
+
+1. Register for a free key at https://dev.springernature.com (an "Open Access" API key).
+2. Put it in `.env` as `SPRINGER_NATURE_API_KEY` and tell the agent. The agent reads the API's
+   real response with the key, then builds the client the way Europe PMC's was built.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

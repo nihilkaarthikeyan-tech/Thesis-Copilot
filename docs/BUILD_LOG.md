@@ -4544,3 +4544,20 @@ get stuck in many places. Fixed:
 The owner turned both on. `GET /settings` now takes its `automaticSuggest` default from the
 `automaticSuggest` flag (seeded in FR-9.7 and never read before); a student's own choice still
 wins. Both flags are switched on in production at release; they stay seeded off.
+
+## Full text from Europe PMC; equations in chat (2026-10-04, ADR-0054)
+
+Found by running Jenni's tests on our own stack. The same Springer gold open-access paper stayed
+abstract-only here: Springer now puts a JavaScript bot check in front of its PDFs for any server.
+The cookie it also needs is now carried across redirects, but the bot check is not to be got
+past. Instead the index job asks Europe PMC for the article as JATS when no PDF could be read.
+Tables are kept row by row. Chat answers now show `$…$` as typeset maths, not LaTeX source.
+
+- Evidence, live, real models: a Springer review in PMC (10.1007/s13668-026-00770-4) went FULL_TEXT
+  10 s after its DOI was added (`full text from europe pmc`, PMC13197351). Chat answered from its
+  Table 3 ("35% to 61% of dry matter … beef and chicken (both 23–25%)"), cited, in 1.8 s.
+- In the browser, chat showed the *Discover Food* paper's diffusivities as typeset maths.
+- Asked for a figure the review does not give, chat said the library did not hold it, which is
+  correct.
+- Tests: `europepmc.spec.ts` (9, on recorded responses), three index-source cases, four cookie
+  cases in `fulltext.spec.ts`. Retrieval 361 passed, worker 148 passed.

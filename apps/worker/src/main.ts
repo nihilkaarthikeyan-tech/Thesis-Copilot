@@ -35,6 +35,7 @@ import {
   type ContextClient,
   CoreClient,
   CrossrefClient,
+  EuropePmcClient,
   extractDocument,
   OpenAlexClient,
   OpenAlexDiscovery,
@@ -276,6 +277,8 @@ async function main(): Promise<void> {
     core: env.CORE_API_KEY
       ? new CoreClient(env.CORE_API_KEY, { mailto: env.UNPAYWALL_EMAIL })
       : null,
+    // ADR-0054: JATS full text for Europe PMC's open-access subset; keyless.
+    europePmc: new EuropePmcClient({ mailto: env.UNPAYWALL_EMAIL }),
     // FR-2.5 discovery: OpenAlex primary, Semantic Scholar only when a key exists (PRD 13.3).
     discovery: new OpenAlexDiscovery({
       mailto: env.OPENALEX_MAILTO,
@@ -376,6 +379,7 @@ async function main(): Promise<void> {
           embeddings: providers.embeddings,
           unpaywall: scholarly.unpaywall,
           core: scholarly.core,
+          europePmc: scholarly.europePmc,
           getObject: (key) => storage.get(key),
           putObject: (key, body) => storage.put(key, body),
           extract: (bytes) => extractDocument(bytes, 'pdf'),

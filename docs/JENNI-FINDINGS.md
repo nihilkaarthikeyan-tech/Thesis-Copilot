@@ -73,3 +73,16 @@ experiments, surveys); Sentry; Microsoft Clarity session recordings; Intercom; S
 marketing pixels. The model vendor and prompts are server-side and not visible. Nothing here is
 exotic: the lead is product engineering — a pre-built full-text index, agentic review and chat,
 topic-specific planning — and measuring every session.
+
+## The same tests on ours (dev stack, real models, 2026-10-04)
+
+| Test | Ours | Jenni |
+|---|---|---|
+| Add a paper by DOI until its text is citable | 10 s to FULL_TEXT for a paper in PMC (ADR-0054). A Springer paper outside PMC: 83 s, abstract only | ~40 s, full text |
+| Autocomplete, first word | 2.7–3.4 s | 1.9–2.8 s |
+| Chat over one paper, figure in a table | 1.8 s, both figures cited (after ADR-0054) | ~97 s, agentic, complete |
+| Equations in chat | Typeset (fixed today) | Typeset |
+
+What remains: Springer Nature papers outside PMC need the Springer Nature Open Access API key
+(`docs/PENDING.md`). Jenni's chat is slower but searches beyond the library; ours answers only from
+what the student has added.

@@ -17,6 +17,7 @@ import {
   batched,
   type CoreClient,
   chunkText,
+  type EuropePmcClient,
   type ExtractedDocument,
   type FullTextFailure,
   fetchOpenAccessPdf,
@@ -36,6 +37,11 @@ export type IndexSourceDeps = {
   unpaywall: UnpaywallClient;
   /** FR-2.2's fallback, asked only after Unpaywall failed. Null without `CORE_API_KEY` (§13.3). */
   core?: CoreClient | null;
+  /**
+   * ADR-0054: the full text as JATS when no open-access PDF could be read, for papers in Europe
+   * PMC's open-access subset. Keyless; null or absent turns the step off.
+   */
+  europePmc?: EuropePmcClient | null;
   /** Reads a PDF already in object storage — a student upload, or one fetched by an earlier run. */
   getObject: (key: string) => Promise<Buffer>;
   /** Writes a fetched open-access PDF to object storage. */
@@ -66,9 +72,9 @@ export type IndexSourceResult = {
   groundingLevel: 'NONE' | 'ABSTRACT' | 'FULL_TEXT';
   chunks: number;
   /** Where the indexed text came from, so the log says what was actually read. */
-  from: 'stored-pdf' | 'open-access-pdf' | 'abstract' | 'nothing';
+  from: 'stored-pdf' | 'open-access-pdf' | 'open-access-xml' | 'abstract' | 'nothing';
   /** Which service located an open-access PDF, when one was fetched. */
-  via?: 'unpaywall' | 'core';
+  via?: 'unpaywall' | 'core' | 'europepmc';
   fullTextFailure?: FullTextFailure;
 };
 
@@ -105,7 +111,7 @@ export async function runIndexSource(
   let sections: Array<{ section: string; start: number; end: number }> | undefined;
   let from: IndexSourceResult['from'] = 'nothing';
   let fullTextFailure: FullTextFailure | undefined;
-  let via: 'unpaywall' | 'core' | undefined;
+  let via: 'unpaywall' | 'core' | 'europepmc' | undefined;
   let fileKey = source.fileKey;
 
   // 1. A PDF we already hold — the student's own upload (FR-2.3), or one fetched by an earlier run.
@@ -149,6 +155,31 @@ export async function runIndexSource(
       }
     } else {
       fullTextFailure = outcome.reason;
+    }
+  }
+
+  // 2b. ADR-0054: no PDF could be read, so ask Europe PMC for the article as JATS. Springer's bot
+  // check (2026) turned away every server-side PDF fetch of its open-access papers; this is the
+  // sanctioned road to the same text for anything in PMC's open-access subset.
+  if (!text && source.doi && deps.europePmc) {
+    try {
+      const article = await deps.europePmc.fullText(source.doi, AbortSignal.timeout(60_000));
+      if (article) {
+        text = article.text;
+        pages = undefined;
+        sections = article.sections;
+        from = 'open-access-xml';
+        via = 'europepmc';
+        log({
+          msg: 'full text from europe pmc',
+          sourceId: source.id,
+          pmcid: article.pmcid,
+          pdfFailure: fullTextFailure,
+        });
+        fullTextFailure = undefined;
+      }
+    } catch (error) {
+      log({ msg: 'europe pmc lookup failed', sourceId: source.id, error: String(error) });
     }
   }
 

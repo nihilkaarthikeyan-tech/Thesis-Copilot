@@ -416,3 +416,64 @@ describe('the site-wide AI budget (2026-09-25)', () => {
     expect(deps.logEmbed).not.toHaveBeenCalled();
   });
 });
+
+describe('Europe PMC full text (ADR-0054)', () => {
+  const article = {
+    pmcid: 'PMC1',
+    text: `${'Moisture fell from 78 to 15 per cent in the dryer. '.repeat(40)}\nTable 1. Drying\nDryer | 52 C | 14 h`,
+    sections: [{ section: 'Results', start: 0, end: 2100 }],
+    url: 'https://europepmc.org/article/PMC/PMC1',
+  };
+
+  it('grounds on the JATS text when the open-access PDF turns out to be a page', async () => {
+    const { deps, source, logs } = fakeDeps({
+      oaPdfUrl: 'https://publisher.example/p.pdf',
+      fetchedPdf: 'fail',
+    });
+    const fullText = vi.fn(async () => article);
+    deps.europePmc = { fullText } as unknown as IndexSourceDeps['europePmc'];
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(fullText).toHaveBeenCalledWith('10.1/aaa', expect.any(AbortSignal));
+    expect(result).toMatchObject({
+      from: 'open-access-xml',
+      via: 'europepmc',
+      groundingLevel: 'FULL_TEXT',
+    });
+    expect(result.fullTextFailure).toBeUndefined();
+    expect(source.groundingLevel).toBe('FULL_TEXT');
+    // Nothing was downloaded, so nothing is stored or claimed as a file.
+    expect(source.fileKey).toBeNull();
+    expect(
+      logs.some((l) => l.msg === 'full text from europe pmc' && l.pdfFailure === 'not-ok'),
+    ).toBe(true);
+  });
+
+  it('is not asked when the PDF was read', async () => {
+    const { deps } = fakeDeps({ oaPdfUrl: 'https://repo.example.org/p.pdf' });
+    const fullText = vi.fn(async () => article);
+    deps.europePmc = { fullText } as unknown as IndexSourceDeps['europePmc'];
+    expect((await runIndexSource(job(), deps)).from).toBe('open-access-pdf');
+    expect(fullText).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the abstract when Europe PMC fails, and the job survives', async () => {
+    const { deps } = fakeDeps({
+      oaPdfUrl: 'https://publisher.example/p.pdf',
+      fetchedPdf: 'fail',
+      source: { cslJson: { abstract: 'Solar dryers cut drying time by half in coastal trials.' } },
+    });
+    deps.europePmc = {
+      fullText: vi.fn(async () => {
+        throw new Error('europepmc: HTTP 503');
+      }),
+    } as unknown as IndexSourceDeps['europePmc'];
+    const result = await runIndexSource(job(), deps);
+    expect(result).toMatchObject({
+      from: 'abstract',
+      groundingLevel: 'ABSTRACT',
+      fullTextFailure: 'not-ok',
+    });
+  });
+});

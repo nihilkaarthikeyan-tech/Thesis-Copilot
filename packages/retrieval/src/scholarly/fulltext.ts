@@ -63,11 +63,7 @@ export async function fetchOpenAccessPdf(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await doFetch(url, {
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: { accept: 'application/pdf,*/*' },
-    });
+    const response = await fetchFollowingCookies(doFetch, url, controller.signal);
 
     if (!response.ok) return { ok: false, reason: 'not-ok' };
 
@@ -94,6 +90,59 @@ export async function fetchOpenAccessPdf(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Follows redirects by hand, carrying the cookies each hop sets — as a browser does and Node's
+ * `fetch` does not. Some publishers set a cookie on the first request and serve the PDF only to a
+ * client that sends it back after the redirect. Springer did, and since 2026 it also puts a
+ * JavaScript bot check after that hop, which this does not and must not get past: its open-access
+ * papers reach full text through Europe PMC instead where they can (ADR-0054, found 2026-10-04).
+ *
+ * At most `MAX_REDIRECTS` hops; a cookie is sent only back to the host that set it.
+ */
+async function fetchFollowingCookies(
+  doFetch: FetchLike,
+  startUrl: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  const jar = new Map<string, Map<string, string>>();
+  let url = startUrl;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const host = new URL(url).host;
+    const cookies = jar.get(host);
+    const response = await doFetch(url, {
+      redirect: 'manual',
+      signal,
+      headers: {
+        accept: 'application/pdf,*/*',
+        ...(cookies && cookies.size > 0
+          ? { cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join('; ') }
+          : {}),
+      },
+    });
+    const setCookies =
+      typeof (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie ===
+      'function'
+        ? (response.headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
+        : [];
+    for (const raw of setCookies) {
+      const pair = raw.split(';')[0] ?? '';
+      const eq = pair.indexOf('=');
+      if (eq <= 0) continue;
+      const store = jar.get(host) ?? new Map<string, string>();
+      store.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
+      jar.set(host, store);
+    }
+    const location = response.headers.get('location');
+    if (response.status >= 300 && response.status < 400 && location) {
+      await response.body?.cancel().catch(() => undefined);
+      url = new URL(location, url).href;
+      continue;
+    }
+    return response;
+  }
+  throw new Error('too many redirects');
 }
 
 /** Reads the body, stopping the moment it exceeds the cap rather than buffering the whole thing. */

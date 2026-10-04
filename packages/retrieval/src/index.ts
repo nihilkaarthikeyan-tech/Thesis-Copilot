@@ -185,6 +185,12 @@ export {
   SemanticScholarClient,
 } from './scholarly/discover.js';
 export {
+  EUROPE_PMC_REQUESTS_PER_SECOND,
+  EuropePmcClient,
+  type EuropePmcFullText,
+  jatsToText,
+} from './scholarly/europepmc.js';
+export {
   FETCH_TIMEOUT_MS,
   type FullTextFailure,
   type FullTextFetchOptions,
