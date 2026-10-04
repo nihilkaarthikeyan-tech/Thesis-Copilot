@@ -25,6 +25,8 @@ export const SNAPSHOT_REASONS = [
   'PRE_CHAPTER_BUILD',
   // Written before merging two library records re-points the chapter's citations (2026-10-04).
   'PRE_MERGE',
+  // Written before "Import from Word" replaces an empty thesis's chapters (2026-10-04).
+  'PRE_IMPORT',
 ] as const;
 export type SnapshotReason = (typeof SNAPSHOT_REASONS)[number];
 

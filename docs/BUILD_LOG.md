@@ -4713,3 +4713,40 @@ From the Jenni study (Jenni has a help centre, a changelog and style previews).
   API, which has no preview endpoint. /help and /changelog were checked in a browser on a separate
   dev server, desktop and phone width.
 
+## Import from Word (2026-10-04)
+
+From the Jenni study: a student with a half-written thesis in Word brings it in as chapters
+instead of pasting it a chapter at a time. "Import from Word" under the chapter list (and "Create
+and import from Word" on the new-thesis screen, which opens the editor with the dialog up): pick a
+`.docx`, see the chapters it found with their word counts, choose "Add as new chapters after the
+existing ones" (default) or "Replace this empty thesis", import, read the summary.
+
+`POST /documents/:id/import-docx?mode=preview|append|replace`, multipart, owner only (404 for
+anyone else), the same `checkUpload` size and magic-byte rules as every upload, and the `upload`
+heavy rate limit. mammoth (`docxToHtml` in `@tc/retrieval`, next to `extractDocx`) → HTML →
+`parse5` → the editor's JSON (`apps/api/src/modules/chapters/docx-chapters.ts`); every chapter is
+checked against the editor's own schema (`getSchema(thesisExtensions(...))`, as collab does)
+before anything is written. Heading 1 splits (none: one chapter named after the file; text before
+the first: a "Front matter" chapter); Heading 2/3 stay headings and the Heading 2s become the
+outline node's sections; lists, tables (merged cells kept), bold/italic/underline/strike/sup/sub,
+web links and footnotes (ADR-0029 nodes) come across. Pictures are counted and left out. Citations
+typed as text stay text and are only counted — no citation node is invented. A password-protected
+file (an OLE container, not a zip) gets its own message.
+
+Outline and chapters stay one thing: each imported chapter gets an outline node in the same
+transaction, `order` follows `OutlineService.syncChapters`' rule, and a thesis with no outline yet
+adopts its existing chapters first so the import really lands after them. Replace is refused (409)
+once any chapter has body text, rechecked inside the transaction; it reuses the existing rows in
+order (ids and history kept), removes leftover empty ones, and snapshots every one first (new
+reason `PRE_IMPORT`). Imported text carries no provenance mark, so it counts as HUMAN. No model
+call, no allowance.
+
+New dependencies, all already in the lockfile: `parse5` (API), and `docx` as a dev dependency of
+the API and web tests (fixtures are built in the test; nothing binary committed).
+
+Tests: `apps/api/test/docx-chapters.spec.ts` (7, pure) and `word-import.spec.ts` (8,
+Testcontainers: split at H1, no H1, append order and outline sync, an existing outline kept,
+replace refused with text, replace with snapshots, 404 for another user, wrong-file messages);
+`apps/web/e2e/word-import.spec.ts` (2) passed against this branch's API and web started on
+:3011/:3010. That run used the dev `.env`, so its sign-in codes were offered to Hostinger SMTP for
+`example.com` addresses and refused (554) — the mock-stack fault above; harmless.

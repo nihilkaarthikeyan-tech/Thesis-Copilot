@@ -127,6 +127,12 @@ const HEAVY_ROUTES: ReadonlyArray<{ method: string; pattern: RegExp; kind: Heavy
     pattern: new RegExp(`^/api/v1/documents/${ID}/feedback/comments/import-docx$`),
     kind: 'upload',
   },
+  // "Import from Word" (2026-10-04): a preview and an import each read the whole file.
+  {
+    method: 'POST',
+    pattern: new RegExp(`^/api/v1/documents/${ID}/import-docx$`),
+    kind: 'upload',
+  },
   { method: 'POST', pattern: new RegExp(`^/api/v1/documents/${ID}/search$`), kind: 'search' },
   {
     method: 'POST',

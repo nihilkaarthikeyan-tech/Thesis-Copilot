@@ -48,6 +48,7 @@
     "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "docx": "9.7.1",
     "dotenv-cli": "11.0.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",

@@ -89,6 +89,7 @@ const REASON_LABEL: Record<string, string> = {
   PRE_RESTORE: 'Before restoring an older version',
   PRE_CHAPTER_BUILD: 'Before a chapter build added its sections',
   PRE_MERGE: 'Before two duplicate sources were merged',
+  PRE_IMPORT: 'Before a Word document was imported',
 };
 
 /** What caused a version, in words. Unknown reasons are shown as they are rather than hidden. */
