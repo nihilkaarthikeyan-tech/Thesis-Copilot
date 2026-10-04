@@ -54,7 +54,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 
 | Item | Status |
 |---|---|
-| One-button peer review of any text: scores, weaknesses, strengths, questions, anchored comments | |
+| One-button peer review of any text: scores, weaknesses, strengths, questions, anchored comments | Done 2026-10-04 — Examiner review of a chapter, flags on each sentence (ADR-0056; the chapter build's examiner, no new prompt) |
 | Gap analysis by claim (supported / contested / under-explored) on top of the theme map | |
 | Chat that can search beyond the library (asks first), shows its steps | |
 | More selection actions (counter-argument, hedge/strengthen a claim, tense, to table, translate) | |
@@ -67,6 +67,10 @@ Items that change cost or need a decision only the owner can take are listed at 
 |---|---|
 | Earlier suggestions kept: ‹ › on the suggestion bar steps back to one before Refine replaced it | Done 2026-10-04 |
 | Assist reads the note of the sub-section under the cursor, not only the chapter's (A21) | Done 2026-10-04 |
+| Ask chat about a selected passage | Done 2026-10-04 |
+| Start flow: topic meter with examples, citation style at creation, signed-in home header, list first | Done 2026-10-04 |
+| Cited-by, open-access and journal-citedness badges (library, hover card, evidence card); Copy on a chat answer | Done 2026-10-04 |
+| Sharing: roles (guide / co-author / reader), a read-only link, make a copy | Done 2026-10-04 (ADR-0057) |
 
 ## Also fixed on the way (found while building)
 
