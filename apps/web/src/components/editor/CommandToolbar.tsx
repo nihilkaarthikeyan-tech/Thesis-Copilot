@@ -96,6 +96,7 @@ export function CommandToolbar({
   onNotice,
   onAskChat,
   onFindPapers,
+  onReviewSelection,
 }: {
   editor: Editor | null;
   documentId: string;
@@ -106,6 +107,8 @@ export function CommandToolbar({
   onAskChat?: (text: string) => void;
   /** Opens the Papers tab searching for the selected sentence (2026-10-04, Jenni study). */
   onFindPapers?: (text: string) => void;
+  /** ADR-0067: an examiner review of just the selection (one section command unit). */
+  onReviewSelection?: (from: number, to: number) => void;
 }) {
   const { t } = useT();
   /**
@@ -358,6 +361,17 @@ export function CommandToolbar({
                 className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
                 {t('common.findPapers')}
+              </button>
+            ) : null}
+            {onReviewSelection ? (
+              <button
+                type="button"
+                data-testid="review-selection"
+                title="An examiner reads just these sentences against their sources — one section command"
+                onClick={() => selection && onReviewSelection(selection.from, selection.to)}
+                className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Examiner review
               </button>
             ) : null}
             {onAskChat ? (

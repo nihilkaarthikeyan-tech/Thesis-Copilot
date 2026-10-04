@@ -151,6 +151,42 @@ describe('starting an examiner review', () => {
     expect(await units()).toBe(1);
   });
 
+  it('reviews just a selection for one COMMAND unit, its range on the job (ADR-0067)', async () => {
+    const version = await setChapter(OWN_TEXT);
+    const commandUnits = async () =>
+      (
+        await h.prisma.usageLedger.findFirst({
+          where: { userId: h.userId, action: 'COMMAND', period: periodFor() },
+        })
+      )?.count ?? 0;
+    const before = await commandUnits();
+    // Inside the first paragraph only (the heading takes positions 0–13).
+    const range = { from: 15, to: 30 };
+    const response = await h.api(`/chapters/${chapterId}/examiner-review`, {
+      method: 'POST',
+      body: JSON.stringify(range),
+    });
+    expect(response.status).toBe(202);
+    expect(await units()).toBe(0);
+    expect(await commandUnits()).toBe(before + 1);
+    const job = await queue.getJob(`examiner-review__${chapterId}__v${version}__s15-30__a0`);
+    expect(job?.data).toMatchObject({ chapterId, version, range });
+    expect(await record()).toMatchObject({ selection: true, status: 'QUEUED' });
+
+    // A selection with no sentence in it — the heading alone — is refused for nothing.
+    await queue.obliterate({ force: true });
+    const document = await h.prisma.document.findUniqueOrThrow({ where: { id: documentId } });
+    const meta = { ...((document.meta as Record<string, unknown> | null) ?? {}) };
+    delete meta.examinerReviews;
+    await h.prisma.document.update({ where: { id: documentId }, data: { meta: meta as never } });
+    const heading = await h.api(`/chapters/${chapterId}/examiner-review`, {
+      method: 'POST',
+      body: JSON.stringify({ from: 1, to: 5 }),
+    });
+    expect(heading.status).toBe(400);
+    expect(await commandUnits()).toBe(before + 1);
+  });
+
   it('is refused at the cap, before any record or job', async () => {
     await setChapter(OWN_TEXT);
     await setUnits(CAP);

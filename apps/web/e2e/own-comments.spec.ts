@@ -148,3 +148,48 @@ test('"More edits" hedges a selection through the same diff and Replace', async 
   await page.getByRole('button', { name: 'Replace' }).click();
   await expect(editor).toContainText('The survey suggests that cost is the main barrier');
 });
+
+/** An examiner review of just the selection (ADR-0067): one section command, flags on its sentences. */
+test('"Examiner review" on a selection reviews just those sentences', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const session = await establishSession(request, freshEmail('review-selection'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Review selection ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await editor.locator('p').first().click();
+  await page.keyboard.type('Open drying loses an estimated fifth of the catch to spoilage.');
+  await page.keyboard.press('Shift+Home');
+
+  await page.getByTestId('review-selection').click();
+  await expect(page.getByTestId('notice')).toContainText('reading the selection');
+  await expect(page.getByRole('tab', { name: 'flags', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  // The worker finishes the run; the review's record says so.
+  await expect
+    .poll(
+      async () =>
+        (
+          (await (
+            await request.get(`${API_URL}/api/v1/chapters/${doc.firstChapterId}/examiner-review`, {
+              headers: { cookie },
+            })
+          ).json()) as { status: string }
+        ).status,
+      { timeout: 120_000, intervals: [2_000] },
+    )
+    .toMatch(/DONE|FAILED/);
+});

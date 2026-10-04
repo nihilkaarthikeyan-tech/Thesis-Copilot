@@ -62,7 +62,7 @@ test('the thesis comes out as a LaTeX project and as a web page', async ({ page,
   // TeX's special characters, which the LaTeX export has to escape.
   await page.keyboard.type('Uptake rose 40% in R&D_2 districts. ');
   await page.getByRole('button', { name: 'Display equation' }).click();
-  await page.getByTestId('inline-prompt').getByRole('textbox').fill('E = mc^2');
+  await page.locator('#inline-prompt-field').fill('E = mc^2');
   await page.getByTestId('inline-prompt-apply').click();
   await page.locator('[data-testid=figure-input]').setInputFiles({
     name: 'plot.png',

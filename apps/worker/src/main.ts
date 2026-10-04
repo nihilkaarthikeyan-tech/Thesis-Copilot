@@ -734,14 +734,15 @@ async function main(): Promise<void> {
             return cost;
           },
           // `UsageService.refund`'s statement: a review that reviewed nothing costs no unit.
-          refund: async (userId) => {
+          refund: async (userId, action) => {
             const now = new Date();
             const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
             await prisma.$executeRawUnsafe(
               `UPDATE "UsageLedger" SET "count" = "count" - 1
-               WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = 'EXAMINER_REVIEW'::"AiAction" AND "count" > 0`,
+               WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = $3::"AiAction" AND "count" > 0`,
               userId,
               period,
+              action,
             );
           },
           assertBudget: assertPlatformBudget(prisma, env),

@@ -70,6 +70,7 @@ type World = {
   created: Array<Record<string, unknown>>;
   deleted: Array<Record<string, unknown>>;
   refunds: string[];
+  refundActions: string[];
   logged: Array<Record<string, unknown>>;
   chunkQueries: Array<Record<string, unknown>>;
 };
@@ -103,6 +104,7 @@ function world(
   const created: Array<Record<string, unknown>> = [];
   const deleted: Array<Record<string, unknown>> = [];
   const refunds: string[] = [];
+  const refundActions: string[] = [];
   const logged: Array<Record<string, unknown>> = [];
   const chunkQueries: Array<Record<string, unknown>> = [];
 
@@ -193,8 +195,9 @@ function world(
       logged.push(call as never);
       return 1000;
     },
-    refund: async (userId) => {
+    refund: async (userId, action) => {
       refunds.push(userId);
+      refundActions.push(action);
     },
     now: () => new Date('2026-10-04T10:05:00.000Z'),
   };
@@ -207,6 +210,7 @@ function world(
     created,
     deleted,
     refunds,
+    refundActions,
     logged,
     chunkQueries,
   };
@@ -290,6 +294,37 @@ describe('examiner review', () => {
       finishedAt: '2026-10-04T10:05:00.000Z',
     });
     expect(w.refunds).toEqual([]);
+  });
+
+  it('reviews only the sentences inside a selection, and replaces only the flags inside it (ADR-0067)', async () => {
+    // "Literature review" is 0–19 and its paragraph 19–155; "Drying kinetics" starts at 155 and
+    // its paragraph at 172. The range covers the second section only.
+    const range = { from: 173, to: 400 };
+    const w = world();
+    await runExaminerReview({ ...job, range }, w.deps);
+    expect(w.requests).toHaveLength(1);
+    expect(w.requests[0]?.messages[0]?.content ?? '').toContain('title="Drying kinetics"');
+    expect(w.deleted).toEqual([
+      {
+        documentId: DOC,
+        chapterId: CHAPTER,
+        type: 'EXAMINER',
+        status: 'OPEN',
+        from: { lt: range.to },
+        to: { gt: range.from },
+      },
+    ]);
+  });
+
+  it('gives back a COMMAND unit, not an examiner review, when a selection could not be reviewed', async () => {
+    const w = world({
+      answer: () => {
+        throw new Error('provider down');
+      },
+    });
+    const result = await runExaminerReview({ ...job, range: { from: 173, to: 400 } }, w.deps);
+    expect(result.status).toBe('FAILED');
+    expect(w.refundActions).toEqual(['COMMAND']);
   });
 
   it('maps a warning to WARN and drops an issue on a sentence that was not sent', async () => {

@@ -5005,3 +5005,11 @@ was in use. The existing specs for the touched screens (editor, states, suggesti
 onboarding, own-comments, document-defaults, high-contrast, mobile, proposal-edit-answer,
 first-minutes, smoke) passed there too; `flags-keys` and `password`'s reset case failed only
 because they hard-code the `http://localhost:3000` origin.
+
+## Examiner review of a selection (2026-10-05, ADR-0067)
+
+"Examiner review" on the selection toolbar runs the existing examiner job over just the selected
+range for one COMMAND unit; only the flags inside the range are replaced. Also fixed: three export
+and footnote specs that found the equation field as "the textbox" — the field now has the "describe
+it in words" box beside it, so they address `#inline-prompt-field`. Full Playwright run before this
+item: 123 of 130; the rest were these specs and OpenAlex's daily budget.

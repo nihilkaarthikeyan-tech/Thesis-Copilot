@@ -10,7 +10,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { EXAMINER_REVIEW, ownSentenceCount } from '@tc/ai';
+import { EXAMINER_REVIEW, ownSentenceCount, reviewChapter } from '@tc/ai';
 import type { Plan } from '@tc/config';
 import type { Prisma } from '@tc/db';
 import { type ExaminerReviewRecord, jobId } from '@tc/types';
@@ -106,9 +106,32 @@ export class ExaminerReviewService {
    * review, a chapter with fewer than three sentences of the student's own. Then one unit, then
    * the job — and the unit back if the job could not be queued.
    */
-  async start(user: SessionUser, chapterId: string): Promise<ExaminerReviewView> {
+  async start(
+    user: SessionUser,
+    chapterId: string,
+    range?: { from: number; to: number },
+  ): Promise<ExaminerReviewView> {
     const chapter = await this.owned(user.id, chapterId);
     const previous = readExaminerReviews(chapter.document.meta)[chapterId];
+    // ADR-0067: a selection is one examiner call on the sentences inside it, for one COMMAND unit.
+    const unit = range ? 'COMMAND' : 'EXAMINER_REVIEW';
+    if (range) {
+      const inRange = reviewChapter(chapter.content).sections.reduce(
+        (n, section) =>
+          n + section.sentences.filter((x) => x.from < range.to && x.to > range.from).length,
+        0,
+      );
+      if (inRange === 0) {
+        throw new ValidationError(
+          'Select at least one full sentence of your own (saved) text to review. AI drafts waiting for your decision do not count.',
+        );
+      }
+      if (inRange > EXAMINER_REVIEW.maxSentencesPerSection) {
+        throw new ValidationError(
+          `Select up to ${EXAMINER_REVIEW.maxSentencesPerSection} sentences, or review the whole chapter from the flags tab.`,
+        );
+      }
+    }
 
     if (previous && (previous.status === 'QUEUED' || previous.status === 'RUNNING')) {
       if (!isStale(previous)) {
@@ -116,6 +139,8 @@ export class ExaminerReviewService {
       }
     }
     if (
+      !range &&
+      !previous?.selection &&
       previous?.status === 'DONE' &&
       previous.version === chapter.version &&
       (previous.failedSections ?? []).length === 0
@@ -124,14 +149,14 @@ export class ExaminerReviewService {
         'This chapter has not changed since its last examiner review. Its flags are in the list below.',
       );
     }
-    if (ownSentenceCount(chapter.content) < EXAMINER_REVIEW.minSentences) {
+    if (!range && ownSentenceCount(chapter.content) < EXAMINER_REVIEW.minSentences) {
       throw new ValidationError(
         'Write at least three sentences of your own in this chapter before asking for an examiner review. AI drafts waiting for your decision do not count.',
       );
     }
 
-    const cap = await this.usage.consume(user.id, user.plan as Plan, 'EXAMINER_REVIEW');
-    if (!cap.ok) throw refusal('EXAMINER_REVIEW', cap);
+    const cap = await this.usage.consume(user.id, user.plan as Plan, unit);
+    if (!cap.ok) throw refusal(unit, cap);
 
     // The job id keys on what the job reads: this chapter as saved at this version. A deliberate
     // second review of the same version (the last one failed, or left sections out) is a new
@@ -143,6 +168,7 @@ export class ExaminerReviewService {
       version: chapter.version,
       attempt,
       startedAt: new Date().toISOString(),
+      ...(range ? { selection: true } : {}),
     };
     await this.writeRecord(chapter.documentId, chapterId, record);
 
@@ -155,11 +181,22 @@ export class ExaminerReviewService {
           userId: user.id,
           runId: record.runId,
           version: chapter.version,
+          ...(range ? { range } : {}),
         },
-        { jobId: jobId('examiner-review', chapterId, `v${chapter.version}`, `a${attempt}`) },
+        {
+          jobId: range
+            ? jobId(
+                'examiner-review',
+                chapterId,
+                `v${chapter.version}`,
+                `s${range.from}-${range.to}`,
+                `a${attempt}`,
+              )
+            : jobId('examiner-review', chapterId, `v${chapter.version}`, `a${attempt}`),
+        },
       );
     } catch (error) {
-      await this.usage.refund(user.id, 'EXAMINER_REVIEW');
+      await this.usage.refund(user.id, unit);
       await this.writeRecord(chapter.documentId, chapterId, {
         ...record,
         status: 'FAILED',

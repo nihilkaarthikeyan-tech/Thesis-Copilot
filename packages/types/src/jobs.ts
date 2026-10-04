@@ -123,6 +123,11 @@ export type ExaminerReviewJob = {
   runId: string;
   /** The chapter version the API saw when it took the unit; the job reads the chapter as saved. */
   version: number;
+  /**
+   * ADR-0067: review only the sentences inside this range of the saved chapter (a selection),
+   * for one COMMAND unit; only the examiner flags inside it are replaced. Absent: the chapter.
+   */
+  range?: { from: number; to: number };
 };
 
 /** One chapter's last examiner review, kept in `Document.meta.examinerReviews[chapterId]`. */
@@ -141,6 +146,8 @@ export type ExaminerReviewRecord = {
   issues?: number;
   blocking?: number;
   error?: string;
+  /** ADR-0067: the run reviewed a selection, not the whole chapter. */
+  selection?: boolean;
 };
 
 export type JobPayloads = {

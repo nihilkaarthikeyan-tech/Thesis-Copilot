@@ -71,7 +71,7 @@ test('the whole thesis exports with its figure, table and equation intact', asyn
 
   // A display equation, through the toolbar's own inline prompt.
   await page.getByRole('button', { name: 'Display equation' }).click();
-  await page.getByTestId('inline-prompt').getByRole('textbox').fill('E = mc^2');
+  await page.locator('#inline-prompt-field').fill('E = mc^2');
   await page.getByTestId('inline-prompt-apply').click();
   await expect(page.locator('.thesis-editor .math-block, .thesis-editor [data-math]')).toHaveCount(
     1,
@@ -174,7 +174,7 @@ test('a JPEG and a GIF survive the real upload and export path', async ({ page, 
   // submitted thesis read "Figure 1.1: scan.jpg", and a test here said that was right.
   await page.locator('.thesis-editor img').first().click();
   await page.getByTestId('fmt-caption').click();
-  await page.getByTestId('inline-prompt').getByRole('textbox').fill('Scanned survey form');
+  await page.locator('#inline-prompt-field').fill('Scanned survey form');
   await page.getByTestId('inline-prompt-apply').click();
 
   // The caret is on the figure; the next figure goes after it.
@@ -187,7 +187,7 @@ test('a JPEG and a GIF survive the real upload and export path', async ({ page, 
   await expect(page.locator('.thesis-editor img')).toHaveCount(2, { timeout: 60_000 });
   await page.locator('.thesis-editor img').nth(1).click();
   await page.getByTestId('fmt-caption').click();
-  await page.getByTestId('inline-prompt').getByRole('textbox').fill('Adoption by district');
+  await page.locator('#inline-prompt-field').fill('Adoption by district');
   await page.getByTestId('inline-prompt-apply').click();
 
   await page.keyboard.press('Control+s');

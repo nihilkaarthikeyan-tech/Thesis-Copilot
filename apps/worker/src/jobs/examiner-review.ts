@@ -65,7 +65,8 @@ export type ExaminerReviewDeps = {
   /** Writes the `AiCallLog` row (action `EXAMINER_REVIEW`) and returns its cost in micro-INR. */
   logCall: (call: ReviewCallLog) => Promise<number>;
   /** Gives the `EXAMINER_REVIEW` unit back (a review that reviewed nothing). */
-  refund: (userId: string) => Promise<void>;
+  /** Gives back the unit the run was charged: EXAMINER_REVIEW, or COMMAND for a selection. */
+  refund: (userId: string, action: 'EXAMINER_REVIEW' | 'COMMAND') => Promise<void>;
   /** The site-wide budget (ADR-0037's guard); throws when reached. */
   assertBudget?: () => Promise<void>;
   /** Defaults to `EXAMINER_REVIEW.callTimeoutMs`; tests pass a short one. */
@@ -189,7 +190,7 @@ export async function runExaminerReview(
     await writeState(prisma, job, { status: 'FAILED', finishedAt: now().toISOString(), error });
     const refunded =
       refund &&
-      (await deps.refund(job.userId).then(
+      (await deps.refund(job.userId, job.range ? 'COMMAND' : 'EXAMINER_REVIEW').then(
         () => true,
         () => false,
       ));
@@ -207,10 +208,28 @@ export async function runExaminerReview(
     });
     if (!chapter) return fail('The chapter no longer exists.', true);
 
-    const review = reviewChapter(chapter.content, chapter.title);
+    const whole = reviewChapter(chapter.content, chapter.title);
+    // ADR-0067: a selection keeps only the sentences inside its range, in their sections.
+    const range = job.range;
+    const review = range
+      ? {
+          ...whole,
+          sections: whole.sections
+            .map((section) => ({
+              ...section,
+              sentences: section.sentences.filter((x) => x.from < range.to && x.to > range.from),
+            }))
+            .filter((section) => section.sentences.length > 0),
+        }
+      : whole;
     const sentenceCount = review.sections.reduce((n, s) => n + s.sentences.length, 0);
-    if (sentenceCount < EXAMINER_REVIEW.minSentences) {
-      return fail('There is not enough of your own text in this chapter to review yet.', true);
+    if (sentenceCount < (range ? 1 : EXAMINER_REVIEW.minSentences)) {
+      return fail(
+        range
+          ? 'The selected text has no sentences of your own to review.'
+          : 'There is not enough of your own text in this chapter to review yet.',
+        true,
+      );
     }
 
     // The discipline the build would use: the student's saved profile, else one suggested from
@@ -475,12 +494,14 @@ async function writeFlags(
   job: ExaminerReviewJob,
   drafts: readonly FlagDraft[],
 ): Promise<FlagDraft[]> {
+  // A selection replaces only the open examiner flags inside its range (ADR-0067).
   await prisma.coherenceFlag.deleteMany({
     where: {
       documentId: job.documentId,
       chapterId: job.chapterId,
       type: 'EXAMINER',
       status: 'OPEN',
+      ...(job.range ? { from: { lt: job.range.to }, to: { gt: job.range.from } } : {}),
     },
   });
   const ignored = new Set(

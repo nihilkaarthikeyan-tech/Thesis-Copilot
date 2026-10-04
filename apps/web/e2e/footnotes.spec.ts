@@ -38,7 +38,7 @@ test('a footnote is inserted, numbered, edited, and exported as a real footnote'
   await page.getByTestId('inline-prompt-apply').click();
   await page.keyboard.type(' in both districts');
   await page.getByTestId('fmt-footnote').click();
-  await page.getByTestId('inline-prompt').getByRole('textbox').fill('District office data.');
+  await page.locator('#inline-prompt-field').fill('District office data.');
   await page.getByTestId('inline-prompt-apply').click();
 
   const refs = editor.locator('sup.footnote-ref');
@@ -51,9 +51,7 @@ test('a footnote is inserted, numbered, edited, and exported as a real footnote'
   await refs.nth(1).click();
   await expect(page.getByTestId('fmt-footnote')).toHaveAccessibleName('Edit footnote');
   await page.getByTestId('fmt-footnote').click();
-  await expect(page.getByTestId('inline-prompt').getByRole('textbox')).toHaveValue(
-    'District office data.',
-  );
+  await expect(page.locator('#inline-prompt-field')).toHaveValue('District office data.');
   await page
     .getByTestId('inline-prompt')
     .getByRole('textbox')

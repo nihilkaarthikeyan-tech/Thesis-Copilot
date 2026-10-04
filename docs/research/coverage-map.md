@@ -99,7 +99,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 50 | Selection → Find citations | Yes | CiteSuggestions fires on sentence end only | MATCH | 2026-10-04: Find papers on a selected sentence opens the Papers tab searching it |
 | 51 | Selection → AI Chat | Yes | none | MATCH | Built 2026-10-04: Ask chat on a selection |
 | 52 | Selection → Comment (by the writer) | Inline box under the text | comments created only by the guide (`web/app/guide/[token]/page.tsx`, `api/feedback/feedback.controller.ts`) | MATCH | Built 2026-10-04: Comment on a selection |
-| 53 | Selection → Review | Yes | none (checks run per chapter) | MISSING | — |
+| 53 | Selection → Review | Yes | none (checks run per chapter) | MATCH | 2026-10-05: "Examiner review" on a selection — one section command, flags on its sentences (ADR-0067) |
 
 ## 8. Reviews
 

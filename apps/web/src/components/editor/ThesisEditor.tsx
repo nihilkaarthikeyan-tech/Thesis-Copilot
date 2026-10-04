@@ -1719,6 +1719,30 @@ function ChapterEditor({
         chapterId={chapter.id}
         onUsageChange={onUsageChange}
         onNotice={setNotice}
+        onReviewSelection={(from, to) => {
+          // The job reads the saved chapter, so what is on screen is saved first.
+          void (async () => {
+            try {
+              await autosaveRef.current?.flush();
+              await api(`/chapters/${chapter.id}/examiner-review`, {
+                method: 'POST',
+                body: JSON.stringify({ from, to }),
+              });
+              onUsageChange();
+              setTab('flags');
+              setDrawer('panel');
+              setNotice(
+                'The examiner is reading the selection. Its findings appear here as flags.',
+              );
+            } catch (error) {
+              setNotice(
+                error instanceof ApiError
+                  ? (error.problem.detail ?? error.problem.title)
+                  : 'The review could not be started.',
+              );
+            }
+          })();
+        }}
         onFindPapers={(text) => {
           setPapersQuery({ text, nonce: Date.now() });
           setTab('papers');
