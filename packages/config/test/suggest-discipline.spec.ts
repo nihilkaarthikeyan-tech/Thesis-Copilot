@@ -7,7 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import { suggestDiscipline } from '../src/profiles/index.js';
 
-const id = (field: string | null, title?: string) => suggestDiscipline(field, title)?.id ?? null;
+const id = (field: string | null, title?: string | null) =>
+  suggestDiscipline(field, title)?.id ?? null;
 
 describe('suggestDiscipline', () => {
   it('reads an environmental-science title when there is no field', () => {
