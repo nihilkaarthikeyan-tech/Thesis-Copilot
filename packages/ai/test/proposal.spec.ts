@@ -12,6 +12,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProposalRequest,
   clarifiedTopic,
+  GAP_CHECK_FAILED,
+  GAP_CHECK_NONE,
   MOCK_KEEP_ASKING,
   mayAskAnotherQuestion,
   mockProposalFor,
@@ -177,5 +179,59 @@ describe('clarifiedTopic', () => {
         { role: 'user', text: 'Karnataka' },
       ]),
     ).toBe('Rooftop solar Karnataka');
+  });
+
+  it('leaves out an answer that only picks an option ("2", "b", "(3)")', () => {
+    for (const pick of ['2', ' 2. ', 'b', '(3)', '4)']) {
+      expect(
+        clarifiedTopic([
+          { role: 'user', text: 'Mangrove soil carbon in Pichavaram' },
+          { role: 'assistant', text: 'Choose one: 1) … 2) …' },
+          { role: 'user', text: pick },
+        ]),
+      ).toBe('Mangrove soil carbon in Pichavaram');
+    }
+    // A short answer that is a word, or an acronym, is still the student's topic.
+    expect(
+      clarifiedTopic([
+        { role: 'user', text: 'Crop yields' },
+        { role: 'assistant', text: 'q?' },
+        { role: 'user', text: 'AI' },
+      ]),
+    ).toBe('Crop yields AI');
+  });
+});
+
+describe('renderGapCheck with nothing to show (docs/JENNI-FIX-LIST.md item 3)', () => {
+  it('says plainly that no related work was found, and none may be described as found', () => {
+    const block = renderGapCheck({ count: 0, works: [] });
+    expect(block).toBe(`<gap_check total="0">\n${GAP_CHECK_NONE}\n</gap_check>`);
+    expect(block).toContain('found no related works');
+    expect(block).toContain('No related work may be described as found.');
+  });
+
+  it('says the search could not run when it failed, rather than "none exist"', () => {
+    const block = renderGapCheck({ count: 0, works: [], failed: true });
+    expect(block).toBe(`<gap_check total="unknown">\n${GAP_CHECK_FAILED}\n</gap_check>`);
+    expect(block).toContain('could not run');
+    expect(block).not.toContain('found no related works');
+  });
+
+  it('reaches the model from the second turn even when the search found nothing', () => {
+    const request = buildProposalRequest({
+      history: [
+        { role: 'user', text: 'Mangrove soil carbon' },
+        { role: 'assistant', text: 'Restored or natural stands?' },
+        { role: 'user', text: 'Both' },
+      ],
+      gapCheck: { count: 0, works: [] },
+      ...ids,
+    });
+    expect(request.system.volatile).toContain(GAP_CHECK_NONE);
+  });
+
+  it('keeps the listed form when works were found', () => {
+    expect(renderGapCheck(gap)).not.toContain(GAP_CHECK_NONE);
+    expect(renderGapCheck(gap)).not.toContain(GAP_CHECK_FAILED);
   });
 });

@@ -281,9 +281,16 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
           <Link href={`/app/d/${documentId}/outline`} className="text-sm underline">
             Build the outline
           </Link>
-          <Link href={`/app/d/${documentId}/sources`} className="text-sm underline">
-            See the sources found in your paper
-          </Link>
+          {/* A topic-path thesis has no paper of its own; its sources come from Discover. */}
+          {pathA ? (
+            <Link href={`/app/d/${documentId}/sources?tab=discover`} className="text-sm underline">
+              Find papers for this topic
+            </Link>
+          ) : (
+            <Link href={`/app/d/${documentId}/sources`} className="text-sm underline">
+              See the sources found in your paper
+            </Link>
+          )}
         </div>
       ) : null}
     </main>

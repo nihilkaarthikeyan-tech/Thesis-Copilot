@@ -40,7 +40,12 @@ export const skeletonSchema = z.object({
 export type ProposalSkeleton = z.infer<typeof skeletonSchema>;
 
 export type GapCheckWork = { title: string; year: number | null; abstract: string };
-export type GapCheckInput = { count: number; works: readonly GapCheckWork[] };
+export type GapCheckInput = {
+  count: number;
+  works: readonly GapCheckWork[];
+  /** True when the search could not run (timeout, OpenAlex down): nothing is known, not "none". */
+  failed?: boolean;
+};
 
 export type ProposalTurn = { role: 'user' | 'assistant'; text: string };
 
@@ -58,8 +63,24 @@ export type ProposalBuildInput = {
 export const SKELETON_INSTRUCTION =
   'You have asked three questions. Do not ask another. Output the proposal skeleton now, in the exact <skeleton> form, and nothing else.';
 
+/**
+ * Said inside an empty `<gap_check>`, because an empty block was not enough: with 0 works found
+ * the model still wrote "Related work found addresses …" (docs/JENNI-FIX-LIST.md item 3). Code
+ * states the fact; the prompt file is unchanged.
+ */
+export const GAP_CHECK_NONE =
+  'The related-work search found no related works. No related work may be described as found.';
+export const GAP_CHECK_FAILED =
+  'The related-work search could not run, so nothing is known about related work. No related work may be described as found.';
+
 /** A.6: "- {{title}} ({{year}}) — {{one_line_abstract}}" plus the total count. */
 export function renderGapCheck(gap: GapCheckInput): string {
+  if (gap.failed) {
+    return ['<gap_check total="unknown">', GAP_CHECK_FAILED, '</gap_check>'].join('\n');
+  }
+  if (gap.count === 0 || gap.works.length === 0) {
+    return [`<gap_check total="${gap.count}">`, GAP_CHECK_NONE, '</gap_check>'].join('\n');
+  }
   const lines = gap.works
     .slice(0, PROPOSAL.gapCheckWorks)
     .map((w) => `- ${w.title} (${w.year ?? 'n.d.'}) — ${w.abstract || 'no abstract available'}`);
@@ -129,12 +150,18 @@ export function mayAskAnotherQuestion(history: readonly ProposalTurn[]): boolean
   return questionsAsked(history) < PROPOSAL.maxQuestions;
 }
 
+/**
+ * An answer that only picks an option — "2", "b", "(3)", "2." — and says nothing about the topic.
+ * Searched for, it is noise; the question it answers is not part of the search.
+ */
+const OPTION_PICK = /^\(?\s*(?:\d{1,2}|[a-f])\s*[.)]?$/i;
+
 /** The student's own words so far, for the gap-check query (the "clarified topic"). */
 export function clarifiedTopic(history: readonly ProposalTurn[]): string {
   return history
     .filter((t) => t.role === 'user')
     .map((t) => t.text.trim())
-    .filter(Boolean)
+    .filter((text) => text.length > 0 && !OPTION_PICK.test(text))
     .join(' ')
     .slice(0, 400);
 }

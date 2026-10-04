@@ -53,7 +53,17 @@ const gapWorkSchema = z.object({
 export const proposalChatSchema = z.object({
   messages: z.array(turnSchema).default([]),
   gapCheck: z
-    .object({ count: z.number(), works: z.array(gapWorkSchema) })
+    .object({
+      count: z.number(),
+      works: z.array(gapWorkSchema),
+      /**
+       * The search could not run (timeout, OpenAlex down). Absent on chats stored before
+       * 2026-10-04, which read as a search that ran.
+       */
+      failed: z.boolean().optional(),
+      /** What OpenAlex was actually sent (the key terms, not the conversation). */
+      query: z.string().optional(),
+    })
     .nullable()
     .default(null),
   skeleton: z
@@ -181,15 +191,17 @@ export class ProposalService {
     try {
       // Bounded: the student is waiting on this turn. When OpenAlex is degraded it answers 503
       // with `Retry-After: 60` (2026-09-25), and without the limit the turn took two minutes.
-      const result = await this.openalex.searchTopic(
+      // One limit covers the key-terms search and its one broader retry.
+      const result = await this.openalex.searchTopicTerms(
         topic,
         PROPOSAL.gapCheckWorks,
         AbortSignal.timeout(8_000),
       );
-      return { count: result.count, works: result.works };
+      return { count: result.count, works: result.works, query: result.query };
     } catch (error) {
       this.logger.warn({ err: error, topic }, 'gap check failed; continuing without it');
-      return { count: 0, works: [] };
+      // Not "0 found": the student and the model are both told the search did not run.
+      return { count: 0, works: [], failed: true };
     }
   }
 
@@ -201,7 +213,9 @@ export class ProposalService {
   ) {
     const request: LlmRequest = buildProposalRequest({
       history,
-      gapCheck: gapCheck && gapCheck.works.length > 0 ? gapCheck : null,
+      // Sent even when empty or failed: the block then says so, and the model may not claim
+      // related work was found (docs/JENNI-FIX-LIST.md item 3).
+      gapCheck,
       userId: user.id,
       documentId,
     });
