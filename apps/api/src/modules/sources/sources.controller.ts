@@ -10,6 +10,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Query,
@@ -26,6 +27,7 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { SearchService } from './search.service.js';
 import { SourcesService, UploadRejected } from './sources.service.js';
+import { ZoteroImportService } from './zotero-import.service.js';
 
 const refixBody = z.object({ doi: z.string().trim().min(3).max(200) });
 
@@ -38,6 +40,44 @@ const resolveBody = z.object({
     .array(z.object({ raw: z.string().trim().min(1), doi: z.string().trim().optional() }))
     .max(500),
 });
+
+/**
+ * ADR-0062: the Zotero user ID and key. Checked by shape only — Zotero says whether they are
+ * right. The issues are never echoed back: a rejected key would otherwise appear in the response.
+ */
+const zoteroCredentials = z.object({
+  userId: z
+    .string()
+    .trim()
+    .regex(/^\d{1,12}$/),
+  apiKey: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9]{8,64}$/),
+});
+const zoteroImport = zoteroCredentials.extend({
+  collectionKey: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9]{1,16}$/)
+    .nullable()
+    .optional(),
+});
+
+function parseZotero<T extends z.ZodType>(schema: T, body: unknown): z.infer<T> {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    const field = parsed.error.issues[0]?.path[0];
+    throw new ValidationError(
+      field === 'userId'
+        ? 'Enter your Zotero user ID: the number shown on the keys page, not your username.'
+        : field === 'apiKey'
+          ? 'Paste the API key exactly as Zotero shows it: letters and numbers only.'
+          : 'That collection is not one Zotero listed.',
+    );
+  }
+  return parsed.data;
+}
 
 const planOf = (user: SessionUser): Plan =>
   (PLANS as readonly string[]).includes(user.plan) ? (user.plan as Plan) : 'FREE_TRIAL';
@@ -63,7 +103,35 @@ export class SourcesController {
   constructor(
     private readonly sources: SourcesService,
     private readonly search: SearchService,
+    private readonly zotero: ZoteroImportService,
   ) {}
+
+  /**
+   * ADR-0062: checks a Zotero key by listing the library's collections. A POST so the key travels
+   * in the body (which is never logged), not the URL (which is).
+   */
+  @Post('documents/:id/sources/zotero/collections')
+  @HttpCode(200)
+  zoteroCollections(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const { userId, apiKey } = parseZotero(zoteroCredentials, body);
+    return this.zotero.collections(user.id, documentId, { userId, apiKey });
+  }
+
+  /** ADR-0062: reads the library (or one collection) once into the resolve pipeline. */
+  @Post('documents/:id/sources/zotero/import')
+  @HttpCode(200)
+  zoteroImport(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const { userId, apiKey, collectionKey } = parseZotero(zoteroImport, body);
+    return this.zotero.importItems(user.id, documentId, { userId, apiKey }, collectionKey ?? null);
+  }
 
   /** FR-2.9: BibTeX/RIS from Zotero or Mendeley into the resolve pipeline. */
   @Post('documents/:id/sources/import')
