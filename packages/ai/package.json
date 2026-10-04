@@ -28,6 +28,7 @@
     "@tc/config": "workspace:*",
     "@tc/types": "workspace:*",
     "ai": "7.0.92",
+    "katex": "0.18.5",
     "zod": "4.5.4"
   },
   "devDependencies": {

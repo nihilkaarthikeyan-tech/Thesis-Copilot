@@ -1397,6 +1397,15 @@ function ChapterEditor({
           ) : null}
           <FormatToolbar
             editor={editor}
+            describeEquation={(description, current) =>
+              api<
+                | { ok: true; latex: string; reading: string }
+                | { ok: false; refusal: string; reading: string }
+              >('/equations/from-words', {
+                method: 'POST',
+                body: JSON.stringify({ documentId: doc.id, description, current: current || null }),
+              }).finally(onUsageChange)
+            }
             onInsertImage={insertFigure}
             onInsertChart={openChart}
             onInsertDiagram={openDiagram}

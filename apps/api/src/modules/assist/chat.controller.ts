@@ -28,6 +28,7 @@ import { FlagsService } from '../flags/flags.service.js';
 import { ChatService } from './chat.service.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
+import { EquationService } from './equation.service.js';
 import { ProofreadService } from './proofread.service.js';
 import { streamSse } from './sse.js';
 import { WebScopeService } from './web-scope.service.js';
@@ -114,6 +115,7 @@ export class ChatController {
     private readonly commands: CommandService,
     private readonly proofread: ProofreadService,
     private readonly citeRoles: CiteRoleService,
+    private readonly equations: EquationService,
     private readonly web: WebScopeService,
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
@@ -186,6 +188,22 @@ export class ChatController {
    * Answers with the rewritten sentence and its diff; nothing reaches the chapter until the
    * student applies it, exactly like a section command.
    */
+  /** ADR-0063: an equation described in words, offered back for the student to check. */
+  @Post('equations/from-words')
+  @HttpCode(200)
+  equationFromWords(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = z
+      .object({
+        documentId: z.string().uuid(),
+        description: z.string().trim().min(1).max(600),
+        current: z.string().max(4_000).nullish(),
+      })
+      .safeParse(body);
+    if (!parsed.success)
+      throw new ValidationError('Describe the equation first', parsed.error.issues);
+    return this.equations.fromWords(user, parsed.data);
+  }
+
   @Post('citations/role')
   @HttpCode(200)
   citeRole(@CurrentUser() user: SessionUser, @Body() body: unknown) {

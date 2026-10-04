@@ -4838,3 +4838,11 @@ leaving accounts, mail fault swallowed, each job's adapter, the Redis store), `p
 finished run / someone else's run do not; the setting). Worker 184 pass, API 572 + 6 pass,
 typecheck and lint clean. Playwright not run (dev stack in use by someone else). No email has
 been sent through a real provider yet — `docs/PENDING.md`.
+
+## An equation described in words (2026-10-04, ADR-0063)
+
+The equation field has a "describe it in words" box: one COMMAND unit, refunded when nothing
+usable comes back. The LaTeX must render in KaTeX before it is offered; it fills the field, is read
+back in plain words, and goes in only on Apply. Evaluation on gpt-5-mini: 14 of 14 correct (13 an
+exact match, one an equivalent `\bigl(…\bigr)` form), ~570 tokens a call. Tests: packages/ai
+`equation.spec.ts`, API `equation.spec.ts` (incl. the cap test), the maths e2e.

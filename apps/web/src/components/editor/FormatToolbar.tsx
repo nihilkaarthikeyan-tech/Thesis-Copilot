@@ -95,8 +95,16 @@ type Ask = {
   /** Shown under the field while it is non-null; Apply waits until it is (ADR-0045). */
   validate?: (value: string) => string | null;
   /** An equation: examples, a live preview and the cheat sheet under the field (item 22). */
-  math?: { display: boolean };
+  math?: { display: boolean; describe?: DescribeEquation };
 };
+
+/** ADR-0063: LaTeX from a description in words, for the student to check before Apply. */
+export type DescribeEquation = (
+  description: string,
+  current: string,
+) => Promise<
+  { ok: true; latex: string; reading: string } | { ok: false; refusal: string; reading: string }
+>;
 
 function useInlinePrompt() {
   const [ask, setAsk] = useState<Ask | null>(null);
@@ -203,6 +211,8 @@ function useInlinePrompt() {
           problem={problem}
           display={ask.math.display}
           onInsert={insert}
+          onReplace={(latex) => setValue(latex)}
+          {...(ask.math.describe ? { describe: ask.math.describe } : {})}
         />
       ) : null}
     </div>
@@ -316,8 +326,11 @@ export function FormatToolbar({
   onInsertChart,
   onInsertDiagram,
   actionsRef,
+  describeEquation,
 }: {
   editor: Editor | null;
+  /** ADR-0063: an equation described in words (one COMMAND unit); absent hides the box. */
+  describeEquation?: DescribeEquation;
   className?: string;
   /** Filled with the toolbar's field-opening actions while it is mounted. */
   actionsRef?: RefObject<FormatActions | null>;
@@ -402,7 +415,10 @@ export function FormatToolbar({
         hint: 'E = mc^2, or pick an example below',
         initial: '',
         validate: latexError,
-        math: { display: kind === 'block' },
+        math: {
+          display: kind === 'block',
+          ...(describeEquation ? { describe: describeEquation } : {}),
+        },
         onDone: (latex) => {
           if (!latex) return;
           if (kind === 'inline') editor.chain().focus().insertMathInline(latex).run();
@@ -410,7 +426,7 @@ export function FormatToolbar({
         },
       });
     },
-    [editor, prompt],
+    [editor, prompt, describeEquation],
   );
 
   useEffect(() => {
@@ -438,7 +454,10 @@ export function FormatToolbar({
         hint: 'E = mc^2, or pick an example below',
         initial: detail.latex,
         validate: latexError,
-        math: { display: detail.display },
+        math: {
+          display: detail.display,
+          ...(describeEquation ? { describe: describeEquation } : {}),
+        },
         onDone: (latex) => {
           if (!latex || latex === detail.latex) return;
           editor.chain().focus().setMathLatex(detail.pos, latex).run();
@@ -447,7 +466,7 @@ export function FormatToolbar({
     };
     dom.addEventListener(MATH_EDIT_EVENT, onEdit);
     return () => dom.removeEventListener(MATH_EDIT_EVENT, onEdit);
-  }, [editor, prompt]);
+  }, [editor, prompt, describeEquation]);
 
   if (!editor) return null;
 

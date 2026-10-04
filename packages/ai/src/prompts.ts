@@ -75,6 +75,8 @@ export const PROMPT_NAMES = [
   'entities',
   'examiner',
   'fix_flagged',
+  // An equation described in words — docs/ADR/0063.
+  'equation',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

@@ -131,7 +131,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | 67 | Table | Yes | `FormatToolbar.tsx` (+ merged cells, ADR-0029 era) | MATCH | — |
 | 68 | Image | Yes | `FormatToolbar.tsx` figures, pasted screenshots, `api/chapters` `figures` | MATCH | — |
 | 69 | Equation by LaTeX with examples | KaTeX with Quadratic / Maxwell / Piecewise | `ui/math.ts`, `FormatToolbar.tsx` (one LaTeX line, "E = mc^2") | MATCH | Built 2026-10-04: Examples and live preview in the equation field |
-| 70 | Equation described in words | Yes | none | MISSING | Students who cannot write LaTeX are stuck (the original complaint) |
+| 70 | Equation described in words | Yes | none | MATCH | 2026-10-04: Describe it in words in the equation field; KaTeX-checked LaTeX, read back, Apply to insert (ADR-0063) |
 | 71 | Equation from a picture | Yes | none | MISSING | — |
 | 72 | Chart | From chat / insert | `web/components/editor/ChartDialog.tsx`, `packages/ui/src/charts/` (ADR-0027) | MATCH | — |
 | 73 | Table of contents in the document | Insert | export only (`packages/export/src/thesis.ts`, real Word TOC) | MATCH | 2026-10-04: The open chapter's headings listed under it, live, each a jump |

@@ -53,4 +53,12 @@ test('"/" inserts blocks without leaving debris, and an equation can be built wi
   await expect(page.getByTestId('math-preview').locator('.katex')).toBeVisible();
   await help.getByTestId('math-cheat-sheet').locator('summary').click();
   await expect(help.getByTestId('math-cheat-sheet')).toContainText('Integral');
+
+  // ADR-0063: described in words, written as LaTeX into the field, read back, nothing inserted yet.
+  const words = help.getByTestId('math-words');
+  await words.getByLabel(/describe it in words/i).fill('alpha over n');
+  await words.getByRole('button', { name: 'Write it' }).click();
+  await expect(help.getByTestId('math-words-reading')).toContainText('alpha over n');
+  await expect(page.locator('#inline-prompt-field')).toHaveValue(String.raw`\frac{\alpha}{n}`);
+  await expect(page.getByTestId('math-preview').locator('.katex')).toBeVisible();
 });

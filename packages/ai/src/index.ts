@@ -186,6 +186,19 @@ export {
   postProcessDraft,
 } from './builder/draft.js';
 export {
+  bareMath,
+  buildEquationRequest,
+  EQUATION,
+  type EquationInput,
+  type EquationPostProcess,
+  type EquationResult,
+  equationResultSchema,
+  equationUserMessage,
+  mockEquationFor,
+  mockEquationResponse,
+  postProcessEquation,
+} from './builder/equation.js';
+export {
   buildExaminerReviewRequest,
   EXAMINER_REVIEW,
   ownSentenceCount,
