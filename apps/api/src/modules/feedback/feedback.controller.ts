@@ -14,6 +14,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -27,13 +28,18 @@ import { CommentsService } from './comments.service.js';
 import { DocxImportService } from './docx-import.service.js';
 import { FeedbackExportService } from './feedback-export.service.js';
 import { ReviewService } from './review.service.js';
+import { requestedRole, shareRole } from './share-roles.js';
 import { SharesService } from './shares.service.js';
 
 const shareBody = z.object({
   guideEmail: z.string().trim().email().max(200),
-  /** ADR-0028: a co-author who may type in the chapter live, rather than a commenting guide. */
+  /** ADR-0057: Guide (comments), Co-author (edits live) or Reader (reads). */
+  role: shareRole.optional(),
+  /** ADR-0028's checkbox, from before `role`: true means Co-author. */
   canEdit: z.boolean().optional(),
 });
+
+const roleBody = z.object({ role: shareRole });
 
 const commentBody = z.object({
   chapterId: z.string().uuid().nullable().optional(),
@@ -87,7 +93,20 @@ export class FeedbackController {
   ) {
     const parsed = shareBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Enter your guide’s email', parsed.error.issues);
-    return this.shares.create(user, documentId, parsed.data.guideEmail, parsed.data.canEdit);
+    return this.shares.create(user, documentId, parsed.data.guideEmail, requestedRole(parsed.data));
+  }
+
+  /** ADR-0057: change what someone may do — Guide, Co-author or Reader. */
+  @Put('shares/:shareId')
+  setShareRole(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('shareId') shareId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = roleBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Choose a role', parsed.error.issues);
+    return this.shares.setRole(user.id, documentId, shareId, parsed.data.role);
   }
 
   @Delete('shares/:shareId')

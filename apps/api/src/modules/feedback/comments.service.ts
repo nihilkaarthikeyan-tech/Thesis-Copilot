@@ -78,14 +78,21 @@ export class CommentsService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** Either the owner, or a guide the document was shared with. */
+  /**
+   * Either the owner, or a guide the document was shared with — and never a Reader (ADR-0057).
+   * A Reader's share is the thesis text and nothing else: they neither write comments nor see
+   * anyone else's, so every comment route gives them the same refusal.
+   */
   private async access(user: SessionUser, documentId: string): Promise<{ isOwner: boolean }> {
     const owned = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId: user.id },
       select: { id: true },
     });
     if (owned) return { isOwner: true };
-    await this.shares.assertShared(user, documentId);
+    const share = await this.shares.assertShared(user, documentId);
+    if (!share.canComment) {
+      throw new ForbiddenError('You were given this thesis to read. Comments are not part of it.');
+    }
     return { isOwner: false };
   }
 

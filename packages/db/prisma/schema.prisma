@@ -555,6 +555,11 @@ model GuideShare {
    * alongside the student; still no AI actions, uploads or exports, which stay the owner's.
    */
   canEdit    Boolean  @default(false)
+  /**
+   * ADR-0057: false makes this a Reader — the thesis, read-only, and nothing else: no comment box,
+   * no comments of anyone else's. A co-author (`canEdit`) always comments too.
+   */
+  canComment Boolean  @default(true)
   createdAt  DateTime @default(now())
 }
 

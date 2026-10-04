@@ -22,6 +22,8 @@ type GuideDocument = {
   chapters: Array<{ id: string; title: string; order: number }>;
   /** ADR-0028: this share may also open a chapter in the live editor. */
   canEdit: boolean;
+  /** ADR-0057: false for a Reader — no comment box, no comments. */
+  canComment: boolean;
 };
 
 type ChapterView = { id: string; title: string; content: unknown };
@@ -94,9 +96,12 @@ export default function GuidePage() {
         // The guide route, not the student's: /chapters/:id filters on ownership and answered
         // 404 to every supervisor who ever opened a share.
         api<ChapterView>(`/guide/documents/${document.documentId}/chapters/${chapterId}`),
-        api<Comment[]>(
-          `/documents/${document.documentId}/feedback/comments?chapterId=${chapterId}`,
-        ),
+        // ADR-0057: a Reader is refused the comments, so they are not asked for.
+        document.canComment
+          ? api<Comment[]>(
+              `/documents/${document.documentId}/feedback/comments?chapterId=${chapterId}`,
+            )
+          : Promise.resolve([] as Comment[]),
       ]);
       setChapter(view);
       setComments(list);
@@ -162,7 +167,9 @@ export default function GuidePage() {
         <p className="mt-1 text-sm text-muted">
           {document.canEdit
             ? `${document.studentEmail} invited you to write this with them. Comment here, or open a chapter to edit it live.`
-            : `${document.studentEmail} asked for your comments. This is read-only — select a passage and write what you think; the student sees each comment in their review queue.`}
+            : document.canComment
+              ? `${document.studentEmail} asked for your comments. This is read-only — select a passage and write what you think; the student sees each comment in their review queue.`
+              : `${document.studentEmail} shared this with you to read.`}
         </p>
         {document.canEdit && chapterId ? (
           <Link
@@ -196,11 +203,16 @@ export default function GuidePage() {
         />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <div
+        className={
+          document.canComment ? 'mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]' : 'mt-6 grid gap-6'
+        }
+      >
         <article
           className="rounded-md border border-line bg-surface p-5"
           data-testid="guide-chapter"
           onMouseUp={() => {
+            if (!document.canComment) return;
             const text = window.getSelection()?.toString().trim() ?? '';
             setSelection(text.length > 3 ? text.slice(0, 2_000) : null);
           }}
@@ -223,71 +235,73 @@ export default function GuidePage() {
           )}
         </article>
 
-        <aside>
-          <section className="rounded-md border border-line bg-surface p-4">
-            <h2 className="eyebrow">Add a comment</h2>
-            {selection ? (
-              <p className="mt-2 rounded border-l-2 border-accent bg-paper px-2 py-1 text-xs text-muted">
-                “{selection.slice(0, 200)}
-                {selection.length > 200 ? '…' : ''}”
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-muted">
-                Select text in the chapter to attach your comment to it, or leave it unattached for
-                a comment about the chapter as a whole.
-              </p>
-            )}
-            <textarea
-              rows={4}
-              value={body}
-              maxLength={4000}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="What should the student change, and why?"
-              className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
-            />
-            <button
-              type="button"
-              disabled={busy || body.trim().length === 0}
-              onClick={() => void submit()}
-              data-testid="add-comment"
-              className="mt-2 w-full rounded-md px-3 py-2 text-sm disabled:opacity-50 sm:w-auto bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
-            >
-              {busy ? 'Saving…' : 'Add comment'}
-            </button>
-          </section>
+        {document.canComment ? (
+          <aside>
+            <section className="rounded-md border border-line bg-surface p-4">
+              <h2 className="eyebrow">Add a comment</h2>
+              {selection ? (
+                <p className="mt-2 rounded border-l-2 border-accent bg-paper px-2 py-1 text-xs text-muted">
+                  “{selection.slice(0, 200)}
+                  {selection.length > 200 ? '…' : ''}”
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-muted">
+                  Select text in the chapter to attach your comment to it, or leave it unattached
+                  for a comment about the chapter as a whole.
+                </p>
+              )}
+              <textarea
+                rows={4}
+                value={body}
+                maxLength={4000}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="What should the student change, and why?"
+                className="mt-2 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              />
+              <button
+                type="button"
+                disabled={busy || body.trim().length === 0}
+                onClick={() => void submit()}
+                data-testid="add-comment"
+                className="mt-2 w-full rounded-md px-3 py-2 text-sm disabled:opacity-50 sm:w-auto bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
+              >
+                {busy ? 'Saving…' : 'Add comment'}
+              </button>
+            </section>
 
-          <section className="mt-4">
-            <h2 className="eyebrow">
-              Comments on this chapter{mine.length ? ` (${mine.length})` : ''}
-            </h2>
-            {mine.length === 0 ? (
-              <p className="mt-2 text-xs text-muted">None yet.</p>
-            ) : (
-              <ul className="mt-2 space-y-2" data-testid="guide-comments">
-                {mine.map((comment) => (
-                  <li
-                    key={comment.id}
-                    className="rounded-md border border-line bg-surface p-2 text-xs"
-                  >
-                    {comment.quotedText ? (
-                      <p className="border-l-2 border-line pl-2 text-muted">
-                        “{comment.quotedText.slice(0, 120)}
-                        {comment.quotedText.length > 120 ? '…' : ''}”
+            <section className="mt-4">
+              <h2 className="eyebrow">
+                Comments on this chapter{mine.length ? ` (${mine.length})` : ''}
+              </h2>
+              {mine.length === 0 ? (
+                <p className="mt-2 text-xs text-muted">None yet.</p>
+              ) : (
+                <ul className="mt-2 space-y-2" data-testid="guide-comments">
+                  {mine.map((comment) => (
+                    <li
+                      key={comment.id}
+                      className="rounded-md border border-line bg-surface p-2 text-xs"
+                    >
+                      {comment.quotedText ? (
+                        <p className="border-l-2 border-line pl-2 text-muted">
+                          “{comment.quotedText.slice(0, 120)}
+                          {comment.quotedText.length > 120 ? '…' : ''}”
+                        </p>
+                      ) : null}
+                      <p className="mt-1">{comment.body}</p>
+                      <p className="mt-1 text-muted">
+                        {comment.authorEmail} · {new Date(comment.createdAt).toLocaleDateString()} ·{' '}
+                        {comment.status === 'OPEN'
+                          ? 'awaiting the student'
+                          : comment.status.toLowerCase()}
                       </p>
-                    ) : null}
-                    <p className="mt-1">{comment.body}</p>
-                    <p className="mt-1 text-muted">
-                      {comment.authorEmail} · {new Date(comment.createdAt).toLocaleDateString()} ·{' '}
-                      {comment.status === 'OPEN'
-                        ? 'awaiting the student'
-                        : comment.status.toLowerCase()}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </aside>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </aside>
+        ) : null}
       </div>
     </main>
   );

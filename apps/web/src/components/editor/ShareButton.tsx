@@ -11,14 +11,20 @@
  * So this is a surface, not a feature. It posts to the same endpoint, lists the same shares, and
  * revokes through the same route. The review screen remains the place to read what came back.
  *
- * A share is bound to an email address, not a secret link: the guide signs in with that address.
+ * A share is bound to an email address, not a secret link: the person signs in with that address.
  * That is worth saying in the UI, because "share link" everywhere else on the web means "anyone
  * with this URL", and a thesis is not that.
+ *
+ * ADR-0057 made it a roles screen: everyone who has access is listed with what they may do —
+ * Guide (comments and suggested revisions), Co-author (edits live) or Reader (reads) — and the
+ * owner can change that or take it away.
  */
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+
+type Role = 'GUIDE' | 'COAUTHOR' | 'READER';
 
 type Share = {
   id: string;
@@ -28,17 +34,34 @@ type Share = {
   comments: number;
   url: string;
   canEdit: boolean;
+  role: Role;
 };
+
+const ROLE_LABEL: Record<Role, string> = {
+  GUIDE: 'Guide / committee',
+  COAUTHOR: 'Co-author',
+  READER: 'Reader',
+};
+
+const ROLE_HELP: Record<Role, string> = {
+  GUIDE: 'can comment and suggest',
+  COAUTHOR: 'can edit with you, live',
+  READER: 'can read',
+};
+
+function problemText(e: unknown, fallback: string): string {
+  return e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : fallback;
+}
 
 export function ShareButton({ documentId }: { documentId: string }) {
   const [open, setOpen] = useState(false);
   const [shares, setShares] = useState<Share[]>([]);
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState<Role>('GUIDE');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  /** ADR-0028: invite a co-author rather than a commenting guide. Offered only when live editing is on. */
-  const [canEdit, setCanEdit] = useState(false);
+  /** ADR-0028: Co-author is offered only when live editing is on. */
   const [liveAvailable, setLiveAvailable] = useState(false);
 
   const load = useCallback(() => {
@@ -64,19 +87,38 @@ export function ShareButton({ documentId }: { documentId: string }) {
     try {
       const made = await api<Share & { mailed?: boolean }>(
         `/documents/${documentId}/feedback/shares`,
-        { method: 'POST', body: JSON.stringify({ guideEmail, canEdit }) },
+        { method: 'POST', body: JSON.stringify({ guideEmail, role }) },
       );
       setEmail('');
       setNotice(
         made.mailed === false
           ? `The invitation could not be emailed just now. Send ${guideEmail} this link yourself: ${made.url}`
-          : canEdit
+          : role === 'COAUTHOR'
             ? `${guideEmail} can now write this thesis with you, live, by signing in with that address.`
-            : `${guideEmail} can now open this thesis read-only by signing in with that address.`,
+            : role === 'READER'
+              ? `${guideEmail} can now read this thesis by signing in with that address.`
+              : `${guideEmail} can now open this thesis read-only and comment by signing in with that address.`,
       );
       load();
     } catch (e) {
-      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not share.');
+      setError(problemText(e, 'Could not share.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeRole(id: string, next: Role) {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await api<Share>(`/documents/${documentId}/feedback/shares/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: next }),
+      });
+      setNotice(`${updated.guideEmail} is now a ${ROLE_LABEL[next].toLowerCase()}.`);
+      load();
+    } catch (e) {
+      setError(problemText(e, 'Could not change that.'));
     } finally {
       setBusy(false);
     }
@@ -90,11 +132,13 @@ export function ShareButton({ documentId }: { documentId: string }) {
       setNotice('Access removed. Their comments are kept.');
       load();
     } catch (e) {
-      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not revoke.');
+      setError(problemText(e, 'Could not revoke.'));
     } finally {
       setBusy(false);
     }
   }
+
+  const offered: Role[] = liveAvailable ? ['GUIDE', 'COAUTHOR', 'READER'] : ['GUIDE', 'READER'];
 
   return (
     <span className="relative">
@@ -112,11 +156,11 @@ export function ShareButton({ documentId }: { documentId: string }) {
       {open ? (
         <div
           data-testid="share-panel"
-          className="absolute right-0 top-full z-40 mt-1 w-[24rem] rounded-md border border-line bg-surface p-3 text-left shadow-lg"
+          className="absolute right-0 top-full z-40 mt-1 w-[min(26rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-left shadow-lg"
         >
           <p className="text-xs text-muted">
-            Your guide reads the thesis and leaves comments. They cannot edit it, and they only see
-            what you have written — not your sources or your usage.
+            People you share with see what you have written — never your sources, your AI or your
+            usage. Only you can change the thesis unless you make someone a co-author.
           </p>
 
           <div className="mt-2 flex gap-2">
@@ -125,6 +169,7 @@ export function ShareButton({ documentId }: { documentId: string }) {
               value={email}
               disabled={busy}
               placeholder="supervisor@university.edu"
+              aria-label="Their email address"
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -135,6 +180,20 @@ export function ShareButton({ documentId }: { documentId: string }) {
               data-testid="share-email"
               className="h-8 min-w-0 flex-1 rounded-md border border-line bg-paper px-2 text-sm text-ink"
             />
+            <select
+              value={role}
+              disabled={busy}
+              aria-label="What they may do"
+              onChange={(e) => setRole(e.target.value as Role)}
+              data-testid="share-role"
+              className="h-8 shrink-0 rounded-md border border-line bg-paper px-1 text-xs text-ink"
+            >
+              {offered.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               disabled={busy || email.trim() === ''}
@@ -146,23 +205,8 @@ export function ShareButton({ documentId }: { documentId: string }) {
             </button>
           </div>
           <p className="mt-1 text-xs text-faint">
-            They sign in with this address. There is no secret link to forward.
+            {ROLE_LABEL[role]}: {ROLE_HELP[role]}. They sign in with this address.
           </p>
-          {liveAvailable ? (
-            <label className="mt-2 flex items-start gap-2 text-xs text-muted">
-              <input
-                type="checkbox"
-                checked={canEdit}
-                onChange={(e) => setCanEdit(e.target.checked)}
-                data-testid="share-can-edit"
-                className="mt-0.5"
-              />
-              <span>
-                Let them <span className="text-ink">edit with me, live</span>. They can type in a
-                chapter alongside you; AI, uploads and exports stay yours.
-              </span>
-            </label>
-          ) : null}
 
           {error ? (
             <p role="alert" className="mt-2 text-xs text-warn">
@@ -170,35 +214,59 @@ export function ShareButton({ documentId }: { documentId: string }) {
             </p>
           ) : null}
           {notice ? (
-            <p role="status" className="mt-2 text-xs text-ok">
+            <p role="status" className="mt-2 break-words text-xs text-ok">
               {notice}
             </p>
           ) : null}
 
-          {shares.length > 0 ? (
-            <ul className="mt-3 grid list-none gap-1 border-t border-line p-0 pt-2">
+          <section className="mt-3 border-t border-line pt-2" aria-label="Who has access">
+            <h3 className="text-xs font-semibold text-ink">Who has access</h3>
+            <ul className="mt-1 grid list-none gap-1.5 p-0" data-testid="share-list">
+              <li className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="text-ink">You</span>
+                <span className="text-muted">Owner</span>
+              </li>
               {shares.map((s) => (
-                <li key={s.id} className="flex items-baseline justify-between gap-2 text-xs">
+                <li
+                  key={s.id}
+                  data-testid="share-row"
+                  className="flex items-center justify-between gap-2 text-xs"
+                >
                   <span className="min-w-0">
                     <span className="block truncate text-ink">{s.guideEmail}</span>
                     <span className="text-muted">
-                      {s.canEdit ? 'Co-author · ' : ''}
-                      {s.acceptedAt ? 'Opened it' : 'Not opened yet'}
+                      {ROLE_HELP[s.role]} · {s.acceptedAt ? 'opened it' : 'not opened yet'}
                       {s.comments > 0 ? ` · ${s.comments} comments` : ''}
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void revoke(s.id)}
-                    className="shrink-0 text-danger underline disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <select
+                      value={s.role}
+                      disabled={busy}
+                      aria-label={`What ${s.guideEmail} may do`}
+                      onChange={(e) => void changeRole(s.id, e.target.value as Role)}
+                      data-testid="share-row-role"
+                      className="h-7 rounded-md border border-line bg-paper px-1 text-xs text-ink"
+                    >
+                      {(offered.includes(s.role) ? offered : [...offered, s.role]).map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABEL[r]}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void revoke(s.id)}
+                      className="text-danger underline disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>
-          ) : null}
+          </section>
 
           <p className="mt-3 border-t border-line pt-2 text-xs text-muted">
             <Link href={`/app/d/${documentId}/review`} className="underline">

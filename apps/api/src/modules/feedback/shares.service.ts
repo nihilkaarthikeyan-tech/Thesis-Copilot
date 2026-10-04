@@ -26,6 +26,7 @@ import {
   HISTORY_WEEKS,
   shouldBumpVisit,
 } from './guide-progress.js';
+import { flagsFor, roleOf, type ShareRole } from './share-roles.js';
 
 /** The most theses one guide's list returns. */
 const SHARED_WITH_MAX = 200;
@@ -40,6 +41,10 @@ export type ShareView = {
   url: string;
   /** ADR-0028: may open a chapter in the live editor. */
   canEdit: boolean;
+  /** ADR-0057: false for a Reader. */
+  canComment: boolean;
+  /** ADR-0057: the name the owner sees — Guide, Co-author or Reader. */
+  role: ShareRole;
   /** On the answer to a new share: whether the invitation e-mail went. False means send the link. */
   mailed?: boolean;
 };
@@ -52,6 +57,9 @@ export type GuideDocumentView = {
   chapters: Array<{ id: string; title: string; order: number }>;
   /** ADR-0028: this share lets its holder edit live, not only comment. */
   canEdit: boolean;
+  /** ADR-0057: false for a Reader — the page shows no comment box and no comments. */
+  canComment: boolean;
+  role: ShareRole;
   /** The signed-in guide's own address — the name on their cursor. */
   viewerEmail: string;
 };
@@ -100,6 +108,8 @@ export class SharesService {
       comments: byEmail.get(share.guideEmail.toLowerCase()) ?? 0,
       url: this.url(share.token),
       canEdit: share.canEdit,
+      canComment: share.canComment,
+      role: roleOf(share),
     }));
   }
 
@@ -107,8 +117,9 @@ export class SharesService {
     owner: { id: string; email: string },
     documentId: string,
     guideEmail: string,
-    canEdit = false,
+    role: ShareRole = 'GUIDE',
   ): Promise<ShareView> {
+    const flags = flagsFor(role);
     const document = await this.ownedDocument(owner.id, documentId);
     const email = guideEmail.trim().toLowerCase();
     if (email === owner.email.toLowerCase()) {
@@ -120,15 +131,15 @@ export class SharesService {
     });
     // Sharing again with the same address changes what they may do, in either direction.
     const share = existing
-      ? existing.canEdit === canEdit
+      ? roleOf(existing) === role
         ? existing
-        : await this.prisma.guideShare.update({ where: { id: existing.id }, data: { canEdit } })
+        : await this.prisma.guideShare.update({ where: { id: existing.id }, data: flags })
       : await this.prisma.guideShare.create({
           data: {
             documentId,
             guideEmail: email,
             token: randomBytes(24).toString('base64url'),
-            canEdit,
+            ...flags,
           },
         });
 
@@ -138,22 +149,33 @@ export class SharesService {
     // Now the answer says the mail did not go, and the panel offers the link to send by hand.
     let mailed = true;
     try {
+      const wording = {
+        COAUTHOR: {
+          subject: `${owner.email} has invited you to write a thesis chapter with them`,
+          lead: `${owner.email} would like to write “${document.title}” with you, live.`,
+          what: 'is no password. You can open a chapter and type alongside them, and comment on any passage.',
+        },
+        GUIDE: {
+          subject: `${owner.email} has asked you to review a thesis chapter`,
+          lead: `${owner.email} would like your comments on “${document.title}”.`,
+          what: 'is no password. You will see the thesis read-only and can comment on any passage.',
+        },
+        READER: {
+          subject: `${owner.email} has shared a thesis with you to read`,
+          lead: `${owner.email} has shared “${document.title}” with you to read.`,
+          what: 'is no password. You will see the thesis read-only.',
+        },
+      }[role];
       await this.mailer.send({
         to: [email],
-        subject: canEdit
-          ? `${owner.email} has invited you to write a thesis chapter with them`
-          : `${owner.email} has asked you to review a thesis chapter`,
+        subject: wording.subject,
         text: [
-          canEdit
-            ? `${owner.email} would like to write “${document.title}” with you, live.`
-            : `${owner.email} would like your comments on “${document.title}”.`,
+          wording.lead,
           '',
           this.url(share.token),
           '',
           'The link asks you to sign in with this email address — we send you a six-digit code, there',
-          canEdit
-            ? 'is no password. You can open a chapter and type alongside them, and comment on any passage.'
-            : 'is no password. You will see the thesis read-only and can comment on any passage.',
+          wording.what,
           'You will not see anything else in their account.',
         ].join('\n'),
       });
@@ -161,7 +183,7 @@ export class SharesService {
       mailed = false;
       this.logger.warn({ err: error, documentId, guideEmail: email }, 'guide share mail failed');
     }
-    this.logger.log({ documentId, guideEmail: email, canEdit, mailed }, 'guide share sent');
+    this.logger.log({ documentId, guideEmail: email, role, mailed }, 'guide share sent');
 
     const [view] = await this.list(owner.id, documentId).then((all) =>
       all.filter((s) => s.id === share.id),
@@ -175,7 +197,33 @@ export class SharesService {
     const share = await this.prisma.guideShare.findFirst({ where: { id: shareId, documentId } });
     if (!share) throw new NotFoundError('That share');
     await this.prisma.guideShare.delete({ where: { id: share.id } });
+    this.logger.log({ documentId, shareId: share.id }, 'guide share revoked');
     return { revoked: true };
+  }
+
+  /**
+   * ADR-0057: the owner changes what someone they shared with may do, without a new invitation.
+   * Takes effect on that person's next request — every check reads the row, nothing is cached.
+   * Their comments stay whatever the new role is; a Reader simply stops seeing them.
+   */
+  async setRole(
+    ownerId: string,
+    documentId: string,
+    shareId: string,
+    role: ShareRole,
+  ): Promise<ShareView> {
+    await this.ownedDocument(ownerId, documentId);
+    const share = await this.prisma.guideShare.findFirst({ where: { id: shareId, documentId } });
+    if (!share) throw new NotFoundError('That share');
+    if (roleOf(share) !== role) {
+      await this.prisma.guideShare.update({ where: { id: share.id }, data: flagsFor(role) });
+      this.logger.log(
+        { documentId, shareId: share.id, from: roleOf(share), to: role },
+        'guide share role changed',
+      );
+    }
+    const [view] = (await this.list(ownerId, documentId)).filter((s) => s.id === share.id);
+    return view as ShareView;
   }
 
   /**
@@ -241,6 +289,8 @@ export class SharesService {
       studentEmail: document.owner.email,
       chapters: document.chapters,
       canEdit: share.canEdit,
+      canComment: share.canComment,
+      role: roleOf(share),
       viewerEmail: user.email,
     };
   }
@@ -344,7 +394,7 @@ export class SharesService {
   async assertShared(
     user: { id: string; email: string },
     documentId: string,
-  ): Promise<{ id: string; lastViewedAt: Date | null; canEdit: boolean }> {
+  ): Promise<{ id: string; lastViewedAt: Date | null; canEdit: boolean; canComment: boolean }> {
     const share = await this.prisma.guideShare.findFirst({
       where: {
         documentId,
@@ -352,7 +402,7 @@ export class SharesService {
       },
       // Returns the row rather than void so `progressFor` does not have to fetch it twice. Every
       // existing caller ignores the value and still gets the throw, which is what they wanted.
-      select: { id: true, lastViewedAt: true, canEdit: true },
+      select: { id: true, lastViewedAt: true, canEdit: true, canComment: true },
     });
     if (!share) throw new NotFoundError('That document');
     return share;
