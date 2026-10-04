@@ -19,9 +19,10 @@ export type QuestionOption = {
 type Marker = { start: number; end: number; kind: 'digit' | 'letter'; ordinal: number };
 
 // A marker follows the start of the text, a space or a list punctuation mark, and is followed by
-// a space: `1)`, `1.`, `(1)`, `(a)`, `a)`. Letters only in lower case and only with a bracket, so
-// "e.g." and a sentence-initial "A." are never markers.
-const MARKER = /(^|[\s:;,])(\(([1-9])\)|([1-9])[.)]|\(([a-f])\)|([a-f])\))(?=\s)/g;
+// a space: `1)`, `1.`, `(1)`, `(a)`, `a)`, `(A)`. Letters only with a bracket — upper case only
+// with both brackets — so "e.g." and a sentence-initial "A." are never markers. `(A) … (D)` is how
+// the model wrote its options in the first live run after this shipped (2026-10-04).
+const MARKER = /(^|[\s:;,])(\(([1-9])\)|([1-9])[.)]|\(([a-fA-F])\)|([a-f])\))(?=\s)/g;
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -38,7 +39,7 @@ function markersOf(text: string): Marker[] {
       start,
       end: start + marker.length,
       kind: digit ? 'digit' : 'letter',
-      ordinal: digit ? Number(digit) : (letter ?? 'a').charCodeAt(0) - 96,
+      ordinal: digit ? Number(digit) : (letter ?? 'a').toLowerCase().charCodeAt(0) - 96,
     });
   }
   return out;

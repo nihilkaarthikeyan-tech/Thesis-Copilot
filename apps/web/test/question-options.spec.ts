@@ -73,4 +73,16 @@ describe('the options in a proposal question', () => {
   it('never reads "e.g." or a capital "A." as a marker', () => {
     expect(questionOptions('A. The topic is broad, e.g. policy or practice.')).toEqual([]);
   });
+
+  it('reads (A) … (D), as the model wrote it in a live run (2026-10-04)', () => {
+    const q =
+      'Should the thesis focus on (pick one): (A) a chronosequence comparing restored stands of different ages (e.g., <5, 5–15, >15 years) vs natural stands; (B) depth-profile SOC recovery (e.g., 0–10, 10–30, 30–50 cm) in restored vs natural stands; (C) scaling plot-level SOC estimates to the Pichavaram landscape using Sentinel-2; or (D) something else?';
+    const options = questionOptions(q);
+    expect(options).toHaveLength(4);
+    expect(options[0]?.text).toMatch(/^a chronosequence comparing restored stands/);
+    expect(options[2]?.text).toBe(
+      'scaling plot-level SOC estimates to the Pichavaram landscape using Sentinel-2',
+    );
+    expect(options[3]).toEqual({ text: 'something else', other: true });
+  });
 });
