@@ -11,6 +11,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -202,6 +203,27 @@ export class ChatController {
     if (!parsed.success)
       throw new ValidationError('Describe the equation first', parsed.error.issues);
     return this.equations.fromWords(user, parsed.data);
+  }
+
+  /** ADR-0064: an equation read from a photo (multipart, one picture; `?documentId=`). */
+  @Post('equations/from-photo')
+  @HttpCode(200)
+  async equationFromPhoto(
+    @CurrentUser() user: SessionUser,
+    @Query('documentId') documentId: string,
+    @Req() request: FastifyRequest,
+  ) {
+    if (!z.string().uuid().safeParse(documentId).success) {
+      throw new ValidationError('Which thesis is this equation for?');
+    }
+    const file = await (
+      request as unknown as {
+        file: () => Promise<{ toBuffer: () => Promise<Buffer> } | undefined>;
+      }
+    ).file();
+    if (!file) throw new ValidationError('Attach a photo of the equation.');
+    const bytes = new Uint8Array(await file.toBuffer());
+    return this.equations.fromPhoto(user, documentId, bytes);
   }
 
   @Post('citations/role')

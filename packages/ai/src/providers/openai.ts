@@ -42,6 +42,7 @@ import {
   type LlmRequest,
   type LlmResult,
   LlmValidationError,
+  sdkContent,
   type Tier,
   type TokenUsage,
 } from '../types.js';
@@ -169,7 +170,7 @@ export class OpenAiLlmProvider implements LlmProvider {
   }
 
   private messages(req: LlmRequest): ModelMessage[] {
-    return req.messages.map((m) => ({ role: m.role, content: m.content }) as ModelMessage);
+    return req.messages.map((m) => ({ role: m.role, content: sdkContent(m) }) as ModelMessage);
   }
 
   /**

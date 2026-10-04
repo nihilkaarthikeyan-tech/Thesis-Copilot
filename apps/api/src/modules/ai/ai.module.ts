@@ -20,6 +20,7 @@ import {
   mockClassifyResponse,
   mockCommandResponse,
   mockEntitiesFor,
+  mockEquationImageResponse,
   mockEquationResponse,
   mockProofreadResponse,
   mockProposalFor,
@@ -82,6 +83,7 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 mockSectionScopeResponse,
                 // FR-5.6 is also a COMMAND call; it is matched first by its `<target>` block.
                 mockCiteRoleResponse,
+                mockEquationImageResponse,
                 mockEquationResponse,
                 // ADR-0026: proofreading is metered as COMMAND too; matched by `<proofread>`.
                 mockProofreadResponse,

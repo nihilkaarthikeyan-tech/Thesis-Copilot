@@ -187,14 +187,19 @@ export {
 } from './builder/draft.js';
 export {
   bareMath,
+  buildEquationImageRequest,
   buildEquationRequest,
   EQUATION,
+  EQUATION_IMAGE,
+  EQUATION_IMAGE_CUE,
+  type EquationImageInput,
   type EquationInput,
   type EquationPostProcess,
   type EquationResult,
   equationResultSchema,
   equationUserMessage,
   mockEquationFor,
+  mockEquationImageResponse,
   mockEquationResponse,
   postProcessEquation,
 } from './builder/equation.js';

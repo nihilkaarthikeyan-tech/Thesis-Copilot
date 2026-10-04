@@ -77,6 +77,8 @@ export const PROMPT_NAMES = [
   'fix_flagged',
   // An equation described in words — docs/ADR/0063.
   'equation',
+  // An equation read from a photo — docs/ADR/0064.
+  'equation_image',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

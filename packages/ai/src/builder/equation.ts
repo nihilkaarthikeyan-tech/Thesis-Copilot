@@ -66,6 +66,57 @@ export function buildEquationRequest(input: EquationInput): LlmRequest {
   };
 }
 
+/**
+ * An equation read from a photo (ADR-0064). The same answer shape and the same checks as the
+ * words version; the picture travels as an image part on the user turn.
+ */
+export const EQUATION_IMAGE = {
+  tier: 'strong',
+  maxTokens: 400,
+  temperature: 0,
+  /** The largest picture accepted, after the browser has shrunk it. */
+  maxBytes: 4 * 1024 * 1024,
+  mediaTypes: ['image/png', 'image/jpeg', 'image/webp'] as readonly string[],
+} as const;
+
+export type EquationImageInput = {
+  image: Uint8Array;
+  mediaType: string;
+  userId: string;
+  documentId: string;
+  signal?: AbortSignal;
+};
+
+/** The text that goes with the picture; the mock looks for it. */
+export const EQUATION_IMAGE_CUE = 'Transcribe the equation in this picture.';
+
+export function buildEquationImageRequest(input: EquationImageInput): LlmRequest {
+  return {
+    tier: EQUATION_IMAGE.tier,
+    system: { cached: loadPrompt('equation_image').system.trim() },
+    messages: [
+      {
+        role: 'user',
+        content: EQUATION_IMAGE_CUE,
+        images: [{ data: input.image, mediaType: input.mediaType }],
+      },
+    ],
+    maxTokens: EQUATION_IMAGE.maxTokens,
+    temperature: EQUATION_IMAGE.temperature,
+    action: 'COMMAND',
+    userId: input.userId,
+    documentId: input.documentId,
+    ...(input.signal ? { signal: input.signal } : {}),
+  };
+}
+
+/** The mock cannot see; it answers with a fixed, renderable equation so the path runs. */
+export const mockEquationImageResponse = {
+  match: (req: { action: string; messages: ReadonlyArray<{ content: string }> }) =>
+    req.action === 'COMMAND' && (req.messages.at(-1)?.content ?? '') === EQUATION_IMAGE_CUE,
+  respond: (): EquationResult => ({ latex: 'E = mc^{2}', reading: 'E equals m c squared' }),
+};
+
 /** Strips the wrappers a model adds around math mode even when told not to. */
 export function bareMath(latex: string): string {
   let out = latex.trim();

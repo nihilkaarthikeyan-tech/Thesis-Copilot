@@ -341,3 +341,36 @@ describe('an answer cut off by the output budget (ADR-0048)', () => {
     ).rejects.toMatchObject({ raw: expect.stringContaining('The results show that') });
   });
 });
+
+describe('a picture with the question (ADR-0064)', () => {
+  it('sends the image after the text, as an input_image data URL on the user turn', async () => {
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const { bodies } = await capture(
+      request({
+        tier: 'strong',
+        action: 'COMMAND',
+        messages: [
+          { role: 'user', content: 'read this', images: [{ data: png, mediaType: 'image/png' }] },
+        ],
+      }),
+      'complete',
+    );
+    const input = (bodies[0] as unknown as { input: Array<{ role: string; content: unknown }> })
+      .input;
+    const user = input.find((m) => m.role === 'user');
+    const parts = user?.content as Array<{ type: string; text?: string; image_url?: string }>;
+    expect(parts[0]).toMatchObject({ type: 'input_text', text: 'read this' });
+    expect(parts[1]?.type).toBe('input_image');
+    expect(parts[1]?.image_url).toBe(
+      `data:image/png;base64,${Buffer.from(png).toString('base64')}`,
+    );
+  });
+
+  it('keeps a turn with no picture as plain text, exactly as before', async () => {
+    const { bodies } = await capture(request(), 'stream');
+    const input = (bodies[0] as unknown as { input: Array<{ role: string; content: unknown }> })
+      .input;
+    const user = input.find((m) => m.role === 'user');
+    expect(JSON.stringify(user?.content)).not.toContain('input_image');
+  });
+});

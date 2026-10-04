@@ -18,7 +18,21 @@ export type { AiAction, Tier, TokenUsage };
 export type Message = {
   readonly role: 'user' | 'assistant';
   readonly content: string;
+  /**
+   * Pictures sent with a user turn (ADR-0064: an equation from a photo). Only a request that
+   * needs one carries one; every adapter sends them after the text, as image parts.
+   */
+  readonly images?: ReadonlyArray<{ readonly data: Uint8Array; readonly mediaType: string }>;
 };
+
+/** The AI SDK's content for one turn: plain text, or text then images when a turn has any. */
+export function sdkContent(m: Message): unknown {
+  if (!m.images?.length || m.role !== 'user') return m.content;
+  return [
+    { type: 'text', text: m.content },
+    ...m.images.map((img) => ({ type: 'image', image: img.data, mediaType: img.mediaType })),
+  ];
+}
 
 /**
  * PRD §10.2, verbatim shape.

@@ -93,4 +93,28 @@ describe('an equation described in words', () => {
     });
     expect(other.status).toBe(404);
   });
+
+  it('reads an equation from a PNG for one unit, and refuses a file that is not a picture', async () => {
+    const upload = (bytes: Uint8Array, name: string) => {
+      const form = new FormData();
+      form.append('file', new Blob([bytes]), name);
+      // Straight to fetch: the harness's helper sets a JSON content type, which breaks multipart.
+      return fetch(`${h.baseUrl}/api/v1/equations/from-photo?documentId=${documentId}`, {
+        method: 'POST',
+        headers: { cookie: h.cookie },
+        body: form,
+      });
+    };
+    const before = await commandsUsed();
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const res = await upload(png, 'equation.png');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, latex: 'E = mc^{2}' });
+    expect(await commandsUsed()).toBe(before + 1);
+
+    // A text file named .png is still refused, and costs nothing.
+    const fake = await upload(new TextEncoder().encode('not an image'), 'equation.png');
+    expect(fake.status).toBe(400);
+    expect(await commandsUsed()).toBe(before + 1);
+  });
 });
