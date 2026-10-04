@@ -177,7 +177,7 @@ function crossrefPreprint(item: CrossrefItem): boolean {
 // OpenAlex
 // ---------------------------------------------------------------------------------------------
 
-type OpenAlexWork = {
+export type OpenAlexWork = {
   id?: string;
   doi?: string;
   title?: string;
@@ -188,7 +188,7 @@ type OpenAlexWork = {
   authorships?: Array<{ author?: { display_name?: string } }>;
   primary_location?: { source?: { id?: string; display_name?: string } };
   host_venue?: { display_name?: string };
-  open_access?: { oa_status?: string };
+  open_access?: { is_oa?: boolean; oa_status?: string };
   /** ADR-0050: from Retraction Watch; was ignored, every OpenAlex record read as not retracted. */
   is_retracted?: boolean;
   /** OpenAlex publishes abstracts only as a word -> positions map, for copyright reasons. */
@@ -196,7 +196,68 @@ type OpenAlexWork = {
 };
 type OpenAlexResponse = { results?: OpenAlexWork[]; meta?: { count?: number } };
 
-type OpenAlexSource = {
+/**
+ * Open-access statuses as OpenAlex and Unpaywall name them (`closed` is the only "no"), plus
+ * `open`, which is how a Semantic Scholar candidate's `isOpenAccess: true` is stored.
+ */
+const OPEN_STATUSES = new Set(['diamond', 'gold', 'green', 'hybrid', 'bronze', 'open']);
+
+/**
+ * Whether a stored open-access status means the paper is free to read: true or false when the
+ * status says so, null when there is no status or one this code does not know. Null is "not
+ * known", never "closed" — a source nobody looked up must not be shown as paywalled.
+ */
+export function openAccessFromStatus(status: string | null | undefined): boolean | null {
+  const s = status?.trim().toLowerCase();
+  if (!s) return null;
+  if (s === 'closed') return false;
+  return OPEN_STATUSES.has(s) ? true : null;
+}
+
+/** What a library row and a citation card show about a paper, as one OpenAlex work states it. */
+export type WorkMetrics = {
+  /** `cited_by_count`; null when the record does not carry one — never defaulted to 0. */
+  citationCount: number | null;
+  /** `open_access.oa_status` (`gold`, `green`, `closed` …); null when absent. */
+  oaStatus: string | null;
+  /** `open_access.is_oa`, or what the status implies when only the status was sent. */
+  isOpenAccess: boolean | null;
+  /** The journal, as OpenAlex's short source id, whose citedness is looked up separately. */
+  venueOpenalexId: string | null;
+};
+
+/**
+ * The facts a work record actually carries, read defensively: a field that is missing or of the
+ * wrong type is null, so a figure on screen is always one OpenAlex sent.
+ */
+export function openAlexWorkMetrics(work: OpenAlexWork): WorkMetrics {
+  const count = work.cited_by_count;
+  const status =
+    typeof work.open_access?.oa_status === 'string' && work.open_access.oa_status.trim()
+      ? work.open_access.oa_status.trim().toLowerCase()
+      : null;
+  const isOa = work.open_access?.is_oa;
+  return {
+    citationCount:
+      typeof count === 'number' && Number.isInteger(count) && count >= 0 ? count : null,
+    oaStatus: status,
+    isOpenAccess: typeof isOa === 'boolean' ? isOa : openAccessFromStatus(status),
+    venueOpenalexId: venueIdOf(work),
+  };
+}
+
+/**
+ * ADR-0022: a journal's 2-year mean citedness from one OpenAlex source record — null unless the
+ * source is a journal and the figure is a finite number (see `journalCitedness`).
+ */
+export function journalCitednessOf(source: OpenAlexSource): number | null {
+  const value = source.summary_stats?.['2yr_mean_citedness'];
+  return source.type === 'journal' && typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : null;
+}
+
+export type OpenAlexSource = {
   id?: string;
   /** `journal`, `repository`, `conference`, `ebook platform`, `book series`, … */
   type?: string;
@@ -330,15 +391,8 @@ export class OpenAlexClient {
       for (const id of batch) out.set(id, null);
       for (const source of body?.results ?? []) {
         const id = openalexSourceId(source.id);
-        const value = source.summary_stats?.['2yr_mean_citedness'];
-        if (
-          id &&
-          source.type === 'journal' &&
-          typeof value === 'number' &&
-          Number.isFinite(value)
-        ) {
-          out.set(id, value);
-        }
+        const value = journalCitednessOf(source);
+        if (id && value !== null) out.set(id, value);
       }
     }
     return out;
@@ -505,12 +559,13 @@ async function enrichFromOpenAlex(
   try {
     const work = await openalex.byDoi(best.doi, signal);
     if (!work) return best;
+    const metrics = openAlexWorkMetrics(work);
     return {
       ...best,
       openalexId: work.id ?? null,
-      venueOpenalexId: venueIdOf(work),
-      oaStatus: work.open_access?.oa_status ?? best.oaStatus,
-      citationCount: work.cited_by_count ?? best.citationCount,
+      venueOpenalexId: metrics.venueOpenalexId,
+      oaStatus: metrics.oaStatus ?? best.oaStatus,
+      citationCount: metrics.citationCount ?? best.citationCount,
       // Crossref's retraction notice, or Retraction Watch's through OpenAlex: either is enough.
       isRetracted: best.isRetracted || work.is_retracted === true,
       abstract: best.abstract ?? abstractFromInvertedIndex(work.abstract_inverted_index),
@@ -553,18 +608,19 @@ export async function resolveByDoi(
   try {
     const work = await resolver.openalex.byDoi(normalised, signal);
     if (work) {
+      const metrics = openAlexWorkMetrics(work);
       return {
         doi: normalised,
         openalexId: work.id ?? null,
-        venueOpenalexId: venueIdOf(work),
+        venueOpenalexId: metrics.venueOpenalexId,
         title: clean(work.title ?? work.display_name),
         authors: openAlexAuthors(work),
         year: work.publication_year ?? null,
         venue: clean(work.primary_location?.source?.display_name ?? work.host_venue?.display_name),
         type: work.type ?? null,
         cslJson: null,
-        oaStatus: work.open_access?.oa_status ?? null,
-        citationCount: work.cited_by_count ?? null,
+        oaStatus: metrics.oaStatus,
+        citationCount: metrics.citationCount,
         isPreprint: (work.type ?? '') === 'preprint',
         isRetracted: work.is_retracted === true,
         abstract: abstractFromInvertedIndex(work.abstract_inverted_index),
@@ -631,18 +687,19 @@ export async function resolveReference(
     };
     const score = candidateScore(reference, candidate);
     if (score <= best.score) continue;
+    const metrics = openAlexWorkMetrics(work);
     best = {
       doi: work.doi ? work.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//, '').toLowerCase() : null,
       openalexId: work.id ?? null,
-      venueOpenalexId: venueIdOf(work),
+      venueOpenalexId: metrics.venueOpenalexId,
       title: candidate.title,
       authors: candidate.authors,
       year: candidate.year,
       venue: clean(work.primary_location?.source?.display_name ?? work.host_venue?.display_name),
       type: work.type ?? null,
       cslJson: null,
-      oaStatus: work.open_access?.oa_status ?? null,
-      citationCount: work.cited_by_count ?? null,
+      oaStatus: metrics.oaStatus,
+      citationCount: metrics.citationCount,
       isPreprint: (work.type ?? '') === 'preprint',
       isRetracted: work.is_retracted === true,
       abstract: abstractFromInvertedIndex(work.abstract_inverted_index),

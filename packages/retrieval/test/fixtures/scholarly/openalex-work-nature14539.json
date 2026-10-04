@@ -1,0 +1,43 @@
+{
+  "id": "https://openalex.org/W2919115771",
+  "doi": "https://doi.org/10.1038/nature14539",
+  "display_name": "Deep learning",
+  "cited_by_count": 85363,
+  "open_access": {
+    "is_oa": true,
+    "oa_status": "green",
+    "oa_url": "https://hal.science/hal-04206682",
+    "any_repository_has_fulltext": true
+  },
+  "primary_location": {
+    "id": "doi:10.1038/nature14539",
+    "is_oa": false,
+    "landing_page_url": "https://doi.org/10.1038/nature14539",
+    "pdf_url": null,
+    "source": {
+      "id": "https://openalex.org/S137773608",
+      "display_name": "Nature",
+      "issn_l": "0028-0836",
+      "issn": ["0028-0836", "1476-4687"],
+      "is_oa": false,
+      "is_in_doaj": false,
+      "is_core": true,
+      "listed_in": ["cwts-core", "doyens", "erih-plus", "jufo-3", "ki-jl-3", "medline", "norway-2"],
+      "host_organization": "https://openalex.org/P4310319908",
+      "host_organization_name": "Nature Portfolio",
+      "host_organization_lineage": [
+        "https://openalex.org/P4310319908",
+        "https://openalex.org/P4310319965"
+      ],
+      "host_organization_lineage_names": ["Nature Portfolio", "Springer Nature"],
+      "type": "journal"
+    },
+    "license": null,
+    "license_id": null,
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "Nature",
+    "raw_type": "journal-article"
+  }
+}
