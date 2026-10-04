@@ -63,10 +63,11 @@ test.describe('chat scopes', () => {
     // Nothing in the answer is offered as a source, whatever it says: chapter passages carry no
     // `sourceId`, so `postProcessChat` strips every citation the model produces against them.
     // This is the invariant the scope exists for and the only one that is ours to guarantee.
-    // Citation buttons only: every answer also offers "Add to document" and "Copy" (2026-10-04).
+    // Citation buttons only: every answer also offers "Add to document", "Copy" and the thumbs
+    // (2026-10-04).
     await expect(
       answer.locator(
-        'button:not([data-testid="chat-add-to-document"]):not([data-testid="chat-copy"])',
+        'button:not([data-testid="chat-add-to-document"]):not([data-testid="chat-copy"]):not([data-testid="chat-rating"] button)',
       ),
     ).toHaveCount(0);
 

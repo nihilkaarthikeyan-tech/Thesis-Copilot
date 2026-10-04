@@ -113,7 +113,11 @@ test('a question can be confined to the papers named with @', async ({
   await expect(answer).not.toBeEmpty();
   // Every citation in it points at the named paper — none at the one that was not named.
   const labels = (await answer.locator('button').allTextContents()).filter(
-    (l) => l.trim() !== '' && l !== 'Add to document' && l !== 'Copy',
+    (l) =>
+      l.trim() !== '' &&
+      l !== 'Add to document' &&
+      l !== 'Copy' &&
+      !l.startsWith('Search beyond your library'),
   );
   for (const label of labels) expect(label).not.toContain('LeCun');
 
