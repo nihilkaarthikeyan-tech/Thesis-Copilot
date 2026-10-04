@@ -305,6 +305,47 @@ describe('when it cannot run', () => {
   });
 });
 
+describe('the first outline of a new thesis (2026-10-04)', () => {
+  const firstChapter: ChapterRow = {
+    id: 'ch-1',
+    outlineNodeId: 'initial-node',
+    title: 'Chapter 1 — Introduction',
+    scopeNote: null,
+    order: 1,
+    wordCount: 42,
+  };
+
+  it('makes the one existing chapter the first of the outline, keeping its id and words', async () => {
+    const f = fakes({ chapters: [firstChapter] });
+    const result = await syncChapters(f.deps, 'doc-1', [
+      node('Introduction'),
+      node('Literature Review'),
+      node('Methodology'),
+    ]);
+    expect(result.orphaned).toEqual([]);
+    expect(result.created).toBe(2);
+    const adopted = f.updates.find((u) => (u.where as { id: string }).id === 'ch-1');
+    expect(adopted?.data).toMatchObject({ outlineNodeId: 'introduction', title: 'Introduction' });
+    expect(f.deletes).toBe(0);
+  });
+
+  it('leaves a lone chapter alone when the outline already has it', async () => {
+    const f = fakes({ chapters: [{ ...firstChapter, outlineNodeId: 'introduction' }] });
+    const result = await syncChapters(f.deps, 'doc-1', [node('Introduction'), node('Methods')]);
+    expect(result.orphaned).toEqual([]);
+    const adopted = f.updates.find((u) => 'outlineNodeId' in (u.data ?? {}));
+    expect(adopted).toBeUndefined();
+  });
+
+  it('never adopts when the thesis already has several chapters', async () => {
+    const f = fakes({
+      chapters: [firstChapter, { ...firstChapter, id: 'ch-2', outlineNodeId: 'second', order: 2 }],
+    });
+    const result = await syncChapters(f.deps, 'doc-1', [node('Introduction')]);
+    expect(result.orphaned).toEqual(['ch-1', 'ch-2']);
+  });
+});
+
 describe('syncChapters on its own', () => {
   it('is the single place chapter rows follow the tree', async () => {
     const f = fakes();

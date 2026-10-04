@@ -65,6 +65,23 @@ function savedScope(detail: DocumentDetail | null): ProposalScope | null {
 /** How often to re-check a paper that is still being read. */
 const POLL_MS = 2_000;
 
+/** Starts outline generation when the thesis still has only its first, empty chapter. */
+async function startOutlineIfNone(documentId: string): Promise<void> {
+  try {
+    const view = await api<{
+      generating?: boolean;
+      outline?: unknown[];
+      chapters?: Array<{ wordCount?: number }>;
+    }>(`/documents/${documentId}/outline`);
+    const planned = (view.outline?.length ?? 0) > 1 || (view.chapters?.length ?? 0) > 1;
+    const written = (view.chapters ?? []).some((c) => (c.wordCount ?? 0) > 0);
+    if (view.generating || planned || written) return;
+    await api(`/documents/${documentId}/outline/generate`, { method: 'POST', body: '{}' });
+  } catch {
+    // Best effort: the Outline page still offers "Generate outline".
+  }
+}
+
 export function ProposalScreen({ documentId }: { documentId: string }) {
   const router = useRouter();
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
@@ -163,6 +180,11 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
         body: JSON.stringify(scope),
       });
       const detail = await api<DocumentDetail>(`/documents/${documentId}`);
+      // A thesis lands with its chapters (2026-10-04, from the Jenni study): when nothing has been
+      // planned yet, the outline is built from this proposal in the background while the student
+      // starts writing. OUTLINE is bounded per document (cost.ts) and never touches a chapter
+      // that has text, so starting it here cannot cost the student or lose their work.
+      await startOutlineIfNone(documentId);
       router.push(
         detail.firstChapterId
           ? `/app/d/${documentId}/write/${detail.firstChapterId}`

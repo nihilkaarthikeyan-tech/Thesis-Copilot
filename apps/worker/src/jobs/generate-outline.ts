@@ -176,9 +176,30 @@ export async function syncChapters(
       wordCount: true,
     },
   });
-  const byNode = new Map(existing.map((c) => [c.outlineNodeId, c]));
   let created = 0;
   let updated = 0;
+
+  // A new thesis has one chapter, made before there was any plan. When the first outline does
+  // not contain it, that chapter becomes the outline's first rather than an orphan: the outline
+  // now starts as the student leaves the proposal (2026-10-04), and anything they type in the
+  // meantime must stay in the chapter they see, not move to a detached copy at the end.
+  const only = existing.length === 1 ? existing[0] : undefined;
+  const first = nodes[0];
+  if (only && first && !nodes.some((n) => n.id === only.outlineNodeId)) {
+    await deps.prisma.chapter.update({
+      where: { id: only.id },
+      data: { outlineNodeId: first.id, title: first.title, scopeNote: first.scopeNote, order: 1 },
+    });
+    existing[0] = {
+      ...only,
+      outlineNodeId: first.id,
+      title: first.title,
+      scopeNote: first.scopeNote,
+      order: 1,
+    };
+    updated++;
+  }
+  const byNode = new Map(existing.map((c) => [c.outlineNodeId, c]));
 
   for (const [index, node] of nodes.entries()) {
     const order = index + 1;

@@ -31,6 +31,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL, ApiError, api } from '@/lib/api';
+import { chapterLabel } from '@/lib/chapter-label';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
 import { rememberLastChapter } from '@/lib/last-chapter';
 import { assistRequest } from '@/lib/sse';
@@ -198,6 +199,40 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
     };
   }, [documentId, chapterId, router, refreshUsage]);
 
+  /**
+   * The outline is built in the background when the student leaves the proposal (2026-10-04,
+   * from the Jenni study: a new thesis there lands with every heading). While it runs the chapter
+   * list says so; when it finishes, the list fills in without a reload.
+   */
+  const [outlineBuilding, setOutlineBuilding] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let wasBuilding = false;
+    const check = () => {
+      api<{ generating?: boolean }>(`/documents/${documentId}/outline`)
+        .then((view) => {
+          if (cancelled) return;
+          const building = view.generating === true;
+          setOutlineBuilding(building);
+          if (building) {
+            wasBuilding = true;
+            timer = setTimeout(check, 4_000);
+          } else if (wasBuilding) {
+            void api<DocumentDetail>(`/documents/${documentId}`).then((d) => {
+              if (!cancelled) setDoc(d);
+            });
+          }
+        })
+        .catch(() => undefined);
+    };
+    check();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [documentId]);
+
   if (error) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
@@ -222,6 +257,7 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
       usage={usage}
       onUsageChange={refreshUsage}
       liveEmail={liveEmail}
+      outlineBuilding={outlineBuilding}
     />
   );
 }
@@ -232,6 +268,7 @@ function ChapterEditor({
   usage,
   onUsageChange,
   liveEmail,
+  outlineBuilding,
 }: {
   doc: DocumentDetail;
   chapter: ChapterView;
@@ -239,6 +276,8 @@ function ChapterEditor({
   onUsageChange: () => void;
   /** Set when the chapter is edited live (ADR-0028); null keeps autosave. */
   liveEmail: string | null;
+  /** The outline is being built from the proposal; the chapter list fills in when it is done. */
+  outlineBuilding: boolean;
 }) {
   const [live] = useState<LiveDoc | null>(() => (liveEmail ? createLiveDoc(liveEmail) : null));
   const [liveState, setLiveState] = useState<{
@@ -1239,15 +1278,18 @@ function ChapterEditor({
                   }`}
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate">
-                      {c.order}. {c.title}
-                    </span>
+                    <span className="truncate">{chapterLabel(c.order, c.title)}</span>
                     <span className="tnum shrink-0 text-[11px] text-faint">{c.wordCount}</span>
                   </span>
                 </Link>
               </li>
             ))}
           </ul>
+          {outlineBuilding ? (
+            <p className="mt-3 text-[12px] text-muted" role="status" data-testid="outline-building">
+              Building your chapters from the proposal… they appear here in a minute.
+            </p>
+          ) : null}
         </aside>
 
         {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}
