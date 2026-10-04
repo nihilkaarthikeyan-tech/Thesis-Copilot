@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { JobWatchModule } from './common/job-watch.js';
 import { MailerModule } from './common/mailer.module.js';
 import { AppConfigModule } from './config.module.js';
 import { AccountModule } from './modules/account/account.module.js';
@@ -60,6 +61,7 @@ import { VivaModule } from './modules/viva/viva.module.js';
     }),
     AppConfigModule,
     MailerModule,
+    JobWatchModule,
     AuthModule,
     HealthModule,
     MetricsModule,

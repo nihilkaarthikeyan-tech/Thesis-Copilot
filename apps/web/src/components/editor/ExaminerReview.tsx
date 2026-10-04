@@ -19,6 +19,7 @@ import {
   resultLine,
   isReviewRunning as running,
 } from '@/lib/examiner-review';
+import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 
 const POLL_MS = 3_000;
 
@@ -35,13 +36,17 @@ export function ExaminerReview({
   const [starting, setStarting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const wasRunning = useRef(false);
+  const emailOn = useJobEmailSetting();
   // Held in a ref so a parent that passes a fresh function each render does not restart polling.
   const finished = useRef(onFinished);
   finished.current = onFinished;
 
   const load = useCallback(async () => {
     try {
-      const next = await api<ExaminerReviewState>(`/chapters/${chapterId}/examiner-review`);
+      // ADR-0058: a visible tab's poll tells the worker someone is looking, so no email.
+      const next = await api<ExaminerReviewState>(
+        `/chapters/${chapterId}/examiner-review${watchingParam()}`,
+      );
       setState(next);
       if (wasRunning.current && !running(next)) void finished.current();
       wasRunning.current = running(next);
@@ -111,6 +116,11 @@ export function ExaminerReview({
         A strict examiner reads each section of this chapter against the passages it cites. One
         examiner review from your monthly allowance.
       </p>
+      {isRunning && emailOn ? (
+        <p data-testid="job-email-note" className="mt-2 text-[12px] text-muted">
+          {JOB_EMAIL_NOTE}
+        </p>
+      ) : null}
       {state?.status === 'DONE' ? (
         <p data-testid="examiner-review-result" className="mt-2 text-[12px] text-ink">
           {resultLine(state)}

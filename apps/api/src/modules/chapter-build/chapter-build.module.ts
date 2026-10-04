@@ -35,6 +35,7 @@ import {
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
+import { isWatching, JobWatchService } from '../../common/job-watch.js';
 import { QueueService } from '../../common/queue.service.js';
 import { SuperadminGuard } from '../admin/superadmin.guard.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -60,6 +61,7 @@ export class ChapterBuildController {
   constructor(
     private readonly builds: ChapterBuildService,
     private readonly pitfalls: PitfallsService,
+    private readonly watch: JobWatchService,
   ) {}
 
   @Get('chapter-build/profiles')
@@ -67,9 +69,20 @@ export class ChapterBuildController {
     return this.builds.profiles();
   }
 
+  /** `?watching=1` from a visible tab marks each running build as looked at (ADR-0058). */
   @Get('documents/:id/chapter-build')
-  overview(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
-    return this.builds.overview(user, documentId);
+  async overview(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Query('watching') watching?: string,
+  ) {
+    const view = await this.builds.overview(user, documentId);
+    if (isWatching(watching)) {
+      await this.watch.touch(
+        view.builds.filter((b) => b.status === 'QUEUED' || b.status === 'RUNNING').map((b) => b.id),
+      );
+    }
+    return view;
   }
 
   @Put('documents/:id/chapter-build/profile')
@@ -158,12 +171,17 @@ export class ChapterBuildController {
   }
 
   @Get('documents/:id/chapter-build/:buildId')
-  view(
+  async view(
     @CurrentUser() user: SessionUser,
     @Param('id') documentId: string,
     @Param('buildId') buildId: string,
+    @Query('watching') watching?: string,
   ) {
-    return this.builds.view(user.id, documentId, buildId);
+    const view = await this.builds.view(user.id, documentId, buildId);
+    if (isWatching(watching) && (view.status === 'QUEUED' || view.status === 'RUNNING')) {
+      await this.watch.touch([view.id]);
+    }
+    return view;
   }
 
   @Post('documents/:id/chapter-build/:buildId/issues/:issueId')

@@ -17,6 +17,7 @@ import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { examinerLabel } from '@/lib/examiner-review';
+import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 import { ExaminerReview } from './ExaminerReview';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -123,6 +124,22 @@ export function FlagsPanel({
     void load();
   }, [load]);
 
+  // ADR-0058: the stream says how the run is going but not whether anyone can see it. While it
+  // runs, a visible tab says so every ten seconds; a hidden or closed one does not, and then the
+  // worker emails the student when the check is done.
+  const [runId, setRunId] = useState<string | null>(null);
+  const emailOn = useJobEmailSetting();
+  useEffect(() => {
+    if (!running || !runId) return;
+    const beat = () => {
+      const param = watchingParam();
+      if (param) void api(`/documents/${documentId}/coherence/${runId}${param}`).catch(() => null);
+    };
+    beat();
+    const timer = setInterval(beat, 10_000);
+    return () => clearInterval(timer);
+  }, [running, runId, documentId]);
+
   async function run() {
     setRunning(true);
     setError(null);
@@ -132,6 +149,7 @@ export function FlagsPanel({
         method: 'POST',
         body: JSON.stringify({ triggeredBy: 'MANUAL' }),
       });
+      setRunId(runId);
       // D.1.1 step 3: the run reports each check as it finishes, so the panel is not a spinner.
       const response = await fetch(
         `${API_URL}/api/v1/documents/${documentId}/coherence/${runId}/events`,
@@ -174,6 +192,7 @@ export function FlagsPanel({
     } finally {
       setRunning(false);
       setStage(null);
+      setRunId(null);
     }
   }
 
@@ -230,6 +249,11 @@ export function FlagsPanel({
           {running ? (stage ? `Checking ${stage.toLowerCase()}…` : 'Checking…') : 'Check coherence'}
         </button>
       </div>
+      {running && emailOn ? (
+        <p className="mt-1 text-xs text-muted" data-testid="job-email-note">
+          {JOB_EMAIL_NOTE}
+        </p>
+      ) : null}
       {estimate && !running ? (
         <p className="mt-1 text-xs text-muted">
           {estimate.changedChapters === 0
