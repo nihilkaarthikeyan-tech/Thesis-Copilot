@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 export type Theme = 'light' | 'dark' | 'system';
 
 const KEY = 'tc-theme';
+/** High contrast is its own switch (2026-10-04): it combines with light, dark and system. */
+const CONTRAST_KEY = 'tc-contrast';
 
 /** The cycle. Light and dark first, because those are the two anyone is actually reaching for. */
 const ORDER: readonly Theme[] = ['light', 'dark', 'system'];
@@ -37,7 +39,7 @@ const ORDER: readonly Theme[] = ['light', 'dark', 'system'];
  * theme first and then repaint dark, which is the flash every themed app has to design around.
  */
 export function ThemeScript() {
-  const js = `(function(){try{var t=localStorage.getItem('${KEY}');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()`;
+  const js = `(function(){try{var t=localStorage.getItem('${KEY}');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}if(localStorage.getItem('${CONTRAST_KEY}')==='high'){document.documentElement.setAttribute('data-contrast','high')}}catch(e){}})()`;
   // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed literal, no interpolated input.
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }
@@ -136,4 +138,28 @@ export function ThemeToggle({ className }: { className?: string }) {
       })}
     </button>
   );
+}
+
+/**
+ * High contrast on or off (2026-10-04, from the Jenni study). Per browser, like the theme, and
+ * applied before first paint by `ThemeScript`. Darker muted text and stronger lines; the tokens
+ * are in `globals.css` under `data-contrast="high"`.
+ */
+export function useHighContrast(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    setOn(document.documentElement.getAttribute('data-contrast') === 'high');
+  }, []);
+  const set = (next: boolean) => {
+    setOn(next);
+    if (next) document.documentElement.setAttribute('data-contrast', 'high');
+    else document.documentElement.removeAttribute('data-contrast');
+    try {
+      if (next) localStorage.setItem(CONTRAST_KEY, 'high');
+      else localStorage.removeItem(CONTRAST_KEY);
+    } catch {
+      // Holds for this page view even when it cannot be stored.
+    }
+  };
+  return [on, set];
 }

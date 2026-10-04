@@ -33,6 +33,8 @@ export type ProposalView = {
   questionsAsked: number;
   maxQuestions: number;
   done: boolean;
+  /** Model turns left on this conversation; an earlier answer can be changed while any remain. */
+  turnsLeft?: number;
 };
 
 const CLOSEST = 5;
@@ -47,7 +49,7 @@ export function PathAChat({
   documentId: string;
   /** The working title from `/app/new`, offered as the first message. */
   initialTitle: string;
-  onSkeleton: (view: ProposalView) => void;
+  onSkeleton: (view: ProposalView, replace?: boolean) => void;
 }) {
   const [view, setView] = useState<ProposalView | null>(null);
   const [draft, setDraft] = useState('');
@@ -57,6 +59,11 @@ export function PathAChat({
   const inputRef = useRef<HTMLInputElement>(null);
   /** Which example topic the empty first-message box shows (coverage-map row 3). */
   const [example, setExample] = useState(0);
+  /**
+   * Changing an earlier answer (2026-10-04, from the Jenni study): the index, in `visible`, of the
+   * answer being replaced. Everything after it is redrafted from the new answer.
+   */
+  const [editing, setEditing] = useState<number | null>(null);
 
   useEffect(() => {
     api<ProposalView>(`/documents/${documentId}/proposal`)
@@ -92,6 +99,7 @@ export function PathAChat({
   async function send(text: string) {
     const message = text.trim();
     if (!message || busy) return;
+    const editIndex = editing;
     setBusy(true);
     setError(null);
     // Show the student's line at once; the server's copy replaces it.
@@ -99,7 +107,10 @@ export function PathAChat({
       v
         ? {
             ...v,
-            visible: [...v.visible, { role: 'user', text: message, at: new Date().toISOString() }],
+            visible: [
+              ...(editIndex === null ? v.visible : v.visible.slice(0, editIndex)),
+              { role: 'user', text: message, at: new Date().toISOString() },
+            ],
           }
         : v,
     );
@@ -107,10 +118,11 @@ export function PathAChat({
     try {
       const next = await api<ProposalView>(`/documents/${documentId}/proposal`, {
         method: 'POST',
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, ...(editIndex === null ? {} : { editIndex }) }),
       });
+      setEditing(null);
       setView(next);
-      if (next.done) onSkeleton(next);
+      if (next.done) onSkeleton(next, editIndex !== null);
     } catch (e) {
       setError(
         e instanceof ApiError
@@ -118,6 +130,12 @@ export function PathAChat({
           : 'That did not send. Try again.',
       );
       setDraft(message);
+      // The server kept the old conversation; show it again rather than the optimistic one.
+      if (editIndex !== null) {
+        api<ProposalView>(`/documents/${documentId}/proposal`)
+          .then(setView)
+          .catch(() => undefined);
+      }
     } finally {
       setBusy(false);
     }
@@ -127,7 +145,9 @@ export function PathAChat({
 
   // The question being answered offers its options as buttons (docs/JENNI-FIX-LIST.md item 14).
   const last = view.visible.at(-1);
-  const options = !view.done && last?.role === 'assistant' ? questionOptions(last.text) : [];
+  const options =
+    !view.done && editing === null && last?.role === 'assistant' ? questionOptions(last.text) : [];
+  const canEdit = !busy && (view.turnsLeft ?? 0) > 0;
 
   return (
     <section className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]" data-testid="path-a-chat">
@@ -140,15 +160,33 @@ export function PathAChat({
               before a proposal skeleton is drafted — and you edit every word of it.
             </p>
           ) : null}
-          {view.visible.map((m) => (
+          {view.visible.map((m, index) => (
             <div
               key={`${m.role}-${m.at}-${m.text}`}
-              data-role={m.role}
-              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                m.role === 'user' ? 'ml-auto bg-accent text-accent-ink' : 'bg-paper'
-              }`}
+              className={m.role === 'user' ? 'flex flex-col items-end' : undefined}
             >
-              {m.text}
+              <div
+                data-role={m.role}
+                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                  m.role === 'user' ? 'bg-accent text-accent-ink' : 'bg-paper'
+                } ${editing === index ? 'opacity-60' : ''}`}
+              >
+                {m.text}
+              </div>
+              {m.role === 'user' && canEdit ? (
+                <button
+                  type="button"
+                  data-testid="edit-answer"
+                  onClick={() => {
+                    setEditing(index);
+                    setDraft(m.text);
+                    inputRef.current?.focus();
+                  }}
+                  className="mt-0.5 text-xs text-muted underline"
+                >
+                  Edit
+                </button>
+              ) : null}
             </div>
           ))}
           {options.length > 0 && !busy ? (
@@ -180,7 +218,28 @@ export function PathAChat({
           {busy ? <p className="text-xs text-muted">Thinking…</p> : null}
           <div ref={endRef} />
         </div>
-        {!view.done ? (
+        {editing !== null ? (
+          <p
+            className="flex items-center justify-between gap-2 border-t border-line px-3 py-2 text-xs"
+            data-testid="editing-answer"
+          >
+            <span>
+              Changing an earlier answer. What came after it is asked again
+              {view.done ? ', and the proposal below is redrafted' : ''}.
+            </span>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                setEditing(null);
+                setDraft('');
+              }}
+            >
+              Cancel
+            </button>
+          </p>
+        ) : null}
+        {!view.done || editing !== null ? (
           <form onSubmit={submit} className="flex gap-2 border-t border-line p-3">
             <label className="sr-only" htmlFor="path-a-message">
               Your message

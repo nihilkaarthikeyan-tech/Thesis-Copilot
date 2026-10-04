@@ -81,6 +81,31 @@
  * "system" setting, guarded so an explicit light choice still wins on a dark OS; the
  * `[data-theme="dark"]` block covers the explicit choice.
  */
+/*
+ * High contrast (2026-10-04, from the Jenni study: Jenni offers a high-contrast theme). An
+ * independent switch, `data-contrast="high"` on the root, so it combines with light, dark and
+ * system. Light first, at the same specificity as the dark blocks below, so dark still wins its
+ * own colours; the dark-and-high blocks after them are more specific. Muted text reaches at least
+ * 7:1 on its ground (WCAG AAA); unaccepted AI text stays visibly lighter than the student's own.
+ */
+:root[data-contrast="high"] {
+  --color-paper: #ffffff;
+  --color-surface: #ffffff;
+  --color-sunk: #eceff3;
+  --color-ink: #000000;
+  --color-muted: #2b3340;
+  --color-faint: #3d4655;
+  --color-line: #7d8799;
+  --color-line-strong: #4a5464;
+  --color-accent: #1a2f9e;
+  --color-accent-hover: #0f1f75;
+  --color-accent-soft: #dfe6fc;
+  --color-ghost: #59627a;
+  --color-ok: #0f5c35;
+  --color-warn: #6b4405;
+  --color-danger: #8c1a11;
+}
+
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @media (prefers-color-scheme: dark) {
@@ -151,6 +176,44 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-contrast="high"] {
+    --color-paper: #000000;
+    --color-surface: #0a0e16;
+    --color-sunk: #000000;
+    --color-ink: #ffffff;
+    --color-muted: #d6dce6;
+    --color-faint: #b9c2d0;
+    --color-line: #5d6d88;
+    --color-line-strong: #8a97ad;
+    --color-accent: #b8c5ff;
+    --color-accent-hover: #d3dcff;
+    --color-accent-soft: #1c2748;
+    --color-ghost: #98a3b7;
+    --color-ok: #7ee0ad;
+    --color-warn: #f5c97a;
+    --color-danger: #ffb0a8;
+  }
+}
+
+:root[data-theme="dark"][data-contrast="high"] {
+  --color-paper: #000000;
+  --color-surface: #0a0e16;
+  --color-sunk: #000000;
+  --color-ink: #ffffff;
+  --color-muted: #d6dce6;
+  --color-faint: #b9c2d0;
+  --color-line: #5d6d88;
+  --color-line-strong: #8a97ad;
+  --color-accent: #b8c5ff;
+  --color-accent-hover: #d3dcff;
+  --color-accent-soft: #1c2748;
+  --color-ghost: #98a3b7;
+  --color-ok: #7ee0ad;
+  --color-warn: #f5c97a;
+  --color-danger: #ffb0a8;
 }
 
 /* ---------------------------------------------------------------- logo ---- */
