@@ -40,15 +40,15 @@ Items that change cost or need a decision only the owner can take are listed at 
 | A returning student lands back in the last chapter they wrote | Done 2026-10-04 |
 | The thesis lands with an outline (all chapters) after the proposal, cursor in the first | Done 2026-10-04 |
 | Suggestion bar: Accept / Refine / thumbs on screen (works on a phone) | Done 2026-10-04 |
-| Evidence card on a suggested citation before accepting | |
+| Evidence card on a suggested citation before accepting | Done 2026-10-04 |
 | Refine presets (validate evidence, cite from my library, simplify, stay on topic, complete paragraph) | Done 2026-10-04 |
-| Find papers as a panel beside the text with Cite on each result | |
-| "/" insert menu: table, equation, chart, diagram, table of contents, AI declaration, placeholder citation | |
-| Equations: examples, a cheat sheet, describe-in-words | |
-| Selection edits as a preview with "what changed and why", Replace / Insert below / Try again / Discard | |
-| One Review panel listing every check with one button each | |
-| A student can comment on their own text | |
-| Word export: citations as Word citation fields (optional hyperlinks) | |
+| Find papers as a panel beside the text with Cite on each result | Done 2026-10-04 |
+| "/" insert menu: table, equation, chart, diagram, table of contents, AI declaration, placeholder citation | Done 2026-10-04 (no table of contents: the export builds a real one) |
+| Equations: examples, a cheat sheet, describe-in-words | Done 2026-10-04 — examples, live preview, cheat sheet; describe-in-words waits for the owner (new prompt) |
+| Selection edits as a preview with "what changed and why", Replace / Insert below / Try again / Discard | Done 2026-10-04 — Replace / Insert below / Try again / Discard on the existing diff; "why" waits for the owner (new prompt) |
+| One Review panel listing every check with one button each | Done 2026-10-04 — "Every check, in one list" on the flags tab |
+| A student can comment on their own text | Done 2026-10-04 |
+| Word export: citations as Word citation fields (optional hyperlinks) | Done 2026-10-04 — ADR-0055; opening in real Word is in PENDING |
 
 ## Batch 3 — larger features
 
@@ -74,6 +74,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 
 - Count only **kept** suggestions against the allowance (Jenni does); today every shown suggestion
   counts. Raises AI spend per student; needs the cost model re-run against the ₹100 ceiling.
-- New prompts (refine presets, peer review, new edit actions, describe-an-equation) are not from
+- Refine presets shipped without a new prompt (they ride the existing guided instruction).
+- New prompts (peer review, new edit actions, describe-an-equation, "what changed and why") are not from
   Appendix A; each needs an ADR and an eval round like ADR-0010.
 - Springer Nature Open Access API key (`docs/PENDING.md`).
