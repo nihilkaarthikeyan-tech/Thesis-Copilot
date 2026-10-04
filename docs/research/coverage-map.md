@@ -165,7 +165,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
-| 89 | Interface languages (16 incl. Hindi) | Yes | no i18n library in `apps/web`; document language only (`api/documents/documents.controller.ts` `:id/language`) | MISSING | English-only interface |
+| 89 | Interface languages (16 incl. Hindi) | Yes | `web/i18n/` (typed catalogues, English fallback; ADR-0061): English and Hindi (beta) on the student's main screens — list, new thesis, proposal, editor chrome, Settings, Account, sign-in; picker in Settings and on sign-in; separate from the document language (`api/documents/documents.controller.ts` `:id/language`) | PARTIAL | Built 2026-10-05: two languages, not sixteen; Hindi awaits a native speaker's review (`docs/i18n/hi-review.md`); editor side panels, help and admin stay English |
 | 90 | Themes (7 incl. high contrast) | Yes | `web/components/theme.tsx` (light / dark / system) | MATCH | Built 2026-10-04: High contrast switch, works with light/dark |
 | 91 | Document defaults (autocomplete, style, font) | One dialog | `web/app/app/settings/page.tsx` (auto-suggest, auto-cite, auto-sources) | MATCH | 2026-10-04: Default citation style for new theses in Settings (font follows the university template) |
 | 92 | Usage bars per allowance | Account menu | `web/app/app/account/page.tsx` (bars), `api/usage/usage.controller.ts`, editor header meter | MATCH | Refund on relevance-floor refusal |

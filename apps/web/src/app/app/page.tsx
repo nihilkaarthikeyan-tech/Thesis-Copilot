@@ -39,6 +39,8 @@ import {
   Label,
   PageHeader,
 } from '@/components/ui/primitives';
+import { tNow } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import { signOut, useSession } from '@/lib/auth-client';
 import { type LastChapter, readLastChapter } from '@/lib/last-chapter';
@@ -54,20 +56,13 @@ type DocumentSummary = {
 };
 
 const ENTRY_PATHS = [
-  {
-    value: 'B_PAPER',
-    label: 'A paper I have written',
-    hint: 'It reads the paper and builds the proposal around it',
-  },
-  {
-    value: 'A_TOPIC',
-    label: 'A topic',
-    hint: 'It checks the literature and helps you find the gap',
-  },
+  { value: 'B_PAPER', label: 'list.entry.paper', hint: 'list.entry.paperHint' },
+  { value: 'A_TOPIC', label: 'list.entry.topic', hint: 'list.entry.topicHint' },
 ] as const;
 
 export default function DocumentListPage() {
   const router = useRouter();
+  const { t } = useT();
   const session = useSession();
   // The admin screens are SUPERADMIN-only; the link is the only way a student home says so.
   const isAdmin = (session.data?.user as { role?: string } | undefined)?.role === 'SUPERADMIN';
@@ -118,7 +113,7 @@ export default function DocumentListPage() {
         router.replace('/sign-in');
         return;
       }
-      setError(e instanceof Error ? e.message : 'Could not load your documents.');
+      setError(e instanceof Error ? e.message : tNow('list.loadError'));
     }
   }, [router]);
 
@@ -140,7 +135,7 @@ export default function DocumentListPage() {
       // student on this list, choosing between nine links on the new card.
       router.push(`/app/d/${created.id}/proposal`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create the document.');
+      setError(e instanceof Error ? e.message : tNow('list.createError'));
     } finally {
       setBusy(false);
     }
@@ -182,9 +177,7 @@ export default function DocumentListPage() {
     } catch (e) {
       setDeleting(null);
       setError(
-        e instanceof ApiError
-          ? (e.problem.detail ?? e.problem.title)
-          : 'Could not delete the thesis. Try again.',
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('list.deleteError'),
       );
     } finally {
       setDeleteBusy(false);
@@ -203,9 +196,7 @@ export default function DocumentListPage() {
       await load();
     } catch (e) {
       setError(
-        e instanceof ApiError
-          ? (e.problem.detail ?? e.problem.title)
-          : 'Could not copy the thesis. Try again.',
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('list.copyError'),
       );
     } finally {
       setCopying(null);
@@ -214,11 +205,11 @@ export default function DocumentListPage() {
 
   /** The stages of PRD §6.1, in the order a thesis actually moves through them. */
   const stages = (id: string) => [
-    { href: `/app/d/${id}/proposal`, label: 'Proposal' },
-    { href: `/app/d/${id}/sources`, label: 'Sources' },
-    { href: `/app/d/${id}/outline`, label: 'Outline' },
-    { href: `/app/d/${id}/review`, label: 'Review' },
-    { href: `/app/d/${id}/submit`, label: 'Submit' },
+    { href: `/app/d/${id}/proposal`, label: t('list.stage.proposal') },
+    { href: `/app/d/${id}/sources`, label: t('list.stage.sources') },
+    { href: `/app/d/${id}/outline`, label: t('list.stage.outline') },
+    { href: `/app/d/${id}/review`, label: t('list.stage.review') },
+    { href: `/app/d/${id}/submit`, label: t('list.stage.submit') },
   ];
   /**
    * Used less often, so behind "More" (2026-10-04): ten links on every card made the one a
@@ -226,11 +217,11 @@ export default function DocumentListPage() {
    */
   const moreStages = (id: string) => [
     // ADR-0039: a chapter planned, written, checked and delivered as drafts to accept.
-    { href: `/app/d/${id}/build`, label: 'Build a chapter' },
+    { href: `/app/d/${id}/build`, label: t('list.stage.build') },
     // ADR-0040: a grounded, un-metered ranking of where to submit.
-    { href: `/app/d/${id}/journals`, label: 'Journals' },
+    { href: `/app/d/${id}/journals`, label: t('list.stage.journals') },
     // ADR-0030: after submission comes the defence.
-    { href: `/app/d/${id}/viva`, label: 'Viva practice' },
+    { href: `/app/d/${id}/viva`, label: t('list.stage.viva') },
   ];
   /** The chapter to write in: the last one open here for this thesis, else the first. */
   const writeHref = (d: DocumentSummary) =>
@@ -246,7 +237,7 @@ export default function DocumentListPage() {
       <CardBody>
         <form onSubmit={create} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="title">Working title</Label>
+            <Label htmlFor="title">{t('common.workingTitle')}</Label>
             <Input
               id="title"
               name="title"
@@ -254,12 +245,14 @@ export default function DocumentListPage() {
               maxLength={300}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Low-cost solar dryers for smallholder farms"
+              placeholder={t('list.titlePlaceholder')}
             />
           </div>
 
           <fieldset className="flex flex-col gap-2 border-0 p-0">
-            <legend className="mb-1 text-[13px] font-semibold text-ink">Start from</legend>
+            <legend className="mb-1 text-[13px] font-semibold text-ink">
+              {t('list.startFrom')}
+            </legend>
             <div className="flex flex-wrap gap-2">
               {ENTRY_PATHS.map((option) => {
                 const checked = entryPath === option.value;
@@ -282,9 +275,9 @@ export default function DocumentListPage() {
                     />
                     <span>
                       <span className="block text-[13.5px] font-semibold text-ink">
-                        {option.label}
+                        {t(option.label)}
                       </span>
-                      <Hint className="mt-0.5">{option.hint}</Hint>
+                      <Hint className="mt-0.5">{t(option.hint)}</Hint>
                     </span>
                   </label>
                 );
@@ -296,7 +289,7 @@ export default function DocumentListPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={busy || title.trim().length === 0}>
-              {busy ? 'Creating…' : 'Create thesis'}
+              {busy ? t('common.creating') : t('list.create')}
             </Button>
             <Button
               type="button"
@@ -338,25 +331,25 @@ export default function DocumentListPage() {
             {isAdmin ? (
               <Button asChild variant="ghost" size="sm">
                 <Link href="/admin" data-testid="admin-link">
-                  Admin
+                  {t('common.admin')}
                 </Link>
               </Button>
             ) : null}
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-              <Link href="/help">Help</Link>
+              <Link href="/help">{t('common.help')}</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/app/settings">Settings</Link>
+              <Link href="/app/settings">{t('common.settings')}</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/app/account">Account</Link>
+              <Link href="/app/account">{t('common.account')}</Link>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => signOut().then(() => router.replace('/sign-in'))}
             >
-              Sign out
+              {t('common.signOut')}
             </Button>
           </nav>
         </div>
@@ -364,11 +357,11 @@ export default function DocumentListPage() {
 
       <main className="mx-auto max-w-3xl px-6 py-10">
         <PageHeader
-          title="Your theses"
-          lede="Each one keeps its own sources, outline and citation style."
+          title={t('list.title')}
+          lede={t('list.lede')}
           actions={
             <Button asChild variant="secondary" size="sm">
-              <Link href="/app/new">Start from a paper</Link>
+              <Link href="/app/new">{t('list.startFromPaper')}</Link>
             </Button>
           }
         />
@@ -377,7 +370,7 @@ export default function DocumentListPage() {
           <Card className="mt-6 border-accent/40" data-testid="continue-writing">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
-                <div className="eyebrow">Continue writing</div>
+                <div className="eyebrow">{t('list.continueWriting')}</div>
                 <p className="mt-1 truncate text-[15px] font-semibold text-ink">
                   {continueWith.documentTitle}
                 </p>
@@ -385,7 +378,7 @@ export default function DocumentListPage() {
               </div>
               <Button asChild size="sm">
                 <Link href={`/app/d/${continueWith.documentId}/write/${continueWith.chapterId}`}>
-                  Continue writing
+                  {t('list.continueWriting')}
                 </Link>
               </Button>
             </div>
@@ -396,8 +389,7 @@ export default function DocumentListPage() {
 
         {documents && documents.length === 0 ? (
           <FirstRunHint id="list" className="mt-6">
-            Step 1 of 3: name the thesis and say whether it grows from a paper you have written. You
-            can change the title later; nothing here is final.
+            {t('list.firstRun')}
           </FirstRunHint>
         ) : null}
 
@@ -414,15 +406,15 @@ export default function DocumentListPage() {
 
         <section className="mt-8" aria-live="polite">
           {documents === null ? (
-            <p className="text-[13px] text-muted">Loading…</p>
+            <p className="text-[13px] text-muted">{t('common.loading')}</p>
           ) : documents.length === 0 ? (
-            <Empty title="No theses yet">
-              Give one a working title above. You can rename it at any point.
-            </Empty>
+            <Empty title={t('list.emptyTitle')}>{t('list.emptyBody')}</Empty>
           ) : (
             <>
               <div className="eyebrow mb-2">
-                {documents.length} {documents.length === 1 ? 'thesis' : 'theses'}
+                {t(documents.length === 1 ? 'list.countOne' : 'list.countMany', {
+                  count: documents.length,
+                })}
               </div>
               <ul className="grid list-none gap-2 p-0">
                 {documents.map((d) => (
@@ -438,22 +430,25 @@ export default function DocumentListPage() {
                           </Link>
                           <p className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted">
                             <Badge tone="neutral">
-                              {d.entryPath === 'B_PAPER' ? 'From a paper' : 'From a topic'}
+                              {d.entryPath === 'B_PAPER'
+                                ? t('list.fromPaper')
+                                : t('list.fromTopic')}
                             </Badge>
                             <AddProposalPrompt documentId={d.id} variant="list" />
                             <span>
-                              updated{' '}
-                              {new Date(d.updatedAt).toLocaleDateString(undefined, {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
+                              {t('list.updated', {
+                                date: new Date(d.updatedAt).toLocaleDateString(undefined, {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                }),
                               })}
                             </span>
                           </p>
                         </div>
                         <nav className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
                           <Button asChild size="sm">
-                            <Link href={writeHref(d)}>Write</Link>
+                            <Link href={writeHref(d)}>{t('list.write')}</Link>
                           </Button>
                           {stages(d.id).map((stage) => (
                             <Link
@@ -466,7 +461,7 @@ export default function DocumentListPage() {
                           ))}
                           <details className="relative">
                             <summary className="cursor-pointer list-none text-muted hover:text-accent">
-                              More
+                              {t('common.more')}
                             </summary>
                             <div className="absolute right-0 z-10 mt-1 flex w-40 flex-col gap-1 rounded-md border border-line bg-surface p-2 shadow-lg">
                               {moreStages(d.id).map((stage) => (
@@ -485,7 +480,7 @@ export default function DocumentListPage() {
                                 data-testid="copy-thesis"
                                 className="text-left text-muted hover:text-accent disabled:opacity-50"
                               >
-                                {copying === d.id ? 'Copying…' : 'Make a copy'}
+                                {copying === d.id ? t('list.copying') : t('list.makeCopy')}
                               </button>
                             </div>
                           </details>
@@ -493,10 +488,10 @@ export default function DocumentListPage() {
                             type="button"
                             onClick={() => setDeleting(d)}
                             className="text-muted hover:text-danger"
-                            aria-label={`Delete “${d.title}”`}
+                            aria-label={t('list.deleteAria', { title: d.title })}
                             data-testid="delete-thesis"
                           >
-                            Delete
+                            {t('common.delete')}
                           </button>
                         </nav>
                       </div>
@@ -521,7 +516,7 @@ export default function DocumentListPage() {
           <section className="mt-8" data-testid="start-another">
             {formOpen ? (
               <>
-                <h2 className="text-[15px] font-semibold text-ink">Start another thesis</h2>
+                <h2 className="text-[15px] font-semibold text-ink">{t('list.startAnother')}</h2>
                 {createForm}
               </>
             ) : (
@@ -532,7 +527,7 @@ export default function DocumentListPage() {
                   setFocusForm(true);
                 }}
               >
-                Start another thesis
+                {t('list.startAnother')}
               </Button>
             )}
           </section>
@@ -541,21 +536,18 @@ export default function DocumentListPage() {
         <Dialog
           open={deleting !== null}
           onClose={() => setDeleting(null)}
-          title="Delete this thesis?"
+          title={t('list.deleteTitle')}
           testId="delete-thesis-dialog"
         >
-          <p className="text-muted">
-            “{deleting?.title}”, with its chapters, sources, versions and files, is removed for
-            good. Export a copy first if you want one.
-          </p>
+          <p className="text-muted">{t('list.deleteBody', { title: deleting?.title ?? '' })}</p>
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             {deleting ? (
               <Button asChild variant="secondary">
-                <Link href={`/app/d/${deleting.id}/submit`}>Export .docx first</Link>
+                <Link href={`/app/d/${deleting.id}/submit`}>{t('list.exportFirst')}</Link>
               </Button>
             ) : null}
             <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="danger"
@@ -563,7 +555,7 @@ export default function DocumentListPage() {
               onClick={() => deleting && void remove(deleting)}
               data-testid="delete-thesis-confirm"
             >
-              {deleteBusy ? 'Deleting…' : 'Delete'}
+              {deleteBusy ? t('common.deleting') : t('common.delete')}
             </Button>
           </div>
         </Dialog>

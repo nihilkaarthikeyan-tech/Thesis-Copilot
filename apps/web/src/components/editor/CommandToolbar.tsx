@@ -14,6 +14,8 @@
 import { aiTextToFragment, citationsInRange } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
+import { tNow } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 
 type DiffOp = { type: 'same' | 'add' | 'remove'; text: string };
@@ -61,11 +63,11 @@ function readable(text: string, editor: Editor | null, result: RunResult): strin
 }
 
 const COMMANDS = [
-  { key: 'expand', label: 'Expand' },
-  { key: 'formalise', label: 'Formalise' },
-  { key: 'simplify', label: 'Simplify' },
-  { key: 'shorten', label: 'Shorten' },
-  { key: 'consistency', label: 'Check consistency' },
+  { key: 'expand', label: 'command.expand' },
+  { key: 'formalise', label: 'command.formalise' },
+  { key: 'simplify', label: 'command.simplify' },
+  { key: 'shorten', label: 'command.shorten' },
+  { key: 'consistency', label: 'command.consistency' },
 ] as const;
 
 /** ADR-0066: more edits, behind one disclosure so the row stays short. */
@@ -105,6 +107,7 @@ export function CommandToolbar({
   /** Opens the Papers tab searching for the selected sentence (2026-10-04, Jenni study). */
   onFindPapers?: (text: string) => void;
 }) {
+  const { t } = useT();
   /**
    * A note on the selected passage (2026-10-04, from the Jenni study): only a guide could
    * comment, so a student could not leave themselves a "check this figure" on their own text.
@@ -171,13 +174,11 @@ export function CommandToolbar({
         setResult(answer);
         onUsageChange();
         if (answer.unchanged) {
-          onNotice('Nothing conflicted with the section or your glossary; the text is unchanged.');
+          onNotice(tNow('command.noConflict'));
         }
       } catch (e) {
         onNotice(
-          e instanceof ApiError
-            ? (e.problem.detail ?? e.problem.title)
-            : 'That command did not run.',
+          e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('command.failed'),
         );
       } finally {
         setBusy(null);
@@ -260,11 +261,13 @@ export function CommandToolbar({
         <>
           <div className="flex items-baseline justify-between text-sm">
             <p className="font-medium">
-              {result.command} · {result.originalWords} → {result.words} words
+              {t('command.resultWords', {
+                command: result.command,
+                from: result.originalWords,
+                to: result.words,
+              })}
             </p>
-            <span className="text-xs text-muted">
-              Nothing changes until you press Replace or Insert below.
-            </span>
+            <span className="text-xs text-muted">{t('command.nothingChanges')}</span>
           </div>
           {/* Ops are positional by nature: the key pairs the op's own text with its offset. */}
           <div
@@ -288,14 +291,15 @@ export function CommandToolbar({
           </div>
           {result.droppedCitations.length > 0 ? (
             <p role="alert" className="mt-2 text-xs text-warn">
-              {result.droppedCitations.length} citation
-              {result.droppedCitations.length === 1 ? '' : 's'} in the selection are missing from
-              the rewrite. Check the claims they supported before applying.
+              {t(
+                result.droppedCitations.length === 1 ? 'command.droppedOne' : 'command.droppedMany',
+                { n: result.droppedCitations.length },
+              )}
             </p>
           ) : null}
           <div className="mt-3 flex justify-end gap-3 text-sm">
             <button type="button" className="underline" onClick={() => setResult(null)}>
-              Discard
+              {t('common.discard')}
             </button>
             {lastCommand ? (
               <button
@@ -305,7 +309,7 @@ export function CommandToolbar({
                 data-testid="command-retry"
                 onClick={() => void run(lastCommand)}
               >
-                {busy ? 'Working…' : 'Try again'}
+                {busy ? t('command.working') : t('command.tryAgain')}
               </button>
             ) : null}
             <button
@@ -315,7 +319,7 @@ export function CommandToolbar({
               data-testid="command-insert-below"
               onClick={insertBelow}
             >
-              Insert below
+              {t('command.insertBelow')}
             </button>
             <button
               type="button"
@@ -324,15 +328,17 @@ export function CommandToolbar({
               className="rounded-md px-3 py-1 disabled:opacity-40 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
               data-testid="command-apply"
             >
-              Replace
+              {t('command.replace')}
             </button>
           </div>
         </>
       ) : (
         <>
           <p className="text-xs text-muted">
-            {selection ? `${selection.text.trim().split(/\s+/).length} words selected` : ''} · each
-            uses one of your section commands this month
+            {selection
+              ? t('command.wordsSelected', { n: selection.text.trim().split(/\s+/).length })
+              : ''}
+            {t('command.costNote')}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
@@ -342,7 +348,7 @@ export function CommandToolbar({
               onClick={() => setNoteOpen((open) => !open)}
               className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
             >
-              Comment
+              {t('command.comment')}
             </button>
             {onFindPapers ? (
               <button
@@ -351,7 +357,7 @@ export function CommandToolbar({
                 onClick={() => selection && onFindPapers(selection.text)}
                 className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                Find papers
+                {t('common.findPapers')}
               </button>
             ) : null}
             {onAskChat ? (
@@ -361,7 +367,7 @@ export function CommandToolbar({
                 onClick={() => selection && onAskChat(selection.text)}
                 className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                Ask chat
+                {t('command.askChat')}
               </button>
             ) : null}
             {COMMANDS.map((c) => (
@@ -372,7 +378,7 @@ export function CommandToolbar({
                 onClick={() => void run(c.key)}
                 className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
               >
-                {busy === c.key ? 'Working…' : c.label}
+                {busy === c.key ? t('command.working') : t(c.label)}
               </button>
             ))}
             <details className="w-full" data-testid="more-edits">
@@ -414,20 +420,20 @@ export function CommandToolbar({
                   .then(() => {
                     setNote('');
                     setNoteOpen(false);
-                    onNotice('Comment added. It is listed under Review, on the passage.');
+                    onNotice(tNow('command.commentAdded'));
                   })
                   .catch((error: unknown) =>
                     onNotice(
                       error instanceof ApiError
                         ? (error.problem.detail ?? error.problem.title)
-                        : 'The comment was not saved. Try again.',
+                        : tNow('command.commentFailed'),
                     ),
                   )
                   .finally(() => setSavingNote(false));
               }}
             >
               <label className="text-xs text-muted" htmlFor="own-comment">
-                Your comment on the selected text
+                {t('command.commentLabel')}
               </label>
               <textarea
                 id="own-comment"
@@ -436,14 +442,14 @@ export function CommandToolbar({
                 maxLength={2000}
                 rows={2}
                 className="rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
-                placeholder="e.g. check this figure against the 2023 report"
+                placeholder={t('command.commentPlaceholder')}
               />
               <button
                 type="submit"
                 disabled={savingNote || !note.trim()}
                 className="justify-self-start rounded-md bg-accent px-3 py-1 text-sm font-semibold text-accent-ink disabled:opacity-50"
               >
-                {savingNote ? 'Saving…' : 'Save comment'}
+                {savingNote ? t('common.saving') : t('command.saveComment')}
               </button>
             </form>
           ) : null}

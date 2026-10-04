@@ -30,6 +30,8 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MessageKey, tNow } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { API_URL, ApiError, api } from '@/lib/api';
 import { chapterLabel } from '@/lib/chapter-label';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
@@ -153,14 +155,17 @@ type ChapterView = {
 type Usage = { actions: Array<{ action: string; used: number; cap: number; remaining: number }> };
 type Timing = { ttfbMs: number; latencyMs: number };
 
-const STATUS_LABEL: Record<AutosaveStatus, string> = {
-  idle: 'Saved',
-  dirty: 'Unsaved changes',
-  saving: 'Saving…',
-  saved: 'Saved',
-  conflict: 'Changed elsewhere',
-  error: 'Save failed — retrying',
+const STATUS_LABEL: Record<AutosaveStatus, MessageKey> = {
+  idle: 'editor.status.idle',
+  dirty: 'editor.status.dirty',
+  saving: 'editor.status.saving',
+  saved: 'editor.status.saved',
+  conflict: 'editor.status.conflict',
+  error: 'editor.status.error',
 };
+
+/** The panel tabs, in order; each label is `editor.tab.<id>`. */
+const TABS = ['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const;
 
 /** The passage behind a citation and its paper's record, for the hover card and the evidence card. */
 async function resolvePassage(
@@ -203,6 +208,7 @@ type Notice = { text: string; action: 'findPapers' | null };
 
 export function ThesisEditor({ documentId, chapterId }: { documentId: string; chapterId: string }) {
   const router = useRouter();
+  const { t } = useT();
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [chapter, setChapter] = useState<ChapterView | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -236,7 +242,7 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.problem.status === 401) router.replace('/sign-in');
-        else setError(e instanceof Error ? e.message : 'Could not load the chapter.');
+        else setError(e instanceof Error ? e.message : tNow('editor.loadError'));
       });
     refreshUsage();
     return () => {
@@ -285,14 +291,14 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
           {error}
         </p>
         <Link href="/app" className="mt-4 inline-block text-sm underline">
-          Back to your theses
+          {t('proposal.back')}
         </Link>
       </main>
     );
   }
 
   if (!doc || !chapter || liveEmail === undefined) {
-    return <p className="p-6 text-sm text-muted">Loading chapter…</p>;
+    return <p className="p-6 text-sm text-muted">{t('editor.loadingChapter')}</p>;
   }
 
   return (
@@ -324,6 +330,7 @@ function ChapterEditor({
   /** The outline is being built from the proposal; the chapter list fills in when it is done. */
   outlineBuilding: boolean;
 }) {
+  const { t, rich } = useT();
   const [live] = useState<LiveDoc | null>(() => (liveEmail ? createLiveDoc(liveEmail) : null));
   const [liveState, setLiveState] = useState<{
     synced: boolean;
@@ -488,9 +495,7 @@ function ChapterEditor({
                 return;
               }
               retriedRef.current = false;
-              setNotice(
-                'The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute.',
-              );
+              setNotice(tNow('editor.notice.serviceDown'));
               return;
             }
             setNotice(e.message);
@@ -507,14 +512,12 @@ function ChapterEditor({
               // The Sources panel looks again now and once the search has had time to land.
               window.dispatchEvent(new Event(LIBRARY_CHANGED));
               setTimeout(() => window.dispatchEvent(new Event(LIBRARY_CHANGED)), 60_000);
-              setNotice(
-                `No source in your library covers this yet${gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.`,
-              );
+              setNotice(tNow('editor.notice.findingSources', { gap }));
               return;
             }
             if (info.needsSource) {
               setNotice({
-                text: `No source in your library covers this yet${gap}. Find papers on it to continue.`,
+                text: tNow('editor.notice.needsSource', { gap }),
                 action: 'findPapers',
               });
               return;
@@ -525,22 +528,18 @@ function ChapterEditor({
               if (info.pinned === 0) {
                 setNotice({
                   text: info.empty
-                    ? 'Your library has nothing to cite yet, so there was no suggestion. Find papers for this thesis first.'
-                    : 'That suggestion had no sources to draw on. Find papers to get cited text.',
+                    ? tNow('editor.notice.emptyLibrary')
+                    : tNow('editor.notice.noSources'),
                   action: 'findPapers',
                 });
               } else {
-                setNotice(
-                  'None of the pinned sources matched this passage, so the suggestion cites nothing.',
-                );
+                setNotice(tNow('editor.notice.noPinnedMatch'));
               }
               return;
             }
             // Grounded but the model wrote nothing: Suggest must never look like it did nothing.
             if (info.empty) {
-              setNotice(
-                'No suggestion this time. Write a sentence or two of your own, then ask again.',
-              );
+              setNotice(tNow('editor.notice.empty'));
             }
           },
           // PHASES 3.7: an inline input, not window.prompt, which blocks the page and steals
@@ -795,7 +794,7 @@ function ChapterEditor({
           return true;
         })
         .run();
-      setNotice('Added to the chapter. Read it through — it is marked as AI-written.');
+      setNotice(tNow('editor.notice.chatAdded'));
     },
     [],
   );
@@ -861,8 +860,8 @@ function ChapterEditor({
           method: 'POST',
           body: JSON.stringify({ reason: 'MANUAL' }),
         })
-          .then(() => setNotice('Snapshot saved'))
-          .catch(() => setNotice('Snapshot failed'));
+          .then(() => setNotice(tNow('editor.snapshotSaved')))
+          .catch(() => setNotice(tNow('editor.snapshotFailed')));
       }
     };
     window.addEventListener('keydown', onKey);
@@ -931,8 +930,8 @@ function ChapterEditor({
             method: 'POST',
             body: JSON.stringify({ reason: 'MANUAL' }),
           })
-            .then(() => setNotice('Snapshot saved'))
-            .catch(() => setNotice('Snapshot failed')),
+            .then(() => setNotice(tNow('editor.snapshotSaved')))
+            .catch(() => setNotice(tNow('editor.snapshotFailed'))),
         );
       }
     };
@@ -1039,9 +1038,7 @@ function ChapterEditor({
       .setTextSelection({ from: flag.from, to: flag.to })
       .scrollIntoView()
       .run();
-    setNotice(
-      `Selected the flagged text. Use the toolbar above it to rewrite — the flag says: ${flag.description}`,
-    );
+    setNotice(tNow('editor.notice.flagSelected', { flag: flag.description }));
   }, []);
 
   const assist = usage?.actions.find((a) => a.action === 'ASSIST');
@@ -1059,7 +1056,7 @@ function ChapterEditor({
             breadcrumb shrank to "Theses / /". Now it wraps to its own line before it vanishes. */}
         <div className="flex min-w-[14rem] flex-1 items-baseline gap-2 text-[13px]">
           <Link href="/app" className="shrink-0 text-muted hover:text-accent">
-            Theses
+            {t('common.theses')}
           </Link>
           <span className="shrink-0 text-faint" aria-hidden="true">
             /
@@ -1084,22 +1081,24 @@ function ChapterEditor({
           >
             {live
               ? conflict
-                ? 'Changed elsewhere'
+                ? t('editor.status.conflict')
                 : !liveState.online
-                  ? 'Reconnecting…'
+                  ? t('editor.live.reconnecting')
                   : !liveState.synced
-                    ? 'Connecting…'
+                    ? t('editor.live.connecting')
                     : liveState.others.length === 0
-                      ? 'Live'
-                      : `Live with ${liveState.others.join(', ')}`
-              : STATUS_LABEL[status]}
+                      ? t('editor.live.live')
+                      : t('editor.live.with', { names: liveState.others.join(', ') })
+              : t(STATUS_LABEL[status])}
           </span>
           <span
             data-testid="usage-meter"
             className="tnum mr-1 whitespace-nowrap border-l border-line pl-3 text-[12px] text-muted"
           >
-            Assist {assist ? `${assist.used}/${assist.cap}` : '–'} · Draft{' '}
-            {draft ? `${draft.used}/${draft.cap}` : '–'}
+            {t('editor.usage', {
+              assist: assist ? `${assist.used}/${assist.cap}` : '–',
+              draft: draft ? `${draft.used}/${draft.cap}` : '–',
+            })}
           </span>
           <Button
             variant="ghost"
@@ -1107,7 +1106,7 @@ function ChapterEditor({
             data-testid="open-history"
             onClick={() => setHistoryOpen(true)}
           >
-            History
+            {t('editor.history')}
           </Button>
           <ShareButton documentId={doc.id} />
           <ThemeToggle className="mr-1 hidden xl:inline-flex" />
@@ -1117,7 +1116,7 @@ function ChapterEditor({
             className="hidden md:inline-flex"
             onClick={() => setHowOpen(true)}
           >
-            How suggestions work
+            {t('editor.howSuggestions')}
           </Button>
           <Button
             variant="ghost"
@@ -1125,7 +1124,7 @@ function ChapterEditor({
             className="hidden md:inline-flex"
             onClick={() => setFeedbackOpen((open) => !open)}
           >
-            Feedback
+            {t('editor.feedback')}
           </Button>
           {/* The same two, on a screen too narrow for them to sit in the bar. */}
           <span className="relative md:hidden">
@@ -1136,7 +1135,7 @@ function ChapterEditor({
               data-testid="header-more"
               onClick={() => setMoreOpen((open) => !open)}
             >
-              More
+              {t('common.more')}
             </Button>
             {moreOpen ? (
               <span className="absolute right-0 top-full z-40 mt-1 grid w-52 rounded-md border border-line bg-surface p-1 shadow-lg">
@@ -1148,7 +1147,7 @@ function ChapterEditor({
                     setHowOpen(true);
                   }}
                 >
-                  How suggestions work
+                  {t('editor.howSuggestions')}
                 </button>
                 <a
                   href="/help"
@@ -1157,7 +1156,7 @@ function ChapterEditor({
                   className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
                   onClick={() => setMoreOpen(false)}
                 >
-                  Help
+                  {t('common.help')}
                 </a>
                 <button
                   type="button"
@@ -1167,7 +1166,7 @@ function ChapterEditor({
                     setFeedbackOpen(true);
                   }}
                 >
-                  Feedback
+                  {t('editor.feedback')}
                 </button>
               </span>
             ) : null}
@@ -1179,14 +1178,14 @@ function ChapterEditor({
               data-testid="export-link"
               className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-accent transition-colors hover:bg-sunk"
             >
-              Download {exported.filename}
+              {t('editor.download', { file: exported.filename })}
             </a>
           ) : (
             <button
               type="button"
               className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-45"
               disabled={exporting}
-              title="Plain .docx of this chapter (FR-8.1)"
+              title={t('editor.exportTitle')}
               onClick={() => {
                 // FR-8.1: the export is a signed link, shown rather than opened, because a tab
                 // opened after an await is what popup blockers exist to stop.
@@ -1200,13 +1199,13 @@ function ChapterEditor({
                     setNotice(
                       e instanceof ApiError
                         ? (e.problem.detail ?? e.problem.title)
-                        : 'The export did not complete. Try again in a minute.',
+                        : tNow('editor.exportError'),
                     ),
                   )
                   .finally(() => setExporting(false));
               }}
             >
-              {exporting ? 'Exporting…' : 'Export .docx'}
+              {exporting ? t('editor.exporting') : t('editor.export')}
             </button>
           )}
         </div>
@@ -1217,9 +1216,9 @@ function ChapterEditor({
           role="alert"
           className="border-b border-warn/40 bg-warn/10 px-4 py-2 text-sm text-warn"
         >
-          This chapter was changed elsewhere — reload to continue. Autosave is paused.{' '}
+          {t('editor.conflictBanner')}{' '}
           <button type="button" className="underline" onClick={() => window.location.reload()}>
-            Reload
+            {t('editor.reload')}
           </button>
         </div>
       ) : null}
@@ -1230,7 +1229,7 @@ function ChapterEditor({
           data-testid="restore-banner"
           className="border-b border-line bg-accent-soft px-4 py-2 text-sm text-ink"
         >
-          An older version of this chapter is back. What you had before is saved as a version.{' '}
+          {t('editor.restoreBanner')}{' '}
           <button
             type="button"
             className="font-semibold underline"
@@ -1250,11 +1249,11 @@ function ChapterEditor({
                 })
                 .catch(() => {
                   setUndoing(false);
-                  setNotice('The undo did not complete. The version is still in History.');
+                  setNotice(tNow('editor.undoError'));
                 });
             }}
           >
-            {undoing ? 'Undoing…' : 'Undo'}
+            {undoing ? t('editor.undoing') : t('editor.undo')}
           </button>{' '}
           ·{' '}
           <button
@@ -1267,15 +1266,14 @@ function ChapterEditor({
               setUndoVersionId(null);
             }}
           >
-            Dismiss
+            {t('common.dismiss')}
           </button>
         </div>
       ) : null}
 
       {localDraft && editor ? (
         <div role="status" className="border-b border-line bg-paper px-4 py-2 text-sm">
-          Unsaved changes from {new Date(localDraft.savedAt).toLocaleTimeString()} were found in
-          this browser.{' '}
+          {t('editor.localDraft', { time: new Date(localDraft.savedAt).toLocaleTimeString() })}{' '}
           <button
             type="button"
             className="underline"
@@ -1284,7 +1282,7 @@ function ChapterEditor({
               setLocalDraft(null);
             }}
           >
-            Restore
+            {t('editor.restore')}
           </button>{' '}
           ·{' '}
           <button
@@ -1295,7 +1293,7 @@ function ChapterEditor({
               setLocalDraft(null);
             }}
           >
-            Discard
+            {t('common.discard')}
           </button>
         </div>
       ) : null}
@@ -1310,12 +1308,12 @@ function ChapterEditor({
           }`}
         >
           <p className="mb-2 flex items-baseline justify-between gap-2">
-            <span className="eyebrow">Chapters</span>
+            <span className="eyebrow">{t('editor.chapters')}</span>
             <Link
               href={`/app/d/${doc.id}/outline`}
               className="text-[11px] font-semibold text-muted hover:text-accent"
             >
-              Outline
+              {t('editor.outline')}
             </Link>
           </p>
           <ul className="grid list-none gap-0.5 p-0">
@@ -1341,7 +1339,7 @@ function ChapterEditor({
           </ul>
           {outlineBuilding ? (
             <p className="mt-3 text-[12px] text-muted" role="status" data-testid="outline-building">
-              Building your chapters from the proposal… they appear here in a minute.
+              {t('editor.outlineBuilding')}
             </p>
           ) : null}
           <WordImport documentId={doc.id} />
@@ -1357,23 +1355,20 @@ function ChapterEditor({
             className="mx-auto mb-4 max-w-[72ch]"
           />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
-            This is your chapter. Write as you normally would.{' '}
-            {autoSuggest
-              ? 'A suggestion appears when you pause'
-              : 'Press Suggest, below, when you want a suggestion'}
+            {t('editor.hint.intro')} {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
             {autoSuggest ? null : (
               <span className="hidden sm:inline">
                 {' '}
-                (or <kbd>Ctrl+/</kbd>)
+                {rich('editor.hint.orKey', { key: <kbd>Ctrl+/</kbd> })}
               </span>
             )}
-            .{' '}
+            {t('editor.hint.stop')}{' '}
             <span className="hidden sm:inline">
-              <kbd>Tab</kbd> keeps it and <kbd>Esc</kbd> dismisses it.{' '}
+              {rich('editor.hint.keys', { tab: <kbd>Tab</kbd>, esc: <kbd>Esc</kbd> })}{' '}
             </span>
-            It cites only the papers in your library.{' '}
+            {t('editor.hint.cites')}{' '}
             <button type="button" className="underline" onClick={() => setHowOpen(true)}>
-              How suggestions work (90 seconds)
+              {t('editor.hint.how')}
             </button>
           </FirstRunHint>
           {noticeState ? (
@@ -1388,16 +1383,16 @@ function ChapterEditor({
                     href={`/app/d/${doc.id}/sources?tab=discover`}
                     className="shrink-0 rounded bg-accent px-2 py-1 text-xs font-medium text-paper"
                   >
-                    Find papers
+                    {t('common.findPapers')}
                   </a>
                 ) : null}
                 <button
                   type="button"
-                  aria-label="Close message"
+                  aria-label={t('editor.closeMessage')}
                   className="shrink-0 text-xs text-muted underline"
                   onClick={() => setNotice(null)}
                 >
-                  Close
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -1448,22 +1443,24 @@ function ChapterEditor({
               onClick={() => editor?.chain().focus().requestSuggestion().run()}
               className="rounded-md bg-accent px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink hover:bg-accent-hover"
             >
-              Suggest
+              {t('editor.suggest')}
             </button>
-            {[
-              ['Ctrl+/', 'suggestion'],
-              ['Tab', 'accept'],
-              ['Alt+→', 'a word'],
-              ['Shift+→', 'guided'],
-              ['Esc', 'dismiss'],
-              ['Ctrl+Shift+D', 'draft a section'],
-              ['@', 'cite'],
-              ['Ctrl+S', 'snapshot'],
-            ].map(([key, what]) => (
+            {(
+              [
+                ['Ctrl+/', 'editor.key.suggestion'],
+                ['Tab', 'editor.key.accept'],
+                ['Alt+→', 'editor.key.word'],
+                ['Shift+→', 'editor.key.guided'],
+                ['Esc', 'editor.key.dismiss'],
+                ['Ctrl+Shift+D', 'editor.key.draft'],
+                ['@', 'editor.key.cite'],
+                ['Ctrl+S', 'editor.key.snapshot'],
+              ] as const
+            ).map(([key, what]) => (
               // Keys mean nothing on a touch screen, so they start at the small-tablet width.
               <span key={key} className="hidden items-center gap-1.5 sm:flex">
                 <Kbd>{key}</Kbd>
-                {what}
+                {t(what)}
               </span>
             ))}
             <WordCount editor={editor} className="ml-auto" />
@@ -1481,30 +1478,30 @@ function ChapterEditor({
           }`}
         >
           <div className="flex items-center justify-between border-b border-line px-3 py-2 lg:hidden">
-            <span className="eyebrow">Tools</span>
+            <span className="eyebrow">{t('editor.tools')}</span>
             <button
               type="button"
               className="text-xs text-muted underline"
               onClick={() => setDrawer(null)}
             >
-              Close
+              {t('common.close')}
             </button>
           </div>
           <div className="flex border-b border-line" role="tablist">
-            {(['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
+            {TABS.map((id) => (
               <button
-                key={t}
+                key={id}
                 type="button"
                 role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
                 className={`flex-1 border-b-2 px-2 py-2 text-[12px] capitalize transition-colors ${
-                  tab === t
+                  tab === id
                     ? 'border-accent bg-surface font-semibold text-ink'
                     : 'border-transparent text-muted hover:text-ink'
                 }`}
               >
-                {t}
+                {t(`editor.tab.${id}`)}
               </button>
             ))}
           </div>
@@ -1584,7 +1581,7 @@ function ChapterEditor({
       {drawer ? (
         <button
           type="button"
-          aria-label="Close"
+          aria-label={t('common.close')}
           data-testid="drawer-backdrop"
           className={`fixed inset-0 z-30 bg-ink/30 ${drawer === 'chapters' ? 'md:hidden' : 'lg:hidden'}`}
           onClick={() => setDrawer(null)}
@@ -1593,7 +1590,7 @@ function ChapterEditor({
 
       {/* Where the side panels are, on a screen too narrow to show them beside the text. */}
       <nav
-        aria-label="Chapter and tools"
+        aria-label={t('editor.chapterAndTools')}
         data-testid="mobile-bar"
         className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-line bg-surface lg:hidden"
       >
@@ -1603,26 +1600,26 @@ function ChapterEditor({
           aria-expanded={drawer === 'chapters'}
           onClick={() => setDrawer((open) => (open === 'chapters' ? null : 'chapters'))}
         >
-          Chapters
+          {t('editor.chapters')}
         </button>
-        {(['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const).map((t) => (
+        {TABS.map((id) => (
           <button
-            key={t}
+            key={id}
             type="button"
-            data-testid={`mobile-${t}`}
+            data-testid={`mobile-${id}`}
             className={`flex-1 shrink-0 px-2 py-3 text-[12px] capitalize ${
-              drawer === 'panel' && tab === t ? 'font-semibold text-accent' : 'text-muted'
+              drawer === 'panel' && tab === id ? 'font-semibold text-accent' : 'text-muted'
             }`}
             onClick={() => {
-              if (drawer === 'panel' && tab === t) {
+              if (drawer === 'panel' && tab === id) {
                 setDrawer(null);
                 return;
               }
-              setTab(t);
+              setTab(id);
               setDrawer('panel');
             }}
           >
-            {t}
+            {t(`editor.tab.${id}`)}
           </button>
         ))}
       </nav>
@@ -1684,17 +1681,14 @@ function ChapterEditor({
               .then(() => {
                 setFeedbackOpen(false);
                 setFeedbackText('');
-                setNotice(
-                  'Thanks — your note is on its way, with the ids of your last few suggestions.',
-                );
+                setNotice(tNow('editor.feedbackSent'));
               })
-              .catch(() => setNotice('The note did not send. Try again in a minute.'))
+              .catch(() => setNotice(tNow('editor.feedbackFailed')))
               .finally(() => setFeedbackBusy(false));
           }}
         >
           <label className="text-xs text-muted" htmlFor="feedback-text">
-            What happened? The admin gets this note, this document’s id and your last five
-            suggestion events — not your text.
+            {t('editor.feedbackLabel')}
           </label>
           <textarea
             id="feedback-text"
@@ -1706,14 +1700,14 @@ function ChapterEditor({
           />
           <div className="mt-2 flex justify-end gap-3 text-xs">
             <button type="button" className="underline" onClick={() => setFeedbackOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={feedbackBusy || !feedbackText.trim()}
               className="rounded-md px-3 py-1 disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
             >
-              {feedbackBusy ? 'Sending…' : 'Send'}
+              {feedbackBusy ? t('common.sending') : t('common.send')}
             </button>
           </div>
         </form>

@@ -53,6 +53,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { useT } from '@/i18n/react';
 import { cn } from '@/lib/utils';
 import { MathHelp } from './MathHelp';
 
@@ -276,6 +277,7 @@ function Divider() {
 
 /** Paragraph / Heading 2 / Heading 3 / Quote, as one select rather than four buttons. */
 function BlockStyle({ editor }: { editor: Editor }) {
+  const { t } = useT();
   const value = editor.isActive('heading', { level: 2 })
     ? 'h2'
     : editor.isActive('heading', { level: 3 })
@@ -286,7 +288,7 @@ function BlockStyle({ editor }: { editor: Editor }) {
 
   return (
     <select
-      aria-label="Text style"
+      aria-label={t('fmt.textStyle')}
       data-testid="block-style"
       value={value}
       onMouseDown={(e) => e.stopPropagation()}
@@ -308,10 +310,10 @@ function BlockStyle({ editor }: { editor: Editor }) {
       }}
       className="h-7 shrink-0 rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink transition-colors hover:bg-sunk"
     >
-      <option value="p">Text</option>
-      <option value="h2">Heading</option>
-      <option value="h3">Subheading</option>
-      <option value="quote">Quote</option>
+      <option value="p">{t('fmt.style.text')}</option>
+      <option value="h2">{t('fmt.style.heading')}</option>
+      <option value="h3">{t('fmt.style.subheading')}</option>
+      <option value="quote">{t('fmt.style.quote')}</option>
     </select>
   );
 }
@@ -353,6 +355,7 @@ export function FormatToolbar({
   onInsertDiagram?: () => void;
 }) {
   useEditorTick(editor);
+  const { t } = useT();
 
   const fileRef = useRef<HTMLInputElement>(null);
   const prompt = useInlinePrompt();
@@ -496,7 +499,7 @@ export function FormatToolbar({
     <div
       data-testid="format-toolbar"
       role="toolbar"
-      aria-label="Formatting"
+      aria-label={t('fmt.toolbar')}
       className={cn(
         // The negative margin cancels the page's own padding so the bar runs edge to edge; it has
         // to match that padding at every width, or on a phone the bar is wider than the screen.
@@ -508,14 +511,14 @@ export function FormatToolbar({
     >
       <div className="mx-auto flex max-w-[72ch] flex-wrap items-center gap-0.5">
         <Tool
-          label="Undo"
+          label={t('fmt.undo')}
           disabled={!editor.can().undo()}
           onClick={() => editor.chain().focus().undo().run()}
         >
           <Undo2 className="size-[15px]" strokeWidth={1.75} />
         </Tool>
         <Tool
-          label="Redo"
+          label={t('fmt.redo')}
           disabled={!editor.can().redo()}
           onClick={() => editor.chain().focus().redo().run()}
         >
@@ -527,7 +530,7 @@ export function FormatToolbar({
         <Divider />
 
         <Tool
-          label="Bold (Ctrl+B)"
+          label={t('fmt.bold')}
           testId="fmt-bold"
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -535,7 +538,7 @@ export function FormatToolbar({
           <Bold className="size-[15px]" strokeWidth={2} />
         </Tool>
         <Tool
-          label="Italic (Ctrl+I)"
+          label={t('fmt.italic')}
           testId="fmt-italic"
           active={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -543,14 +546,14 @@ export function FormatToolbar({
           <Italic className="size-[15px]" strokeWidth={2} />
         </Tool>
         <Tool
-          label="Underline (Ctrl+U)"
+          label={t('fmt.underline')}
           active={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         >
           <UnderlineIcon className="size-[15px]" strokeWidth={2} />
         </Tool>
         <Tool
-          label="Strikethrough"
+          label={t('fmt.strike')}
           active={editor.isActive('strike')}
           onClick={() => editor.chain().focus().toggleStrike().run()}
         >
@@ -560,28 +563,28 @@ export function FormatToolbar({
         <Divider />
 
         <Tool
-          label="Superscript"
+          label={t('fmt.superscript')}
           active={editor.isActive('superscript')}
           onClick={() => editor.chain().focus().toggleSuperscript().run()}
         >
           <SuperscriptIcon className="size-[15px]" strokeWidth={1.75} />
         </Tool>
         <Tool
-          label="Subscript"
+          label={t('fmt.subscript')}
           active={editor.isActive('subscript')}
           onClick={() => editor.chain().focus().toggleSubscript().run()}
         >
           <SubscriptIcon className="size-[15px]" strokeWidth={1.75} />
         </Tool>
         <Tool
-          label="Inline code"
+          label={t('fmt.inlineCode')}
           active={editor.isActive('code')}
           onClick={() => editor.chain().focus().toggleCode().run()}
         >
           <Code className="size-[15px]" strokeWidth={1.75} />
         </Tool>
         <Tool
-          label="Code block"
+          label={t('fmt.codeBlock')}
           active={editor.isActive('codeBlock')}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         >
@@ -591,21 +594,21 @@ export function FormatToolbar({
         <Divider />
 
         <Tool
-          label="Bulleted list"
+          label={t('fmt.bulletList')}
           active={editor.isActive('bulletList')}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
           <List className="size-[15px]" strokeWidth={1.75} />
         </Tool>
         <Tool
-          label="Numbered list"
+          label={t('fmt.orderedList')}
           active={editor.isActive('orderedList')}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
           <ListOrdered className="size-[15px]" strokeWidth={1.75} />
         </Tool>
         <Tool
-          label="Block quote"
+          label={t('fmt.blockquote')}
           active={editor.isActive('blockquote')}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
@@ -615,7 +618,7 @@ export function FormatToolbar({
         <Divider />
 
         <Tool
-          label={editor.isActive('link') ? 'Edit link' : 'Add link'}
+          label={editor.isActive('link') ? t('fmt.editLink') : t('fmt.addLink')}
           active={editor.isActive('link')}
           onClick={setLink}
         >
@@ -623,7 +626,7 @@ export function FormatToolbar({
         </Tool>
         {editor.isActive('link') ? (
           <Tool
-            label="Remove link"
+            label={t('fmt.removeLink')}
             onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}
           >
             <Link2Off className="size-[15px]" strokeWidth={1.75} />
@@ -631,7 +634,7 @@ export function FormatToolbar({
         ) : null}
 
         <Tool
-          label="Insert table"
+          label={t('fmt.insertTable')}
           testId="fmt-table"
           active={inTable}
           onClick={() =>
@@ -645,7 +648,7 @@ export function FormatToolbar({
             button that teaches people the feature is broken. */}
         {refTargets.length > 0 ? (
           <select
-            aria-label="Refer to a figure or table"
+            aria-label={t('fmt.referTo')}
             data-testid="fmt-crossref"
             value=""
             onMouseDown={(e) => e.stopPropagation()}
@@ -662,23 +665,23 @@ export function FormatToolbar({
             }}
             className="h-7 shrink-0 rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink transition-colors hover:bg-sunk"
           >
-            <option value="">Refer to…</option>
+            <option value="">{t('fmt.referToOption')}</option>
             {refTargets.map((target) => (
               <option key={target.refId} value={target.refId}>
-                {target.kind === 'figure' ? 'Figure' : 'Table'} {target.index}
+                {t(target.kind === 'figure' ? 'fmt.figureN' : 'fmt.tableN', { n: target.index })}
               </option>
             ))}
           </select>
         ) : null}
 
-        <Tool label="Equation (LaTeX)" testId="fmt-math" onClick={() => insertMath('inline')}>
+        <Tool label={t('fmt.equation')} testId="fmt-math" onClick={() => insertMath('inline')}>
           <Sigma className="size-[15px]" strokeWidth={1.75} />
         </Tool>
-        <Tool label="Display equation" onClick={() => insertMath('block')}>
+        <Tool label={t('fmt.displayEquation')} onClick={() => insertMath('block')}>
           <span className="text-[13px] font-semibold leading-none">Σ⁺</span>
         </Tool>
         <Tool
-          label={editor.isActive('footnote') ? 'Edit footnote' : 'Footnote'}
+          label={editor.isActive('footnote') ? t('fmt.editFootnote') : t('fmt.footnote')}
           testId="fmt-footnote"
           active={editor.isActive('footnote')}
           onClick={footnote}
@@ -688,7 +691,11 @@ export function FormatToolbar({
 
         {onInsertImage ? (
           <>
-            <Tool label="Insert figure" testId="fmt-image" onClick={() => fileRef.current?.click()}>
+            <Tool
+              label={t('fmt.insertFigure')}
+              testId="fmt-image"
+              onClick={() => fileRef.current?.click()}
+            >
               {/* biome-ignore lint/a11y/noSvgWithoutTitle: the button carries the label. */}
               <svg
                 viewBox="0 0 24 24"
@@ -724,30 +731,30 @@ export function FormatToolbar({
 
         {onInsertChart ? (
           <Tool
-            label={chartSelected ? 'Edit chart' : 'Insert chart'}
+            label={chartSelected ? t('fmt.editChart') : t('fmt.insertChart')}
             testId="fmt-chart"
             active={chartSelected}
             onClick={onInsertChart}
           >
-            <span className="text-[11px] font-medium leading-none">Chart</span>
+            <span className="text-[11px] font-medium leading-none">{t('fmt.chart')}</span>
           </Tool>
         ) : null}
 
         {onInsertDiagram ? (
           <Tool
-            label={diagramSelected ? 'Edit diagram' : 'Insert diagram'}
+            label={diagramSelected ? t('fmt.editDiagram') : t('fmt.insertDiagram')}
             testId="fmt-diagram"
             active={diagramSelected}
             onClick={onInsertDiagram}
           >
-            <span className="text-[11px] font-medium leading-none">Diagram</span>
+            <span className="text-[11px] font-medium leading-none">{t('fmt.diagram')}</span>
           </Tool>
         ) : null}
 
         {/* A caption for the selected figure or the table the cursor is in. */}
         {inTable || editor.isActive('image') ? (
-          <Tool label="Caption" testId="fmt-caption" onClick={setCaption}>
-            <span className="text-[11px] font-medium leading-none">Caption</span>
+          <Tool label={t('fmt.caption')} testId="fmt-caption" onClick={setCaption}>
+            <span className="text-[11px] font-medium leading-none">{t('fmt.caption')}</span>
           </Tool>
         ) : null}
 
@@ -756,21 +763,27 @@ export function FormatToolbar({
         {inTable ? (
           <>
             <Divider />
-            <span className="shrink-0 text-[11px] text-faint">Table</span>
-            <Tool label="Row above" onClick={() => editor.chain().focus().addRowBefore().run()}>
+            <span className="shrink-0 text-[11px] text-faint">{t('fmt.table')}</span>
+            <Tool
+              label={t('fmt.rowAbove')}
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+            >
               <span className="text-[12px] leading-none">↑+</span>
             </Tool>
-            <Tool label="Row below" onClick={() => editor.chain().focus().addRowAfter().run()}>
+            <Tool
+              label={t('fmt.rowBelow')}
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+            >
               <span className="text-[12px] leading-none">↓+</span>
             </Tool>
             <Tool
-              label="Column left"
+              label={t('fmt.columnLeft')}
               onClick={() => editor.chain().focus().addColumnBefore().run()}
             >
               <span className="text-[12px] leading-none">←+</span>
             </Tool>
             <Tool
-              label="Column right"
+              label={t('fmt.columnRight')}
               onClick={() => editor.chain().focus().addColumnAfter().run()}
             >
               <span className="text-[12px] leading-none">→+</span>
@@ -779,36 +792,45 @@ export function FormatToolbar({
                 cell. Shown only when they would do something, like the rest of this group. */}
             {editor.can().mergeCells() ? (
               <Tool
-                label="Merge cells"
+                label={t('fmt.mergeCells')}
                 testId="fmt-merge-cells"
                 onClick={() => editor.chain().focus().mergeCells().run()}
               >
-                <span className="text-[11px] font-medium leading-none">Merge</span>
+                <span className="text-[11px] font-medium leading-none">{t('fmt.merge')}</span>
               </Tool>
             ) : null}
             {editor.can().splitCell() ? (
               <Tool
-                label="Split cell"
+                label={t('fmt.splitCell')}
                 testId="fmt-split-cell"
                 onClick={() => editor.chain().focus().splitCell().run()}
               >
-                <span className="text-[11px] font-medium leading-none">Split</span>
+                <span className="text-[11px] font-medium leading-none">{t('fmt.split')}</span>
               </Tool>
             ) : null}
             <Tool
-              label="Header row"
+              label={t('fmt.headerRow')}
               testId="fmt-header-row"
               onClick={() => editor.chain().focus().toggleHeaderRow().run()}
             >
-              <span className="text-[11px] font-medium leading-none">Header</span>
+              <span className="text-[11px] font-medium leading-none">{t('fmt.header')}</span>
             </Tool>
-            <Tool label="Delete row" onClick={() => editor.chain().focus().deleteRow().run()}>
+            <Tool
+              label={t('fmt.deleteRow')}
+              onClick={() => editor.chain().focus().deleteRow().run()}
+            >
               <span className="text-[12px] leading-none">⌫R</span>
             </Tool>
-            <Tool label="Delete column" onClick={() => editor.chain().focus().deleteColumn().run()}>
+            <Tool
+              label={t('fmt.deleteColumn')}
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+            >
               <span className="text-[12px] leading-none">⌫C</span>
             </Tool>
-            <Tool label="Delete table" onClick={() => editor.chain().focus().deleteTable().run()}>
+            <Tool
+              label={t('fmt.deleteTable')}
+              onClick={() => editor.chain().focus().deleteTable().run()}
+            >
               <Trash2 className="size-[15px]" strokeWidth={1.75} />
             </Tool>
           </>

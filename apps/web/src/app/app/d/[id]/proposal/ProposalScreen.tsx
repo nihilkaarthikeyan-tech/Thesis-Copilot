@@ -19,6 +19,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import { type CrossPaper, CrossPaperFlags } from '@/components/proposal/CrossPaperFlags';
 import { PathAChat, type ProposalView } from '@/components/proposal/PathAChat';
+import { tNow } from '@/i18n';
+import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 
 type SeedPaper = {
@@ -83,6 +85,7 @@ async function startOutlineIfNone(documentId: string): Promise<void> {
 }
 
 export function ProposalScreen({ documentId }: { documentId: string }) {
+  const { t } = useT();
   const router = useRouter();
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [papers, setPapers] = useState<SeedPaper[] | null>(null);
@@ -111,7 +114,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
       setPapers(withExtraction);
     } catch (e) {
       if (e instanceof ApiError && e.problem.status === 401) router.replace('/sign-in');
-      else setError(e instanceof Error ? e.message : 'Could not load this proposal.');
+      else setError(e instanceof Error ? e.message : tNow('proposal.loadError'));
     }
   }, [documentId, router]);
 
@@ -166,7 +169,9 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
       await load();
     } catch (e) {
       setError(
-        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That upload did not work.',
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : tNow('proposal.uploadError'),
       );
     } finally {
       setUploading(false);
@@ -195,9 +200,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
       );
     } catch (e) {
       setError(
-        e instanceof ApiError
-          ? (e.problem.detail ?? e.problem.title)
-          : 'Could not save the proposal.',
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('proposal.saveError'),
       );
       setSaving(false);
     }
@@ -210,40 +213,35 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
           {error}
         </p>
         <Link href="/app" className="mt-4 inline-block text-sm underline">
-          Back to your theses
+          {t('proposal.back')}
         </Link>
       </main>
     );
   }
 
-  if (!doc || !papers) return <p className="p-6 text-sm text-muted">Loading…</p>;
+  if (!doc || !papers) return <p className="p-6 text-sm text-muted">{t('common.loading')}</p>;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <nav className="mb-6 flex items-center gap-2 text-sm text-muted">
         <Link href="/app" className="hover:underline">
-          Theses
+          {t('common.theses')}
         </Link>
         <span>/</span>
         <span className="text-ink">{doc.title}</span>
         <span>/</span>
-        <span>Proposal</span>
+        <span>{t('proposal.crumb')}</span>
       </nav>
 
       <h1 className="text-balance text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink">
-        {pathA
-          ? 'Turn your topic into a thesis proposal'
-          : 'Turn your paper into a thesis proposal'}
+        {pathA ? t('proposal.headingTopic') : t('proposal.headingPaper')}
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        {pathA
-          ? 'A short conversation narrows the topic; the skeleton it ends in is yours to edit. What you write here is what the AI reads later, never the version it drafted.'
-          : 'Everything below is a starting point taken from your paper. Edit any of it. What you write here is what the AI reads later, never the version it drafted.'}
+        {pathA ? t('proposal.ledeTopic') : t('proposal.ledePaper')}
       </p>
       {!pathA && papers && papers.length === 0 ? (
         <FirstRunHint id="proposal" className="mt-4 max-w-2xl">
-          Step 2 of 3: upload the paper. It is read once, and its references become your starting
-          library. This takes a minute or two.
+          {t('proposal.firstRun')}
         </FirstRunHint>
       ) : null}
 
@@ -275,7 +273,7 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
                 })
               }
             >
-              Fill it in myself instead
+              {t('proposal.byHand')}
             </button>
           )}
         </>
@@ -301,19 +299,19 @@ export function ProposalScreen({ documentId }: { documentId: string }) {
             disabled={saving || scope.workingTitle.trim().length === 0}
             className="rounded-md px-4 py-2 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
           >
-            {saving ? 'Saving…' : 'Continue to the editor'}
+            {saving ? t('common.saving') : t('proposal.continue')}
           </button>
           <Link href={`/app/d/${documentId}/outline`} className="text-sm underline">
-            Build the outline
+            {t('proposal.buildOutline')}
           </Link>
           {/* A topic-path thesis has no paper of its own; its sources come from Discover. */}
           {pathA ? (
             <Link href={`/app/d/${documentId}/sources?tab=discover`} className="text-sm underline">
-              Find papers for this topic
+              {t('proposal.findPapers')}
             </Link>
           ) : (
             <Link href={`/app/d/${documentId}/sources`} className="text-sm underline">
-              See the sources found in your paper
+              {t('proposal.seeSources')}
             </Link>
           )}
         </div>
@@ -331,6 +329,7 @@ function PaperStatus({
   uploading: boolean;
   onUpload: (file: File) => void;
 }) {
+  const { t } = useT();
   // No paper yet, or only ones that could not be read: offer the upload (again). A failed paper
   // does not count against the allowance (2026-10-04); before, this was a dead end.
   const allFailed = papers.length > 0 && papers.every((p) => p.status === 'FAILED');
@@ -341,20 +340,18 @@ function PaperStatus({
           <div className="mt-8 space-y-1 text-sm">
             {papers.map((paper) => (
               <p key={paper.id} className="text-warn">
-                {paper.filename}: {paper.error ?? 'could not be read'}
+                {paper.filename}: {paper.error ?? t('proposal.couldNotBeReadLower')}
               </p>
             ))}
           </div>
         ) : null}
         <section className="mt-8 rounded-lg border border-dashed border-line p-8 text-center">
           <p className="text-sm">
-            {allFailed ? 'Try another file.' : 'Upload the paper this thesis grows from.'}
+            {allFailed ? t('proposal.tryAnother') : t('proposal.uploadPrompt')}
           </p>
-          <p className="mt-1 text-xs text-muted">
-            A PDF or Word file. Yours, or one you have written.
-          </p>
+          <p className="mt-1 text-xs text-muted">{t('proposal.fileKinds')}</p>
           <label className="mt-4 inline-block cursor-pointer rounded-md px-4 py-2 text-sm bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors">
-            {uploading ? 'Uploading…' : 'Choose a file'}
+            {uploading ? t('proposal.uploading') : t('proposal.chooseFile')}
             <input
               type="file"
               accept=".pdf,.docx"
@@ -381,10 +378,10 @@ function PaperStatus({
           <span className="font-medium">{paper.filename}</span>
           <span className={paper.status === 'FAILED' ? 'text-warn' : 'text-muted'}>
             {paper.status === 'DONE'
-              ? 'Read'
+              ? t('proposal.read')
               : paper.status === 'FAILED'
-                ? (paper.error ?? 'Could not be read')
-                : 'Reading your paper…'}
+                ? (paper.error ?? t('proposal.couldNotBeRead'))
+                : t('proposal.reading')}
           </span>
         </div>
       ))}
@@ -399,13 +396,14 @@ function ProposalForm({
   scope: ProposalScope;
   onChange: (next: ProposalScope) => void;
 }) {
+  const { t } = useT();
   const field = 'mt-1 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm';
 
   return (
     <section className="space-y-5">
       <div>
         <label className="text-sm font-medium" htmlFor="workingTitle">
-          Working title
+          {t('common.workingTitle')}
         </label>
         <input
           id="workingTitle"
@@ -417,9 +415,9 @@ function ProposalForm({
 
       <div>
         <label className="text-sm font-medium" htmlFor="problemStatement">
-          Problem statement
+          {t('proposal.problem')}
         </label>
-        <p className="text-xs text-muted">Two or three sentences on what the thesis is about.</p>
+        <p className="text-xs text-muted">{t('proposal.problemHint')}</p>
         <textarea
           id="problemStatement"
           rows={4}
@@ -430,15 +428,15 @@ function ProposalForm({
       </div>
 
       <div>
-        <span className="text-sm font-medium">Objectives</span>
-        <p className="text-xs text-muted">What the thesis sets out to establish.</p>
+        <span className="text-sm font-medium">{t('proposal.objectives')}</span>
+        <p className="text-xs text-muted">{t('proposal.objectivesHint')}</p>
         <ul className="mt-1 space-y-2">
           {scope.objectives.map((objective, index) => (
             // Index is the identity here: these are positional rows the student edits in place.
             // biome-ignore lint/suspicious/noArrayIndexKey: the list is positional and reorderable
             <li key={index} className="flex gap-2">
               <input
-                aria-label={`Objective ${index + 1}`}
+                aria-label={t('proposal.objective', { n: index + 1 })}
                 className={`${field} mt-0`}
                 value={objective}
                 onChange={(e) => {
@@ -449,7 +447,7 @@ function ProposalForm({
               />
               <button
                 type="button"
-                aria-label={`Remove objective ${index + 1}`}
+                aria-label={t('proposal.removeObjective', { n: index + 1 })}
                 className="px-2 text-muted hover:text-warn"
                 onClick={() =>
                   onChange({ ...scope, objectives: scope.objectives.filter((_, i) => i !== index) })
@@ -465,22 +463,20 @@ function ProposalForm({
           className="mt-2 text-sm underline"
           onClick={() => onChange({ ...scope, objectives: [...scope.objectives, ''] })}
         >
-          Add an objective
+          {t('proposal.addObjective')}
         </button>
       </div>
 
       <div>
         <label className="text-sm font-medium" htmlFor="whyOpen">
-          Why this is not yet fully answered
+          {t('proposal.whyOpen')}
         </label>
-        <p className="text-xs text-muted">
-          The gap your thesis fills. Write this yourself; it is the part a committee reads closely.
-        </p>
+        <p className="text-xs text-muted">{t('proposal.whyOpenHint')}</p>
         <textarea
           id="whyOpen"
           rows={3}
           className={field}
-          placeholder="The existing work stops at…"
+          placeholder={t('proposal.whyOpenPlaceholder')}
           value={scope.whyOpen}
           onChange={(e) => onChange({ ...scope, whyOpen: e.target.value })}
         />
@@ -498,12 +494,13 @@ function GapChecklist({
   ticked: Set<string>;
   onToggle: (next: Set<string>) => void;
 }) {
+  const { t } = useT();
   return (
     <aside className="rounded-md border border-line bg-paper p-5">
       <h2 className="text-balance text-[17px] font-bold leading-snug text-ink">
-        What a thesis needs that this paper does not have
+        {t('proposal.gapTitle')}
       </h2>
-      <p className="mt-1 text-xs text-muted">Tick these off as you go. Nothing here blocks you.</p>
+      <p className="mt-1 text-xs text-muted">{t('proposal.gapHint')}</p>
 
       <ul className="mt-4 space-y-3">
         {gap.items.map((item) => (

@@ -18,9 +18,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { AuthFrame } from '@/components/marketing/AuthFrame';
 import { Button } from '@/components/ui/button';
 import { Hint, Input, Label } from '@/components/ui/primitives';
+import { tNow } from '@/i18n';
+import { forgetAccountLanguage, useT } from '@/i18n/react';
 import { safeNext } from '@/lib/admin-gate';
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
@@ -57,6 +60,7 @@ function GoogleMark() {
 
 export default function SignInPage() {
   const router = useRouter();
+  const { t, rich } = useT();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -72,6 +76,8 @@ export default function SignInPage() {
   // boundary for a statically rendered page. `?mode=password` is what the reset page links to.
   const [next, setNext] = useState('/app');
   useEffect(() => {
+    // Whoever signs in next has their own interface language; the app asks their account afresh.
+    forgetAccountLanguage();
     const params = new URL(window.location.href).searchParams;
     setNext(safeNext(params.get('next')));
     if (params.get('mode') === 'password') setMode('password');
@@ -111,7 +117,7 @@ export default function SignInPage() {
     const result = await authClient.emailOtp.sendVerificationOtp({ email, type: 'sign-in' });
     setBusy(false);
     if (result.error) {
-      setError(result.error.message ?? 'Could not send the code. Check the address and try again.');
+      setError(result.error.message ?? tNow('signin.sendError'));
       return;
     }
     setStep('code');
@@ -124,7 +130,7 @@ export default function SignInPage() {
     const result = await authClient.signIn.emailOtp({ email, otp: code });
     setBusy(false);
     if (result.error) {
-      setError(result.error.message ?? 'That code did not work. Ask for a new one.');
+      setError(result.error.message ?? tNow('signin.codeError'));
       return;
     }
     router.push(next);
@@ -157,26 +163,26 @@ export default function SignInPage() {
   return (
     <AuthFrame
       photo="/landing/reading-table.webp"
-      photoAlt="A student reading a printed paper at a table"
-      cardTitle="Your thesis is where you left it"
-      cardBody="Your library, your outline and your guide's comments stay put between sessions, on any device."
-      cardPoints={['Cites only your library', 'Every AI line on record']}
+      photoAlt={t('signin.photoAlt')}
+      cardTitle={t('signin.cardTitle')}
+      cardBody={t('signin.cardBody')}
+      cardPoints={[t('signin.point1'), t('signin.point2')]}
     >
       <h1 className="text-balance">
-        {step === 'email' ? 'Sign in or create an account' : 'Check your email'}
+        {step === 'email' ? t('signin.heading') : t('signin.checkEmail')}
       </h1>
       <Hint className="mt-2 text-[14px]">
         {step === 'code'
-          ? 'The code works for ten minutes. It may take a moment to arrive.'
+          ? t('signin.codeHint')
           : mode === 'password'
-            ? 'Sign in with the password you set under Account. No password yet? Email yourself a code instead, or use “Forgot your password?” to make one.'
-            : 'We email you a six-digit code that works for ten minutes — and if this address is new, that first code creates your account. No password needed; add one later if you prefer.'}
+            ? t('signin.passwordHint')
+            : t('signin.emailHint')}
       </Hint>
 
       {step === 'email' && mode === 'password' ? (
         <form onSubmit={signInWithPassword} className="mt-7 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">University or personal email</Label>
+            <Label htmlFor="email">{t('signin.emailLabel')}</Label>
             <Input
               id="email"
               name="email"
@@ -192,13 +198,13 @@ export default function SignInPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('signin.password')}</Label>
               <Link
                 href="/forgot-password"
                 className="text-[12.5px] text-muted underline underline-offset-2 hover:text-ink"
                 data-testid="forgot-password"
               >
-                Forgot your password?
+                {t('signin.forgot')}
               </Link>
             </div>
             <Input
@@ -217,7 +223,7 @@ export default function SignInPage() {
             size="lg"
             disabled={busy || email.length === 0 || password.length === 0}
           >
-            {busy ? 'Signing in…' : 'Sign in'}
+            {busy ? t('signin.signingIn') : t('signin.signIn')}
           </Button>
           <button
             type="button"
@@ -225,13 +231,13 @@ export default function SignInPage() {
             className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
             onClick={() => switchMode('code')}
           >
-            Email me a code instead
+            {t('signin.codeInstead')}
           </button>
         </form>
       ) : step === 'email' ? (
         <form onSubmit={sendCode} className="mt-7 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">University or personal email</Label>
+            <Label htmlFor="email">{t('signin.emailLabel')}</Label>
             <Input
               id="email"
               name="email"
@@ -246,7 +252,7 @@ export default function SignInPage() {
             />
           </div>
           <Button type="submit" size="lg" disabled={busy || email.length === 0}>
-            {busy ? 'Sending…' : 'Email me a code'}
+            {busy ? t('common.sending') : t('signin.emailMeCode')}
           </Button>
           {passwordOn ? (
             <button
@@ -255,17 +261,19 @@ export default function SignInPage() {
               className="self-start text-[13px] text-muted underline underline-offset-2 hover:text-ink"
               onClick={() => switchMode('password')}
             >
-              Use a password instead
+              {t('signin.passwordInstead')}
             </button>
           ) : null}
         </form>
       ) : (
         <form onSubmit={verifyCode} className="mt-7 flex flex-col gap-3">
           <p className="rounded-md border border-line bg-sunk px-3 py-2 text-[13px] text-muted">
-            Sent to <strong className="font-semibold text-ink">{email}</strong>
+            {rich('signin.sentTo', {
+              email: <strong className="font-semibold text-ink">{email}</strong>,
+            })}
           </p>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="code">Six-digit code</Label>
+            <Label htmlFor="code">{t('signin.codeLabel')}</Label>
             <Input
               id="code"
               name="code"
@@ -282,7 +290,7 @@ export default function SignInPage() {
             />
           </div>
           <Button type="submit" size="lg" disabled={busy || code.length !== 6}>
-            {busy ? 'Checking…' : 'Sign in'}
+            {busy ? t('signin.checking') : t('signin.signIn')}
           </Button>
           <button
             type="button"
@@ -293,7 +301,7 @@ export default function SignInPage() {
               setError(null);
             }}
           >
-            Use a different email
+            {t('signin.differentEmail')}
           </button>
         </form>
       )}
@@ -311,7 +319,7 @@ export default function SignInPage() {
         <>
           <div className="my-6 flex items-center gap-3">
             <hr className="flex-1 border-line" />
-            <span className="eyebrow">or</span>
+            <span className="eyebrow">{t('signin.or')}</span>
             <hr className="flex-1 border-line" />
           </div>
           <Button
@@ -324,32 +332,35 @@ export default function SignInPage() {
             onClick={() => void continueWithGoogle()}
           >
             <GoogleMark />
-            {googleBusy ? 'Opening Google…' : 'Continue with Google'}
+            {googleBusy ? t('signin.openingGoogle') : t('signin.google')}
           </Button>
         </>
       ) : null}
 
       <p className="mt-8 border-t border-line pt-4 text-[13px] text-muted">
-        New here?{' '}
+        {t('signin.newHere')}{' '}
         <Link href="/sign-up" className="font-semibold text-accent hover:underline">
-          Create an account
+          {t('signin.createAccount')}
         </Link>
-        {mode === 'password'
-          ? ' — with an emailed code or a password of your choosing.'
-          : ' — or just enter your address above; the first code creates it.'}
+        {mode === 'password' ? t('signin.newPassword') : t('signin.newCode')}
       </p>
 
       <p className="mt-4 text-[12.5px] leading-relaxed text-faint">
-        By continuing you accept our{' '}
-        <Link href="/terms" className="underline underline-offset-2 hover:text-muted">
-          terms
-        </Link>{' '}
-        and how we handle your text —{' '}
-        <Link href="/privacy" className="underline underline-offset-2 hover:text-muted">
-          read that first
-        </Link>
-        . We never train on your thesis.
+        {rich('signin.accept', {
+          terms: (
+            <Link href="/terms" className="underline underline-offset-2 hover:text-muted">
+              {t('signin.terms')}
+            </Link>
+          ),
+          privacy: (
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-muted">
+              {t('signin.readFirst')}
+            </Link>
+          ),
+        })}
       </p>
+
+      <LanguageSwitcher className="mt-4" />
     </AuthFrame>
   );
 }
