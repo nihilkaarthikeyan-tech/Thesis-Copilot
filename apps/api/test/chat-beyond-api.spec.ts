@@ -22,6 +22,7 @@ const QUESTION = 'What limits rooftop solar adoption among households?';
 function paper(i: number, over: Partial<WebResult> = {}): WebResult {
   return {
     title: `Rooftop solar adoption study ${i}`,
+    matchedPassage: null,
     abstract:
       `Study ${i} surveyed households about rooftop solar adoption. Upfront cost limits adoption ` +
       'more than any other factor the households reported.',

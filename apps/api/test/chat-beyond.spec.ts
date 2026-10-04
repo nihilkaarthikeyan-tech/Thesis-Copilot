@@ -29,6 +29,7 @@ function result(over: Partial<WebResult> = {}): WebResult {
   return {
     title: 'Barriers to rooftop solar adoption among Indian households',
     abstract: ABSTRACT,
+    matchedPassage: null,
     year: 2022,
     venue: 'Energy Policy',
     doi: '10.1016/j.enpol.2022.1',
