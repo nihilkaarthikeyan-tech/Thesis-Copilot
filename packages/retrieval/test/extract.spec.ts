@@ -156,6 +156,19 @@ describe('extractPdf against a real PDF', { timeout: 30_000 }, () => {
     expect(result.pages[1]?.text).toContain('Page two line A');
   });
 
+  it('reads a PDF handed over as a Node Buffer, the way storage returns it', async () => {
+    // pdf.js refuses a Buffer outright; until 2026-10-04 every uploaded PDF failed here.
+    const pdf = Buffer.from(
+      buildPdf([singleColumnPage(['Recharge wells raised the water table'])]),
+    );
+    const result = await extractPdf(pdf);
+    expect(result.usedFallback).toBe(false);
+    expect(result.pages[0]?.text).toContain('Recharge wells raised the water table');
+    // And through the document-level entry point the worker calls.
+    const doc = await extractDocument(pdf, 'pdf');
+    expect(doc.text).toContain('Recharge wells');
+  });
+
   it('reorders a two-column page and reports it', async () => {
     const pdf = buildPdf([
       twoColumnPage(

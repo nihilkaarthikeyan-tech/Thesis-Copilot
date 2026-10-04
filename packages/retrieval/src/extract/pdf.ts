@@ -185,6 +185,11 @@ export async function extractPdf(
     extractText?: (d: Uint8Array) => Promise<{ totalPages: number; text: string[] }>;
   },
 ): Promise<PdfExtraction> {
+  // A plain copy, never the caller's bytes as given: pdf.js refuses a Node `Buffer` ("Please
+  // provide binary data as `Uint8Array`, rather than `Buffer`"), and every PDF read from storage
+  // arrives as one — so a student's uploaded PDF was never read (found 2026-10-04 by the
+  // read-beside e2e). Copying also keeps pdf.js from detaching a buffer the caller still holds.
+  const bytes = new Uint8Array(data);
   const unpdf = loaders ? null : await import('unpdf');
   const itemsOf =
     loaders?.extractTextItems ??
@@ -196,7 +201,7 @@ export async function extractPdf(
       ).extractTextItems(d));
 
   try {
-    const { totalPages, items } = await itemsOf(data);
+    const { totalPages, items } = await itemsOf(bytes);
     const twoColumnPages: number[] = [];
     const pages = items.map((pageItems, index) => {
       const { text, twoColumn } = pageText(pageItems ?? []);
@@ -218,7 +223,7 @@ export async function extractPdf(
             ) => Promise<{ totalPages: number; text: string[] }>;
           }
         ).extractText(d, { mergePages: false }));
-    const { totalPages, text } = await textOf(data);
+    const { totalPages, text } = await textOf(bytes);
     return {
       totalPages,
       pages: text.map((t, index) => ({ page: index + 1, text: dehyphenate(t) })),
