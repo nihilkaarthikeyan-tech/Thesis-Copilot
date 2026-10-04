@@ -70,6 +70,20 @@ English only.
     with cross-references that survive export (check against the coverage map).
 30. Users' most-hated Jenni area is billing (silent renewals, desktop-only cancel, no refunds) — ours
     must make renewal, cancellation and refunds obvious before launch with Razorpay.
+31. Build page: the chapter is labelled "2. Chapter 1 — Introduction".
+32. Build page suggests "Engineering (core)" for an environmental-science thesis; shows internal
+    check codes ("D-ENG1…D-ENG4"); offers 9 languages where the outline offers 15.
+33. Submit checks name internal fields ("studentName", "rollNo"); the only template is the example.
+34. Journal matches: every result says "No subject overlap" with fit 20; "journals you already cite"
+    when nothing is cited yet.
+35. Account usage shows raw codes "VIVA", "CHAPTER_BUILD"; the trial lists "Coherence checks 0 / 0".
+36. Settings says suggest-on-pause is "Off by default" — no longer true since v0.1.24.
+37. Every suggestion shown counts against the allowance (dismissed too); Jenni counts only accepted.
+    With suggestions on a pause, 50 a month on the trial goes fast.
+38. The outline is generated only from the Outline page; a student sent from the proposal straight to
+    the editor never gets one (Jenni lands with every heading and notes).
+39. Sign-in needs a trip to the inbox for a code; Jenni is one screen with Google or a password.
+40. "One Strong call" jargon also on the Outline page.
 
 ## B. What Jenni does that makes it easy (observed, not yet decided)
 
