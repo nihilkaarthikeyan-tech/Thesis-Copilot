@@ -375,6 +375,8 @@ function ChapterEditor({
   const [drawer, setDrawer] = useState<'chapters' | 'panel' | null>(null);
   /** Text the student chose to ask the chat about; a new nonce each time, so the same text refills. */
   const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null);
+  /** A selected sentence the student asked papers for; the Papers tab searches it. */
+  const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => {
     if (!drawer && !moreOpen) return;
@@ -1471,7 +1473,12 @@ function ChapterEditor({
             {tab === 'sources' ? (
               <SourcePins documentId={doc.id} chapterId={chapter.id} />
             ) : tab === 'papers' ? (
-              <FindPapersPanel documentId={doc.id} documentTitle={doc.title} editor={editor} />
+              <FindPapersPanel
+                documentId={doc.id}
+                documentTitle={doc.title}
+                editor={editor}
+                initialQuery={papersQuery}
+              />
             ) : tab === 'citations' ? (
               <>
                 <CitationList editor={editor} chapterId={chapter.id} />
@@ -1679,6 +1686,11 @@ function ChapterEditor({
         chapterId={chapter.id}
         onUsageChange={onUsageChange}
         onNotice={setNotice}
+        onFindPapers={(text) => {
+          setPapersQuery({ text, nonce: Date.now() });
+          setTab('papers');
+          setDrawer('panel');
+        }}
         onAskChat={(text) => {
           setChatPrefill({ text, nonce: Date.now() });
           setTab('chat');

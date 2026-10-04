@@ -80,10 +80,16 @@ export function FindPapersPanel({
   documentId,
   documentTitle,
   editor,
+  initialQuery,
 }: {
   documentId: string;
   documentTitle: string;
   editor: Editor | null;
+  /**
+   * A sentence the student selected and asked papers for (2026-10-04, from the Jenni study:
+   * "Find citations" on a selection). Searched at once; a new nonce searches again.
+   */
+  initialQuery?: { text: string; nonce: number } | null;
 }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[] | null>(null);
@@ -142,6 +148,10 @@ export function FindPapersPanel({
     },
     [documentId],
   );
+
+  useEffect(() => {
+    if (initialQuery?.text) void run(initialQuery.text.slice(0, 300));
+  }, [initialQuery, run]);
 
   const inLibrary = useCallback(
     (result: Result): LibrarySource | undefined =>

@@ -75,6 +75,7 @@ export function CommandToolbar({
   onUsageChange,
   onNotice,
   onAskChat,
+  onFindPapers,
 }: {
   editor: Editor | null;
   documentId: string;
@@ -83,6 +84,8 @@ export function CommandToolbar({
   onNotice: (message: string) => void;
   /** Opens the chat with the selected text in the box (2026-10-04, from the Jenni study). */
   onAskChat?: (text: string) => void;
+  /** Opens the Papers tab searching for the selected sentence (2026-10-04, Jenni study). */
+  onFindPapers?: (text: string) => void;
 }) {
   /**
    * A note on the selected passage (2026-10-04, from the Jenni study): only a guide could
@@ -323,6 +326,16 @@ export function CommandToolbar({
             >
               Comment
             </button>
+            {onFindPapers ? (
+              <button
+                type="button"
+                data-testid="find-papers-on-selection"
+                onClick={() => selection && onFindPapers(selection.text)}
+                className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-sunk"
+              >
+                Find papers
+              </button>
+            ) : null}
             {onAskChat ? (
               <button
                 type="button"

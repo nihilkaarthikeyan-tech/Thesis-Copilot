@@ -71,3 +71,45 @@ test('"Ask chat" on a selection opens the chat with the passage in the box, unse
   await expect(box).toHaveValue(/^About this passage: "Groundwater tables fell fastest/);
   await expect(box).toBeFocused();
 });
+
+/** A selected sentence can be searched for papers at once (2026-10-04, from the Jenni study). */
+test('"Find papers" on a selection opens the Papers tab searching for that sentence', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const session = await establishSession(request, freshEmail('find-on-selection'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Find on selection ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await editor.locator('p').first().click();
+  await page.keyboard.type('Managed aquifer recharge raises groundwater levels.');
+  await page.keyboard.press('Shift+Home');
+
+  const searched = page.waitForRequest(
+    (r) => r.url().endsWith('/chat/web') && r.method() === 'POST',
+  );
+  await page.getByTestId('find-papers-on-selection').click();
+  await expect(page.getByRole('tab', { name: 'papers', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByLabel('Search papers')).toHaveValue(
+    'Managed aquifer recharge raises groundwater levels.',
+  );
+  expect((await searched).postDataJSON()).toMatchObject({
+    message: 'Managed aquifer recharge raises groundwater levels.',
+  });
+});
