@@ -162,6 +162,26 @@ download, and in Word for Windows, Word for Mac and Word on the web:
       with the deploy. Nothing to configure; the link is off for every thesis until its owner
       turns it on.
 
+## Library collections and "Read beside" (2026-10-04)
+
+- [ ] **Run the browser specs.** `apps/web/e2e/library-collections.spec.ts` (make a collection,
+      tick a paper into it, filter, rename, take out, delete — the papers stay) and
+      `apps/web/e2e/read-beside.spec.ts` (the Sources tab's "Read PDF" opens the pane beside the
+      chapter on a 1440 px screen and resizes; a new tab on a phone) were written but not run: the
+      dev stack was in use by other work. `pnpm e2e -- library-collections read-beside` with web,
+      API, worker and Compose up, after `pnpm db:migrate` for `0036_source_collections`.
+- [ ] **Change one header in the live host vhost, by hand.** `infra/nginx/thesis.rademics.ai.conf`
+      now says `X-Frame-Options "SAMEORIGIN"` where it said `"DENY"`. The live file on the VPS is
+      placed by hand and is not deployed, so until the same one-word change is made there (then
+      `sudo nginx -t` and `sudo systemctl reload nginx`), "Read beside" in production shows a
+      blocked frame — DENY refuses even a frame of this site's own `/thesis-copilot/` PDF link.
+      The pane's "Open in a new tab" still works meanwhile. The app's own pages stay unframeable:
+      their CSP says `frame-ancestors 'none'`, which browsers apply over `X-Frame-Options`. Touch
+      only this vhost (the server hosts other sites).
+- [ ] **Release.** Migration `0036_source_collections` (tables `SourceCollection`,
+      `SourceCollectionItem`, and a unique index on `lower(name)` per thesis) runs with the deploy.
+      Nothing to configure.
+
 ## Accounts, keys and services
 
 ### Keys still to add (checked on the production server, 2026-09-29)

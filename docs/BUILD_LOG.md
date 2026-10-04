@@ -4683,3 +4683,37 @@ Faults found on the way:
 - **OpenAlex's free daily budget ran out** (HTTP 429 until 00:00 UTC) while two agents and the e2e
   suite shared this machine's IP; `gap-density.spec.ts` fails until it resets. The dev `.env` has
   no `OPENALEX_API_KEY`.
+
+## Library collections and "Read beside" (2026-10-04, from the Jenni study)
+
+- **Collections.** `SourceCollection` and the join `SourceCollectionItem` (migration 0036, cascade
+  from document and source). Owner-only routes list, create, rename, reorder and delete
+  collections and add or take out papers in bulk; `GET /documents/:id/sources` carries
+  `collectionIds`. Names are trimmed, 1–60 characters, unique per thesis whatever the case: the
+  service answers 409 naming the clash, and a unique index on `lower(name)` settles a race (added
+  to the `migrate-diff-check` allowlist, since Prisma cannot declare it). Deleting a collection
+  keeps its papers. The Library tab has the strip (All, each with a count, Not in a collection,
+  + New collection), the filter combines with the full-text ones, and ticked rows go to "Add to
+  collection…" / "Remove from …".
+- **Kept consistent elsewhere.** `DocumentEraser` deletes memberships then collections; the thesis
+  copier gives the copy its own collections with remapped ids (both pinned by the API spec); a
+  duplicate merge carries the removed record's memberships to the kept one — without that a merge
+  would have quietly emptied a folder.
+- **Read beside.** The citation hover card ("Read beside", a new `readBeside`/`canReadBeside`
+  option on the citation extension) and the editor's Sources tab ("Read PDF") send one window
+  event; `ReadBesidePane` (its own file; three lines in `ThesisEditor.tsx`) fetches a fresh signed
+  link and shows the browser's own viewer in an iframe at `#page=N`, resizable by drag or arrow
+  keys, width remembered. Only at 1280 px and up; narrower screens open a new tab as before. CSP
+  `frame-src` adds only the storage origin.
+- **Found on the way.** The host vhost sends `X-Frame-Options: DENY` on every response, including
+  the `/thesis-copilot/` PDF links, and DENY refuses even a same-site frame: the pane would have
+  been blank in production while working in dev (where MinIO is another origin with no such
+  header). The repo's vhost now says SAMEORIGIN; the live one is changed by hand
+  (`docs/PENDING.md`). The app's pages keep `frame-ancestors 'none'`.
+- **Not done.** Scoping the chat to a collection: chat accepts at most ten `sourceIds` (the `@`
+  mentions), so a collection needs its own server-side scope rather than a client-side list.
+- Tests: `apps/api/test/source-collections.spec.ts` (14 cases: names, owner-only 404/401, 409 on
+  a duplicate name in any case, bulk add/remove, foreign source refused, reorder, merge, copy,
+  erase, delete keeps papers) passes; `packages/ui/test/citation-read-beside.spec.ts` and two web
+  unit specs pass. `apps/web/e2e/library-collections.spec.ts` and `read-beside.spec.ts` are
+  written, not run (dev stack in use; `docs/PENDING.md`).

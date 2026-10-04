@@ -71,6 +71,9 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Start flow: topic meter with examples, citation style at creation, signed-in home header, list first | Done 2026-10-04 |
 | Cited-by, open-access and journal-citedness badges (library, hover card, evidence card); Copy on a chat answer | Done 2026-10-04 |
 | Sharing: roles (guide / co-author / reader), a read-only link, make a copy | Done 2026-10-04 (ADR-0057) |
+| Library collections (folders): strip with counts, filter, tick rows → add / remove, rename, delete (papers stay); copied with a thesis | Done 2026-10-04 (migration 0036); browser spec not yet run |
+| Read a paper's PDF beside the chapter (hover card "Read beside", Sources tab "Read PDF"), at the cited page, resizable; new tab on a phone | Done 2026-10-04; production needs the host vhost's `X-Frame-Options` → `SAMEORIGIN` (`docs/PENDING.md`) |
+| Chat scoped to a collection | Not done: chat takes at most ten `sourceIds` (the `@` mentions); a collection needs its own server-side scope |
 
 ## Also fixed on the way (found while building)
 
