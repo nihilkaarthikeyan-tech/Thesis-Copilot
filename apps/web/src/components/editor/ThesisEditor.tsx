@@ -20,6 +20,7 @@ import {
   createAutosave,
   getGhostState,
   type LocalDraft,
+  setAutoSuggest as setEditorAutoSuggest,
   tableRowsAt,
   tableToChartInput,
   thesisExtensions,
@@ -472,7 +473,6 @@ function ChapterEditor({
         ghostText: {
           chapterId: chapter.id,
           request: assistRequest,
-          autoSuggest,
           fadeMs: reducedMotion ? 0 : 400,
           onOutcome: (e) => {
             void api('/assist/outcome', {
@@ -677,7 +677,6 @@ function ChapterEditor({
       reducedMotion,
       onUsageChange,
       guided.controller,
-      autoSuggest,
       uploadFigure,
       live,
     ],
@@ -697,6 +696,10 @@ function ChapterEditor({
     },
   });
   editorRef.current = editor;
+  // ADR-0078: the setting arrives after the editor is built; the extension reads it live.
+  useEffect(() => {
+    if (editor) setEditorAutoSuggest(editor, autoSuggest);
+  }, [editor, autoSuggest]);
 
   /** The chapter the editor last placed the cursor in on opening; see the autosave effect. */
   const focusedChapterRef = useRef<string | null>(null);

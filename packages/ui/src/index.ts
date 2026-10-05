@@ -73,6 +73,7 @@ export {
   jsonContainsText,
   type SuggestionCitation,
   type SuggestionOutcome,
+  setAutoSuggest,
   suggestionToFragment,
 } from './editor/ghost-text.js';
 export { insertBlockWithCaretAfter } from './editor/insert-block.js';

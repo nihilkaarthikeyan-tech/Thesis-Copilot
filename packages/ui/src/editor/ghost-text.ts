@@ -8,7 +8,7 @@
  * The transport is injected (`options.request`): the app passes an SSE reader, tests pass a fake.
  */
 
-import { Extension, type JSONContent } from '@tiptap/core';
+import { type Editor, Extension, type JSONContent } from '@tiptap/core';
 import type { Fragment, Node as PmNode, Schema } from '@tiptap/pm/model';
 import { type EditorState, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
@@ -212,6 +212,30 @@ declare module '@tiptap/core' {
   }
 }
 
+/** ADR-0078: how long the opener waits before asking once more when nothing came back. */
+export const OPENER_RETRY_MS = 4000;
+
+/**
+ * ADR-0078: when the cursor is in an empty paragraph whose previous sibling is a heading, a key for
+ * that heading (its position and text); otherwise null. The key changes when the heading's text
+ * does, so a renamed section is offered again.
+ */
+export function emptySectionUnderHeading(state: EditorState): string | null {
+  const { selection } = state;
+  if (!selection.empty) return null;
+  const $from = selection.$from;
+  if ($from.parent.type.name !== 'paragraph' || $from.parent.content.size > 0) return null;
+  if ($from.depth < 1) return null;
+  const container = $from.node($from.depth - 1);
+  const index = $from.index($from.depth - 1);
+  if (index === 0) return null;
+  const before = container.child(index - 1);
+  if (before.type.name !== 'heading') return null;
+  const text = before.textContent.trim();
+  if (!text) return null;
+  return `${$from.before($from.depth)}:${text}`;
+}
+
 /** Blocks where a suggestion may be requested (B.3). */
 function cursorEligible(state: EditorState): boolean {
   const { selection } = state;
@@ -378,6 +402,31 @@ function buildDecorations(
   return DecorationSet.create(state.doc, decorations);
 }
 
+/**
+ * ADR-0078: where an automatic suggestion may be asked for — after a finished sentence, or in an
+ * empty paragraph. Every automatic request spends one ASSIST unit (50 a month on the trial), and
+ * asking at every pause mid-sentence spent them on completions nobody wanted. Mid-sentence, the
+ * student asks with Ctrl+/.
+ */
+export function atSentenceBoundary(state: EditorState): boolean {
+  const $from = state.selection.$from;
+  const before = $from.parent.textBetween(0, $from.parentOffset, undefined, ' ');
+  if (!before.trim()) return true;
+  return /[.!?…]["”’')\]]*\s*$/.test(before);
+}
+
+/**
+ * ADR-0078: turn automatic suggestions on or off in a running editor. The student's setting
+ * arrives after the editor is built, and TipTap does not rebuild an extension's plugins when its
+ * options change, so `options.autoSuggest` alone stayed at its first value (false) and automatic
+ * suggestions never fired in the web app.
+ */
+export function setAutoSuggest(editor: Editor, on: boolean): void {
+  const storage = (editor.storage as unknown as Record<string, { autoSuggest?: boolean | null }>)
+    .ghostText;
+  if (storage) storage.autoSuggest = on;
+}
+
 export const GhostText = Extension.create<GhostTextOptions>({
   name: 'ghostText',
   // Registered before list and table extensions so Tab is ours only while a suggestion is shown
@@ -399,12 +448,15 @@ export const GhostText = Extension.create<GhostTextOptions>({
   addStorage() {
     return {
       lastTiming: null as { ttfbMs: number; latencyMs: number } | null,
+      /** The live automatic-suggest choice; see `setAutoSuggest`. Null: `options.autoSuggest`. */
+      autoSuggest: null as boolean | null,
     };
   },
 
   addProseMirrorPlugins() {
     const editor = this.editor;
     const options = this.options;
+    const storage = this.storage;
 
     const report = (
       ghost: Omit<GhostState, 'decorations'>,
@@ -542,13 +594,49 @@ export const GhostText = Extension.create<GhostTextOptions>({
         key: new PluginKey('ghostTextAutoSuggest'),
         view: () => {
           let timer: ReturnType<typeof setTimeout> | null = null;
+          let retry: ReturnType<typeof setTimeout> | null = null;
           const clear = () => {
             if (timer) clearTimeout(timer);
             timer = null;
           };
+          // ADR-0078: headings already offered an opening sentence, so moving the cursor back into
+          // the same empty section does not ask (and spend a unit) again.
+          const offered = new Set<string>();
           return {
             update: (currentView, previous) => {
-              if (!options.autoSuggest) return clear();
+              if (!(storage.autoSuggest ?? options.autoSuggest)) return clear();
+              // ADR-0078: an opening sentence for an empty section. The cursor has come to rest in
+              // an empty paragraph straight under a heading — a new chapter, or a section the
+              // student or the Sections panel has just added — and nothing has been typed there.
+              // As Jenni does, a suggestion is offered without a keystroke. Only once per heading.
+              const opener = emptySectionUnderHeading(currentView.state);
+              if (
+                opener &&
+                !offered.has(opener) &&
+                !currentView.state.selection.eq(previous.selection)
+              ) {
+                clear();
+                const ready = () => {
+                  const ghost = ghostTextKey.getState(currentView.state);
+                  if (ghost && ghost.status !== 'idle') return false;
+                  if (!currentView.hasFocus()) return false;
+                  return emptySectionUnderHeading(currentView.state) === opener;
+                };
+                timer = setTimeout(() => {
+                  if (!ready()) return;
+                  offered.add(opener);
+                  editor.commands.requestSuggestion();
+                  // One retry when nothing came back. A suggestion the cursor just left is still
+                  // finishing on the server for a moment, and the server allows one at a time, so
+                  // the opener was refused ("already in progress") in the real-model run.
+                  if (retry) clearTimeout(retry);
+                  retry = setTimeout(() => {
+                    retry = null;
+                    if (ready()) editor.commands.requestSuggestion();
+                  }, OPENER_RETRY_MS);
+                }, options.autoSuggestIdleMs ?? 800);
+                return;
+              }
               if (!currentView.state.doc.eq(previous.doc)) {
                 clear();
                 const idle = options.autoSuggestIdleMs ?? 800;
@@ -557,11 +645,15 @@ export const GhostText = Extension.create<GhostTextOptions>({
                   const selection = currentView.state.selection;
                   if (ghost && ghost.status !== 'idle') return;
                   if (!selection.empty || !currentView.hasFocus()) return;
+                  if (!atSentenceBoundary(currentView.state)) return;
                   editor.commands.requestSuggestion();
                 }, idle);
               }
             },
-            destroy: clear,
+            destroy: () => {
+              clear();
+              if (retry) clearTimeout(retry);
+            },
           };
         },
       }),
