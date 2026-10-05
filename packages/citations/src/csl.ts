@@ -173,6 +173,43 @@ export function decodeEntities(text: string): string {
   });
 }
 
+/**
+ * ADR-0078: the names a citation should print. Indexes list a paper's college as an author around
+ * the people ("Sri Kaliswari College et al., 2025"), give "-" or an initial as a family name, or
+ * the whole name as the family. Repaired, never invented: a word moves between fields or an
+ * institution is dropped when people are listed. `cleanAuthors` in @tc/retrieval does the same
+ * on the way in; this covers records stored before it, and keeps this package free of that one.
+ */
+export function peopleFirst(names: readonly CslName[]): CslName[] {
+  const letters = (s: string) => /\p{L}/u.test(s);
+  const repaired = names.map((n): CslName => {
+    if (n.literal !== undefined || n.family === undefined) return n;
+    const family = n.family.trim();
+    const given = (n.given ?? '').trim();
+    if (letters(family) && family.replace(/\./g, '').length > 1) return n;
+    const words = given
+      .split(/\s+/)
+      .filter((w) => w && !/^(ms|mrs|mr|miss|dr|prof|shri|smt|sri|kum)\.?$/i.test(w));
+    const at = words.findLastIndex((w) => /^\p{L}[\p{L}'’-]+$/u.test(w));
+    if (at < 0) return n;
+    const rest = words.filter((_, i) => i !== at);
+    return {
+      ...n,
+      family: words[at] as string,
+      given: [...rest, ...(letters(family) ? [family] : [])].join(' '),
+    };
+  });
+  const person = (n: CslName) => n.literal === undefined && letters(n.family ?? '');
+  const people = repaired.some(person) ? repaired.filter(person) : repaired;
+  const seen = new Set<string>();
+  return people.filter((n) => {
+    const key = `${n.family ?? ''}|${n.given ?? ''}|${n.literal ?? ''}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** `Source.authors` is `[{ family, given }]` or a list of strings, depending on where it came from. */
 export function namesFrom(authors: unknown): CslName[] {
   if (!Array.isArray(authors)) return [];
@@ -242,7 +279,7 @@ export function toCslItem(source: SourceLike): CslItem {
   delete item.subtitle;
 
   const storedAuthors = namesFrom(stored?.author);
-  const authors = storedAuthors.length > 0 ? storedAuthors : namesFrom(source.authors);
+  const authors = peopleFirst(storedAuthors.length > 0 ? storedAuthors : namesFrom(source.authors));
   if (authors.length > 0) item.author = authors;
   else delete item.author;
 

@@ -14,6 +14,8 @@
 
 import type { Candidate } from './rank.js';
 import { CANDIDATE_LIMIT } from './rank.js';
+import { cleanAuthors } from './scholarly/names.js';
+import type { CslAuthor } from './scholarly/resolve.js';
 
 /** The only shape this module needs from Prisma, so `@tc/retrieval` stays free of a Prisma import. */
 export type RawClient = {
@@ -200,8 +202,9 @@ export function shortReference(
   year: number | null,
   title: string | null,
 ): string | undefined {
+  // ADR-0078: stored before `cleanAuthors` existed, so repaired here too ("- 2026", "College 2025").
   const first = Array.isArray(authors)
-    ? (authors[0] as { family?: string; literal?: string } | undefined)
+    ? (cleanAuthors(authors as CslAuthor[])[0] as { family?: string; literal?: string } | undefined)
     : undefined;
   const name = first?.family?.trim() || first?.literal?.trim().split(/\s+/).pop() || null;
 

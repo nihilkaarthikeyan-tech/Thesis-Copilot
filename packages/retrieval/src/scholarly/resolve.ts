@@ -15,7 +15,7 @@ import type { ArxivEntry } from './arxiv.js';
 import { arxivIdFromDoi } from './arxiv-id.js';
 import { type ScholarlyClientOptions, ScholarlyHttp } from './http.js';
 import { openAlexSearchText, topicSearchTerms } from './keywords.js';
-import { personName } from './names.js';
+import { cleanAuthors, personName } from './names.js';
 import { plainText } from './xml.js';
 
 /**
@@ -131,10 +131,12 @@ function crossrefYear(item: CrossrefItem): number | null {
 }
 
 function crossrefAuthors(item: CrossrefItem): CslAuthor[] {
-  return (item.author ?? []).map((a) =>
-    a.family || a.given
-      ? { family: a.family ?? '', given: a.given ?? '' }
-      : { literal: a.name ?? '' },
+  return cleanAuthors(
+    (item.author ?? []).map((a) =>
+      a.family || a.given
+        ? { family: a.family ?? '', given: a.given ?? '' }
+        : { literal: a.name ?? '' },
+    ),
   );
 }
 
@@ -434,10 +436,12 @@ export function abstractFromInvertedIndex(
  * citation style can print "Awwad, Z." — a literal prints exactly as written.
  */
 function openAlexAuthors(work: OpenAlexWork): CslAuthor[] {
-  return (work.authorships ?? [])
-    .map((a) => a.author?.display_name?.trim() ?? '')
-    .filter(Boolean)
-    .map(personName);
+  return cleanAuthors(
+    (work.authorships ?? [])
+      .map((a) => a.author?.display_name?.trim() ?? '')
+      .filter(Boolean)
+      .map(personName),
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
