@@ -367,35 +367,53 @@ export class SourcesService {
     ownerId: string,
     documentId: string,
     references: ReadonlyArray<{ raw: string; doi?: string }>,
-  ): Promise<{ queued: number; alreadyPresent: number }> {
+  ): Promise<{
+    queued: number;
+    alreadyPresent: number;
+    /**
+     * ADR-0069: the library row each reference now has, in the order they were sent — the new
+     * row, or the one already there under the same text; null for an empty reference. The Chrome
+     * add-on opens the paper from it and files it into a collection.
+     */
+    sourceIds: Array<string | null>;
+  }> {
     await this.ownedDocument(ownerId, documentId);
 
     const existing = await this.prisma.source.findMany({
       where: { documentId },
-      select: { rawReference: true },
+      select: { id: true, rawReference: true },
     });
-    const seen = new Set(existing.map((s) => s.rawReference).filter(Boolean));
+    const seen = new Map<string, string>();
+    for (const row of existing) if (row.rawReference) seen.set(row.rawReference, row.id);
 
     let queued = 0;
     let alreadyPresent = 0;
+    const sourceIds: Array<string | null> = [];
 
     for (const reference of references) {
       const raw = reference.raw.trim();
-      if (!raw) continue;
-      if (seen.has(raw)) {
-        alreadyPresent++;
+      if (!raw) {
+        sourceIds.push(null);
         continue;
       }
-      seen.add(raw);
+      const known = seen.get(raw);
+      if (known) {
+        alreadyPresent++;
+        sourceIds.push(known);
+        continue;
+      }
 
-      await this.prisma.source.create({
+      const created = await this.prisma.source.create({
         data: {
           documentId,
           status: 'PENDING',
           rawReference: raw,
           ...(reference.doi ? { doi: reference.doi } : {}),
         },
+        select: { id: true },
       });
+      seen.set(raw, created.id);
+      sourceIds.push(created.id);
 
       await this.queue.enqueue(
         'resolve-reference',
@@ -410,7 +428,7 @@ export class SourcesService {
       queued++;
     }
 
-    return { queued, alreadyPresent };
+    return { queued, alreadyPresent, sourceIds };
   }
 
   /** FR-2.3: the student's own PDF joins the library and goes through the same indexing pipeline. */

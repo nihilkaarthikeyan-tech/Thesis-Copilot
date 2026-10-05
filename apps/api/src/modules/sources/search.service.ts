@@ -483,7 +483,8 @@ export class SearchService {
       format: parsed.format,
       entries: parsed.entries.length,
       skipped: parsed.skipped,
-      ...result,
+      queued: result.queued,
+      alreadyPresent: result.alreadyPresent,
     };
   }
 }
