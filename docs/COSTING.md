@@ -59,6 +59,11 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > (ADR-0032): the same price, and the first 200M tokens free — so in practice the embedding line
 > is ₹0 until roughly the 650th library.
 >
+> **2026-10-05 — copying reworded once (ADR-0082).** About one Assist suggestion in six is asked
+> for a second time when it reuses a passage's wording: a second fast-tier call on the same unit,
+> ~₹0.03 on `gpt-4.1-mini`, at most ₹0.46 a month on the Assist line. Not in the profile table;
+> listed here.
+>
 > **2026-10-05 — deep research in chat (ADR-0080).** A tenth allowance: 3 deep research questions
 > a month on the paid plans (1 on the trial). One question is two strong-tier calls priced at
 > their ceiling — the plan (2,500 in, 900 out with reasoning) and the part-by-part answer over up

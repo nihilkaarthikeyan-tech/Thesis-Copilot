@@ -28,6 +28,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
     date: '2026-10-04',
     title: 'Suggestions you can steer, and sharing with roles',
     changes: [
+      'A suggestion that followed a paper’s wording is asked for again in its own words before you see it as final; the notice says so, and the copy warning stays if it is still close.',
       'Two more edits on a selection: Translate (into the language of your thesis) and As a table (the facts the text compares, as a table with the citations kept).',
       'On the Flags tab, Y resolves and N ignores the focused flag, and Resolve all / Ignore all act on every flag shown.',
       'A claim flagged as unsupported, or not supported by its source, has Find a source, which searches the indexes for that sentence.',

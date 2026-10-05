@@ -29,6 +29,13 @@ export const ASSIST = {
 } as const;
 
 /** One retrieved chunk as A.1's `<passage>` shows it. */
+/**
+ * ADR-0082: the instruction a second Assist call gets when the first reused a passage's wording.
+ * Sent through A.1's own `<instruction>` slot, so the prompt is unchanged (ADR-0038).
+ */
+export const REWORD_INSTRUCTION =
+  'Your previous answer reused the wording of a passage. Say the same finding in your own words: a different sentence structure and different wording, no six consecutive words taken from any passage; keep the technical terms, names and figures exact, and keep the same citations.';
+
 export type PromptPassage = {
   /** `S<sourceId>#c<chunkId>` — the only thing the model may cite (§10.6). */
   id: string;

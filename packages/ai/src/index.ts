@@ -12,6 +12,7 @@ export {
   assistUserMessage,
   buildAssistRequest,
   type PromptPassage,
+  REWORD_INSTRUCTION,
 } from './builder/assist.js';
 export {
   buildEntitiesRequest,

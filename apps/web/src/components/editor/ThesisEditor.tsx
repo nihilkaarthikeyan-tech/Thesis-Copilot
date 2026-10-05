@@ -544,6 +544,11 @@ function ChapterEditor({
               );
               return;
             }
+            // ADR-0082: the first answer followed a passage's wording and was asked for again.
+            if (info.reworded && !info.empty) {
+              setNotice(tNow('editor.notice.reworded'));
+              return;
+            }
             if (info.papersLoading) {
               // Nothing written: wait, and ask again when a paper is ready. Something written:
               // it cites nothing yet, and the student is told citations will follow.

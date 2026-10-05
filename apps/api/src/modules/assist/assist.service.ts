@@ -9,7 +9,13 @@
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { buildAssistRequest, type LlmProvider, type Providers, postProcessAssist } from '@tc/ai';
+import {
+  buildAssistRequest,
+  type LlmProvider,
+  type Providers,
+  postProcessAssist,
+  REWORD_INSTRUCTION,
+} from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import { closeToPassages } from '@tc/retrieval';
 import { findOutlineNode, readOutline, scopeWithSection, sectionUnderHeading } from '@tc/types';
@@ -62,6 +68,8 @@ export type SuggestEvent =
         pinned: number;
         /** ADR-0037: nothing in the library was on topic, and a search for papers has started. */
         findingSources: boolean;
+        /** ADR-0082: the first answer reused a passage's wording and was asked for again. */
+        reworded?: boolean;
         /**
          * ADR-0070: nothing could be retrieved because the library is still filling (a search is
          * running or papers are being read). Whatever the model wrote cites nothing; the editor
@@ -380,7 +388,7 @@ export class AssistService {
               })),
           )
         : null;
-      const closeTo = match
+      let closeTo = match
         ? {
             shortRef: match.shortRef,
             page: match.page,
@@ -389,13 +397,116 @@ export class AssistService {
           }
         : null;
 
+      // ADR-0082: a suggestion that reuses a passage's wording is asked for once more, in the
+      // student's own words, before it is shown as final — on the same unit, the second call
+      // logged like the first. The flag stays if the rewording is still close; nothing is ever
+      // rewritten silently after the student has it (flag, don't fix holds at the keep).
+      let finalText = processed.text;
+      let finalCitations = citations;
+      let reworded = false;
+      if (match && processed.text && !signal.aborted) {
+        const rewordStarted = Date.now();
+        const second = buildAssistRequest({
+          memoryBlock: memory.text,
+          chapter: { title: chapter.title, scopeNote },
+          passages: retrieved.passages,
+          before: input.before,
+          after: input.after,
+          instruction: [REWORD_INSTRUCTION, input.guided?.trim() || ''].filter(Boolean).join(' '),
+          userId: user.id,
+          documentId: chapter.documentId,
+          signal,
+        });
+        try {
+          let again = '';
+          let secondModel = modelId;
+          for await (const chunk of this.providers.llm.stream(second)) {
+            if (signal.aborted) break;
+            if (chunk.type === 'text') again += chunk.text;
+            else {
+              secondModel = chunk.modelId;
+              await this.logCall(
+                user.id,
+                chapter.documentId,
+                secondModel,
+                chunk.usage,
+                Date.now() - rewordStarted,
+                true,
+              );
+            }
+          }
+          const redone = postProcessAssist({
+            output: again,
+            passageIds: retrieved.passages.map((p) => p.id),
+            before: input.before,
+            autoCite,
+            existingText: docToText(chapter.content),
+          });
+          const redoneCited = new Set(redone.cited);
+          const stillClose = redone.text
+            ? closeToPassages(
+                redone.text,
+                retrieved.passages
+                  .filter((p) => redoneCited.has(p.id))
+                  .map((p) => ({
+                    chunkId: p.chunkId,
+                    sourceId: p.sourceId,
+                    shortRef: p.shortRef,
+                    page: p.page,
+                    text: p.text,
+                  })),
+              )
+            : null;
+          // Kept only when it is an improvement: text, cited, and no longer close (or at least
+          // no longer verbatim).
+          if (
+            !redone.empty &&
+            redone.cited.length > 0 &&
+            (!stillClose || (match.kind === 'verbatim' && stillClose.kind === 'close'))
+          ) {
+            finalText = redone.text;
+            finalCitations = redone.cited.map((key) => {
+              const real = retrieved.byKey.get(key);
+              return {
+                key,
+                sourceId: real?.sourceId ?? null,
+                chunkId: real?.chunkId ?? null,
+                rendered: real ? `(${real.shortRef})` : '(Source)',
+              };
+            });
+            closeTo = stillClose
+              ? {
+                  shortRef: stillClose.shortRef,
+                  page: stillClose.page,
+                  overlapText: stillClose.overlapText,
+                  kind: stillClose.kind,
+                }
+              : null;
+            reworded = true;
+            await this.prisma.suggestionEvent.update({
+              where: { id: event.id },
+              data: { shownChars: finalText.length },
+            });
+          }
+          this.logger.log(
+            { suggestionId: event.id, reworded, stillClose: stillClose?.kind ?? null },
+            'ASSIST_REWORD',
+          );
+        } catch (error) {
+          if (signal.aborted) return;
+          // The first answer stands, flagged; the rewording was a courtesy that failed.
+          this.logger.warn({ err: error, suggestionId: event.id }, 'assist reword failed');
+        }
+      }
+
       yield {
         event: 'done',
         data: {
           suggestionId: event.id,
-          text: processed.text,
+          text: finalText,
           closeTo,
-          citations,
+          reworded,
+          citations: finalCitations,
           grounded: retrieved.passages.length > 0,
           pinned: retrieved.pinned,
           findingSources: await searchStarted,

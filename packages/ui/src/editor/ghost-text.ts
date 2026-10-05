@@ -57,6 +57,8 @@ export type GhostEvent =
       papersLoading?: boolean;
       /** ADR-0071: the suggestion reuses the wording of a passage it cites. */
       closeTo?: CloseTo;
+      /** ADR-0082: the first answer did, and this is the rewording asked for in its place. */
+      reworded?: boolean;
       /** A.1: what no passage covers, when the model wrote nothing for that reason. */
       needsSource?: string | null;
       usage?: unknown;
@@ -106,6 +108,7 @@ export type GhostTextOptions = {
     findingSources: boolean;
     papersLoading: boolean;
     closeTo: CloseTo | null;
+    reworded: boolean;
     needsSource: string | null;
   }) => void;
   onTiming?: (timing: { ttfbMs: number; latencyMs: number }) => void;
@@ -704,6 +707,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
               findingSources: event.findingSources ?? false,
               papersLoading: event.papersLoading ?? false,
               closeTo: event.closeTo ?? null,
+              reworded: event.reworded ?? false,
               needsSource: event.needsSource ?? null,
               empty: (event.text ?? '').length === 0 && event.citations.length === 0,
             });

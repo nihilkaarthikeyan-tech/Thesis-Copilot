@@ -258,6 +258,8 @@ export const en = {
     'No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.',
   'editor.notice.papersLoading':
     'Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready.',
+  'editor.notice.reworded':
+    'The first answer followed a paper’s wording, so it was asked for again in its own words.',
   'editor.notice.closeTo':
     'This suggestion follows {ref}’s wording closely (“{words}…”). Put it in your own words, or quote it, before keeping it.',
   'editor.notice.closeToVerbatim':

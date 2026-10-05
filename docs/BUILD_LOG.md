@@ -5358,3 +5358,11 @@ as-a-table edit actions, Y/N and all on the Flags tab, Find a source on an unsup
 own-comments browser spec expects the mock model's rewrite and fails against the real-provider
 dev API — it is for the mock stack, as the brief says.
 
+## The partial list, round two: copying reworded once (2026-10-05, ADR-0082)
+
+Item A3 of the side-by-side list. When `closeToPassages` flags a suggestion, Assist asks once
+more through A.1's `<instruction>` slot (`REWORD_INSTRUCTION`; the prompt unchanged) and shows
+the rewording when it is cited and no longer close, marked `reworded` with a notice; otherwise
+the first answer stands, flagged. Same unit, a second ASSIST log row. Tests: `reword.spec.ts`
+(ai), `assist-reword.spec.ts` (api, four cases).
+
