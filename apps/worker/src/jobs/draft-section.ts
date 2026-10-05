@@ -23,6 +23,7 @@ import {
   postProcessDraft,
 } from '@tc/ai';
 import {
+  AUTO_SOURCES,
   disciplineProfile,
   PARADIGMS,
   type Paradigm,
@@ -64,8 +65,27 @@ export type DraftSectionDeps = {
    * searches are not used up). Optional so unit tests can omit it.
    */
   findSources?: (input: { chapterId: string; query: string }) => Promise<boolean>;
+  /**
+   * ADR-0076: after a search started for a thin section, wait (bounded) until the papers it adds
+   * can be cited. Resolves with how many became citable. Absent: drafts never wait.
+   */
+  waitForNewSources?: (input: { documentId: string; since: Date }) => Promise<number>;
   log?: (event: Record<string, unknown>) => void;
 };
+
+/**
+ * ADR-0076: fewer distinct on-topic sources than this, and Draft looks for more before writing
+ * (when automatic sources are on and the month's searches allow). Three is the least a section
+ * of a thesis can be argued from without leaning on one paper.
+ */
+export const SEARCH_FIRST_MIN_SOURCES = 3;
+
+/** Distinct sources among passages at or above the relevance floor. */
+export function onTopicSources(passages: ReadonlyArray<{ sourceId: string; cosine?: number }>) {
+  return new Set(
+    passages.filter((p) => (p.cosine ?? 0) >= AUTO_SOURCES.minCosine).map((p) => p.sourceId),
+  ).size;
+}
 
 /** The refusal when a search for this section's sources has just been started (ADR-0037). */
 export function findingSourcesMessage(sectionTitle: string): string {
@@ -101,7 +121,7 @@ export type DraftChapter = {
 };
 
 export type DraftEvent =
-  | { type: 'progress'; stage: 'retrieving' | 'writing'; draftId: string }
+  | { type: 'progress'; stage: 'retrieving' | 'searching' | 'writing'; draftId: string }
   | {
       type: 'done';
       draftId: string;
@@ -210,7 +230,30 @@ export async function runDraftSection(
     .map((part) => part.trim())
     .filter(Boolean)
     .join('. ');
-  const retrieved = await deps.retrieve(chapter, query);
+  let retrieved = await deps.retrieve(chapter, query);
+
+  // ADR-0076: a thin library for this section means a thin draft. Search first, wait (bounded)
+  // for what the search adds to be readable, then retrieve again. Nothing waits when automatic
+  // sources are off or the month's searches are used up (`findSources` says no).
+  if (
+    onTopicSources(retrieved.passages) < SEARCH_FIRST_MIN_SOURCES &&
+    deps.findSources &&
+    deps.waitForNewSources
+  ) {
+    const since = new Date();
+    const started = await deps.findSources({ chapterId: chapter.id, query }).catch(() => false);
+    if (started) {
+      await deps.publish({ type: 'progress', stage: 'searching', draftId });
+      const ready = await deps
+        .waitForNewSources({ documentId: chapter.documentId, since })
+        .catch(() => 0);
+      log({ msg: 'draft searched first', draftId, ready });
+      if (ready > 0) {
+        await deps.publish({ type: 'progress', stage: 'retrieving', draftId });
+        retrieved = await deps.retrieve(chapter, query);
+      }
+    }
+  }
   const passages = retrieved.passages.slice(0, DRAFT.topK);
 
   // FR-4.4's AC: refuse rather than write ungrounded prose.

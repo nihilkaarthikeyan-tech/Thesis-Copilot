@@ -225,6 +225,12 @@ export class SourcesController {
   }
 
   /** Possible duplicates in the library — the same DOI, or the same title, year and first author. */
+  /** ADR-0076: papers with a standing problem (retracted, preprint, uncited, weak venue). Free. */
+  @Get('documents/:id/sources/quality')
+  quality(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.sources.sourceQuality(user.id, documentId);
+  }
+
   @Get('documents/:id/sources/duplicates')
   duplicates(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.sources.listDuplicates(user.id, documentId);

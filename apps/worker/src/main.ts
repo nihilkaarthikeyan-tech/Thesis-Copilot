@@ -80,7 +80,7 @@ import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
 import { runExaminerReview } from './jobs/examiner-review.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
-import { runFindSources, startFindSources } from './jobs/find-sources.js';
+import { runFindSources, startFindSources, waitForNewSources } from './jobs/find-sources.js';
 import { runGenerateOutline } from './jobs/generate-outline.js';
 import { runIndexSource } from './jobs/index-source.js';
 import {
@@ -466,6 +466,8 @@ async function main(): Promise<void> {
               },
               { documentId: job.data.documentId, userId: job.data.userId, chapterId, query },
             ),
+          // ADR-0076: a thin section searches first and waits, bounded, for what it adds.
+          waitForNewSources: (input) => waitForNewSources(prisma, input),
           strongTier: async () => {
             const flag = await prisma.featureFlag.findUnique({
               where: { key: 'draftModeStrongTier' },

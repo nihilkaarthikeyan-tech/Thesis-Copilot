@@ -122,6 +122,8 @@ export {
   buildQueryText,
   CANDIDATE_LIMIT,
   type Candidate,
+  CREDIBILITY,
+  credibility,
   FULL_TEXT_BOOST,
   isOffTopic,
   parsePassageId,

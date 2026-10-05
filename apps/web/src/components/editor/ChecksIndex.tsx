@@ -43,6 +43,11 @@ export function ChecksIndex({
       action: <span className={here}>Below</span>,
     },
     {
+      name: 'Source quality',
+      what: 'Retracted papers, preprints, uncited papers and rarely cited journals in your library.',
+      action: <span className={here}>Below</span>,
+    },
+    {
       name: 'Citation report',
       what: 'Retracted papers, weak or unsupported citations, sources never cited.',
       action: (

@@ -194,7 +194,10 @@ export function DraftMode({
         <p className="text-muted">
           {state.stage === 'retrieving'
             ? 'Finding the sources for this section…'
-            : 'Writing the draft…'}
+            : state.stage === 'searching'
+              ? // ADR-0076: a thin section looks for more papers before it is written.
+                'Your library is thin on this section — finding more papers first…'
+              : 'Writing the draft…'}
         </p>
       ) : null}
 

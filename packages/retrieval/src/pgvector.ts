@@ -120,6 +120,9 @@ type CandidateRow = {
   title: string | null;
   year: number | null;
   authors: unknown;
+  citationCount: number | null;
+  isPreprint: boolean | null;
+  venueCitedness: number | null;
 };
 
 /**
@@ -149,10 +152,15 @@ export async function findCandidates(
            c."page"           AS "page",
            s."title"          AS "title",
            s."year"           AS "year",
-           s."authors"        AS "authors"
+           s."authors"        AS "authors",
+           s."citationCount"  AS "citationCount",
+           s."isPreprint"     AS "isPreprint",
+           s."venueCitedness" AS "venueCitedness"
       FROM "SourceChunk" c
       JOIN "Source" s ON s."id" = c."sourceId"
      WHERE s."documentId" = $2::uuid
+       -- ADR-0076: a retracted paper is never offered as evidence.
+       AND s."isRetracted" = false
        AND ($3::uuid[] IS NULL OR s."id" = ANY($3::uuid[]))
      ORDER BY c."embedding" <=> $1::vector
      LIMIT $4`;
@@ -175,6 +183,10 @@ export async function findCandidates(
     text: row.text,
     page: row.page,
     shortRef: shortReference(row.authors, row.year, row.title),
+    citationCount: row.citationCount,
+    isPreprint: row.isPreprint ?? false,
+    venueCitedness: row.venueCitedness,
+    year: row.year,
   }));
 }
 

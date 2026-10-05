@@ -127,6 +127,7 @@ import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
 import { SlashMenu } from './SlashMenu';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
+import { SourceQualityPanel } from './SourceQualityPanel';
 import { SuggestionBar } from './SuggestionBar';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 import { WordImport } from './WordImport';
@@ -1673,6 +1674,7 @@ function ChapterEditor({
                   onUsageChange={onUsageChange}
                 />
                 <ParaphrasePanel chapterId={chapter.id} editor={editor} />
+                <SourceQualityPanel documentId={doc.id} />
               </>
             )}
           </div>

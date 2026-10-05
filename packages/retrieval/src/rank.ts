@@ -35,7 +35,54 @@ export type Candidate = {
   page: number | null;
   /** Short reference for the passage tag, e.g. "Kumar 2021". */
   shortRef?: string;
+  /** ADR-0076: what the source's standing is, for `credibility`. Absent means unknown. */
+  citationCount?: number | null;
+  isPreprint?: boolean;
+  venueCitedness?: number | null;
+  year?: number | null;
 };
+
+/**
+ * ADR-0076: a small, bounded adjustment for how much a source has been taken up by its field.
+ *
+ * Found in the side-by-side study (2026-10-05): both tools' top result for a Karnataka rooftop-
+ * solar thesis was a month-old paper with no citations, by a school student, in a journal with a
+ * citedness of 0.2 — and our autocomplete leaned on it as its main evidence.
+ *
+ * Relevance still decides: the whole range (−0.08 to +0.05) is smaller than the sub-theme boost
+ * and far smaller than the gap between an on-topic and an off-topic passage. It reorders passages
+ * that are about equally relevant; it never brings in one that is not. New work is not punished
+ * for being new: the "uncited" penalty applies only after two years without a citation.
+ */
+export function credibility(
+  source: {
+    citationCount?: number | null;
+    isPreprint?: boolean;
+    venueCitedness?: number | null;
+    year?: number | null;
+  },
+  now: Date = new Date(),
+): number {
+  let adjustment = 0;
+  if (source.isPreprint) adjustment -= CREDIBILITY.preprint;
+  const age = source.year ? now.getUTCFullYear() - source.year : null;
+  if (source.citationCount === 0 && age !== null && age >= 2) adjustment -= CREDIBILITY.uncited;
+  if ((source.citationCount ?? 0) >= 20) adjustment += CREDIBILITY.wellCited;
+  const venue = source.venueCitedness;
+  if (typeof venue === 'number') {
+    if (venue < 0.5) adjustment -= CREDIBILITY.weakVenue;
+    else if (venue >= 2) adjustment += CREDIBILITY.strongVenue;
+  }
+  return Math.max(-0.08, Math.min(0.05, adjustment));
+}
+
+export const CREDIBILITY = {
+  preprint: 0.05,
+  uncited: 0.03,
+  weakVenue: 0.03,
+  wellCited: 0.03,
+  strongVenue: 0.02,
+} as const;
 
 export type RankedCandidate = Candidate & { score: number };
 
@@ -58,6 +105,7 @@ export function rerank(
         score += SUB_THEME_BOOST;
       }
       if (candidate.groundingLevel === 'FULL_TEXT') score += FULL_TEXT_BOOST;
+      score += credibility(candidate);
       return { ...candidate, score };
     })
     .sort((a, b) => b.score - a.score || a.chunkId.localeCompare(b.chunkId));

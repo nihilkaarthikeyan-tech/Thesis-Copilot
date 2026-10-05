@@ -16,6 +16,7 @@ import {
   guidanceFor,
   runDraftSection,
 } from '../src/jobs/draft-section.js';
+import { waitForNewSources } from '../src/jobs/find-sources.js';
 
 const PASSAGE = {
   id: 'S1#c1',
@@ -253,5 +254,115 @@ describe('draftCloseTo (ADR-0071)', () => {
         [passage],
       ),
     ).toEqual([]);
+  });
+});
+
+describe('search first when the section is thin (ADR-0076)', () => {
+  it('searches, waits for what it adds, retrieves again, then writes', async () => {
+    const { deps, published } = fakeDeps();
+    // One on-topic source is thin; after the search, three are.
+    const thin = { ...PASSAGE, cosine: 0.6 };
+    const more = [
+      thin,
+      { ...PASSAGE, id: 'S2#c1', sourceId: 'src-2', chunkId: 'chunk-2', cosine: 0.55 },
+      { ...PASSAGE, id: 'S3#c1', sourceId: 'src-3', chunkId: 'chunk-3', cosine: 0.5 },
+    ];
+    const retrieve = vi
+      .fn()
+      .mockResolvedValueOnce({ passages: [thin], byKey: new Map([['S1#c1', thin]]) })
+      .mockResolvedValueOnce({
+        passages: more,
+        byKey: new Map(more.map((p) => [p.id, p] as const)),
+      });
+    const findSources = vi.fn(async () => true);
+    const waitForNewSources = vi.fn(async () => 2);
+
+    const result = await runDraftSection(
+      { ...job, heading: 'Financial constraints' },
+      { ...deps, retrieve, findSources, waitForNewSources },
+    );
+
+    expect(findSources).toHaveBeenCalledTimes(1);
+    expect(waitForNewSources).toHaveBeenCalledTimes(1);
+    expect(retrieve).toHaveBeenCalledTimes(2);
+    expect(published.some((e) => e.type === 'progress' && e.stage === 'searching')).toBe(true);
+    expect(result.status).toBe('done');
+  });
+
+  it('does not search when the section already has enough sources', async () => {
+    const { deps } = fakeDeps();
+    const enough = [0, 1, 2].map((i) => ({
+      ...PASSAGE,
+      id: `S${i}#c1`,
+      sourceId: `src-${i}`,
+      chunkId: `chunk-${i}`,
+      cosine: 0.6,
+    }));
+    const retrieve = vi.fn(async () => ({
+      passages: enough,
+      byKey: new Map(enough.map((p) => [p.id, p] as const)),
+    }));
+    const findSources = vi.fn(async () => true);
+    await runDraftSection(job, {
+      ...deps,
+      retrieve,
+      findSources,
+      waitForNewSources: vi.fn(async () => 0),
+    });
+    expect(findSources).not.toHaveBeenCalled();
+  });
+
+  it('writes from what it has when no search may start', async () => {
+    const { deps } = fakeDeps();
+    const waitForNewSources = vi.fn(async () => 0);
+    const result = await runDraftSection(job, {
+      ...deps,
+      findSources: vi.fn(async () => false),
+      waitForNewSources,
+    });
+    expect(waitForNewSources).not.toHaveBeenCalled();
+    expect(result.status).toBe('done');
+  });
+});
+
+describe('waitForNewSources', () => {
+  const since = new Date();
+  const fakePrisma = (rounds: Array<{ searched: boolean; chunks: number[] }>) => {
+    let i = 0;
+    const at = () => rounds[Math.min(i, rounds.length - 1)] as (typeof rounds)[number];
+    return {
+      auditEvent: { findFirst: vi.fn(async () => (at().searched ? { id: 'a' } : null)) },
+      source: {
+        findMany: vi.fn(async () => {
+          const round = at();
+          i += 1;
+          return round.chunks.map((n) => ({ _count: { chunks: n } }));
+        }),
+      },
+    } as unknown as Parameters<typeof waitForNewSources>[0];
+  };
+
+  it('returns once the search is done and every added paper can be cited', async () => {
+    const prisma = fakePrisma([
+      { searched: false, chunks: [] },
+      { searched: true, chunks: [0, 1] },
+      { searched: true, chunks: [1, 1] },
+    ]);
+    const ready = await waitForNewSources(
+      prisma,
+      { documentId: 'd', since },
+      { sleep: async () => undefined },
+    );
+    expect(ready).toBe(2);
+  });
+
+  it('gives up at the time limit with what is ready', async () => {
+    const prisma = fakePrisma([{ searched: false, chunks: [1, 0] }]);
+    const ready = await waitForNewSources(
+      prisma,
+      { documentId: 'd', since },
+      { timeoutMs: 0, sleep: async () => undefined },
+    );
+    expect(ready).toBe(1);
   });
 });

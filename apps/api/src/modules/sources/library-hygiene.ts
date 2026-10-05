@@ -259,3 +259,39 @@ export function repointCitations(
   const out = visit(doc as PmNode);
   return { doc: changed > 0 ? out : doc, changed, passagesCleared };
 }
+
+/**
+ * ADR-0076 — source quality: what a careful supervisor would query about a paper before it
+ * carries a claim. Facts only, from the record we hold; never a verdict on the paper's worth.
+ */
+export type QualityIssue = 'RETRACTED' | 'PREPRINT' | 'UNCITED' | 'WEAK_VENUE';
+
+export type QualityInput = {
+  isRetracted: boolean;
+  isPreprint: boolean;
+  citationCount: number | null;
+  venueCitedness: number | null;
+  year: number | null;
+};
+
+export function qualityIssues(source: QualityInput, now: Date = new Date()): QualityIssue[] {
+  const issues: QualityIssue[] = [];
+  if (source.isRetracted) issues.push('RETRACTED');
+  if (source.isPreprint) issues.push('PREPRINT');
+  const age = source.year ? now.getUTCFullYear() - source.year : null;
+  if (source.citationCount === 0 && age !== null && age >= 2) issues.push('UNCITED');
+  if (typeof source.venueCitedness === 'number' && source.venueCitedness < 0.5) {
+    issues.push('WEAK_VENUE');
+  }
+  return issues;
+}
+
+/** One plain sentence per issue, for the student. */
+export const QUALITY_ADVICE: Record<QualityIssue, string> = {
+  RETRACTED: 'Retracted by its publisher. Do not rely on it; remove or replace the citation.',
+  PREPRINT: 'A preprint, not yet peer reviewed. Cite the published version if there is one.',
+  UNCITED:
+    'No other paper has cited it in two years or more. Support its claims with a second source.',
+  WEAK_VENUE:
+    'Its journal is rarely cited (citedness below 0.5). Pair it with a stronger source for key claims.',
+};

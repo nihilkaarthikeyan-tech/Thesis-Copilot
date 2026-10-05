@@ -28,7 +28,13 @@ import {
   monthlyAutoSearches,
 } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
-import { cosine, type DiscoveredWork, mergeWorks, searchWithinBudget } from '@tc/retrieval';
+import {
+  cosine,
+  credibility,
+  type DiscoveredWork,
+  mergeWorks,
+  searchWithinBudget,
+} from '@tc/retrieval';
 import type { FindSourcesJob } from '@tc/types';
 
 type Searcher = {
@@ -244,7 +250,9 @@ export async function runFindSources(
     added = fresh
       .map((w, i) => ({ ...w, score: cosine(queryVector ?? [], workVectors[i] ?? []) }))
       .filter((w) => w.score >= AUTO_SOURCES.addCosine)
-      .sort((a, b) => b.score - a.score)
+      // ADR-0076: among papers on topic, the better-established first. Relevance (the filter
+      // above) still decides what is eligible; standing only orders the few that are.
+      .sort((a, b) => b.score + credibility(b, now) - (a.score + credibility(a, now)))
       .slice(0, AUTO_SOURCES.perRun);
   }
 
@@ -336,4 +344,46 @@ export async function startFindSources(
   }
   await deps.enqueue(job, autoSourcesJobKey(job.chapterId, now));
   return true;
+}
+
+/**
+ * ADR-0076: after a search started for a draft, wait until it is done and the papers it added can
+ * be cited (abstract-first indexing, ADR-0070, makes that a few seconds), or the time is up.
+ * Resolves with how many added papers are citable.
+ *
+ * "Done" is the search's own `SOURCES_FOUND` log row, written whether or not anything was added.
+ * A search for this thesis in the last cooldown window counts too: a repeat request inside it is
+ * the same BullMQ job (ADR-0037), so no new row would ever come.
+ */
+export async function waitForNewSources(
+  prisma: PrismaClient,
+  input: { documentId: string; since: Date },
+  options: { timeoutMs?: number; intervalMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<number> {
+  const timeoutMs = options.timeoutMs ?? 35_000;
+  const intervalMs = options.intervalMs ?? 1_500;
+  const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  const windowStart = new Date(input.since.getTime() - AUTO_SOURCES.cooldownMinutes * 60_000);
+  const deadline = Date.now() + timeoutMs;
+  let ready = 0;
+  for (;;) {
+    const [searched, added] = await Promise.all([
+      prisma.auditEvent.findFirst({
+        where: {
+          kind: 'SOURCES_FOUND',
+          documentId: input.documentId,
+          createdAt: { gte: windowStart },
+        },
+        select: { id: true },
+      }),
+      prisma.source.findMany({
+        where: { documentId: input.documentId, autoAddedAt: { gte: windowStart } },
+        select: { _count: { select: { chunks: true } } },
+      }),
+    ]);
+    ready = added.filter((source) => source._count.chunks > 0).length;
+    if (searched && ready === added.length) return ready;
+    if (Date.now() >= deadline) return ready;
+    await sleep(intervalMs);
+  }
 }

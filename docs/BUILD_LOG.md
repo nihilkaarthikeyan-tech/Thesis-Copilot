@@ -5133,3 +5133,15 @@ Fixes for the faults the Jenni comparison found in production v0.1.26:
 Lesson, again: the Python-heredoc rule. Two regexes were mangled this way (`\b` became a
 backspace byte, `\n` became a line break). Both were caught by grepping the diff for `\x08` and
 for split regexes before commit, and were rewritten from raw strings or with the Edit tool.
+
+## Source standing and search-first drafts (2026-10-05, ADR-0076)
+
+C1 and C3 of the side-by-side list:
+- Retracted papers are never retrieved.
+- A bounded credibility term (−0.08 to +0.05) breaks ties between equally relevant passages and
+  orders automatic additions.
+- A free "Source quality" check sits in the Check panel.
+- Draft searches first, and waits up to 35 s, when a section has fewer than three on-topic
+  sources.
+
+No new model call; the search is the existing metered automatic search.

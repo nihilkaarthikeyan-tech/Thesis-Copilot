@@ -21,6 +21,9 @@ import {
   type DuplicatePair,
   findDuplicates,
   type HygieneSource,
+  QUALITY_ADVICE,
+  type QualityIssue,
+  qualityIssues,
   repointCitations,
   whyNoFullText,
 } from './library-hygiene.js';
@@ -827,6 +830,58 @@ export class SourcesService {
       cites: new Map(cites.map((c) => [c.sourceId, c._count._all])),
       pins: new Map(pins.map((p) => [p.sourceId, p._count._all])),
     };
+  }
+
+  /**
+   * ADR-0076: the library's papers with a standing problem (retracted, preprint, uncited, weak
+   * venue), the ones the thesis actually cites first. Free: no model, only what we hold.
+   */
+  async sourceQuality(
+    ownerId: string,
+    documentId: string,
+  ): Promise<{
+    checked: number;
+    sources: Array<{
+      id: string;
+      title: string | null;
+      year: number | null;
+      citedInThesis: number;
+      issues: Array<{ code: QualityIssue; advice: string }>;
+    }>;
+  }> {
+    await this.ownedDocument(ownerId, documentId);
+    const [rows, usage] = await Promise.all([
+      this.prisma.source.findMany({
+        where: { documentId },
+        select: {
+          id: true,
+          title: true,
+          year: true,
+          isRetracted: true,
+          isPreprint: true,
+          citationCount: true,
+          venueCitedness: true,
+        },
+      }),
+      this.usage(documentId),
+    ]);
+    const sources = rows
+      .map((row) => ({
+        id: row.id,
+        title: row.title,
+        year: row.year,
+        citedInThesis: usage.cites.get(row.id) ?? 0,
+        issues: qualityIssues(row).map((code) => ({ code, advice: QUALITY_ADVICE[code] })),
+      }))
+      .filter((row) => row.issues.length > 0)
+      .sort(
+        (a, b) =>
+          Number(b.issues.some((i) => i.code === 'RETRACTED')) -
+            Number(a.issues.some((i) => i.code === 'RETRACTED')) ||
+          b.citedInThesis - a.citedInThesis ||
+          b.issues.length - a.issues.length,
+      );
+    return { checked: rows.length, sources };
   }
 
   /** Possible duplicates in one library (the Jenni "Library Issues" view). Nothing is changed. */
