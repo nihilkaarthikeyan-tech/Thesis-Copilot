@@ -133,3 +133,27 @@ model's own: a "Direct answer:" label, seen in ADR-0074's round too, and one mis
   its plan and found papers, the switch off again, not offered in the document scope.
 - `packages/config` (E.2 completeness, the caps table, the budget pins) and `packages/db`
   (enum parity) updated.
+
+## Addendum (2026-10-05, evening): the evaluation round
+
+`eval/run.ts chat_deep --tier strong` (ADR-0038's harness): the eleven chat cases of the five
+topics plus the side-by-side's C2 question, each answered twice over the same eight passages —
+A.4 as it stands (side A) and A.4.1's plan on the real strong model followed by A.4.2 (side B) —
+and judged blind, both orders, as answers to a student starting that section.
+
+| | A.4 (current) | A.4.1 + A.4.2 (deep) |
+|---|---|---|
+| Wins (both orders agree) | 0 | **11** of 11 |
+| Mean judge score | 6.73 | **8.91** |
+| Sentences with a citation | 76 of 105 (72%) | 226 of 242 (**93%**) |
+| Citations stripped as not in the request | 11 | **4** |
+| Distinct passages cited | 54 | 69 |
+| Words, mean | 229 | 578 |
+| Median time to the answer | 7.6 s | 17.3 s |
+
+Result file `eval/results/chat_deep-2026-10-05-*.json`; ₹9.04. The deep prompts stand on this
+round as well as the proof above. The judge's reasons name the same things each time: every
+part answered with a figure, the disagreement section, and "what these sources do not cover"
+said plainly. The ordinary A.4 remains the right answer for a quick question; this is the slower
+one the student asks for.
+

@@ -271,10 +271,9 @@ since each re-index spends a little on embeddings).
 
 ## Deep research in chat (ADR-0080, 2026-10-05)
 
-- [ ] **An evaluation round for the two new prompts** (`research_plan.md`, `chat_deep.md`).
-      They are new, so ADR-0038's bar (beat the current prompt) had nothing to beat; they stand
-      on one real run (ADR-0080, "Proof"). Add a `chat_deep` task to `eval/run.ts` that runs
-      the deep answer and A.4 on the same question and passages with the judge, about ₹30.
+- [x] **An evaluation round for the two new prompts** — done 2026-10-05 evening: `eval/run.ts
+      chat_deep --tier strong`, 11 wins to 0, mean 8.91 against 6.73, ₹9.04 (ADR-0080,
+      addendum).
 - [ ] **A native reader for the Hindi step strings** (`chat.step.plan`, `planned`, `part`,
       `writeDeep`, `chat.deep.*` in `apps/web/src/i18n/hi.ts`), as for ADR-0061's.
 - [ ] **On production after release:** switch on Research deeply on a five-paper library and ask

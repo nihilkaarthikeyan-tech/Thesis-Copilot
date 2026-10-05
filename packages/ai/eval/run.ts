@@ -29,6 +29,12 @@ import {
   postProcessCommand,
 } from '../src/builder/command.js';
 import { buildReviseRequest, postProcessRevision } from '../src/builder/comment.js';
+import {
+  buildDeepChatRequest,
+  buildResearchPlanRequest,
+  cleanResearchPlan,
+  researchPlanSchema,
+} from '../src/builder/deep-research.js';
 import { buildDraftRequest, postProcessDraft } from '../src/builder/draft.js';
 import {
   buildOutlineRequest,
@@ -140,6 +146,7 @@ type Case = {
     | 'assist'
     | 'draft'
     | 'chat'
+    | 'chat_deep'
     | 'expand'
     | 'formalise'
     | 'outline'
@@ -317,14 +324,17 @@ function casesFor(name: string): Case[] {
         passages: passagesFor(topic, 8),
         kind: 'draft',
       });
-    } else if (name === 'chat') {
+    } else if (name === 'chat' || name === 'chat_deep') {
+      // ADR-0080's round: the same questions and passages, A.4's answer against the planned deep
+      // answer (`kind: 'chat_deep'`), judged as answers to a student starting a section.
+      const kind = name;
       topic.questions.forEach((question, i) => {
         cases.push({
           id: `${topic.id}-q${i + 1}`,
           topic,
           context: question,
           passages: passagesFor(topic, 8),
-          kind: 'chat',
+          kind,
         });
       });
       // ADR-0074: the side-by-side's own question (C2), asked as the research path asks it: five
@@ -338,7 +348,7 @@ function casesFor(name: string): Case[] {
           passages: passagesFor(topic, 8).map((p, i) =>
             i >= 5 ? { ...p, id: `Sweb${i - 4}#cabstract`, origin: 'search' as const } : p,
           ),
-          kind: 'chat',
+          kind,
         });
       }
     } else if (name === 'command') {
@@ -470,7 +480,11 @@ async function proposalConversation(llm: LlmProvider, topic: Topic): Promise<Out
   return { raw: '', text: '', shown: '', cited: 0, empty: true, dropped: 0 };
 }
 
-async function produce(llm: LlmProvider, c: Case): Promise<Output> {
+async function produce(
+  llm: LlmProvider,
+  c: Case,
+  side: 'current' | 'candidate' = 'current',
+): Promise<Output> {
   if (c.kind === 'proposal') return proposalConversation(llm, c.topic);
   const done = (text: string): Output => ({
     raw: text,
@@ -622,7 +636,49 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
       hallucinated: processed.hallucinated.length,
     };
   }
-  if (c.kind === 'chat') {
+  if (c.kind === 'chat_deep' && side === 'candidate') {
+    // The plan on the real strong model, then the deep answer over the same passages.
+    const planned = await llm.complete({
+      ...buildResearchPlanRequest({
+        scope: {
+          workingTitle: c.topic.thesisTitle,
+          problemStatement: c.topic.chapter.scopeNote,
+          objectives: [c.topic.section.scopeNote],
+        },
+        question: c.context,
+        userId: 'eval',
+        documentId: 'eval',
+      }),
+      schema: researchPlanSchema,
+    });
+    const plan = cleanResearchPlan(planned.value);
+    const request = buildDeepChatRequest({
+      memoryBlock: memoryFor(c.topic, ''),
+      question: c.context,
+      history: [],
+      passages: c.passages,
+      filters: {},
+      userId: 'eval',
+      documentId: 'eval',
+      plan: plan.length > 0 ? plan : [{ title: 'The question', question: c.context, query: '' }],
+      maxPassages: c.passages.length,
+    });
+    const { text } = await streamText(llm, request);
+    const processed = postProcessChat(
+      text,
+      c.passages.map((p) => p.id),
+    );
+    return {
+      raw: `PLAN: ${plan.map((p) => p.title).join(' · ')}\n\n${text}`,
+      text: processed.text,
+      shown: readable(processed.text, c.passages),
+      cited: processed.cited.length,
+      empty: processed.text.trim().length === 0,
+      dropped: 0,
+      chat: chatMeasures(processed.text, processed.hallucinated.length),
+    };
+  }
+  if (c.kind === 'chat' || c.kind === 'chat_deep') {
     const request = buildChatRequest({
       memoryBlock: memoryFor(c.topic, ''),
       question: c.context,
@@ -709,7 +765,7 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
 const failures = { current: 0, candidate: 0 };
 async function safely(llm: LlmProvider, c: Case, side: 'current' | 'candidate'): Promise<Output> {
   try {
-    return await produce(llm, c);
+    return await produce(llm, c, side);
   } catch (error) {
     failures[side]++;
     console.log(`${c.id}: ${side} FAILED: ${(error as Error).message.slice(0, 120)}`);
@@ -738,6 +794,8 @@ async function judge(llm: LlmProvider, c: Case, first: string, second: string) {
       'Each candidate is the next one or two sentences the writing assistant offers after the student text. An empty candidate means the assistant offered nothing.',
     draft: 'Each candidate is a drafted section of the thesis.',
     chat: "Each candidate is the assistant's answer to the student's question about their sources. A better answer is direct, specific, synthesises across sources, cites each claim to a source that supports it, and says plainly when the sources do not answer the question.",
+    chat_deep:
+      "Each candidate is the assistant's answer to a student who asked about their sources while starting to write that section. A better answer is direct, specific, synthesises across sources, cites each claim to a source that supports it, says plainly what the sources do not answer, and gives the student as much as the sources genuinely support — organised so it can be used — without padding or claims the sources do not make.",
     expand:
       "Each candidate is the student's paragraph expanded by the assistant. A better expansion keeps the student's meaning, adds real depth from the sources with correct citations, and adds no unsupported claims or filler.",
     formalise:
@@ -875,7 +933,7 @@ async function main(): Promise<void> {
     distinctCited: 0,
   });
   const chatTotals = { a: zero(), b: zero() };
-  if (name === 'chat') console.log(`chat tier: ${chatTier}`);
+  if (name === 'chat' || name === 'chat_deep') console.log(`chat tier: ${chatTier}`);
 
   for (const c of cases) {
     for (let s = 0; s < samples; s++) {
@@ -969,7 +1027,7 @@ async function main(): Promise<void> {
       : {}),
     medianMs: { current: median(timing.a), candidate: median(timing.b) },
     ...(modelB ? { models: { current: env.AI_FAST_MODEL, candidate: modelB } } : {}),
-    ...(name === 'chat'
+    ...(name === 'chat' || name === 'chat_deep'
       ? {
           chatTier,
           chat: {

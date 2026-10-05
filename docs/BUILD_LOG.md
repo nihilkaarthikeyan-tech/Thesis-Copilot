@@ -5393,3 +5393,10 @@ heading, the Sources tab sets either scope under a heading. Tests: `section-pins
 (retrieval), `section-pins-api.spec.ts` (api). Prisma regenerated with the API and worker
 stopped, as the brief says; both restarted after.
 
+## Deep research, the evaluation round (2026-10-05, ADR-0080 addendum)
+
+`chat_deep` task in `eval/run.ts`: A.4 against the planned A.4.2 answer over the same passages,
+eleven cases, judged blind both orders on the strong tier. 11–0 for the deep answer, mean 8.91
+against 6.73, citations on 93% of sentences against 72%, 4 stripped citations against 11, 578
+words against 229, 17 s against 7.6 s. ₹9.04. The PENDING item is closed.
+
