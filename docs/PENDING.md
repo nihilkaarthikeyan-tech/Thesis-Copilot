@@ -679,6 +679,11 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
 - [ ] **Turn on live co-authoring in production** (ADR-0028) — **stopped on 2026-09-25 before any
       change and left off until the owner says otherwise**: the server hosts many other projects
       and the step below edits nginx, which they all share. If it is ever wanted, in this order:
+      **2026-10-05: the owner asked why it is off; the answer and the safe order were given and
+      the owner said to discuss it later.** The `collab` service is already up and healthy on
+      v0.1.28; only the nginx block and the admin switch are missing. When wanted: back up the
+      live file → add the block by hand → `nginx -t` (restore on failure) → reload → request
+      each of the 20 sites → flip the flag → prove it in two browsers.
       1. **Add** the `/collab/` location block from `infra/nginx/thesis.rademics.ai.conf` to the
          live `/etc/nginx/sites-available/thesis.rademics.ai`, above `location /`. Do **not** copy
          the file over: see the next item. Without the block every live session fails to connect
