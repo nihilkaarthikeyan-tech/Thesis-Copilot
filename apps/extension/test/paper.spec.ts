@@ -9,11 +9,101 @@ import { describe, expect, it } from 'vitest';
 import {
   arxivDoi,
   arxivIdFromPageUrl,
+  cleanArxivId,
   cleanDoi,
+  cleanPmid,
+  clip,
   doiFromUrl,
+  isDoi,
+  isPdfUrl,
   type PageMeta,
   paperFrom,
+  paperFromLink,
+  pdfFilename,
 } from '../src/paper.js';
+
+describe('values from a page are checked before they are sent (ADR-0069)', () => {
+  it('a DOI must look like one, with nothing that could break out of a request', () => {
+    expect(isDoi('10.1038/nature14539')).toBe(true);
+    expect(isDoi('10.1000/abc"><script>')).toBe(false);
+    expect(isDoi('10.1000/has space')).toBe(false);
+    expect(isDoi(`10.1000/${'x'.repeat(200)}`)).toBe(false);
+    expect(cleanDoi('doi:10.1000/a\\b')).toBeNull();
+    expect(cleanDoi('10.12/short-prefix')).toBeNull();
+  });
+
+  it('arXiv ids and PMIDs have their own shapes', () => {
+    expect(cleanArxivId('arXiv:2410.08098v3')).toBe('2410.08098');
+    expect(cleanArxivId('hep-th/9901001')).toBe('hep-th/9901001');
+    expect(cleanArxivId('math.GT/0309136')).toBe('math.GT/0309136');
+    expect(cleanArxivId('2410.08098/../../x')).toBeNull();
+    expect(cleanArxivId('<b>')).toBeNull();
+    expect(cleanPmid('39041937')).toBe('39041937');
+    expect(cleanPmid('0123')).toBeNull();
+    expect(cleanPmid('1234567890')).toBeNull();
+    expect(cleanPmid('12"onload')).toBeNull();
+  });
+
+  it('text is made one line and cut to length', () => {
+    expect(clip('  a\n\tb\u0000c  ', 100)).toBe('a b c');
+    expect(clip('x'.repeat(600), 500)).toHaveLength(500);
+    expect(clip(null, 10)).toBe('');
+  });
+
+  it('a page’s title and authors are cut to length too', () => {
+    const paper = paperFrom(
+      page({
+        meta: [
+          ['citation_title', 'T'.repeat(900)],
+          ['citation_doi', '10.1038/x'],
+        ],
+      }),
+    );
+    expect(paper?.title).toHaveLength(500);
+  });
+});
+
+describe('a right-clicked link (ADR-0069)', () => {
+  it('names a paper by its DOI or arXiv id', () => {
+    expect(paperFromLink('https://doi.org/10.1038/nature14539')?.doi).toBe('10.1038/nature14539');
+    expect(
+      paperFromLink('https://onlinelibrary.wiley.com/doi/full/10.1002/anie.201915678')?.doi,
+    ).toBe('10.1002/anie.201915678');
+    const arxiv = paperFromLink('https://arxiv.org/abs/1706.03762v7');
+    expect(arxiv).toMatchObject({
+      doi: '10.48550/arxiv.1706.03762',
+      title: 'arXiv:1706.03762',
+      reference: 'https://doi.org/10.48550/arxiv.1706.03762',
+    });
+  });
+
+  it('a PubMed link, or any other, is not offered', () => {
+    expect(paperFromLink('https://pubmed.ncbi.nlm.nih.gov/39041937/')).toBeNull();
+    expect(paperFromLink('https://example.com/doi-of-sorts')).toBeNull();
+    expect(paperFromLink('javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('PDF tabs (ADR-0069)', () => {
+  it('knows a PDF by its address', () => {
+    expect(isPdfUrl('https://example.org/files/paper.PDF')).toBe(true);
+    expect(isPdfUrl('https://arxiv.org/pdf/2410.08098v2')).toBe(true);
+    expect(isPdfUrl('https://www.tandfonline.com/doi/pdf/10.1080/01621459.2017.1285773')).toBe(
+      true,
+    );
+    expect(isPdfUrl('https://arxiv.org/abs/2410.08098')).toBe(false);
+    expect(isPdfUrl('file:///C:/papers/a.pdf')).toBe(false);
+  });
+
+  it('names the upload safely, always ending in .pdf', () => {
+    expect(pdfFilename('https://arxiv.org/pdf/2410.08098v2')).toBe('2410.08098v2.pdf');
+    expect(pdfFilename('https://example.org/a/My%20Paper%20(final).pdf?dl=1')).toBe(
+      'My-Paper-final.pdf',
+    );
+    expect(pdfFilename('https://example.org/')).toBe('paper.pdf');
+    expect(pdfFilename('https://example.org/..%2F..%2Fetc%2Fpasswd')).toBe('etc-passwd.pdf');
+  });
+});
 
 const page = (over: Partial<PageMeta> = {}): PageMeta => ({
   url: 'https://www.nature.com/articles/nature14539',
@@ -41,6 +131,9 @@ describe('a journal article page', () => {
       doi: '10.1038/nature14539',
       reference:
         'LeCun, Yann, Bengio, Yoshua, Hinton, Geoffrey (2015). Deep learning. Nature. https://doi.org/10.1038/nature14539',
+      byline: 'LeCun, Yann, Bengio, Yoshua, Hinton, Geoffrey',
+      year: '2015',
+      venue: 'Nature',
     });
   });
 
@@ -141,6 +234,9 @@ describe('pages that are not a paper', () => {
       title: 'Adoption of rooftop solar in rural Karnataka',
       doi: null,
       reference: '(2019). Adoption of rooftop solar in rural Karnataka.',
+      byline: null,
+      year: '2019',
+      venue: null,
     });
   });
 });

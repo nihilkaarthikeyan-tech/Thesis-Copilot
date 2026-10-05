@@ -1,7 +1,8 @@
 # ADR-0031 — A Chrome add-on that adds the paper on the page to a thesis library
 
 **Date:** 2026-09-25
-**Status:** Accepted
+**Status:** Accepted; extended by ADR-0069 (version 0.2.0: open the saved paper, collections,
+results pages, PDFs, shortcut, right-click, the product's look)
 **Reverses:** the "not planned" note in `docs/PENDING.md` (a browser extension is "a separate
 product with its own store review"). The owner's manager set the bar as matching Jenni.ai, and
 the add-on was the last item on Jenni's feature list this product lacked that is code rather than

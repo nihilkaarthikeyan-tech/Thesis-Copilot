@@ -2,14 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
     <title>Thesis Copilot</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <main id="app" aria-live="polite">
-      <p class="brand">Thesis Copilot</p>
-      <p class="muted">Reading this page…</p>
+    <header class="top">
+      <!-- The product's mark (apps/web/src/components/LogoMark.tsx), colours from popup.css. -->
+      <svg class="mark" width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <rect width="64" height="64" rx="15" class="mark-tile" />
+        <path d="M11 15h30v7.5H29.8V50h-7.6V22.5H11z" class="mark-glyph" />
+        <circle cx="48" cy="19" r="6" class="mark-dot" />
+      </svg>
+      <span class="wordmark">Thesis Copilot</span>
+      <button type="button" class="link-button" id="open-app" data-testid="open-app">Open app</button>
+    </header>
+    <main id="app" aria-live="polite" aria-busy="true">
+      <div class="state">
+        <p class="muted"><span class="spinner" aria-hidden="true"></span>Reading this page…</p>
+      </div>
     </main>
+    <footer class="foot">
+      <span id="shortcut" data-testid="shortcut"></span>
+      <span id="version" class="faint"></span>
+    </footer>
     <script type="module" src="popup.js"></script>
   </body>
 </html>
