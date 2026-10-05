@@ -899,14 +899,18 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
 - [x] **A setup checklist.** Built 2026-09-21 and built to disappear — it renders nothing once all
       five steps are done. Deriving "has an outline" honestly took two attempts; `docs/BUILD_LOG.md`
       has the account.
-- [ ] **Publish the Chrome add-on** (ADR-0031 — built and tested 2026-09-25, `apps/extension`).
-      Try it first: build it, then `chrome://extensions` → Developer mode → Load unpacked →
-      `apps/extension/dist` (steps in `apps/extension/README.md`). To publish: create a Chrome Web
-      Store developer account in your name (Google charges a one-time registration fee; the agent
-      cannot pay or create accounts), zip `dist`, and paste the listing, permission reasons and
-      privacy answers from `apps/extension/STORE.md`. Take two screenshots in a real Chrome
-      window. Google reviews it before it is listed. The privacy page's add-on section goes live
-      with the next release.
+- [ ] **Publish the Chrome add-on** (ADR-0031, version 0.2.0 by ADR-0069 — built and tested
+      2026-10-05, `apps/extension`). **Follow `apps/extension/PUBLISHING.md`**, step by step: a
+      Chrome Web Store developer account in your name (2-Step Verification on, a one-time fee the
+      agent cannot pay), `pnpm --filter @tc/extension build` → upload
+      `apps/extension/thesis-copilot-chrome-0.2.0.zip`, paste the listing, permission reasons and
+      privacy answers from `apps/extension/STORE.md`, upload the two 1280×800 screenshots and the
+      440×280 tile from `apps/extension/store/`. Publish **after** the site release that carries
+      the privacy page's updated add-on section and the resolve route's `sourceIds` (the add-on's
+      "Open in Thesis Copilot" needs it, and the in-app reader at `/app/d/:id/sources/:sourceId`).
+      Try it first: Load unpacked → `apps/extension/dist` (`apps/extension/README.md`). Two things
+      only a real Chrome shows: that "Attach this PDF" can download a PDF from a publisher with
+      `activeTab` alone, and the right-click item opening the popup (`chrome.action.openPopup`).
 - [ ] **Video tutorials** — content, not code, so still yours: a two-minute recording of each of
       the main screens would do.
 

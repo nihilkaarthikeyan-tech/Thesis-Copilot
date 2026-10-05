@@ -5024,3 +5024,35 @@ fixtures); **Playwright 129 of 132** on the mock stack. The three that fail (`ga
 returned HTTP 429 — the worker log shows it; an `OPENALEX_API_KEY` in the dev `.env` removes it.
 Coverage against Jenni (docs/research/coverage-map.md): 63 match, 15 ours better, 20 partial, 3
 missing (live chat support, a community channel, interface languages beyond Hindi).
+
+## The Chrome add-on, version 0.2.0 (2026-10-05, ADR-0069)
+
+The owner tried 0.1.0 beside Jenni's and found nothing to do after saving. 0.2.0: "Open in Thesis
+Copilot" (the in-app reader, `/app/d/:id/sources/:sourceId`), a collection while saving (or a new
+one inline), PubMed / arXiv / Google Scholar results pages with checkboxes and "Save (n)" (≤ 50,
+ten per request, per-paper Saved / In library / Failed + retry), "Attach this PDF" on a PDF tab
+(attached to the DOI's entry, or the file itself as the entry; a refused download falls back to
+the DOI), Alt+Shift+P (Alt+Shift+T is Chrome's own toolbar shortcut on Windows), right-click
+"Add to Thesis Copilot" on DOI/arXiv links (`contextMenus`, the one new permission), and the
+product's look: LogoMark icons rasterised by Chromium (128 = 96 art + 16 padding, the store's
+rule), the site's tokens, Satoshi bundled, light and dark. Every state is `src/state.ts`.
+
+One API change: `POST /documents/:id/sources/resolve` also answers `sourceIds` (one per reference,
+the existing row for a repeat); `apps/api/test/resolve-source-ids.spec.ts`.
+
+Tests: extension unit tests 57 (were 10) — page parsing, results pages from hand-written fixtures
+of PubMed's and arXiv's markup as observed today and Scholar's documented markup, DOI/arXiv/PMID
+validation, the state machine, the save algorithm against a fake API, the requests against a fake
+`fetch`. The API resolve-ids spec passes (Testcontainers). `apps/web/e2e/extension.spec.ts` (4:
+article + collection + "Open" link + duplicate; a results page of three, then all "already"; a PDF
+tab saved as the file; not-a-paper and signed-out) passes with the unpacked add-on in Chromium
+against this branch's own API on :3301 (mock AI) — the shared stack on :3000/:3001 was in use.
+
+**Found by drawing the store pictures, not by a test:** a long result title ran underneath its
+status label (a flex child without `min-width: 0`), and a failed paper's reason lived only in a
+tooltip a keyboard cannot reach — it is now written under the paper.
+
+**Not proven by automation:** `activeTab` alone letting the service worker download a publisher's
+PDF (the test build has a host permission for its fixture server), Chrome's own PDF viewer tab,
+the right-click item and `chrome.action.openPopup`. Each degrades to a stated message. Publishing
+is the owner's: `apps/extension/PUBLISHING.md`.
