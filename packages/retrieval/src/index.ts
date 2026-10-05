@@ -25,6 +25,7 @@ export {
   type ContextChapter,
   type ContextClient,
   docToText,
+  pinsInScope,
   type RetrievalResult,
   type RetrievedPassage,
   retrievePassages,

@@ -31,7 +31,7 @@ only the owner can decide"); PARTIAL rows were not re-audited one by one.
 | # | Capability | Jenni | Ours | Status | Gap for the student |
 |---|---|---|---|---|---|
 | 9 | Per-section notes panel | Document prompt + bullet notes per heading, editable | `web/components/editor/ScaffoldPanel.tsx` (chapter scope note + sub-heading notes, shown not inserted); edited on the outline page | MATCH | Built 2026-10-04: Assist reads the sub-section note under the cursor (A21) |
-| 10 | Configure context per section | Switch sources off or pin chosen sources per heading | `web/components/editor/SourcePins.tsx`, `api/chapters/chapters.controller.ts` (`chapters/:id/pins`) | PARTIAL | Pins are per chapter, not per section; no "web off" switch |
+| 10 | Configure context per section | Switch sources off or pin chosen sources per heading | `web/components/editor/SourcePins.tsx`, `api/chapters/chapters.controller.ts` (`chapters/:id/pins`) | MATCH | 2026-10-05 (ADR-0085): pins per section — under a heading the Sources tab sets pins for that section alone, which suggestions and drafts there use instead of the chapter's. The literature search stays one switch (Settings) |
 | 11 | Generate for a section | ~5 s, one sentence as a suggestion | `web/components/editor/DraftMode.tsx`, `api/assist/draft.controller.ts` (Ctrl+Shift+D drafts a whole section as a pending draft block) | OURS BETTER | Ours drafts the section, grounded, behind accept/discard |
 
 ## 3. Autocomplete

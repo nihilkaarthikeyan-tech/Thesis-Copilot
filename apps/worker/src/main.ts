@@ -448,13 +448,14 @@ async function main(): Promise<void> {
           // never retrieve from different candidate sets for the same chapter.
           memoryBlock: async (chapter: ContextChapter) =>
             (await buildChapterMemory(prisma as unknown as ContextClient, chapter)).text,
-          retrieve: (chapter: ContextChapter, query: string) =>
+          retrieve: (chapter: ContextChapter, query: string, options?: { section?: string }) =>
             retrievePassages(
               prisma as unknown as ContextClient,
               (texts) => providers.embeddings.embed(texts),
               chapter,
               query,
               'DRAFT',
+              options ?? {},
             ),
           // ADR-0037: a draft refused for want of sources starts a search for them.
           findSources: ({ chapterId, query }) =>

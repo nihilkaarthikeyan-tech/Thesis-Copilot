@@ -5385,3 +5385,11 @@ library paper the student chose — with a rewrite where the tone clearly differ
 proofreading panel in a second mode on the Flags tab (Accept, Dismiss, Accept all, Y / N), one
 COMMAND unit a run. Tests: `tone.spec.ts` (ai, 7), `tone-review-api.spec.ts` (api, 4).
 
+## The partial list, round two: pins per section (2026-10-05, ADR-0085)
+
+Row 10. `ChapterSourcePin.section` (migration 0040; '' is the chapter), `pinsInScope` in
+retrieval (a section's own pins win, else the chapter's), Assist and the section draft pass the
+heading, the Sources tab sets either scope under a heading. Tests: `section-pins.spec.ts`
+(retrieval), `section-pins-api.spec.ts` (api). Prisma regenerated with the API and worker
+stopped, as the brief says; both restarted after.
+

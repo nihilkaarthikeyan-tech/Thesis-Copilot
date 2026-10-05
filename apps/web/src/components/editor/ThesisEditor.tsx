@@ -20,6 +20,7 @@ import {
   createAutosave,
   getGhostState,
   type LocalDraft,
+  sectionAt,
   setAutoSuggest as setEditorAutoSuggest,
   tableRowsAt,
   tableToChartInput,
@@ -700,6 +701,23 @@ function ChapterEditor({
       },
     },
   });
+
+  /** ADR-0085: the heading under the cursor, for pins that apply to one section only. */
+  const [cursorSection, setCursorSection] = useState<string | null>(null);
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => {
+      const { section } = sectionAt(editor.state.doc, editor.state.selection.from);
+      setCursorSection((current) => (current === (section ?? null) ? current : (section ?? null)));
+    };
+    update();
+    editor.on('selectionUpdate', update);
+    editor.on('update', update);
+    return () => {
+      editor.off('selectionUpdate', update);
+      editor.off('update', update);
+    };
+  }, [editor]);
   editorRef.current = editor;
   // ADR-0078: the setting arrives after the editor is built; the extension reads it live.
   useEffect(() => {
@@ -1635,7 +1653,7 @@ function ChapterEditor({
           </div>
           <div className="p-3 text-[13px] text-muted">
             {tab === 'sources' ? (
-              <SourcePins documentId={doc.id} chapterId={chapter.id} />
+              <SourcePins documentId={doc.id} chapterId={chapter.id} section={cursorSection} />
             ) : tab === 'papers' ? (
               <FindPapersPanel
                 documentId={doc.id}

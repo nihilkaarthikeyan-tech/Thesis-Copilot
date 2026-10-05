@@ -49,6 +49,7 @@ export type DraftSectionDeps = {
   retrieve: (
     chapter: DraftChapter,
     query: string,
+    options?: { section?: string },
   ) => Promise<{
     passages: Array<PromptPassage & { sourceId: string; chunkId: string }>;
     byKey: Map<string, { sourceId: string; chunkId: string; shortRef: string }>;
@@ -239,7 +240,8 @@ export async function runDraftSection(
     .map((part) => part.trim())
     .filter(Boolean)
     .join('. ');
-  let retrieved = await deps.retrieve(chapter, query);
+  // ADR-0085: within the section's own pins when it has any.
+  let retrieved = await deps.retrieve(chapter, query, { section: section.title });
 
   // ADR-0076: a thin library for this section means a thin draft. Search first, wait (bounded)
   // for what the search adds to be readable, then retrieve again. Nothing waits when automatic
@@ -259,7 +261,7 @@ export async function runDraftSection(
       log({ msg: 'draft searched first', draftId, ready });
       if (ready > 0) {
         await deps.publish({ type: 'progress', stage: 'retrieving', draftId });
-        retrieved = await deps.retrieve(chapter, query);
+        retrieved = await deps.retrieve(chapter, query, { section: section.title });
       }
     }
   }

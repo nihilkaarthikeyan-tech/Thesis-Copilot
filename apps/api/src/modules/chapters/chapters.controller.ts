@@ -36,6 +36,8 @@ const saveBody = z.object({
 /** §10.4's pin filter. Empty means "the whole library", which is the default a chapter starts in. */
 const pinsBody = z.object({
   sourceIds: z.array(z.string().uuid()).max(500),
+  /** ADR-0085: the heading whose pins these are; absent means the chapter's. */
+  section: z.string().trim().max(300).optional(),
 });
 
 const snapshotBody = z.object({
@@ -65,9 +67,14 @@ export class ChaptersController {
     return this.chapters.save(user.id, id, parsed.data.content, parsed.data.baseVersion);
   }
 
+  /** ADR-0085: `?section=<heading>` adds that section's own pins to the answer. */
   @Get('chapters/:id/pins')
-  pins(@CurrentUser() user: SessionUser, @Param('id') id: string) {
-    return this.chapters.pins(user.id, id);
+  pins(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Query('section') section?: string,
+  ) {
+    return this.chapters.pins(user.id, id, section?.trim() || undefined);
   }
 
   /** PHASES 3.1: replaces the pin set; "Pin all" is the client sending every source id. */
@@ -75,7 +82,7 @@ export class ChaptersController {
   async setPins(@CurrentUser() user: SessionUser, @Param('id') id: string, @Body() body: unknown) {
     const parsed = pinsBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid pins payload', parsed.error.issues);
-    return this.chapters.setPins(user.id, id, parsed.data.sourceIds);
+    return this.chapters.setPins(user.id, id, parsed.data.sourceIds, parsed.data.section ?? '');
   }
 
   @Post('chapters/:id/snapshot')

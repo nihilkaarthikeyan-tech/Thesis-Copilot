@@ -45,9 +45,22 @@ function readPdf(documentId: string, source: PinnableSource): void {
   window.open(readerHref(documentId, source.id), '_blank', 'noopener');
 }
 
-export function SourcePins({ documentId, chapterId }: { documentId: string; chapterId: string }) {
+export function SourcePins({
+  documentId,
+  chapterId,
+  section = null,
+}: {
+  documentId: string;
+  chapterId: string;
+  /** ADR-0085: the heading under the cursor, whose own pins can be set here. */
+  section?: string | null;
+}) {
   const [sources, setSources] = useState<PinnableSource[] | null>(null);
   const [pinned, setPinned] = useState<Set<string>>(new Set());
+  /** ADR-0085: the section's own pins, when the cursor is under a heading. */
+  const [sectionPinned, setSectionPinned] = useState<Set<string>>(new Set());
+  const [scope, setScope] = useState<'chapter' | 'section'>('chapter');
+  const sectionKey = section?.trim() ?? '';
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,10 +68,13 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
     try {
       const [library, pins] = await Promise.all([
         api<PinnableSource[]>(`/documents/${documentId}/sources`),
-        api<{ sourceIds: string[] }>(`/chapters/${chapterId}/pins`),
+        api<{ sourceIds: string[]; section?: { sourceIds: string[] } }>(
+          `/chapters/${chapterId}/pins${sectionKey ? `?section=${encodeURIComponent(sectionKey)}` : ''}`,
+        ),
       ]);
       setSources(library);
       setPinned(new Set(pins.sourceIds));
+      setSectionPinned(new Set(pins.section?.sourceIds ?? []));
     } catch (e) {
       setError(
         e instanceof ApiError
@@ -66,11 +82,16 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
           : 'Could not load the library.',
       );
     }
-  }, [documentId, chapterId]);
+  }, [documentId, chapterId, sectionKey]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Leaving a heading leaves its scope: the chapter's pins are what applies there.
+  useEffect(() => {
+    if (!sectionKey) setScope('chapter');
+  }, [sectionKey]);
 
   // A source's grounding level is decided by two background jobs, so a panel opened seconds after
   // an upload sees every source as "nothing to quote" and stays wrong until the student reloads.
@@ -102,17 +123,21 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
 
   const save = useCallback(
     async (next: Set<string>) => {
-      const previous = pinned;
-      setPinned(next); // Optimistic: a checkbox that lags feels broken.
+      const forSection = scope === 'section' && sectionKey.length > 0;
+      const previous = forSection ? sectionPinned : pinned;
+      (forSection ? setSectionPinned : setPinned)(next); // Optimistic: a checkbox that lags feels broken.
       setSaving(true);
       setError(null);
       try {
         await api(`/chapters/${chapterId}/pins`, {
           method: 'PUT',
-          body: JSON.stringify({ sourceIds: [...next] }),
+          body: JSON.stringify({
+            sourceIds: [...next],
+            ...(forSection ? { section: sectionKey } : {}),
+          }),
         });
       } catch (e) {
-        setPinned(previous);
+        (forSection ? setSectionPinned : setPinned)(previous);
         setError(
           e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not save that.',
         );
@@ -120,8 +145,9 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
         setSaving(false);
       }
     },
-    [chapterId, pinned],
+    [chapterId, pinned, sectionPinned, scope, sectionKey],
   );
+  const active = scope === 'section' && sectionKey ? sectionPinned : pinned;
 
   if (error && !sources) {
     return <p className="text-warn">{error}</p>;
@@ -157,19 +183,49 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
 
   return (
     <div className="space-y-3">
+      {sectionKey ? (
+        <fieldset data-testid="pins-scope" className="flex flex-wrap gap-3 text-xs">
+          <legend className="sr-only">Which pins to set</legend>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="pins-scope"
+              checked={scope === 'chapter'}
+              onChange={() => setScope('chapter')}
+            />
+            This chapter
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="pins-scope"
+              data-testid="pins-scope-section"
+              checked={scope === 'section'}
+              onChange={() => setScope('section')}
+            />
+            This section: “{sectionKey.length > 40 ? `${sectionKey.slice(0, 40)}…` : sectionKey}”
+          </label>
+        </fieldset>
+      ) : null}
       <p>
-        {pinned.size === 0
-          ? 'Suggestions draw on every source in the library. Pin some to narrow this chapter.'
-          : `Suggestions for this chapter draw only on ${pinned.size} pinned ${
-              pinned.size === 1 ? 'source' : 'sources'
-            }.`}
+        {scope === 'section' && sectionKey
+          ? sectionPinned.size === 0
+            ? `This section has no pins of its own, so the chapter’s ${pinned.size === 0 ? 'whole library' : `${pinned.size} pinned`} applies under it. Pin some to narrow this section only.`
+            : `Under this heading, suggestions draw only on its ${sectionPinned.size} pinned ${
+                sectionPinned.size === 1 ? 'source' : 'sources'
+              }; the chapter’s pins do not apply here.`
+          : pinned.size === 0
+            ? 'Suggestions draw on every source in the library. Pin some to narrow this chapter.'
+            : `Suggestions for this chapter draw only on ${pinned.size} pinned ${
+                pinned.size === 1 ? 'source' : 'sources'
+              }.`}
       </p>
 
       <div className="flex gap-3 text-xs">
         <button
           type="button"
           className="underline disabled:opacity-50"
-          disabled={saving || usable.length === 0 || pinned.size === usable.length}
+          disabled={saving || usable.length === 0 || active.size === usable.length}
           onClick={() => void save(new Set(usable.map((s) => s.id)))}
         >
           Pin all
@@ -177,7 +233,7 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
         <button
           type="button"
           className="underline disabled:opacity-50"
-          disabled={saving || pinned.size === 0}
+          disabled={saving || active.size === 0}
           onClick={() => void save(new Set())}
         >
           Clear
@@ -193,9 +249,9 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
               type="checkbox"
               id={`pin-${source.id}`}
               className="mt-1 shrink-0"
-              checked={pinned.has(source.id)}
+              checked={active.has(source.id)}
               onChange={(e) => {
-                const next = new Set(pinned);
+                const next = new Set(active);
                 if (e.target.checked) next.add(source.id);
                 else next.delete(source.id);
                 void save(next);

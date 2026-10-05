@@ -73,6 +73,7 @@ export {
   jsonContainsText,
   type SuggestionCitation,
   type SuggestionOutcome,
+  sectionAt,
   setAutoSuggest,
   suggestionToFragment,
 } from './editor/ghost-text.js';

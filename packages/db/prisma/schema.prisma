@@ -308,9 +308,12 @@ model Chapter {
 model ChapterSourcePin {
   chapterId String @db.Uuid
   sourceId  String @db.Uuid
+  // ADR-0085: '' pins the whole chapter; a heading key pins one section of it, and a section
+  // with pins of its own ignores the chapter's.
+  section   String  @default("")
   chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   source    Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  @@id([chapterId, sourceId])
+  @@id([chapterId, sourceId, section])
 }
 
 model Source {

@@ -186,7 +186,10 @@ export class AssistService {
       // §10.3 / §10.4: the cached block and the passages, then A.1 assembled from prompt files.
       const [memory, retrieved, settings, stored] = await Promise.all([
         this.context.memoryBlock(chapter),
-        this.context.retrieve(chapter, input.before, 'ASSIST'),
+        // ADR-0085: within the pins of the section under the cursor, when it has any.
+        this.context.retrieve(chapter, input.before, 'ASSIST', {
+          section: input.cursorContext?.section ?? null,
+        }),
         // §2.2's citation toggle, per user and independent of automatic-suggest (ADR-0006).
         this.prisma.user.findUnique({ where: { id: user.id }, select: { settings: true } }),
         this.prisma.documentMemory.findUnique({

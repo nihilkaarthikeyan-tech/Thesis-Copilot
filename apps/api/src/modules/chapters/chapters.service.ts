@@ -8,6 +8,7 @@
 
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@tc/db';
+import { headingKey } from '@tc/types';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { withFreshFigureLinks } from '../../common/figure-links.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -99,13 +100,30 @@ export class ChaptersService {
    * library"; a non-empty one restricts retrieval to exactly those sources, which is how a student
    * keeps a literature-review chapter from quoting their methods papers.
    */
-  async pins(ownerId: string, chapterId: string): Promise<{ sourceIds: string[] }> {
+  /**
+   * The chapter's pins and, when a heading is named (ADR-0085), that section's own. The section's
+   * win in retrieval when it has any; the response carries both so the panel can say which apply.
+   */
+  async pins(
+    ownerId: string,
+    chapterId: string,
+    section?: string,
+  ): Promise<{ sourceIds: string[]; section?: { title: string; sourceIds: string[] } }> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId } },
-      select: { pins: { select: { sourceId: true } } },
+      select: { pins: { select: { sourceId: true, section: true } } },
     });
     if (!chapter) throw new NotFoundError('That chapter');
-    return { sourceIds: chapter.pins.map((pin) => pin.sourceId) };
+    const key = section ? headingKey(section) : '';
+    const sourceIds = chapter.pins.filter((p) => p.section === '').map((p) => p.sourceId);
+    if (!key) return { sourceIds };
+    return {
+      sourceIds,
+      section: {
+        title: section as string,
+        sourceIds: chapter.pins.filter((p) => p.section === key).map((p) => p.sourceId),
+      },
+    };
   }
 
   /**
@@ -117,7 +135,9 @@ export class ChaptersService {
     ownerId: string,
     chapterId: string,
     sourceIds: readonly string[],
+    section = '',
   ): Promise<{ sourceIds: string[] }> {
+    const key = section ? headingKey(section) : '';
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId } },
       select: { id: true, documentId: true },
@@ -139,11 +159,11 @@ export class ChaptersService {
     }
 
     await this.prisma.$transaction([
-      this.prisma.chapterSourcePin.deleteMany({ where: { chapterId: chapter.id } }),
+      this.prisma.chapterSourcePin.deleteMany({ where: { chapterId: chapter.id, section: key } }),
       ...(unique.length > 0
         ? [
             this.prisma.chapterSourcePin.createMany({
-              data: unique.map((sourceId) => ({ chapterId: chapter.id, sourceId })),
+              data: unique.map((sourceId) => ({ chapterId: chapter.id, sourceId, section: key })),
             }),
           ]
         : []),

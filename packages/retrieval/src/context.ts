@@ -15,7 +15,7 @@ import {
   type PromptPassage,
   type StyleProfile,
 } from '@tc/ai';
-import { findOutlineNode, readOutline } from '@tc/types';
+import { findOutlineNode, headingKey, readOutline } from '@tc/types';
 import { findCandidates, type RawClient } from './pgvector.js';
 import { buildQueryText, type RetrievalAction, rerank, topK } from './rank.js';
 
@@ -29,9 +29,9 @@ export type ContextClient = RawClient & {
   };
   chapterSourcePin: {
     findMany(args: {
-      where: { chapterId: string };
-      select: { sourceId: true };
-    }): Promise<Array<{ sourceId: string }>>;
+      where: { chapterId: string; section?: { in: string[] } };
+      select: { sourceId: true; section?: true };
+    }): Promise<Array<{ sourceId: string; section?: string }>>;
   };
 };
 
@@ -67,6 +67,19 @@ export type RetrievalResult = {
   pinned: number;
   candidates: number;
 };
+
+/**
+ * ADR-0085: the pins that apply. A section's own pins, when it has any, else the chapter's. A
+ * pin row with no `section` (a client older than the column) counts as the chapter's.
+ */
+export function pinsInScope(
+  pins: ReadonlyArray<{ sourceId: string; section?: string }>,
+  sectionKey: string,
+): string[] {
+  const own = sectionKey ? pins.filter((p) => (p.section ?? '') === sectionKey) : [];
+  const chosen = own.length > 0 ? own : pins.filter((p) => (p.section ?? '') === '');
+  return [...new Set(chosen.map((p) => p.sourceId))];
+}
 
 /** ProseMirror JSON → plain text; A.0.1's glossary trimming needs the chapter as prose. */
 export function docToText(doc: unknown): string {
@@ -146,16 +159,25 @@ export async function retrievePassages(
      * query itself, so an id from anywhere else simply finds nothing.
      */
     sourceIds?: readonly string[];
+    /**
+     * ADR-0085: the heading under the cursor (or the section being drafted). A section with pins
+     * of its own is searched within those; otherwise the chapter's pins apply, as before.
+     */
+    section?: string | null;
   } = {},
 ): Promise<RetrievalResult> {
+  const sectionKey = options.section ? headingKey(options.section) : '';
   const [pins, memory] = await Promise.all([
-    db.chapterSourcePin.findMany({ where: { chapterId: chapter.id }, select: { sourceId: true } }),
+    db.chapterSourcePin.findMany({
+      where: { chapterId: chapter.id, section: { in: sectionKey ? ['', sectionKey] : [''] } },
+      select: { sourceId: true, section: true },
+    }),
     db.documentMemory.findUnique({
       where: { documentId: chapter.documentId },
       select: { outline: true },
     }),
   ]);
-  const pinnedSourceIds = pins.map((pin) => pin.sourceId);
+  const pinnedSourceIds = pinsInScope(pins, sectionKey);
   const empty: RetrievalResult = {
     passages: [],
     byKey: new Map(),
