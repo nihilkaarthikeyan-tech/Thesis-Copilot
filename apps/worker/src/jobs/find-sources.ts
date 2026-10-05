@@ -81,6 +81,13 @@ export async function autoSearchesThisMonth(
   });
 }
 
+/**
+ * ADR-0070: this search fills a library someone is waiting on, often a brand-new one, so it
+ * finishes with what the indexes have returned in a few seconds rather than waiting out the
+ * slowest. The student-run search (ADR-0050) keeps the longer budget.
+ */
+export const SEARCH_BUDGET = { perCallMs: 8_000, perIndexMs: 12_000 } as const;
+
 const norm = (t: string) =>
   t
     .toLowerCase()
@@ -155,19 +162,45 @@ export async function runFindSources(
   // ADR-0050: a time budget per index, and one semantic search with the whole query.
   const lists = (
     await Promise.all([
-      searchWithinBudget(
-        [job.query.slice(0, 2_000)],
-        (q, signal) =>
-          deps.openalex.semanticSearch
-            ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal)
-            : Promise.resolve([]),
-        { onSkip: (_q, reason) => log({ level: 40, msg: 'openalex semantic skipped', reason }) },
-      ),
-      ...indexes.map(({ name, client }) =>
-        searchWithinBudget(searches, (q, signal) => client.search(q, now, signal), {
-          onSkip: (_q, reason) => log({ level: 40, msg: `${name} search skipped`, reason }),
-        }),
-      ),
+      (async () => {
+        const began = Date.now();
+        const found = await searchWithinBudget(
+          [job.query.slice(0, 2_000)],
+          (q, signal) =>
+            deps.openalex.semanticSearch
+              ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal)
+              : Promise.resolve([]),
+          {
+            ...SEARCH_BUDGET,
+            onSkip: (_q, reason) => log({ level: 40, msg: 'openalex semantic skipped', reason }),
+          },
+        );
+        log({
+          msg: 'index searched',
+          index: 'openalex-semantic',
+          ms: Date.now() - began,
+          works: found.flat().length,
+        });
+        return found;
+      })(),
+      ...indexes.map(async ({ name, client }) => {
+        const began = Date.now();
+        const found = await searchWithinBudget(
+          searches,
+          (q, signal) => client.search(q, now, signal),
+          {
+            ...SEARCH_BUDGET,
+            onSkip: (_q, reason) => log({ level: 40, msg: `${name} search skipped`, reason }),
+          },
+        );
+        log({
+          msg: 'index searched',
+          index: name,
+          ms: Date.now() - began,
+          works: found.flat().length,
+        });
+        return found;
+      }),
     ])
   ).flat();
 
@@ -199,6 +232,7 @@ export async function runFindSources(
       vectors = vectors.concat(batch.vectors);
       tokens += batch.tokens;
     }
+    log({ msg: 'candidates embedded', texts: texts.length, ms: Date.now() - startedAt });
     await deps.logEmbed?.({
       userId: job.userId,
       documentId: job.documentId,

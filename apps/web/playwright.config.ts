@@ -13,6 +13,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // Measurements on the real models (e2e/_measure) run only when asked: MEASURE=1.
+  testIgnore: process.env.MEASURE ? [] : ['**/_measure/**'],
   // These run against a live stack with the §12.1 rate limits in force, and the helpers wait
   // those out rather than weakening them. Thirty seconds was right when the suite was three
   // specs; a test that may legitimately sit through a limiter's window needs longer.

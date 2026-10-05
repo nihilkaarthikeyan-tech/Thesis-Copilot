@@ -43,6 +43,8 @@ function fakeDeps(
     /** URLs the fake network answers 404 for, so one copy can fail while another works. */
     failUrls?: string[];
     extractedText?: string;
+    /** Chunks the source already holds from an earlier run. */
+    chunksAlready?: number;
   } = {},
 ) {
   const source: SourceRow = {
@@ -68,6 +70,9 @@ function fakeDeps(
         Object.assign(source, data);
         return { ...source };
       }),
+    },
+    sourceChunk: {
+      count: vi.fn(async () => (over.chunksAlready ?? 0) + inserted.length),
     },
     $executeRawUnsafe: vi.fn(async (sql: string, ...values: unknown[]) => {
       inserted.push({ sql, values });
@@ -495,6 +500,62 @@ describe('Europe PMC full text (ADR-0054)', () => {
       from: 'abstract',
       groundingLevel: 'ABSTRACT',
       fullTextFailure: 'not-ok',
+    });
+  });
+
+  describe('abstract first (ADR-0070)', () => {
+    const abstract = 'Cost, not awareness, drives non-adoption in the districts studied.';
+
+    it('makes the paper citable from its abstract before looking for the full text', async () => {
+      // Resolved with an abstract: the badge already says ABSTRACT, but nothing is stored yet.
+      const { deps, source, logs } = fakeDeps({
+        source: { cslJson: { abstract }, groundingLevel: 'ABSTRACT' },
+        oaPdfUrl: 'https://repo.example.org/p.pdf',
+      });
+      const levelWhenUnpaywallAsked: string[] = [];
+      (deps.unpaywall.bestOpenAccess as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+        levelWhenUnpaywallAsked.push(source.groundingLevel);
+        return {
+          pdfUrl: 'https://repo.example.org/p.pdf',
+          landingUrl: null,
+          oaStatus: 'green',
+          isOa: true,
+        };
+      });
+
+      const result = await runIndexSource(job(), deps);
+
+      // ABSTRACT was written before the full-text search began; FULL_TEXT replaced it after.
+      expect(levelWhenUnpaywallAsked).toEqual(['ABSTRACT']);
+      expect(logs.some((l) => l.msg === 'abstract indexed first')).toBe(true);
+      expect(result.groundingLevel).toBe('FULL_TEXT');
+      expect(source.groundingLevel).toBe('FULL_TEXT');
+      // Two embedding rows, both logged: the abstract, then the full text.
+      expect(deps.logEmbed).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not embed the abstract twice when no full text is found', async () => {
+      const { deps, source, embedCalls } = fakeDeps({ source: { cslJson: { abstract } } });
+
+      const result = await runIndexSource(job(), deps);
+
+      expect(result).toMatchObject({ from: 'abstract', groundingLevel: 'ABSTRACT' });
+      expect(source.groundingLevel).toBe('ABSTRACT');
+      expect(embedCalls).toHaveLength(1);
+      expect(deps.logEmbed).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a paper that was already read alone until the full text is in hand', async () => {
+      const { deps, logs } = fakeDeps({
+        source: { cslJson: { abstract }, groundingLevel: 'ABSTRACT' },
+        chunksAlready: 3,
+        oaPdfUrl: 'https://repo.example.org/p.pdf',
+      });
+
+      await runIndexSource(job(), deps);
+
+      expect(logs.some((l) => l.msg === 'abstract indexed first')).toBe(false);
+      expect(deps.logEmbed).toHaveBeenCalledTimes(1);
     });
   });
 });

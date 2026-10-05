@@ -165,7 +165,16 @@ export default function NewThesisPage() {
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={busy || title.trim().length === 0}>
+          {/* ADR-0070: writing first; the paper search starts from the title at once. */}
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => void startWriting()}
+            data-testid="start-writing-now"
+          >
+            {t('list.startWriting')}
+          </Button>
+          <Button type="submit" variant="secondary" disabled={busy || title.trim().length === 0}>
             {busy ? t('common.creating') : t('new.continue')}
           </Button>
           <Button
@@ -176,21 +185,9 @@ export default function NewThesisPage() {
           >
             {t('new.createImport')}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void startWriting()}
-            data-testid="start-writing-now"
-          >
-            Start writing now
-          </Button>
         </div>
         <p className="text-xs text-muted">{t('new.wordHint')}</p>
-        <p className="text-xs text-muted">
-          Know what you are writing? Start writing now opens a blank chapter straight away; the
-          title and the proposal can come later.
-        </p>
+        <p className="text-xs text-muted">{t('list.startWritingHint')}</p>
       </form>
     </main>
   );

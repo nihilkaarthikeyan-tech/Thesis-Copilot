@@ -16,6 +16,7 @@ import {
 } from '@tc/config';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
+import { RedisService } from '../../common/redis.service.js';
 import { FlagsService } from '../flags/flags.service.js';
 
 /** Whether retrieval found anything on topic: a passage at or above the relevance floor. */
@@ -45,12 +46,25 @@ export function sourcesQuery(title: string, scopeNote: string | null, before: st
     .slice(0, 500);
 }
 
+export type SourcesProgress = {
+  searching: boolean;
+  found: number;
+  ready: number;
+  reading: number;
+};
+
+/** A paper not read within this long after it was added is not "still being read". */
+const READING_WINDOW_MS = 5 * 60_000;
+
+const searchKey = (documentId: string) => `sources:search:${documentId}`;
+
 @Injectable()
 export class AutoSourcesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queue: QueueService,
     private readonly flags: FlagsService,
+    private readonly redis: RedisService,
   ) {}
 
   /** Starts a search for this chapter if allowed. True when one is running (new or already). */
@@ -70,9 +84,37 @@ export class AutoSourcesService {
       where: { userId: input.userId, kind: 'SOURCES_FOUND', createdAt: { gte: from } },
     });
     if (used >= monthlyAutoSearches(user.plan)) return false;
-    await this.queue.enqueue('find-sources', input, {
-      jobId: autoSourcesJobKey(input.chapterId, now),
-    });
+    const jobId = autoSourcesJobKey(input.chapterId, now);
+    await this.queue.enqueue('find-sources', input, { jobId });
+    // ADR-0070: which search the editor's progress line should watch for this thesis.
+    await this.redis.client.set(searchKey(input.documentId), jobId, 'EX', 15 * 60);
     return true;
+  }
+
+  /**
+   * ADR-0070: what the editor's progress line says while a new library fills — whether a search
+   * is still running, how many papers it has added, and how many can be cited yet. Counts only;
+   * nothing is computed that the database does not already hold.
+   */
+  async progress(documentId: string, now: Date = new Date()): Promise<SourcesProgress> {
+    const jobId = await this.redis.client.get(searchKey(documentId));
+    const searching = jobId ? await this.queue.pending('find-sources', jobId) : false;
+    const recent = new Date(now.getTime() - READING_WINDOW_MS);
+    const [found, ready, reading] = await Promise.all([
+      this.prisma.source.count({ where: { documentId } }),
+      // Ready means something to cite is stored, not the grounding badge: `resolve-reference`
+      // marks a paper ABSTRACT as soon as it has found one, before anything is embedded.
+      this.prisma.source.count({ where: { documentId, chunks: { some: {} } } }),
+      // Still on its way: added in the last few minutes, nothing stored yet, not given up on.
+      this.prisma.source.count({
+        where: {
+          documentId,
+          chunks: { none: {} },
+          status: { in: ['PENDING', 'RESOLVED'] },
+          createdAt: { gte: recent },
+        },
+      }),
+    ]);
+    return { searching, found, ready, reading };
   }
 }

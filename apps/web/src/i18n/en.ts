@@ -59,7 +59,10 @@ export const en = {
   'list.stage.viva': 'Viva practice',
   'list.titlePlaceholder': 'e.g. Low-cost solar dryers for smallholder farms',
   'list.startFrom': 'Start from',
-  'list.create': 'Create thesis',
+  'list.create': 'Create thesis with a proposal',
+  'list.startWriting': 'Start writing now',
+  'list.startWritingHint':
+    'Start writing now opens your first chapter straight away and starts finding papers on your title while you write. The proposal (a few questions that plan your chapters) can come first, or later from the editor.',
   'list.title': 'Your theses',
   'list.lede': 'Each one keeps its own sources, outline and citation style.',
   'list.startFromPaper': 'Start from a paper',
@@ -250,6 +253,27 @@ export const en = {
     'The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute.',
   'editor.notice.findingSources':
     'No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.',
+  'editor.notice.papersLoading':
+    'Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready.',
+  'editor.filling.searching': 'Finding papers on your topic…',
+  'editor.filling.reading': 'Found {found} papers · reading {reading}…',
+  'editor.filling.ready': '{ready} papers ready — suggestions will cite them.',
+  'guide.title': 'Getting started',
+  'guide.write': 'Write',
+  'guide.writeDetail':
+    'Start with a sentence or two of your own — what this chapter is about. Rough is fine.',
+  'guide.suggest': 'Take a suggestion',
+  'guide.suggestDetail':
+    'Press Suggest (or pause while typing). The grey text cites your library: Tab keeps it, Esc dismisses it.',
+  'guide.sources': 'See your papers',
+  'guide.sourcesDetail':
+    'We are finding papers on your title and reading them. Look them over — suggestions can only cite what is in your library.',
+  'guide.sourcesAction': 'Show papers',
+  'guide.plan': 'Plan your chapters',
+  'guide.planDetail':
+    'Answer a few questions and get a chapter outline, so each chapter is written to a plan.',
+  'guide.planAction': 'Plan chapters',
+  'guide.hide': 'Hide',
   'editor.notice.needsSource':
     'No source in your library covers this yet{gap}. Find papers on it to continue.',
   'editor.notice.emptyLibrary':

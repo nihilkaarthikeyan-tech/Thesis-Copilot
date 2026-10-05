@@ -101,6 +101,7 @@ export async function* assistRequest(
             ? { findingSources: parsed.findingSources }
             : {}),
           ...(typeof parsed.needsSource === 'string' ? { needsSource: parsed.needsSource } : {}),
+          ...(parsed.papersLoading === true ? { papersLoading: true } : {}),
           usage: parsed.usage,
           ttfbMs: typeof parsed.ttfbMs === 'number' ? parsed.ttfbMs : undefined,
           latencyMs: typeof parsed.latencyMs === 'number' ? parsed.latencyMs : undefined,

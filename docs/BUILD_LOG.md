@@ -5024,3 +5024,31 @@ fixtures); **Playwright 129 of 132** on the mock stack. The three that fail (`ga
 returned HTTP 429 — the worker log shows it; an `OPENALEX_API_KEY` in the dev `.env` removes it.
 Coverage against Jenni (docs/research/coverage-map.md): 63 match, 15 ours better, 20 partial, 3
 missing (live chat support, a community channel, interface languages beyond Hindi).
+
+## A first session without a queue (2026-10-05, ADR-0070)
+
+The owner's manager said a new student "gets stuck in a queue". Measured on the real models with
+`apps/web/e2e/_measure/first-session.spec.ts` (`MEASURE=1`):
+
+| Path | First cited suggestion, before | After |
+|---|---|---|
+| Start writing now | 47.9 s | 13.7 s / 14.2 s |
+| Topic path | 78.8 s, 46 s of it in the editor | 21.9 s / 19.4 s, 3–5 s of it in the editor |
+
+What changed:
+- "Start writing now" is the primary button.
+- The paper search starts when the thesis is created.
+- Abstracts are indexed first.
+- Assist makes no model call while the library fills.
+- A progress line in the editor, with an automatic retry when the first paper is ready.
+- A four-step guide.
+
+The measuring found two faults:
+- `resolve-reference` sets the ABSTRACT badge before anything is embedded. The abstract-first step
+  tested the badge, so it never ran, and "ready" counted papers with nothing to cite. Readiness
+  is now "has chunks".
+- The automatic retry was a no-op while another suggestion was in flight. It now retries for a
+  few seconds.
+
+Also learned: `apps/api` and `apps/worker` run `node --watch dist/main.js`, so the first
+measurement after the edits ran the old code until `pnpm build` was run in each.

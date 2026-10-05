@@ -43,6 +43,7 @@ import { WebScopeService } from './web-scope.service.js';
   ],
   exports: [
     AssistService,
+    AutoSourcesService,
     CiteService,
     ChatService,
     CiteRoleService,

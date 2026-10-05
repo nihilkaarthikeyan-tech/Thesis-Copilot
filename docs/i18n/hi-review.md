@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**459** strings are translated; **2** are deliberately
+**477** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -68,7 +68,9 @@ English. Write corrections in the last column.
 | `list.stage.viva` | Viva practice | वाइवा अभ्यास | |
 | `list.titlePlaceholder` | e.g. Low-cost solar dryers for smallholder farms | जैसे: छोटे किसानों के लिए कम लागत वाले सोलर ड्रायर | |
 | `list.startFrom` | Start from | शुरुआत कहाँ से | |
-| `list.create` | Create thesis | थीसिस बनाएँ | |
+| `list.create` | Create thesis with a proposal | प्रस्ताव के साथ थीसिस बनाएँ | |
+| `list.startWriting` | Start writing now | अभी लिखना शुरू करें | |
+| `list.startWritingHint` | Start writing now opens your first chapter straight away and starts finding papers on your title while you write. The proposal (a few questions that plan your chapters) can come first, or later from the editor. | अभी लिखना शुरू करें से आपका पहला अध्याय तुरंत खुलता है और आपके लिखते-लिखते आपके शीर्षक पर पेपर खोजे जाने लगते हैं। प्रस्ताव (कुछ सवाल जो आपके अध्यायों की योजना बनाते हैं) पहले भी हो सकता है, या बाद में एडिटर से। | |
 | `list.title` | Your theses | आपकी थीसिस | |
 | `list.lede` | Each one keeps its own sources, outline and citation style. | हर थीसिस के अपने स्रोत, रूपरेखा और साइटेशन शैली होती है। | |
 | `list.startFromPaper` | Start from a paper | पेपर से शुरू करें | |
@@ -251,6 +253,32 @@ English. Write corrections in the last column.
 | `editor.snapshotFailed` | Snapshot failed | स्नैपशॉट सेव नहीं हुआ | |
 | `editor.notice.serviceDown` | The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute. | सुझाव सेवा ने लगातार दो बार जवाब नहीं दिया। आपका लिखा सेव है; एक मिनट बाद फिर कोशिश करें। | |
 | `editor.notice.findingSources` | No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text. | आपकी लाइब्रेरी का कोई स्रोत अभी इसे कवर नहीं करता{gap}। हम इस पर पेपर खोजकर आपकी लाइब्रेरी में जोड़ रहे हैं — साइटेशन वाले टेक्स्ट के लिए एक मिनट बाद फिर पूछें। | |
+| `editor.notice.papersLoading` | Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready. | आपके पेपर अभी पढ़े जा रहे हैं, इसलिए अभी साइट करने को कुछ नहीं है। जैसे ही एक तैयार होगा, आपका पहला साइटेशन वाला सुझाव यहीं अपने आप आ जाएगा। | |
+| `editor.filling.searching` | Finding papers on your topic… | आपके विषय पर पेपर खोजे जा रहे हैं… | |
+| `editor.filling.reading` | Found {found} papers · reading {reading}… | {found} पेपर मिले · {reading} पढ़े जा रहे हैं… | |
+| `editor.filling.ready` | {ready} papers ready — suggestions will cite them. | {ready} पेपर तैयार — सुझाव अब इन्हें साइट करेंगे। | |
+
+## guide
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `guide.title` | Getting started | शुरुआत | |
+| `guide.write` | Write | लिखें | |
+| `guide.writeDetail` | Start with a sentence or two of your own — what this chapter is about. Rough is fine. | अपने एक-दो वाक्यों से शुरू करें — यह अध्याय किस बारे में है। कच्चा लिखना भी ठीक है। | |
+| `guide.suggest` | Take a suggestion | एक सुझाव लें | |
+| `guide.suggestDetail` | Press Suggest (or pause while typing). The grey text cites your library: Tab keeps it, Esc dismisses it. | सुझाव दबाएँ (या लिखते हुए रुकें)। धूसर टेक्स्ट आपकी लाइब्रेरी को साइट करता है: Tab से रखें, Esc से हटाएँ। | |
+| `guide.sources` | See your papers | अपने पेपर देखें | |
+| `guide.sourcesDetail` | We are finding papers on your title and reading them. Look them over — suggestions can only cite what is in your library. | हम आपके शीर्षक पर पेपर खोजकर पढ़ रहे हैं। उन्हें देख लें — सुझाव सिर्फ़ आपकी लाइब्रेरी के पेपर ही साइट कर सकते हैं। | |
+| `guide.sourcesAction` | Show papers | पेपर दिखाएँ | |
+| `guide.plan` | Plan your chapters | अध्यायों की योजना बनाएँ | |
+| `guide.planDetail` | Answer a few questions and get a chapter outline, so each chapter is written to a plan. | कुछ सवालों के जवाब दें और अध्यायों की रूपरेखा पाएँ, ताकि हर अध्याय योजना के अनुसार लिखा जाए। | |
+| `guide.planAction` | Plan chapters | अध्याय योजना | |
+| `guide.hide` | Hide | छिपाएँ | |
+
+## The editor
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
 | `editor.notice.needsSource` | No source in your library covers this yet{gap}. Find papers on it to continue. | आपकी लाइब्रेरी का कोई स्रोत अभी इसे कवर नहीं करता{gap}। आगे बढ़ने के लिए इस पर पेपर खोजें। | |
 | `editor.notice.emptyLibrary` | Your library has nothing to cite yet, so there was no suggestion. Find papers for this thesis first. | आपकी लाइब्रेरी में साइट करने के लिए अभी कुछ नहीं है, इसलिए कोई सुझाव नहीं बना। पहले इस थीसिस के लिए पेपर खोजें। | |
 | `editor.notice.noSources` | That suggestion had no sources to draw on. Find papers to get cited text. | उस सुझाव के पास आधार बनाने के लिए कोई स्रोत नहीं था। साइटेशन वाले टेक्स्ट के लिए पेपर खोजें। | |

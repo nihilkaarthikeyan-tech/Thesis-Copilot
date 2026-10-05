@@ -111,9 +111,11 @@ import { CommandToolbar } from './CommandToolbar';
 import { DiagramDialog } from './DiagramDialog';
 import { DraftMode } from './DraftMode';
 import { FindPapersPanel } from './FindPapersPanel';
+import { FirstSessionGuide, markSuggestionKept } from './FirstSessionGuide';
 import { type Flag, FlagsPanel } from './FlagsPanel';
 import { type FormatActions, FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
+import { LibraryFilling, PAPERS_AWAITED } from './LibraryFilling';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { ProofreadPanel } from './ProofreadPanel';
 import { ReadBesidePane } from './ReadBesidePane';
@@ -468,7 +470,10 @@ function ChapterEditor({
                 keptChars: e.keptChars,
               }),
             }).catch(() => undefined);
-            if (e.outcome === 'ACCEPTED' || e.outcome === 'PARTIAL') onUsageChange();
+            if (e.outcome === 'ACCEPTED' || e.outcome === 'PARTIAL') {
+              onUsageChange();
+              markSuggestionKept(doc.id);
+            }
           },
           onTiming: (t) => {
             setTiming(t);
@@ -508,6 +513,13 @@ function ChapterEditor({
             // A.1 (2026-09-30): with no source for what comes next, the model writes nothing and
             // names the gap instead of padding the page.
             const gap = info.needsSource ? `: ${info.needsSource}` : '';
+            // ADR-0070: the library is still filling. The progress line above the page says
+            // how far along it is, and asks for this suggestion again when a paper is ready.
+            if (info.papersLoading) {
+              window.dispatchEvent(new Event(PAPERS_AWAITED));
+              setNotice(tNow('editor.notice.papersLoading'));
+              return;
+            }
             if (info.findingSources) {
               // The Sources panel looks again now and once the search has had time to land.
               window.dispatchEvent(new Event(LIBRARY_CHANGED));
@@ -623,6 +635,7 @@ function ChapterEditor({
       autoSuggest,
       uploadFigure,
       live,
+      doc.id,
     ],
   );
 
@@ -1354,6 +1367,14 @@ function ChapterEditor({
             variant="editor"
             className="mx-auto mb-4 max-w-[72ch]"
           />
+          {/* ADR-0070: the next-step guide. */}
+          <FirstSessionGuide
+            documentId={doc.id}
+            editor={editor}
+            onSuggest={() => editor?.chain().focus().requestSuggestion().run()}
+            onShowSources={() => setTab('sources')}
+            className="mx-auto mb-4 max-w-[72ch]"
+          />
           <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
             {t('editor.hint.intro')} {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
             {autoSuggest ? null : (
@@ -1423,6 +1444,20 @@ function ChapterEditor({
             onInsertChart={openChart}
             onInsertDiagram={openDiagram}
             actionsRef={formatActions}
+          />
+          <LibraryFilling
+            documentId={doc.id}
+            onFirstReady={() => {
+              setNotice(null);
+              // A suggestion still on its way makes the command a no-op; try again shortly
+              // rather than lose the one the student is waiting for.
+              let tries = 0;
+              const ask = () => {
+                const asked = editorRef.current?.chain().focus().requestSuggestion().run();
+                if (!asked && ++tries < 6) window.setTimeout(ask, 1_000);
+              };
+              ask();
+            }}
           />
           <EditorContent editor={editor} />
           {/* Typing "/" offers the toolbar's blocks at the caret. */}

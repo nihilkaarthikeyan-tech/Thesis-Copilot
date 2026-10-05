@@ -36,6 +36,13 @@ async function suggestDone(): Promise<Record<string, unknown>> {
   return JSON.parse(done?.slice(6) ?? '{}') as Record<string, unknown>;
 }
 
+async function assistUsed(): Promise<number> {
+  const rows = await h.prisma.usageLedger.findMany({
+    where: { userId: h.userId, action: 'ASSIST' },
+  });
+  return rows.reduce((n, r) => n + r.count, 0);
+}
+
 async function setFlag(enabled: boolean) {
   await h.prisma.featureFlag.upsert({
     where: { key: AUTO_SOURCES_FLAG },
@@ -81,8 +88,13 @@ describe('automatic sources from autocomplete', () => {
 
   it('with it on and an empty library, starts one search and tells the editor', async () => {
     await setFlag(true);
+    const usedBefore = await assistUsed();
     const done = await suggestDone();
     expect(done.findingSources).toBe(true);
+    // ADR-0070: nothing to cite yet, so no model call and the unit goes back; the editor waits.
+    expect(done.papersLoading).toBe(true);
+    expect(done.empty).toBe(true);
+    expect(await assistUsed()).toBe(usedBefore);
     const job = await queue.getJob(autoSourcesJobKey(chapterId));
     expect(job?.data).toMatchObject({ chapterId, userId: h.userId });
     expect(String(job?.data.query)).toContain('Literature Review');
@@ -92,6 +104,38 @@ describe('automatic sources from autocomplete', () => {
     await suggestDone();
     const counts = await queue.getJobCounts('waiting', 'delayed', 'active', 'completed', 'failed');
     expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(1);
+  });
+
+  it('a new thesis with a real title starts its search at once (ADR-0070)', async () => {
+    const res = await h.api('/documents', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Barriers to rooftop solar adoption in rural Karnataka',
+        entryPath: 'A_TOPIC',
+      }),
+    });
+    expect(res.status).toBe(201);
+    const created = (await res.json()) as { id: string; firstChapterId: string };
+    const job = await queue.getJob(autoSourcesJobKey(created.firstChapterId));
+    expect(job?.data).toMatchObject({
+      documentId: created.id,
+      query: 'Barriers to rooftop solar adoption in rural Karnataka',
+    });
+
+    const progress = await h.api(`/documents/${created.id}/sources/progress`);
+    expect(progress.status).toBe(200);
+    expect(await progress.json()).toEqual({ searching: true, found: 0, ready: 0, reading: 0 });
+  });
+
+  it('a placeholder title starts nothing', async () => {
+    const res = await h.api('/documents', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'Untitled thesis', entryPath: 'A_TOPIC' }),
+    });
+    const created = (await res.json()) as { id: string; firstChapterId: string };
+    expect(await queue.getJob(autoSourcesJobKey(created.firstChapterId))).toBeUndefined();
+    const progress = await h.api(`/documents/${created.id}/sources/progress`);
+    expect(await progress.json()).toMatchObject({ searching: false });
   });
 
   it('a student who turned it off gets no search', async () => {

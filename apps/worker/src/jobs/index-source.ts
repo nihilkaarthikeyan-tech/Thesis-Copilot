@@ -127,6 +127,85 @@ export async function runIndexSource(
     }
   }
 
+  // Embeds and stores a set of chunks, replacing whatever the source had. The one place this job
+  // spends embedding tokens, so the budget check and the EMBED log row cannot be skipped.
+  const store = async (chunks: ReturnType<typeof chunkText>): Promise<number> => {
+    await deps.assertBudget?.();
+    const vectors: number[][] = [];
+    let tokens = 0;
+    const embedStarted = Date.now();
+    try {
+      for (const batch of batched(chunks, EMBED_BATCH)) {
+        const counted = await deps.embeddings.embedWithUsage(batch.map((chunk) => chunk.text));
+        vectors.push(...counted.vectors);
+        tokens += counted.tokens;
+      }
+    } catch (error) {
+      await deps.logEmbed?.({
+        userId: job.userId,
+        documentId: job.documentId,
+        tokens,
+        latencyMs: Date.now() - embedStarted,
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+    await deps.logEmbed?.({
+      userId: job.userId,
+      documentId: job.documentId,
+      tokens,
+      latencyMs: Date.now() - embedStarted,
+      ok: true,
+    });
+    if (vectors.length !== chunks.length) {
+      throw new Error(`embedding count ${vectors.length} does not match ${chunks.length} chunks`);
+    }
+    return replaceSourceChunks(
+      deps.prisma as unknown as Parameters<typeof replaceSourceChunks>[0],
+      source.id,
+      chunks.map((chunk, index) => ({
+        sourceId: source.id,
+        ordinal: chunk.ordinal,
+        text: chunk.text,
+        tokenCount: chunk.tokenCount,
+        page: chunk.page,
+        charStart: chunk.charStart,
+        charEnd: chunk.charEnd,
+        section: chunk.section,
+        embedding: vectors[index] as number[],
+      })),
+    );
+  };
+
+  // ADR-0070: abstract first. Finding and reading an open-access copy can take a minute (three
+  // services, each with its own time limit); the abstract is already here. A paper nothing has
+  // been read from yet is made citable from its abstract now, and the full text, if one is
+  // found, replaces it below. Costs one abstract's embedding (~300 tokens) a second time at most.
+  let abstractFirst: { chunks: number } | null = null;
+  const earlyAbstract = abstractOf(source.cslJson);
+  // "Nothing read yet" is no chunks, not the badge: `resolve-reference` sets ABSTRACT as soon as
+  // it finds an abstract, before anything is embedded.
+  if (
+    !text &&
+    source.doi &&
+    earlyAbstract &&
+    (await deps.prisma.sourceChunk.count({ where: { sourceId: source.id } })) === 0
+  ) {
+    const written = await store(
+      chunkText({
+        text: earlyAbstract,
+        sections: [{ section: 'Abstract', start: 0, end: earlyAbstract.length }],
+      }),
+    );
+    await deps.prisma.source.update({
+      where: { id: source.id },
+      data: { groundingLevel: 'ABSTRACT' },
+    });
+    abstractFirst = { chunks: written };
+    log({ msg: 'abstract indexed first', sourceId: source.id, chunks: written });
+  }
+
   // 2. Otherwise ask Unpaywall for an open-access copy and fetch it.
   if (!text && source.doi) {
     const outcome = await fetchFromOpenAccess(source.doi, deps, log, source.id);
@@ -185,6 +264,25 @@ export async function runIndexSource(
 
   const hasFullText = text !== null && text.trim().length > 0;
 
+  // The abstract is already indexed and nothing better was found: done, without embedding it twice.
+  if (!hasFullText && abstractFirst) {
+    log({
+      msg: 'source indexed',
+      sourceId: source.id,
+      from: 'abstract',
+      chunks: abstractFirst.chunks,
+      groundingLevel: 'ABSTRACT',
+      ...(fullTextFailure ? { fullTextFailure } : {}),
+    });
+    return {
+      sourceId: source.id,
+      groundingLevel: 'ABSTRACT',
+      chunks: abstractFirst.chunks,
+      from: 'abstract',
+      ...(fullTextFailure ? { fullTextFailure } : {}),
+    };
+  }
+
   // 3. Fall back to the abstract, which `resolve-reference` stored as plain text on the CSL record.
   if (!hasFullText) {
     const abstract = abstractOf(source.cslJson);
@@ -215,58 +313,12 @@ export async function runIndexSource(
     };
   }
 
-  const chunks = chunkText({
-    text,
-    ...(pages ? { pages } : {}),
-    ...(sections ? { sections } : {}),
-  });
-
-  await deps.assertBudget?.();
-  const vectors: number[][] = [];
-  let tokens = 0;
-  const embedStarted = Date.now();
-  try {
-    for (const batch of batched(chunks, EMBED_BATCH)) {
-      const counted = await deps.embeddings.embedWithUsage(batch.map((chunk) => chunk.text));
-      vectors.push(...counted.vectors);
-      tokens += counted.tokens;
-    }
-  } catch (error) {
-    await deps.logEmbed?.({
-      userId: job.userId,
-      documentId: job.documentId,
-      tokens,
-      latencyMs: Date.now() - embedStarted,
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-  await deps.logEmbed?.({
-    userId: job.userId,
-    documentId: job.documentId,
-    tokens,
-    latencyMs: Date.now() - embedStarted,
-    ok: true,
-  });
-  if (vectors.length !== chunks.length) {
-    throw new Error(`embedding count ${vectors.length} does not match ${chunks.length} chunks`);
-  }
-
-  const written = await replaceSourceChunks(
-    deps.prisma as unknown as Parameters<typeof replaceSourceChunks>[0],
-    source.id,
-    chunks.map((chunk, index) => ({
-      sourceId: source.id,
-      ordinal: chunk.ordinal,
-      text: chunk.text,
-      tokenCount: chunk.tokenCount,
-      page: chunk.page,
-      charStart: chunk.charStart,
-      charEnd: chunk.charEnd,
-      section: chunk.section,
-      embedding: vectors[index] as number[],
-    })),
+  const written = await store(
+    chunkText({
+      text,
+      ...(pages ? { pages } : {}),
+      ...(sections ? { sections } : {}),
+    }),
   );
 
   const groundingLevel = groundingLevelFor(hasFullText, from === 'abstract');

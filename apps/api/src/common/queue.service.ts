@@ -94,6 +94,16 @@ export class QueueService implements OnModuleDestroy {
     return true;
   }
 
+  /** Whether a job is still to run or running (ADR-0070: the editor's "finding papers" line). */
+  async pending(name: QueueName, jobId: string): Promise<boolean> {
+    const job = await this.queue(name).getJob(jobId);
+    if (!job) return false;
+    const state = await job.getState();
+    return (
+      state === 'waiting' || state === 'active' || state === 'delayed' || state === 'prioritized'
+    );
+  }
+
   /** Every failed job in one queue, back on it. */
   async retryAll(name: QueueName): Promise<number> {
     const failed = (await this.counts(name)).failed ?? 0;

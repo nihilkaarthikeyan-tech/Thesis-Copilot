@@ -25,6 +25,7 @@ import type { Prisma } from '@tc/db';
 import { z } from 'zod';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { AutoSourcesService, type SourcesProgress } from '../assist/auto-sources.service.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
@@ -96,6 +97,16 @@ const summarySelect = {
 
 type SummaryRow = Prisma.DocumentGetPayload<{ select: typeof summarySelect }>;
 
+/**
+ * Whether a working title names something an index can search for (ADR-0070). The placeholder
+ * titles a student leaves in, and anything of a word or two, do not.
+ */
+export function namesATopic(title: string): boolean {
+  const t = title.trim();
+  if (/^(untitled|new|my)\s+(thesis|dissertation|document)$/i.test(t)) return false;
+  return t.split(/\s+/).filter((w) => w.length > 2).length >= 3;
+}
+
 function toSummary(d: SummaryRow): DocumentSummary {
   return {
     id: d.id,
@@ -118,6 +129,7 @@ export class DocumentsController {
     private readonly flags: FlagsService,
     private readonly deletion: OwnThesisDeletion,
     private readonly copier: DocumentCopier,
+    private readonly autoSources: AutoSourcesService,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -169,7 +181,36 @@ export class DocumentsController {
       select: summarySelect,
     });
 
+    // ADR-0070: the search for papers starts the moment the thesis exists, not when the student
+    // first asks for a suggestion, so the library is filling while they answer the proposal
+    // questions. A title that names nothing ("Untitled thesis") would search for nothing.
+    const firstChapter = document.chapters[0];
+    if (firstChapter && namesATopic(parsed.data.title)) {
+      await this.autoSources
+        .start({
+          documentId: document.id,
+          userId: user.id,
+          chapterId: firstChapter.id,
+          query: parsed.data.title,
+        })
+        .catch(() => false);
+    }
+
     return toSummary(document);
+  }
+
+  /** ADR-0070: the editor's "finding papers" line. Free; counts only. */
+  @Get(':id/sources/progress')
+  async sourcesProgress(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+  ): Promise<SourcesProgress> {
+    const owned = await this.prisma.document.findFirst({
+      where: { id, ownerId: user.id },
+      select: { id: true },
+    });
+    if (!owned) throw new NotFoundError('That document');
+    return this.autoSources.progress(id);
   }
 
   /**

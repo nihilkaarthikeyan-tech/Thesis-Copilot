@@ -121,8 +121,7 @@ export default function DocumentListPage() {
     void load();
   }, [load]);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  async function create() {
     setBusy(true);
     setError(null);
     try {
@@ -235,7 +234,16 @@ export default function DocumentListPage() {
   const createForm = (
     <Card className="mt-4" data-testid="new-thesis-form">
       <CardBody>
-        <form onSubmit={create} className="flex flex-col gap-4">
+        {/* ADR-0070: writing comes first. Enter, and the filled button, open the first chapter
+            with the search for papers already running; the proposal is the second button and
+            the editor's next-step guide offers it again. */}
+        <form
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            void startWriting();
+          }}
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="title">{t('common.workingTitle')}</Label>
             <Input
@@ -288,22 +296,19 @@ export default function DocumentListPage() {
           <StartingStyle value={citationStyle} onChange={setCitationStyle} />
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={busy || title.trim().length === 0}>
-              {busy ? t('common.creating') : t('list.create')}
+            <Button type="submit" disabled={busy} data-testid="start-writing-now">
+              {busy ? t('common.creating') : t('list.startWriting')}
             </Button>
             <Button
               type="button"
               variant="secondary"
-              disabled={busy}
-              onClick={() => void startWriting()}
-              data-testid="start-writing-now"
+              disabled={busy || title.trim().length === 0}
+              onClick={() => void create()}
             >
-              Start writing now
+              {t('list.create')}
             </Button>
           </div>
-          <Hint>
-            Start writing now skips the proposal and opens a blank chapter; the title can wait too.
-          </Hint>
+          <Hint>{t('list.startWritingHint')}</Hint>
         </form>
       </CardBody>
     </Card>
