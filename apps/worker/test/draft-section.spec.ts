@@ -401,3 +401,49 @@ describe('waitForNewSources', () => {
     expect(ready).toBe(1);
   });
 });
+
+describe('a draft keeps to its heading (ADR-0078)', () => {
+  it('does not borrow the chapter’s own scope when the heading is not a planned section', async () => {
+    const { deps, requests } = fakeDeps();
+    await runDraftSection({ ...job, heading: 'Financial constraints' }, deps);
+    const query = (deps.retrieve as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    // The fake chapter's scope note is "Why uptake is low." — the Introduction's framing.
+    expect(query).not.toContain('Why uptake is low.');
+    expect(JSON.stringify(requests[0])).not.toContain('Why uptake is low.');
+    // Instead the heading is its own scope: this, and nothing else.
+    expect(query).toContain('Financial constraints, and only that');
+    expect(JSON.stringify(requests[0])).toContain('Financial constraints, and only that');
+  });
+
+  it('uses the planned section of that name, even when it is planned in another chapter', async () => {
+    const { deps, requests } = fakeDeps();
+    (deps.prisma.documentMemory.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      outline: [
+        {
+          id: '1-introduction',
+          title: 'Introduction',
+          scopeNote: 'Why uptake is low.',
+          children: [],
+        },
+        {
+          id: 'ch2-literature-review',
+          title: 'Literature Review',
+          scopeNote: 'Review the literature.',
+          children: [
+            {
+              id: 'ch2-sec1-financial-constraints',
+              title: 'Financial constraints',
+              scopeNote:
+                'Compare upfront cost, credit access and payback evidence for rural households.',
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    await runDraftSection({ ...job, heading: 'Financial constraints' }, deps);
+    const query = (deps.retrieve as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(query).toContain('credit access and payback');
+    expect(JSON.stringify(requests[0])).toContain('credit access and payback');
+  });
+});

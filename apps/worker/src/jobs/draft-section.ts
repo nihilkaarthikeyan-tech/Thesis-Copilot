@@ -203,7 +203,7 @@ export async function runDraftSection(
       scopeNote: true,
       content: true,
       // ADR-0047: the discipline and research type the guidance is chosen by.
-      document: { select: { field: true, meta: true } },
+      document: { select: { field: true, meta: true, title: true } },
     },
   });
   if (!chapter) {
@@ -211,7 +211,16 @@ export async function runDraftSection(
     return { draftId, status: 'error', words: 0, citations: 0, needsSource: 0, short: false };
   }
 
-  const section = await sectionFor(deps.prisma, chapter, job.outlineNodeId, job.heading);
+  const found = await sectionFor(deps.prisma, chapter, job.outlineNodeId, job.heading);
+  // ADR-0078: a heading the student typed, with no planned section behind it, has no scope note,
+  // and the title alone ("Financial constraints") matches any passage about money and tells the
+  // writer nothing about where to stop. The real-model run of 2026-10-05 drafted a general survey
+  // of barriers under it. The scope says: this heading, in this thesis, and nothing else.
+  const thesisTitle = (chapter as { document?: { title?: string | null } | null }).document?.title;
+  const section =
+    !found.scopeNote.trim() && job.heading && !isGenericSectionTitle(found.title)
+      ? { ...found, scopeNote: headingOnlyScope(found.title, thesisTitle ?? null) }
+      : found;
   const targetWords = job.targetWords ?? DRAFT.defaultTargetWords;
 
   // ADR-0071: a section that names no topic is not drafted (the API refuses it first; this is the
@@ -435,11 +444,18 @@ async function sectionFor(
   // the outline has it, else the chapter's as background; continuous prose (no invented
   // subheadings), as A.2 requires when none are given.
   if (heading?.trim()) {
-    const sub = sectionUnderHeading(node, heading);
+    // ADR-0078: the planned section with this heading, in this chapter first, else anywhere in
+    // the plan ("Financial constraints" is often planned under the literature review while the
+    // student writes it elsewhere). No planned section: no scope note at all. Borrowing the
+    // chapter's own note made a "Financial constraints" draft follow the Introduction's framing
+    // (the real-model run, 2026-10-05); the heading and the student's text say what it is about.
+    const sub =
+      sectionUnderHeading(node, heading) ??
+      sectionUnderHeading({ id: '', title: '', scopeNote: '', children: outline }, heading);
     return {
       outlineNodeId,
       title: heading.trim(),
-      scopeNote: sub?.scopeNote ?? node?.scopeNote ?? chapter.scopeNote ?? '',
+      scopeNote: sub?.scopeNote ?? '',
       children: (sub?.children ?? []).map((child) => ({
         title: child.title,
         scopeNote: child.scopeNote,
@@ -481,4 +497,13 @@ export function guidanceFor(
       ? (saved.paradigm as Paradigm)
       : (discipline.defaultParadigms[0] ?? 'experimental');
   return writingGuidance(discipline, paradigm, sectionTitle);
+}
+
+/**
+ * ADR-0078: the scope note of a section that is only a heading. It goes to the unchanged A.2
+ * prompt as the section's scope, and into the retrieval query.
+ */
+export function headingOnlyScope(title: string, thesisTitle: string | null): string {
+  const topic = thesisTitle?.trim() ? ` in "${thesisTitle.trim()}"` : '';
+  return `${title.trim()}${topic}, and only that. Every other topic, however close, belongs to another section: leave it out.`;
 }
