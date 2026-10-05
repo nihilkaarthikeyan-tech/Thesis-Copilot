@@ -61,6 +61,7 @@ export {
 export { type ThesisEditorOptions, thesisExtensions } from './editor/extensions.js';
 export { FOOTNOTE_MAX, Footnote } from './editor/footnote.js';
 export {
+  type CloseTo,
   type GhostEvent,
   type GhostRequestPayload,
   type GhostState,
@@ -139,4 +140,10 @@ export {
   type SourceMetricFacts,
   sourceMetricBadges,
 } from './editor/source-metrics.js';
-export { blockText, CHARS_PER_TOKEN, contextAround, documentText } from './editor/text.js';
+export {
+  blockText,
+  CHARS_PER_TOKEN,
+  contextAround,
+  documentText,
+  sectionUnderCursor,
+} from './editor/text.js';

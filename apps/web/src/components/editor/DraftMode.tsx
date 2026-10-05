@@ -12,6 +12,7 @@
  * fix" rule from the PRD's hard constraints, applied to the largest thing the AI writes.
  */
 
+import { findDraft, sectionUnderCursor } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { API_URL, ApiError, type ProblemDetails } from '@/lib/api';
@@ -29,9 +30,19 @@ type DraftResult = {
 type State =
   | { phase: 'idle' }
   | { phase: 'working'; stage: string }
-  | { phase: 'refused'; reason: string }
+  | { phase: 'refused'; reason: string; title?: string }
   | { phase: 'error'; message: string }
-  | { phase: 'done'; words: number; targetWords: number; short: boolean; needsSource: string[] };
+  | {
+      phase: 'done';
+      words: number;
+      targetWords: number;
+      short: boolean;
+      needsSource: string[];
+      closeTo: CloseTo[];
+    };
+
+/** ADR-0071: a draft paragraph that follows a passage's wording too closely. */
+type CloseTo = { shortRef: string; page: number | null; overlapText: string; kind: string };
 
 export function DraftMode({
   editor,
@@ -45,6 +56,8 @@ export function DraftMode({
   onUsageChange: () => void;
 }) {
   const [state, setState] = useState<State>({ phase: 'idle' });
+  /** The draft this panel is about, so the panel can close itself once it is resolved. */
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   const run = useCallback(async () => {
     if (!editor || state.phase === 'working') return;
@@ -55,7 +68,13 @@ export function DraftMode({
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
-        body: JSON.stringify({ chapterId, outlineNodeId }),
+        // ADR-0071: the section the cursor is in, so the draft is about it rather than the
+        // chapter as a whole.
+        body: JSON.stringify({
+          chapterId,
+          outlineNodeId,
+          ...sectionUnderCursor(editor.state.doc, editor.state.selection.from),
+        }),
       });
 
       if (!response.ok) {
@@ -89,6 +108,7 @@ export function DraftMode({
         if (event === 'done') {
           const result = parsed.result as DraftResult;
           insertDraft(editor, draftId, result, (parsed.content ?? []) as unknown[]);
+          setDraftId(draftId);
           onUsageChange();
           setState({
             phase: 'done',
@@ -96,11 +116,21 @@ export function DraftMode({
             targetWords: Number(parsed.targetWords ?? 0),
             short: Boolean(parsed.short),
             needsSource: result.needsSource ?? [],
+            closeTo: Array.isArray(parsed.closeTo) ? (parsed.closeTo as CloseTo[]) : [],
           });
           return;
         }
       }
     } catch (error) {
+      // ADR-0071: no topic for this section. Said as a refusal with its fix, not as a failure.
+      if (error instanceof ApiError && error.problem.type === 'SECTION_NEEDS_TOPIC') {
+        setState({
+          phase: 'refused',
+          title: error.problem.title,
+          reason: error.problem.detail ?? '',
+        });
+        return;
+      }
       setState({
         phase: 'error',
         message:
@@ -110,6 +140,23 @@ export function DraftMode({
       });
     }
   }, [editor, chapterId, outlineNodeId, onUsageChange, state.phase]);
+
+  // ADR-0071: once the student accepts or discards the draft, this panel has nothing left to say
+  // (it stayed up saying "Draft inserted" after a discard).
+  useEffect(() => {
+    if (!editor || !draftId || state.phase !== 'done') return;
+    const check = () => {
+      const found = findDraft(editor.state.doc, draftId);
+      if (!found || found.node.attrs.status !== 'pending') {
+        setState({ phase: 'idle' });
+        setDraftId(null);
+      }
+    };
+    editor.on('update', check);
+    return () => {
+      editor.off('update', check);
+    };
+  }, [editor, draftId, state.phase]);
 
   // §2.2's shortcut. Registered on the editor's own DOM so it does not fire while the student is
   // typing in a panel input.
@@ -142,7 +189,7 @@ export function DraftMode({
 
       {state.phase === 'refused' ? (
         <>
-          <p className="font-medium">This section has nothing to draft from.</p>
+          <p className="font-medium">{state.title ?? 'This section has nothing to draft from.'}</p>
           <p className="mt-1 text-muted">{state.reason}</p>
         </>
       ) : null}
@@ -166,6 +213,23 @@ export function DraftMode({
               <ul className="mt-1 list-disc pl-4 text-xs">
                 {state.needsSource.map((note) => (
                   <li key={note}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {state.closeTo.length > 0 ? (
+            <div className="mt-2" data-testid="draft-close-to">
+              <p className="text-xs text-warn">
+                Some of it follows a paper&rsquo;s wording. Put these in your own words, or quote
+                them with the page, before accepting:
+              </p>
+              <ul className="mt-1 list-disc pl-4 text-xs">
+                {state.closeTo.map((c) => (
+                  <li key={`${c.shortRef}-${c.overlapText}`}>
+                    {c.shortRef}
+                    {c.page ? `, p. ${c.page}` : ''}: &ldquo;
+                    {c.overlapText.split(' ').slice(0, 12).join(' ')}&hellip;&rdquo;
+                  </li>
                 ))}
               </ul>
             </div>

@@ -12,9 +12,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DRAFT, type DraftResult } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
+import { findOutlineNode, isGenericSectionTitle, readOutline } from '@tc/types';
 import type { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
-import { NotFoundError } from '../../common/errors.js';
+import { NotFoundError, SectionNeedsTopicError } from '../../common/errors.js';
 import { capExceeded, suggestionOutcome } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
@@ -22,7 +23,13 @@ import { RedisService } from '../../common/redis.service.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 
-export type DraftInput = { chapterId: string; outlineNodeId: string; targetWords?: number };
+export type DraftInput = {
+  chapterId: string;
+  outlineNodeId: string;
+  targetWords?: number;
+  heading?: string;
+  context?: string;
+};
 
 export type DraftEvent =
   | { event: 'start'; data: { draftId: string } }
@@ -37,6 +44,8 @@ export type DraftEvent =
         needsSource: string[];
         words: number;
         targetWords: number;
+        /** ADR-0071: paragraphs that follow a passage's wording too closely. */
+        closeTo: unknown[];
       };
     }
   | { event: 'refused'; data: { draftId: string; reason: string } }
@@ -70,9 +79,23 @@ export class DraftService {
   ): AsyncGenerator<DraftEvent> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: input.chapterId, document: { ownerId: user.id } },
-      select: { id: true, documentId: true },
+      select: { id: true, documentId: true, title: true, scopeNote: true },
     });
     if (!chapter) throw new NotFoundError('That chapter');
+
+    // ADR-0071: a draft needs a topic. The heading the cursor is under names one; so does the
+    // outline node or a scope note. "Chapter 1" with nothing else does not, and drafting it wrote
+    // about the sources' own headings. Refused before the unit is taken.
+    if (!input.heading?.trim() || isGenericSectionTitle(input.heading)) {
+      const memory = await this.prisma.documentMemory.findUnique({
+        where: { documentId: chapter.documentId },
+        select: { outline: true },
+      });
+      const node = findOutlineNode(readOutline(memory?.outline), input.outlineNodeId);
+      const title = node?.title ?? chapter.title;
+      const scope = (node?.scopeNote ?? chapter.scopeNote ?? '').trim();
+      if (isGenericSectionTitle(title) && !scope) throw new SectionNeedsTopicError();
+    }
 
     const cap = await this.usage.consume(
       user.id,
@@ -120,6 +143,9 @@ export class DraftService {
           userId: user.id,
           outlineNodeId: input.outlineNodeId,
           ...(input.targetWords ? { targetWords: input.targetWords } : {}),
+          ...(input.heading?.trim() && !isGenericSectionTitle(input.heading)
+            ? { heading: input.heading.trim(), context: (input.context ?? '').slice(-800) }
+            : {}),
           draftId,
         } as never,
         { jobId: `draft-section__${draftId}` },
@@ -157,6 +183,7 @@ export class DraftService {
           needsSource?: string[];
           words?: number;
           targetWords?: number;
+          closeTo?: unknown[];
         };
 
         if (parsed.type === 'progress') {
@@ -204,6 +231,7 @@ export class DraftService {
               needsSource: parsed.needsSource ?? [],
               words: parsed.words ?? 0,
               targetWords: parsed.targetWords ?? DRAFT.defaultTargetWords,
+              closeTo: parsed.closeTo ?? [],
             },
           };
           return;

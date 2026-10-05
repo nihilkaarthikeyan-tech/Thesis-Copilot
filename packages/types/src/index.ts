@@ -70,6 +70,7 @@ export {
   DEFAULT_CHAPTER_TITLE,
   findOutlineNode,
   firstChapterOutline,
+  isGenericSectionTitle,
   type OutlineNode,
   outlineNodeId,
   outlineNodeSchema,

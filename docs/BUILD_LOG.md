@@ -5117,3 +5117,19 @@ Browser verification of the merged release found two more faults:
   "Start writing now".
 - Skipping the model call on an empty library removed the uncited suggestion the editor specs,
   and real students, get. The model is now always asked; ADR-0070 item 4 records the change.
+
+## Batch A after the side-by-side (2026-10-05, ADR-0071)
+
+Fixes for the faults the Jenni comparison found in production v0.1.26:
+- **Draft mode** drafts the heading under the cursor, and asks for one instead of drafting
+  "Chapter 1".
+- **Non-prose chunks** (heading runs, contents pages, reference lists) are dropped at indexing;
+  `prune-chunks` cleans existing libraries.
+- **Copying** of a cited passage is flagged in Assist, Draft and "Too close to a source?".
+- The needs-source note reads as words.
+- The list and Flags panel no longer move under a click; a spinner replaces the blank screen.
+- The draft panel closes once its draft is resolved.
+
+Lesson, again: the Python-heredoc rule. Two regexes were mangled this way (`\b` became a
+backspace byte, `\n` became a line break). Both were caught by grepping the diff for `\x08` and
+for split regexes before commit, and were rewritten from raw strings or with the Edit tool.

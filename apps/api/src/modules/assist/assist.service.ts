@@ -11,6 +11,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { buildAssistRequest, type LlmProvider, type Providers, postProcessAssist } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
+import { closeToPassages } from '@tc/retrieval';
 import { findOutlineNode, readOutline, scopeWithSection, sectionUnderHeading } from '@tc/types';
 import { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
@@ -67,6 +68,13 @@ export type SuggestEvent =
          * says citations will follow, and asks again by itself once a paper is ready.
          */
         papersLoading?: boolean;
+        /** ADR-0071: the suggestion reuses the wording of a passage it cites. */
+        closeTo?: {
+          shortRef: string;
+          page: number | null;
+          overlapText: string;
+          kind: 'verbatim' | 'close';
+        } | null;
         /** A.1: what the model said no passage covers, when it wrote nothing for that reason. */
         needsSource: string | null;
         usage: unknown;
@@ -355,11 +363,38 @@ export class AssistService {
         };
       });
 
+      // ADR-0071: does the suggestion reuse the wording of a passage it cites? Said before the
+      // student keeps it; nothing is rewritten (flag, don't fix).
+      const cited = new Set(processed.cited);
+      const match = processed.text
+        ? closeToPassages(
+            processed.text,
+            retrieved.passages
+              .filter((p) => cited.has(p.id))
+              .map((p) => ({
+                chunkId: p.chunkId,
+                sourceId: p.sourceId,
+                shortRef: p.shortRef,
+                page: p.page,
+                text: p.text,
+              })),
+          )
+        : null;
+      const closeTo = match
+        ? {
+            shortRef: match.shortRef,
+            page: match.page,
+            overlapText: match.overlapText,
+            kind: match.kind,
+          }
+        : null;
+
       yield {
         event: 'done',
         data: {
           suggestionId: event.id,
           text: processed.text,
+          closeTo,
           citations,
           grounded: retrieved.passages.length > 0,
           pinned: retrieved.pinned,

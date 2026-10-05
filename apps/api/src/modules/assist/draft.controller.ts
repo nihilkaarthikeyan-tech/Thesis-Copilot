@@ -17,6 +17,9 @@ const sectionBody = z.object({
   chapterId: z.string().uuid(),
   outlineNodeId: z.string().trim().min(1).max(200),
   targetWords: z.number().int().min(100).max(2_000).optional(),
+  // ADR-0071: the section the cursor is in, so the draft is about it.
+  heading: z.string().trim().max(200).optional(),
+  context: z.string().max(2_000).optional(),
 });
 
 const resolveBody = z.object({ keptChars: z.number().int().min(0).default(0) });

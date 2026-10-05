@@ -177,3 +177,15 @@ export function scopeWithSection(
   const sectionLine = `This section, "${section?.title}": ${note}`;
   return chapterScope?.trim() ? `${chapterScope.trim()}\n${sectionLine}` : sectionLine;
 }
+
+/**
+ * A section title that names no topic (ADR-0071): "Chapter 1", "Section 2", "Untitled", or
+ * nothing. Draft mode refuses to write for one of these without a scope note, and asks the
+ * student for a heading instead, rather than drafting about whatever the passages happen to be.
+ */
+export function isGenericSectionTitle(title: string | null | undefined): boolean {
+  const t = (title ?? '').replace(/^#+\s*/, '').trim();
+  if (t.length === 0) return true;
+  if (/^untitled\b/i.test(t)) return true;
+  return /^(chapter|section|part|unit)\s*[0-9ivxlc.]*$/i.test(t);
+}

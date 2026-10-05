@@ -12,6 +12,7 @@ import {
   type DraftCallLog,
   type DraftEvent,
   type DraftSectionDeps,
+  draftCloseTo,
   guidanceFor,
   runDraftSection,
 } from '../src/jobs/draft-section.js';
@@ -193,5 +194,64 @@ describe('ADR-0047: research-type guidance in Draft mode', () => {
     );
     expect(guidanceFor({ field: null, meta: null }, 'Introduction')).toBe('');
     expect(guidanceFor(null, 'Introduction')).toBe('');
+  });
+});
+
+describe('the section the cursor is in (ADR-0071)', () => {
+  it('drafts for the heading under the cursor, searching with it and the student’s own text', async () => {
+    const { deps, requests } = fakeDeps();
+    await runDraftSection(
+      { ...job, heading: 'Financial constraints', context: 'Upfront cost comes first.' },
+      deps,
+    );
+    const query = (deps.retrieve as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(query).toContain('Financial constraints');
+    expect(query).toContain('Upfront cost comes first.');
+    const prompt = JSON.stringify(requests[0]);
+    expect(prompt).toContain('title=\\"Financial constraints\\"');
+  });
+
+  it('refuses a section that names no topic, before any search or provider call', async () => {
+    const { deps, published, requests } = fakeDeps();
+    (deps.prisma.chapter.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'ch-1',
+      documentId: 'doc-1',
+      outlineNodeId: 'ch-1',
+      title: 'Chapter 1',
+      scopeNote: null,
+      content: { type: 'doc', content: [] },
+    });
+    const result = await runDraftSection({ ...job, outlineNodeId: 'ch-1' }, deps);
+    expect(result.status).toBe('refused');
+    expect(requests).toHaveLength(0);
+    expect(deps.retrieve).not.toHaveBeenCalled();
+    expect((published.at(-1) as { reason: string }).reason).toContain('Add a heading');
+  });
+});
+
+describe('draftCloseTo (ADR-0071)', () => {
+  const passage = {
+    chunkId: 'c1',
+    sourceId: 's1',
+    shortRef: 'Bagla 2026',
+    page: 11,
+    text: 'Adoption remains constrained by informational gaps, procedural complexity, structural limitations, and perceived financial risk across districts.',
+  };
+
+  it('names the paragraph that follows a passage’s wording', () => {
+    const markdown =
+      'Households hesitate for many reasons.\n\nAdoption remains constrained by informational gaps, procedural complexity, structural limitations, and perceived financial risk {{cite:S1#c1}}.';
+    const found = draftCloseTo(markdown, [passage]);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.shortRef).toBe('Bagla 2026');
+  });
+
+  it('says nothing about a draft in its own words', () => {
+    expect(
+      draftCloseTo(
+        'Families hold back because the forms are confusing and the savings feel uncertain {{cite:S1#c1}}.',
+        [passage],
+      ),
+    ).toEqual([]);
   });
 });

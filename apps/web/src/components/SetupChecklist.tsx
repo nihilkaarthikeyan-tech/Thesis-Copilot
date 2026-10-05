@@ -36,6 +36,7 @@ type Progress = {
 
 export function SetupChecklist({ documentId }: { documentId: string }) {
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -44,14 +45,22 @@ export function SetupChecklist({ documentId }: { documentId: string }) {
       .then((p) => {
         if (!cancelled) setProgress(p);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [documentId]);
 
-  // Nothing while loading, nothing on failure, and nothing once it is finished. A checklist is
-  // help, not information the page owes anyone.
+  // ADR-0071: while loading, hold the space the checklist will take. Rendering nothing and then
+  // the panel pushed everything below it down, and a click meant for "Start another thesis"
+  // opened another thesis's proposal (seen on production, 2026-10-05).
+  if (!progress && !failed) {
+    return <div aria-hidden="true" className="h-[118px]" data-testid="setup-checklist-pending" />;
+  }
+  // Nothing on failure, and nothing once it is finished. A checklist is help, not information
+  // the page owes anyone.
   if (!progress || progress.complete) return null;
 
   return (

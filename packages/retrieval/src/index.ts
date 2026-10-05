@@ -15,6 +15,8 @@ export {
   chunkText,
   DEFAULT_OVERLAP_RATIO,
   DEFAULT_TARGET_TOKENS,
+  isProseChunk,
+  MIN_PROSE_WORDS,
   type PageSpan,
   type SectionSpan,
 } from './chunker.js';
@@ -90,6 +92,7 @@ export {
   adviceFor,
   buildIndex,
   type ChunkForMatch,
+  closeToPassages,
   contentWords,
   findParaphrases,
   longestCommonRun,

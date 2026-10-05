@@ -522,6 +522,22 @@ function ChapterEditor({
             const gap = info.needsSource ? `: ${info.needsSource}` : '';
             // ADR-0070: the library is still filling. The progress line above the page says
             // how far along it is, and asks for this suggestion again when a paper is ready.
+            // ADR-0071: the suggestion follows a cited passage's wording. Said now, while the
+            // student can still choose not to keep it as it stands.
+            if (info.closeTo && !info.empty) {
+              setNotice(
+                tNow(
+                  info.closeTo.kind === 'verbatim'
+                    ? 'editor.notice.closeToVerbatim'
+                    : 'editor.notice.closeTo',
+                  {
+                    ref: info.closeTo.shortRef,
+                    words: info.closeTo.overlapText.split(' ').slice(0, 12).join(' '),
+                  },
+                ),
+              );
+              return;
+            }
             if (info.papersLoading) {
               // Nothing written: wait, and ask again when a paper is ready. Something written:
               // it cites nothing yet, and the student is told citations will follow.

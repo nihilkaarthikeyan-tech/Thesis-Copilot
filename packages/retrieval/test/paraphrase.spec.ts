@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   adviceFor,
   type ChunkForMatch,
+  closeToPassages,
   findParaphrases,
   longestCommonRun,
   PARAPHRASE,
@@ -102,13 +103,33 @@ describe('what it flags', () => {
   });
 });
 
-describe('what it stays quiet about', () => {
-  it('says nothing about a sentence that already carries a citation', () => {
+describe('a citation does not make copied words a quotation (ADR-0071)', () => {
+  it('reports a cited sentence that copies a long run word for word, outside quotation marks', () => {
     const cited = sentence({
       text: 'Households in districts without a local service presence proceed far less often after an initial enquiry.',
       hasCitation: true,
     });
+    const [match] = findParaphrases([cited], [SOURCE]);
+    expect(match?.kind).toBe('verbatim');
+    expect(adviceFor(match as NonNullable<typeof match>)).toContain('quotation marks');
+  });
+});
+
+describe('what it stays quiet about', () => {
+  it('says nothing about a cited sentence that is only close to its source', () => {
+    const cited = sentence({
+      text: 'Where no local service office exists, households are far less likely to proceed beyond their first enquiry.',
+      hasCitation: true,
+    });
     expect(findParaphrases([cited], [SOURCE])).toEqual([]);
+  });
+
+  it('says nothing about a cited sentence whose copied words are in quotation marks', () => {
+    const quoted = sentence({
+      text: 'Kumar found that households “in districts without a local service presence proceed far less often after an initial enquiry”.',
+      hasCitation: true,
+    });
+    expect(findParaphrases([quoted], [SOURCE])).toEqual([]);
   });
 
   it('says nothing about original prose on the same subject', () => {
@@ -193,5 +214,35 @@ describe('how it reports', () => {
     });
     const [match] = findParaphrases([copied], [SOURCE]);
     expect(match ? adviceFor(match) : '').toContain('p. 4');
+  });
+});
+
+describe('closeToPassages: AI text against the passages it was given (ADR-0071)', () => {
+  // The production case, 2026-10-05: the suggestion and the Bagla (2026) passage it cited.
+  const bagla = {
+    chunkId: 'c1',
+    sourceId: 's1',
+    shortRef: 'Bagla 2026',
+    page: 11,
+    text:
+      'Although Karnataka has one of India’s most progressive distributed solar policy frameworks, ' +
+      'household-level evidence shows that adoption remains constrained by informational gaps, ' +
+      'procedural complexity, structural limitations, and perceived financial risk.',
+  };
+
+  it('flags a suggestion that reuses the passage’s wording, even though it cites it', () => {
+    const suggestion =
+      'Informational gaps, procedural complexity, structural limitations, and perceived financial risks ' +
+      'significantly hinder the transition from awareness to installation {{cite:S1#c1}}.';
+    const match = closeToPassages(suggestion, [bagla]);
+    expect(match?.shortRef).toBe('Bagla 2026');
+    expect(match?.overlapText).toContain('procedural complexity structural limitations');
+  });
+
+  it('stays quiet about a suggestion in its own words', () => {
+    const suggestion =
+      'Even in a state with generous incentives, families hesitate because the paperwork is hard to ' +
+      'follow and the savings feel uncertain {{cite:S1#c1}}.';
+    expect(closeToPassages(suggestion, [bagla])).toBeNull();
   });
 });

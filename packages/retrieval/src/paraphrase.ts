@@ -32,6 +32,8 @@
  *     see for themselves whether it is fair. A cosine of 0.87 explains nothing.
  */
 
+import { splitSentences } from './text.js';
+
 /** Words per shingle. Five is the plagiarism-detection convention: trigrams fire on idiom. */
 export const SHINGLE = 5;
 
@@ -211,10 +213,12 @@ export function findParaphrases(
   const out: ParaphraseMatch[] = [];
 
   for (const sentence of sentences) {
-    // Already attributed: this is what the feature asks for, so finding it is success, not a
-    // finding. Skipping it is also what keeps a correctly quoted passage from being nagged about
-    // for ever.
-    if (sentence.hasCitation) continue;
+    // Already attributed: what the feature asks for, so a *close* match is success, not a finding.
+    // ADR-0071 narrows that: a cited sentence that copies a long run word for word, outside
+    // quotation marks, is still the paper's sentence — a citation does not make it a quotation,
+    // and a similarity report will say so. Those are still reported (verbatim only, below). A
+    // sentence with its quotation marks in place is left alone for ever.
+    if (sentence.hasCitation && isQuoted(sentence.text)) continue;
 
     const tokens = words(sentence.text);
     if (tokens.length < PARAPHRASE.minWords) continue;
@@ -284,7 +288,7 @@ export function findParaphrases(
       }
     }
 
-    if (best) out.push(best);
+    if (best && (!sentence.hasCitation || best.kind === 'verbatim')) out.push(best);
   }
 
   // Worst first: a verbatim run is a different conversation from a close paraphrase.
@@ -293,6 +297,43 @@ export function findParaphrases(
       Number(b.kind === 'verbatim') - Number(a.kind === 'verbatim') ||
       b.overlapWords - a.overlapWords,
   );
+}
+
+/**
+ * ADR-0071: is a piece of AI-written text (a suggestion, a draft) close to the wording of a
+ * passage it was given? Checked against exactly those passages, before the student sees it, so
+ * the editor can say "this is close to Bagla 2026's wording — quote it or put it in your own
+ * words" *before* it is kept. Flag, don't fix: nothing is rewritten here.
+ *
+ * Every sentence is treated as uncited — the model citing the passage it copied is the very case
+ * this exists for.
+ */
+export function closeToPassages(
+  text: string,
+  passages: ReadonlyArray<{
+    chunkId: string;
+    sourceId: string;
+    shortRef: string;
+    page: number | null;
+    text: string;
+  }>,
+): ParaphraseMatch | null {
+  const plain = text.replace(/\{\{cite:[^}]+\}\}/g, ' ');
+  const sentences: SentenceForMatch[] = splitSentences(plain).map((s, i) => ({
+    id: `s${i}`,
+    chapterId: '',
+    text: s.text,
+    from: s.start,
+    to: s.end,
+    hasCitation: false,
+  }));
+  return findParaphrases(sentences, passages)[0] ?? null;
+}
+
+/** A sentence carrying a pair of quotation marks: the student has marked words as someone else's. */
+function isQuoted(text: string): boolean {
+  const marks = text.match(/["“”]/g) ?? [];
+  return marks.length >= 2;
 }
 
 /** The one sentence to show a student. Never suggests rewording to avoid detection (§12.3). */

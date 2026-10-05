@@ -39,6 +39,11 @@ export type ChunkOptions = {
   overlapRatio?: number;
   /** Chunks shorter than this are folded into the previous chunk rather than emitted alone. */
   minTokens?: number;
+  /**
+   * ADR-0071: keep chunks that are not prose (heading runs, contents pages, reference lists).
+   * Off by default; on only for tests that pin the raw split.
+   */
+  keepNonProse?: boolean;
 };
 
 export type Chunk = {
@@ -154,7 +159,54 @@ export function chunkText(input: ChunkInput, options: ChunkOptions = {}): Chunk[
     }
   }
 
-  return chunks.map((chunk, ordinal) => ({ ...chunk, ordinal }));
+  // ADR-0071: a chunk that is a run of headings, a contents page or a reference list is not
+  // evidence for anything, but it sits close to any vague query ("Chapter 1.") and the draft then
+  // described the paper's headings as findings. Dropped here, unless that would leave nothing.
+  const prose = options.keepNonProse ? chunks : chunks.filter(isProseChunk);
+  return (prose.length > 0 ? prose : chunks).map((chunk, ordinal) => ({ ...chunk, ordinal }));
+}
+
+/** Sections whose text is never evidence: the paper's own apparatus. */
+const APPARATUS_SECTION =
+  /^(\d+(\.\d+)*\.?\s*)?(references|bibliography|works cited|literature cited|reference list|acknowledge?ments?|table of contents|contents|list of (figures|tables|abbreviations))\b/i;
+
+/** Fewer words than this is a fragment, not a passage. */
+export const MIN_PROSE_WORDS = 12;
+
+/**
+ * Whether a chunk reads as prose a sentence could be grounded in (ADR-0071). Not prose:
+ *   - a chunk in the references, acknowledgements or contents section;
+ *   - a fragment of fewer than `MIN_PROSE_WORDS` words;
+ *   - a run of short lines with no sentence in them (headings, a contents page, a figure list);
+ *   - a block dominated by reference entries (years in brackets, "et al.", DOIs).
+ */
+export function isProseChunk(chunk: { text: string; section: string | null }): boolean {
+  if (chunk.section && APPARATUS_SECTION.test(chunk.section.trim())) return false;
+  const text = chunk.text.trim();
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < MIN_PROSE_WORDS) return false;
+
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const sentenceEnds = (text.match(/[a-z0-9)\]][.!?](\s|$)/gi) ?? []).length;
+  // A heading is a handful of words. A PDF wraps prose every ten or so words, and those lines end
+  // without punctuation too, so the bar is six words, not ten (measured on the dev library).
+  const shortLines = lines.filter(
+    (line) => line.split(/\s+/).length <= 6 && !/[.!?:;,]$/.test(line),
+  );
+  if (lines.length >= 4 && shortLines.length / lines.length >= 0.7 && sentenceEnds < 2) {
+    return false;
+  }
+
+  const referenceMarks =
+    (text.match(/\(\d{4}[a-z]?\)/g) ?? []).length +
+    (text.match(/\bet al\./g) ?? []).length +
+    (text.match(/\bdoi\.org\/|\bdoi:/gi) ?? []).length;
+  if (referenceMarks >= 6 && referenceMarks / words.length > 0.08) return false;
+
+  return true;
 }
 
 /** Splits chunks into batches for the embedding provider (PHASES 2.7: batches of 64). */

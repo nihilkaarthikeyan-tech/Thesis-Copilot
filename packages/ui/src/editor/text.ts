@@ -96,3 +96,35 @@ export function contextAround(
 
   return { before, after };
 }
+
+/**
+ * The section the cursor is in (ADR-0071): the nearest heading above it below the chapter title,
+ * and the student's own text between that heading and the cursor. Draft mode used to send only
+ * the chapter, so a draft under "Financial constraints" was written for "Chapter 1".
+ *
+ * Level-1 headings are skipped (each chapter starts with its own title as one), and a heading the
+ * markdown shortcut left as literal text ("## Financial constraints") is read without its hashes.
+ */
+export function sectionUnderCursor(
+  doc: PmNode,
+  pos: number,
+): { heading?: string; context: string } {
+  let heading: string | undefined;
+  let blocks: string[] = [];
+  const end = Math.min(pos, doc.content.size);
+  doc.nodesBetween(0, end, (node, at) => {
+    if (!node.isTextblock) return true;
+    if (at >= end) return false;
+    const text = blockText(node).trim();
+    const literal = /^#{2,6}\s+\S/.test(text);
+    if ((node.type.name === 'heading' && Number(node.attrs.level ?? 1) > 1) || literal) {
+      heading = text.replace(/^#+\s*/, '').slice(0, 200) || heading;
+      blocks = [];
+    } else if (node.type.name !== 'heading' && text) {
+      blocks.push(text.replace(/\{\{cite:[^}]+\}\}/g, ' '));
+    }
+    return false;
+  });
+  const context = blocks.join(' ').replace(/\s+/g, ' ').trim().slice(-800);
+  return heading ? { heading, context } : { context };
+}

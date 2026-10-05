@@ -68,7 +68,8 @@ export function ParaphrasePanel({
       <p className="eyebrow">Too close to a source?</p>
       <p className="mt-1 text-xs text-muted">
         Checks this chapter against the papers in your library for sentences that reuse their
-        wording without citing them. Nothing is sent to a model, and nothing is changed.
+        wording: uncited, or cited but copied word for word without quotation marks. Nothing is sent
+        to a model, and nothing is changed.
       </p>
 
       <button

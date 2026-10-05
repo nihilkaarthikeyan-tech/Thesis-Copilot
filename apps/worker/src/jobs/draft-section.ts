@@ -30,8 +30,13 @@ import {
   writingGuidance,
 } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
-import { docToText } from '@tc/retrieval';
-import type { DraftSectionJob } from '@tc/types';
+import { closeToPassages, docToText } from '@tc/retrieval';
+import { type DraftSectionJob, isGenericSectionTitle } from '@tc/types';
+
+/** ADR-0071: what the student is told when the section names no topic. */
+export const SECTION_NEEDS_TOPIC_MESSAGE =
+  'Add a heading above the cursor, such as "Financial constraints", then draft again. A draft ' +
+  'for "Chapter 1" has no topic to write about.';
 
 export type DraftSectionDeps = {
   prisma: PrismaClient;
@@ -107,9 +112,50 @@ export type DraftEvent =
       needsSource: string[];
       words: number;
       targetWords: number;
+      /** ADR-0071: paragraphs that follow a passage's wording too closely. */
+      closeTo?: DraftCloseTo[];
     }
   | { type: 'refused'; draftId: string; reason: string }
   | { type: 'error'; draftId: string; message: string };
+
+export type DraftCloseTo = {
+  shortRef: string;
+  page: number | null;
+  overlapText: string;
+  kind: 'verbatim' | 'close';
+};
+
+/**
+ * ADR-0071: the draft's paragraphs checked against the passages it was written from, so the
+ * student is told which ones follow a paper's wording before accepting. At most three, worst
+ * first; nothing is rewritten.
+ */
+export function draftCloseTo(
+  markdown: string,
+  passages: ReadonlyArray<{
+    chunkId: string;
+    sourceId: string;
+    shortRef: string;
+    page: number | null;
+    text: string;
+  }>,
+): DraftCloseTo[] {
+  const found: DraftCloseTo[] = [];
+  for (const paragraph of markdown.split(/\n{2,}/)) {
+    const match = closeToPassages(paragraph, passages);
+    if (match) {
+      found.push({
+        shortRef: match.shortRef,
+        page: match.page,
+        overlapText: match.overlapText,
+        kind: match.kind,
+      });
+    }
+  }
+  return found
+    .sort((a, b) => Number(b.kind === 'verbatim') - Number(a.kind === 'verbatim'))
+    .slice(0, 3);
+}
 
 export type DraftSectionResult = {
   draftId: string;
@@ -145,13 +191,26 @@ export async function runDraftSection(
     return { draftId, status: 'error', words: 0, citations: 0, needsSource: 0, short: false };
   }
 
-  const section = await sectionFor(deps.prisma, chapter, job.outlineNodeId);
+  const section = await sectionFor(deps.prisma, chapter, job.outlineNodeId, job.heading);
   const targetWords = job.targetWords ?? DRAFT.defaultTargetWords;
+
+  // ADR-0071: a section that names no topic is not drafted (the API refuses it first; this is the
+  // worker's own guard for any other caller). The unit is refunded on a refusal.
+  if (isGenericSectionTitle(section.title) && !section.scopeNote.trim()) {
+    await deps.publish({ type: 'refused', draftId, reason: SECTION_NEEDS_TOPIC_MESSAGE });
+    log({ msg: 'draft refused', draftId, reason: 'generic section' });
+    return { draftId, status: 'refused', words: 0, citations: 0, needsSource: 0, short: false };
+  }
 
   await deps.publish({ type: 'progress', stage: 'retrieving', draftId });
 
-  // The query is the section's own scope note: that is what this section is meant to be about.
-  const retrieved = await deps.retrieve(chapter, `${section.title}. ${section.scopeNote}`);
+  // The query is the section's own title and scope note: that is what this section is meant to be
+  // about. ADR-0071: under a heading the student typed, their own text in it says the rest.
+  const query = [section.title, section.scopeNote, job.context ?? '']
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('. ');
+  const retrieved = await deps.retrieve(chapter, query);
   const passages = retrieved.passages.slice(0, DRAFT.topK);
 
   // FR-4.4's AC: refuse rather than write ungrounded prose.
@@ -159,7 +218,7 @@ export async function runDraftSection(
     const searching = await deps
       .findSources?.({
         chapterId: chapter.id,
-        query: `${section.title}. ${section.scopeNote}`,
+        query,
       })
       .catch(() => false);
     await deps.publish({
@@ -281,6 +340,7 @@ export async function runDraftSection(
     needsSource: processed.result.needsSource,
     words: processed.result.words,
     targetWords,
+    closeTo: draftCloseTo(processed.result.markdown, passages),
   });
 
   log({
@@ -314,14 +374,31 @@ async function sectionFor(
   prisma: PrismaClient,
   chapter: DraftChapter,
   outlineNodeId: string,
+  heading?: string,
 ): Promise<DraftSection> {
   const memory = await prisma.documentMemory.findUnique({
     where: { documentId: chapter.documentId },
     select: { outline: true },
   });
 
-  const { findOutlineNode, readOutline } = await import('@tc/types');
+  const { findOutlineNode, readOutline, sectionUnderHeading } = await import('@tc/types');
   const node = findOutlineNode(readOutline(memory?.outline), outlineNodeId);
+
+  // ADR-0071: the heading the cursor was under. Drafted as that section: its own scope note when
+  // the outline has it, else the chapter's as background; continuous prose (no invented
+  // subheadings), as A.2 requires when none are given.
+  if (heading?.trim()) {
+    const sub = sectionUnderHeading(node, heading);
+    return {
+      outlineNodeId,
+      title: heading.trim(),
+      scopeNote: sub?.scopeNote ?? node?.scopeNote ?? chapter.scopeNote ?? '',
+      children: (sub?.children ?? []).map((child) => ({
+        title: child.title,
+        scopeNote: child.scopeNote,
+      })),
+    };
+  }
 
   return {
     outlineNodeId,

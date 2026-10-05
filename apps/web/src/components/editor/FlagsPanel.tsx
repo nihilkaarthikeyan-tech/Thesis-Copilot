@@ -94,7 +94,9 @@ export function FlagsPanel({
    * False when the plan has no coherence checks (the free trial): the button is replaced by a
    * plain line instead of a refusal after the press (2026-10-04, found writing the help pages).
    */
-  const [included, setIncluded] = useState(true);
+  // ADR-0071: unknown until the usage line arrives. Assuming "included" showed the button, then
+  // swapped it for a sentence a moment later, and the panel jumped under the student's click.
+  const [included, setIncluded] = useState<boolean | null>(null);
   useEffect(() => {
     api<{ actions: Array<{ action: string; cap: number; used: number }> }>('/usage/me')
       .then((u) => {
@@ -230,7 +232,7 @@ export function FlagsPanel({
             ? `Last checked ${new Date(data.lastRunAt).toLocaleString()}`
             : 'Not checked yet'}
         </p>
-        {included ? null : (
+        {included !== false ? null : (
           <p className="text-xs text-muted" data-testid="coherence-not-included">
             Coherence checks are not included in your plan.{' '}
             <a href="/pricing" className="underline">
@@ -240,8 +242,8 @@ export function FlagsPanel({
         )}
         <button
           type="button"
-          disabled={running}
-          hidden={!included}
+          disabled={running || included === null}
+          hidden={included === false}
           onClick={() => void run()}
           data-testid="run-coherence"
           className="rounded-md px-3 py-1 text-xs disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
@@ -254,13 +256,15 @@ export function FlagsPanel({
           {JOB_EMAIL_NOTE}
         </p>
       ) : null}
-      {estimate && !running ? (
-        <p className="mt-1 text-xs text-muted">
-          {estimate.changedChapters === 0
+      {/* ADR-0071: the line's space is held while the estimate loads, so nothing below it moves;
+          and the student is told what it uses from their plan, not what it costs us. */}
+      <p className="mt-1 min-h-[1rem] text-xs text-muted">
+        {estimate && !running
+          ? estimate.changedChapters === 0
             ? 'Nothing has changed since the last check.'
-            : `${estimate.changedChapters} chapter${estimate.changedChapters === 1 ? '' : 's'} changed · about ₹${estimate.estimatedInr} of AI, one coherence unit${estimate.willReduceScope ? ' · large run, some checks will be narrowed' : ''}`}
-        </p>
-      ) : null}
+            : `${estimate.changedChapters} chapter${estimate.changedChapters === 1 ? '' : 's'} changed · uses one coherence check from your plan${estimate.willReduceScope ? ' · large run, some checks will be narrowed' : ''}`
+          : null}
+      </p>
 
       {error ? (
         <p role="alert" className="mt-2 text-xs text-warn">

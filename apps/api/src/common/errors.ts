@@ -35,6 +35,23 @@ export class AppError extends HttpException {
  * The cap refusal — PRD §11.5, FR-9.2.
  * Carries `resetsAt` so the UI can say when the student gets more.
  */
+/**
+ * ADR-0071: Draft mode was asked for a section that names no topic ("Chapter 1" with no scope
+ * note and no heading above the cursor). Refused before any unit is taken.
+ */
+export class SectionNeedsTopicError extends AppError {
+  constructor() {
+    super(
+      'SECTION_NEEDS_TOPIC',
+      'Say what this section is about',
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      'Add a heading above the cursor, such as "Financial constraints", then draft again. A ' +
+        'draft for "Chapter 1" has no topic to write about. Planning your chapters (the ' +
+        'proposal or the outline) gives every section one.',
+    );
+  }
+}
+
 export class CapExceededError extends AppError {
   constructor(action: string, cap: number, resetsAt: Date) {
     super(

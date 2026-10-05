@@ -574,9 +574,23 @@ test.describe('Stage 4 draft mode', () => {
     const editor = page.locator('.thesis-editor');
     await expect(editor).toBeVisible({ timeout: 20_000 });
     await editor.locator('p').first().click();
-    await page.keyboard.press('Control+Shift+D');
 
+    // ADR-0071: a bare "Chapter 1" names no topic, so the first refusal asks for a heading —
+    // before any unit is taken.
+    await page.keyboard.press('Control+Shift+D');
     const status = page.getByTestId('draft-status');
+    await expect(status).toContainText('Say what this section is about', { timeout: 60_000 });
+    await expect(status).toContainText('Add a heading above the cursor');
+    await status.getByRole('button', { name: 'Close' }).click();
+    await editor.locator('p').first().click();
+
+    // With a heading, the topic is known — and with an empty library there is still nothing to
+    // draft from, which is the refusal this test is about.
+    await page.keyboard.type('Financial constraints');
+    await page.getByRole('combobox', { name: 'Text' }).selectOption('Heading');
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Control+Shift+D');
     await expect(status).toContainText('nothing to draft from', { timeout: 60_000 });
     await expect(status).toContainText('Pin at least one source');
     // Nothing was written into the chapter.

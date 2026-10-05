@@ -90,6 +90,12 @@ export type DraftSectionJob = {
   userId: string;
   outlineNodeId: string;
   targetWords?: number;
+  /**
+   * ADR-0071: the heading the cursor was under, and the student's own text in that section so
+   * far. Absent from callers that draft a whole outline node (the chapter build).
+   */
+  heading?: string;
+  context?: string;
 };
 
 /** `generate-outline` - A.9 over the template, scope, gap map and (Path B) extraction. */

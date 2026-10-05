@@ -29,7 +29,9 @@ export const NeedsSourceNote = Node.create({
         // Also what the "/" menu's "Citation needed" inserts, so the words fit either origin.
         title: 'No source is cited here yet',
       }),
-      `[[NEEDS SOURCE: ${String(node.attrs.text)}]]`,
+      // ADR-0071: read as words, not markup. The prompt-facing text form (`text.ts`) keeps the
+      // `[[NEEDS SOURCE: …]]` marker the models are written against.
+      `Needs a source: ${String(node.attrs.text)}`,
     ];
   },
 });

@@ -316,7 +316,19 @@ export default function DocumentListPage() {
   // Until the session says who this is, show nothing rather than flash a student's list at an
   // administrator on their way to /admin.
   if (session.isPending || isAdmin) {
-    return <div className="min-h-dvh" aria-busy="true" />;
+    // ADR-0071: a spinner, not a blank screen, while the session is read (about 3 s on
+    // production looked like a broken page). Still no list, so an administrator never sees one.
+    return (
+      <div className="flex min-h-dvh items-center justify-center" aria-busy="true">
+        <span className="flex items-center gap-2 text-sm text-muted" role="status">
+          <span
+            aria-hidden="true"
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent motion-reduce:animate-none"
+          />
+          {t('common.loading')}
+        </span>
+      </div>
+    );
   }
 
   return (
@@ -499,7 +511,7 @@ export default function DocumentListPage() {
                           </button>
                         </nav>
                       </div>
-                      <div className="border-t border-line px-4 py-2">
+                      <div className="min-h-[2.25rem] border-t border-line px-4 py-2">
                         <NextAction documentId={d.id} compact />
                       </div>
                       {/* Below the recommendation, and only until it is finished: the arc is for

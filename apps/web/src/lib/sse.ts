@@ -4,7 +4,7 @@
  * editor's ghost-text plugin consumes.
  */
 
-import type { GhostEvent, GhostRequestPayload } from '@tc/ui';
+import type { CloseTo, GhostEvent, GhostRequestPayload } from '@tc/ui';
 import { API_URL, type ProblemDetails } from './api';
 
 export async function* parseSse(
@@ -102,6 +102,9 @@ export async function* assistRequest(
             : {}),
           ...(typeof parsed.needsSource === 'string' ? { needsSource: parsed.needsSource } : {}),
           ...(parsed.papersLoading === true ? { papersLoading: true } : {}),
+          ...(parsed.closeTo && typeof parsed.closeTo === 'object'
+            ? { closeTo: parsed.closeTo as CloseTo }
+            : {}),
           usage: parsed.usage,
           ttfbMs: typeof parsed.ttfbMs === 'number' ? parsed.ttfbMs : undefined,
           latencyMs: typeof parsed.latencyMs === 'number' ? parsed.latencyMs : undefined,
