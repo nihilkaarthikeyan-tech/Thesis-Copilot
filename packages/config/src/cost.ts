@@ -82,10 +82,29 @@ export type ActionProfile = {
   readonly outputTokens: number;
 };
 
-export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
+/**
+ * PRD §11.2's own shapes for its six metered actions, as printed — fixed, unlike
+ * `ACTION_PROFILES`, which follows the decisions taken since (ADR-0077 moved chat to the strong
+ * tier). Used only by the PRD self-check.
+ */
+export const PRD_ACTION_PROFILES: Readonly<
+  Record<'ASSIST' | 'CITE' | 'CHAT' | 'DRAFT' | 'COMMAND' | 'COHERENCE', ActionProfile>
+> = {
   ASSIST: { tier: 'fast', inputTokens: 1_200, cachedInputTokens: 4_000, outputTokens: 50 },
   CITE: { tier: 'fast', inputTokens: 3_000, cachedInputTokens: 4_000, outputTokens: 100 },
   CHAT: { tier: 'fast', inputTokens: 4_000, cachedInputTokens: 4_000, outputTokens: 300 },
+  DRAFT: { tier: 'strong', inputTokens: 6_000, cachedInputTokens: 4_000, outputTokens: 800 },
+  COMMAND: { tier: 'strong', inputTokens: 2_000, cachedInputTokens: 4_000, outputTokens: 600 },
+  COHERENCE: { tier: 'strong', inputTokens: 15_000, cachedInputTokens: 0, outputTokens: 1_500 },
+};
+
+export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
+  ASSIST: { tier: 'fast', inputTokens: 1_200, cachedInputTokens: 4_000, outputTokens: 50 },
+  CITE: { tier: 'fast', inputTokens: 3_000, cachedInputTokens: 4_000, outputTokens: 100 },
+  // 2026-10-05 (ADR-0077, the owner's decision): chat answers on the strong tier. A reasoning
+  // model bills its thinking as output, so the 600-token answer is priced with ~1,000 tokens of
+  // reasoning on top (`REASONING_HEADROOM` in packages/ai).
+  CHAT: { tier: 'strong', inputTokens: 4_000, cachedInputTokens: 4_000, outputTokens: 1_600 },
   DRAFT: { tier: 'strong', inputTokens: 6_000, cachedInputTokens: 4_000, outputTokens: 800 },
   // 600 rather than §11.4's 500: FR-3.6's per-section scope rewrite is metered against this cap
   // (ADR-0008), and a scope note is the longer of the two responses. A shared cap has to be
@@ -184,6 +203,13 @@ export type MonthlyBudget = {
 
 export type BudgetOptions = {
   /**
+   * ADR-0077: the per-action shapes to price. Defaults to `ACTION_PROFILES` (what production runs).
+   * The PRD self-check passes `PRD_ACTION_PROFILES`, the §11.2 table as printed, so a later
+   * decision to run an action on another tier does not quietly change what "the PRD's own table"
+   * means.
+   */
+  readonly profiles?: Readonly<Partial<Record<MeteredAction, ActionProfile>>>;
+  /**
    * PRD §10.1: Draft runs on the Strong tier behind the `draftModeStrongTier` flag, falling back
    * to Fast. §11.4 gives the total for both settings (≈₹95.8 on, ≈₹79 off).
    */
@@ -239,7 +265,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
   const caps = PLAN_LIMITS[plan].caps;
 
   const unitFor = (action: MeteredAction): number => {
-    const base = ACTION_PROFILES[action];
+    const base = options.profiles?.[action] ?? ACTION_PROFILES[action];
     const profile: ActionProfile =
       action === 'DRAFT' && !draftStrong ? { ...base, tier: 'fast' } : base;
     const cost = profileCost(profile, pricing, options.models);

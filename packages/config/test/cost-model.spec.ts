@@ -15,12 +15,12 @@ import {
   UNMETERED_ACTIONS,
 } from '../src/actions.js';
 import {
-  ACTION_PROFILES,
   computeCallCost,
   computeEmbeddingCost,
   computeMonthlyBudget,
   formatBudget,
   microToInr,
+  PRD_ACTION_PROFILES,
 } from '../src/cost.js';
 import { capFor, PLAN_LIMITS, PLANS } from '../src/plans.js';
 import { applyPricingOverride, DEFAULT_PRICING, parsePricingOverride } from '../src/pricing.js';
@@ -37,7 +37,10 @@ describe('Appendix E.2 — cost self-check', () => {
   // included, stays within ₹100 at the models production runs. At the reference prices the six
   // rows already came to ₹98.92, so nothing could be added and still be checked there.
   it('the PRD’s own STUDENT table stays within the ₹100 ceiling at its reference prices', () => {
-    const budget = computeMonthlyBudget('STUDENT_MONTHLY', { actions: PRD_METERED_ACTIONS });
+    const budget = computeMonthlyBudget('STUDENT_MONTHLY', {
+      actions: PRD_METERED_ACTIONS,
+      profiles: PRD_ACTION_PROFILES,
+    });
 
     // Printed so the §11.4 table appears in CI output and can be pasted into the build log.
     console.log(`\n${formatBudget(budget)}\n`);
@@ -59,18 +62,23 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(line?.count).toBe(6);
     // Eight sections, each one examiner call of the chapter build's shape, on gpt-5-mini.
     expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(1.8618, 4);
-    expect(budget.totalInr).toBeCloseTo(63.89, 2);
+    // ADR-0077: chat on the strong tier (₹0.3741 a question) took this from ₹63.89.
+    expect(budget.totalInr).toBeCloseTo(69.06, 2);
     // ADR-0051 moved the fast tier to gpt-4.1-mini for Assist; the ceiling holds there too.
     const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
     });
-    expect(assistModel.totalInr).toBeCloseTo(85.82, 2);
+    // ADR-0077: from ₹85.82 with chat on the strong tier.
+    expect(assistModel.totalInr).toBeCloseTo(88.19, 2);
     expect(assistModel.withinCeiling).toBe(true);
   });
 
   it('STUDENT_ANNUAL and INSTITUTION_SEAT are within the ceiling too, on both bases', () => {
     for (const plan of ['STUDENT_ANNUAL', 'INSTITUTION_SEAT'] as const) {
-      const prd = computeMonthlyBudget(plan, { actions: PRD_METERED_ACTIONS });
+      const prd = computeMonthlyBudget(plan, {
+        actions: PRD_METERED_ACTIONS,
+        profiles: PRD_ACTION_PROFILES,
+      });
       expect(prd.totalInr, plan).toBeLessThanOrEqual(100);
       const production = computeMonthlyBudget(plan, { models: PRODUCTION_MODELS });
       expect(production.totalInr, plan).toBeLessThanOrEqual(100);
@@ -186,7 +194,11 @@ describe('§11.2 — derived unit costs vs the PRD table', () => {
    * lands at ₹99.69 rather than the ₹95.8 §11.4 prints. Logged in docs/BUILD_LOG.md.
    */
   const PRD_TOLERANCE = 0.15;
-  const cases: Array<{ action: keyof typeof ACTION_PROFILES; derived: number; prd: number }> = [
+  const cases: Array<{
+    action: keyof typeof PRD_ACTION_PROFILES;
+    derived: number;
+    prd: number;
+  }> = [
     { action: 'ASSIST', derived: 0.16095, prd: 0.15 },
     { action: 'CITE', derived: 0.3393, prd: 0.3 },
     { action: 'CHAT', derived: 0.5133, prd: 0.5 },
@@ -200,7 +212,9 @@ describe('§11.2 — derived unit costs vs the PRD table', () => {
 
   for (const { action, derived, prd } of cases) {
     it(`${action} derives ₹${derived} (PRD prints ₹${prd})`, () => {
-      const profile = ACTION_PROFILES[action];
+      // §11.2 as printed (ADR-0077: production now runs chat on the strong tier; that is priced
+      // and checked against the ceiling in the production-models tests above).
+      const profile = PRD_ACTION_PROFILES[action];
       const inr = microToInr(
         computeCallCost({
           tier: profile.tier,

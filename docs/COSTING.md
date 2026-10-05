@@ -30,6 +30,12 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > `gpt-5-nano` on the fast tier, and from ₹74.64 to **₹85.82** with ADR-0051's `gpt-4.1-mini` —
 > both within the ₹100 ceiling. `pnpm ai:verify` prints it.
 >
+> **2026-10-05 — chat on the strong tier (ADR-0077, the owner's decision).** Chat answers move
+> to `gpt-5-mini`: ₹0.3741 a question with its reasoning priced in, 15 a month on a paid plan. A
+> fully active student goes from ₹85.82 to **₹88.19** at the production configuration (Assist on
+> `gpt-4.1-mini`), and from ₹63.89 to ₹69.06 with `gpt-5-nano` on the fast tier — within the ₹100
+> ceiling. Drafting was already on the strong tier.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.

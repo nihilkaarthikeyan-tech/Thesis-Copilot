@@ -43,6 +43,7 @@ export {
   ONE_TIME_AMORTISATION_MONTHS,
   ONE_TIME_EMBED_TOKENS,
   ONE_TIME_PROFILES,
+  PRD_ACTION_PROFILES,
   type TokenUsage,
 } from './cost.js';
 export {
