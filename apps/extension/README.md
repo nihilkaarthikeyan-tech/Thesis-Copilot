@@ -15,7 +15,7 @@ everything the Chrome Web Store asks for; `PUBLISHING.md` is the step-by-step fo
    `apps/extension/dist`.
 3. Sign in at thesis.rademics.ai in the same Chrome.
 4. Open an article page, a PubMed/arXiv/Scholar results page or a paper's PDF, and click the icon
-   (or press Alt+Shift+P). Or right-click a DOI or arXiv link → "Add to Thesis Copilot".
+   (or press Alt+Shift+S). Or right-click a DOI or arXiv link → "Add to Thesis Copilot".
 
 ## What it does, and does not
 

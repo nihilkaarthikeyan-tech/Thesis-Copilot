@@ -21,7 +21,7 @@ design.
 | **Collections** | An optional "Collection" picker under the thesis, with "New collection…" inline; the saved paper (or the one already there) joins it through `POST /collections/:id/sources`. The last thesis and collection are remembered. |
 | **Results pages** | PubMed search results, arXiv listings and searches, and Google Scholar results list their papers with checkboxes; "Save (n)" saves up to 50, ten per request, with a progress bar and, per paper, Saved · Open / In library · Open / Failed with the reason written under it and "Retry failed". |
 | **PDF tabs** | A tab showing a PDF offers "Attach this PDF". With a DOI (on the page or in the address, as arXiv's `/pdf/` and publishers' `/doi/pdf/` have) the paper is saved by DOI and the file attached (`POST /sources/:id/upload`); with nothing but the file, the file is the entry (`POST /documents/:id/sources/upload`). A PDF the site will not hand over is said so, and the paper is still saved by its DOI. |
-| **Keyboard** | `Alt+Shift+P` opens the popup (`commands._execute_action`); the footer shows the shortcut Chrome actually assigned (`chrome.commands.getAll`), or "Set a keyboard shortcut". Every control is a real button, select or checkbox, focus is visible, and focus survives redraws. |
+| **Keyboard** | `Alt+Shift+S` opens the popup (`commands._execute_action`); the footer shows the shortcut Chrome actually assigned (`chrome.commands.getAll`), or "Set a keyboard shortcut". Every control is a real button, select or checkbox, focus is visible, and focus survives redraws. |
 | **Right-click** | "Add to Thesis Copilot" on a link to a DOI, a publisher's `/doi/…` page or an arXiv abstract/PDF opens the same popup on that paper. |
 | **Look** | The product's tokens (paper, surface, ink, muted, line, the cobalt accent, 6/10/14 px radii) and Satoshi, bundled; light and dark follow the system; the LogoMark and "Thesis Copilot" in the header; 360 px wide. |
 
@@ -75,9 +75,13 @@ retry). `apps/extension/store/states/` has a picture of each, light and dark.
   and opens it with `chrome.action.openPopup()` — available to every add-on from Chrome 127, so
   `minimum_chrome_version` is now 127. When Chrome cannot open it (no focused window), the badge
   shows "1" and the next click on the icon shows the paper.
-- **The shortcut is Alt+Shift+P, not Alt+Shift+T.** On Windows, Alt+Shift+T is Chrome's own "focus
-  the toolbar", and Chrome's shortcuts win. P for paper. The student can change it at
-  `chrome://extensions/shortcuts`; the footer shows whatever is assigned.
+- **The shortcut is Alt+Shift+S (save), not Alt+Shift+T.** On Windows, Alt+Shift+T is Chrome's own
+  "focus the toolbar", and Chrome's shortcuts win. Checked rather than assumed: the add-on was
+  loaded into Chromium with each candidate as its suggested key and `chrome.commands.getAll()` read
+  back — Alt+Shift+T, Alt+Shift+P and Alt+Shift+C came back unassigned; Alt+Shift+S, Y, K, L and E
+  were assigned. (ChromeOS uses Alt+Shift+S for its quick settings, so there it may be left
+  unassigned.) The student can change it at `chrome://extensions/shortcuts`; the footer shows
+  whatever is assigned, or "Set a keyboard shortcut".
 - **The icon is the LogoMark, rasterised by Chromium.** `static/icons/icon.svg` is the LogoMark's
   drawing in its light colours; `scripts/icons.mjs` renders 16, 32, 48 and 128. The 128 follows the
   Web Store rule (96×96 artwork in 16 px of transparent padding a side); 48 keeps that proportion;

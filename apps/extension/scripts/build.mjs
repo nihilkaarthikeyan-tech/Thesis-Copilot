@@ -92,11 +92,13 @@ const manifest = {
   },
   icons: { 16: icon(16), 32: icon(32), 48: icon(48), 128: icon(128) },
   background: { service_worker: 'background.js', type: 'module' },
-  // Opens the popup from the keyboard. Alt+Shift+T is Chrome's own "focus the toolbar" on
-  // Windows, so the suggestion is P (paper); the student can change it at chrome://extensions/shortcuts.
+  // Opens the popup from the keyboard. S for save. Chromium on Windows leaves Alt+Shift+T (its
+  // own "focus the toolbar"), Alt+Shift+P and Alt+Shift+C unassigned — checked by loading the
+  // add-on and reading chrome.commands.getAll() (ADR-0069). The student can change it at
+  // chrome://extensions/shortcuts, and the popup's footer shows whatever is assigned.
   commands: {
     _execute_action: {
-      suggested_key: { default: 'Alt+Shift+P', mac: 'Alt+Shift+P' },
+      suggested_key: { default: 'Alt+Shift+S', mac: 'Alt+Shift+S' },
       description: 'Open Thesis Copilot',
     },
   },

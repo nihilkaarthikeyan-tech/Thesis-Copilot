@@ -360,7 +360,7 @@ function fakeChrome() {
       session: { get: async () => ({}), remove: async () => undefined },
     },
     action: { setBadgeText: async () => undefined },
-    commands: { getAll: async () => [{ name: '_execute_action', shortcut: 'Alt+Shift+P' }] },
+    commands: { getAll: async () => [{ name: '_execute_action', shortcut: 'Alt+Shift+S' }] },
     tabs: {
       query: async () => [{ id: 7, url: tabUrl, title: page.title }],
       get: async () => ({ id: 7, url: tabUrl, title: page.title }),

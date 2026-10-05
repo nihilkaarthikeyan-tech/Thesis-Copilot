@@ -37,7 +37,7 @@ fills it in from the zip):
 > • Choose the thesis and, if you like, a collection — or make a new collection on the spot. The
 >   add-on remembers your last choice.
 > • Right-click a DOI or arXiv link: "Add to Thesis Copilot".
-> • Keyboard: Alt+Shift+P opens it (change it at chrome://extensions/shortcuts).
+> • Keyboard: Alt+Shift+S opens it (change it at chrome://extensions/shortcuts).
 > • Light and dark, following your system.
 > • Uses your existing Thesis Copilot sign-in — nothing new to set up, no password stored.
 >

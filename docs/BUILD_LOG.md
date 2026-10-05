@@ -5032,7 +5032,9 @@ Copilot" (the in-app reader, `/app/d/:id/sources/:sourceId`), a collection while
 one inline), PubMed / arXiv / Google Scholar results pages with checkboxes and "Save (n)" (≤ 50,
 ten per request, per-paper Saved / In library / Failed + retry), "Attach this PDF" on a PDF tab
 (attached to the DOI's entry, or the file itself as the entry; a refused download falls back to
-the DOI), Alt+Shift+P (Alt+Shift+T is Chrome's own toolbar shortcut on Windows), right-click
+the DOI), Alt+Shift+S (Alt+Shift+T is Chrome's own toolbar shortcut on Windows; the first
+choice, Alt+Shift+P, turned out to be left unassigned by Chromium too — found only by loading the
+add-on and reading `chrome.commands.getAll()`, which now decides), right-click
 "Add to Thesis Copilot" on DOI/arXiv links (`contextMenus`, the one new permission), and the
 product's look: LogoMark icons rasterised by Chromium (128 = 96 art + 16 padding, the store's
 rule), the site's tokens, Satoshi bundled, light and dark. Every state is `src/state.ts`.
