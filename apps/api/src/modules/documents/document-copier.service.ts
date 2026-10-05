@@ -247,6 +247,8 @@ export class DocumentCopier {
               chapter.pins.map((pin) => ({
                 chapterId: idOf(pin.chapterId),
                 sourceId: idOf(pin.sourceId),
+                // ADR-0085: a section's own pins copy with it.
+                section: pin.section,
               })),
             );
             if (pins.length > 0) await tx.chapterSourcePin.createMany({ data: pins });

@@ -1029,11 +1029,15 @@ export class SourcesService {
 
         const pins = await tx.chapterSourcePin.findMany({
           where: { sourceId: drop.id },
-          select: { chapterId: true },
+          select: { chapterId: true, section: true },
         });
         if (pins.length > 0) {
           await tx.chapterSourcePin.createMany({
-            data: pins.map((p) => ({ chapterId: p.chapterId, sourceId: keep.id })),
+            data: pins.map((p) => ({
+              chapterId: p.chapterId,
+              sourceId: keep.id,
+              section: p.section,
+            })),
             skipDuplicates: true,
           });
           pinsMoved = pins.length;

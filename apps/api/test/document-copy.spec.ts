@@ -242,7 +242,7 @@ describe('making a copy, through the API', () => {
     expect(vectors[0]?.embedding).toBe(vectors[1]?.embedding);
 
     const pins = await h.prisma.chapterSourcePin.findMany({ where: { chapterId: copyChapterId } });
-    expect(pins).toEqual([{ chapterId: copyChapterId, sourceId: copied.id }]);
+    expect(pins).toEqual([{ chapterId: copyChapterId, sourceId: copied.id, section: '' }]);
 
     const memory = await h.prisma.documentMemory.findUniqueOrThrow({
       where: { documentId: copyId },

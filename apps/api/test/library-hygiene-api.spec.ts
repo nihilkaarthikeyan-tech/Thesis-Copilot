@@ -177,7 +177,7 @@ describe('merging', () => {
       ['c2', keepId, null],
     ]);
     expect(await h.prisma.chapterSourcePin.findMany({ where: { chapterId } })).toEqual([
-      { chapterId, sourceId: keepId },
+      { chapterId, sourceId: keepId, section: '' },
     ]);
     expect(await h.prisma.source.findUnique({ where: { id: dropId } })).toBeNull();
     expect(await h.prisma.source.count({ where: { documentId } })).toBe(2);
