@@ -4,12 +4,12 @@ import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
  * "Read beside" (2026-10-04, from the Jenni study): a source's PDF in a pane next to the chapter
- * on a wide screen, in a new tab on a phone.
+ * on a wide screen; on a phone, the paper reader in a new tab.
  *
- * The pane is the browser's own PDF viewer in an iframe on the signed storage link, so what this
- * proves is the wiring: the Sources tab asks, the pane opens with a frame on that link, it
- * resizes, it closes. (Headless Chromium has no PDF viewer of its own; the frame's address is the
- * evidence, not the rendered page.) The citation hover card's button is covered by
+ * Since ADR-0068 the pane draws the PDF with pdf.js from bytes the API streams — no iframe on a
+ * storage link, which production's `X-Frame-Options: DENY` left blank. So this proves the page is
+ * really drawn: the pane holds a text layer with the PDF's words, and no frame. It also resizes
+ * and closes. The citation hover card's button is covered by
  * `packages/ui/test/citation-read-beside.spec.ts`.
  *
  * Needs the dev stack: web, API, the worker (to read the PDF, which makes it pinnable and so
@@ -81,9 +81,14 @@ test('on a wide screen the Sources tab opens the PDF in a pane beside the chapte
   const pane = page.getByTestId('read-beside');
   await expect(pane).toBeVisible();
   await expect(pane).toContainText(/Recharge wells/);
-  const frame = page.getByTestId('read-beside-frame');
-  await expect(frame).toHaveAttribute('src', /\/sources\/.+X-Amz-Signature=/);
-  await expect(page.getByTestId('read-beside-new-tab')).toHaveAttribute('target', '_blank');
+  // Drawn on the page by pdf.js: the PDF's own words in its text layer, and no frame.
+  await expect(pane.getByTestId('pdf-text-layer').first()).toContainText('raised the water table', {
+    timeout: 30_000,
+  });
+  await expect(pane.locator('iframe')).toHaveCount(0);
+  const reader = page.getByTestId('read-beside-new-tab');
+  await expect(reader).toHaveAttribute('target', '_blank');
+  await expect(reader).toHaveAttribute('href', new RegExp(`/app/d/${doc.id}/sources/`));
 
   // Dragging the edge resizes the pane. At 1440 px it opens at its widest (the chapter list, the
   // tools and a readable page keep the rest), so the drag narrows it.
@@ -104,7 +109,10 @@ test('on a wide screen the Sources tab opens the PDF in a pane beside the chapte
   await expect(pane).toHaveCount(0);
 });
 
-test('on a phone "Read PDF" opens the PDF in a new tab instead', async ({ page, request }) => {
+test('on a phone "Read PDF" opens the paper reader in a new tab instead', async ({
+  page,
+  request,
+}) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const doc = await setUp(page, request, 'read-beside-phone');
@@ -116,15 +124,13 @@ test('on a phone "Read PDF" opens the PDF in a new tab instead', async ({ page, 
   const read = page.getByTestId('source-read-pdf');
   await expect(read).toBeVisible({ timeout: 30_000 });
 
-  // A new tab asks for the signed PDF link. (Headless Chromium downloads a PDF rather than
-  // showing it, so the request is what can be checked, not the tab's address.)
+  // ADR-0068: the reader, which a phone shows, rather than the raw file, which it downloads.
   const popup = page.waitForEvent('popup');
-  const signed = page.context().waitForEvent('request', {
-    predicate: (r) => r.url().includes('X-Amz-Signature='),
-    timeout: 20_000,
-  });
   await read.click();
-  await popup;
-  expect((await signed).url()).toContain('/sources/');
+  const tab = await popup;
+  await expect(tab).toHaveURL(new RegExp(`/app/d/${doc.id}/sources/[0-9a-f-]{36}$`));
+  await expect(tab.getByTestId('pdf-text-layer').first()).toContainText('Recharge wells', {
+    timeout: 30_000,
+  });
   await expect(page.getByTestId('read-beside')).toHaveCount(0);
 });

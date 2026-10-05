@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { requestReadBeside } from '@/lib/read-beside';
+import { readerHref } from '@/lib/reader';
 
 /** Resolution and indexing run in the background; the panel keeps looking until they settle. */
 const POLL_MS = 3_000;
@@ -34,27 +35,14 @@ type PinnableSource = {
 };
 
 /**
- * "Read PDF" (2026-10-04): beside the chapter on a wide screen (`ReadBesidePane`), in a new tab
- * on anything narrower, as "Open PDF" always did.
+ * "Read PDF" (2026-10-04): beside the chapter on a wide screen (`ReadBesidePane`). On anything
+ * narrower it opens the paper reader in a new tab (ADR-0068) — before, it opened the raw storage
+ * link, which a phone downloads rather than shows.
  */
-async function readPdf(source: PinnableSource): Promise<void> {
+function readPdf(documentId: string, source: PinnableSource): void {
   const label = source.title ? source.title.slice(0, 60) : null;
   if (requestReadBeside({ sourceId: source.id, page: null, label })) return;
-  // The tab is opened inside the press, before the link is fetched: a window opened after an
-  // `await` is no longer a user gesture, and phone browsers block it as a pop-up.
-  const tab = window.open('about:blank', '_blank');
-  try {
-    const { url } = await api<{ url: string }>(`/sources/${source.id}/file`);
-    if (tab) {
-      tab.opener = null;
-      tab.location.href = url;
-    } else {
-      window.location.assign(url);
-    }
-  } catch (error) {
-    tab?.close();
-    throw error;
-  }
+  window.open(readerHref(documentId, source.id), '_blank', 'noopener');
 }
 
 export function SourcePins({ documentId, chapterId }: { documentId: string; chapterId: string }) {
@@ -222,18 +210,27 @@ export function SourcePins({ documentId, chapterId }: { documentId: string; chap
                 {source.groundingLevel === 'FULL_TEXT' ? 'Full text' : 'Abstract only'}
               </span>
             </label>
-            {source.hasFile ? (
-              <button
-                type="button"
-                data-testid="source-read-pdf"
-                className="ml-auto shrink-0 self-start text-xs text-accent underline"
-                onClick={() =>
-                  void readPdf(source).catch(() => setError('That PDF could not be opened.'))
-                }
+            <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 self-start text-xs">
+              {source.hasFile ? (
+                <button
+                  type="button"
+                  data-testid="source-read-pdf"
+                  className="text-accent underline"
+                  onClick={() => readPdf(documentId, source)}
+                >
+                  Read PDF
+                </button>
+              ) : null}
+              <a
+                href={readerHref(documentId, source.id)}
+                target="_blank"
+                rel="noopener"
+                data-testid="source-open-reader"
+                className="text-muted underline hover:text-ink"
               >
-                Read PDF
-              </button>
-            ) : null}
+                Open in reader
+              </a>
+            </span>
           </li>
         ))}
       </ul>

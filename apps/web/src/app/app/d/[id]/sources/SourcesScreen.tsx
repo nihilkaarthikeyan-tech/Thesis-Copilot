@@ -28,6 +28,7 @@ import {
   selectionState,
   toggleAll,
 } from '@/lib/collections';
+import { readerHref } from '@/lib/reader';
 import { CollectionsStrip } from './CollectionsStrip';
 import { DiscoverPanel } from './DiscoverPanel';
 import { type DuplicatePair, DuplicatesPanel } from './DuplicatesPanel';
@@ -550,6 +551,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
               {visible.map((source) => (
                 <SourceRow
                   key={source.id}
+                  documentId={documentId}
                   source={source}
                   selected={selected.has(source.id)}
                   onSelect={(on) =>
@@ -697,6 +699,7 @@ function SelectionBar({
 }
 
 function SourceRow({
+  documentId,
   source,
   selected,
   onSelect,
@@ -706,6 +709,7 @@ function SourceRow({
   onOpen,
   onAttach,
 }: {
+  documentId: string;
   source: Source;
   selected: boolean;
   onSelect: (on: boolean) => void;
@@ -743,7 +747,14 @@ function SourceRow({
           onChange={(e) => onSelect(e.target.checked)}
         />
         <div className="min-w-0 flex-1">
-          <p className="font-medium">{source.title ?? source.rawReference ?? 'Untitled source'}</p>
+          {/* ADR-0068: the title opens the paper here, in the reader — not the publisher's site. */}
+          <Link
+            href={readerHref(documentId, source.id)}
+            data-testid="library-read-title"
+            className="font-medium text-ink hover:text-accent hover:underline"
+          >
+            {source.title ?? source.rawReference ?? 'Untitled source'}
+          </Link>
           {authorLine(source.authors) ? (
             <p className="text-sm text-muted">{authorLine(source.authors)}</p>
           ) : null}
@@ -812,19 +823,27 @@ function SourceRow({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+        <Link
+          href={readerHref(documentId, source.id)}
+          data-testid="library-read"
+          className="font-semibold text-accent underline"
+        >
+          Read
+        </Link>
         {source.doi ? (
           <a
             className="underline"
             href={`https://doi.org/${source.doi}`}
             target="_blank"
             rel="noopener noreferrer"
+            title="The publisher's page, in a new tab"
           >
-            {source.doi}
+            {source.doi} ↗
           </a>
         ) : null}
         {source.hasFile ? (
           <button type="button" className="underline" onClick={() => onOpen(source.id)}>
-            Open PDF
+            PDF file ↗
           </button>
         ) : null}
         {onAttach ? (

@@ -23,6 +23,7 @@ import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { type MatchedPassage, passageRuns } from '@/lib/passage';
+import { readerHref } from '@/lib/reader';
 
 type Result = {
   title: string;
@@ -388,6 +389,18 @@ export function FindPapersPanel({
                   {adding === result.title ? 'Adding…' : 'Add to library'}
                 </button>
               )}
+              {source ? (
+                // ADR-0068: once it is in the library it can be read here.
+                <a
+                  href={readerHref(documentId, source.id)}
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="paper-read"
+                  className="text-xs font-semibold text-accent underline"
+                >
+                  Read
+                </a>
+              ) : null}
               {result.doi ? (
                 <a
                   href={`https://doi.org/${result.doi}`}

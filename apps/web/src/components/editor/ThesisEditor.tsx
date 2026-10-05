@@ -37,6 +37,7 @@ import { chapterLabel } from '@/lib/chapter-label';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
 import { rememberLastChapter } from '@/lib/last-chapter';
 import { canReadBeside, requestReadBeside } from '@/lib/read-beside';
+import { readerHref } from '@/lib/reader';
 import { assistRequest } from '@/lib/sse';
 
 /** §6.2: the cap resets at 00:00 UTC on the 1st; shown in the student's own timezone. */
@@ -101,6 +102,7 @@ import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
 import { ChapterContents } from './ChapterContents';
 import { ChartDialog } from './ChartDialog';
+import type { Mention } from './ChatMentions';
 import { ChatPanel } from './ChatPanel';
 import { ChecksIndex } from './ChecksIndex';
 import { CitationList } from './CitationList';
@@ -117,6 +119,7 @@ import { useGuidedInput } from './GuidedInput';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { ProofreadPanel } from './ProofreadPanel';
 import { ReadBesidePane } from './ReadBesidePane';
+import { ReaderHandoffBar } from './ReaderHandoff';
 import { ReviewPanel } from './ReviewPanel';
 import { ScaffoldPanel } from './ScaffoldPanel';
 import { ShareButton } from './ShareButton';
@@ -383,7 +386,11 @@ function ChapterEditor({
    */
   const [drawer, setDrawer] = useState<'chapters' | 'panel' | null>(null);
   /** Text the student chose to ask the chat about; a new nonce each time, so the same text refills. */
-  const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null);
+  const [chatPrefill, setChatPrefill] = useState<{
+    text: string;
+    nonce: number;
+    mention?: Mention;
+  } | null>(null);
   /** A selected sentence the student asked papers for; the Papers tab searches it. */
   const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -583,6 +590,8 @@ function ChapterEditor({
           // "Read beside": the PDF in a pane next to the chapter, on a wide enough screen.
           readBeside: requestReadBeside,
           canReadBeside: () => canReadBeside(window.innerWidth),
+          readerHref: (sourceId: string, page: number | null, chunkId: string | null) =>
+            readerHref(doc.id, sourceId, page, chunkId),
         },
         imageUpload: uploadFigure,
         ...(live
@@ -616,6 +625,7 @@ function ChapterEditor({
       }),
     [
       chapter.id,
+      doc.id,
       doc.chapters,
       reducedMotion,
       onUsageChange,
@@ -1467,7 +1477,7 @@ function ChapterEditor({
           </div>
         </main>
 
-        <ReadBesidePane />
+        <ReadBesidePane documentId={doc.id} />
 
         <aside
           data-testid="tool-panel"
@@ -1532,8 +1542,9 @@ function ChapterEditor({
                 onAddToDocument={addChatAnswer}
                 prefill={chatPrefill}
                 onOpenPassage={(sourceId, chunkId) => {
+                  // ADR-0068: the passage in the paper reader, not the library list.
                   window.open(
-                    `/app/d/${doc.id}/sources#source-${sourceId}-${chunkId}`,
+                    `${readerHref(doc.id, sourceId, null, chunkId)}&view=text`,
                     '_blank',
                     'noopener,noreferrer',
                   );
@@ -1760,6 +1771,17 @@ function ChapterEditor({
       {/* Typing `@` cites deliberately; `CiteSuggestions` above offers one when a sentence ends.
           Both insert the same node — the difference is who started it. */}
       <CitePicker editor={editor} documentId={doc.id} />
+
+      {/* ADR-0068: "Cite in my chapter" / "Ask chat about this" from the paper reader. */}
+      <ReaderHandoffBar
+        editor={editor}
+        documentId={doc.id}
+        onAsk={(text, mention) => {
+          setChatPrefill({ text, nonce: Date.now(), mention });
+          setTab('chat');
+          setDrawer('panel');
+        }}
+      />
 
       <DraftMode
         editor={editor}
