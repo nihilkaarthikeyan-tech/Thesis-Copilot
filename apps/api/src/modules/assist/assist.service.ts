@@ -63,8 +63,8 @@ export type SuggestEvent =
         findingSources: boolean;
         /**
          * ADR-0070: nothing could be retrieved because the library is still filling (a search is
-         * running or papers are being read). No model call was made and the unit went back; the
-         * editor asks again by itself once a paper is ready.
+         * running or papers are being read). Whatever the model wrote cites nothing; the editor
+         * says citations will follow, and asks again by itself once a paper is ready.
          */
         papersLoading?: boolean;
         /** A.1: what the model said no passage covers, when it wrote nothing for that reason. */
@@ -202,45 +202,19 @@ export class AssistService {
               this.logger.warn({ err: error }, 'could not start a source search');
               return false;
             });
-      // ADR-0070: an empty library that is still filling. A.1 with no passage can only answer
-      // [[NEEDS SOURCE]], so calling the model would spend a unit to say nothing. Say instead
-      // that the papers are on their way; the editor asks again when the first one is ready.
-      if (retrieved.passages.length === 0) {
-        const started = await findingSources;
-        const progress = await this.autoSources
-          .progress(chapter.documentId)
-          .catch(() => ({ searching: false, reading: 0 }));
-        if (started || progress.searching || progress.reading > 0) {
-          this.logger.log(
-            { suggestionId: event.id, candidates: retrieved.candidates, started, progress },
-            'PAPERS_LOADING',
-          );
-          await this.usage.refund(user.id, 'ASSIST');
-          const latencyMs = Date.now() - startedAt;
-          await this.prisma.suggestionEvent.update({
-            where: { id: event.id },
-            data: { outcome: 'CANCELLED', shownChars: 0, latencyMs, ttfbMs: null },
-          });
-          yield {
-            event: 'done',
-            data: {
-              suggestionId: event.id,
-              text: '',
-              citations: [],
-              grounded: false,
-              pinned: retrieved.pinned,
-              findingSources: true,
-              papersLoading: true,
-              needsSource: null,
-              usage: null,
-              ttfbMs: latencyMs,
-              latencyMs,
-              empty: true,
-            },
-          };
-          return;
-        }
-      }
+      // ADR-0070: an empty library that is still filling. The model is still asked — it may
+      // write a sentence that needs no source — and the editor is told the papers are on their
+      // way, so an empty answer reads as "wait" and the editor asks again when one is ready.
+      const papersLoading =
+        retrieved.passages.length === 0
+          ? findingSources.then(async (started) => {
+              if (started) return true;
+              const progress = await this.autoSources
+                .progress(chapter.documentId)
+                .catch(() => ({ searching: false, reading: 0 }));
+              return progress.searching || progress.reading > 0;
+            })
+          : Promise.resolve(false);
       // PRD 2.2: auto-cite is on unless the student turned it off in settings.
       const userSettings = (settings?.settings ?? {}) as Record<string, unknown>;
       const autoCite = userSettings.autoCite !== false;
@@ -390,6 +364,7 @@ export class AssistService {
           grounded: retrieved.passages.length > 0,
           pinned: retrieved.pinned,
           findingSources: await searchStarted,
+          papersLoading: await papersLoading,
           needsSource: processed.needsSource,
           usage,
           ttfbMs: ttfbMs ?? latencyMs,

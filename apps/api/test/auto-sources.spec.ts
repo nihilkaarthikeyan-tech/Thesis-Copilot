@@ -36,13 +36,6 @@ async function suggestDone(): Promise<Record<string, unknown>> {
   return JSON.parse(done?.slice(6) ?? '{}') as Record<string, unknown>;
 }
 
-async function assistUsed(): Promise<number> {
-  const rows = await h.prisma.usageLedger.findMany({
-    where: { userId: h.userId, action: 'ASSIST' },
-  });
-  return rows.reduce((n, r) => n + r.count, 0);
-}
-
 async function setFlag(enabled: boolean) {
   await h.prisma.featureFlag.upsert({
     where: { key: AUTO_SOURCES_FLAG },
@@ -88,13 +81,10 @@ describe('automatic sources from autocomplete', () => {
 
   it('with it on and an empty library, starts one search and tells the editor', async () => {
     await setFlag(true);
-    const usedBefore = await assistUsed();
     const done = await suggestDone();
     expect(done.findingSources).toBe(true);
-    // ADR-0070: nothing to cite yet, so no model call and the unit goes back; the editor waits.
+    // ADR-0070: the library is still filling, so the editor is told to wait for citations.
     expect(done.papersLoading).toBe(true);
-    expect(done.empty).toBe(true);
-    expect(await assistUsed()).toBe(usedBefore);
     const job = await queue.getJob(autoSourcesJobKey(chapterId));
     expect(job?.data).toMatchObject({ chapterId, userId: h.userId });
     expect(String(job?.data.query)).toContain('Literature Review');

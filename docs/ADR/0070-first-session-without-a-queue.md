@@ -43,19 +43,24 @@ The causes:
      as it finds an abstract, before anything is embedded. The first build tested the badge, so
      the step never ran. Measuring caught this.
    - Cost: one abstract embedded a second time, about 300 tokens.
-4. **No wasted call while the library fills.**
-   - If retrieval finds nothing while a search runs or papers are being read, Assist makes no
-     model call, refunds the unit and returns `papersLoading`.
-   - The editor shows a line above the page, drawn from counts only through
+4. **The editor says what is happening while the library fills.**
+   - When retrieval finds nothing while a search runs or papers are being read, Assist still asks
+     the model, which may write a sentence that needs no source, and marks the answer
+     `papersLoading`.
+     - If the model wrote something, the editor shows it with "cites nothing yet; citations will
+       follow".
+     - If it wrote nothing, the unit is refunded as before. The editor says the papers are still
+       being read, and asks again by itself when the first one is citable. If a suggestion is
+       still in flight, it retries for a few seconds.
+   - A line above the page shows progress, drawn from counts only through
      `GET /documents/:id/sources/progress`:
      - "Finding papers on your topic…"
      - "Found 5 papers · reading 3…"
      - "5 papers ready".
-   - When the first paper becomes citable, the editor asks for the suggestion again by itself.
-     If one is still in flight, it retries for a few seconds.
-   - An *uncited* suggestion while waiting was considered and rejected. A.1 forbids filler when no
-     passage supports the next sentence, and changing that needs a new prompt round. A cited
-     suggestion that arrives on its own in about 10 s is the better answer.
+   - A first version skipped the model call altogether while the library was empty. The browser
+     specs and an earlier real-model run showed that this took away the uncited sentence the model
+     sometimes writes, which is the "suggestion straight away" this work set out to give.
+
 5. **A next-step guide** sits above the page: Write → Take a suggestion → See your papers → Plan
    your chapters. The current step is highlighted with its one action, and each step ticks itself
    off from what the student does. It is hidden with "Hide" and disappears when all four are done.
@@ -85,6 +90,6 @@ Same harness, real models, two runs each:
   - it is not embedded twice when no full text is found;
   - a paper that already has chunks is left alone.
 - **API (testcontainers):**
-  - a suggestion on an empty library returns `papersLoading` and gives the unit back;
+  - a suggestion on an empty library that is being filled is marked `papersLoading`;
   - a real title starts the search when the thesis is created, and `/sources/progress` reports it;
   - a placeholder title starts nothing.

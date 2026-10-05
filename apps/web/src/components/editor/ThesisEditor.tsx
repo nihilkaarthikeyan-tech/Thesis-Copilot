@@ -523,8 +523,14 @@ function ChapterEditor({
             // ADR-0070: the library is still filling. The progress line above the page says
             // how far along it is, and asks for this suggestion again when a paper is ready.
             if (info.papersLoading) {
-              window.dispatchEvent(new Event(PAPERS_AWAITED));
-              setNotice(tNow('editor.notice.papersLoading'));
+              // Nothing written: wait, and ask again when a paper is ready. Something written:
+              // it cites nothing yet, and the student is told citations will follow.
+              if (info.empty) window.dispatchEvent(new Event(PAPERS_AWAITED));
+              setNotice(
+                tNow(
+                  info.empty ? 'editor.notice.papersLoading' : 'editor.notice.papersLoadingShown',
+                ),
+              );
               return;
             }
             if (info.findingSources) {
@@ -645,7 +651,6 @@ function ChapterEditor({
       autoSuggest,
       uploadFigure,
       live,
-      doc.id,
     ],
   );
 

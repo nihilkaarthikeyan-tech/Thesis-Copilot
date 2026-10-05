@@ -255,6 +255,8 @@ export const en = {
     'No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.',
   'editor.notice.papersLoading':
     'Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready.',
+  'editor.notice.papersLoadingShown':
+    'This suggestion cites nothing yet: your papers are still being read. Citations will follow once they are ready.',
   'editor.filling.searching': 'Finding papers on your topic…',
   'editor.filling.reading': 'Found {found} papers · reading {reading}…',
   'editor.filling.ready': '{ready} papers ready — suggestions will cite them.',

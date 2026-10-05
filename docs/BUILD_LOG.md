@@ -5039,7 +5039,7 @@ What changed:
 - "Start writing now" is the primary button.
 - The paper search starts when the thesis is created.
 - Abstracts are indexed first.
-- Assist makes no model call while the library fills.
+- While the library fills, a suggestion says "citations will follow", or the editor waits and asks again itself.
 - A progress line in the editor, with an automatic retry when the first paper is ready.
 - A four-step guide.
 
@@ -5111,3 +5111,9 @@ use. One trap worth keeping: Playwright compiles the e2e specs as CommonJS, so a
 cannot use `import.meta.url` (`e2e/_db.ts` uses `__dirname`). `next build`'s standalone trace
 fails on this Windows worktree with EPERM on symlinks after compiling; `next start` serves the
 compiled build regardless.
+
+Browser verification of the merged release found two more faults:
+- Making Enter start writing left the title field `required`, so an empty title blocked
+  "Start writing now".
+- Skipping the model call on an empty library removed the uncited suggestion the editor specs,
+  and real students, get. The model is now always asked; ADR-0070 item 4 records the change.

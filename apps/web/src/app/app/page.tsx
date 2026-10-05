@@ -249,7 +249,6 @@ export default function DocumentListPage() {
             <Input
               id="title"
               name="title"
-              required
               maxLength={300}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
