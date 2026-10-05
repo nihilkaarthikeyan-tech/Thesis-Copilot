@@ -136,7 +136,8 @@ export function PdfView({
     });
     return () => {
       live = false;
-      void loaded?.destroy();
+      // pdf.js 6 releases a document through its loading task (the proxy's own destroy is gone).
+      void loaded?.loadingTask.destroy();
     };
   }, [sourceId]);
 

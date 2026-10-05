@@ -27,10 +27,13 @@ handed to anyone, and `X-Frame-Options` on storage never applies. Fetching the e
 URL with `fetch()` was rejected: it would need CORS on the bucket (served through the same host
 nginx we may not touch) and would put a bearer link in the page.
 
-**`pdfjs-dist` 5.7.284, pinned, in `apps/web` only.** It was not in the lockfile: `unpdf` (the
+**`pdfjs-dist` 6.3.289, pinned, in `apps/web` only.** It was not in the lockfile: `unpdf` (the
 worker's extractor) bundles a serverless pdf.js build that has no canvas renderer and no text
-layer. 5.7.284 is the last 5.x; 6.x (May 2026) was passed over for now because 6.4 was released
-two days ago and nothing here needs it. pdf.js is loaded with a dynamic `import()` on first use,
+layer. The branch first pinned 5.7.284, the last 5.x. CI's `pnpm audit` refused it: versions
+5.6.83 to 6.2.107 carry a high advisory (GHSA-hq66-cqwq-w95j, arbitrary JavaScript on opening a
+malicious PDF), and this reader opens PDFs from publishers and uploads. 6.3.289 is patched and was
+five weeks old at release; 6.4 was two days old. The only API change the reader met is that a
+document is released through `loadingTask.destroy()`. pdf.js is loaded with a dynamic `import()` on first use,
 so no other page pays for it, and the worker is `new URL('pdfjs-dist/build/pdf.worker.min.mjs',
 import.meta.url)` — webpack emits it as `/_next/static/media/pdf.worker.min.<hash>.mjs`, served
 from this site, which the existing CSP (`worker-src 'self'`) already allows. Proven under

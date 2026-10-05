@@ -26,7 +26,7 @@
     "katex": "0.18.5",
     "lucide-react": "0.545.0",
     "next": "15.5.25",
-    "pdfjs-dist": "5.7.284",
+    "pdfjs-dist": "6.3.289",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "tailwind-merge": "3.6.0",
