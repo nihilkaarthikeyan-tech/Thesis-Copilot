@@ -205,6 +205,19 @@ export function opensWithConnective(sentence: string): boolean {
   return CONNECTIVE.test(sentence.trim());
 }
 
+const CITE_ALL = /\{\{cite:[^}]+\}\}/g;
+
+/**
+ * A heading or caption: a whole block of at most fifteen words that does not end a sentence.
+ * Markdown `#` marks count too, since a drafted section's text carries them.
+ */
+export function isHeadingLine(line: string): boolean {
+  const text = line.replace(CITE_ALL, '').trim();
+  if (text.length === 0) return false;
+  if (/^#{1,6}\s/.test(text)) return true;
+  return !/[.!?]["'”’)\]]*$/.test(text) && text.split(/\s+/).length <= 15;
+}
+
 /**
  * Filters one answer from the model, sentence by sentence, against what is already written.
  *
@@ -219,7 +232,14 @@ export function filterSentences(input: { text: string; before: string; existing:
   const sentences = splitSentences(input.text);
   if (sentences.length === 0) return { text: input.text, drops };
 
-  const written = splitSentences(`${input.existing}\n${input.before}`).filter(
+  // ADR-0075: a heading is not a sentence the suggestion could repeat. Under "Barriers to
+  // household rooftop solar adoption", an on-topic suggestion shares the heading's words and was
+  // dropped as its duplicate, leaving the student with nothing. The block being written (the
+  // last line of `before`) is always compared, finished or not.
+  const beforeLines = input.before.split('\n');
+  const current = beforeLines.pop() ?? '';
+  const blocks = [...input.existing.split('\n'), ...beforeLines].filter((l) => !isHeadingLine(l));
+  const written = splitSentences(`${blocks.join('\n')}\n${current}`).filter(
     (s) => words(s).length >= 5,
   );
   // The sentence the first suggestion sentence follows: the last one before the cursor, in the

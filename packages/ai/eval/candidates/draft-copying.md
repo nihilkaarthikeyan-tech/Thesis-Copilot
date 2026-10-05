@@ -1,9 +1,8 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.2 Draft section — `draft.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-10-05: the "Paraphrase; never copy" rule added, the winner of the copying round
-  (ADR-0075, eval/candidates/draft-copying2.md; docs/BUILD_LOG.md).
+  CANDIDATE for draft.md, the copying round (ADR-0075). Tested against the prompt on disk by
+  eval/run.ts draft --candidate draft-copying --set copying; it replaces it only if it wins.
+  Changed from the current prompt: own words (no run of six words from a passage unless quoted),
+  one citation per claim, intensifiers, and the first sentence states content, not the section.
 -->
 
 ### A.2 Draft section — `draft.md`
@@ -20,15 +19,17 @@ Inputs: the section's title and scope note, the outline (for structure and neigh
 Constraints:
 - Target length: {{target_words}} words (acceptable range: 80% to 130% of target).
 - Structure: use the section's subheadings from the outline as "###" headings, in order. Do not add subheadings that are not in the outline. If the outline has no subheadings for this section, write continuous prose.
-- Every factual claim, statistic, finding, or reference to prior work must be supported by a passage and cited with {{cite:ID}} immediately after the sentence. Use each passage at most three times.
-- Paraphrase; never copy. A citation does not make copied words your own: six or more consecutive words taken from a passage are still the author's words, and using them without quotation marks is copying even when cited. Work out what each passage found, then say it with a different sentence structure and different wording: change the subject of the sentence, the verbs and the order of the points, and do not repeat a list of factors in the passage's order or wording. Keep technical terms, names of methods, materials, measures and places, and every figure exactly as they are. If the exact words matter, quote a short phrase in double quotation marks and cite it.
+- Every factual claim, statistic, finding, or reference to prior work must be supported by a passage and cited with {{cite:ID}} immediately after the sentence. Each such sentence carries its own marker, even when consecutive sentences rest on the same passage; never let one marker at the end of a paragraph cover several sentences. Use each passage at most three times.
+- Write in your own words. Work out what each passage found, then state it with your own sentence structure and vocabulary. Keep technical terms and the names of materials, methods, measures and places, and keep every figure exact, but do not reuse a passage's phrasing or repeat its lists in its order. Never copy a run of six or more consecutive words from a passage. If the exact words matter, quote them in double quotation marks, keep the quotation short, and cite it.
 - Where the scope note asks for something the passages do not cover, do not invent material. Instead write, on its own line, [[NEEDS SOURCE: <what is missing, in ten words or fewer>]] and continue with the next part of the scope.
 - Do not write an introduction to the whole thesis or a conclusion to the whole thesis; write only this section.
 - Review the evidence itself: what the studies found, how, under which conditions, and where they agree or disagree. Do not write sentences that describe what this section will do.
+- Open with content. The first sentence states the section's central point or its first finding; it never describes the section, chapter or thesis ("This section examines…", "This chapter presents…", "In this section…").
 - Write as a finished thesis: present tense for what is established, past tense for what a specific study did. Do not use the future tense for the thesis's own work.
 - In a section that reviews prior work, every paragraph must cite at least one passage. Where the passages cannot support a paragraph, write [[NEEDS SOURCE: <what is missing, in ten words or fewer>]] on its own line instead of the paragraph.
 - Do not include a references list; citations are handled by the editor.
 - Match the style profile if present. Do not use first person unless the style profile says the student does.
+- Do not add intensifiers or emphatic adverbs ("significantly", "substantially", "crucial", "critical", "various", "notably", "greatly") unless the passage itself reports that strength, such as a statistically significant result; give the size or direction of the effect instead.
 - Output Markdown: headings with "###", paragraphs separated by blank lines. No title line for the section itself. No fences.
 ```
 

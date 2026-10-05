@@ -6,8 +6,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  dropUnfinishedTail,
   filterDraftParagraphs,
   filterSentences,
+  isHeadingLine,
   isRoadmap,
   isUncitedAttribution,
   nearDuplicate,
@@ -254,5 +256,81 @@ describe('an answer that only repeats the student (prompt evaluation, 2026-09-30
     expect(result.text).toBe('');
     expect(result.empty).toBe(true);
     expect(result.cited).toEqual([]);
+  });
+});
+
+describe('the copying round (prompt evaluation, 2026-10-05, ADR-0075)', () => {
+  // Shortened from the answer gpt-4.1-mini gave under an empty section's heading. Both sentences
+  // share four of the heading's five content words, so both were dropped as "duplicates" of it and
+  // nothing was offered.
+  const heading = 'Barriers to household rooftop solar adoption';
+  const answer =
+    'High upfront costs and limited access to affordable financing remain barriers to household rooftop solar adoption {{cite:S3#c1}}. ' +
+    'Lack of awareness about solar PV systems further inhibits household adoption of rooftop solar {{cite:S3#c1}}.';
+
+  it('does not treat a heading as a sentence a suggestion could repeat', () => {
+    const result = postProcessAssist({
+      output: answer,
+      passageIds: ['S3#c1'],
+      before: `${heading}\n`,
+      existingText: `${heading}\n`,
+    });
+    expect(result.empty).toBe(false);
+    expect(result.drops.duplicate).toBe(0);
+    expect(result.text).toContain('High upfront costs');
+  });
+
+  it('still drops a sentence that repeats one the student wrote', () => {
+    const before =
+      'High upfront costs and limited access to affordable financing are the barriers to household rooftop solar adoption.';
+    const result = postProcessAssist({
+      output: answer,
+      passageIds: ['S3#c1'],
+      before: `${heading}\n${before}`,
+      existingText: `${heading}\n${before}`,
+    });
+    expect(result.drops.duplicate).toBe(1);
+    expect(result.text).not.toContain('High upfront costs');
+  });
+
+  it('knows a heading from a sentence', () => {
+    expect(isHeadingLine(heading)).toBe(true);
+    expect(isHeadingLine('### Electrode wear')).toBe(true);
+    expect(isHeadingLine('Upfront cost is usually named first among the barriers.')).toBe(false);
+    expect(isHeadingLine('')).toBe(false);
+  });
+
+  it('removes a marker the token limit cut off, and the unfinished sentence after a finished one', () => {
+    // The shape of two answers from the round, shortened: both stopped at A.1's 120 tokens.
+    expect(
+      dropUnfinishedTail(
+        'Reversed austenite improves pitting resistance {{cite:S6#c1}}. Heat treatment also relieves residual stress {{cite:S6#c',
+      ),
+    ).toBe('Reversed austenite improves pitting resistance {{cite:S6#c1}}.');
+    expect(
+      dropUnfinishedTail(
+        'Adopters expected far more complexity than they met {{cite:S1#c1}}. Some adopters also described a "subsidy paradox" where restrictions reduced the subsidy’s',
+      ),
+    ).toBe('Adopters expected far more complexity than they met {{cite:S1#c1}}.');
+  });
+
+  it('closes a marker that lost only its braces, when the id is exactly one passage', () => {
+    // The round's slm-maraging empty-section answer ended "…counterparts.{{cite:S3#c1".
+    const cut = 'Heat treatment relieves residual stress.{{cite:S3#c1';
+    expect(dropUnfinishedTail(cut, ['S3#c1', 'S4#c1'])).toBe(
+      'Heat treatment relieves residual stress.{{cite:S3#c1}}',
+    );
+    // "S3#c1" could be the start of "S3#c12": not guessed, removed.
+    expect(dropUnfinishedTail(cut, ['S3#c1', 'S3#c12'])).toBe(
+      'Heat treatment relieves residual stress.',
+    );
+    const result = postProcessAssist({ output: cut, passageIds: ['S3#c1'], before: '' });
+    expect(result.cited).toEqual(['S3#c1']);
+  });
+
+  it('leaves a finished answer, and a single clause that joins the text after the cursor', () => {
+    const finished = 'Wear fell by half {{cite:S3#c1}}. Roughness rose {{cite:S3#c1}}.';
+    expect(dropUnfinishedTail(finished)).toBe(finished);
+    expect(dropUnfinishedTail('and at higher peak current')).toBe('and at higher peak current');
   });
 });
