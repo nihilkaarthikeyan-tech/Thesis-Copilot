@@ -1,0 +1,369 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 12,
+    "wins": {
+      "current": 0,
+      "candidate": 0,
+      "tie": 12
+    },
+    "meanScore": {
+      "current": 0,
+      "candidate": 0
+    },
+    "answeredWithCitation": {
+      "current": 12,
+      "candidate": 0
+    },
+    "offeredNothing": {
+      "current": 0,
+      "candidate": 12
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 12
+    },
+    "candidateFile": "assist-aims",
+    "set": "aims",
+    "judged": false,
+    "hallucinatedCites": {
+      "current": 0,
+      "candidate": 0
+    },
+    "measures": {
+      "current": {
+        "outputs": 12,
+        "run6": 4,
+        "run8": 2,
+        "flagged": 6,
+        "meanLongestRun": 5.92,
+        "sentences": 24,
+        "citedSentences": 21,
+        "sharedCitation": 3,
+        "citations": 22,
+        "claimsPerCitation": 1.09,
+        "intensifiers": 2,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "candidate": {
+        "outputs": 0,
+        "run6": 0,
+        "run8": 0,
+        "flagged": 0,
+        "meanLongestRun": 0,
+        "sentences": 0,
+        "citedSentences": 0,
+        "sharedCitation": 0,
+        "citations": 0,
+        "claimsPerCitation": 0,
+        "intensifiers": 0,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      }
+    },
+    "medianMs": {
+      "current": 1710,
+      "candidate": 0
+    },
+    "spentRupees": 1.38
+  },
+  "rows": [
+    {
+      "case": "mobile-banking-tamilnadu-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "This slower uptake is linked to factors such as limited digital literacy, restricted access to smartphones and the internet, and socio-cultural norms that constrain women's financial autonomy in rural areas like Virudhunagar district (Mathivathana & Alagulakshmi 2025). Furthermore, education level strongly influences adoption rates, with higher education correlating with increased use of FinTech services among rural women (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "This slower uptake is linked to factors such as limited digital literacy, restricted access to smartphones and the internet, and socio-cultural norms that constrain women's financial autonomy in rural areas like Virudhunagar district {{cite:S1#c7}}. Furthermore, education level strongly influences adoption rates, with higher education correlating with increased use of FinTech services among rural women {{cite:S1#c30}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "limited digital literacy",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-1",
+      "sample": 1,
+      "verdict": "=",
+      "a": "This slower uptake is linked to factors such as low digital literacy, limited smartphone ownership, and socio-cultural restrictions that restrict women's access and use of mobile banking services in rural areas like Virudhunagar district (Mathivathana & Alagulakshmi 2025). Additionally, education level strongly influences adoption rates, with FinTech use rising from 11.1% among illiterate women to 72.2% among graduates, highlighting the importance of digital skills and awareness in overcoming barriers (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "This slower uptake is linked to factors such as low digital literacy, limited smartphone ownership, and socio-cultural restrictions that restrict women's access and use of mobile banking services in rural areas like Virudhunagar district {{cite:S1#c7}}. Additionally, education level strongly influences adoption rates, with FinTech use rising from 11.1% among illiterate women to 72.2% among graduates, highlighting the importance of digital skills and awareness in overcoming barriers {{cite:S1#c30}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "from 11 1 among illiterate",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-1",
+      "sample": 2,
+      "verdict": "=",
+      "a": "This slower adoption among rural women is linked to factors such as low digital literacy, limited smartphone access, socio-cultural restrictions, and trust issues with digital platforms, as found in Virudhunagar district studies. Higher education and income levels strongly predict greater FinTech adoption, while simplified interfaces and local language support could enhance uptake among non-users (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "This slower adoption among rural women is linked to factors such as low digital literacy, limited smartphone access, socio-cultural restrictions, and trust issues with digital platforms, as found in Virudhunagar district studies. Higher education and income levels strongly predict greater FinTech adoption, while simplified interfaces and local language support could enhance uptake among non-users {{cite:S1#c7}}{{cite:S1#c30}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "adoption among rural women is",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-2",
+      "sample": 0,
+      "verdict": "=",
+      "a": "In Virudhunagar district, higher education strongly predicts FinTech adoption, with usage rising from 11.1% among illiterate women to 72.2% among graduates, while over 70% of non-users indicated that local language support and simpler interfaces would encourage adoption (Mathivathana & Alagulakshmi 2025). Similarly, mobile banking provides rural women with accessible, secure platforms that improve their financial habits and economic independence, although disparities remain between rural and urban areas (Sneha & Patil 2026).",
+      "b": "",
+      "aRaw": "In Virudhunagar district, higher education strongly predicts FinTech adoption, with usage rising from 11.1% among illiterate women to 72.2% among graduates, while over 70% of non-users indicated that local language support and simpler interfaces would encourage adoption {{cite:S1#c30}}. Similarly, mobile banking provides rural women with accessible, secure platforms that improve their financial habits and economic independence, although disparities remain between rural and urban areas {{cite:S2#c29}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 11,
+        "runText": "over 70 of non users indicated that local language support and",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-2",
+      "sample": 1,
+      "verdict": "=",
+      "a": "In Virudhunagar district, higher education strongly predicts FinTech adoption, with usage rising from 11.1% among illiterate women to 72.2% among graduates, while over 70% of non-users indicated that local language support and simplified interfaces would encourage adoption (Mathivathana & Alagulakshmi 2025). Similarly, mobile banking helps rural women develop financial habits and access credit, but disparities in usage persist between rural and urban areas due to differences in digital literacy and trust (Sneha & Patil 2026).",
+      "b": "",
+      "aRaw": "In Virudhunagar district, higher education strongly predicts FinTech adoption, with usage rising from 11.1% among illiterate women to 72.2% among graduates, while over 70% of non-users indicated that local language support and simplified interfaces would encourage adoption {{cite:S1#c30}}. Similarly, mobile banking helps rural women develop financial habits and access credit, but disparities in usage persist between rural and urban areas due to differences in digital literacy and trust {{cite:S2#c29}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 14,
+        "runText": "over 70 of non users indicated that local language support and simplified interfaces would",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-2",
+      "sample": 2,
+      "verdict": "=",
+      "a": "Low levels of education strongly correlate with limited FinTech adoption, as shown by a study in Virudhunagar where adoption rates rose from 11.1% among illiterate women to 72.2% among graduates, indicating education as a key predictor of usage (Mathivathana & Alagulakshmi 2025). Additionally, over 70% of non-users expressed that features like local language support and simplified interfaces would encourage them to adopt digital financial tools (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "Low levels of education strongly correlate with limited FinTech adoption, as shown by a study in Virudhunagar where adoption rates rose from 11.1% among illiterate women to 72.2% among graduates, indicating education as a key predictor of usage {{cite:S1#c30}}. Additionally, over 70% of non-users expressed that features like local language support and simplified interfaces would encourage them to adopt digital financial tools {{cite:S1#c30}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 7,
+        "runText": "local language support and simplified interfaces would",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-3",
+      "sample": 0,
+      "verdict": "=",
+      "a": "In Virudhunagar district, socio-cultural restrictions often limit rural women’s control over smartphones and financial accounts, reinforcing male dominance in these domains and restricting women’s independent access to mobile banking services (Mathivathana & Alagulakshmi 2025). This dynamic reduces women’s opportunities to build financial habits and limits their ability to engage fully with digital financial tools, despite the availability of mobile banking platforms designed to empower them (Sneha & Patil 2026).",
+      "b": "",
+      "aRaw": "In Virudhunagar district, socio-cultural restrictions often limit rural women’s control over smartphones and financial accounts, reinforcing male dominance in these domains and restricting women’s independent access to mobile banking services {{cite:S1#c7}}. This dynamic reduces women’s opportunities to build financial habits and limits their ability to engage fully with digital financial tools, despite the availability of mobile banking platforms designed to empower them {{cite:S2#c29}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "in virudhunagar district",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-3",
+      "sample": 1,
+      "verdict": "=",
+      "a": "In rural Tamil Nadu, socio-cultural restrictions often limit women's control over mobile phones and digital financial accounts, reinforcing traditional gender roles that prioritize male authority in household financial decisions (Mathivathana & Alagulakshmi 2025). This control dynamic reduces women's opportunities to engage with mobile banking, as access to devices and accounts is frequently mediated by male family members (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "In rural Tamil Nadu, socio-cultural restrictions often limit women's control over mobile phones and digital financial accounts, reinforcing traditional gender roles that prioritize male authority in household financial decisions {{cite:S1#c7}}. This control dynamic reduces women's opportunities to engage with mobile banking, as access to devices and accounts is frequently mediated by male family members {{cite:S1#c2}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "socio cultural restrictions",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-3",
+      "sample": 2,
+      "verdict": "=",
+      "a": "In Virudhunagar, many rural women face socio-cultural restrictions that limit their control over mobile phones and financial accounts, reinforcing gendered barriers to FinTech adoption. These norms often result in women having less access to smartphones and digital financial tools, which, combined with low digital literacy and trust issues, significantly hinder their participation in mobile banking and digital payments (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "In Virudhunagar, many rural women face socio-cultural restrictions that limit their control over mobile phones and financial accounts, reinforcing gendered barriers to FinTech adoption. These norms often result in women having less access to smartphones and digital financial tools, which, combined with low digital literacy and trust issues, significantly hinder their participation in mobile banking and digital payments {{cite:S1#c7}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "mobile banking and digital",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-empty",
+      "sample": 0,
+      "verdict": "=",
+      "a": "Rural women in Tamil Nadu face multiple barriers to adopting mobile banking, including low digital literacy, limited smartphone and internet access, and socio-cultural restrictions that inhibit their use of digital financial tools (Mathivathana & Alagulakshmi 2025). These challenges are compounded by trust issues and a lack of awareness, which further reduce the likelihood of adoption despite the availability of FinTech services aimed at financial inclusion (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "Rural women in Tamil Nadu face multiple barriers to adopting mobile banking, including low digital literacy, limited smartphone and internet access, and socio-cultural restrictions that inhibit their use of digital financial tools {{cite:S1#c7}}. These challenges are compounded by trust issues and a lack of awareness, which further reduce the likelihood of adoption despite the availability of FinTech services aimed at financial inclusion {{cite:S1#c7}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "rural women in tamil nadu",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-empty",
+      "sample": 1,
+      "verdict": "=",
+      "a": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted smartphone access, and socio-cultural constraints that hinder their engagement with financial technology (Mathivathana & Alagulakshmi 2025). Additionally, trust issues and lack of awareness further reduce their use of digital financial services, despite the potential for these tools to enhance economic empowerment and financial inclusion (Mathivathana & Alagulakshmi 2025)(Sneha & Patil 2026).",
+      "b": "",
+      "aRaw": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted smartphone access, and socio-cultural constraints that hinder their engagement with financial technology {{cite:S1#c7}}. Additionally, trust issues and lack of awareness further reduce their use of digital financial services, despite the potential for these tools to enhance economic empowerment and financial inclusion {{cite:S1#c7}}{{cite:S2#c29}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 6,
+        "runText": "trust issues and lack of awareness",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-empty",
+      "sample": 2,
+      "verdict": "=",
+      "a": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted access to smartphones and internet, and socio-cultural constraints that influence their financial autonomy. Studies in Virudhunagar district reveal that higher education levels significantly increase FinTech adoption, while many non-users express a need for local language support and simpler interfaces to boost their engagement with digital financial tools (Mathivathana & Alagulakshmi 2025).",
+      "b": "",
+      "aRaw": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted access to smartphones and internet, and socio-cultural constraints that influence their financial autonomy. Studies in Virudhunagar district reveal that higher education levels significantly increase FinTech adoption, while many non-users express a need for local language support and simpler interfaces to boost their engagement with digital financial tools {{cite:S1#c7}}{{cite:S1#c30}}.",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "rural women in tamil nadu",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    }
+  ]
+}

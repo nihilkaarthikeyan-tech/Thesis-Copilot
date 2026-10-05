@@ -119,4 +119,4 @@ found three faults in ours, each fixed in code with tests:
 
 Still open from that run: suggestions that restate a paper's **aims** without the phrase
 ("The study focuses on…", "This research concentrates on…"), which the renaming and the filter
-do not cover. That is a prompt change with its own evaluation round (ADR-0079).
+do not cover. ADR-0079 ran that round: the fault did not reproduce, and the guard went into code.

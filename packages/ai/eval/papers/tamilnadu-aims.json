@@ -1,0 +1,59 @@
+{
+  "note": "ADR-0079: real full-text chunks from the local library of the same-topic run (Mathivathana & Alagulakshmi 2025, Sneha & Patil 2026, Sowmya 2025), taken as stored on 2026-10-05. Six of the nine state what their own paper aims to do, focuses on, or where it was conducted; three report findings.",
+  "passages": [
+    {
+      "id": "S1#c2",
+      "shortRef": "Mathivathana & Alagulakshmi 2025",
+      "page": 1,
+      "text": "Introduction\nThe expansion of financial technology (FinTech) has modified the way financial services are\naccessed and utilized across the globe. In India, the FinTech revolution has gained significant\nimpulse through innovations like Unified Payments Interface (UPI), digital wallets, mobile\nbanking, and microfinance applications. These technologies aim to assist financial inclusion,\nespecially among underserved populations in rural areas. With these evolution, the adoption of\nFinTech services persist unequal, particularly among women in rural communities who face\nvarious socio-economic and infrastructural barriers.\nIn rural districts like Virudhunagar in Tamil Nadu, women play a crucial part in managing\nhousehold finances and contributing to the local economy through agricultural and small-scale\nentrepreneurial activities. However, their access to formal financial services and digital tools is\noften constricted due to limited digital literacy, poor internet infrastructure, and well established\ngender norms. Understanding the factors that influence FinTech adoption among rural women\nis necessary for designing extensive financial systems and empowering women economically.\nThis study intends to examine the extent of FinTech adoption by women in the rural areas of\nVirudhunagar district.\nObjectives:"
+    },
+    {
+      "id": "S1#c6",
+      "shortRef": "Mathivathana & Alagulakshmi 2025",
+      "page": 2,
+      "text": "Scope of the Study\nThe study examines FinTech adoption among rural women in Virudhunagar district, Tamil\nNadu, concentrate on their awareness, usage, and challenges. It emphasize how digital financial\ntools can empower women and promote inclusion, despite barriers like low digital literacy,\nlimited access, and socio-cultural restraints. The research seeks to support the development of\naccessible FinTech platforms and targeted awareness programs, offering insights for genderinclusive digital growth and rural development in India."
+    },
+    {
+      "id": "S1#c7",
+      "shortRef": "Mathivathana & Alagulakshmi 2025",
+      "page": 2,
+      "text": "Statement of the Problem\nDespite FinTech growth in India, rural women in Virudhunagar district face obstacles like\nlow digital literacy, limited access of smartphone and socio-cultural restrictions. These challenges\ndelay their use of tools like mobile banking and digital wallets. Trust issues and lack of awareness\nadditionally reduce adoption. This study aims to identify these gaps to lead strategies for build\nup FinTech use, promoting financial inclusion, and empowering rural women."
+    },
+    {
+      "id": "S1#c10",
+      "shortRef": "Mathivathana & Alagulakshmi 2025",
+      "page": 2,
+      "text": "Study Area\nThe research was conducted in Virudhunagar District, located in the southern part of Tamil\nNadu, India. The district has a predominantly rural population and is characterized by moderate\ndigital infrastructure, making it a suitable location to explore rural FinTech adoption patterns."
+    },
+    {
+      "id": "S1#c30",
+      "shortRef": "Mathivathana & Alagulakshmi 2025",
+      "page": 6,
+      "text": "Findings\nAbove 50% of respondents were aged 26 - 45, the most vital group in FinTech usage.\n More than 65% had education up to primary or secondary level. Higher education\nstrongly correlated with excessive FinTech adoption.\n Most of the respondents (57.5%) were housewives; 20% were agricultural labourer’s\nsignifying informal economic roles.\n The data a sustainable increase in adoption with education from 11.1% among illiterate\nrespondents to 72.2% among graduates.\n The null hypothesis is rejected. There is a statistically significant association between\nincome level and FinTech usage.\n In the logistic regression analysis, the result is much statistically significant (p < 0.001).\nThus, higher education is a strong predictor of FinTech adoption.\n In multiple regression analysis over 70% of non-users indicated that local language\nsupport and simplified interfaces would increase enthusiasm to adopt FinTech."
+    },
+    {
+      "id": "S2#c4",
+      "shortRef": "Sneha & Patil 2026",
+      "page": 2,
+      "text": "attainment, and socio-economic conditions. This paper aims to review existing literature on mobile\nbanking as a tool for financial inclusion and economic empowerment among women, focusing on rural–\nurban disparities and key empowerment outcomes."
+    },
+    {
+      "id": "S2#c25",
+      "shortRef": "Sneha & Patil 2026",
+      "page": 7,
+      "text": "Research Methodology\nThe research uses a narrative review method to combine results from international peer-reviewed\njournals which were published between 2000 and 2024. The researchers conducted systematic academic\ndatabase searches to identify sources which included Scopus Web of Science and Google Scholar. The\nreview concentrates on studies addressing mobile banking and financial inclusion and women's\neconomic empowerment. The researchers conducted thematic analysis of the literature to discover\nessential patterns and key insights. Discussion The review highlights that mobile banking has emerged\nas a transformative mechanism for advancing financial inclusion and economic empowerment among\nwomen. The existing research shows that mobile banking solutions help users overcome three main\nobstacles which include their inability to reach remote locations and their need to pay high transaction\nfees and their unavailability to visit bank branches. While globalization advocates of financial\ninstitutions boom, the otherwise weak banking infrastructure remains wanting in developing countries\nwith no coherent arraignment.\nThe discussion shows that access to resources does not provide people with actual empowerment."
+    },
+    {
+      "id": "S2#c29",
+      "shortRef": "Sneha & Patil 2026",
+      "page": 8,
+      "text": "Findings\nThe research demonstrates that mobile banking functions as a vital tool which enables women to access\nformal banking services while establishing bank accounts and engaging with digital financial systems.\nMobile banking shows users with safe and easy-to-use platforms which enable them to make regular\ndeposits while developing their financial habits thus enhancing their saving practices. The system\nprotects women's financial security by providing them with tools to handle risks and respond to\neconomic emergencies. The research showed that mobile banking services created better access to credit\nbecause they worked together with both microfinance institutions and digital lending platforms which\nhelped users start their businesses and earn money. Women have achieved increased economic\nindependence because of this development. The research found that government programs and their\nassociated policies function as essential systems which create better access to financial resources while\ndecreasing operational costs and increasing financial transaction security.\nThe effects of mobile banking is differ between rural areas and urban areas."
+    },
+    {
+      "id": "S3#c0",
+      "shortRef": "Sowmya 2025",
+      "page": null,
+      "text": "The rapid digitization of financial services in India, especially following the introduction of UPI and mobile wallets, has dramatically altered the financial landscape. While urban areas have embraced digital payments, rural women often face challenges in access, literacy, and trust in technology. This study investigates the extent of adoption of digital payment systems among rural women in Tamil Nadu, focusing on awareness, usability, constraints, and behavioral factors influencing adoption. The study aims to provide actionable insights for policymakers, FinTech providers, and development organizations aiming to increase financial inclusion."
+    }
+  ]
+}

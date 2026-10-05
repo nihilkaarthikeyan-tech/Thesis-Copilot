@@ -1,0 +1,303 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 6,
+    "wins": {
+      "current": 0,
+      "candidate": 0,
+      "tie": 6
+    },
+    "meanScore": {
+      "current": 0,
+      "candidate": 0
+    },
+    "answeredWithCitation": {
+      "current": 5,
+      "candidate": 6
+    },
+    "offeredNothing": {
+      "current": 0,
+      "candidate": 0
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 0
+    },
+    "candidateFile": "assist-aims",
+    "set": "aims",
+    "judged": false,
+    "hallucinatedCites": {
+      "current": 0,
+      "candidate": 0
+    },
+    "measures": {
+      "current": {
+        "outputs": 6,
+        "run6": 1,
+        "run8": 0,
+        "flagged": 2,
+        "meanLongestRun": 3.83,
+        "sentences": 12,
+        "citedSentences": 6,
+        "sharedCitation": 4,
+        "citations": 6,
+        "claimsPerCitation": 1.67,
+        "intensifiers": 2,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "candidate": {
+        "outputs": 6,
+        "run6": 1,
+        "run8": 0,
+        "flagged": 3,
+        "meanLongestRun": 4.17,
+        "sentences": 12,
+        "citedSentences": 6,
+        "sharedCitation": 6,
+        "citations": 6,
+        "claimsPerCitation": 2,
+        "intensifiers": 1,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      }
+    },
+    "medianMs": {
+      "current": 1601,
+      "candidate": 1542
+    },
+    "spentRupees": 1.11
+  },
+  "rows": [
+    {
+      "case": "mobile-banking-tamilnadu-exhausted-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "These barriers are compounded by the moderate digital infrastructure in rural areas like Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech to empower rural women economically, these structural and social challenges hinder their full participation in digital financial services (Mathivathana & Alagulakshmi 2025).",
+      "b": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet connectivity and access to digital financial services. Consequently, despite the potential of mobile banking to overcome geographic and transactional obstacles, rural women remain constrained by both technological and socio-cultural factors (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "These barriers are compounded by the moderate digital infrastructure in rural areas like Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech to empower rural women economically, these structural and social challenges hinder their full participation in digital financial services {{cite:S1#c7}}{{cite:S1#c10}}.",
+      "bRaw": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet connectivity and access to digital financial services. Consequently, despite the potential of mobile banking to overcome geographic and transactional obstacles, rural women remain constrained by both technological and socio-cultural factors {{cite:S1#c10}}{{cite:S1#c7}}.",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "in rural areas",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 3,
+        "runText": "and socio cultural",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-exhausted-1",
+      "sample": 1,
+      "verdict": "=",
+      "a": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech to empower rural women economically, these structural and social constraints significantly hinder their financial inclusion (Mathivathana & Alagulakshmi 2025).",
+      "b": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech to empower rural women economically, these structural and socio-cultural challenges significantly hinder their financial inclusion (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech to empower rural women economically, these structural and social constraints significantly hinder their financial inclusion {{cite:S1#c10}}{{cite:S1#c7}}.",
+      "bRaw": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech to empower rural women economically, these structural and socio-cultural challenges significantly hinder their financial inclusion {{cite:S1#c7}}{{cite:S1#c10}}.",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "moderate digital infrastructure",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 3,
+        "runText": "and socio cultural",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-exhausted-1",
+      "sample": 2,
+      "verdict": "=",
+      "a": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech tools to empower women economically, these structural and social constraints significantly hinder their financial inclusion (Mathivathana & Alagulakshmi 2025).",
+      "b": "These barriers are compounded by the moderate digital infrastructure in the district, which limits reliable internet access necessary for mobile banking. Additionally, socio-cultural norms restrict women’s autonomy in financial decisions, further hindering their engagement with digital financial services (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "These barriers are compounded by the moderate digital infrastructure in Virudhunagar, which limits consistent internet access necessary for mobile banking. Consequently, despite the potential of FinTech tools to empower women economically, these structural and social constraints significantly hinder their financial inclusion {{cite:S1#c7}}{{cite:S1#c10}}.",
+      "bRaw": "These barriers are compounded by the moderate digital infrastructure in the district, which limits reliable internet access necessary for mobile banking. Additionally, socio-cultural norms restrict women’s autonomy in financial decisions, further hindering their engagement with digital financial services {{cite:S1#c7}}{{cite:S1#c10}}.",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "moderate digital infrastructure",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 3,
+        "runText": "moderate digital infrastructure",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-exhausted-2",
+      "sample": 0,
+      "verdict": "=",
+      "a": "These challenges are compounded by socio-cultural restrictions and limited smartphone ownership, which further delay the adoption of mobile banking and digital wallets among rural women in Virudhunagar. Additionally, trust issues and lack of awareness about FinTech services reduce their willingness to engage with these digital financial tools (Mathivathana & Alagulakshmi 2025).",
+      "b": "These challenges delay the adoption of mobile banking and digital wallets among rural women, compounded by socio-cultural restrictions, limited smartphone access, and trust issues. Addressing these barriers is essential to enhance financial inclusion and empower women economically in rural Tamil Nadu (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "These challenges are compounded by socio-cultural restrictions and limited smartphone ownership, which further delay the adoption of mobile banking and digital wallets among rural women in Virudhunagar. Additionally, trust issues and lack of awareness about FinTech services reduce their willingness to engage with these digital financial tools {{cite:S1#c7}}.",
+      "bRaw": "These challenges delay the adoption of mobile banking and digital wallets among rural women, compounded by socio-cultural restrictions, limited smartphone access, and trust issues. Addressing these barriers is essential to enhance financial inclusion and empower women economically in rural Tamil Nadu {{cite:S1#c7}}.",
+      "aMeasures": {
+        "longestRun": 6,
+        "runText": "trust issues and lack of awareness",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "mobile banking and digital wallets",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-exhausted-2",
+      "sample": 1,
+      "verdict": "=",
+      "a": "These barriers include not only the lack of smartphone ownership and internet connectivity but also socio-cultural restrictions that limit women's financial autonomy and digital engagement in rural areas like Virudhunagar (Mathivathana & Alagulakshmi 2025). Additionally, trust issues and low awareness of digital financial services further reduce adoption rates among rural women, underscoring the need for targeted awareness programs and gender-inclusive FinTech development (Mathivathana & Alagulakshmi 2025).",
+      "b": "These limitations hinder rural women's ability to use mobile banking and digital wallets effectively, as low awareness and socio-cultural restrictions further reduce adoption rates in areas like Virudhunagar. Consequently, despite the potential of FinTech to empower women economically, actual financial inclusion remains limited by these intertwined barriers (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "These barriers include not only the lack of smartphone ownership and internet connectivity but also socio-cultural restrictions that limit women's financial autonomy and digital engagement in rural areas like Virudhunagar (Mathivathana & Alagulakshmi 2025). Additionally, trust issues and low awareness of digital financial services further reduce adoption rates among rural women, underscoring the need for targeted awareness programs and gender-inclusive FinTech development (Mathivathana & Alagulakshmi 2025).",
+      "bRaw": "These limitations hinder rural women's ability to use mobile banking and digital wallets effectively, as low awareness and socio-cultural restrictions further reduce adoption rates in areas like Virudhunagar. Consequently, despite the potential of FinTech to empower women economically, actual financial inclusion remains limited by these intertwined barriers {{cite:S1#c7}}{{cite:S1#c2}}.",
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "in rural areas",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 0,
+        "citations": 0,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "mobile banking and digital wallets",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-exhausted-2",
+      "sample": 2,
+      "verdict": "=",
+      "a": "These constraints result in delayed adoption of mobile banking and digital wallets, as women encounter additional barriers such as lack of smartphone access, socio-cultural restrictions, and trust issues, which further limit their engagement with FinTech services in rural Tamil Nadu (Mathivathana & Alagulakshmi 2025). Consequently, improving digital literacy alone is insufficient without addressing these intertwined infrastructural and social challenges that hinder financial inclusion (Sneha & Patil 2026).",
+      "b": "These challenges delay rural women’s use of mobile banking and digital wallets, compounded by trust issues and lack of awareness, which further reduce adoption rates in areas like Virudhunagar. Consequently, improving digital literacy and addressing socio-cultural barriers are essential to enhance FinTech use and promote financial inclusion among rural women in Tamil Nadu (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "These constraints result in delayed adoption of mobile banking and digital wallets, as women encounter additional barriers such as lack of smartphone access, socio-cultural restrictions, and trust issues, which further limit their engagement with FinTech services in rural Tamil Nadu {{cite:S1#c7}}. Consequently, improving digital literacy alone is insufficient without addressing these intertwined infrastructural and social challenges that hinder financial inclusion {{cite:S2#c25}}.",
+      "bRaw": "These challenges delay rural women’s use of mobile banking and digital wallets, compounded by trust issues and lack of awareness, which further reduce adoption rates in areas like Virudhunagar. Consequently, improving digital literacy and addressing socio-cultural barriers are essential to enhance FinTech use and promote financial inclusion among rural women in Tamil Nadu {{cite:S1#c7}}.",
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "mobile banking and digital wallets",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "trust issues and lack of awareness",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    }
+  ]
+}

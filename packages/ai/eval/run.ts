@@ -57,7 +57,7 @@ import type { LlmProvider, LlmRequest } from '../src/types.js';
 import { type Measures, measure, totals } from './copying.js';
 import { metered } from './meter.js';
 import { draftedSection, memoryFor, papersFor, passagesFor, readable } from './shared.js';
-import { BAGLA_P11, KARNATAKA, TOPICS, type Topic } from './topics.js';
+import { BAGLA_P11, KARNATAKA, TAMILNADU, TOPICS, type Topic } from './topics.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -221,6 +221,80 @@ function ownStudyCases(name: string): Case[] {
     kind: 'draft' as const,
   }));
 }
+
+/**
+ * ADR-0079's case set (`--set aims`): the same-topic run's thesis, with nine real full-text
+ * chunks of its library, six of which state what their own paper aims to do, focuses on or where
+ * it was conducted. The real-model run of 2026-10-05 restated them as the thesis's own ("The
+ * study focuses on rural women in Virudhunagar district {{cite:…}}"). Assist: the three typed
+ * sentences and the empty section, as the copying set does; draft: the section.
+ */
+function aimsCases(name: string): Case[] {
+  const fixture = JSON.parse(readFileSync(join(here, 'papers', 'tamilnadu-aims.json'), 'utf8')) as {
+    passages: PromptPassage[];
+  };
+  const topic = TAMILNADU;
+  if (name === 'draft') {
+    return [
+      {
+        id: `${topic.id}-draft`,
+        topic,
+        context: topic.section.title,
+        passages: fixture.passages,
+        kind: 'draft',
+      },
+    ];
+  }
+  if (name !== 'assist') return [];
+  // Two requests per cursor position: all nine passages, and the six that state only aims — what
+  // retrieval returned in the real run, where the scope and problem-statement chunks matched the
+  // sentence best and no finding was in the request.
+  const aimsOnly = fixture.passages.filter((p) => !FINDING_PASSAGES.has(p.id));
+  const cases: Case[] = [];
+  for (const [label, passages] of [
+    ['mixed', fixture.passages],
+    ['aims-only', aimsOnly],
+  ] as const) {
+    topic.befores.forEach((before, i) => {
+      cases.push({
+        id: `${topic.id}-${label}-${i + 1}`,
+        topic,
+        context: before,
+        passages,
+        kind: 'assist',
+      });
+    });
+    cases.push({
+      id: `${topic.id}-${label}-empty`,
+      topic,
+      context: `${topic.section.title}\n`,
+      passages,
+      kind: 'assist',
+      emptySection: true,
+    });
+  }
+  // The real condition: the third suggestion in a row, when the paragraph has already said what
+  // the aims passages say. The fault appeared there, never on the first sentence.
+  EXHAUSTED.forEach((before, i) => {
+    cases.push({
+      id: `${topic.id}-exhausted-${i + 1}`,
+      topic,
+      context: before,
+      passages: aimsOnly,
+      kind: 'assist',
+    });
+  });
+  return cases;
+}
+
+/** The three passages of `tamilnadu-aims.json` that report findings rather than aims. */
+const FINDING_PASSAGES = new Set(['S1#c30', 'S2#c29', 'S2#c4']);
+
+/** Paragraphs that have already used the aims passages' content, as the real run's had. */
+const EXHAUSTED = [
+  'Mobile banking is spreading in rural Tamil Nadu, but rural women take it up more slowly than men. Rural women in Virudhunagar district face low digital literacy, limited access to smartphones and socio-cultural restrictions, which delay their use of mobile banking and digital wallets (Mathivathana & Alagulakshmi 2025). Trust issues and a lack of awareness reduce adoption further, and women often have little control over the household phone or account (Mathivathana & Alagulakshmi 2025).',
+  'Digital literacy is the barrier most often named in the Indian studies. In Virudhunagar district, women manage household finances and contribute through farm work and small enterprises, yet their access to formal financial services and digital tools is constrained by limited digital literacy, poor internet infrastructure and established gender norms (Mathivathana & Alagulakshmi 2025). Reviews of the wider literature find the same pattern across rural and urban India, with rural women facing the larger gap in access, literacy and trust (Sneha & Patil 2026; Sowmya 2025).',
+];
 
 function casesFor(name: string): Case[] {
   const cases: Case[] = [];
@@ -776,7 +850,9 @@ async function main(): Promise<void> {
       ? copyingCases(name)
       : set === 'own-study'
         ? ownStudyCases(name)
-        : casesFor(name)
+        : set === 'aims'
+          ? aimsCases(name)
+          : casesFor(name)
   ).filter((c) => !only || c.id.includes(only));
   const measured = { a: [] as Measures[], b: [] as Measures[] };
   const hallucinated = { a: 0, b: 0 };

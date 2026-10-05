@@ -62,6 +62,27 @@ describe('a cited "this study" is dropped (ADR-0078)', () => {
     expect(text).not.toContain('This study focuses');
   });
 
+  it('drops a cited sentence opening "The study focuses on…" (ADR-0079)', async () => {
+    const { filterSentences, isCitedOwnStudy } = await import('../src/builder/quality.js');
+    expect(
+      isCitedOwnStudy('The study focuses on rural women in Virudhunagar district {{cite:S1#c6}}.'),
+    ).toBe(true);
+    expect(
+      isCitedOwnStudy('The research was conducted in Virudhunagar District {{cite:S1#c10}}.'),
+    ).toBe(true);
+    // Mid-sentence, the source has been named.
+    expect(
+      isCitedOwnStudy('Bagla surveyed 312 households; the study found cost first {{cite:S1#c1}}.'),
+    ).toBe(false);
+    const { text } = filterSentences({
+      text: 'Adoption rose from 11.1% of illiterate respondents to 72.2% of graduates {{cite:S1#c30}}. The study focuses on rural women in Virudhunagar district {{cite:S1#c6}}.',
+      before: 'Digital literacy is the barrier most often named.',
+      existing: '',
+    });
+    expect(text).toContain('72.2%');
+    expect(text).not.toContain('The study focuses');
+  });
+
   it('keeps an uncited "this study": it may be the student’s own', async () => {
     const { isCitedOwnStudy } = await import('../src/builder/quality.js');
     expect(isCitedOwnStudy('This study examines adoption in three districts.')).toBe(false);

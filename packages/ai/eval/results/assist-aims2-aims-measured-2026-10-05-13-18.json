@@ -1,0 +1,369 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 12,
+    "wins": {
+      "current": 0,
+      "candidate": 0,
+      "tie": 12
+    },
+    "meanScore": {
+      "current": 0,
+      "candidate": 0
+    },
+    "answeredWithCitation": {
+      "current": 0,
+      "candidate": 12
+    },
+    "offeredNothing": {
+      "current": 12,
+      "candidate": 0
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 0
+    },
+    "candidateFile": "assist-aims2",
+    "set": "aims",
+    "judged": false,
+    "hallucinatedCites": {
+      "current": 0,
+      "candidate": 0
+    },
+    "measures": {
+      "current": {
+        "outputs": 0,
+        "run6": 0,
+        "run8": 0,
+        "flagged": 0,
+        "meanLongestRun": 0,
+        "sentences": 0,
+        "citedSentences": 0,
+        "sharedCitation": 0,
+        "citations": 0,
+        "claimsPerCitation": 0,
+        "intensifiers": 0,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "candidate": {
+        "outputs": 12,
+        "run6": 5,
+        "run8": 0,
+        "flagged": 8,
+        "meanLongestRun": 5.08,
+        "sentences": 24,
+        "citedSentences": 22,
+        "sharedCitation": 2,
+        "citations": 23,
+        "claimsPerCitation": 1.04,
+        "intensifiers": 0,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      }
+    },
+    "medianMs": {
+      "current": 0,
+      "candidate": 1467
+    },
+    "spentRupees": 1.27
+  },
+  "rows": [
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "This slower uptake is linked to barriers such as limited digital literacy, restricted smartphone access, and prevailing socio-cultural norms that limit women's financial autonomy in rural areas like Virudhunagar district (Mathivathana & Alagulakshmi 2025). Additionally, trust issues and lack of awareness further reduce the adoption of mobile banking and digital payment tools among these women (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "This slower uptake is linked to barriers such as limited digital literacy, restricted smartphone access, and prevailing socio-cultural norms that limit women's financial autonomy in rural areas like Virudhunagar district {{cite:S1#c7}}. Additionally, trust issues and lack of awareness further reduce the adoption of mobile banking and digital payment tools among these women {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "trust issues and lack of awareness",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-1",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "This slower uptake is largely due to limited digital literacy, restricted access to smartphones and internet connectivity, and prevailing socio-cultural norms that constrain women's financial autonomy and technology use in rural areas like Virudhunagar district (Mathivathana & Alagulakshmi 2025). Additionally, trust issues and lack of awareness about mobile banking services further discourage adoption among these women (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "This slower uptake is largely due to limited digital literacy, restricted access to smartphones and internet connectivity, and prevailing socio-cultural norms that constrain women's financial autonomy and technology use in rural areas like Virudhunagar district {{cite:S1#c7}}. Additionally, trust issues and lack of awareness about mobile banking services further discourage adoption among these women {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "trust issues and lack of awareness",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-1",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "This slower adoption among rural women is linked to limited digital literacy, restricted access to smartphones and internet, and socio-cultural norms that constrain their financial autonomy and technology use (Mathivathana & Alagulakshmi 2025). Additionally, trust issues and lack of awareness further hinder their engagement with mobile banking and digital payment platforms (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "This slower adoption among rural women is linked to limited digital literacy, restricted access to smartphones and internet, and socio-cultural norms that constrain their financial autonomy and technology use {{cite:S1#c7}}. Additionally, trust issues and lack of awareness further hinder their engagement with mobile banking and digital payment platforms {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "trust issues and lack of awareness",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-2",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "Limited digital literacy among rural women in Tamil Nadu restricts their ability to effectively use mobile banking and digital payment platforms, compounded by insufficient smartphone access and poor internet connectivity in rural areas (Mathivathana & Alagulakshmi 2025). These constraints are further intensified by socio-cultural norms and trust issues, which together delay the adoption of FinTech services despite their potential to empower women financially (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "Limited digital literacy among rural women in Tamil Nadu restricts their ability to effectively use mobile banking and digital payment platforms, compounded by insufficient smartphone access and poor internet connectivity in rural areas {{cite:S1#c7}}. These constraints are further intensified by socio-cultural norms and trust issues, which together delay the adoption of FinTech services despite their potential to empower women financially {{cite:S1#c2}}.",
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "among rural women in tamil nadu",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-2",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "This barrier is compounded by limited smartphone ownership and poor internet infrastructure, which restrict rural women’s ability to use mobile banking and digital wallets effectively (Mathivathana & Alagulakshmi 2025). Additionally, socio-cultural norms and trust issues further inhibit adoption despite the potential of FinTech to empower women economically (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "This barrier is compounded by limited smartphone ownership and poor internet infrastructure, which restrict rural women’s ability to use mobile banking and digital wallets effectively {{cite:S1#c7}}. Additionally, socio-cultural norms and trust issues further inhibit adoption despite the potential of FinTech to empower women economically {{cite:S1#c2}}.",
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "mobile banking and digital wallets",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-2",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "Limited digital literacy restricts rural women’s ability to navigate mobile banking applications and understand transaction processes, thereby hindering their adoption of these services (Mathivathana & Alagulakshmi 2025). This challenge is compounded by inadequate smartphone access and socio-cultural norms that limit women’s engagement with digital financial tools (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "Limited digital literacy restricts rural women’s ability to navigate mobile banking applications and understand transaction processes, thereby hindering their adoption of these services {{cite:S1#c7}}. This challenge is compounded by inadequate smartphone access and socio-cultural norms that limit women’s engagement with digital financial tools {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "access and socio cultural",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-3",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "In many rural households, women’s limited control over mobile devices and financial accounts restricts their ability to use mobile banking independently, reinforcing existing gender roles that prioritize male authority over money and technology. This dynamic is compounded by low digital literacy and socio-cultural barriers, which together hinder rural women's full participation in digital financial services (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "In many rural households, women’s limited control over mobile devices and financial accounts restricts their ability to use mobile banking independently, reinforcing existing gender roles that prioritize male authority over money and technology. This dynamic is compounded by low digital literacy and socio-cultural barriers, which together hinder rural women's full participation in digital financial services {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 3,
+        "runText": "low digital literacy",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-3",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "In Virudhunagar district, limited digital literacy and socio-cultural restrictions often prevent rural women from independently managing mobile banking, as phone and internet access are commonly controlled by male family members (Mathivathana & Alagulakshmi 2025). This dynamic restricts women's ability to fully utilize digital financial tools, despite their significant role in household financial management and local economic activities (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "In Virudhunagar district, limited digital literacy and socio-cultural restrictions often prevent rural women from independently managing mobile banking, as phone and internet access are commonly controlled by male family members {{cite:S1#c7}}. This dynamic restricts women's ability to fully utilize digital financial tools, despite their significant role in household financial management and local economic activities {{cite:S1#c2}}.",
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "and socio cultural restrictions",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-3",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "In Virudhunagar district, limited smartphone ownership and socio-cultural restrictions often result in men controlling mobile devices and financial accounts, restricting women's direct access to mobile banking services. This control is compounded by low digital literacy and trust issues, which further hinder rural women's independent use of digital financial tools (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "In Virudhunagar district, limited smartphone ownership and socio-cultural restrictions often result in men controlling mobile devices and financial accounts, restricting women's direct access to mobile banking services. This control is compounded by low digital literacy and trust issues, which further hinder rural women's independent use of digital financial tools {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "and socio cultural restrictions",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-empty",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted smartphone and internet access, and entrenched socio-cultural norms that constrain their financial autonomy (Mathivathana & Alagulakshmi 2025). These challenges are compounded by trust issues and a lack of awareness, which further hinder their use of digital financial tools despite the potential for economic empowerment (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted smartphone and internet access, and entrenched socio-cultural norms that constrain their financial autonomy {{cite:S1#c7}}. These challenges are compounded by trust issues and a lack of awareness, which further hinder their use of digital financial tools despite the potential for economic empowerment {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "rural women in tamil nadu",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-empty",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, poor internet infrastructure, and entrenched gender norms that restrict their access to smartphones and financial tools (Mathivathana & Alagulakshmi 2025). These obstacles are compounded by trust issues and a lack of awareness, which further hinder their use of digital payment systems despite the potential for economic empowerment (Mathivathana & Alagulakshmi 2025)(Sowmya 2025).",
+      "aRaw": "",
+      "bRaw": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, poor internet infrastructure, and entrenched gender norms that restrict their access to smartphones and financial tools {{cite:S1#c7}}. These obstacles are compounded by trust issues and a lack of awareness, which further hinder their use of digital payment systems despite the potential for economic empowerment {{cite:S1#c7}}{{cite:S3#c0}}.",
+      "bMeasures": {
+        "longestRun": 7,
+        "runText": "limited digital literacy poor internet infrastructure and",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-aims-only-empty",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted access to smartphones and internet connectivity, and entrenched socio-cultural norms that limit their financial autonomy (Mathivathana & Alagulakshmi 2025). Additionally, trust deficits in digital financial services and lack of awareness further hinder their engagement with these technologies (Mathivathana & Alagulakshmi 2025).",
+      "aRaw": "",
+      "bRaw": "Rural women in Tamil Nadu encounter multiple barriers to adopting mobile banking, including limited digital literacy, restricted access to smartphones and internet connectivity, and entrenched socio-cultural norms that limit their financial autonomy {{cite:S1#c7}}. Additionally, trust deficits in digital financial services and lack of awareness further hinder their engagement with these technologies {{cite:S1#c7}}.",
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "rural women in tamil nadu",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 12,
+    "wins": {
+      "current": 0,
+      "candidate": 0,
+      "tie": 12
+    },
+    "meanScore": {
+      "current": 0,
+      "candidate": 0
+    },
+    "answeredWithCitation": {
+      "current": 0,
+      "candidate": 0
+    },
+    "offeredNothing": {
+      "current": 12,
+      "candidate": 12
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 12
+    },
+    "medianMs": {
+      "current": 0,
+      "candidate": 0
+    },
+    "spentRupees": 0
+  },
+  "rows": [
+    {
+      "case": "mobile-banking-tamilnadu-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-1",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-1",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-2",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-2",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-2",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-3",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-3",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-3",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-empty",
+      "sample": 0,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-empty",
+      "sample": 1,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "mobile-banking-tamilnadu-empty",
+      "sample": 2,
+      "verdict": "=",
+      "a": "",
+      "b": "",
+      "aRaw": "",
+      "bRaw": "FAILED: assist.md has no user message block",
+      "reason1": "",
+      "reason2": ""
+    }
+  ]
+}

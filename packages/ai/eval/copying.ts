@@ -34,6 +34,8 @@ export type Measures = {
   intensifiers: string[];
   /** ADR-0078: sentences calling a source "this study" / "the study". */
   ownStudy: number;
+  /** ADR-0079: sentences restating a paper's aims, scope or setting. */
+  aims: number;
   /** Sentences that describe the section, chapter or review rather than the evidence. */
   selfDescribing: number;
   /** Words inside quotation marks. */
@@ -88,11 +90,30 @@ const SELF_DESCRIBING = [
  * already named its source and reads correctly.
  */
 const THIS_STUDY = /\b(this|the present|the current|our)\s+(study|research|investigation|paper)\b/i;
-const OPENS_THE_STUDY = /^the\s+(study|research|investigation|paper)\b/i;
+const OPENS_THE_STUDY = /^the\s+(study|research|investigation|paper)\b(?!\s+by\b)/i;
 
 export function callsSourceTheStudy(sentence: string): boolean {
   const s = sentence.trim();
   return THIS_STUDY.test(s) || OPENS_THE_STUDY.test(s);
+}
+
+/**
+ * ADR-0079: a paper's aims, scope or setting restated as a sentence of the thesis. The same-topic
+ * run of 2026-10-05 wrote "The study focuses on rural women in Virudhunagar district {{cite:…}}"
+ * and "This research concentrates on…", which in a thesis read as the thesis's own aim, and ADR-0078's
+ * renaming and filter do not catch them. Counted: a research noun ("study", "research", "paper",
+ * "review", "article", "investigation", "analysis") followed in the same sentence by a verb of
+ * intent or setting (aims, intends, seeks, set out, focuses, concentrates, was conducted, was
+ * carried out, examines, investigates, explores), or "focuses on"/"concentrates on" anywhere.
+ * A finding ("the study found that 57% were housewives") does not match.
+ */
+const AIMS =
+  /\b(study|research|paper|review|article|investigation|analysis|work)\b[^.;:]{0,40}?\b(aims?|aimed|intends?|intended|seeks?|sought|set out|sets out|focus(es|ed|ing)?|concentrat(es|ed|ing)|was (conducted|carried out|undertaken)|were conducted|examines?|examined|investigates?|investigated|explores?|explored|is to|was to)\b/i;
+const FOCUSES_ON = /\b(focus(es|ed|ing)?|concentrat(es|ed|ing)) on\b/i;
+
+export function statesAims(sentence: string): boolean {
+  const s = sentence.trim();
+  return AIMS.test(s) || FOCUSES_ON.test(s);
 }
 
 export function isSelfDescribing(sentence: string): boolean {
@@ -150,6 +171,7 @@ export function measure(text: string, passages: readonly PromptPassage[]): Measu
     intensifiers,
     selfDescribing: sentences.filter(isSelfDescribing).length,
     ownStudy: sentences.filter((s) => callsSourceTheStudy(s)).length,
+    aims: sentences.filter((s) => statesAims(s)).length,
     quotedWords: quoted.reduce((n, q) => n + words(q).length, 0),
   };
 }
@@ -173,6 +195,8 @@ export type MeasureTotals = {
   intensifiers: number;
   selfDescribing: number;
   ownStudy: number;
+  /** ADR-0079: sentences restating a paper's aims, scope or setting. */
+  aims: number;
   quotedWords: number;
 };
 
@@ -196,6 +220,7 @@ export function totals(all: readonly Measures[]): MeasureTotals {
     intensifiers: sum((m) => m.intensifiers.length),
     selfDescribing: sum((m) => m.selfDescribing),
     ownStudy: sum((m) => m.ownStudy ?? 0),
+    aims: sum((m) => m.aims ?? 0),
     quotedWords: sum((m) => m.quotedWords),
   };
 }

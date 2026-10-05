@@ -207,8 +207,21 @@ const OWN_WORK = /\b(this|the present|the current|our)\s+(study|research|investi
  * the same-topic run of 2026-10-05). Always wrong, so dropped; uncited, it may be the student's.
  */
 export function isCitedOwnStudy(sentence: string): boolean {
-  return CITE.test(sentence) && OWN_WORK.test(sentence);
+  const s = sentence.trim();
+  return CITE.test(s) && (OWN_WORK.test(s) || OPENS_THE_STUDY.test(s));
 }
+
+/**
+ * ADR-0079: a cited sentence that opens "The study focuses on rural women in Virudhunagar
+ * district {{cite:…}}" or "The research was conducted in…" restates the paper's aims or setting
+ * as if they were the thesis's own (the same-topic run, 2026-10-05, the third suggestion in a
+ * row). Sixty real-model runs of the aims evaluation set never reproduced it, so no prompt change
+ * could be shown to win (ADR-0038) and the guard is here instead, the same rule the evaluation
+ * measures by: "the study" opening a cited sentence has not named its source and reads as the
+ * student's. "Bagla reports…; the study used…" has, and is not matched mid-sentence; nor is
+ * "The study by Bagla 2026 found…", which `nameTheSource` writes and which names its source.
+ */
+const OPENS_THE_STUDY = /^the\s+(study|research|investigation|paper|review)\b(?!\s+by\b)/i;
 
 const CONNECTIVE =
   /^(despite (this|these|that)|however|furthermore|moreover|additionally|in addition|nevertheless|nonetheless|consequently|therefore|thus|hence|in contrast|conversely|similarly|likewise|as a result|by contrast)\b/i;

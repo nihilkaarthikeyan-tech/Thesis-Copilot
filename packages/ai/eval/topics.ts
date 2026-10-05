@@ -237,3 +237,40 @@ export const KARNATAKA: Topic = {
     'Roof space and structural constraints',
   ],
 };
+
+/**
+ * ADR-0079: the same-topic run's thesis (2026-10-05), whose library papers state their own aims
+ * at length ("This study intends to examine…", "The review concentrates on…"); suggestions
+ * restated them as the thesis's. Passages come from `papers/tamilnadu-aims.json`, real chunks.
+ */
+export const TAMILNADU: Topic = {
+  id: 'mobile-banking-tamilnadu',
+  thesisTitle: 'Mobile banking and the financial inclusion of rural women in Tamil Nadu',
+  search: 'mobile banking financial inclusion rural women Tamil Nadu India adoption',
+  chapter: {
+    title: 'Literature Review',
+    scopeNote:
+      'What is known about how rural women in Tamil Nadu and India take up mobile banking and digital payments: access, digital literacy, trust, social norms, and what inclusion it brings.',
+  },
+  befores: [
+    'Mobile banking is spreading in rural Tamil Nadu, but rural women take it up more slowly than men.',
+    'Digital literacy is the barrier most often named in the Indian studies.',
+    'Household norms shape who in a family holds the phone and the account.',
+  ],
+  section: {
+    title: 'Barriers to adoption',
+    scopeNote:
+      'What the studies find stops rural women using mobile banking: digital literacy, phone and internet access, trust, social norms and household control of money.',
+  },
+  questions: [
+    'What stops rural women in India from using mobile banking, according to the research?',
+  ],
+  informal:
+    'A lot of women in the villages have a phone but still go to the bank in person, because they do not trust the app and nobody showed them how it works.',
+  idea: 'Why rural women in Tamil Nadu are slow to use mobile banking.',
+  themes: [
+    'Digital literacy and awareness',
+    'Access to phones and connectivity',
+    'Trust and social norms',
+  ],
+};

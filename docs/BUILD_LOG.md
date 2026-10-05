@@ -5318,3 +5318,15 @@ on planning, suggestion speed and drafting; Jenni's research chat was clearly ah
 citations to one paper (`PER_SOURCE_CAP`), citations printing "(- 2026)" and a college as an
 author (`cleanAuthors`, `peopleFirst`), and a cited "this study" sentence (`isCitedOwnStudy`).
 Left for a prompt round: a paper's aims restated as the thesis's own without the phrase.
+
+## The aims round (2026-10-05, ADR-0079)
+
+The last fault of the same-topic run — "The study focuses on rural women in Virudhunagar
+district… (Mathivathana 2025)" offered as the thesis's own sentence — went through an evaluation
+round meant to change A.1. New: the `TAMILNADU` topic, nine real chunks of its library
+(`eval/papers/tamilnadu-aims.json`), `--set aims` (mixed, aims-only and exhausted conditions),
+the `aims` measure (`statesAims`), two candidates. In 60 real-model outputs the current prompt
+never restated a paper's aims, so no candidate won and under ADR-0038 the prompt stays. The
+guard is in code: `isCitedOwnStudy` also drops a cited sentence that opens "The study…", the
+rule the evaluation already measured by. ₹10.69. The round also showed the harness cannot yet
+replay a production request; the recorder should save the request's passages next time.
