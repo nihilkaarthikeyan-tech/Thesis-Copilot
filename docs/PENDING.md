@@ -954,9 +954,14 @@ fixed. `docs/BUILD_LOG.md` → "Editor parity" has the account.
       440×280 tile from `apps/extension/store/`. Publish **after** the site release that carries
       the privacy page's updated add-on section and the resolve route's `sourceIds` (the add-on's
       "Open in Thesis Copilot" needs it, and the in-app reader at `/app/d/:id/sources/:sourceId`).
-      Try it first: Load unpacked → `apps/extension/dist` (`apps/extension/README.md`). Two things
-      only a real Chrome shows: that "Attach this PDF" can download a PDF from a publisher with
-      `activeTab` alone, and the right-click item opening the popup (`chrome.action.openPopup`).
+      Try it first: Load unpacked → `apps/extension/dist` (`apps/extension/README.md`).
+      **Used on the real sites 2026-10-05 evening** (`apps/web/e2e/_measure/extension-live.spec.ts`,
+      the add-on in Chromium against the local stack): a Nature article, an arXiv abstract, an
+      arXiv PDF tab (attached), a PubMed search (3 of 3 saved), an arXiv listing (50 read, 3 saved)
+      and a Google Scholar page (10 read, 3 saved, every one matched by title) — all saved
+      correctly, nothing duplicated. Two things still only a real Chrome shows: that "Attach this
+      PDF" can download a publisher's PDF with `activeTab` alone (the trial build held host
+      permission), and the right-click item opening the popup (`chrome.action.openPopup`).
 - [ ] **Video tutorials** — content, not code, so still yours: a two-minute recording of each of
       the main screens would do.
 

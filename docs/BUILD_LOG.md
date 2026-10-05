@@ -5411,3 +5411,16 @@ map. Tests: `claims.spec.ts` (ai, 6), `claims-api.spec.ts` (api, 4). Found on th
 coherence check already exported `buildClaimsRequest`, so the map's builders carry "Map" in
 their names.
 
+## The add-on on real websites (2026-10-05, evening)
+
+The owner asked whether the add-on had been used, not only tested. `e2e/_measure/extension-live.spec.ts`
+loads the 0.2.0 build into Chromium with host permission for the live sites and opens the popup on
+real pages: Nature (saved, DOI read from the page), an arXiv abstract (saved), the same paper's PDF
+tab ("Already in the library… Its PDF was already there"), a PubMed search (3 of 3 saved; the
+search really had 3 results), an arXiv listing (50 papers read, 3 saved, PDFs attached by the
+worker), and a Google Scholar results page (10 read, 3 saved by title, all three resolved to the
+right DOI within a minute). Nothing duplicated, nothing wrong saved. Scholar's markup, which ADR-0069
+had not observed live, matched the fixture. Screenshots of every popup in the session's scratchpad;
+the record is the spec's `record.json`. Still unproven: `activeTab` alone for a publisher's PDF, and
+the right-click item — both need a real Chrome with the add-on from the store.
+
