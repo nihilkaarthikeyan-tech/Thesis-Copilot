@@ -196,6 +196,32 @@ function copyingCases(name: string): Case[] {
   return cases;
 }
 
+/**
+ * ADR-0078's case set (`--set own-study`): a draft under a heading the student typed, from real
+ * full-text passages, four of which call their own paper "this study". The real-model run of
+ * 2026-10-05 carried the phrase into the thesis ("the framework used in this study"); the abstracts
+ * of the other sets never did. The scope note is the worker's `headingOnlyScope`.
+ */
+function ownStudyCases(name: string): Case[] {
+  if (name !== 'draft') return [];
+  const fixture = JSON.parse(
+    readFileSync(join(here, 'papers', 'karnataka-own-study.json'), 'utf8'),
+  ) as { passages: PromptPassage[] };
+  return ['Financial constraints', 'Subsidy experience'].map((title) => ({
+    id: `karnataka-${title.toLowerCase().replace(/\s+/g, '-')}`,
+    topic: {
+      ...KARNATAKA,
+      section: {
+        title,
+        scopeNote: `${title} in "${KARNATAKA.thesisTitle}", and only that. Every other topic, however close, belongs to another section: leave it out.`,
+      },
+    },
+    context: title,
+    passages: fixture.passages,
+    kind: 'draft' as const,
+  }));
+}
+
 function casesFor(name: string): Case[] {
   const cases: Case[] = [];
   for (const topic of TOPICS) {
@@ -745,9 +771,13 @@ async function main(): Promise<void> {
   const only = process.argv.includes('--only')
     ? process.argv[process.argv.indexOf('--only') + 1]
     : undefined;
-  const cases = (set === 'copying' ? copyingCases(name) : casesFor(name)).filter(
-    (c) => !only || c.id.includes(only),
-  );
+  const cases = (
+    set === 'copying'
+      ? copyingCases(name)
+      : set === 'own-study'
+        ? ownStudyCases(name)
+        : casesFor(name)
+  ).filter((c) => !only || c.id.includes(only));
   const measured = { a: [] as Measures[], b: [] as Measures[] };
   const hallucinated = { a: 0, b: 0 };
 

@@ -32,6 +32,8 @@ export type Measures = {
   citations: number;
   /** Intensifiers that no passage in the request uses. */
   intensifiers: string[];
+  /** ADR-0078: sentences calling a source "this study" / "the study". */
+  ownStudy: number;
   /** Sentences that describe the section, chapter or review rather than the evidence. */
   selfDescribing: number;
   /** Words inside quotation marks. */
@@ -76,6 +78,22 @@ const SELF_DESCRIBING = [
   /^(this|the present|the following|the current|the next)\s+(section|subsection|chapter|review|synthesis|part|discussion)\b/i,
   /^in (this|the following|the present) (section|subsection|chapter|review|part)\b/i,
 ];
+
+/**
+ * ADR-0078: a source called "this study", "the study", "this research"… In a thesis those words
+ * mean the student's own work, so a cited sentence that uses them about a paper reads as a claim
+ * about the thesis (the real-model run, 2026-10-05: "The study employs a qualitative, exploratory
+ * design…", and "the framework used in this study" about Bagla 2026). "This study" counts
+ * anywhere; "the study" only when it opens the sentence: "Bagla reports…; the study used…" has
+ * already named its source and reads correctly.
+ */
+const THIS_STUDY = /\b(this|the present|the current|our)\s+(study|research|investigation|paper)\b/i;
+const OPENS_THE_STUDY = /^the\s+(study|research|investigation|paper)\b/i;
+
+export function callsSourceTheStudy(sentence: string): boolean {
+  const s = sentence.trim();
+  return THIS_STUDY.test(s) || OPENS_THE_STUDY.test(s);
+}
 
 export function isSelfDescribing(sentence: string): boolean {
   const s = sentence.replace(/^#+\s.*$/m, '').trim();
@@ -131,6 +149,7 @@ export function measure(text: string, passages: readonly PromptPassage[]): Measu
     citations: (body.match(CITE) ?? []).length,
     intensifiers,
     selfDescribing: sentences.filter(isSelfDescribing).length,
+    ownStudy: sentences.filter((s) => callsSourceTheStudy(s)).length,
     quotedWords: quoted.reduce((n, q) => n + words(q).length, 0),
   };
 }
@@ -153,6 +172,7 @@ export type MeasureTotals = {
   claimsPerCitation: number;
   intensifiers: number;
   selfDescribing: number;
+  ownStudy: number;
   quotedWords: number;
 };
 
@@ -175,6 +195,7 @@ export function totals(all: readonly Measures[]): MeasureTotals {
       : 0,
     intensifiers: sum((m) => m.intensifiers.length),
     selfDescribing: sum((m) => m.selfDescribing),
+    ownStudy: sum((m) => m.ownStudy ?? 0),
     quotedWords: sum((m) => m.quotedWords),
   };
 }

@@ -15,6 +15,7 @@
 import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
+import { nameTheSource } from './own-study.js';
 import { headByTokens, tailByTokens } from './tokens.js';
 
 /** A.1's parameters, kept together so a test can pin them. */
@@ -77,7 +78,8 @@ export function assistUserMessage(input: AssistBuildInput): string {
       id: passage.id,
       shortRef: passage.shortRef,
       page: passage.page ?? '',
-      text: passage.text,
+      // ADR-0078: a paper's "this study" about itself, named, so it never reaches the thesis.
+      text: nameTheSource(passage.text, passage.shortRef),
     })),
     before: tailByTokens(input.before, ASSIST.beforeTokens),
     after: headByTokens(input.after, ASSIST.afterTokens),

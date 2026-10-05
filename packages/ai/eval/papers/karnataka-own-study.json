@@ -1,0 +1,53 @@
+{
+  "note": "ADR-0078: real full-text chunks from the local library (Bagla 2026 and Ranchi 2025), taken as stored on 2026-10-05. Four say \"this study\" about their own paper, as 12% of the Karnataka chunks do.",
+  "passages": [
+    {
+      "id": "S1#c1",
+      "shortRef": "Bagla 2026",
+      "page": 6,
+      "text": "2.3 Financial barriers to rooftop solar adoption\nMultiple studies identify high upfront capital costs, long payback periods, uncertainty regarding\nreturn on investment, and limited financing access as major deterrents to household adoption.\nThe Kerala study by Mathew and Pandian found financial concerns to be the most prominent\ncategory of barriers identified by respondents [3]. Affordability concerns often outweigh\nenvironmental motivations when consumers evaluate rooftop solar investments. The CEEW\nsurvey finds that affordability concerns are not necessarily about cost alone, but also about lack\nof awareness of financing options: among aware but uninterested households who perceived RTS\nas expensive, 73 per cent were unaware of available financing options [1]. This finding suggests\nthat financial literacy and awareness are often as important as subsidy levels themselves.\nThe financial attractiveness of rooftop solar is also strongly influenced by policy design.\nSubsidies under PM Surya Ghar provide up to INR 78,000 for systems of 3 kW and above,\nsignificantly reducing initial investment requirements [2]. On the other hand, rising equipment\ncosts associated with domestic content requirements and ALMM regulations may partially offset\nthese benefits for price-sensitive consumers [1]."
+    },
+    {
+      "id": "S1#c2",
+      "shortRef": "Bagla 2026",
+      "page": 20,
+      "text": "Volume:11, Issue:08 \"August 2026\"\nAddress perception friction through targeted communication. Since fear of complexity was\ngreater than actual complexity in the study sample, policymakers should test whether a “solar is\nsimpler than you think” campaign — using real adopter testimonials, before/after complexity\nscores, and simple visuals explaining the process — reduces anticipatory anxiety; whether\nhyperlocal outreach through RWAs, gram panchayats, and BESCOM field staff increases\nawareness and trust; and whether demonstration sites in apartments and villages accelerate\nadoption, since rooftop solar cannot be “trialled” and visible installations reduce uncertainty.\nImprove financial literacy and strengthen the economic value proposition. Affordability concerns\noften stem from lack of financing awareness, not cost alone. Policymakers should test whether a\nstandardised “Solar Finance Kit” — including EMI options, payback-period calculators, billreduction estimates, and panel cost comparisons — improves decision-making; whether\nincreased partnerships with banks and micro-finance institutions increase financing uptake; and\nwhether models designed for low-consumption households (shared solar, community solar,\nutility-led solar subscription models) improve perceptions of ROI.\nExpand access for apartment residents through DSPV awareness and facilitation."
+    },
+    {
+      "id": "S1#c3",
+      "shortRef": "Bagla 2026",
+      "page": 19,
+      "text": "\nSimplify subsidy access and reduce its unintended friction. The subsidy paradox — where\nsubsidy-based financial support itself increases friction — was a distinctive finding.\nPolicymakers should test whether enabling end-users to apply directly for the subsidy (instead of\nvendor-mediated applications) increases transparency and reduces delays; whether a simplified,\nstep-by-step, checklist-based subsidy form reduces confusion; and whether revising ALMM\nrequirements for residential systems reduces cost anxiety and improves affordability without\ncompromising quality.\nwww.ijsser.org Copyright © IJSSER 2026, All rights reserved Page 4339\n\n"
+    },
+    {
+      "id": "S1#c4",
+      "shortRef": "Bagla 2026",
+      "page": 4,
+      "text": "2. Literature Review\nThe literature demonstrates that rooftop solar adoption is rarely constrained by technology alone.\nInstead, adoption is shaped by a combination of financial, informational, technical, regulatory,\nand behavioural frictions. Subsidies and supportive regulations create necessary conditions for\nadoption, but they do not guarantee installation. The evidence suggests that the most significant\nchallenge lies in converting household willingness into action. Therefore, understanding how\nhouseholds experience the “last mile” of subsidy delivery is essential for designing policies that\nmove beyond availability and toward actual adoption. This insight forms the conceptual\nfoundation for the present study of rooftop solar adoption in Karnataka."
+    },
+    {
+      "id": "S1#c5",
+      "shortRef": "Bagla 2026",
+      "page": 9,
+      "text": "3.1 Research design\nThis study adopts a qualitative exploratory research design to investigate the barriers and\nfrictions influencing residential rooftop solar adoption in Karnataka. The study focuses on\nunderstanding the “last mile” of policy implementation by examining the lived experiences of\nhouseholds that have either adopted rooftop solar systems or seriously considered doing so. The\nstudy also included households that have not yet adopted rooftop solar in order to understand\ntheir awareness, inhibitions, and perceptions. The approach is guided by the premise that\nadoption decisions are shaped not only by economics and technology but also by perceptions,\ntrust, procedural complexity, and household-specific circumstances. The study uses a household\nfriction framework, viewing rooftop solar adoption as a multi-stage process involving awareness,\nconsideration, initiation, installation, and post-installation experience. Particular attention is paid\nto points where households encounter obstacles or delays that may discourage adoption despite\npositive attitudes towards solar energy.\nwww.ijsser.org Copyright © IJSSER 2026, All rights reserved Page 4329\n\n"
+    },
+    {
+      "id": "S1#c6",
+      "shortRef": "Bagla 2026",
+      "page": 11,
+      "text": "4. Results\nThe findings from this study reveal that rooftop solar adoption in Karnataka stalls not because\nhouseholds reject the technology, but because friction accumulates at multiple points in the\nadoption journey from awareness to installation and post-installation experience. Although\nKarnataka has one of India’s most progressive distributed solar policy frameworks, householdlevel evidence shows that adoption remains constrained by informational gaps, procedural\ncomplexity, structural limitations, and perceived financial risk. These findings closely mirror\nnational patterns documented in the CEEW 2026 survey, which found that while 57 per cent of\nhouseholds were aware of rooftop solar, only 5 per cent initiated installation and just 1.4 per cent\ncompleted adoption [1]. The qualitative evidence from Karnataka helps explain why this\nconversion gap persists.\nThe total sample comprised 70 households: 24 households (34.3 per cent) that have adopted\nrooftop solar and 46 households (65.7 per cent) that have not (Table 1).\nwww.ijsser.org Copyright © IJSSER 2026, All rights reserved Page 4331\n\n"
+    },
+    {
+      "id": "S1#c7",
+      "shortRef": "Bagla 2026",
+      "page": 17,
+      "text": "5.1 Karnataka households mirror national friction patterns\nRespondents in this study frequently cited obstacles such as BESCOM/DISCOM delays,\ndocumentation complexity, and uncertainty about net-metering approval wait times. These match\nCEEW’s identification of the same friction points, including application submission, vendor\nselection, and net-metering approvals [1]. This alignment is important: it indicates that\nKarnataka’s challenges are not random, but part of a broader national pattern. Even motivated\nhouseholds hesitate or drop out, not because they lack interest, but because the adoption pathway\nis procedurally heavy and institutionally slow. In this sense, the “last mile of a subsidy” is not the\nsubsidy itself, but the institutional interface through which households must navigate to access it."
+    },
+    {
+      "id": "S2#c8",
+      "shortRef": "Ranchi 2025",
+      "page": 11,
+      "text": "Shodh Manjusha: An International Multidisciplinary Journal\nThe descriptive analysis revealed wide inter-state variability in solar rooftop installations,\nwith some economically modest or low-subsidy states outperforming others with higher\nfinancial incentives. While states like Uttar Pradesh and West Bengal show high levels of\nadoption, others like Bihar and Odisha lag behind, even with substantial subsidies. This\nsuggests that non-financial barriers—such as awareness, implementation bottlenecks, or\nadministrative complexities—might outweigh the benefits offered through direct financial\nsupport. Regression analysis pointed to a weak relationship between rooftop solar\ninstallations and economic variables such as income, electricity tariffs, and urbanization. The\nmost counterintuitive and significant result was the negative correlation between subsidy\npercentage and adoption levels, implying that higher subsidies may not necessarily lead to\nhigher uptake. This finding was further reinforced by ANOVA, which indicated no\nstatistically significant difference in installation numbers between high-subsidy and lowsubsidy states. Together, these results suggest that the quality, delivery mechanism, and\nperceived reliability of policy incentives matter more than their nominal financial value."
+    }
+  ]
+}

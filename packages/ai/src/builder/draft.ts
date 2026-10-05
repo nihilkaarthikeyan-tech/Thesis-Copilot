@@ -20,6 +20,7 @@ import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
 import type { PromptPassage } from './assist.js';
 import { displayEquationOf, tokenizeNotation } from './notation.js';
+import { nameTheSource } from './own-study.js';
 import { collapseSameSourceRuns, stripUnknownCitations } from './postprocess.js';
 import { filterSentences } from './quality.js';
 
@@ -121,7 +122,8 @@ export function draftUserMessage(input: DraftBuildInput): string {
       id: passage.id,
       shortRef: passage.shortRef,
       page: passage.page ?? '',
-      text: passage.text,
+      // ADR-0078: a paper's "this study" about itself, named, so it never reaches the thesis.
+      text: nameTheSource(passage.text, passage.shortRef),
     })),
     paperExcerpt: input.paperExcerpt ?? '',
   });
