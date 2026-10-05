@@ -10,6 +10,7 @@ import { type CoreClient, EMBEDDING_DIMENSIONS, type UnpaywallClient } from '@tc
 import type { IndexSourceJob } from '@tc/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  arxivPdfUrl,
   EMBED_BATCH,
   type IndexSourceDeps,
   openAccessKey,
@@ -170,6 +171,26 @@ describe('runIndexSource', () => {
     // The PDF is kept, so the viewer can open it and a re-index needs no second download.
     expect(stored.has(openAccessKey('doc-1', 'src-1'))).toBe(true);
     expect(source.fileKey).toBe(openAccessKey('doc-1', 'src-1'));
+  });
+
+  it('reads an arXiv paper from arXiv itself, which Unpaywall does not list (2026-10-05)', async () => {
+    const { deps, source } = fakeDeps({
+      oaPdfUrl: null,
+      source: { doi: '10.48550/arXiv.1706.03762' },
+    });
+    const result = await runIndexSource(job(), deps);
+    expect(result.groundingLevel).toBe('FULL_TEXT');
+    expect(source.groundingLevel).toBe('FULL_TEXT');
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('https://arxiv.org/pdf/1706.03762');
+    expect(deps.unpaywall.bestOpenAccess).not.toHaveBeenCalled();
+  });
+
+  it('names the arXiv PDF only for an arXiv DOI', () => {
+    expect(arxivPdfUrl('10.48550/arxiv.1706.03762')).toBe('https://arxiv.org/pdf/1706.03762');
+    expect(arxivPdfUrl('10.48550/arXiv.hep-th/9901001')).toBe(
+      'https://arxiv.org/pdf/hep-th/9901001',
+    );
+    expect(arxivPdfUrl('10.1038/nature14539')).toBeNull();
   });
 
   it('reads a PDF the student uploaded without asking Unpaywall at all', async () => {

@@ -74,7 +74,7 @@ export type IndexSourceResult = {
   /** Where the indexed text came from, so the log says what was actually read. */
   from: 'stored-pdf' | 'open-access-pdf' | 'open-access-xml' | 'abstract' | 'nothing';
   /** Which service located an open-access PDF, when one was fetched. */
-  via?: 'unpaywall' | 'core' | 'europepmc';
+  via?: 'unpaywall' | 'core' | 'europepmc' | 'arxiv';
   fullTextFailure?: FullTextFailure;
 };
 
@@ -111,7 +111,7 @@ export async function runIndexSource(
   let sections: Array<{ section: string; start: number; end: number }> | undefined;
   let from: IndexSourceResult['from'] = 'nothing';
   let fullTextFailure: FullTextFailure | undefined;
-  let via: 'unpaywall' | 'core' | 'europepmc' | undefined;
+  let via: 'unpaywall' | 'core' | 'europepmc' | 'arxiv' | undefined;
   let fileKey = source.fileKey;
 
   // 1. A PDF we already hold — the student's own upload (FR-2.3), or one fetched by an earlier run.
@@ -297,7 +297,7 @@ export async function runIndexSource(
 }
 
 type OpenAccessOutcome =
-  | { ok: true; bytes: Buffer; via: 'unpaywall' | 'core' }
+  | { ok: true; bytes: Buffer; via: 'unpaywall' | 'core' | 'arxiv' }
   | { ok: false; reason: FullTextFailure };
 
 /**
@@ -310,6 +310,18 @@ async function fetchFromOpenAccess(
   log: (event: Record<string, unknown>) => void,
   sourceId: string,
 ): Promise<OpenAccessOutcome> {
+  // An arXiv paper is always free at a known address. Unpaywall does not list arXiv's own DOIs
+  // (10.48550/arxiv.*), so "Attention Is All You Need" came back abstract-only (2026-10-05).
+  const arxiv = arxivPdfUrl(doi);
+  if (arxiv) {
+    const result = await fetchOpenAccessPdf(arxiv);
+    if (result.ok) {
+      log({ msg: 'full text from arxiv', sourceId, url: arxiv });
+      return { ok: true, bytes: result.bytes, via: 'arxiv' };
+    }
+    log({ msg: 'arxiv pdf could not be fetched', sourceId, url: arxiv, reason: result.reason });
+  }
+
   let pdfUrls: string[] = [];
   let unpaywallFailure: FullTextFailure | null = null;
   try {
@@ -361,6 +373,15 @@ async function fetchFromOpenAccess(
   // CORE named a copy and it could not be read: that is the more specific reason to report.
   log({ msg: 'core copy could not be fetched', sourceId, url: coreUrl, reason: result.reason });
   return { ok: false, reason: result.reason };
+}
+
+/**
+ * The arXiv PDF for an arXiv DOI — `10.48550/arXiv.1706.03762` → `https://arxiv.org/pdf/1706.03762`
+ * — or null for any other DOI. Old-style ids (`hep-th/9901001`) keep their slash.
+ */
+export function arxivPdfUrl(doi: string): string | null {
+  const id = /^10\.48550\/arxiv\.(.+)$/i.exec(doi.trim())?.[1];
+  return id ? `https://arxiv.org/pdf/${id}` : null;
 }
 
 /** The plain-text abstract `resolve-reference` stored on the CSL record, if there is one. */
