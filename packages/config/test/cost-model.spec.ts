@@ -63,14 +63,15 @@ describe('Appendix E.2 — cost self-check', () => {
     // Eight sections, each one examiner call of the chapter build's shape, on gpt-5-mini.
     expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(1.8618, 4);
     // ADR-0077 + ADR-0074: chat on the strong tier, researching a thin library (₹0.4850 a
-    // question) took this from ₹63.89.
-    expect(budget.totalInr).toBeCloseTo(70.73, 2);
+    // question) took this from ₹63.89 to ₹70.73; ADR-0080's deep research adds ₹3.27.
+    expect(budget.totalInr).toBeCloseTo(74.0, 2);
     // ADR-0051 moved the fast tier to gpt-4.1-mini for Assist; the ceiling holds there too.
     const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
     });
-    // ADR-0077 + ADR-0074: from ₹85.82.
-    expect(assistModel.totalInr).toBeCloseTo(89.85, 2);
+    // ADR-0077 + ADR-0074: from ₹85.82; ADR-0080's three deep research questions (₹1.09 each)
+    // from ₹89.85 to ₹93.13.
+    expect(assistModel.totalInr).toBeCloseTo(93.13, 2);
     expect(assistModel.withinCeiling).toBe(true);
   });
 
@@ -144,6 +145,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       CHAPTER_BUILD: 1,
       // ADR-0056: one examiner review to see what it does.
       EXAMINER_REVIEW: 1,
+      // ADR-0080: one deep research question to see what it does.
+      RESEARCH: 1,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
     expect(PLAN_LIMITS.FREE_TRIAL.libraryPdfs).toBe(10);
@@ -171,6 +174,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       CHAPTER_BUILD: 3,
       // ADR-0056: six examiner reviews a month.
       EXAMINER_REVIEW: 6,
+      // ADR-0080: three deep research questions a month (₹1.09 each).
+      RESEARCH: 3,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);

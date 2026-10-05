@@ -145,6 +145,20 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
     cachedInputTokens: 8 * 4_000,
     outputTokens: 8 * 600,
   },
+  /**
+   * ADR-0080. One unit is one deep research question, two strong-tier calls priced at their
+   * ceiling: the planner (the question, the thesis scope and the library's titles: 2.5k in,
+   * 400 out plus reasoning), and the answer (up to 16 library passages and 12 abstracts a search
+   * found, with the plan: 12.5k in, 2,200 out plus reasoning). The 4k cached block is counted
+   * once per call. The research's embedding call (at most ~60 abstracts, under ₹0.10) is logged
+   * as its own EMBED row, as ADR-0074's is.
+   */
+  RESEARCH: {
+    tier: 'strong',
+    inputTokens: 2_500 + 12_500,
+    cachedInputTokens: 2 * 4_000,
+    outputTokens: 900 + 3_400,
+  },
 };
 
 /** The most sections one examiner review sends (ADR-0056); the cost row above is priced on it. */
@@ -285,6 +299,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
       ['Viva preparation', 'VIVA'],
       ['Chapter builds', 'CHAPTER_BUILD'],
       ['Examiner reviews', 'EXAMINER_REVIEW'],
+      ['Deep research', 'RESEARCH'],
     ] as const
   )
     .filter(([, action]) => !options.actions || options.actions.includes(action))

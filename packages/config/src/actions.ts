@@ -31,6 +31,9 @@ export const AI_ACTIONS = [
   'CHAPTER_BUILD',
   // ADR-0056: a strict examiner's reading of a chapter the student wrote, as flags.
   'EXAMINER_REVIEW',
+  // ADR-0080: deep research in chat — a planned, searched, part-by-part answer the student asks
+  // for by name; a planner call and a longer answer on the strong tier.
+  'RESEARCH',
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -52,6 +55,8 @@ export const METERED_ACTIONS = [
   'CHAPTER_BUILD',
   // ADR-0056. One unit is one examiner review of one chapter (up to 8 sections).
   'EXAMINER_REVIEW',
+  // ADR-0080. One unit is one deep research question: the plan, every search, and the answer.
+  'RESEARCH',
 ] as const satisfies readonly AiAction[];
 
 /** The six §11.3 rows — what the PRD's own budget table (§11.4) prices. */
@@ -113,6 +118,7 @@ export const ALLOWANCE_NAMES: Readonly<Record<string, string>> = {
   VIVA: 'Viva practice',
   CHAPTER_BUILD: 'Chapter builds',
   EXAMINER_REVIEW: 'Examiner reviews',
+  RESEARCH: 'Deep research questions',
   // ADR-0072: not a metered action, but bounded per month, and refused in these words.
   OUTLINE_FROM_TITLE: 'Chapter plans from a title',
 };
