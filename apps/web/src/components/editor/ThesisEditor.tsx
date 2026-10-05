@@ -1705,6 +1705,17 @@ function ChapterEditor({
                   }}
                   onUsageChange={onUsageChange}
                 />
+                {/* ADR-0084: the same panel reviewing tone against a sample. */}
+                <ProofreadPanel
+                  mode="tone"
+                  documentId={doc.id}
+                  chapterId={chapter.id}
+                  editor={editor}
+                  save={async () => {
+                    await autosaveRef.current?.flush();
+                  }}
+                  onUsageChange={onUsageChange}
+                />
                 <ParaphrasePanel chapterId={chapter.id} editor={editor} />
                 <SourceQualityPanel documentId={doc.id} />
               </>

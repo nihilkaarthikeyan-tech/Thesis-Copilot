@@ -28,6 +28,7 @@ import {
   mockRevisionFor,
   mockSectionScopeResponse,
   mockStyleResponse,
+  mockToneResponse,
   mockVivaFeedbackResponse,
   mockVivaQuestionsResponse,
   type Providers,
@@ -88,6 +89,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 mockEquationResponse,
                 // ADR-0026: proofreading is metered as COMMAND too; matched by `<proofread>`.
                 mockProofreadResponse,
+                // ADR-0084: the tone review, metered as COMMAND too; matched by `<tone>`.
+                mockToneResponse,
                 // ADR-0030: viva preparation, its own action; matched by its outer tag.
                 mockVivaQuestionsResponse,
                 mockVivaFeedbackResponse,

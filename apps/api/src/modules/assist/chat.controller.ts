@@ -34,6 +34,7 @@ import { CommandService } from './command.service.js';
 import { EquationService } from './equation.service.js';
 import { ProofreadService } from './proofread.service.js';
 import { streamSse } from './sse.js';
+import { ToneService } from './tone.service.js';
 import { WebScopeService } from './web-scope.service.js';
 
 const chatBody = z.object({
@@ -64,6 +65,13 @@ const chatBody = z.object({
 const webBody = z.object({
   documentId: z.string().uuid(),
   message: z.string().trim().min(3).max(500),
+});
+
+/** ADR-0084: the tone review, against the writing profile or a chosen paper. */
+const toneBody = z.object({
+  chapterId: z.string().uuid(),
+  sampleSourceId: z.string().uuid().optional(),
+  fromSentence: z.number().int().min(0).optional(),
 });
 
 const proofreadBody = z.object({
@@ -135,6 +143,7 @@ export class ChatController {
     private readonly chat: ChatService,
     private readonly commands: CommandService,
     private readonly proofread: ProofreadService,
+    private readonly tone: ToneService,
     private readonly citeRoles: CiteRoleService,
     private readonly equations: EquationService,
     private readonly web: WebScopeService,
@@ -217,6 +226,23 @@ export class ChatController {
     if (!parsed.success)
       throw new ValidationError('Invalid proofread request', parsed.error.issues);
     return this.proofread.run(user, parsed.data.chapterId, parsed.data.fromSentence ?? 0);
+  }
+
+  /**
+   * ADR-0084: review one chapter's tone against the student's own profile or a library paper.
+   * Rewrites come back as data; the editor applies one only when the student accepts it. One
+   * `COMMAND` unit a run.
+   */
+  @Post('tone-review')
+  @HttpCode(200)
+  toneReview(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = toneBody.safeParse(body);
+    if (!parsed.success)
+      throw new ValidationError('Invalid tone review request', parsed.error.issues);
+    return this.tone.run(user, parsed.data.chapterId, {
+      ...(parsed.data.sampleSourceId ? { sampleSourceId: parsed.data.sampleSourceId } : {}),
+      fromSentence: parsed.data.fromSentence ?? 0,
+    });
   }
 
   /** FR-4.8: `{ chapterId, selection, command }` → the rewrite and its diff. */

@@ -21,6 +21,7 @@ import { DraftController } from './draft.controller.js';
 import { DraftService } from './draft.service.js';
 import { EquationService } from './equation.service.js';
 import { ProofreadService } from './proofread.service.js';
+import { ToneService } from './tone.service.js';
 import { WebScopeService } from './web-scope.service.js';
 
 @Module({
@@ -39,6 +40,7 @@ import { WebScopeService } from './web-scope.service.js';
     ContextService,
     DraftService,
     ProofreadService,
+    ToneService,
     QueueService,
     RedisService,
     StorageService,

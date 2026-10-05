@@ -27,11 +27,16 @@ type Correction = {
   sentenceId: string;
   original: string;
   replacement: string;
-  kind: 'spelling' | 'grammar' | 'punctuation' | 'agreement';
+  kind: 'spelling' | 'grammar' | 'punctuation' | 'agreement' | 'tone';
   why: string;
   sentence: string;
   near: number;
 };
+
+/** ADR-0084: the panel in its second mode reviews tone against a sample, not spelling. */
+type Mode = 'proofread' | 'tone';
+
+type SampleOption = { id: string; title: string };
 
 type RunResult = {
   corrections: Correction[];
@@ -46,6 +51,7 @@ const KIND_LABEL: Record<Correction['kind'], string> = {
   grammar: 'Grammar',
   punctuation: 'Punctuation',
   agreement: 'Agreement',
+  tone: 'Tone',
 };
 
 const keyOf = (c: Pick<Correction, 'original' | 'replacement'>) =>
@@ -88,12 +94,18 @@ export function ProofreadPanel({
   editor,
   save,
   onUsageChange,
+  mode = 'proofread',
+  documentId,
 }: {
   chapterId: string;
   editor: Editor | null;
   /** Saves what is on screen first, so the chapter that is read is the one the student sees. */
   save: () => Promise<void>;
   onUsageChange: () => void;
+  /** ADR-0084: 'tone' reviews the chapter against a sample instead of for mistakes. */
+  mode?: Mode;
+  /** For the tone mode's list of papers to use as the model. */
+  documentId?: string;
 }) {
   const [items, setItems] = useState<Correction[]>([]);
   const [progress, setProgress] = useState<Omit<RunResult, 'corrections'> | null>(null);
@@ -101,6 +113,24 @@ export function ProofreadPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moved, setMoved] = useState<Set<string>>(new Set());
+  /** ADR-0084: the tone mode's model — the student's own profile, or a library paper by id. */
+  const [sampleSourceId, setSampleSourceId] = useState<string>('');
+  const [samples, setSamples] = useState<SampleOption[]>([]);
+  const [sampleLabel, setSampleLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== 'tone' || !documentId) return;
+    void api<Array<{ id: string; title: string | null; groundingLevel?: string }>>(
+      `/documents/${documentId}/sources`,
+    )
+      .then((list) =>
+        setSamples(
+          list
+            .filter((s) => s.groundingLevel === 'FULL_TEXT' || s.groundingLevel === 'ABSTRACT')
+            .map((s) => ({ id: s.id, title: s.title ?? 'Untitled paper' })),
+        ),
+      )
+      .catch(() => setSamples([]));
+  }, [mode, documentId]);
 
   // A different chapter is a different list.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the chapter changes
@@ -118,10 +148,18 @@ export function ProofreadPanel({
       setError(null);
       try {
         await save();
-        const result = await api<RunResult>('/proofread', {
-          method: 'POST',
-          body: JSON.stringify({ chapterId, ...(fromSentence > 0 ? { fromSentence } : {}) }),
-        });
+        const result = await api<RunResult & { sample?: { label: string } }>(
+          mode === 'tone' ? '/tone-review' : '/proofread',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              chapterId,
+              ...(fromSentence > 0 ? { fromSentence } : {}),
+              ...(mode === 'tone' && sampleSourceId ? { sampleSourceId } : {}),
+            }),
+          },
+        );
+        if (result.sample) setSampleLabel(result.sample.label);
         onUsageChange();
         const dismissed = readDismissed(chapterId);
         const fresh = result.corrections.filter((c) => !dismissed.has(keyOf(c)));
@@ -144,7 +182,7 @@ export function ProofreadPanel({
         setBusy(false);
       }
     },
-    [chapterId, save, onUsageChange],
+    [chapterId, save, onUsageChange, mode, sampleSourceId],
   );
 
   const idOf = (c: Correction) => `${c.sentenceId}:${keyOf(c)}`;
@@ -236,21 +274,52 @@ export function ProofreadPanel({
   const remaining = progress ? Math.max(0, progress.totalWords - checkedSoFar) : 0;
 
   return (
-    <section className="mt-4 border-t border-line pt-3" data-testid="proofread-panel">
-      <p className="eyebrow">Spelling and grammar</p>
+    <section
+      className="mt-4 border-t border-line pt-3"
+      data-testid={mode === 'tone' ? 'tone-panel' : 'proofread-panel'}
+      data-mode={mode}
+    >
+      <p className="eyebrow">{mode === 'tone' ? 'Tone of voice' : 'Spelling and grammar'}</p>
       <p className="mt-1 text-xs text-muted">
-        Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown
-        to you, and nothing changes until you accept it. One command unit a run, up to 2,000 words.
+        {mode === 'tone'
+          ? 'Reads this chapter against the tone you want — your own writing profile, or a paper from your library — and offers a rewrite where a sentence clearly differs. Nothing changes until you accept one. One command unit a run, up to 2,000 words.'
+          : 'Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown to you, and nothing changes until you accept it. One command unit a run, up to 2,000 words.'}
       </p>
+      {mode === 'tone' ? (
+        <label className="mt-2 flex items-center gap-2 text-xs">
+          <span className="text-muted">Match</span>
+          <select
+            data-testid="tone-sample"
+            value={sampleSourceId}
+            onChange={(e) => setSampleSourceId(e.target.value)}
+            className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-1 text-xs"
+          >
+            <option value="">my own writing profile</option>
+            {samples.map((s) => (
+              <option key={s.id} value={s.id}>
+                the paper: {s.title.length > 60 ? `${s.title.slice(0, 60)}…` : s.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <button
         type="button"
         disabled={busy || !editor}
         onClick={() => void run(0)}
-        data-testid="proofread-run"
+        data-testid={mode === 'tone' ? 'tone-run' : 'proofread-run'}
         className="mt-2 rounded-md border border-line-strong bg-surface px-3 py-1 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
       >
-        {busy ? 'Reading…' : progress ? 'Proofread again' : 'Proofread this chapter'}
+        {busy
+          ? 'Reading…'
+          : mode === 'tone'
+            ? progress
+              ? 'Review the tone again'
+              : 'Review the tone'
+            : progress
+              ? 'Proofread again'
+              : 'Proofread this chapter'}
       </button>
 
       {error ? (
@@ -261,9 +330,13 @@ export function ProofreadPanel({
 
       {progress ? (
         <p className="mt-2 text-xs text-muted" data-testid="proofread-summary">
-          {items.length === 0
-            ? `No mistakes found in ${checkedSoFar.toLocaleString()} words.`
-            : `${items.length} correction${items.length === 1 ? '' : 's'} in ${checkedSoFar.toLocaleString()} words.`}
+          {mode === 'tone'
+            ? items.length === 0
+              ? `Nothing out of tone in ${checkedSoFar.toLocaleString()} words${sampleLabel ? `, compared with ${sampleLabel}` : ''}.`
+              : `${items.length} sentence${items.length === 1 ? '' : 's'} out of tone in ${checkedSoFar.toLocaleString()} words${sampleLabel ? `, compared with ${sampleLabel}` : ''}.`
+            : items.length === 0
+              ? `No mistakes found in ${checkedSoFar.toLocaleString()} words.`
+              : `${items.length} correction${items.length === 1 ? '' : 's'} in ${checkedSoFar.toLocaleString()} words.`}
           {progress.nextSentence !== null && remaining > 0 ? (
             <>
               {' '}

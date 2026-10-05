@@ -373,6 +373,17 @@ export {
 } from './builder/themes.js';
 export { approxTokens, CHARS_PER_TOKEN, headByTokens, tailByTokens } from './builder/tokens.js';
 export {
+  buildToneRequest,
+  mockToneResponse,
+  paperSample,
+  postProcessTone,
+  renderStyleSample,
+  TONE,
+  type ToneItem,
+  type ToneResult,
+  toneSchema,
+} from './builder/tone.js';
+export {
   buildVivaFeedbackRequest,
   buildVivaQuestionsRequest,
   mockVivaFeedbackResponse,

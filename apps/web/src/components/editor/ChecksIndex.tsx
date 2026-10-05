@@ -38,6 +38,11 @@ export function ChecksIndex({
       action: <span className={here}>Below</span>,
     },
     {
+      name: 'Tone of voice',
+      what: 'Sentences whose tone differs from your own profile, or from a paper you choose.',
+      action: <span className={here}>Below</span>,
+    },
+    {
       name: 'Too close to a source',
       what: 'Sentences that run near-verbatim to a paper you cite.',
       action: <span className={here}>Below</span>,

@@ -5376,3 +5376,12 @@ the question as an image part (ADR-0064's shape); a document is one more passage
 document" hides. Loaded before the unit is taken, so a stale id is a free 400. Tests:
 `chat-attachments-api.spec.ts` (MinIO in the harness), `chat-attachments.spec.ts` (Playwright).
 
+## The partial list, round two: the tone review (2026-10-05, ADR-0084)
+
+Row 57. A new prompt, `tone.md` (fast tier, structured): each sentence of a chapter against a
+sample — the learned writing profile rendered as a description, or the first ~600 words of a
+library paper the student chose — with a rewrite where the tone clearly differs. Rules in code
+(`postProcessTone`): same citations, a length that is still that sentence's. Shown through the
+proofreading panel in a second mode on the Flags tab (Accept, Dismiss, Accept all, Y / N), one
+COMMAND unit a run. Tests: `tone.spec.ts` (ai, 7), `tone-review-api.spec.ts` (api, 4).
+

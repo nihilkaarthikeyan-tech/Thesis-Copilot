@@ -84,6 +84,8 @@ export const PROMPT_NAMES = [
   // Deep research in chat, likewise — docs/ADR/0080.
   'research_plan',
   'chat_deep',
+  // The tone review, likewise — docs/ADR/0084.
+  'tone',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];
