@@ -258,7 +258,11 @@ describe('a cap refusal leaves an audit row (ADR-0004)', () => {
     };
     const refused = await h.api('/draft/section', {
       method: 'POST',
-      body: JSON.stringify({ chapterId: firstChapterId, outlineNodeId: chapter.outlineNodeId }),
+      body: JSON.stringify({
+        chapterId: firstChapterId,
+        outlineNodeId: chapter.outlineNodeId,
+        heading: 'Financial constraints',
+      }),
     });
     expect(refused.status).toBe(429);
 

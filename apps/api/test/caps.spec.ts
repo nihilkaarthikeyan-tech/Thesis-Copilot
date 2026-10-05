@@ -128,7 +128,8 @@ describe('DRAFT cap (FR-4.4 is metered as DRAFT)', () => {
     await fillToCap('DRAFT');
     const response = await h.api('/draft/section', {
       method: 'POST',
-      body: JSON.stringify({ chapterId, outlineNodeId }),
+      // ADR-0071: a section needs a topic before the cap is even consulted.
+      body: JSON.stringify({ chapterId, outlineNodeId, heading: 'Financial constraints' }),
     });
     // A refusal is JSON problem-details, not a 200 with an error event (see assist/sse.ts).
     expect(response.status).toBe(429);
@@ -148,7 +149,8 @@ describe('DRAFT cap (FR-4.4 is metered as DRAFT)', () => {
 
     const response = await h.api('/draft/section', {
       method: 'POST',
-      body: JSON.stringify({ chapterId, outlineNodeId }),
+      // ADR-0071: a section needs a topic before the cap is even consulted.
+      body: JSON.stringify({ chapterId, outlineNodeId, heading: 'Financial constraints' }),
     });
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/event-stream');

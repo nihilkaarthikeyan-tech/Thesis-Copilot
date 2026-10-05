@@ -198,7 +198,8 @@ describe('on', () => {
     expect((await setBeyond('on')).status).toBe(200);
     const before = await chatUnits();
     const sse = await ask({});
-    expect(steps(sse)).toHaveLength(3);
+    // ADR-0073: the library is searched first (one step), then the three beyond-the-library steps.
+    expect(steps(sse)).toHaveLength(4);
     expect(done(sse).outcome).toBe('answered');
     expect(done(sse).beyond).toBeTruthy();
     expect(done(sse).offerBeyond).toBeUndefined();
