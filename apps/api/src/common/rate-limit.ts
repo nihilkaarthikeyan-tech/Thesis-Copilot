@@ -104,6 +104,12 @@ export const HEAVY_RATE_LIMITS = {
   link: { max: 30, windowSeconds: 60 },
   /** ADR-0057: making a copy of a thesis copies every row and file it owns. */
   copy: { max: 5, windowSeconds: 60 },
+  /**
+   * ADR-0068: a source's PDF, as a signed link or streamed through the API for the reader. A
+   * student opens a paper, flips to another, comes back; sixty a minute is a busy afternoon of
+   * reading and stops a script that walks a library downloading every file.
+   */
+  file: { max: 60, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type HeavyKind = keyof typeof HEAVY_RATE_LIMITS;
@@ -162,6 +168,7 @@ const HEAVY_ROUTES: ReadonlyArray<{ method: string; pattern: RegExp; kind: Heavy
   },
   { method: 'GET', pattern: new RegExp(`^/api/v1/read/${ID}(/.*)?$`), kind: 'link' },
   { method: 'POST', pattern: new RegExp(`^/api/v1/documents/${ID}/copy$`), kind: 'copy' },
+  { method: 'GET', pattern: new RegExp(`^/api/v1/sources/${ID}/file(/content)?$`), kind: 'file' },
 ];
 
 /** Routes no limiter counts: the health check and the metrics scrape are the operator's. */

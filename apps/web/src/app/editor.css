@@ -286,6 +286,20 @@
   margin-top: 0.375rem;
   text-decoration: underline;
 }
+/* ADR-0068: the paper reader, for any citation (a PDF or only the text we hold). */
+.thesis-editor .citation-popover__reader {
+  display: inline-block;
+  margin-top: 0.375rem;
+  margin-left: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.thesis-editor .citation-popover__reader:first-child,
+.thesis-editor .citation-popover__text + .citation-popover__reader {
+  margin-left: 0;
+  display: block;
+}
 /* "Read beside" (2026-10-04): the PDF in a pane next to the chapter, beside "Open PDF". */
 .thesis-editor .citation-popover__beside {
   display: inline-block;

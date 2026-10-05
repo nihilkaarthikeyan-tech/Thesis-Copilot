@@ -5,6 +5,7 @@
  * stays stateless and the worker can move to a second host without code changes (§7.5 step 2).
  */
 
+import type { Readable } from 'node:stream';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import { Client as MinioClient } from 'minio';
@@ -72,6 +73,17 @@ export class StorageService implements OnModuleInit {
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(chunk as Buffer);
     return Buffer.concat(chunks);
+  }
+
+  /**
+   * The object as a stream, with its size — ADR-0068, the paper reader: the API passes a source's
+   * PDF through to the student's own page rather than handing the browser a storage link, so the
+   * host's `X-Frame-Options` on storage never applies and no signed URL leaves the API.
+   */
+  async open(key: string): Promise<{ stream: Readable; size: number }> {
+    const stat = await this.client.statObject(this.bucket, key);
+    const stream = await this.client.getObject(this.bucket, key);
+    return { stream, size: stat.size };
   }
 
   /** Every key under a prefix, oldest first by name. Used to keep the last N exports (D.3.2). */

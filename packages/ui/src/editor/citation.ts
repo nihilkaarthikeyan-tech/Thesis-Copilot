@@ -77,6 +77,12 @@ export type CitationOptions = {
    */
   readBeside?: (target: { sourceId: string; page: number | null; label: string }) => void;
   canReadBeside?: () => boolean;
+  /**
+   * ADR-0068: the address of the app's paper reader for a source, opened at the cited page. When
+   * set, the popover offers "Open in reader" for every citation — with or without a PDF, since
+   * the reader shows the text we hold either way — at the cited page, with the passage marked.
+   */
+  readerHref?: (sourceId: string, page: number | null, chunkId: string | null) => string;
 };
 
 export type CitationStorage = {
@@ -442,6 +448,24 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
             });
             el.appendChild(beside);
           }
+        }
+
+        const readerFor = (current.attrs as CitationAttrs).sourceId;
+        if (options.readerHref && readerFor) {
+          const reader = document.createElement('a');
+          reader.className = 'citation-popover__reader';
+          reader.setAttribute('data-testid', 'citation-open-reader');
+          reader.href = options.readerHref(
+            readerFor,
+            passage.page,
+            (current.attrs as CitationAttrs).chunkId,
+          );
+          // A new tab: the chapter stays where it was, unsaved caret and all.
+          reader.target = '_blank';
+          reader.rel = 'noopener';
+          reader.textContent = 'Open in reader';
+          reader.addEventListener('mousedown', (event) => event.stopPropagation());
+          el.appendChild(reader);
         }
 
         dom.appendChild(el);

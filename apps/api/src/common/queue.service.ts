@@ -86,6 +86,22 @@ export class QueueService implements OnModuleDestroy {
       }));
   }
 
+  /**
+   * Whether a job for this `sourceId` is waiting or running (ADR-0068: the paper reader says
+   * "still being read" only while that is true). Looks at the unfinished jobs only — a few dozen
+   * at most — rather than guessing at the several job-id shapes `index-source` is enqueued under.
+   */
+  async hasUnfinishedFor(name: QueueName, sourceId: string): Promise<boolean> {
+    const jobs = await this.queue(name).getJobs(
+      ['active', 'waiting', 'delayed', 'prioritized', 'waiting-children', 'paused'],
+      0,
+      499,
+    );
+    return jobs.some(
+      (job) => (job?.data as { sourceId?: unknown } | undefined)?.sourceId === sourceId,
+    );
+  }
+
   /** Puts one failed job back on its queue. False when it is not there or not failed. */
   async retry(name: QueueName, jobId: string): Promise<boolean> {
     const job = await this.queue(name).getJob(jobId);

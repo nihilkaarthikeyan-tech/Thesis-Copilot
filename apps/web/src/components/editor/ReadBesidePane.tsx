@@ -5,26 +5,26 @@
  * from the Jenni study). Opened by `requestReadBeside` (`lib/read-beside.ts`) from the citation
  * hover card or the Sources tab; mounted once by the editor screen.
  *
- * The PDF is the browser's own viewer in an iframe on the signed link from `GET /sources/:id/file`
- * — no PDF library. `#page=N` opens it at the cited page. The link is fetched when the pane opens,
- * so it is always fresh, and the iframe is keyed on the source and page so a second citation to
- * the same paper actually moves the viewer (a change of fragment alone does not, in Chrome).
+ * Since ADR-0068 the PDF is drawn by the paper reader's own pdf.js view (`PdfView`), from bytes
+ * the API streams to the owner — not the browser's viewer in an iframe on a storage link. In
+ * production the host sends `X-Frame-Options: DENY` on storage links, so the frame was blank
+ * there; a canvas on our own page is never framed. The view is keyed on the source and page, so
+ * a second citation to the same paper moves it.
  *
- * Desktop only: below `READ_BESIDE_MIN_VIEWPORT` nobody asks for it, and the callers open the PDF
- * in a new tab as before. "Open in a new tab" is in the pane's header too, for a browser whose
- * viewer will not show inside a frame.
+ * Desktop only: below `READ_BESIDE_MIN_VIEWPORT` nobody asks for it, and the callers open the
+ * paper reader in a new tab instead. "Open in reader" is in the pane's header too.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { PdfView } from '@/components/reader/PdfView';
 import {
   clampPaneWidth,
   PANE_DEFAULT_WIDTH,
   PANE_MIN_WIDTH,
-  pdfAtPage,
   READ_BESIDE,
   type ReadBesideTarget,
 } from '@/lib/read-beside';
+import { readerHref } from '@/lib/reader';
 
 const WIDTH_KEY = 'tc:read-beside-width';
 
@@ -37,9 +37,8 @@ function storedWidth(): number {
   }
 }
 
-export function ReadBesidePane() {
+export function ReadBesidePane({ documentId }: { documentId: string }) {
   const [target, setTarget] = useState<ReadBesideTarget | null>(null);
-  const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [width, setWidth] = useState(PANE_DEFAULT_WIDTH);
   const drag = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -59,26 +58,9 @@ export function ReadBesidePane() {
   }, []);
 
   const sourceId = target?.sourceId ?? null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new source starts without an error
   useEffect(() => {
-    if (!sourceId) return;
-    let live = true;
-    setUrl(null);
     setError(null);
-    api<{ url: string }>(`/sources/${sourceId}/file`)
-      .then((r) => {
-        if (live) setUrl(r.url);
-      })
-      .catch((e) => {
-        if (!live) return;
-        setError(
-          e instanceof ApiError && e.problem.status === 404
-            ? 'There is no PDF for this source. Add one on the Sources page.'
-            : 'The PDF could not be opened.',
-        );
-      });
-    return () => {
-      live = false;
-    };
   }, [sourceId]);
 
   const close = useCallback(() => setTarget(null), []);
@@ -104,7 +86,6 @@ export function ReadBesidePane() {
   if (!target) return null;
 
   const page = target.page;
-  const src = url ? pdfAtPage(url, page) : null;
 
   return (
     <aside
@@ -159,17 +140,15 @@ export function ReadBesidePane() {
             {target.label || 'Source'}
             {page !== null ? <span className="font-normal text-muted"> · p. {page}</span> : null}
           </span>
-          {src ? (
-            <a
-              href={src}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 text-xs text-muted underline hover:text-ink"
-              data-testid="read-beside-new-tab"
-            >
-              Open in a new tab
-            </a>
-          ) : null}
+          <a
+            href={readerHref(documentId, target.sourceId, page)}
+            target="_blank"
+            rel="noopener"
+            className="shrink-0 text-xs text-muted underline hover:text-ink"
+            data-testid="read-beside-new-tab"
+          >
+            Open in reader
+          </a>
           <button
             type="button"
             className="shrink-0 text-xs text-muted underline hover:text-ink"
@@ -183,16 +162,22 @@ export function ReadBesidePane() {
           <p role="alert" className="p-4 text-sm text-warn">
             {error}
           </p>
-        ) : src ? (
-          <iframe
-            key={`${target.sourceId}:${page ?? ''}`}
-            title={`PDF of ${target.label || 'the source'}`}
-            src={src}
-            data-testid="read-beside-frame"
-            className="min-h-0 w-full flex-1 border-0 bg-sunk"
-          />
         ) : (
-          <p className="p-4 text-sm text-muted">Opening the PDF…</p>
+          <PdfView
+            key={`${target.sourceId}:${page ?? ''}`}
+            sourceId={target.sourceId}
+            initialPage={page}
+            zoom="fit"
+            onState={(state) => {
+              if (state.status === 'error') {
+                setError(
+                  state.error === 'There is no PDF for this paper.'
+                    ? 'There is no PDF for this source. Add one on the Sources page.'
+                    : (state.error ?? 'The PDF could not be opened.'),
+                );
+              }
+            }}
+          />
         )}
       </div>
     </aside>

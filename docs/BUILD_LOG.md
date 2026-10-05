@@ -5086,3 +5086,28 @@ tooltip a keyboard cannot reach — it is now written under the paper.
 PDF (the test build has a host permission for its fixture server), Chrome's own PDF viewer tab,
 the right-click item and `chrome.action.openPopup`. Each degrades to a stated message. Publishing
 is the owner's: `apps/extension/PUBLISHING.md`.
+
+## The paper reader (2026-10-05, ADR-0068)
+
+A paper in the library opens inside Thesis Copilot at `/app/d/:id/sources/:sourceId` (the path
+the Chrome add-on deep-links to): the PDF drawn with pdf.js (`pdfjs-dist` 5.7.284, pinned) from
+bytes the API streams to the owner (`GET /sources/:id/file/content`), never framed, so the host
+nginx's `X-Frame-Options: DENY` on storage links no longer blanks it; a Text view of the passages
+we hold (the chunker's overlaps cut away), which is what an abstract-only paper shows; Ctrl/Cmd+F
+search with "x of y" in both; a selection copied with the thesis's own citeproc label
+(`GET /documents/:id/citations/quote`), cited in the chapter where the student clicks, or asked
+about in chat with the paper @-named. Honest states for "still being looked up / read", abstract
+only (with Add the PDF) and a PDF that yielded no text. Entry points: the library title and
+"Read", the editor's Sources tab and citation hover card ("Open in reader", at the cited passage),
+Find papers and chat results once added. Read beside now draws with the same view, so it works in
+production; on a narrow screen "Read PDF" opens the reader. Owner only, like every `/app/d` screen.
+
+Tests: API `paper-reader.spec.ts` (13, testcontainers) and `reader-text.spec.ts` (10); web
+`reader.spec.ts` (20); ui hover card (+2); Playwright `paper-reader.spec.ts` (8) and the rewritten
+`read-beside.spec.ts` (2), plus own-comments, chat-mentions, find-papers, library-collections and
+library-issues — 19 of 19 against this branch's own `next build` + `next start` (web :3200, API
+:3201, worker on Redis db 7, mock AI) with the production CSP, the shared stack on :3000 being in
+use. One trap worth keeping: Playwright compiles the e2e specs as CommonJS, so a helper there
+cannot use `import.meta.url` (`e2e/_db.ts` uses `__dirname`). `next build`'s standalone trace
+fails on this Windows worktree with EPERM on symlinks after compiling; `next start` serves the
+compiled build regardless.

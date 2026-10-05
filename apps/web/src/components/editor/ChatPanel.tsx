@@ -16,6 +16,7 @@ import { ApiError, api } from '@/lib/api';
 import { answerPlainText } from '@/lib/chat-copy';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
 import { matchPrompts, promptQuery, type SavedPrompt, suggestPromptTitle } from '@/lib/prompts';
+import { findInLibrary, readerHref } from '@/lib/reader';
 import { cn } from '@/lib/utils';
 import { type Mention, MentionChips, MentionPicker, useChatMentions } from './ChatMentions';
 import { PromptPicker, SavePromptForm, useSavedPrompts } from './ChatPrompts';
@@ -129,7 +130,7 @@ export function ChatPanel({
    * A passage the student chose to ask about (2026-10-04, from the Jenni study: select text, ask
    * the chat). It goes into the box with the cursor after it; nothing is sent until they press Ask.
    */
-  prefill?: { text: string; nonce: number } | null;
+  prefill?: { text: string; nonce: number; mention?: Mention } | null;
   onUsageChange: () => void;
   onOpenPassage: (sourceId: string, chunkId: string) => void;
   /**
@@ -176,6 +177,13 @@ export function ChatPanel({
   // `@` names the papers a question is about. Library scope only: the draft and the web search
   // have no papers of their own to name.
   const mentions = useChatMentions(documentId, scope === 'library');
+  // ADR-0068: a passage sent from the paper reader names its paper, so the answer is drawn from it.
+  const addMention = mentions.add;
+  useEffect(() => {
+    if (!prefill?.mention) return;
+    setScope('library');
+    addMention(prefill.mention);
+  }, [prefill, addMention]);
   // `/` brings back a saved prompt (ADR-0019), in any scope: it only fills the box.
   const saved = useSavedPrompts();
   const typingPrompt = promptQuery(draft);
@@ -578,7 +586,27 @@ export function ChatPanel({
               ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 {result.inLibrary ? (
-                  <p className="text-xs text-ok">Already in your library</p>
+                  <p className="text-xs text-ok">
+                    Already in your library
+                    {(() => {
+                      // ADR-0068: once the row exists, the paper can be read here.
+                      const row = findInLibrary(mentions.library, result);
+                      return row ? (
+                        <>
+                          {' · '}
+                          <a
+                            href={readerHref(documentId, row.id)}
+                            target="_blank"
+                            rel="noopener"
+                            data-testid="web-read"
+                            className="font-semibold text-accent underline"
+                          >
+                            Read
+                          </a>
+                        </>
+                      ) : null;
+                    })()}
+                  </p>
                 ) : (
                   <button
                     type="button"

@@ -24,6 +24,8 @@ type LibrarySource = {
   authors: unknown;
   year: number | null;
   groundingLevel: string;
+  doi?: string | null;
+  rawReference?: string | null;
 };
 
 export type Mention = { id: string; label: string; readable: boolean };
@@ -68,7 +70,7 @@ export function useChatMentions(documentId: string, enabled: boolean) {
     [library, mentions],
   );
 
-  return { mentions, add, remove, clear, candidates, hasLibrary: library.length > 0 };
+  return { mentions, add, remove, clear, candidates, library, hasLibrary: library.length > 0 };
 }
 
 export function MentionChips({

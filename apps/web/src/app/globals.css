@@ -292,3 +292,94 @@ html[lang="hi"] .eyebrow {
   letter-spacing: 0;
   font-size: 12px;
 }
+
+/*
+ * The paper reader (ADR-0068). pdf.js's text layer — transparent text laid over each page's canvas
+ * so the PDF can be selected, searched and copied. The rules are the text-layer part of
+ * `pdfjs-dist/web/pdf_viewer.css` (Apache-2.0), cut down to what the reader uses; the rest of that
+ * file styles pdf.js's own viewer, which is not used here. A PDF page is white in every theme:
+ * it is the paper as printed.
+ */
+.reader-pdf-page {
+  --scale-factor: 1;
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  color-scheme: only light;
+}
+
+.reader-pdf-page .textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.reader-pdf-page .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.reader-pdf-page .textLayer > :not(.markedContent),
+.reader-pdf-page .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.reader-pdf-page .textLayer .markedContent {
+  display: contents;
+}
+
+.reader-pdf-page .textLayer span[role="img"] {
+  user-select: none;
+  cursor: default;
+}
+
+.reader-pdf-page .textLayer ::selection {
+  background: rgb(39 67 196 / 0.3);
+}
+
+.reader-pdf-page .textLayer br::selection {
+  background: transparent;
+}
+
+.reader-pdf-page .textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+.reader-pdf-page .textLayer.selecting .endOfContent {
+  top: 0;
+}
+
+/* Search matches, drawn with the CSS Custom Highlight API (components/reader/highlight.ts). */
+::highlight(reader-match) {
+  background-color: rgb(231 179 93 / 0.45);
+  color: inherit;
+}
+::highlight(reader-current) {
+  background-color: rgb(231 120 30 / 0.7);
+  color: inherit;
+}
