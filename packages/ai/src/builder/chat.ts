@@ -214,7 +214,11 @@ export function postProcessChat(raw: string, allowedIds: readonly string[]): Cha
       return match;
     })
     .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+    .trim()
+    // A.4 asks to "open with the direct answer"; the model sometimes writes the instruction's
+    // words as a label ("Direct answer: …", ADR-0074's round and ADR-0080's proof). The label is
+    // not an answer, so it goes; the sentence after it stays.
+    .replace(/^\**\s*direct answer\s*:\**\s*/i, '');
   // One paper's passages side by side print as one label repeated (2026-10-04).
   const text = collapseSameSourceRuns(marked);
   const cited = seen.filter((key) => text.includes(`{{cite:${key}}}`));

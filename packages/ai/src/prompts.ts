@@ -81,6 +81,9 @@ export const PROMPT_NAMES = [
   'equation_image',
   // Edit actions beyond A.11's section commands — docs/ADR/0066.
   'edit',
+  // Deep research in chat, likewise — docs/ADR/0080.
+  'research_plan',
+  'chat_deep',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

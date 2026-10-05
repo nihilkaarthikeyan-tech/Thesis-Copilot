@@ -169,6 +169,20 @@ export {
   reviseUserMessage,
 } from './builder/comment.js';
 export {
+  buildDeepChatRequest,
+  buildResearchPlanRequest,
+  cleanResearchPlan,
+  DEEP_RESEARCH,
+  type DeepChatBuildInput,
+  type DeepPart,
+  type DeepPlanInput,
+  deepChatUserMessage,
+  mockResearchPlanResponse,
+  type ResearchPlanResult,
+  researchPlanSchema,
+  researchPlanUserMessage,
+} from './builder/deep-research.js';
+export {
   buildDraftRequest,
   canDraft,
   countDraftWords,
