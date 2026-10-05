@@ -19,6 +19,7 @@
  * as a pending draft block the student must accept.
  */
 
+import { getGhostState } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -171,16 +172,30 @@ export function SectionGuide({
   // student has typed there is left as it is.
   useEffect(() => {
     if (!editor || !row || PLACEHOLDER_HEADING.test(row.title.trim())) return;
-    const first = editor.state.doc.firstChild;
-    if (first?.type.name !== 'heading' || Number(first.attrs.level ?? 1) !== 1) return;
-    if (!PLACEHOLDER_HEADING.test(first.textContent.trim())) return;
-    editor
-      .chain()
-      .command(({ tr }) => {
-        tr.insertText(row.title, 1, 1 + first.content.size);
-        return true;
-      })
-      .run();
+    const rename = (): boolean => {
+      const first = editor.state.doc.firstChild;
+      if (first?.type.name !== 'heading' || Number(first.attrs.level ?? 1) !== 1) return true;
+      if (!PLACEHOLDER_HEADING.test(first.textContent.trim())) return true;
+      // Any edit dismisses a suggestion on screen, so the rename waits until none is (seen in
+      // the real-model run, 2026-10-05: the plan landed and wiped the student's first suggestion).
+      if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return false;
+      editor
+        .chain()
+        .command(({ tr }) => {
+          tr.insertText(row.title, 1, 1 + first.content.size);
+          return true;
+        })
+        .run();
+      return true;
+    };
+    if (rename()) return;
+    const retry = () => {
+      if (rename()) editor.off('transaction', retry);
+    };
+    editor.on('transaction', retry);
+    return () => {
+      editor.off('transaction', retry);
+    };
   }, [editor, row]);
 
   async function planFromTitle() {

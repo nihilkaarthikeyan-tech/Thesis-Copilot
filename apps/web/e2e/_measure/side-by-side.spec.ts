@@ -51,9 +51,25 @@ test('the journey, recorded', async ({ page, request }) => {
   await editor.locator('p').last().click();
   await page.keyboard.type(OPENING);
   const typedAt = Date.now();
-  await page.getByTestId('suggest-button').click();
+  // Ask, then ask again every 20 s if no cited suggestion is showing, as a student would.
   const cited = page.getByTestId('suggestion-evidence');
-  await expect(cited).toBeVisible({ timeout: 180_000 });
+  const attempts: string[] = [];
+  const deadline = Date.now() + 240_000;
+  let lastAsk = 0;
+  while (Date.now() < deadline && !(await cited.count())) {
+    if (Date.now() - lastAsk > 20_000) {
+      lastAsk = Date.now();
+      await editor.locator('p').last().click();
+      await page.keyboard.press('End');
+      await page.getByTestId('suggest-button').click();
+      attempts.push(`asked at +${((Date.now() - typedAt) / 1000).toFixed(1)} s`);
+    }
+    await page.waitForTimeout(1_000);
+    const notice = page.getByTestId('notice');
+    if (await notice.count()) attempts.push(`notice: ${(await notice.innerText()).slice(0, 120)}`);
+  }
+  record.suggestionAttempts = [...new Set(attempts)];
+  await expect(cited).toBeVisible({ timeout: 5_000 });
   await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible();
   record.firstCitedSuggestionSeconds = Number(((Date.now() - typedAt) / 1000).toFixed(1));
   record.firstSuggestion = await page.locator('.thesis-editor span.ghost').innerText();
