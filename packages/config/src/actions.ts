@@ -113,6 +113,8 @@ export const ALLOWANCE_NAMES: Readonly<Record<string, string>> = {
   VIVA: 'Viva practice',
   CHAPTER_BUILD: 'Chapter builds',
   EXAMINER_REVIEW: 'Examiner reviews',
+  // ADR-0072: not a metered action, but bounded per month, and refused in these words.
+  OUTLINE_FROM_TITLE: 'Chapter plans from a title',
 };
 
 /** A refused metered action, said plainly: not on the plan at all, or used up this month. */

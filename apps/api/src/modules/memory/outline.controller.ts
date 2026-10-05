@@ -111,6 +111,13 @@ export class OutlineController {
     return this.outline.generate(user.id, documentId, parsed.data.template);
   }
 
+  /** ADR-0072: "Plan my chapters from the title", for a thesis with no outline yet. */
+  @Post('outline/plan-from-title')
+  @HttpCode(202)
+  planFromTitle(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.outline.planFromTitle(user, documentId);
+  }
+
   /** FR-3.4: every tree edit lands here. */
   @Put('memory/outline')
   save(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Body() body: unknown) {

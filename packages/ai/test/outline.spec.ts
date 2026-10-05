@@ -18,6 +18,7 @@ import type { OutlineNode } from '@tc/types';
 import { describe, expect, it } from 'vitest';
 import {
   buildOutlineRequest,
+  dropPlaceholderSections,
   enforceTemplateShape,
   mockOutlineResponse,
   normaliseOutline,
@@ -310,5 +311,38 @@ describe('the A.9 mock answers in the shape the real model is asked for', () => 
     expect(parsed.success, JSON.stringify(parsed.error?.issues ?? [])).toBe(true);
     // And it is a real tree, not an empty object that happens to validate.
     expect(readOutlineResult(answer).length).toBeGreaterThan(1);
+  });
+});
+
+describe('ADR-0072 — dropPlaceholderSections', () => {
+  // Titles as gpt-5-mini wrote them for a title-only plan on 2026-10-05 (no gap map, no objectives).
+  const tree = [
+    node('Literature Review', 'Organise the review by sub-theme.', [
+      node('How this review maps to the gap map', 'Explain how the review is organised.'),
+      node('Sub-theme 1 (populate from gap_map)', 'Synthesise the first sub-theme.'),
+      node('Synthesis and research gap', 'Bring the sub-themes together.'),
+    ]),
+    node(
+      'Methodology',
+      'For each stated objective (insert objectives), specify which method will address it.',
+      [node('Sampling and study population', 'Specify the study area in rural Karnataka.')],
+    ),
+  ];
+
+  it('drops a section left as a slot and keeps the real ones', () => {
+    const out = dropPlaceholderSections(tree);
+    expect(out[0]?.children.map((c) => c.title)).toEqual(['Synthesis and research gap']);
+    expect(out[1]?.children.map((c) => c.title)).toEqual(['Sampling and study population']);
+  });
+
+  it('takes a fill-in instruction out of a scope note', () => {
+    expect(dropPlaceholderSections(tree)[1]?.scopeNote).toBe(
+      'For each stated objective, specify which method will address it.',
+    );
+  });
+
+  it('never drops a chapter, whatever its title', () => {
+    const out = dropPlaceholderSections([node('Sub-theme 1 (populate from gap_map)')]);
+    expect(out).toHaveLength(1);
   });
 });

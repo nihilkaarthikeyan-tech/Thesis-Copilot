@@ -14,6 +14,7 @@
 
 import {
   buildOutlineRequest,
+  dropPlaceholderSections,
   enforceTemplateShape,
   type GapMapTheme,
   type LlmProvider,
@@ -30,10 +31,15 @@ import {
   walkOutline,
 } from '@tc/types';
 
+/** One A.9 call's time limit. */
+const OUTLINE_TIMEOUT_MS = 180_000;
+
 export type GenerateOutlineJob = {
   documentId: string;
   userId: string;
   template?: Template;
+  /** ADR-0072: plan from the thesis title when there is no saved proposal. */
+  fromTitle?: boolean;
 };
 
 export type GenerateOutlineDeps = {
@@ -82,6 +88,7 @@ export async function runGenerateOutline(
     where: { id: job.documentId },
     select: {
       id: true,
+      title: true,
       template: true,
       memory: { select: { scope: true, gapMap: true } },
       seedPapers: {
@@ -95,7 +102,12 @@ export async function runGenerateOutline(
   if (!document) throw new Error(`document ${job.documentId} no longer exists`);
 
   const template = (job.template ?? document.template ?? 'STEM_EMPIRICAL') as Template;
-  const scope = readScope(document.memory?.scope);
+  // ADR-0072: a thesis begun with "Start writing now" has only its title. The same A.9 request
+  // goes out with the title as the working title and the rest of the scope empty; a proposal
+  // saved since the job was queued is used instead.
+  const scope =
+    readScope(document.memory?.scope) ??
+    (job.fromTitle ? readScope({ workingTitle: document.title }) : null);
   if (!scope) throw new Error('Save the proposal first: the outline is generated from it.');
   const parsedExtraction = document.seedPapers[0]?.extraction
     ? paperExtractionSchema.safeParse(document.seedPapers[0].extraction)
@@ -111,13 +123,18 @@ export async function runGenerateOutline(
     extraction,
     userId: job.userId,
     documentId: job.documentId,
+    // No model call without a time limit (BUILD_LOG, 2026-10-01). A title-only plan took 34 s on
+    // gpt-5-mini (ADR-0072); the job's retries cover a call that runs out.
+    signal: AbortSignal.timeout(OUTLINE_TIMEOUT_MS),
   });
   const startedAt = Date.now();
   let nodes: OutlineNode[];
   try {
     const answer = await deps.llm.complete({ ...request, schema: outlineRequestSchema });
     await logCall(deps, job, answer.modelId, answer.usage, Date.now() - startedAt, true);
-    nodes = enforceTemplateShape(readOutlineResult(answer.value), template);
+    nodes = dropPlaceholderSections(
+      enforceTemplateShape(readOutlineResult(answer.value), template),
+    );
   } catch (error) {
     await logCall(
       deps,

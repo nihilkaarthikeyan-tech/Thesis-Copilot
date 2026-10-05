@@ -30,10 +30,12 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
+import { OutlineService } from '../memory/outline.service.js';
 import { DocumentCopier } from './document-copier.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
 import { ProgressService } from './progress.service.js';
+import { namesATopic } from './topic.js';
 
 const languageBody = z.object({
   language: z
@@ -54,6 +56,12 @@ const createDocument = z.object({
   title: z.string().trim().min(1, 'Give the thesis a working title').max(300),
   entryPath: z.enum(['A_TOPIC', 'B_PAPER']),
   field: z.string().trim().max(200).optional(),
+  /**
+   * ADR-0072: "writing" is the Start-writing-now button. Such a thesis has no proposal to plan
+   * from, so its chapters are planned from the title at once. The proposal path plans from the
+   * proposal when it is saved, as before.
+   */
+  start: z.enum(['writing', 'proposal']).optional(),
 });
 
 export type DocumentSummary = {
@@ -97,16 +105,6 @@ const summarySelect = {
 
 type SummaryRow = Prisma.DocumentGetPayload<{ select: typeof summarySelect }>;
 
-/**
- * Whether a working title names something an index can search for (ADR-0070). The placeholder
- * titles a student leaves in, and anything of a word or two, do not.
- */
-export function namesATopic(title: string): boolean {
-  const t = title.trim();
-  if (/^(untitled|new|my)\s+(thesis|dissertation|document)$/i.test(t)) return false;
-  return t.split(/\s+/).filter((w) => w.length > 2).length >= 3;
-}
-
 function toSummary(d: SummaryRow): DocumentSummary {
   return {
     id: d.id,
@@ -130,6 +128,7 @@ export class DocumentsController {
     private readonly deletion: OwnThesisDeletion,
     private readonly copier: DocumentCopier,
     private readonly autoSources: AutoSourcesService,
+    private readonly outline: OutlineService,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -194,6 +193,16 @@ export class DocumentsController {
           query: parsed.data.title,
         })
         .catch(() => false);
+    }
+
+    // ADR-0072: Start writing now plans the chapters from the title in the background, so the
+    // student sees headings with what each must argue instead of one empty "Chapter 1". Every
+    // bound of the button applies (a monthly count, the trial, the ₹100 ceiling, the site budget);
+    // a refusal here only means no plan, never a failed create.
+    if (parsed.data.start === 'writing' && namesATopic(parsed.data.title)) {
+      await this.outline
+        .planFromTitle(user, document.id, { automatic: true })
+        .catch(() => undefined);
     }
 
     return toSummary(document);

@@ -43,6 +43,7 @@ export {
   ONE_TIME_AMORTISATION_MONTHS,
   ONE_TIME_EMBED_TOKENS,
   ONE_TIME_PROFILES,
+  OUTLINE_CALLS_PER_DOCUMENT,
   PRD_ACTION_PROFILES,
   type TokenUsage,
 } from './cost.js';
@@ -53,10 +54,12 @@ export {
   loadEnv,
 } from './env.js';
 export {
+  AUTO_OUTLINES,
   AUTO_SOURCES,
   AUTO_SOURCES_FLAG,
   autoSourcesJobKey,
   capFor,
+  monthlyAutoOutlines,
   monthlyAutoSearches,
   PLAN_LIMITS,
   PLANS,

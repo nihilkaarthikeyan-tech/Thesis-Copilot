@@ -36,6 +36,18 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > `gpt-4.1-mini`), and from ₹63.89 to ₹69.06 with `gpt-5-nano` on the fast tier — within the ₹100
 > ceiling. Drafting was already on the strong tier.
 >
+> **2026-10-05 — chapters planned from the title (ADR-0072).** "Start writing now" plans the
+> chapters from the title with the existing outline call. It is not a new allowance: a thesis still
+> has one outline call, already in the one-time line. Measured on `gpt-5-mini`, one plan costs
+> ₹0.68, against the ₹0.48 profiled, because of reasoning tokens. Title plans are bounded at 5 a
+> month on the paid plans and 2 on the trial. The worst case beyond the one-time line is therefore
+> 4 × ₹0.68 = **₹2.72** a month: ₹85.82 → ₹88.54 with ADR-0051's fast tier. The ₹100 ceiling and
+> the site budget refuse a plan like any metered action.
+>
+> **Both of 2026-10-05's changes together** (chat on the strong tier, title plans): the worst case
+> for a fully active student at the production configuration is ₹88.19 + ₹2.72 = **₹90.91**, within
+> the ₹100 ceiling.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.

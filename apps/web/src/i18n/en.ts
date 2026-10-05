@@ -213,8 +213,7 @@ export const en = {
   'editor.restore': 'Restore',
   'editor.chapters': 'Chapters',
   'editor.outline': 'Outline',
-  'editor.outlineBuilding':
-    'Building your chapters from the proposal… they appear here in a minute.',
+  'editor.outlineBuilding': 'Building your chapters… they appear here in a minute.',
   'editor.hint.intro': 'This is your chapter. Write as you normally would.',
   'editor.hint.auto': 'A suggestion appears when you pause',
   'editor.hint.manual': 'Press Suggest, below, when you want a suggestion',
@@ -284,6 +283,26 @@ export const en = {
     'Answer a few questions and get a chapter outline, so each chapter is written to a plan.',
   'guide.planAction': 'Plan chapters',
   'guide.hide': 'Hide',
+  'sections.chapterFor': 'What this chapter is for',
+  'sections.title': 'Sections',
+  'sections.planning': 'Planning your chapters from your title…',
+  'sections.planningProposal': 'Planning your chapters from your proposal…',
+  'sections.planningDetail':
+    'Headings, with what each section should argue, appear here in a minute. Keep writing: nothing you write is moved.',
+  'sections.noPlan': 'No chapter plan yet.',
+  'sections.noPlanDetail':
+    'Get the chapters and their sections from your title, each with what it should argue.',
+  'sections.plan': 'Plan my chapters from the title',
+  'sections.failed': 'The plan could not be made this time.',
+  'sections.retry': 'Try again',
+  'sections.addHeading': 'Add heading here',
+  'sections.goTo': 'Go to heading',
+  'sections.draft': 'Draft this section',
+  'sections.inChapter': 'in your chapter',
+  'sections.hide': 'Hide',
+  'sections.show': 'Show',
+  'sections.note': 'Nothing here goes into your chapter until you press a button.',
+  'sections.editOutline': 'Edit the outline',
   'editor.notice.needsSource':
     'No source in your library covers this yet{gap}. Find papers on it to continue.',
   'editor.notice.emptyLibrary':

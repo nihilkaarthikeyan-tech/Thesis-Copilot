@@ -19,8 +19,9 @@ import { API_URL, ApiError, type ProblemDetails } from '@/lib/api';
 import { parseSse } from '@/lib/sse';
 
 /**
- * ADR-0073: anything outside the editor (the key bar's button, the section guide) asks for a
- * draft of the section under the cursor by dispatching this on `window`.
+ * Asks for a draft of the section under the cursor, as Ctrl+Shift+D does. The key bar's button
+ * dispatches it on `window` (ADR-0073); the Sections panel places the cursor under a section's
+ * heading and dispatches it on the editor's DOM (ADR-0072). Draft mode listens on both.
  */
 export const DRAFT_SECTION_EVENT = 'tc:draft-section';
 
@@ -173,13 +174,18 @@ export function DraftMode({
       event.preventDefault();
       void run();
     };
+    const onDraftSection = () => void run();
     const dom = editor.view.dom;
     const onAsk = () => void run();
     dom.addEventListener('keydown', onKeyDown);
+    // ADR-0073 / ADR-0072: asked for from a window event (the key bar) or the editor's own DOM
+    // (the section guide).
     window.addEventListener(DRAFT_SECTION_EVENT, onAsk);
+    dom.addEventListener(DRAFT_SECTION_EVENT, onDraftSection);
     return () => {
       dom.removeEventListener('keydown', onKeyDown);
       window.removeEventListener(DRAFT_SECTION_EVENT, onAsk);
+      dom.removeEventListener(DRAFT_SECTION_EVENT, onDraftSection);
     };
   }, [editor, run]);
 

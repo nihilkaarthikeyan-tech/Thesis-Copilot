@@ -212,6 +212,41 @@ describe('the section the cursor is in (ADR-0071)', () => {
     expect(prompt).toContain('title=\\"Financial constraints\\"');
   });
 
+  it('finds the planned section when the editor still sends the placeholder node (ADR-0072)', async () => {
+    // The editor opened on "Chapter 1" ('ch-1'); the chapters were planned from the title since,
+    // and the row now points at the planned node.
+    const { deps, requests } = fakeDeps();
+    (deps.prisma.chapter.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'ch-1',
+      documentId: 'doc-1',
+      outlineNodeId: 'ch1-introduction',
+      title: 'Introduction',
+      scopeNote: 'Why uptake is low.',
+      content: { type: 'doc', content: [] },
+    });
+    (deps.prisma.documentMemory.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      outline: [
+        {
+          id: 'ch1-introduction',
+          title: 'Introduction',
+          scopeNote: 'Why uptake is low.',
+          children: [
+            {
+              id: 'ch1-sec1-cost-barriers',
+              title: 'Cost barriers',
+              scopeNote: 'Establish upfront cost as the barrier households name first.',
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    await runDraftSection({ ...job, outlineNodeId: 'ch-1', heading: 'Cost barriers' }, deps);
+    expect(JSON.stringify(requests[0])).toContain(
+      'Establish upfront cost as the barrier households name first.',
+    );
+  });
+
   it('refuses a section that names no topic, before any search or provider call', async () => {
     const { deps, published, requests } = fakeDeps();
     (deps.prisma.chapter.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({

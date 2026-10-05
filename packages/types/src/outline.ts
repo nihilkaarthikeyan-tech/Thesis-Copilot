@@ -141,7 +141,7 @@ function isFrontOrBackMatter(heading: string): boolean {
 }
 
 /** A heading's words without its number or punctuation: "2.1 Cost barriers." → "cost barriers". */
-const headingKey = (title: string): string =>
+export const headingKey = (title: string): string =>
   title
     .toLowerCase()
     // A Roman numeral only with its full stop, or "civil engineering" would lose "civil".

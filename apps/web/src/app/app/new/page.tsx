@@ -76,7 +76,12 @@ export default function NewThesisPage() {
     try {
       const document = await api<{ id: string; firstChapterId: string | null }>('/documents', {
         method: 'POST',
-        body: JSON.stringify({ title: title.trim() || 'Untitled thesis', entryPath: 'A_TOPIC' }),
+        // ADR-0072: `start: 'writing'` plans the chapters from the title in the background.
+        body: JSON.stringify({
+          title: title.trim() || 'Untitled thesis',
+          entryPath: 'A_TOPIC',
+          start: 'writing',
+        }),
       });
       await saveStartingStyle(document.id, citationStyle);
       router.push(

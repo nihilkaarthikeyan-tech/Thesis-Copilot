@@ -5145,3 +5145,38 @@ C1 and C3 of the side-by-side list:
   sources.
 
 No new model call; the search is the existing metered automatic search.
+
+## Structure at creation (2026-10-05, ADR-0072)
+
+From the side-by-side study's item B1: a "Start writing now" thesis now gets its chapters planned
+from the title in the background, through the existing `generate-outline` job and an unchanged A.9.
+
+**What the student sees.**
+- A Sections panel replaces the scaffold above the page.
+- While the plan is made, it says "Planning your chapters from your title…".
+- Once the plan lands, each section shows what it should argue, with "Add heading here" and
+  "Draft this section".
+- A thesis with no outline is offered "Plan my chapters from the title".
+
+**Chapter 1** is adopted as the plan's first chapter. Its content is never written, so text typed
+while the plan runs stays where it is.
+
+**Bounds.** A title plan is checked before anything is queued:
+- a monthly count (2 on the trial, 5 on paid plans);
+- the per-thesis outline limit, which was never enforced until now;
+- an ended trial, the ₹100 ceiling and the site budget.
+
+**Real model.** One real call: ₹0.68, 34 s, 6 chapters with 3–5 sections each. It also showed that
+A.9 without a gap map writes Literature Review sections as slots ("Sub-theme 1 (populate from
+gap_map)"). Code now drops these; the prompt question is in PENDING.
+
+**Faults found on the way.**
+- A failed outline run stayed RUNNING for ever. The worker now writes FAILED on the last attempt,
+  and a 15-minute-old RUNNING counts as dead.
+- The outline call had no time limit. It now has 180 s.
+
+**Tests.** API `plan-from-title.spec.ts` 8/8 (testcontainers), worker 200, web 161, ai outline 32.
+Checked in a browser on a mock stack (web :3200, API :3201, worker on Redis db 5).
+
+**Not this change's faults.** `caps.spec.ts`'s two DRAFT cases and one `admin-users.spec.ts` case
+fail with 422 `SECTION_NEEDS_TOPIC`. They draft a bare "Chapter 1", which ADR-0071 now refuses.

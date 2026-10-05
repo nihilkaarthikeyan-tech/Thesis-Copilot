@@ -21,6 +21,8 @@ import {
 import {
   computeCallCost,
   type Env,
+  monthlyAutoOutlines,
+  OUTLINE_CALLS_PER_DOCUMENT,
   type Plan,
   suggestTemplate,
   TEMPLATE_SPECS,
@@ -29,12 +31,18 @@ import {
 } from '@tc/config';
 import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
-import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
+import {
+  CapExceededError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
-import { refusal, UsageService } from '../usage/usage.service.js';
+import { namesATopic } from '../documents/topic.js';
+import { refusal, resetsAtFor, UsageService } from '../usage/usage.service.js';
 
 export type OutlineView = {
   template: Template | null;
@@ -54,7 +62,30 @@ export type OutlineView = {
   glossary: Record<string, unknown>;
   /** True while an outline job is in flight, so the screen can wait. */
   generating: boolean;
+  /** ADR-0072: what the running (or last) plan was made from. */
+  generatingFrom: 'title' | 'proposal' | null;
+  /** ADR-0072: the last run used all its attempts and wrote nothing. */
+  outlineFailed: boolean;
+  /** ADR-0072: no outline yet and a title a plan can be made from; the editor offers the button. */
+  canPlanFromTitle: boolean;
 };
+
+/** The audit kind that counts title-planned outlines against `monthlyAutoOutlines` (ADR-0072). */
+export const OUTLINE_FROM_TITLE = 'OUTLINE_FROM_TITLE';
+
+/**
+ * A run still marked RUNNING after this long has died without the worker recording it (a killed
+ * process). Past it the screens stop waiting rather than saying "Planning..." for ever.
+ */
+const RUN_STALE_MS = 15 * 60_000;
+
+type OutlineRun = { status?: string; startedAt?: string; from?: string };
+
+function runIsLive(run: OutlineRun | undefined, now: Date): boolean {
+  if (run?.status !== 'RUNNING') return false;
+  const started = run.startedAt ? Date.parse(run.startedAt) : Number.NaN;
+  return Number.isNaN(started) || now.getTime() - started < RUN_STALE_MS;
+}
 
 @Injectable()
 export class OutlineService {
@@ -69,7 +100,14 @@ export class OutlineService {
   private async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
-      select: { id: true, field: true, template: true, meta: true, language: true },
+      select: {
+        id: true,
+        title: true,
+        field: true,
+        template: true,
+        meta: true,
+        language: true,
+      },
     });
     if (!document) throw new NotFoundError('That document');
     return document;
@@ -90,7 +128,8 @@ export class OutlineService {
     ]);
     const outline = readOutline(memory?.outline);
     const known = new Set(outline.map((n) => n.id));
-    const meta = (document.meta as { outlineRun?: { status?: string } } | null) ?? {};
+    const meta = (document.meta as { outlineRun?: OutlineRun } | null) ?? {};
+    const generating = runIsLive(meta.outlineRun, new Date());
 
     return {
       template: (document.template as Template | null) ?? null,
@@ -105,7 +144,14 @@ export class OutlineService {
       outline,
       chapters: chapters.map((c) => ({ ...c, orphaned: !known.has(c.outlineNodeId) })),
       glossary: (memory?.glossary as Record<string, unknown>) ?? {},
-      generating: meta.outlineRun?.status === 'RUNNING',
+      generating,
+      generatingFrom: meta.outlineRun
+        ? meta.outlineRun.from === 'title'
+          ? 'title'
+          : 'proposal'
+        : null,
+      outlineFailed: meta.outlineRun?.status === 'FAILED',
+      canPlanFromTitle: outline.length === 0 && !generating && namesATopic(document.title),
     };
   }
 
@@ -135,6 +181,7 @@ export class OutlineService {
     if (!scope?.workingTitle) {
       throw new ValidationError('Save the proposal first; the outline is generated from it.');
     }
+    await this.assertRunsLeft(documentId);
     const chosen =
       template ?? (document.template as Template | null) ?? suggestTemplate(document.field);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
@@ -142,7 +189,10 @@ export class OutlineService {
       where: { id: documentId },
       data: {
         template: chosen,
-        meta: { ...meta, outlineRun: { status: 'RUNNING', startedAt: new Date().toISOString() } },
+        meta: {
+          ...meta,
+          outlineRun: { status: 'RUNNING', startedAt: new Date().toISOString(), from: 'proposal' },
+        },
       },
     });
     await this.queue.enqueue(
@@ -151,6 +201,97 @@ export class OutlineService {
       { jobId: `generate-outline-${documentId}-${Date.now()}` },
     );
     return { queued: true, template: chosen };
+  }
+
+  /**
+   * ADR-0072: plan the chapters from the thesis title alone (the same A.9 job, with the title as
+   * the working title) for a thesis begun with "Start writing now", which has no proposal.
+   * Called by `POST /documents` for such a thesis, and by the editor's "Plan my chapters from the
+   * title" button for any thesis with no outline.
+   *
+   * `OUTLINE` has no §11.3 cap (§11.4 prices it once per thesis), so it is bounded here: the
+   * per-thesis run limit every outline run obeys, a monthly count of title plans
+   * (`monthlyAutoOutlines`), and the money checks of a metered action. An ended trial, the ₹100
+   * ceiling and the site budget each refuse it before anything is queued.
+   */
+  async planFromTitle(
+    user: { id: string; plan: string },
+    documentId: string,
+    options: { automatic?: boolean; now?: Date } = {},
+  ): Promise<{ queued: true; template: Template }> {
+    const now = options.now ?? new Date();
+    const document = await this.owned(user.id, documentId);
+    if (!namesATopic(document.title)) {
+      throw new ValidationError(
+        'Give the thesis a working title of a few words first; the chapters are planned from it.',
+      );
+    }
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { outline: true },
+    });
+    if (readOutline(memory?.outline).length > 0) {
+      throw new ConflictError(
+        'This thesis already has its chapters. Change them on the Outline page.',
+      );
+    }
+    const meta = (document.meta as Record<string, unknown> | null) ?? {};
+    const chosen = (document.template as Template | null) ?? suggestTemplate(document.field);
+    // A second press while the first plan runs is the same plan.
+    if (runIsLive(meta.outlineRun as OutlineRun | undefined, now)) {
+      return { queued: true, template: chosen };
+    }
+    await this.assertRunsLeft(documentId);
+
+    const plan = user.plan as Plan;
+    const money = await this.usage.spendAllowed(user.id, plan, now);
+    if (!money.ok) throw refusal('OUTLINE', money);
+    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const used = await this.prisma.auditEvent.count({
+      where: { userId: user.id, kind: OUTLINE_FROM_TITLE, createdAt: { gte: from } },
+    });
+    const allowed = monthlyAutoOutlines(plan);
+    if (used >= allowed) {
+      throw new CapExceededError(OUTLINE_FROM_TITLE, allowed, resetsAtFor(now));
+    }
+
+    await this.prisma.document.update({
+      where: { id: documentId },
+      data: {
+        template: chosen,
+        meta: {
+          ...meta,
+          outlineRun: { status: 'RUNNING', startedAt: now.toISOString(), from: 'title' },
+        },
+      },
+    });
+    await this.prisma.auditEvent.create({
+      data: {
+        kind: OUTLINE_FROM_TITLE,
+        userId: user.id,
+        documentId,
+        detail: { automatic: options.automatic === true },
+      },
+    });
+    await this.queue.enqueue(
+      'generate-outline',
+      { documentId, userId: user.id, template: chosen, fromTitle: true },
+      { jobId: `generate-outline-${documentId}-title-${now.getTime()}` },
+    );
+    return { queued: true, template: chosen };
+  }
+
+  /**
+   * `OUTLINE_CALLS_PER_DOCUMENT`, which the cost model assumed and nothing enforced until
+   * ADR-0072: whole-outline runs and FR-3.6 rewrites of one thesis, counted from the call log.
+   */
+  private async assertRunsLeft(documentId: string): Promise<void> {
+    const runs = await this.prisma.aiCallLog.count({ where: { documentId, action: 'OUTLINE' } });
+    if (runs >= OUTLINE_CALLS_PER_DOCUMENT) {
+      throw new ConflictError(
+        `This thesis has had its ${OUTLINE_CALLS_PER_DOCUMENT} outline runs. Change the chapters by hand on the Outline page.`,
+      );
+    }
   }
 
   /**
