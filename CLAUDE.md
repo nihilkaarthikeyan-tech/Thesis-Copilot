@@ -189,6 +189,24 @@ way: a library PDF a student uploaded was never read** (pdf.js refuses a Buffer;
 after release, re-index them (PENDING). The mock e2e stack (`api-mock`) runs without `--watch` and
 with mail blanked. Still the owner's: the usage-limit rebalance (option 1 recommended); re-indexing previously uploaded PDFs; the host nginx `X-Frame-Options` change that "read beside" needs (until then it falls back to a new tab).
 
+**v0.1.26 (2026-10-05): a first session without a queue, the paper reader, the add-on 0.2.0.**
+- **ADR-0070.** The owner's manager said a new student is "stuck in a queue".
+  - Measured with `apps/web/e2e/_measure` (`MEASURE=1`, real models). First cited suggestion:
+    47.9 s → ~14 s on Start writing now, and 78.8 s → ~20 s on the proposal path.
+  - Start writing now is the primary button.
+  - The paper search starts when the thesis is created.
+  - Abstracts are indexed first.
+  - A `papersLoading` answer, with the editor's progress line and an automatic retry.
+  - A four-step guide.
+  - Readiness means "has chunks". `resolve-reference` sets the ABSTRACT badge before anything is
+    embedded.
+- **ADR-0068, the reader** (`/app/d/:id/sources/:sourceId`).
+  - pdf.js draws on the page, so nothing is framed. The host nginx header change is no longer
+    needed.
+  - Pinned to `pdfjs-dist` 6.3.289, because 5.x has a high advisory that CI's audit refused.
+- **ADR-0069, the Chrome add-on 0.2.0.** Publishing it is the owner's, by
+  `apps/extension/PUBLISHING.md`.
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.
