@@ -238,6 +238,7 @@ export {
 } from './builder/notation.js';
 export {
   buildOutlineRequest,
+  dropPlaceholderSections,
   enforceTemplateShape,
   type GapMapTheme,
   mockOutlineResponse,

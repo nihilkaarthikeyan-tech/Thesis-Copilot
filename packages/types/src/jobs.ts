@@ -103,6 +103,12 @@ export type GenerateOutlineJob = {
   documentId: string;
   userId: string;
   template?: string;
+  /**
+   * ADR-0072: no proposal yet, so plan from the thesis title alone (`Document.title` as the
+   * working title, no problem statement or objectives). A saved proposal still wins if one has
+   * arrived by the time the job runs.
+   */
+  fromTitle?: boolean;
 };
 
 /**

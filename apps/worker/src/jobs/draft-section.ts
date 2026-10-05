@@ -382,7 +382,11 @@ async function sectionFor(
   });
 
   const { findOutlineNode, readOutline, sectionUnderHeading } = await import('@tc/types');
-  const node = findOutlineNode(readOutline(memory?.outline), outlineNodeId);
+  const outline = readOutline(memory?.outline);
+  // ADR-0072: an editor opened before the chapters were planned still holds the placeholder
+  // node id ('ch-1'); the chapter row itself has the planned one.
+  const node =
+    findOutlineNode(outline, outlineNodeId) ?? findOutlineNode(outline, chapter.outlineNodeId);
 
   // ADR-0071: the heading the cursor was under. Drafted as that section: its own scope note when
   // the outline has it, else the chapter's as background; continuous prose (no invented

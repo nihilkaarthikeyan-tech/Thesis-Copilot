@@ -41,6 +41,12 @@ type State =
       closeTo: CloseTo[];
     };
 
+/**
+ * ADR-0072: dispatched on the editor's DOM to start a draft where the cursor is, as Ctrl+Shift+D
+ * does. The Sections panel places the cursor under a section's heading, then sends this.
+ */
+export const DRAFT_SECTION_EVENT = 'tc:draft-section';
+
 /** ADR-0071: a draft paragraph that follows a passage's wording too closely. */
 type CloseTo = { shortRef: string; page: number | null; overlapText: string; kind: string };
 
@@ -167,9 +173,14 @@ export function DraftMode({
       event.preventDefault();
       void run();
     };
+    const onDraftSection = () => void run();
     const dom = editor.view.dom;
     dom.addEventListener('keydown', onKeyDown);
-    return () => dom.removeEventListener('keydown', onKeyDown);
+    dom.addEventListener(DRAFT_SECTION_EVENT, onDraftSection);
+    return () => {
+      dom.removeEventListener('keydown', onKeyDown);
+      dom.removeEventListener(DRAFT_SECTION_EVENT, onDraftSection);
+    };
   }, [editor, run]);
 
   if (state.phase === 'idle') return null;

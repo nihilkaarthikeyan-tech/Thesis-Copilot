@@ -154,5 +154,31 @@ export function autoSourcesJobKey(chapterId: string, now: Date = new Date()): st
   return `find-sources-${chapterId}-${window}`;
 }
 
+/**
+ * Chapters planned from the thesis title (ADR-0072): when a thesis is started with "Start writing
+ * now", or when the student presses "Plan my chapters from the title". One A.9 outline call each
+ * (`OUTLINE`, Strong; ₹0.48 as profiled, ₹0.68 measured on `gpt-5-mini` on 2026-10-05, whose
+ * reasoning tokens took the output to 3,791). `OUTLINE` has no §11.3 cap — §11.4 prices it once
+ * per thesis in the one-time line — so what bounds it here is a count per month: a student who
+ * starts a sixth thesis in one month still gets one, only planned by hand from the Outline page.
+ * Worst case beyond the one-time line, at the measured price: 4 × ₹0.68 = ₹2.72 a month on a
+ * paid plan, ₹0.68 on the trial. Counted from the `OUTLINE_FROM_TITLE` audit events.
+ */
+export const AUTO_OUTLINES = {
+  monthly: {
+    FREE_TRIAL: 2,
+    STUDENT_MONTHLY: 5,
+    STUDENT_ANNUAL: 5,
+    INSTITUTION_SEAT: 5,
+  } satisfies Record<Plan, number>,
+} as const;
+
+/** This plan's title-planned outlines per month (ADR-0072). An unknown plan gets the trial's. */
+export function monthlyAutoOutlines(plan: string): number {
+  return (PLANS as readonly string[]).includes(plan)
+    ? AUTO_OUTLINES.monthly[plan as Plan]
+    : AUTO_OUTLINES.monthly.FREE_TRIAL;
+}
+
 /** The feature switch that turns automatic sources on for the whole site (ADR-0037). */
 export const AUTO_SOURCES_FLAG = 'autoSources';

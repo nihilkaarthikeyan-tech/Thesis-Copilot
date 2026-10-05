@@ -75,6 +75,7 @@ function fakes(
       document: {
         findUnique: vi.fn(async () => ({
           id: 'doc-1',
+          title: 'Barriers to rooftop solar adoption in rural Karnataka',
           template: 'template' in options ? options.template : 'STEM_EMPIRICAL',
           memory: { scope: 'scope' in options ? options.scope : SCOPE, gapMap: null },
           seedPapers: options.extraction ? [{ extraction: options.extraction }] : [],
@@ -370,5 +371,62 @@ describe('syncChapters on its own', () => {
     const move = f.updates.find((u) => (u.where as { id: string }).id === 'ch-1');
     expect(move?.data.order).toBe(2);
     expect(move?.data.title).toBe('Methodology');
+  });
+});
+
+describe('planning from the title alone (ADR-0072)', () => {
+  const TITLE_JOB = { ...JOB, fromTitle: true };
+
+  it('sends A.9 the title as the working title when no proposal is saved', async () => {
+    const f = fakes({ scope: {} });
+    const result = await runGenerateOutline(TITLE_JOB, f.deps);
+    expect(result.chapters).toBeGreaterThan(0);
+    const message = String(f.requests[0]?.messages.at(-1)?.content ?? '');
+    expect(message).toContain(
+      'Working title: Barriers to rooftop solar adoption in rural Karnataka',
+    );
+    // Same action, same prompt: the call is logged as an ordinary OUTLINE call.
+    expect(f.requests[0]?.action).toBe('OUTLINE');
+    expect(f.calls[0]?.action).toBe('OUTLINE');
+  });
+
+  it('uses the proposal instead when one was saved before the job ran', async () => {
+    const f = fakes();
+    await runGenerateOutline(TITLE_JOB, f.deps);
+    const message = String(f.requests[0]?.messages.at(-1)?.content ?? '');
+    expect(message).toContain(`Working title: ${SCOPE.workingTitle}`);
+    expect(message).toContain(SCOPE.problemStatement);
+  });
+
+  it('still refuses an empty scope when the job did not ask for the title', async () => {
+    const f = fakes({ scope: {} });
+    await expect(runGenerateOutline(JOB, f.deps)).rejects.toThrow(/Save the proposal first/);
+    expect(f.requests).toHaveLength(0);
+  });
+
+  it('maps the first planned chapter onto Chapter 1 without touching what the student wrote', async () => {
+    // The student has been typing in Chapter 1 while the plan was made.
+    const f = fakes({
+      scope: {},
+      chapters: [
+        {
+          id: 'ch-typed',
+          outlineNodeId: 'ch-1',
+          title: 'Chapter 1',
+          scopeNote: null,
+          order: 1,
+          wordCount: 180,
+        },
+      ],
+    });
+    const result = await runGenerateOutline(TITLE_JOB, f.deps);
+    expect(result.orphaned).toEqual([]);
+    expect(f.deletes).toBe(0);
+    const adopted = f.updates.filter((u) => (u.where as { id: string }).id === 'ch-typed');
+    expect(adopted.length).toBeGreaterThan(0);
+    for (const update of adopted) expect(update.data).not.toHaveProperty('content');
+    expect(adopted[0]?.data).toMatchObject({ order: 1, title: CHAPTERS[0]?.title });
+    // The other chapters are new rows; Chapter 1 is not duplicated.
+    expect(f.created).toHaveLength(CHAPTERS.length - 1);
   });
 });

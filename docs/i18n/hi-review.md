@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**480** strings are translated; **2** are deliberately
+**498** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -220,7 +220,7 @@ English. Write corrections in the last column.
 | `editor.restore` | Restore | वापस लाएँ | |
 | `editor.chapters` | Chapters | अध्याय | |
 | `editor.outline` | Outline | रूपरेखा | |
-| `editor.outlineBuilding` | Building your chapters from the proposal… they appear here in a minute. | प्रस्ताव से आपके अध्याय बन रहे हैं… एक मिनट में यहाँ दिखेंगे। | |
+| `editor.outlineBuilding` | Building your chapters… they appear here in a minute. | आपके अध्याय बन रहे हैं… एक मिनट में यहाँ दिखेंगे। | |
 | `editor.hint.intro` | This is your chapter. Write as you normally would. | यह आपका अध्याय है। जैसे हमेशा लिखते हैं, वैसे ही लिखें। | |
 | `editor.hint.auto` | A suggestion appears when you pause | जब आप रुकते हैं, एक सुझाव दिखता है | |
 | `editor.hint.manual` | Press Suggest, below, when you want a suggestion | जब सुझाव चाहिए, नीचे Suggest दबाएँ | |
@@ -277,6 +277,29 @@ English. Write corrections in the last column.
 | `guide.planDetail` | Answer a few questions and get a chapter outline, so each chapter is written to a plan. | कुछ सवालों के जवाब दें और अध्यायों की रूपरेखा पाएँ, ताकि हर अध्याय योजना के अनुसार लिखा जाए। | |
 | `guide.planAction` | Plan chapters | अध्याय योजना | |
 | `guide.hide` | Hide | छिपाएँ | |
+
+## sections
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `sections.chapterFor` | What this chapter is for | यह अध्याय किसलिए है | |
+| `sections.title` | Sections | खंड | |
+| `sections.planning` | Planning your chapters from your title… | आपके शीर्षक से अध्यायों की योजना बन रही है… | |
+| `sections.planningProposal` | Planning your chapters from your proposal… | आपके प्रस्ताव से अध्यायों की योजना बन रही है… | |
+| `sections.planningDetail` | Headings, with what each section should argue, appear here in a minute. Keep writing: nothing you write is moved. | हर खंड में क्या तर्क देना है, उसके साथ शीर्षक एक मिनट में यहाँ दिखेंगे। लिखते रहें: आपका लिखा कुछ भी हटाया नहीं जाएगा। | |
+| `sections.noPlan` | No chapter plan yet. | अभी अध्यायों की कोई योजना नहीं है। | |
+| `sections.noPlanDetail` | Get the chapters and their sections from your title, each with what it should argue. | अपने शीर्षक से अध्याय और उनके खंड पाएँ, हर एक के साथ कि उसमें क्या तर्क देना है। | |
+| `sections.plan` | Plan my chapters from the title | शीर्षक से मेरे अध्यायों की योजना बनाएँ | |
+| `sections.failed` | The plan could not be made this time. | इस बार योजना नहीं बन पाई। | |
+| `sections.retry` | Try again | फिर कोशिश करें | |
+| `sections.addHeading` | Add heading here | यहाँ शीर्षक जोड़ें | |
+| `sections.goTo` | Go to heading | शीर्षक पर जाएँ | |
+| `sections.draft` | Draft this section | इस खंड का ड्राफ़्ट बनाएँ | |
+| `sections.inChapter` | in your chapter | आपके अध्याय में है | |
+| `sections.hide` | Hide | छिपाएँ | |
+| `sections.show` | Show | दिखाएँ | |
+| `sections.note` | Nothing here goes into your chapter until you press a button. | जब तक आप कोई बटन न दबाएँ, यहाँ से कुछ भी आपके अध्याय में नहीं जाता। | |
+| `sections.editOutline` | Edit the outline | रूपरेखा बदलें | |
 
 ## The editor
 

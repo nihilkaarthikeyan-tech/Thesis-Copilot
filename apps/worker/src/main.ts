@@ -516,36 +516,54 @@ async function main(): Promise<void> {
     new Worker(
       QUEUE_GENERATE_OUTLINE,
       async (job: Job<GenerateOutlineJob>) => {
-        const result = await runGenerateOutline(
-          { ...job.data, template: job.data.template as never },
-          {
-            prisma,
-            llm: providers.llm,
-            aiProvider: env.AI_PROVIDER,
-            emptyChapter: (title) => ({
-              type: 'doc',
-              content: [
-                { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: title }] },
-                { type: 'paragraph' },
-              ],
-            }),
-            log: (event) => log({ jobId: job.id, ...event }),
-          },
-        );
-        // The outline screen polls `outlineRun`; clear it whatever the outcome.
-        const document = await prisma.document.findUnique({
-          where: { id: job.data.documentId },
-          select: { meta: true },
-        });
-        await prisma.document.update({
-          where: { id: job.data.documentId },
-          data: {
-            meta: {
-              ...((document?.meta as Record<string, unknown> | null) ?? {}),
-              outlineRun: { status: 'DONE', finishedAt: new Date().toISOString() },
+        const markRun = async (status: 'DONE' | 'FAILED') => {
+          const document = await prisma.document.findUnique({
+            where: { id: job.data.documentId },
+            select: { meta: true },
+          });
+          if (!document) return;
+          const meta = (document.meta as Record<string, unknown> | null) ?? {};
+          const run = (meta.outlineRun as Record<string, unknown> | undefined) ?? {};
+          await prisma.document.update({
+            where: { id: job.data.documentId },
+            data: {
+              meta: {
+                ...meta,
+                outlineRun: { ...run, status, finishedAt: new Date().toISOString() },
+              },
             },
-          },
-        });
+          });
+        };
+        let result: Awaited<ReturnType<typeof runGenerateOutline>>;
+        try {
+          result = await runGenerateOutline(
+            { ...job.data, template: job.data.template as never },
+            {
+              prisma,
+              llm: providers.llm,
+              aiProvider: env.AI_PROVIDER,
+              emptyChapter: (title) => ({
+                type: 'doc',
+                content: [
+                  {
+                    type: 'heading',
+                    attrs: { level: 1 },
+                    content: [{ type: 'text', text: title }],
+                  },
+                  { type: 'paragraph' },
+                ],
+              }),
+              log: (event) => log({ jobId: job.id, ...event }),
+            },
+          );
+        } catch (error) {
+          // ADR-0072: the outline screen and the editor poll `outlineRun`. A run that has used its
+          // last attempt is marked FAILED here, by the worker, or the editor would say "Planning
+          // your chapters…" for ever (it said RUNNING after every failure until now).
+          if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await markRun('FAILED');
+          throw error;
+        }
+        await markRun('DONE');
         log({ msg: 'generate-outline finished', jobId: job.id, ...result });
         return result;
       },

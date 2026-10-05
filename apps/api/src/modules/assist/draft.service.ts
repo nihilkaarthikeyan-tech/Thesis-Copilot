@@ -79,7 +79,7 @@ export class DraftService {
   ): AsyncGenerator<DraftEvent> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: input.chapterId, document: { ownerId: user.id } },
-      select: { id: true, documentId: true, title: true, scopeNote: true },
+      select: { id: true, documentId: true, title: true, scopeNote: true, outlineNodeId: true },
     });
     if (!chapter) throw new NotFoundError('That chapter');
 
@@ -91,7 +91,11 @@ export class DraftService {
         where: { documentId: chapter.documentId },
         select: { outline: true },
       });
-      const node = findOutlineNode(readOutline(memory?.outline), input.outlineNodeId);
+      // ADR-0072: an editor opened before the chapters were planned sends the placeholder id.
+      const outline = readOutline(memory?.outline);
+      const node =
+        findOutlineNode(outline, input.outlineNodeId) ??
+        findOutlineNode(outline, chapter.outlineNodeId);
       const title = node?.title ?? chapter.title;
       const scope = (node?.scopeNote ?? chapter.scopeNote ?? '').trim();
       if (isGenericSectionTitle(title) && !scope) throw new SectionNeedsTopicError();

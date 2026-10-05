@@ -123,7 +123,7 @@ import { ProofreadPanel } from './ProofreadPanel';
 import { ReadBesidePane } from './ReadBesidePane';
 import { ReaderHandoffBar } from './ReaderHandoff';
 import { ReviewPanel } from './ReviewPanel';
-import { ScaffoldPanel } from './ScaffoldPanel';
+import { SectionGuide } from './SectionGuide';
 import { ShareButton } from './ShareButton';
 import { SlashMenu } from './SlashMenu';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
@@ -1391,7 +1391,8 @@ function ChapterEditor({
 
         {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}
         <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
-          <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
+          {/* ADR-0072: the chapter's plan, with Add heading and Draft for each section. */}
+          <SectionGuide documentId={doc.id} chapterId={chapter.id} editor={editor} />
           {/* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */}
           <AddProposalPrompt
             documentId={doc.id}

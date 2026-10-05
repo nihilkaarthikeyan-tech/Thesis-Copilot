@@ -219,6 +219,32 @@ export function enforceTemplateShape(nodes: OutlineNode[], template: Template): 
   return normaliseOutline(out);
 }
 
+/** A section the model left as a slot to fill: "Sub-theme 1 (populate from gap_map)". */
+const PLACEHOLDER_TITLE = /\b(populate|placeholder|gap[_ ]map)\b|\(insert\b|^sub-?theme\s+\d+\b/i;
+/** An instruction to fill something in, left inside a scope note: "(insert objectives here)". */
+const PLACEHOLDER_NOTE = /\s*\((?:insert|populate)\b[^)]*\)/gi;
+
+/**
+ * ADR-0072: with no gap map and no objectives (a plan from the title alone), A.9's rule to ground
+ * the Literature Review on `<gap_map>` makes the model write slots instead of sections — measured
+ * on gpt-5-mini, 2026-10-05: "Sub-theme 1 (populate from gap_map)" three times, and "(insert
+ * objectives)" inside scope notes. A slot is not a section a student can write under, so it is
+ * dropped, and a fill-in instruction is taken out of the note it sits in. The prompt is unchanged
+ * (ADR-0038); real sections and their notes pass through untouched.
+ */
+export function dropPlaceholderSections(nodes: readonly OutlineNode[]): OutlineNode[] {
+  // Chapters are kept whatever their title: each is a `Chapter` row (and the template's shape).
+  const clean = (list: readonly OutlineNode[], top: boolean): OutlineNode[] =>
+    list
+      .filter((node) => top || !PLACEHOLDER_TITLE.test(node.title))
+      .map((node) => ({
+        ...node,
+        scopeNote: node.scopeNote.replace(PLACEHOLDER_NOTE, '').trim(),
+        children: clean(node.children ?? [], false),
+      }));
+  return clean(nodes, true);
+}
+
 /** The chapter role for a top-level node, by position in the template. Used by the scaffold UI. */
 export function roleForChapter(template: Template, index: number): ChapterRole {
   return TEMPLATE_SPECS[template].chapters[index]?.role ?? 'DISCUSSION';

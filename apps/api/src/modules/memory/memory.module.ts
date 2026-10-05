@@ -13,7 +13,8 @@ import { StyleService } from './style.service.js';
   // FR-3.6's per-section regeneration is metered against the COMMAND cap (ADR-0008).
   imports: [UsageModule],
   controllers: [MemoryController, ProposalController, OutlineController],
-  exports: [StyleService],
+  // ADR-0072: documents plan a Start-writing-now thesis from its title when it is created.
+  exports: [StyleService, OutlineService],
   providers: [SessionGuard, ProposalService, OutlineService, StyleService, QueueService],
 })
 export class MemoryModule {}

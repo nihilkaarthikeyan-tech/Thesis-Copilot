@@ -177,6 +177,44 @@ export class UsageService {
     };
   }
 
+  /**
+   * ADR-0072: the money checks of `consume` without a cap row, for an action PRD §11.3 gives no
+   * cap (`OUTLINE`) that the product now starts on its own. An ended trial, the student's ₹100
+   * ceiling and the site-wide budget each refuse it, exactly as they would a metered action; the
+   * count that bounds it is the caller's.
+   */
+  async spendAllowed(
+    userId: string,
+    plan: Plan,
+    now: Date = new Date(),
+  ): Promise<{ ok: true } | Extract<ConsumeResult, { ok: false }>> {
+    const resetsAt = resetsAtFor(now);
+    const trialEndedAt = plan === 'FREE_TRIAL' ? await this.trialEndedAt(userId, now) : null;
+    if (trialEndedAt) return { ok: false, reason: 'trial', cap: 0, resetsAt, trialEndedAt };
+    const budget = await this.budget.status(now);
+    if (budget.reached && budget.ceilingInr !== null) {
+      return {
+        ok: false,
+        reason: 'platform',
+        cap: 0,
+        resetsAt,
+        spentInr: budget.spentInr,
+        platformCeilingInr: budget.ceilingInr,
+      };
+    }
+    const spentMicro = await this.spentThisPeriod(userId, now);
+    if (spentMicro >= MONTHLY_CEILING_MICRO_INR) {
+      return {
+        ok: false,
+        reason: 'ceiling',
+        cap: 0,
+        resetsAt,
+        spentInr: Math.round(Number(spentMicro) / 10_000) / 100,
+      };
+    }
+    return { ok: true };
+  }
+
   /** For the usage meter: when the trial ends, whether it has, and whole days left. */
   async trialStatus(
     userId: string,

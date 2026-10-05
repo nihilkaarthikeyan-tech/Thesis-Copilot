@@ -259,6 +259,22 @@ since each re-index spends a little on embeddings).
 - [ ] **Release.** Nothing to configure: no migration, no new variable. The API calls
       `https://api.zotero.org` from the server, so the production host must allow outbound HTTPS
       to it (it already reaches OpenAlex and Crossref the same way).
+## Chapters planned from the title (ADR-0072, 2026-10-05)
+
+- [ ] **Decide whether A.9 needs a title-only variant.** A plan from the title alone sends
+      `outline.md` an empty problem statement and no gap map. One real run (gpt-5-mini, ₹0.68)
+      gave 6 chapters with 3–5 specific sections each, but the Literature Review came back as
+      slots ("Sub-theme 1 (populate from gap_map)"), which code now drops
+      (`dropPlaceholderSections`), so that chapter can arrive with only one section. A better
+      answer is a prompt change, which per ADR-0038 needs an evaluation round
+      (`packages/ai/eval/run.ts`). Try it yourself:
+      `pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx scripts/probe-outline-from-title.ts "your title"`.
+- [ ] **The monthly count is a guess.** 2 title plans a month on the trial, 5 on paid plans
+      (`AUTO_OUTLINES` in `packages/config/src/plans.ts`). Worst case ₹2.72 a month beyond the
+      one-time line. Change the numbers there if you want a different bound.
+- [ ] **Release.** No migration and no new variable. The `start` field on `POST /documents` is
+      optional, so an older web build keeps working.
+
 ## Hindi interface, beta (ADR-0061, 2026-10-05)
 
 - [ ] **Hindi leaves beta after a native speaker reviews docs/i18n/hi-review.md.** It lists every
