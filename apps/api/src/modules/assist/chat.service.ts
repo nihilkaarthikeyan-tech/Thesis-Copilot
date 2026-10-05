@@ -11,17 +11,25 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   buildChatRequest,
+  buildDeepChatRequest,
+  buildResearchPlanRequest,
   CHAT,
   type ChatFilters,
   type ChatTurn,
+  cleanResearchPlan,
+  DEEP_RESEARCH,
+  type DeepPart,
   FILTERED_OUT_REPLY,
   NAMED_EMPTY_REPLY,
   OFF_TOPIC_REPLY,
   type Providers,
   postProcessChat,
+  researchPlanSchema,
+  type ScopeForQueries,
 } from '@tc/ai';
 import { computeCallCost, computeEmbeddingCost, type Env } from '@tc/config';
 import {
+  CHAT_RESEARCH,
   cosine,
   isOffTopic,
   type LibraryCoverage,
@@ -58,6 +66,20 @@ import {
   WRITING_STEP,
 } from './beyond-library.js';
 import {
+  bestCosines,
+  DEEP_EMPTY_REPLY,
+  DEEP_WRITING_STEP,
+  type DeepStep,
+  type DeepSummary,
+  deepNote,
+  mergeCandidates,
+  mergeRetrievals,
+  PLANNING_STEP,
+  partQuestions,
+  partStep,
+  plannedStep,
+} from './chat-deep.js';
+import {
   keptStep,
   queryStep,
   RESEARCH_WRITING_STEP,
@@ -71,7 +93,7 @@ import {
 } from './chat-research.js';
 import { ContextService } from './context.service.js';
 import { passagesFromChapters } from './document-scope.js';
-import { WebScopeService } from './web-scope.service.js';
+import { type WebResult, WebScopeService } from './web-scope.service.js';
 
 /**
  * 'beyond' (ADR-0060) answers from the abstracts a scholarly search returns, through the same
@@ -93,6 +115,11 @@ export type ChatInput = {
    * the chapter's pins, and not from the rest of the library. Library scope only.
    */
   sourceIds?: string[];
+  /**
+   * ADR-0080: deep research — the student asked for the slow, planned, searched answer. Library
+   * scope only, and only without `@` papers; one `RESEARCH` unit instead of a CHAT unit.
+   */
+  deep?: boolean;
 };
 
 /**
@@ -118,7 +145,7 @@ export type ChatEvent =
    */
   | {
       event: 'step';
-      data: { id: 'search' | 'read' | 'write'; text: string } | ResearchStep;
+      data: { id: 'search' | 'read' | 'write'; text: string } | ResearchStep | DeepStep;
     }
   | { event: 'token'; data: { t: string } }
   | {
@@ -139,12 +166,15 @@ export type ChatEvent =
         /** Present on an answer written from search abstracts. */
         beyond?: BeyondSummary;
         /** ADR-0074: present on a library answer that also read abstracts a search found. */
-        research?: ResearchSummary;
+        research?: ResearchSummary | DeepSummary;
       };
     };
 
 /** What `ContextService.retrieve` returns, so the filter keeps the passage shape. */
 type Retrieved = Awaited<ReturnType<ContextService['retrieve']>>;
+
+/** The unit a question is metered and logged as: a chat question, or deep research (ADR-0080). */
+type ChatAction = 'CHAT' | 'RESEARCH';
 
 /** How many turns are kept on the document; A.4 sends the last four back to the model. */
 const KEEP_TURNS = CHAT.keepTurns * 2;
@@ -160,8 +190,8 @@ export type StoredTurn = ChatTurn & {
   citations?: ChatCitation[];
   /** ADR-0060: the answer was written from search abstracts, not the library. */
   beyond?: BeyondSummary;
-  /** ADR-0074: the library's passages and abstracts a search found. */
-  research?: ResearchSummary;
+  /** ADR-0074: the library's passages and abstracts a search found; ADR-0080 with the plan. */
+  research?: ResearchSummary | DeepSummary;
 };
 
 type ChapterForChat = Parameters<ContextService['memoryBlock']>[0];
@@ -228,6 +258,18 @@ export class ChatService {
       throw new ForbiddenError(
         'Searching beyond your library is turned off. Turn it on in Settings to ask this way.',
       );
+    }
+
+    // ADR-0080: the deep mode is its own unit and its own path. Asked with `@` papers or in another
+    // scope it is an ordinary question: the panel offers it only where it applies.
+    if (input.deep === true && scope === 'library' && (input.sourceIds?.length ?? 0) === 0) {
+      if (beyondSetting === 'off') {
+        throw new ForbiddenError(
+          'Deep research searches the literature, which is turned off in Settings. Turn "Search beyond my library" on to use it.',
+        );
+      }
+      yield* this.askDeep(user, input, document, chapter, signal);
+      return;
     }
 
     const cap = await this.usage.consume(
@@ -487,6 +529,324 @@ export class ChatService {
   }
 
   /**
+   * ADR-0080: deep research. One `RESEARCH` unit, taken first, pays for: a planner call (A.4.1)
+   * that breaks the question into parts with a query each; the library and every index searched
+   * once per part, in the plan's order, each shown as it happens; one embedding call that keeps
+   * the found abstracts on the question or on a part; and the answer (A.4.2), written part by
+   * part from the library's best passages over all the parts and the kept abstracts. Grounding is
+   * unchanged: only passages in the request may be cited.
+   *
+   * Nothing but the answer fails the question. A planner failure plans in code; a failed search
+   * loses that part's results; a failed embedding loses the abstracts. The unit is refunded when
+   * nothing at all was found to read, and when the answer fails.
+   */
+  private async *askDeep(
+    user: { id: string; plan: string },
+    input: ChatInput,
+    document: { meta: unknown; title: string },
+    chapter: ChapterForChat,
+    signal: AbortSignal,
+  ): AsyncGenerator<ChatEvent> {
+    const cap = await this.usage.consume(
+      user.id,
+      user.plan as Parameters<UsageService['consume']>[1],
+      'RESEARCH',
+    );
+    if (!cap.ok) {
+      capExceeded.inc({ action: 'RESEARCH' });
+      throw refusal('RESEARCH', cap);
+    }
+
+    const history = readTurns(document.meta);
+    yield { event: 'start', data: { turn: history.length / 2 + 1 } };
+    const startedAt = Date.now();
+    const filters = input.filters ?? {};
+
+    yield { event: 'step', data: PLANNING_STEP };
+    const [memory, scope] = await Promise.all([
+      this.context.memoryBlock(chapter),
+      this.scopeForPlan(input.documentId, document.title, chapter),
+    ]);
+    const plan = await this.planDeep(user.id, input, scope, signal);
+    yield { event: 'step', data: plannedStep(plan) };
+
+    // The library and the indexes, once per part, in the plan's order. The indexes answer within
+    // ADR-0074's budget per part, so the whole search is bounded by the number of parts.
+    const retrievals: Retrieved[] = [];
+    const found: WebResult[][] = [];
+    for (const [i, part] of plan.entries()) {
+      yield { event: 'step', data: partStep(i, plan.length, part) };
+      const [retrieved, results] = await Promise.all([
+        this.context.retrieve(chapter, `${part.title}. ${part.question}`, 'CHAT'),
+        this.web
+          .searchPlan(
+            input.documentId,
+            part.question,
+            {
+              semantic: `${scope.workingTitle}. ${part.question}`.slice(0, 2_000),
+              keyword: [part.query],
+            },
+            signal,
+          )
+          .catch((error: unknown): WebResult[] => {
+            if (signal.aborted) throw error;
+            this.logger.warn(
+              { err: error, documentId: input.documentId, part: part.title },
+              'deep research: a search failed',
+            );
+            return [];
+          }),
+      ]);
+      retrievals.push(retrieved);
+      found.push(results);
+    }
+    // The question as asked, too, so a part the planner missed still has the library's best.
+    retrievals.push(await this.context.retrieve(chapter, input.message, 'CHAT'));
+
+    const merged = mergeRetrievals(retrievals);
+    const filtered = (await this.applyFilters(merged, filters)).slice(0, DEEP_RESEARCH.libraryTopK);
+    // A library with nothing near the question contributes nothing; the searches may still answer.
+    const library = filtered.length > 0 && !isOffTopic(filtered) ? filtered : [];
+    const librarySources = new Set(library.map((p) => p.shortRef)).size;
+    yield {
+      event: 'step',
+      data: {
+        id: 'read',
+        text: `Reading ${library.length} passage${library.length === 1 ? '' : 's'} from ${librarySources} source${librarySources === 1 ? '' : 's'}`,
+      },
+    };
+
+    const candidates = mergeCandidates(found);
+    yield { event: 'step', data: readStep(candidates.length) };
+    let kept: BeyondPassages = { passages: [], papers: new Map<string, BeyondPaper>() };
+    if (candidates.length > 0) {
+      try {
+        const began = Date.now();
+        const asked = [input.message, ...partQuestions(plan)];
+        const { vectors, tokens } = await this.providers.embeddings.embedWithUsage([
+          ...asked,
+          ...candidates.map((r) => researchEmbedText(r)),
+        ]);
+        await this.logEmbed(user.id, input.documentId, tokens, Date.now() - began);
+        const scores = bestCosines(vectors, plan.length, candidates.length, cosine);
+        kept = researchPassages(
+          candidates.map((result, i) => ({ result, cosine: scores[i] ?? 0 })),
+          beyondFilters(filters),
+          CHAT_RESEARCH.keepCosine,
+          DEEP_RESEARCH.maxAbstracts,
+        );
+      } catch (error) {
+        if (signal.aborted) throw error;
+        this.logger.warn(
+          { err: error, documentId: input.documentId },
+          'deep research: the embedding failed; answering from the library',
+        );
+      }
+    }
+    yield { event: 'step', data: keptStep(kept.passages.length, candidates.length) };
+    this.logger.log(
+      {
+        documentId: input.documentId,
+        parts: plan.length,
+        library: library.length,
+        librarySources,
+        candidates: candidates.length,
+        kept: kept.passages.length,
+      },
+      'deep research',
+    );
+
+    const allPassages = [...library, ...kept.passages];
+    if (allPassages.length === 0) {
+      await this.usage.refund(user.id, 'RESEARCH');
+      yield {
+        event: 'done',
+        data: {
+          text: DEEP_EMPTY_REPLY,
+          outcome: 'deep-empty',
+          citations: [],
+          passagesUsed: 0,
+          latencyMs: Date.now() - startedAt,
+        },
+      };
+      return;
+    }
+
+    yield { event: 'step', data: { id: 'write', text: DEEP_WRITING_STEP } };
+    const request = buildDeepChatRequest({
+      memoryBlock: memory.text,
+      question: input.message,
+      history,
+      passages: allPassages,
+      filters,
+      userId: user.id,
+      documentId: input.documentId,
+      signal: AbortSignal.any([signal, AbortSignal.timeout(DEEP_RESEARCH.answerTimeoutMs)]),
+      plan,
+    });
+    const { raw, latencyMs } = yield* this.stream(
+      user.id,
+      input.documentId,
+      request,
+      startedAt,
+      signal,
+      'RESEARCH',
+    );
+
+    const processed = postProcessChat(
+      raw,
+      allPassages.map((p) => p.id),
+    );
+    for (const key of processed.hallucinated) {
+      hallucinatedCite.inc();
+      this.logger.warn({ documentId: input.documentId, key }, 'HALLUCINATED_CITE');
+    }
+    const citations: ChatCitation[] = processed.cited.flatMap((key) => {
+      const real = merged.byKey.get(key);
+      const passage = allPassages.find((p) => p.id === key);
+      if (real) {
+        return [
+          { key, sourceId: real.sourceId, chunkId: real.chunkId, label: passage?.shortRef ?? key },
+        ];
+      }
+      const paper = kept.papers.get(key);
+      return paper
+        ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }]
+        : [];
+    });
+    const summary: DeepSummary = {
+      deep: true,
+      papers: kept.passages.length,
+      queries: plan.map((p) => p.query),
+      note: deepNote(librarySources, kept.passages.length),
+      plan: plan.map(({ title, question }) => ({ title, question })),
+      libraryPapers: librarySources,
+    };
+
+    const answerId = randomUUID();
+    const turns: StoredTurn[] = [
+      ...history,
+      { id: randomUUID(), role: 'user' as const, text: input.message },
+      {
+        id: answerId,
+        role: 'assistant' as const,
+        text: processed.text,
+        citations,
+        research: summary,
+      },
+    ].slice(-KEEP_TURNS);
+    const meta = (document.meta as Record<string, unknown> | null) ?? {};
+    await this.prisma.document.update({
+      where: { id: input.documentId },
+      data: { meta: { ...meta, chat: { turns } } },
+    });
+
+    yield {
+      event: 'done',
+      data: {
+        turnId: answerId,
+        text: processed.text,
+        outcome: processed.outcome,
+        citations,
+        passagesUsed: allPassages.length,
+        latencyMs,
+        research: summary,
+      },
+    };
+  }
+
+  /** The thesis scope the planner reads: the memory's, else the title and the chapter's note. */
+  private async scopeForPlan(
+    documentId: string,
+    title: string,
+    chapter: ChapterForChat,
+  ): Promise<ScopeForQueries> {
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { scope: true },
+    });
+    const stored = (memory?.scope ?? {}) as {
+      workingTitle?: unknown;
+      problemStatement?: unknown;
+      objectives?: unknown;
+    };
+    const workingTitle =
+      typeof stored.workingTitle === 'string' && stored.workingTitle.trim()
+        ? stored.workingTitle.trim()
+        : title;
+    const problemStatement =
+      typeof stored.problemStatement === 'string' && stored.problemStatement.trim()
+        ? stored.problemStatement.trim()
+        : (chapter.scopeNote ?? '');
+    const objectives = Array.isArray(stored.objectives)
+      ? stored.objectives.filter((o): o is string => typeof o === 'string').slice(0, 8)
+      : [];
+    return { workingTitle, problemStatement, objectives };
+  }
+
+  /**
+   * A.4.1, logged as `RESEARCH`, within its time limit. A failed or empty plan is planned in
+   * code from the question's own words (ADR-0074), one part: the question is never failed for it.
+   */
+  private async planDeep(
+    userId: string,
+    input: ChatInput,
+    scope: ScopeForQueries,
+    signal: AbortSignal,
+  ): Promise<DeepPart[]> {
+    const request = buildResearchPlanRequest({
+      scope,
+      question: input.message,
+      userId,
+      documentId: input.documentId,
+      signal: AbortSignal.any([signal, AbortSignal.timeout(DEEP_RESEARCH.plannerTimeoutMs)]),
+    });
+    const startedAt = Date.now();
+    let modelId = this.providers.llm.modelIdFor('strong');
+    let parts: DeepPart[] = [];
+    try {
+      const result = await this.providers.llm.complete({ ...request, schema: researchPlanSchema });
+      modelId = result.modelId;
+      await this.log(
+        userId,
+        input.documentId,
+        modelId,
+        result.usage,
+        Date.now() - startedAt,
+        true,
+        undefined,
+        'RESEARCH',
+      );
+      parts = cleanResearchPlan(result.value);
+    } catch (error) {
+      if (signal.aborted) throw error;
+      await this.log(
+        userId,
+        input.documentId,
+        modelId,
+        null,
+        Date.now() - startedAt,
+        false,
+        error,
+        'RESEARCH',
+      );
+      this.logger.warn(
+        { err: error, documentId: input.documentId },
+        'deep research: the plan failed; planning in code',
+      );
+    }
+    if (parts.length > 0) return parts;
+    const fallback = planResearchQueries(input.message, scope.workingTitle);
+    return [
+      {
+        title: 'The question',
+        question: input.message,
+        query: fallback.keyword[0] ?? input.message.slice(0, 120),
+      },
+    ];
+  }
+
+  /**
    * ADR-0074: search the literature for a question the library is thin on, and keep the found
    * abstracts that are on it. Every step is shown as it happens. No model call: the plan is
    * `planResearchQueries`, the indexes are searched within `CHAT_RESEARCH.budget`, and relevance
@@ -739,33 +1099,58 @@ export class ChatService {
     request: ReturnType<typeof buildChatRequest>,
     startedAt: number,
     signal: AbortSignal,
+    action: ChatAction = 'CHAT',
   ): AsyncGenerator<ChatEvent, { raw: string; latencyMs: number }> {
     let raw = '';
     let ttfbMs: number | null = null;
-    let modelId = this.providers.llm.modelIdFor(this.env.AI_CHAT_TIER);
+    const tier = this.tierFor(action);
+    let modelId = this.providers.llm.modelIdFor(tier);
     try {
       for await (const chunk of this.providers.llm.stream(request)) {
         if (signal.aborted) break;
         if (chunk.type === 'text') {
           if (ttfbMs === null) {
             ttfbMs = Date.now() - startedAt;
-            aiTtfb.observe({ action: 'CHAT' }, ttfbMs);
+            aiTtfb.observe({ action }, ttfbMs);
           }
           raw += chunk.text;
           yield { event: 'token', data: { t: chunk.text } };
         } else {
           modelId = chunk.modelId;
-          await this.log(userId, documentId, modelId, chunk.usage, Date.now() - startedAt, true);
+          await this.log(
+            userId,
+            documentId,
+            modelId,
+            chunk.usage,
+            Date.now() - startedAt,
+            true,
+            undefined,
+            action,
+          );
         }
       }
     } catch (error) {
-      await this.usage.refund(userId, 'CHAT');
-      await this.log(userId, documentId, modelId, null, Date.now() - startedAt, false, error);
+      await this.usage.refund(userId, action);
+      await this.log(
+        userId,
+        documentId,
+        modelId,
+        null,
+        Date.now() - startedAt,
+        false,
+        error,
+        action,
+      );
       throw error;
     }
     const latencyMs = Date.now() - startedAt;
-    aiCallLatency.observe({ action: 'CHAT', tier: this.env.AI_CHAT_TIER }, latencyMs);
+    aiCallLatency.observe({ action, tier }, latencyMs);
     return { raw, latencyMs };
+  }
+
+  /** A chat answer is on `AI_CHAT_TIER`; deep research (ADR-0080) is always on the strong tier. */
+  private tierFor(action: ChatAction): 'fast' | 'strong' {
+    return action === 'RESEARCH' ? 'strong' : this.env.AI_CHAT_TIER;
   }
 
   private async beyondSetting(userId: string): Promise<BeyondSetting> {
@@ -867,17 +1252,18 @@ export class ChatService {
     latencyMs: number,
     ok: boolean,
     error?: unknown,
+    action: ChatAction = 'CHAT',
   ): Promise<void> {
     const cost =
       ok && usage && this.env.AI_PROVIDER !== 'mock'
-        ? computeCallCost({ tier: this.env.AI_CHAT_TIER, modelId: model, usage })
+        ? computeCallCost({ tier: this.tierFor(action), modelId: model, usage })
         : 0;
-    if (cost > 0) aiCostMicroInr.inc({ action: 'CHAT' }, cost);
+    if (cost > 0) aiCostMicroInr.inc({ action }, cost);
     await this.prisma.aiCallLog.create({
       data: {
         userId,
         documentId,
-        action: 'CHAT',
+        action,
         model,
         inputTokens: usage?.inputTokens ?? 0,
         cachedInputTokens: usage?.cachedInputTokens ?? 0,

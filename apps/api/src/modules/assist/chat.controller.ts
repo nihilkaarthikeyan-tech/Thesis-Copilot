@@ -45,6 +45,8 @@ const chatBody = z.object({
   scope: z.enum(['library', 'document', 'beyond']).default('library'),
   /** Papers named with `@`: the answer comes from these alone. Ten is more than a question needs. */
   sourceIds: z.array(z.string().uuid()).max(10).optional(),
+  /** ADR-0080: deep research — planned, searched per part, answered at length; one RESEARCH unit. */
+  deep: z.boolean().optional(),
   filters: z
     .object({
       yearFrom: z.number().int().min(1800).max(2100).nullish(),

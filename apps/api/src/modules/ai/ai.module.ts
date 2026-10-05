@@ -24,6 +24,7 @@ import {
   mockEquationResponse,
   mockProofreadResponse,
   mockProposalFor,
+  mockResearchPlanResponse,
   mockRevisionFor,
   mockSectionScopeResponse,
   mockStyleResponse,
@@ -90,6 +91,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 // ADR-0030: viva preparation, its own action; matched by its outer tag.
                 mockVivaQuestionsResponse,
                 mockVivaFeedbackResponse,
+                // ADR-0080: deep research's plan, from the question's own words.
+                mockResearchPlanResponse,
                 // ADR-0039: the plan step's key-term extraction, matched by its outer tag.
                 {
                   match: (req: LlmRequest) =>
@@ -115,7 +118,7 @@ export function mockSuggestionFor(req: LlmRequest): string {
               defaultText: (req) => {
                 if (req.action === 'PROPOSAL') return mockProposalFor(req);
                 // A.4: answered from the passages in the request, or the exact "not enough" reply.
-                if (req.action === 'CHAT') return mockChatFor(req);
+                if (req.action === 'CHAT' || req.action === 'RESEARCH') return mockChatFor(req);
                 // A.14: keeps the passage and says what the student must supply, which is what
                 // the prompt tells a real model to do when the thesis lacks the answer (D.2.3).
                 if (req.action === 'SCOPED_REVISION') return mockRevisionFor(req);
