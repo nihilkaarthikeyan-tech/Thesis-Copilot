@@ -51,12 +51,18 @@ export default function PrivacyPage() {
         The Chrome add-on
       </h2>
       <p className="mt-2 text-muted">
-        It reads a page only when you click its button, and then only the page&rsquo;s address and
-        the tags publishers put on it to describe the article — its title, authors, journal, year
-        and DOI. Never the page&rsquo;s text, never another tab, never your browsing history. When
-        you choose <em>Add to library</em>, it sends that reference to your thesis, using the
-        sign-in you already have on this site. The one thing it keeps in your browser is which
-        thesis you added to last.
+        It reads a page only when you click its button (or choose it from the right-click menu), and
+        then only the page&rsquo;s address and the tags publishers put on it to describe the article
+        — its title, authors, journal, year and DOI. On a PubMed, arXiv or Google Scholar results
+        page it reads the titles and identifiers of the results shown, nothing more. Never the
+        page&rsquo;s text, never another tab, never your browsing history. When you choose{' '}
+        <em>Save</em>, it sends those references to your thesis, using the sign-in you already have
+        on this site. If the tab is showing a PDF and you leave <em>Attach this PDF</em> ticked, it
+        downloads that file from the site you are reading — as your own request, with your access to
+        that site — and uploads it to your library, where it is stored like any PDF you upload. It
+        sends nothing anywhere else and has no analytics. What it keeps in your browser is which
+        thesis and collection you saved to last, and for at most two minutes a link you
+        right-clicked.
       </p>
 
       <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">What we log</h2>
