@@ -1,0 +1,47 @@
+<!doctype html>
+<!--
+  HAND-WRITTEN FIXTURE (ADR-0069). NOT taken from a live page: the add-on and its author never
+  request Google Scholar automatically. The structure follows Scholar's long-standing result markup
+  as documented by reference managers that read it (Zotero's Google Scholar translator):
+  div.gs_r.gs_or.gs_scl[data-cid] per result, h3.gs_rt with the title link and its "[PDF]" /
+  "[CITATION]" labels in .gs_ctc / .gs_ctu spans, and div.gs_a with "authors - venue, year - host".
+  The records are well-known papers' citations, written out by hand.
+-->
+<html lang="en">
+  <head>
+    <title>Google Scholar</title>
+  </head>
+  <body>
+    <div id="gs_res_ccl_mid">
+      <div class="gs_r gs_or gs_scl" data-cid="AAAA1111" data-did="AAAA1111" data-lid="" data-rp="0">
+        <div class="gs_ri">
+          <h3 class="gs_rt" ontouchstart="">
+            <a id="AAAA1111" href="https://link.example.com/doi/full/10.1080/01621459.2017.1285773" data-clk="x">Variational inference: a review for <b>statisticians</b></a>
+          </h3>
+          <div class="gs_a">DM Blei, A Kucukelbir, JD McAuliffe - Journal of the American statistical …, 2017 - Taylor &amp; Francis</div>
+          <div class="gs_rs">A snippet the add-on never reads.</div>
+        </div>
+      </div>
+      <div class="gs_r gs_or gs_scl" data-cid="BBBB2222" data-rp="1">
+        <div class="gs_ri">
+          <h3 class="gs_rt">
+            <span class="gs_ctc"><span class="gs_ct1">[PDF]</span><span class="gs_ct2">[PDF]</span></span>
+            <a href="https://arxiv.org/pdf/1706.03762">Attention is all you need</a>
+          </h3>
+          <div class="gs_a">A Vaswani, N Shazeer, N Parmar… - Advances in neural …, 2017 - arxiv.org</div>
+        </div>
+      </div>
+      <div class="gs_r gs_or gs_scl" data-cid="CCCC3333" data-rp="2">
+        <div class="gs_ri">
+          <h3 class="gs_rt">
+            <span class="gs_ctu"><span class="gs_ct1">[CITATION]</span><span class="gs_ct2">[C]</span></span>
+            Groundwater markets in South India
+          </h3>
+          <div class="gs_a">T Shah - 1993 - Oxford University Press</div>
+        </div>
+      </div>
+      <!-- A profile row, not a result: no data-cid, so not read. -->
+      <div class="gs_r"><h3 class="gs_rt">User profiles for groundwater</h3></div>
+    </div>
+  </body>
+</html>

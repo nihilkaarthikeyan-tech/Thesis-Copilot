@@ -1,0 +1,94 @@
+<!doctype html>
+<!--
+  HAND-WRITTEN FIXTURE (ADR-0069). Not a saved copy of PubMed: the structure (class names,
+  attributes, nesting) is taken from a PubMed search results page observed on 2026-10-05
+  (pubmed.ncbi.nlm.nih.gov/?term=...); the records are invented and only the third one carries
+  a real-looking DOI shape. Trimmed to what collectResultList reads.
+-->
+<html lang="en">
+  <head>
+    <meta name="ncbi_app" content="pubmed" />
+    <meta name="log_op" content="search" />
+    <title>soil salinity - Search Results - PubMed</title>
+  </head>
+  <body>
+    <section class="search-results-list">
+      <article class="full-docsum" data-rel-pos="1">
+        <div class="item-selector-wrap selectors-and-actions first-selector">
+          <input class="search-result-selector" type="checkbox" id="select-11111111" value="11111111" />
+        </div>
+        <div class="docsum-wrap">
+          <div class="docsum-content">
+            <a class="docsum-title" href="/11111111/" data-ga-label="11111111" data-article-id="11111111">
+              Mapping <b>soil</b> <b>salinity</b> in coastal paddy fields with remote sensing.
+            </a>
+            <div class="docsum-citation full-citation">
+              <span class="docsum-authors full-authors">Raman K, Iyer S, Das P, Mehta A, Khan R.</span>
+              <span class="docsum-authors short-authors">Raman K, et al.</span>
+              <span class="docsum-journal-citation full-journal-citation">Environ Monit Assess. 2024 Mar;196(3):245. doi: 10.1007/s10661-024-00001-x. Epub 2024 Feb 9.</span>
+              <span class="docsum-journal-citation short-journal-citation">Environ Monit Assess. 2024.</span>
+              <span class="citation-part">PMID: <span class="docsum-pmid">11111111</span></span>
+            </div>
+            <div class="docsum-snippet"><div class="full-view-snippet">An abstract snippet the add-on never reads.</div></div>
+          </div>
+        </div>
+      </article>
+      <article class="full-docsum" data-rel-pos="2">
+        <div class="docsum-wrap">
+          <div class="docsum-content">
+            <a class="docsum-title" href="/22222222/" data-article-id="22222222">
+              Groundwater recharge and irrigation demand: a review.
+            </a>
+            <div class="docsum-citation full-citation">
+              <span class="docsum-authors full-authors">Nair V.</span>
+              <span class="docsum-journal-citation full-journal-citation">J Hydrol. 2019;12(4):100-110.</span>
+              <span class="citation-part">PMID: <span class="docsum-pmid">22222222</span></span>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="full-docsum" data-rel-pos="3">
+        <div class="docsum-wrap">
+          <div class="docsum-content">
+            <a class="docsum-title" href="/33333333/" data-article-id="33333333">
+              Salt-tolerant rice varieties in the Cauvery delta.
+            </a>
+            <div class="docsum-citation full-citation">
+              <span class="docsum-authors full-authors">Subramanian L, Rao M.</span>
+              <span class="docsum-journal-citation full-journal-citation">Field Crops Res. 2021 Jul;268:108170. doi: 10.1016/j.fcr.2021.108170.</span>
+              <span class="citation-part">PMID: <span class="docsum-pmid">33333333</span></span>
+            </div>
+          </div>
+        </div>
+      </article>
+      <!-- The same record twice (PubMed does this across "similar articles" blocks): one item. -->
+      <article class="full-docsum" data-rel-pos="4">
+        <div class="docsum-wrap">
+          <div class="docsum-content">
+            <a class="docsum-title" href="/33333333/" data-article-id="33333333">
+              Salt-tolerant rice varieties in the Cauvery delta.
+            </a>
+            <div class="docsum-citation full-citation">
+              <span class="docsum-authors full-authors">Subramanian L, Rao M.</span>
+              <span class="docsum-journal-citation full-journal-citation">Field Crops Res. 2021 Jul;268:108170. doi: 10.1016/j.fcr.2021.108170.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+      <!-- A result whose markup has been tampered with: a DOI with a quote and script in it. -->
+      <article class="full-docsum" data-rel-pos="5">
+        <div class="docsum-wrap">
+          <div class="docsum-content">
+            <a class="docsum-title" href="/44444444/" data-article-id="44444444&quot;onload=x">
+              &lt;img src=x onerror=alert(1)&gt; A title with markup in it
+            </a>
+            <div class="docsum-citation full-citation">
+              <span class="docsum-authors full-authors">Evil E.</span>
+              <span class="docsum-journal-citation full-journal-citation">X. 2020. doi: 10.1000/"&gt;&lt;script&gt;.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<!--
+  HAND-WRITTEN FIXTURE (ADR-0069). The structure is an arXiv search results page as observed on
+  2026-10-05 (arxiv.org/search/?query=...): one <li class="arxiv-result"> per paper, with
+  p.list-title a (the abstract link), p.title, p.authors and p.is-size-7 ("Submitted …").
+  The papers are invented.
+-->
+<html lang="en">
+  <head>
+    <title>Search | arXiv e-print repository</title>
+  </head>
+  <body>
+    <ol class="breathe-horizontal" start="1">
+      <li class="arxiv-result">
+        <div class="is-marginless">
+          <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2609.12345">arXiv:2609.12345</a>
+            <span>&nbsp;[<a href="https://arxiv.org/pdf/2609.12345">pdf</a>]&nbsp;</span>
+          </p>
+        </div>
+        <p class="title is-5 mathjax">
+          Transformers for Crop Yield Forecasting
+        </p>
+        <p class="authors">
+          <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+          <a href="/search/?searchtype=author&amp;query=Iyer%2C+M">Meera Iyer</a>,
+          <a href="/search/?searchtype=author&amp;query=Shah%2C+R">Rohan Shah</a>
+        </p>
+        <p class="abstract mathjax"><span class="abstract-short">An abstract the add-on never reads.</span></p>
+        <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 28 September, 2026;
+          <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> September 2026.
+        </p>
+      </li>
+      <li class="arxiv-result">
+        <div class="is-marginless">
+          <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2501.00042">arXiv:2501.00042</a></p>
+        </div>
+        <p class="title is-5 mathjax">A Second Result</p>
+        <p class="authors"><span>Authors:</span> <a href="https://arxiv.org/a/example">Single Author</a></p>
+        <p class="is-size-7"><span>Submitted</span> 3 January, 2025;</p>
+      </li>
+      <!-- A link that is not an arXiv abstract: dropped. -->
+      <li class="arxiv-result">
+        <p class="list-title"><a href="https://example.org/abs/2501.00042">elsewhere</a></p>
+        <p class="title">Not arXiv</p>
+      </li>
+    </ol>
+  </body>
+</html>
