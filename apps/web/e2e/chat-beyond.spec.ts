@@ -24,9 +24,12 @@ const PAPER = {
   },
 };
 
+/** The web app's origin, so the mocked responses pass CORS on a stack on other ports too. */
+const ORIGIN = new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000').origin;
+
 const SSE_HEADERS = {
   'content-type': 'text/event-stream',
-  'access-control-allow-origin': 'http://localhost:3000',
+  'access-control-allow-origin': ORIGIN,
   'access-control-allow-credentials': 'true',
 };
 
@@ -113,7 +116,7 @@ test('a refused question offers the search; the answer shows its steps, its pape
       status: 200,
       headers: {
         'content-type': 'application/json',
-        'access-control-allow-origin': 'http://localhost:3000',
+        'access-control-allow-origin': ORIGIN,
         'access-control-allow-credentials': 'true',
       },
       body: JSON.stringify({ results: [] }),

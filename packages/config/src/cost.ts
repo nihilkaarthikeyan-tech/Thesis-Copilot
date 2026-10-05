@@ -104,7 +104,9 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
   // 2026-10-05 (ADR-0077, the owner's decision): chat answers on the strong tier. A reasoning
   // model bills its thinking as output, so the 600-token answer is priced with ~1,000 tokens of
   // reasoning on top (`REASONING_HEADROOM` in packages/ai).
-  CHAT: { tier: 'strong', inputTokens: 4_000, cachedInputTokens: 4_000, outputTokens: 1_600 },
+  // ADR-0074: a thin library also sends up to six search abstracts (~2,700 tokens more in), and
+  // the evaluated A.4 answers are longer (900-token cap, plus the reasoning headroom).
+  CHAT: { tier: 'strong', inputTokens: 6_700, cachedInputTokens: 4_000, outputTokens: 1_900 },
   DRAFT: { tier: 'strong', inputTokens: 6_000, cachedInputTokens: 4_000, outputTokens: 800 },
   // 600 rather than §11.4's 500: FR-3.6's per-section scope rewrite is metered against this cap
   // (ADR-0008), and a scope note is the longer of the two responses. A shared cap has to be

@@ -37,5 +37,6 @@ export function answerPlainText(text: string, citations: readonly CopyCitation[]
       out += token.display ? `$$${token.latex}$$` : `$${token.latex}$`;
     }
   }
-  return out.trim();
+  // ADR-0074: a heading reads as its words; "### " is markup the student never saw.
+  return out.replace(/^#{1,4}\s+/gm, '').trim();
 }

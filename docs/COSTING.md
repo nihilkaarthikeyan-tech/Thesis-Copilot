@@ -44,9 +44,13 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > 4 × ₹0.68 = **₹2.72** a month: ₹85.82 → ₹88.54 with ADR-0051's fast tier. The ₹100 ceiling and
 > the site budget refuse a plan like any metered action.
 >
-> **Both of 2026-10-05's changes together** (chat on the strong tier, title plans): the worst case
-> for a fully active student at the production configuration is ₹88.19 + ₹2.72 = **₹90.91**, within
-> the ₹100 ceiling.
+> **Research chat (ADR-0074).** A question to a thin library also sends up to six search abstracts
+> and gets a longer, sectioned answer: the chat unit is priced at ₹0.4850 (6,700 in, 4,000 cached,
+> 1,900 out on `gpt-5-mini`), plus at most ₹0.039 of embedding for the search, logged as `EMBED`.
+>
+> **All of 2026-10-05's changes together** (strong-tier research chat, title plans): the worst case
+> for a fully active student at the production configuration is ₹89.85 + 15 × ₹0.039 + ₹2.72 =
+> **₹93.16**, within the ₹100 ceiling.
 >
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs

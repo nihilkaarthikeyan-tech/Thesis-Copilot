@@ -34,7 +34,9 @@ test('a stored answer carries thumbs; pressing one sends the rating for that ans
       status: 200,
       headers: {
         'content-type': 'text/event-stream',
-        'access-control-allow-origin': 'http://localhost:3000',
+        'access-control-allow-origin': new URL(
+          process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
+        ).origin,
         'access-control-allow-credentials': 'true',
       },
       body: [

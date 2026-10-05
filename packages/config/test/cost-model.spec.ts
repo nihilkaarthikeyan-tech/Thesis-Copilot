@@ -62,14 +62,15 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(line?.count).toBe(6);
     // Eight sections, each one examiner call of the chapter build's shape, on gpt-5-mini.
     expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(1.8618, 4);
-    // ADR-0077: chat on the strong tier (₹0.3741 a question) took this from ₹63.89.
-    expect(budget.totalInr).toBeCloseTo(69.06, 2);
+    // ADR-0077 + ADR-0074: chat on the strong tier, researching a thin library (₹0.4850 a
+    // question) took this from ₹63.89.
+    expect(budget.totalInr).toBeCloseTo(70.73, 2);
     // ADR-0051 moved the fast tier to gpt-4.1-mini for Assist; the ceiling holds there too.
     const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
     });
-    // ADR-0077: from ₹85.82 with chat on the strong tier.
-    expect(assistModel.totalInr).toBeCloseTo(88.19, 2);
+    // ADR-0077 + ADR-0074: from ₹85.82.
+    expect(assistModel.totalInr).toBeCloseTo(89.85, 2);
     expect(assistModel.withinCeiling).toBe(true);
   });
 

@@ -27,6 +27,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
 import {
+  CHAT_RESEARCH,
   type DiscoveredWork,
   interleave,
   keywordsOf,
@@ -34,7 +35,9 @@ import {
   matchingPassage,
   mergeWorks,
   OpenAlexDiscovery,
+  type ResearchPlan,
   SemanticScholarClient,
+  searchWithinBudget,
 } from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
@@ -186,24 +189,86 @@ export class WebScopeService {
     // Taken in turn, so each index that answered is on the page — eight results would otherwise
     // be eight of OpenAlex's.
     const works = mergeWorks([interleave(lists)]).slice(0, limit);
+    const have = await this.libraryKeys(documentId);
+    return {
+      query: question,
+      results: works.map((work) => webResultOf(work, question, have)),
+    };
+  }
 
+  /**
+   * ADR-0074: chat's research plan — OpenAlex's semantic search with the thesis and the question,
+   * and each keyword query on every keyword index, one after another per index within
+   * `CHAT_RESEARCH.budget` (`searchWithinBudget`, ADR-0050), all indexes at once. No model. A
+   * failed or slow index loses its own results, never the answer. The caller has checked the
+   * document is the student's.
+   */
+  async searchPlan(
+    documentId: string,
+    question: string,
+    plan: ResearchPlan,
+    signal?: AbortSignal,
+    limit: number = CHAT_RESEARCH.maxCandidates,
+  ): Promise<WebResult[]> {
+    const openalex = new OpenAlexDiscovery({
+      mailto: this.env.OPENALEX_MAILTO ?? this.env.CROSSREF_MAILTO ?? '',
+      ...(this.env.OPENALEX_API_KEY ? { apiKey: this.env.OPENALEX_API_KEY } : {}),
+    });
+    const s2 = this.env.SEMANTIC_SCHOLAR_API_KEY
+      ? new SemanticScholarClient(this.env.SEMANTIC_SCHOLAR_API_KEY, {
+          mailto: this.env.OPENALEX_MAILTO ?? '',
+        })
+      : null;
+    const keywordIndexes = [
+      { name: 'openalex', client: openalex },
+      { name: 'semanticscholar', client: s2 },
+      { name: 'pubmed', client: this.indexes.pubmed },
+      { name: 'arxiv', client: this.indexes.arxiv },
+    ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
+
+    const withSignal = (own: AbortSignal) => (signal ? AbortSignal.any([signal, own]) : own);
+    const onSkip = (index: string) => (query: string, reason: string) =>
+      this.logger.warn({ index, query, reason }, 'chat research search skipped');
+    const lists = await Promise.all([
+      searchWithinBudget(
+        [plan.semantic],
+        (q, own) => openalex.semanticSearch(q, new Date(), withSignal(own)),
+        { ...CHAT_RESEARCH.budget, onSkip: onSkip('openalex-semantic') },
+      ),
+      ...keywordIndexes.map(({ name, client }) =>
+        searchWithinBudget(
+          plan.keyword,
+          (q, own) => client.search(q, new Date(), withSignal(own)),
+          {
+            ...CHAT_RESEARCH.budget,
+            onSkip: onSkip(name),
+          },
+        ),
+      ),
+    ]);
+    // Each index's lists in turn, so one index's twenty-five do not crowd out the others.
+    const works = mergeWorks([interleave(lists.map((perIndex) => interleave(perIndex)))]).slice(
+      0,
+      limit * 2,
+    );
+    const have = await this.libraryKeys(documentId);
+    return works.map((work) => webResultOf(work, question, have));
+  }
+
+  /** What the library already holds, to mark a result "already yours". */
+  private async libraryKeys(documentId: string): Promise<LibraryKeys> {
     // "Already yours" is worth knowing before adding: a student searching the literature will hit
     // their own seed papers constantly, and offering to add one again is how duplicates happen.
     const existing = await this.prisma.source.findMany({
       where: { documentId },
       select: { doi: true, title: true },
     });
-    const haveDoi = new Set(
-      existing.map((s) => s.doi?.toLowerCase()).filter((d): d is string => Boolean(d)),
-    );
-    const haveTitle = new Set(
-      existing.map((s) => s.title?.trim().toLowerCase()).filter((t): t is string => Boolean(t)),
-    );
-
     return {
-      query: question,
-      results: works.map((work) =>
-        webResultOf(work, question, { dois: haveDoi, titles: haveTitle }),
+      dois: new Set(
+        existing.map((s) => s.doi?.toLowerCase()).filter((d): d is string => Boolean(d)),
+      ),
+      titles: new Set(
+        existing.map((s) => s.title?.trim().toLowerCase()).filter((t): t is string => Boolean(t)),
       ),
     };
   }

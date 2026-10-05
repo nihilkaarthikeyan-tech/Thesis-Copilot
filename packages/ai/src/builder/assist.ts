@@ -35,6 +35,11 @@ export type PromptPassage = {
   shortRef: string;
   page: number | null;
   text: string;
+  /**
+   * ADR-0074: an abstract a search found for chat, not a passage of the student's library. Chat
+   * marks it in the prompt; every other builder ignores it.
+   */
+  origin?: 'search';
 };
 
 export type AssistBuildInput = {

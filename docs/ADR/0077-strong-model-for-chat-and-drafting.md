@@ -43,3 +43,12 @@ and drafting should use the stronger model, and decided yes.
 - the PRD self-check uses `PRD_ACTION_PROFILES`;
 - the production totals are pinned at ₹69.06 and ₹88.19;
 - 83 pass.
+
+## Addendum (same day): research chat
+
+ADR-0074's research chat sends up to six search abstracts and gets longer answers. The chat unit is
+now priced at ₹0.4850 (6,700 in, 4,000 cached, 1,900 out), and a search adds at most ₹0.039 of
+embedding.
+
+The worst case for a fully active student at the production configuration is ₹89.85. With the
+search embeddings and ADR-0072's title plans it is **₹93.16**, within the ₹100 ceiling.

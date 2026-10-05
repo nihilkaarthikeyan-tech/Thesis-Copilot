@@ -607,4 +607,23 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'signin.terms': 'शर्तें',
   'signin.readFirst': 'पहले इसे पढ़ें',
   'signin.language': 'भाषा',
+
+  // ---- Chat: researching beyond a thin library (ADR-0074) -------------------------------------
+  'chat.step.search': 'आपकी library में खोज रहे हैं…',
+  'chat.step.research': 'आपकी library में इस पर {papers} paper हैं, इसलिए literature में भी खोज रहे हैं…',
+  'chat.step.query': '{indexes} में खोज रहे हैं: {query}…',
+  'chat.step.read': '{count} abstract पढ़ रहे हैं…',
+  'chat.step.kept': '{read} में से {kept} आपके सवाल से जुड़े हैं',
+  'chat.step.keptNone': 'इनमें से कोई भी आपके सवाल के काफ़ी क़रीब नहीं है; आपकी library से जवाब दे रहे हैं',
+  'chat.step.write': 'जवाब लिख रहे हैं…',
+  'chat.research.title': 'खोज में मिले paper',
+  'chat.research.notInLibrary': 'आपकी library में नहीं',
+  'chat.research.inLibrary': 'आपकी library में है',
+  'chat.research.add': 'Library में जोड़ें',
+  'chat.research.adding': 'जोड़ा जा रहा है…',
+  'chat.research.addAll': 'सभी {count} library में जोड़ें',
+  'chat.research.added': 'जोड़ दिया। पढ़ लिए जाने के बाद दोबारा पूछें, तो जवाब आपकी library से साइटेशन देगा।',
+  'chat.research.view': 'Paper देखें',
+  'chat.research.searched': 'इसके लिए खोजा: {queries}',
+  'chat.research.addFirst': 'इस जवाब को थीसिस में डालने से पहले, खोज में मिले paper अपनी library में जोड़ें।',
 };

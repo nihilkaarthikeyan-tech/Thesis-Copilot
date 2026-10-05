@@ -28,6 +28,12 @@ describe('answerPlainText — a chat answer for the clipboard', () => {
     expect(answerPlainText('A claim {{cite:gone}}. Next.', citations)).toBe('A claim. Next.');
   });
 
+  it('copies an answer in parts with its headings as words, not markup (ADR-0074)', () => {
+    expect(
+      answerPlainText('Cost leads.\n\n### Upfront cost\nIt is high {{cite:a1}}.', citations),
+    ).toBe('Cost leads.\n\nUpfront cost\nIt is high (Kumar et al., 2021).');
+  });
+
   it('keeps line breaks and trims the ends', () => {
     expect(answerPlainText('\nFirst {{cite:a1}}.\n\nSecond.\n', citations)).toBe(
       'First (Kumar et al., 2021).\n\nSecond.',

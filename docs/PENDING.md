@@ -243,6 +243,19 @@ since each re-index spends a little on embeddings).
       the papers listed under it, and that A.4 (written for library passages, evaluated on them in
       ADR-0038) answers sensibly from abstracts. The mock provider proves the plumbing, not the
       answer. Costs one CHAT unit (~₹0.03) and one search from the OpenAlex daily budget.
+      (2026-10-05: `chat-beyond.spec.ts` passed on an isolated stack, :3400/:3401, during ADR-0074.)
+## Chat that researches a thin library (ADR-0074, 2026-10-05)
+
+- [ ] **The side-by-side question again, on production after release, with the OpenAlex key.**
+      Ask "What are the main financial barriers to rooftop solar adoption for rural households in
+      India, according to my sources?" on a five-paper library. Check: the steps name the searches;
+      "N of M are on your question"; the answer comes in headed parts with a citation after each
+      finding; the papers under it carry Add. The kept-abstract line (0.60) was measured on PubMed
+      and arXiv only — OpenAlex answered 429 on the dev machine all day — so look at what
+      OpenAlex's semantic search contributes and whether its off-field papers stay out. Rerun
+      `pnpm --filter @tc/api research:thresholds --search` there if they do not.
+- [ ] **Owner: the cost model for the strong-tier chat** (the lead is doing it on main). What the
+      research path adds per thin question is in ADR-0074, "Cost".
 ## Zotero by key and "Start writing now" (ADR-0062, 2026-10-04)
 
 - [ ] **One real Zotero import.** No Zotero account or key exists in this project, so the client

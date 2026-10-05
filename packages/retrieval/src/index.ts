@@ -234,6 +234,14 @@ export {
   workFromPubmed,
 } from './scholarly/pubmed.js';
 export {
+  CHAT_RESEARCH,
+  type LibraryCoverage,
+  libraryCoverage,
+  planResearchQueries,
+  type ResearchPlan,
+  researchEmbedText,
+} from './scholarly/research.js';
+export {
   abstractFromInvertedIndex,
   CROSSREF_CANDIDATES,
   CrossrefClient,
