@@ -401,7 +401,7 @@ function drawSingle(
       ? notice('ok', `Saved to “${title}”`, ...lines)
       : notice('note', `Already in the library of “${title}”`, ...lines),
   );
-  if (warnings.length) nodes.push(notice('warn', 'Note', ...warnings));
+  if (warnings.length) nodes.push(notice('warn', 'Worth knowing', ...warnings));
   const actions = el('div', { className: 'actions' });
   if (result.sourceId) {
     actions.append(
@@ -498,6 +498,10 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
         {},
         el('span', { className: 'item-title', text: item.title }),
         meta ? el('span', { className: 'item-meta', text: meta }) : null,
+        // The reason is written out, not left to a tooltip a keyboard cannot reach.
+        result?.status === 'failed'
+          ? el('span', { className: 'item-error', text: result.message ?? 'Not saved.' })
+          : null,
       ),
     );
     const row = el(
@@ -547,7 +551,7 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
     else if (parts.length) {
       const lines = [
         v.outcome?.collection === 'failed' ? 'They could not be put in the collection.' : '',
-        t.failed ? 'Hover a “Failed” label for the reason; “Retry failed” sends them again.' : '',
+        t.failed ? '“Retry failed” sends the ones that did not go through again.' : '',
       ];
       nodes.push(notice(t.failed ? 'warn' : 'ok', parts.join(' · '), ...lines));
     }

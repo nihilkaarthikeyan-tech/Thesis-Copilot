@@ -448,6 +448,12 @@ ul.plain {
   min-width: 0;
 }
 
+.results .check > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .results .item-title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -465,6 +471,13 @@ ul.plain {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.results .item-error {
+  display: block;
+  margin-top: 2px;
+  color: var(--danger);
+  font-size: 11.5px;
 }
 
 .pill {
@@ -491,7 +504,14 @@ ul.plain {
   color: var(--danger);
 }
 
-button.pill {
+button.results .item-error {
+  display: block;
+  margin-top: 2px;
+  color: var(--danger);
+  font-size: 11.5px;
+}
+
+.pill {
   border: 0;
   cursor: pointer;
 }
