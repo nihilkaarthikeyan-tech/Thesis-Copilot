@@ -42,7 +42,12 @@ type Citation = {
   label: string;
   /** Present when the citation is a search abstract, not a library passage (ADR-0060). */
   beyond?: BeyondPaper;
+  /** ADR-0083: the passage was a file attached to the question. */
+  attachment?: { name: string };
 };
+
+/** ADR-0083: a file uploaded for the next question. */
+type Attachment = { id: string; kind: 'image' | 'document'; name: string; chars?: number };
 
 type Turn = {
   id: string;
@@ -306,6 +311,36 @@ export function ChatPanel({
    */
   const [deep, setDeep] = useState(false);
   const deepOffered = scope === 'library' && mentions.mentions.length === 0;
+  /** ADR-0083: files for the next question, uploaded as they are chosen; cleared once asked. */
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const attachOffered = scope === 'library' || scope === 'document';
+
+  async function attachFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    try {
+      for (const file of Array.from(files).slice(0, 3 - attachments.length)) {
+        const form = new FormData();
+        form.append('file', file, file.name);
+        const response = await fetch(
+          `${API_URL}/api/v1/chat/attachments?documentId=${encodeURIComponent(documentId)}`,
+          { method: 'POST', credentials: 'include', body: form },
+        );
+        if (!response.ok) {
+          const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+          throw new Error(problem?.detail ?? `Could not attach ${file.name}.`);
+        }
+        const uploaded = (await response.json()) as Attachment;
+        setAttachments((list) => [...list, uploaded].slice(0, 3));
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const shown = turns.length;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when the thread grows
@@ -383,9 +418,13 @@ export function ChatPanel({
           ...(askScope === 'library' && deep && mentions.mentions.length === 0
             ? { deep: true }
             : {}),
+          ...(attachments.length > 0 && (askScope === 'library' || askScope === 'document')
+            ? { attachmentIds: attachments.map((a) => a.id) }
+            : {}),
         }),
       });
       if (deep) setDeep(false);
+      if (attachments.length > 0 && response.ok) setAttachments([]);
       if (!response.ok || !response.body) {
         const problem = (await response.json().catch(() => null)) as {
           detail?: string;
@@ -874,7 +913,7 @@ export function ChatPanel({
                 {onAddToDocument &&
                 turn.outcome !== 'not-enough' &&
                 !turn.beyond &&
-                !(turn.citations ?? []).some((c) => c.beyond) ? (
+                !(turn.citations ?? []).some((c) => c.beyond || c.attachment) ? (
                   <button
                     type="button"
                     data-testid="chat-add-to-document"
@@ -951,7 +990,53 @@ export function ChatPanel({
       {scope === 'library' ? (
         <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />
       ) : null}
+      {attachments.length > 0 ? (
+        <ul data-testid="chat-attachments" className="mt-1 flex flex-wrap gap-1 px-1">
+          {attachments.map((a) => (
+            <li
+              key={a.id}
+              data-testid="chat-attachment-chip"
+              className="flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] text-muted"
+            >
+              <span aria-hidden>{a.kind === 'image' ? '🖼' : '📄'}</span>
+              <span className="max-w-[12rem] truncate">{a.name}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${a.name}`}
+                onClick={() => setAttachments((list) => list.filter((x) => x.id !== a.id))}
+                className="text-faint hover:text-ink"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <form onSubmit={ask} className="relative mt-2 flex gap-2 border-t border-line pt-2">
+        {attachOffered ? (
+          <label
+            data-testid="chat-attach"
+            title="Attach a picture, PDF, Word or text file to this question (read for this question only)"
+            className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-muted hover:text-ink ${
+              busy || uploading || attachments.length >= 3 ? 'pointer-events-none opacity-50' : ''
+            }`}
+          >
+            <span aria-hidden>{uploading ? '…' : '📎'}</span>
+            <span className="sr-only">Attach a file</span>
+            <input
+              type="file"
+              data-testid="chat-attach-input"
+              className="sr-only"
+              accept="image/png,image/jpeg,image/gif,.pdf,.docx,.txt,.md,.csv"
+              multiple
+              disabled={busy || uploading || attachments.length >= 3}
+              onChange={(e) => {
+                void attachFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+          </label>
+        ) : null}
         {pickerOpen && typingPrompt !== null ? (
           <PromptPicker
             options={promptOptions}
@@ -1155,6 +1240,19 @@ function InlineAnswer({
         }
         const citation = citations.find((c) => c.key === token.key);
         if (!citation) return null;
+        // ADR-0083: a file attached to the question is named, not opened: it is not a source.
+        if (citation.attachment) {
+          return (
+            <span
+              key={`c-${at}`}
+              data-testid="chat-attachment-cite"
+              title="A file attached to the question, read for this answer only"
+              className="mx-0.5 rounded border border-dashed border-line-strong px-1 text-muted"
+            >
+              {citation.label}
+            </span>
+          );
+        }
         // ADR-0060: an abstract the search found has no passage to open; it is labelled for what
         // it is, and the list under the answer is where it is added.
         if (citation.beyond) {

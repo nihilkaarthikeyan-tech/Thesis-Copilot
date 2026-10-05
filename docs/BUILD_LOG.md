@@ -5366,3 +5366,13 @@ the rewording when it is cited and no longer close, marked `reworded` with a not
 the first answer stands, flagged. Same unit, a second ASSIST log row. Tests: `reword.spec.ts`
 (ai), `assist-reword.spec.ts` (api, four cases).
 
+## The partial list, round two: attachments in chat (2026-10-05, ADR-0083)
+
+Row 42, the one MISSING row a student would meet. `POST /chat/attachments` (multipart; pictures
+sniffed as the figure upload sniffs them; PDF, Word and text read at once and cut to 12,000
+characters; Redis record for two hours, keyed to the student and the thesis). A picture rides
+the question as an image part (ADR-0064's shape); a document is one more passage, "Attached:
+<name>", citable by A.4's rules and never a source — the citation is a dashed chip, "Add to
+document" hides. Loaded before the unit is taken, so a stale id is a free 400. Tests:
+`chat-attachments-api.spec.ts` (MinIO in the harness), `chat-attachments.spec.ts` (Playwright).
+

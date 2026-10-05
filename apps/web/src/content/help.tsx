@@ -386,6 +386,15 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           refuses — because nothing in your library relates to the question, or your filters left
           nothing — the question is given back.
         </P>
+        <H2>Attach a file to a question</H2>
+        <P>
+          The paperclip under the chat box takes up to three files with a question: a picture (a
+          figure, a table from a paper, a handwritten note), a PDF, a Word file or a text file. A
+          picture is shown to the model with your question; a document is read, up to about its
+          first six pages, as one more passage the answer may cite, labelled “Attached: name”. An
+          attachment is read for that one question only. It never joins your library and cannot
+          become a citation in your thesis: for that, add the paper on the Sources page.
+        </P>
         <H2>Research deeply</H2>
         <P>
           For a question that deserves a literature review rather than an answer, switch on{' '}

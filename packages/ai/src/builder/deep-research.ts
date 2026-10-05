@@ -157,7 +157,14 @@ export function buildDeepChatRequest(input: DeepChatBuildInput): LlmRequest {
     system: {
       cached: `${loadPrompt('_preamble').system}\n\n${input.memoryBlock}\n\n${loadPrompt('chat_deep').system}`,
     },
-    messages: [...history, { role: 'user', content: deepChatUserMessage(input) }],
+    messages: [
+      ...history,
+      {
+        role: 'user',
+        content: deepChatUserMessage(input),
+        ...(input.images?.length ? { images: input.images } : {}),
+      },
+    ],
     maxTokens: DEEP_RESEARCH.answer.maxTokens,
     temperature: DEEP_RESEARCH.answer.temperature,
     action: 'RESEARCH',

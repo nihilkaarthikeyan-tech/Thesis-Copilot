@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { QueueService } from '../../common/queue.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
+import { StorageService } from '../../common/storage.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { UsageModule } from '../usage/usage.module.js';
@@ -10,6 +11,7 @@ import { AssistService } from './assist.service.js';
 import { AutoSourcesService } from './auto-sources.service.js';
 import { ChatController } from './chat.controller.js';
 import { ChatService } from './chat.service.js';
+import { ChatAttachmentsService } from './chat-attachments.service.js';
 import { CitationsController } from './citations.controller.js';
 import { CiteService } from './cite.service.js';
 import { CiteRoleService } from './cite-role.service.js';
@@ -28,6 +30,7 @@ import { WebScopeService } from './web-scope.service.js';
     AssistService,
     AutoSourcesService,
     ChatService,
+    ChatAttachmentsService,
     WebScopeService,
     CiteRoleService,
     EquationService,
@@ -38,6 +41,7 @@ import { WebScopeService } from './web-scope.service.js';
     ProofreadService,
     QueueService,
     RedisService,
+    StorageService,
     ScholarlyIndexes,
     SessionGuard,
   ],

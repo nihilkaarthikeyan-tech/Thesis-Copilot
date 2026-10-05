@@ -65,6 +65,7 @@ import {
   searchingStep,
   WRITING_STEP,
 } from './beyond-library.js';
+import { ChatAttachmentsService, type LoadedAttachments } from './chat-attachments.service.js';
 import {
   bestCosines,
   DEEP_EMPTY_REPLY,
@@ -121,6 +122,8 @@ export type ChatInput = {
    * scope only, and only without `@` papers; one `RESEARCH` unit instead of a CHAT unit.
    */
   deep?: boolean;
+  /** ADR-0083: files uploaded to `POST /chat/attachments` for this question, at most three. */
+  attachmentIds?: string[];
 };
 
 /**
@@ -133,6 +136,8 @@ export type ChatCitation = {
   chunkId: string;
   label: string;
   beyond?: BeyondPaper;
+  /** ADR-0083: the passage was a file attached to the question; not a source, not citable. */
+  attachment?: { name: string };
 };
 
 /** What a beyond-library answer read, for the line under it. */
@@ -206,6 +211,7 @@ export class ChatService {
     private readonly usage: UsageService,
     private readonly context: ContextService,
     private readonly web: WebScopeService,
+    private readonly attachments: ChatAttachmentsService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -253,6 +259,13 @@ export class ChatService {
 
     const scope: ChatScope = input.scope ?? 'library';
     const beyondSetting = scope === 'document' ? 'off' : await this.beyondSetting(user.id);
+    // ADR-0083: before any unit is taken, so a stale attachment id is a 400 that costs nothing.
+    const attached = await this.attachments.load(
+      user.id,
+      input.documentId,
+      input.attachmentIds ?? [],
+    );
+    const hasAttachments = attached.passages.length > 0 || attached.images.length > 0;
     // Refused before the unit is taken, so it answers as JSON (`streamSse` pulls the first event
     // before the stream opens) and costs nothing.
     if (scope === 'beyond' && beyondSetting === 'off') {
@@ -269,7 +282,7 @@ export class ChatService {
           'Deep research searches the literature, which is turned off in Settings. Turn "Search beyond my library" on to use it.',
         );
       }
-      yield* this.askDeep(user, input, document, chapter, signal);
+      yield* this.askDeep(user, input, document, chapter, attached, signal);
       return;
     }
 
@@ -353,7 +366,12 @@ export class ChatService {
     // the student's own chapters, included because they asked about this document, not because a
     // vector search ranked them. Running the floor here would either refuse everything or need a
     // fabricated score; an empty document still refuses, which is the case that matters.
-    if (passages.length === 0 || (scope === 'library' && isOffTopic(passages))) {
+    // ADR-0083: a question with a file attached is about the file; the library's silence on it is
+    // not a refusal.
+    if (
+      !hasAttachments &&
+      (passages.length === 0 || (scope === 'library' && isOffTopic(passages)))
+    ) {
       // Two different refusals, and the difference matters to the student. An empty set when
       // retrieval did find something means their own filters emptied it, and the fix is a control
       // on this screen; anything else means the question is not about their library.
@@ -434,7 +452,7 @@ export class ChatService {
         ? yield* this.research(user.id, input, document.title, chapter, coverage, filters, signal)
         : null;
     const found = research?.found ?? { passages: [], papers: new Map<string, BeyondPaper>() };
-    const allPassages = [...passages, ...found.passages];
+    const allPassages = [...passages, ...found.passages, ...attached.passages];
 
     yield {
       event: 'step',
@@ -451,7 +469,9 @@ export class ChatService {
       documentId: input.documentId,
       signal,
       tier: this.env.AI_CHAT_TIER,
-      maxPassages: found.passages.length > 0 ? CHAT.researchTopK : CHAT.topK,
+      maxPassages:
+        (found.passages.length > 0 ? CHAT.researchTopK : CHAT.topK) + attached.passages.length,
+      ...(attached.images.length > 0 ? { images: attached.images } : {}),
     });
 
     const { raw, latencyMs } = yield* this.stream(
@@ -482,8 +502,12 @@ export class ChatService {
         ];
       }
       const paper = found.papers.get(key);
-      return paper
-        ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }]
+      if (paper) {
+        return [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }];
+      }
+      const file = attached.byKey.get(key);
+      return file
+        ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, attachment: file }]
         : [];
     });
     const summary: ResearchSummary | undefined =
@@ -546,6 +570,7 @@ export class ChatService {
     input: ChatInput,
     document: { meta: unknown; title: string },
     chapter: ChapterForChat,
+    attached: LoadedAttachments,
     signal: AbortSignal,
   ): AsyncGenerator<ChatEvent> {
     const cap = await this.usage.consume(
@@ -657,8 +682,8 @@ export class ChatService {
       'deep research',
     );
 
-    const allPassages = [...library, ...kept.passages];
-    if (allPassages.length === 0) {
+    const allPassages = [...library, ...kept.passages, ...attached.passages];
+    if (allPassages.length === 0 && attached.images.length === 0) {
       await this.usage.refund(user.id, 'RESEARCH');
       yield {
         event: 'done',
@@ -684,6 +709,8 @@ export class ChatService {
       documentId: input.documentId,
       signal: AbortSignal.any([signal, AbortSignal.timeout(DEEP_RESEARCH.answerTimeoutMs)]),
       plan,
+      maxPassages: DEEP_RESEARCH.maxPassages + attached.passages.length,
+      ...(attached.images.length > 0 ? { images: attached.images } : {}),
     });
     const { raw, latencyMs } = yield* this.stream(
       user.id,
@@ -711,8 +738,12 @@ export class ChatService {
         ];
       }
       const paper = kept.papers.get(key);
-      return paper
-        ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }]
+      if (paper) {
+        return [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }];
+      }
+      const file = attached.byKey.get(key);
+      return file
+        ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, attachment: file }]
         : [];
     });
     const summary: DeepSummary = {

@@ -85,6 +85,8 @@ export type ChatBuildInput = {
   tier?: 'fast' | 'strong';
   /** ADR-0074: `CHAT.researchTopK` when search abstracts are added; `CHAT.topK` otherwise. */
   maxPassages?: number;
+  /** ADR-0083: pictures attached to the question, sent as image parts of the user turn. */
+  images?: ReadonlyArray<{ data: Uint8Array; mediaType: string }>;
 };
 
 /** Only the filters the student actually set; an empty object reads as "no filters". */
@@ -131,7 +133,14 @@ export function buildChatRequest(input: ChatBuildInput): LlmRequest {
     system: {
       cached: `${loadPrompt('_preamble').system}\n\n${input.memoryBlock}\n\n${loadPrompt('chat').system}`,
     },
-    messages: [...history, { role: 'user', content: chatUserMessage(input) }],
+    messages: [
+      ...history,
+      {
+        role: 'user',
+        content: chatUserMessage(input),
+        ...(input.images?.length ? { images: input.images } : {}),
+      },
+    ],
     maxTokens: CHAT.maxTokens,
     temperature: CHAT.temperature,
     action: 'CHAT',

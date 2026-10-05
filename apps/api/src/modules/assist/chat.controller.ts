@@ -28,6 +28,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { BEYOND_SETTINGS, beyondSettingOf } from './beyond-library.js';
 import { ChatService } from './chat.service.js';
+import { ChatAttachmentsService } from './chat-attachments.service.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
 import { EquationService } from './equation.service.js';
@@ -47,6 +48,8 @@ const chatBody = z.object({
   sourceIds: z.array(z.string().uuid()).max(10).optional(),
   /** ADR-0080: deep research — planned, searched per part, answered at length; one RESEARCH unit. */
   deep: z.boolean().optional(),
+  /** ADR-0083: files uploaded to `POST /chat/attachments` for this question. */
+  attachmentIds: z.array(z.string().uuid()).max(3).optional(),
   filters: z
     .object({
       yearFrom: z.number().int().min(1800).max(2100).nullish(),
@@ -135,10 +138,35 @@ export class ChatController {
     private readonly citeRoles: CiteRoleService,
     private readonly equations: EquationService,
     private readonly web: WebScopeService,
+    private readonly attachments: ChatAttachmentsService,
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
     private readonly flags: FlagsService,
   ) {}
+
+  /**
+   * ADR-0083: a file for the next question — a picture, a PDF, a Word or text file. Multipart,
+   * one file; `?documentId=`. Read for that question only: nothing joins the library.
+   */
+  @Post('chat/attachments')
+  @HttpCode(200)
+  async attach(
+    @CurrentUser() user: SessionUser,
+    @Query('documentId') documentId: string,
+    @Req() request: FastifyRequest,
+  ) {
+    if (!z.string().uuid().safeParse(documentId).success) {
+      throw new ValidationError('Which thesis is this file for?');
+    }
+    const file = await (
+      request as unknown as {
+        file: () => Promise<{ filename?: string; toBuffer: () => Promise<Buffer> } | undefined>;
+      }
+    ).file();
+    if (!file) throw new ValidationError('Attach a file.');
+    const bytes = new Uint8Array(await file.toBuffer());
+    return this.attachments.upload(user.id, documentId, file.filename ?? 'attachment', bytes);
+  }
 
   /** FR-4.9. SSE over POST, like `/assist/suggest` (Appendix B.8). */
   @Post('chat')

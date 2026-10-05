@@ -262,6 +262,13 @@ since each re-index spends a little on embeddings).
       `pnpm --filter @tc/api research:thresholds --search` there if they do not.
 - [ ] **Owner: the cost model for the strong-tier chat** (the lead is doing it on main). What the
       research path adds per thin question is in ADR-0074, "Cost".
+## Attachments in chat (ADR-0083, 2026-10-05)
+
+- [ ] **A sweep of `chat-attachments/` in object storage.** Pictures attached to chat questions
+      are kept under that prefix; their Redis records expire after two hours, the objects do
+      not. Add `find older than 1 day → remove` for that prefix to the backup container's
+      housekeeping (`infra/scripts/backup.sh`) when it is next touched. Small: a few KB a picture.
+
 ## Deep research in chat (ADR-0080, 2026-10-05)
 
 - [ ] **An evaluation round for the two new prompts** (`research_plan.md`, `chat_deep.md`).
