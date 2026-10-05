@@ -255,6 +255,7 @@ export {
   CITE_RE,
   collapseSameSourceRuns,
   cutAfterSecondSentence,
+  dropUnfinishedTail,
   normalizeBareCitations,
   type PostProcessInput,
   type PostProcessResult,
@@ -303,6 +304,7 @@ export {
 } from './builder/proposal.js';
 export {
   filterSentences,
+  isHeadingLine,
   isRoadmap,
   isUncitedAttribution,
   nearDuplicate,

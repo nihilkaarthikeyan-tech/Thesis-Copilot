@@ -1,9 +1,9 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.2 Draft section — `draft.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-10-05: the "Paraphrase; never copy" rule added, the winner of the copying round
-  (ADR-0075, eval/candidates/draft-copying2.md; docs/BUILD_LOG.md).
+  CANDIDATE for draft.md, the copying round (ADR-0075), second version. Tested against the prompt
+  on disk by eval/run.ts draft --candidate draft-copying2 --set copying.
+  Changed from the current prompt: only the own-words rule, worded as the assist candidate that
+  won (assist-copying3). The first version's one-marker-per-sentence and opener rules made the
+  drafts shorter and more list-like, and the judge preferred the current prompt 4 to 1.
 -->
 
 ### A.2 Draft section — `draft.md`

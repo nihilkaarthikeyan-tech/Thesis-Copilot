@@ -54,9 +54,10 @@ import {
 import { createProviders } from '../src/factory.js';
 import { overridePrompt, type PromptName } from '../src/prompts.js';
 import type { LlmProvider, LlmRequest } from '../src/types.js';
+import { type Measures, measure, totals } from './copying.js';
 import { metered } from './meter.js';
 import { draftedSection, memoryFor, papersFor, passagesFor, readable } from './shared.js';
-import { TOPICS, type Topic } from './topics.js';
+import { BAGLA_P11, KARNATAKA, TOPICS, type Topic } from './topics.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -82,6 +83,10 @@ type Output = {
   raw: string;
   /** Chat only (ADR-0074): measured in code, not by the judge. */
   chat?: ChatMeasures;
+  /** ADR-0075: copying, citation and wording measures, for assist and draft. */
+  m?: Measures;
+  /** Citations to passages not in the request, before the whitelist removed them. */
+  hallucinated?: number;
 };
 
 type ChatMeasures = {
@@ -126,6 +131,11 @@ type Case = {
   topic: Topic;
   context: string;
   passages: PromptPassage[];
+  /**
+   * ADR-0075 (B8): the cursor is in an empty section, under its heading. `before` is the heading
+   * line, as the editor sends it, and the scope note carries the section's own note.
+   */
+  emptySection?: boolean;
   kind:
     | 'assist'
     | 'draft'
@@ -139,6 +149,52 @@ type Case = {
     | 'viva_questions'
     | 'revise';
 };
+
+/**
+ * ADR-0075's case set (`--set copying`): every assist and draft case of the earlier rounds, the
+ * production case from the side-by-side study (Karnataka, Bagla 2026), and for assist one empty
+ * section per thesis (B8: what is offered before the student has written anything).
+ */
+function copyingCases(name: string): Case[] {
+  const topics = [...TOPICS, KARNATAKA];
+  const cases: Case[] = [];
+  const passagesOf = (topic: Topic, count: number): PromptPassage[] => {
+    const passages = passagesFor(topic, count);
+    if (topic !== KARNATAKA) return passages;
+    const bagla = passages[0] as PromptPassage;
+    return [{ id: 'S1#c2', shortRef: bagla.shortRef, page: 11, text: BAGLA_P11 }, ...passages];
+  };
+  for (const topic of topics) {
+    if (name === 'assist') {
+      topic.befores.forEach((before, i) => {
+        cases.push({
+          id: `${topic.id}-${i + 1}`,
+          topic,
+          context: before,
+          passages: passagesOf(topic, 6),
+          kind: 'assist',
+        });
+      });
+      cases.push({
+        id: `${topic.id}-empty`,
+        topic,
+        context: `${topic.section.title}\n`,
+        passages: passagesOf(topic, 6),
+        kind: 'assist',
+        emptySection: true,
+      });
+    } else if (name === 'draft') {
+      cases.push({
+        id: topic.id,
+        topic,
+        context: topic.section.title,
+        passages: passagesOf(topic, 8),
+        kind: 'draft',
+      });
+    }
+  }
+  return cases;
+}
 
 function casesFor(name: string): Case[] {
   const cases: Case[] = [];
@@ -434,9 +490,13 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
     return { raw: text, text, shown: text, cited: 0, empty: nodes.length === 0, dropped: 0 };
   }
   if (c.kind === 'assist') {
+    // As production builds it under a section heading (`scopeWithSection`, assist.service.ts).
+    const scopeNote = c.emptySection
+      ? `${c.topic.chapter.scopeNote}\nThis section, "${c.topic.section.title}": ${c.topic.section.scopeNote}`
+      : c.topic.chapter.scopeNote;
     const request = buildAssistRequest({
       memoryBlock: memoryFor(c.topic, c.context),
-      chapter: { title: c.topic.chapter.title, scopeNote: c.topic.chapter.scopeNote },
+      chapter: { title: c.topic.chapter.title, scopeNote },
       passages: c.passages,
       before: c.context,
       after: '',
@@ -458,6 +518,8 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
       cited: processed.cited.length,
       empty: processed.empty,
       dropped,
+      m: measure(processed.text, c.passages),
+      hallucinated: processed.hallucinated.length,
     };
   }
   if (c.kind === 'chat') {
@@ -538,6 +600,8 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
     cited: processed.result.citations.length,
     empty: processed.result.markdown.trim().length === 0,
     dropped: 0,
+    m: measure(processed.result.markdown, c.passages),
+    hallucinated: processed.hallucinated.length,
   };
 }
 
@@ -592,7 +656,9 @@ async function judge(llm: LlmProvider, c: Case, first: string, second: string) {
       "Each candidate is the paragraph revised to address the guide's comment. A better revision does what the comment asks using only what the sources support, keeps the rest of the paragraph and its citations intact, and adds no unsupported claims.",
   }[c.kind];
   const studentText = {
-    assist: `Student text before the cursor:
+    assist: c.emptySection
+      ? `The student has written only the section heading "${c.topic.section.title}" (the section is meant to cover: ${c.topic.section.scopeNote}) and nothing under it yet. The candidate is the first sentence or two offered for this empty section.`
+      : `Student text before the cursor:
 ${c.context}`,
     draft: `Section to draft: ${c.topic.section.title}. ${c.topic.section.scopeNote}`,
     chat: `Student's question:
@@ -605,7 +671,11 @@ ${c.context}`,
     queries: `Scope: ${c.topic.chapter.scopeNote} Objective: ${c.topic.section.scopeNote}`,
     themes: 'Candidate papers found by the search are listed under Sources, by title and abstract.',
     viva_questions: `The thesis passage the examiner questions:\n${c.context}`,
-    revise: `The guide's comment: ${c.context}\n\nThe paragraph it is on:\n${firstParagraph(draftedSection(c.topic).shown)}`,
+    // Only built for a revise case: the copying round's Karnataka topic has no drafted section.
+    revise:
+      c.kind === 'revise'
+        ? `The guide's comment: ${c.context}\n\nThe paragraph it is on:\n${firstParagraph(draftedSection(c.topic).shown)}`
+        : '',
     proposal: `Related works found for the idea:
 ${papersFor(c.topic)
   .map((p) => `- ${p.title} (${p.year})`)
@@ -652,7 +722,16 @@ async function main(): Promise<void> {
   const modelB = process.argv.includes('--model')
     ? process.argv[process.argv.indexOf('--model') + 1]
     : undefined;
-  const candidatePath = join(here, 'candidates', `${name}.md`);
+  // ADR-0075: --candidate <file> picks one of several candidates for the same prompt
+  // (`eval/candidates/<file>.md`); --set copying runs that round's cases; --no-judge measures
+  // without the judge, which is most of the cost.
+  const arg = (flag: string) =>
+    process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : undefined;
+  const candidateName = arg('--candidate') ?? name;
+  const set = arg('--set');
+  const bOnly = process.argv.includes('--b-only');
+  const noJudge = bOnly || process.argv.includes('--no-judge');
+  const candidatePath = join(here, 'candidates', `${candidateName}.md`);
   if (!modelB && !existsSync(candidatePath)) throw new Error(`No candidate at ${candidatePath}`);
   const candidate = modelB ? null : readFileSync(candidatePath, 'utf8');
 
@@ -666,7 +745,11 @@ async function main(): Promise<void> {
   const only = process.argv.includes('--only')
     ? process.argv[process.argv.indexOf('--only') + 1]
     : undefined;
-  const cases = casesFor(name).filter((c) => !only || c.id.includes(only));
+  const cases = (set === 'copying' ? copyingCases(name) : casesFor(name)).filter(
+    (c) => !only || c.id.includes(only),
+  );
+  const measured = { a: [] as Measures[], b: [] as Measures[] };
+  const hallucinated = { a: 0, b: 0 };
 
   const rows: Array<Record<string, unknown>> = [];
   let aWins = 0;
@@ -692,7 +775,11 @@ async function main(): Promise<void> {
     for (let s = 0; s < samples; s++) {
       overridePrompt(name, null);
       const startA = Date.now();
-      const a = await safely(llm, c, 'current');
+      // --b-only (ADR-0075): measure another candidate without paying for the current prompt
+      // again; its numbers come from the run that measured it. Never combined with the judge.
+      const a = bOnly
+        ? { text: '', shown: '', cited: 0, empty: true, dropped: 0, raw: '' }
+        : await safely(llm, c, 'current');
       timing.a.push(Date.now() - startA);
       overridePrompt(name, candidate);
       const startB = Date.now();
@@ -700,8 +787,13 @@ async function main(): Promise<void> {
       timing.b.push(Date.now() - startB);
       overridePrompt(name, null);
 
-      const j1 = await steadyJudge(llm, c, a.shown, b.shown);
-      const j2 = await steadyJudge(llm, c, b.shown, a.shown);
+      const skipped = { better: 'EQUAL' as const, firstScore: 0, secondScore: 0, reason: '' };
+      const j1 = noJudge ? skipped : await steadyJudge(llm, c, a.shown, b.shown);
+      const j2 = noJudge ? skipped : await steadyJudge(llm, c, b.shown, a.shown);
+      if (a.m) measured.a.push(a.m);
+      if (b.m) measured.b.push(b.m);
+      hallucinated.a += a.hallucinated ?? 0;
+      hallucinated.b += b.hallucinated ?? 0;
       const aFirst = j1.better === 'FIRST' ? 'A' : j1.better === 'SECOND' ? 'B' : '=';
       const aSecond = j2.better === 'FIRST' ? 'B' : j2.better === 'SECOND' ? 'A' : '=';
       const verdict = aFirst === aSecond ? aFirst : '=';
@@ -737,7 +829,11 @@ async function main(): Promise<void> {
         b: b.shown,
         aRaw: a.raw,
         bRaw: b.raw,
-        ...(a.chat && b.chat ? { aMeasures: a.chat, bMeasures: b.chat } : {}),
+        ...(a.chat && b.chat
+          ? { aMeasures: a.chat, bMeasures: b.chat }
+          : a.m || b.m
+            ? { aMeasures: a.m, bMeasures: b.m }
+            : {}),
         reason1: j1.reason,
         reason2: j2.reason,
       });
@@ -756,6 +852,15 @@ async function main(): Promise<void> {
     offeredNothing: { current: stats.a.empty, candidate: stats.b.empty },
     sentencesFiltered: { current: stats.a.dropped, candidate: stats.b.dropped },
     failedCalls: failures,
+    ...(measured.a.length || measured.b.length
+      ? {
+          candidateFile: candidateName,
+          set: set ?? 'default',
+          judged: !noJudge,
+          hallucinatedCites: { current: hallucinated.a, candidate: hallucinated.b },
+          measures: { current: totals(measured.a), candidate: totals(measured.b) },
+        }
+      : {}),
     medianMs: { current: median(timing.a), candidate: median(timing.b) },
     ...(modelB ? { models: { current: env.AI_FAST_MODEL, candidate: modelB } } : {}),
     ...(name === 'chat'
@@ -775,7 +880,7 @@ async function main(): Promise<void> {
     join(
       here,
       'results',
-      `${name}${modelB ? `-vs-${modelB}` : ''}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`,
+      `${candidateName}${modelB ? `-vs-${modelB}` : ''}${set ? `-${set}` : ''}${noJudge ? '-measured' : ''}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`,
     ),
     `${JSON.stringify({ summary, rows }, null, 2)}\n`,
   );

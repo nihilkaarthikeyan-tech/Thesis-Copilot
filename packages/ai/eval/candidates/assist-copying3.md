@@ -1,15 +1,15 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.1 Assist — `assist.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-09-30: system block replaced by the evaluated winner (docs/BUILD_LOG.md).
-  2026-10-05: the copying round (ADR-0075): "Paraphrase; never copy", one marker per sentence and
-  the intensifier rule, from eval/candidates/assist-copying3.md (docs/BUILD_LOG.md).
+  CANDIDATE for assist.md, the copying round (ADR-0075). Tested against the prompt on disk by
+  eval/run.ts --candidate assist-copying3 --set copying; it replaces it only if it wins.
+  Changed from the current prompt: own words (no run of six words from a passage unless quoted),
+  one citation per claim, intensifiers. Everything else is the current wording.
+  Second version: the own-words rule is a constraint with a worked example from a field outside
+  the evaluation, and a final check; the marker rule says where the marker goes.
+  Third version: the reason given is attribution (the words are the author's), not a similarity
+  check, so the rule cannot read as advice on getting past a checker (PRD §12.3).
 -->
 
-### A.1 Assist — `assist.md`
-
-**Tier:** Fast. **Max output:** 120 tokens. **Temperature:** 0.4. **Cached:** A.0 + A.0.1. **Volatile:** the user message below.
+### Assist — `assist.md`
 
 System block (after preamble and memory):
 
@@ -56,11 +56,3 @@ User message:
 <instruction>{{instruction_or_none}}</instruction>
 </chapter>
 ```
-
-Post-processing (in code, in this order): (1) strip any `{{cite:ID}}` whose ID is not in `passages` and count it as `HALLUCINATED_CITE`; (2) if the output starts with the last 6+ words of `before`, remove that overlap; (3) cut after the second sentence terminator (`.`, `?`, `!` followed by space/end) — never mid-citation; (4) if the output is only whitespace, return empty and do not count against the cap (log as `EMPTY_SUGGESTION`).
-
-Good output (given a passage S4#c2 about a 2021 survey of 312 rural households):
-`Evidence from rural Karnataka shows that upfront cost, not awareness, was the main barrier reported by households {{cite:S4#c2}}.`
-(The PRD's example went on "This section therefore examines cost-related barriers…", which the rule against describing the section forbids; removed 2026-10-05, ADR-0075. This example is documentation and is not sent to the model.)
-
-Bad output (must never appear): `According to Sharma et al. (2019), 78% of villages...` — a named author and figure with no passage id.

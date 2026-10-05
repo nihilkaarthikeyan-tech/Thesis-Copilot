@@ -190,3 +190,50 @@ export const TOPICS: Topic[] = [
     ],
   },
 ];
+
+/**
+ * The copying round (ADR-0075, 2026-10-05): the production case from the side-by-side study.
+ * Its papers come from Crossref (`fetch-crossref.ts`), Bagla (2026) first. Kept out of `TOPICS`
+ * so the earlier rounds' case sets, and the drafted sections they read, stay as they were.
+ * The first `befores` entry is the sentence typed in production on 2026-10-05.
+ */
+/**
+ * The one sentence of Bagla (2026, Results, p. 11) we hold verbatim: the passage production's
+ * suggestion copied, as recorded from production in `packages/retrieval/test/paraphrase.spec.ts`
+ * (ADR-0071). Added to the Karnataka cases as a second chunk of the same paper; nothing else of
+ * the full text is reproduced here.
+ */
+export const BAGLA_P11 =
+  'Although Karnataka has one of India’s most progressive distributed solar policy frameworks, ' +
+  'household-level evidence shows that adoption remains constrained by informational gaps, ' +
+  'procedural complexity, structural limitations, and perceived financial risk.';
+
+export const KARNATAKA: Topic = {
+  id: 'rooftop-solar-karnataka',
+  thesisTitle: 'Barriers to rooftop solar adoption among rural households in Karnataka',
+  search: 'rooftop solar adoption households Karnataka India barriers subsidy',
+  chapter: {
+    title: 'Literature Review',
+    scopeNote:
+      'Why household rooftop solar adoption stays low in India and Karnataka despite subsidies: cost and finance, information, procedures, roof space and trust.',
+  },
+  befores: [
+    'Rooftop solar adoption among rural households in Karnataka remains low despite state subsidies.',
+    'Upfront cost is usually named first among the barriers.',
+    'The subsidy itself is not always experienced as a benefit.',
+  ],
+  section: {
+    title: 'Household frictions in rooftop solar adoption',
+    scopeNote:
+      'What studies find about the information, procedural, structural and financial frictions households meet between awareness and installation, and how subsidies are experienced.',
+  },
+  questions: ['What stops willing households from installing rooftop solar?'],
+  informal:
+    'Even with the subsidy a lot of households in Karnataka never get rooftop solar installed, and the paperwork and roof space seem to matter as much as the money.',
+  idea: 'Why households in Karnataka do not install rooftop solar even with subsidies.',
+  themes: [
+    'Cost, finance and subsidies',
+    'Information and procedural frictions',
+    'Roof space and structural constraints',
+  ],
+};

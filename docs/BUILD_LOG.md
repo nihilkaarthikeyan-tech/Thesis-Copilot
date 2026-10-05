@@ -5241,3 +5241,45 @@ on a failed answer, no search when off / `@` / document scope / at the cap), `ch
 `chat-prompts` against an isolated stack (web :3400, API :3401, Redis db 5, mock AI) — all pass.
 `chat-beyond` and `chat-rating` had the CORS origin hard-coded to :3000; they now read
 `PLAYWRIGHT_BASE_URL`. `chat-mentions` needs a worker and was not run here.
+
+## Prompt evaluation, the copying round (2026-10-05, ADR-0075)
+
+The side-by-side study caught Assist reusing Bagla (2026) nearly word for word, one citation for
+two claims, a forbidden "significantly", and a draft opening "This chapter presents…" (C5); and
+Jenni offering a first sentence on an empty section (B8). `eval/run.ts --set copying`: the 15
+earlier Assist cases, the Karnataka production case (six real Crossref abstracts, Bagla first, via
+`eval/fetch-crossref.ts`, plus Bagla's p. 11 sentence held in ADR-0071's test), and one empty
+section per thesis — 24 cases; Draft on six sections. Copying measured in code with ADR-0071's own
+`longestCommonRun`/`closeToPassages` (`eval/copying.ts`); usefulness by the round-1 judge, which is
+not told about copying. New flags: `--candidate`, `--set`, `--no-judge`, `--b-only`.
+
+| Prompt | Measure (current → adopted) | Adopted |
+|---|---|---|
+| assist | 6+ word runs 24/70 → 13/72; 8+ runs 10 → 3; `closeToPassages` flags 40 → 19; own-citation sentences 72% → 74%; intensifiers 21 → 15; hallucinated 4 → 1; empty 2 → 0; judge 21–20 (31 ties), 7.59 → 7.54 | yes (`assist-copying3`) |
+| draft | 6+/8+ runs 11/9 → 7/4 of 12; flags 11 → 8; mean run 9.75 → 6.75 words; own-citation sentences 81% → 76%; judge 3–4 (5 ties), 8.29 → 8.40 | yes (`draft-copying2`) |
+| assist v1, v4; draft v1 | v1 no copying gain; v4 judge 10–8 against; draft v1 judge 4–1 against (shorter, list-like) | no |
+| B8 framing opener / cited opener | copied the prompt's example verbatim, itself a claim / an empty and three cut-off answers | no |
+
+Adopted: "Paraphrase; never copy" (six consecutive words from a passage are the author's words,
+copying without quotation marks even when cited; keep terms and figures exact; quote a short
+phrase when the words matter), a worked example outside the evaluated fields, one marker per
+finding sentence, and a named intensifier list in A.1; the paraphrase rule alone in A.2. The
+reason given is attribution: the v2 wording "a similarity check will flag them" read as
+checker-evasion (§12.3) and was replaced before adoption. B8 needs no prompt change — the prompt
+already answers on an empty section — only the editor asking there. No self-describing opener
+appeared in any run; production's came from the contents-page chunks ADR-0071 removed.
+
+Found in code, fixed with tests (`test/quality.spec.ts`):
+- **Suggestions under a heading vanished.** The duplicate filter compared answers with the heading
+  line in `before`; an on-topic sentence shares its words and was dropped (`isHeadingLine`).
+- **Cut-off answers.** About one in ten answers hit A.1's 120 tokens mid-sentence or inside a
+  marker ("…{{cite:S3#c1"), showing raw braces or an uncited half sentence. `dropUnfinishedTail`
+  closes a marker whose id is exactly one request passage, removes any other, and drops an
+  unfinished last sentence after a finished one.
+- The harness judge built every task's text eagerly and failed on a topic with no drafted section.
+
+Cost: about ₹95 (₹87.70 in the result files; ₹6.39 on a first run whose flags `dotenv` swallowed —
+run the harness with `tsx --env-file`; one run stopped after a minute because its candidate quoted
+an evaluated paper's figure). More than planned: the judge (gpt-5-mini) is most of it. The
+assist change is adopted on the copying measures with usefulness a tie, not a judge win; ADR-0075
+says how to revert if the owner wants a judge win to be the bar.

@@ -13,7 +13,12 @@
  * output that was nothing but a bad citation must end up EMPTY, not charged.
  */
 
-import { filterSentences, isAbbreviationStop, type QualityDrops } from './quality.js';
+import {
+  filterSentences,
+  isAbbreviationStop,
+  type QualityDrops,
+  splitSentences,
+} from './quality.js';
 
 export const CITE_RE = /\{\{cite:([^}]+)\}\}/g;
 
@@ -217,13 +222,43 @@ export function cutAfterSecondSentence(output: string): { text: string; truncate
  */
 const NEEDS_SOURCE = /\[\[NEEDS SOURCE:\s*([^\]]*)\]\]/gi;
 
+/**
+ * ADR-0075: an answer stopped by A.1's 120-token limit can end inside a marker ("…{{cite:S6#c")
+ * or partway through its second sentence, which then reaches the student uncited. The prompt
+ * evaluation of 2026-10-05 found both. An unclosed marker whose id is exactly one passage in the
+ * request (and the prefix of no other) is closed, since only the "}}" was lost; any other unclosed
+ * marker is removed. An unfinished last sentence is removed when a finished one precedes it. A
+ * single unfinished sentence is left alone: that is how an answer joining `<text_after>`
+ * mid-sentence looks.
+ */
+export function dropUnfinishedTail(output: string, passageIds: readonly string[] = []): string {
+  let text = output;
+  const open = text.lastIndexOf('{{');
+  if (open > text.lastIndexOf('}}')) {
+    const partial = /^\{\{cite:\s*([^\s}]+)\s*\}?$/.exec(text.slice(open).trim())?.[1];
+    const exact = partial !== undefined && passageIds.includes(partial);
+    const ambiguous = passageIds.some((id) => id !== partial && partial && id.startsWith(partial));
+    text =
+      exact && !ambiguous
+        ? `${text.slice(0, open)}{{cite:${partial}}}`
+        : text.slice(0, open).trimEnd();
+  }
+  if (/[.!?]["'”’)\]]*(\s*\{\{cite:[^}]+\}\})*\s*$/.test(text)) return text;
+  // A closed marker at the very end with no full stop: the citation of a sentence the limit cut
+  // just after its last word. The sentence is complete enough to keep with its citation.
+  if (/\{\{cite:[^}]+\}\}\s*$/.test(text)) return text;
+  const sentences = splitSentences(text);
+  if (sentences.length < 2) return text;
+  return sentences.slice(0, -1).join(' ');
+}
+
 export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   let needsSource: string | null = null;
   for (const match of input.output.matchAll(NEEDS_SOURCE)) {
     const note = (match[1] ?? '').trim();
     if (note && needsSource === null) needsSource = note.slice(0, 120);
   }
-  const output = input.output.replace(NEEDS_SOURCE, ' ');
+  const output = dropUnfinishedTail(input.output.replace(NEEDS_SOURCE, ' '), input.passageIds);
 
   // With auto-cite off the allowed set is empty, but a removed marker is the student's choice
   // rather than the model's fault, so `suppressed` keeps it out of the hallucination count.

@@ -70,6 +70,16 @@ describe('loadPrompt', () => {
     expect(draft.user).toContain('{{#if paperExcerpt}}');
   });
 
+  // ADR-0075, the copying round: the rule that won is pinned, so an edit cannot drop it unseen.
+  it('tells assist and draft to paraphrase, and to quote what they keep word for word', () => {
+    for (const name of ['assist', 'draft'] as const) {
+      const system = loadPrompt(name).system;
+      expect(system, name).toContain('Paraphrase; never copy.');
+      expect(system, name).toContain('six or more consecutive words');
+      expect(system, name).toContain('double quotation marks');
+    }
+  });
+
   it('every prompt has a non-empty system block', () => {
     for (const name of PROMPT_NAMES) {
       const prompt = loadPrompt(name);
