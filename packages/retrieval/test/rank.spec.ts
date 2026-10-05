@@ -107,6 +107,35 @@ describe('topK (§10.4)', () => {
   it('the candidate limit is 24', () => {
     expect(CANDIDATE_LIMIT).toBe(24);
   });
+
+  it('ADR-0078: a draft takes at most 4 passages from one paper while others have candidates', () => {
+    // Paper A holds the 10 best passages; B and C follow.
+    const mixed = rerank(
+      [
+        ...Array.from({ length: 10 }, (_, i) =>
+          candidate({ chunkId: `a${i}`, sourceId: 'A', cosine: 0.9 - i / 100 }),
+        ),
+        ...Array.from({ length: 5 }, (_, i) =>
+          candidate({ chunkId: `b${i}`, sourceId: 'B', cosine: 0.7 - i / 100 }),
+        ),
+        ...Array.from({ length: 5 }, (_, i) =>
+          candidate({ chunkId: `c${i}`, sourceId: 'C', cosine: 0.6 - i / 100 }),
+        ),
+      ],
+      null,
+    );
+    const taken = topK(mixed, 'DRAFT');
+    expect(taken).toHaveLength(12);
+    expect(taken.filter((c) => c.sourceId === 'A')).toHaveLength(4);
+    // Best first within the cap: A's top four, then B and C in rank order.
+    expect(taken.slice(0, 4).map((c) => c.chunkId)).toEqual(['a0', 'a1', 'a2', 'a3']);
+    // Assist and chat are unchanged.
+    expect(topK(mixed, 'CHAT').every((c) => c.sourceId === 'A')).toBe(true);
+  });
+
+  it('ADR-0078: a library of one paper still fills the draft', () => {
+    expect(topK(ranked, 'DRAFT')).toHaveLength(12);
+  });
 });
 
 describe('passage ids (§10.4, §10.6)', () => {

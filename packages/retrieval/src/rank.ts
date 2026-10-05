@@ -115,8 +115,31 @@ export function topK(
   ranked: readonly RankedCandidate[],
   action: RetrievalAction,
 ): RankedCandidate[] {
-  return ranked.slice(0, TOP_K[action]);
+  const k = TOP_K[action];
+  const cap = PER_SOURCE_CAP[action];
+  if (cap === undefined) return ranked.slice(0, k);
+  // ADR-0078: a section draft synthesises across papers. In rank order, each paper keeps at most
+  // `cap` places while another paper's passages wait; slots no other paper can fill go back to
+  // the best of the rest, so a library of one paper still fills the request.
+  const chosen: RankedCandidate[] = [];
+  const held: RankedCandidate[] = [];
+  const count = new Map<string, number>();
+  for (const candidate of ranked) {
+    const n = count.get(candidate.sourceId) ?? 0;
+    if (n < cap) {
+      chosen.push(candidate);
+      count.set(candidate.sourceId, n + 1);
+    } else held.push(candidate);
+  }
+  return [...chosen, ...held].slice(0, k);
 }
+
+/**
+ * ADR-0078: the most passages one paper may hold in a draft's request while other papers have
+ * candidates. The real-model run of 2026-10-05 drafted "Barriers to adoption" with 12 of 14
+ * citations to one paper from a library of four full-text papers.
+ */
+export const PER_SOURCE_CAP: Partial<Record<RetrievalAction, number>> = { DRAFT: 4 };
 
 /**
  * The cosine below which a question is not about the student's library at all.
