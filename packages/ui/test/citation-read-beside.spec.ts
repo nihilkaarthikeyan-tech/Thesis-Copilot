@@ -88,3 +88,26 @@ describe('Read beside on the citation card', () => {
     expect(node.querySelector('[data-testid="citation-read-beside"]')).toBeNull();
   });
 });
+
+describe('Open in reader on the citation card (ADR-0068)', () => {
+  it('links to the app reader at the cited page, in a new tab, PDF or not', async () => {
+    const readerHref = (sourceId: string, page: number | null, chunkId: string | null) =>
+      `/app/d/doc-1/sources/${sourceId}?page=${page}&chunk=${chunkId}`;
+    let node = await hover({ readerHref }, false);
+    const before = editor.getJSON();
+    const link = node.querySelector('[data-testid="citation-open-reader"]') as HTMLAnchorElement;
+    expect(link.textContent).toBe('Open in reader');
+    expect(link.getAttribute('href')).toBe('/app/d/doc-1/sources/src-9?page=12&chunk=chunk-3');
+    expect(link.target).toBe('_blank');
+    expect(editor.getJSON()).toEqual(before);
+    editor.destroy();
+
+    node = await hover({ readerHref });
+    expect(node.querySelector('[data-testid="citation-open-reader"]')).toBeTruthy();
+  });
+
+  it('is not offered when the app has no reader', async () => {
+    const node = await hover({});
+    expect(node.querySelector('[data-testid="citation-open-reader"]')).toBeNull();
+  });
+});
