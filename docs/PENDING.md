@@ -262,6 +262,21 @@ since each re-index spends a little on embeddings).
       `pnpm --filter @tc/api research:thresholds --search` there if they do not.
 - [ ] **Owner: the cost model for the strong-tier chat** (the lead is doing it on main). What the
       research path adds per thin question is in ADR-0074, "Cost".
+## Deep research in chat (ADR-0080, 2026-10-05)
+
+- [ ] **An evaluation round for the two new prompts** (`research_plan.md`, `chat_deep.md`).
+      They are new, so ADR-0038's bar (beat the current prompt) had nothing to beat; they stand
+      on one real run (ADR-0080, "Proof"). Add a `chat_deep` task to `eval/run.ts` that runs
+      the deep answer and A.4 on the same question and passages with the judge, about ₹30.
+- [ ] **A native reader for the Hindi step strings** (`chat.step.plan`, `planned`, `part`,
+      `writeDeep`, `chat.deep.*` in `apps/web/src/i18n/hi.ts`), as for ADR-0061's.
+- [ ] **On production after release:** switch on Research deeply on a five-paper library and ask
+      the side-by-side question. Check: five parts, a search per part, "N of M are on your
+      question", eight sections, Add under the found papers; and the time (35 s on the dev
+      machine with the OpenAlex key).
+- [ ] **Owner: the allowance.** Three a month is what the ₹100 ceiling leaves; if the limits
+      rebalance frees room, this is the one to raise first.
+
 ## Zotero by key and "Start writing now" (ADR-0062, 2026-10-04)
 
 - [ ] **One real Zotero import.** No Zotero account or key exists in this project, so the client

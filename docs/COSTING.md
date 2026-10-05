@@ -58,6 +58,14 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > Every figure below is updated for it. Later the same day the model moved to `voyage-4`
 > (ADR-0032): the same price, and the first 200M tokens free — so in practice the embedding line
 > is ₹0 until roughly the 650th library.
+>
+> **2026-10-05 — deep research in chat (ADR-0080).** A tenth allowance: 3 deep research questions
+> a month on the paid plans (1 on the trial). One question is two strong-tier calls priced at
+> their ceiling — the plan (2,500 in, 900 out with reasoning) and the part-by-part answer over up
+> to 28 passages (12,500 in, 3,400 out with reasoning), the 4,000 cached once per call — ₹1.09 a
+> question, ₹3.27 a month; its embedding call is its own EMBED row, under ₹0.10. A fully active
+> student goes from ₹70.73 to **₹74.00** at the production models and from ₹89.85 to **₹93.13**
+> with `gpt-4.1-mini` on the fast tier. The first real question cost ₹0.51.
 
 Every figure below comes out of `packages/config` — the same code the product bills with. Nothing
 here is typed in by hand. Reproduce all of it with:

@@ -5330,3 +5330,18 @@ never restated a paper's aims, so no candidate won and under ADR-0038 the prompt
 guard is in code: `isCitedOwnStudy` also drops a cited sentence that opens "The study…", the
 rule the evaluation already measured by. ₹10.69. The round also showed the harness cannot yet
 replay a production request; the recorder should save the request's passages next time.
+
+## Deep research in chat (2026-10-05, ADR-0080)
+
+The one place both studies left Jenni clearly ahead. Built as a mode the student switches on
+under the chat box, on its own allowance (`RESEARCH`: 1 on the trial, 3 paid, ₹1.09 at the
+ceiling): A.4.1 plans the question in 3–5 parts with a query each; the library and every index
+are searched once per part, each step shown; the library's best 16 passages over all the parts
+(no paper more than 4) and the best 12 found abstracts (cosine ≥ 0.60 against the question or
+any part, of at most 60) go to A.4.2, which answers part by part with "Where the studies
+disagree", "What these sources do not cover" and "For your thesis". Grounding, Add and the
+hidden "Add to document" are ADR-0074's. Real-model proof on the dev stack: 35 s, 5 parts, 60
+abstracts read, 12 kept, 648 words, 13 citations, ₹0.51. Migration 0039 adds the enum value.
+Tests: `deep-research.spec.ts` (ai), `chat-deep.spec.ts` and `chat-deep-api.spec.ts` (api,
+with the cap test), `chat-deep.spec.ts` (Playwright). The two prompts are new and unevaluated
+beyond the proof (PENDING).

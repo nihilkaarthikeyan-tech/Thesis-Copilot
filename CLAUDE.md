@@ -207,6 +207,13 @@ with mail blanked. Still the owner's: the usage-limit rebalance (option 1 recomm
 - **ADR-0069, the Chrome add-on 0.2.0.** Publishing it is the owner's, by
   `apps/extension/PUBLISHING.md`.
 
+**Deep research in chat (2026-10-05, ADR-0080).** A "Research deeply" switch under the chat
+box: A.4.1 plans the question in 3–5 parts, the library and every index are searched once per
+part, and A.4.2 answers part by part (disagreements, gaps, "For your thesis") from up to 28
+passages. Its own allowance, `RESEARCH` (1 trial / 3 paid, ₹1.09 at the ceiling, worst case
+₹93.13). Grounding and Add are ADR-0074's. Proof: 35 s, 60 abstracts read, 12 kept, 648 words,
+13 citations, ₹0.51. The two prompts are new and unevaluated beyond that run (PENDING).
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.
