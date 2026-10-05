@@ -21,6 +21,7 @@ const SECTIONS: Record<string, string> = {
   account: 'Account',
   trial: 'The free-trial notice',
   signin: 'Sign in',
+  chat: 'Chat (searching beyond a thin library)',
 };
 
 const cell = (text: string) => text.replaceAll('|', '\\|');

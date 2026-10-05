@@ -814,7 +814,10 @@ function ChapterEditor({
       const resolved = citations.map((c) => ({ ...c, rendered: `(${c.label})` }));
       const paragraphType = ed.schema.nodes.paragraph;
       if (!paragraphType) return;
+      // ADR-0074: an answer's "### Part" headings arrive as paragraphs of their own, without the
+      // marks — a chat heading is not a thesis heading, and the outline is the student's.
       const paragraphs = text
+        .replace(/^#{1,4}\s+(.+)$/gm, '\n$1\n')
         .split(/\n{2,}/)
         .map((p) => p.trim())
         .filter(Boolean)

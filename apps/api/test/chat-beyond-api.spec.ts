@@ -198,7 +198,9 @@ describe('on', () => {
     expect((await setBeyond('on')).status).toBe(200);
     const before = await chatUnits();
     const sse = await ask({});
-    expect(steps(sse)).toHaveLength(3);
+    // ADR-0073 says "Searching your library…" first; the search's three steps follow it.
+    expect(steps(sse)).toHaveLength(4);
+    expect(steps(sse)[0]).toBe('Searching your library…');
     expect(done(sse).outcome).toBe('answered');
     expect(done(sse).beyond).toBeTruthy();
     expect(done(sse).offerBeyond).toBeUndefined();

@@ -15,11 +15,25 @@ import type { PromptPassage } from './assist.js';
 import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
 export const CHAT = {
+  /**
+   * The tier when the caller names none. The API passes `AI_CHAT_TIER` (ADR-0074: strong by the
+   * owner's decision, 2026-10-05); this default is only what a builder call without one gets.
+   */
   tier: 'fast',
-  maxTokens: 600,
+  /**
+   * The answer's own budget (the adapter adds reasoning headroom on top). 600 until ADR-0074:
+   * a headed answer citing every claim from up to fourteen passages runs to ~350 words, and its
+   * markers are ~10 tokens each, so 600 cut it off mid-section.
+   */
+  maxTokens: 900,
   temperature: 0.3,
   /** A.4: "<passages> (top 8)". */
   topK: 8,
+  /**
+   * ADR-0074: a question the library is thin on is answered from the library's eight and up to
+   * six abstracts a search found.
+   */
+  researchTopK: 14,
   /** A.4: "the last 4 turns of the conversation as prior messages". */
   keepTurns: 4,
   maxMessageChars: 2_000,
@@ -67,6 +81,10 @@ export type ChatBuildInput = {
   userId: string;
   documentId: string;
   signal?: AbortSignal;
+  /** ADR-0074: `AI_CHAT_TIER`. Absent means `CHAT.tier`. */
+  tier?: 'fast' | 'strong';
+  /** ADR-0074: `CHAT.researchTopK` when search abstracts are added; `CHAT.topK` otherwise. */
+  maxPassages?: number;
 };
 
 /** Only the filters the student actually set; an empty object reads as "no filters". */
@@ -82,10 +100,12 @@ export function activeFilters(filters: ChatFilters): Record<string, unknown> {
 
 export function chatUserMessage(input: ChatBuildInput): string {
   const passages = input.passages
-    .slice(0, CHAT.topK)
+    .slice(0, input.maxPassages ?? CHAT.topK)
     .map(
       (p) =>
-        `<passage id="${p.id}" source="${p.shortRef}"${p.page ? ` page="${p.page}"` : ''}>\n${p.text}\n</passage>`,
+        `<passage id="${p.id}" source="${p.shortRef}"${p.page ? ` page="${p.page}"` : ''}${
+          p.origin === 'search' ? ' origin="search"' : ''
+        }>\n${p.text}\n</passage>`,
     )
     .join('\n');
   const template = loadPrompt('chat').user;
@@ -107,7 +127,7 @@ export function buildChatRequest(input: ChatBuildInput): LlmRequest {
     .slice(-CHAT.keepTurns * 2)
     .map((t) => ({ role: t.role, content: historyText(t).slice(0, CHAT.maxMessageChars) }));
   return {
-    tier: CHAT.tier,
+    tier: input.tier ?? CHAT.tier,
     system: {
       cached: `${loadPrompt('_preamble').system}\n\n${input.memoryBlock}\n\n${loadPrompt('chat').system}`,
     },

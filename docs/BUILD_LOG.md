@@ -5133,3 +5133,64 @@ Fixes for the faults the Jenni comparison found in production v0.1.26:
 Lesson, again: the Python-heredoc rule. Two regexes were mangled this way (`\b` became a
 backspace byte, `\n` became a line break). Both were caught by grepping the diff for `\x08` and
 for split regexes before commit, and were rewritten from raw strings or with the Edit tool.
+
+## Chat researches a thin library; A.4 round 2 on the strong tier (2026-10-05, ADR-0074)
+
+From the side-by-side (item C2): Jenni answered the solar-finance question in six headed sections
+with ten-plus citations after searching the literature; ours wrote one paragraph with two
+citations from a five-paper library.
+
+**Thresholds, measured** (`pnpm --filter @tc/api research:thresholds --search`, dev database,
+voyage-4; production `retrievePassages`). Top-eight passages per question:
+
+| Library | Question kind | best cosine | passages ≥0.55 (papers) | verdict |
+|---|---|---|---|---|
+| solar, 5 papers | three "covered" questions | 0.75–0.87 | 8 (3) | thin |
+| solar, 5 papers | the C2 question | 0.80 | 8 (3) | thin |
+| solar, 5 papers | women's role in the decision | 0.63 | 8 (1) | thin |
+| solar, 10 papers (abstracts) | two covered questions | 0.62–0.72 | 8 (5), 5 (4) | not thin |
+| solar, 10 papers | the C2 question | 0.75 | 8 (7) | not thin |
+| solar, 10 papers | net metering | 0.60 | 4 (4), none ≥0.60 | not thin (borderline) |
+| fish drying, 2 papers | any | 0.65–0.74 | 8 (1) | thin |
+| any | off topic | 0.21–0.29 | 0 | refused by the floor, as before |
+
+The protein library's vectors are stale (best cosine 0.04 for its own subject; never re-embedded
+after ADR-0032) and was left out. Kept-abstract line, cosine against title + question: on-question
+abstracts 0.61–0.81 (South African rooftop-barrier review 0.745, AlphaFold2 few-shot 0.814, solar
+fish-dryer review 0.767); off-field 0.53–0.58 (mortgage lending, rural-women health, electric
+stoves). Line set at 0.60. OpenAlex answered 429 on this machine all day, so PubMed and arXiv
+supplied every candidate; the production check is in `docs/PENDING.md`.
+
+**Evaluation round** (`packages/ai/eval/run.ts chat --tier strong`, owner's decision that chat
+runs on the strong model; both sides gpt-5-mini, judged blind by gpt-5-mini in both orders). Eleven
+cases: the ten chat questions across EDM, SLM maraging steel, rooftop solar, diabetes apps and
+microfinance, plus the C2 question with five library passages and three marked `origin="search"`.
+
+| | current | candidate |
+|---|---|---|
+| wins / ties | 0 | 8 (3 ties) |
+| mean judge score | 7.50 | 8.45 |
+| C2 question | 5.5 | 8.0 |
+| hallucinated citations before the whitelist | 0 | 0 |
+| answers with headings | 0 / 11 | 11 / 11 |
+| sentences carrying a citation | 57 / 74 (77%) | 89 / 100 (89%) |
+| distinct passages cited | 49 | 56 |
+| mean words | 147 | 226 |
+| median latency | 5.4 s | 7.6 s |
+
+Adopted (`packages/ai/prompts/chat.md`). Spend for the round: **₹5.95** (harness meter). The
+harness now counts structure and grounding in code for chat (`chatMeasures`) and takes
+`--tier`. One tie the judge scored lower for the candidate (subsidies, 8.0 → 7.5) preferred the
+shorter answer's method detail; the candidate opened with "Direct answer:" once — cosmetic.
+
+**Built:** `libraryCoverage`, `planResearchQueries` (`@tc/retrieval`); `WebScopeService.searchPlan`;
+`ChatService.research` with the EMBED log row; `AI_CHAT_TIER` (default strong); the panel's
+headings, translated steps, found papers with Add / Add all; headings stripped on copy and on
+"Add to document". Tests: `packages/retrieval/test/research.spec.ts` (11),
+`apps/api/test/chat-research.spec.ts` (10), `apps/api/test/chat-research-api.spec.ts` (8,
+Testcontainers: steps, one unit, EMBED row, strong-tier log, only request passages cited, refund
+on a failed answer, no search when off / `@` / document scope / at the cap), `chat-copy.spec.ts`
+(+1), Playwright `chat-research.spec.ts`, run with `chat-beyond`, `chat-scopes`, `chat-rating`,
+`chat-prompts` against an isolated stack (web :3400, API :3401, Redis db 5, mock AI) — all pass.
+`chat-beyond` and `chat-rating` had the CORS origin hard-coded to :3000; they now read
+`PLAYWRIGHT_BASE_URL`. `chat-mentions` needs a worker and was not run here.

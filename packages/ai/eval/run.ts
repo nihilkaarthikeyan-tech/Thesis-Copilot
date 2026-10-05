@@ -80,7 +80,47 @@ type Output = {
   empty: boolean;
   dropped: number;
   raw: string;
+  /** Chat only (ADR-0074): measured in code, not by the judge. */
+  chat?: ChatMeasures;
 };
+
+type ChatMeasures = {
+  /** Citations of a passage not in the request, before the whitelist stripped them. */
+  hallucinated: number;
+  /** Markdown headings in the answer. */
+  headings: number;
+  /** Sentences outside headings, and how many of them carry a citation. */
+  sentences: number;
+  citedSentences: number;
+  words: number;
+};
+
+/** `--tier strong`: the chat answer's tier (ADR-0074); the configured default otherwise. */
+const chatTier: 'fast' | 'strong' = process.argv.includes('--tier')
+  ? process.argv[process.argv.indexOf('--tier') + 1] === 'strong'
+    ? 'strong'
+    : 'fast'
+  : 'fast';
+
+/** Structure and grounding of a chat answer, counted in code. */
+function chatMeasures(text: string, hallucinated: number): ChatMeasures {
+  const lines = text.split('\n');
+  const headings = lines.filter((l) => /^#{1,4}\s/.test(l.trim())).length;
+  const body = lines.filter((l) => !/^#{1,4}\s/.test(l.trim())).join(' ');
+  const sentences = (body.match(/[^.!?]+[.!?]+(\s*\{\{cite:[^}]+\}\})*/g) ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s.replace(/\{\{cite:[^}]+\}\}/g, '').trim().length > 20);
+  return {
+    hallucinated,
+    headings,
+    sentences: sentences.length,
+    citedSentences: sentences.filter((s) => s.includes('{{cite:')).length,
+    words: body
+      .replace(/\{\{cite:[^}]+\}\}/g, '')
+      .split(/\s+/)
+      .filter(Boolean).length,
+  };
+}
 type Case = {
   id: string;
   topic: Topic;
@@ -131,6 +171,20 @@ function casesFor(name: string): Case[] {
           kind: 'chat',
         });
       });
+      // ADR-0074: the side-by-side's own question (C2), asked as the research path asks it: five
+      // library papers and three abstracts a search found, marked as such.
+      if (topic.id === 'rooftop-solar-india') {
+        cases.push({
+          id: `${topic.id}-c2`,
+          topic,
+          context:
+            'What are the main financial barriers to rooftop solar adoption for rural households in India, according to my sources?',
+          passages: passagesFor(topic, 8).map((p, i) =>
+            i >= 5 ? { ...p, id: `Sweb${i - 4}#cabstract`, origin: 'search' as const } : p,
+          ),
+          kind: 'chat',
+        });
+      }
     } else if (name === 'command') {
       cases.push({
         id: `${topic.id}-expand`,
@@ -415,6 +469,8 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
       filters: {},
       userId: 'eval',
       documentId: 'eval',
+      tier: chatTier,
+      maxPassages: c.passages.length,
     });
     const { text } = await streamText(llm, request);
     const processed = postProcessChat(
@@ -428,6 +484,7 @@ async function produce(llm: LlmProvider, c: Case): Promise<Output> {
       cited: processed.cited.length,
       empty: processed.text.trim().length === 0,
       dropped: 0,
+      chat: chatMeasures(processed.text, processed.hallucinated.length),
     };
   }
   if (c.kind === 'expand' || c.kind === 'formalise') {
@@ -619,6 +676,17 @@ async function main(): Promise<void> {
   const stats = { a: { empty: 0, cited: 0, dropped: 0 }, b: { empty: 0, cited: 0, dropped: 0 } };
   let n = 0;
   const timing = { a: [] as number[], b: [] as number[] };
+  const zero = () => ({
+    hallucinated: 0,
+    headings: 0,
+    answersWithHeadings: 0,
+    sentences: 0,
+    citedSentences: 0,
+    words: 0,
+    distinctCited: 0,
+  });
+  const chatTotals = { a: zero(), b: zero() };
+  if (name === 'chat') console.log(`chat tier: ${chatTier}`);
 
   for (const c of cases) {
     for (let s = 0; s < samples; s++) {
@@ -649,6 +717,16 @@ async function main(): Promise<void> {
         if (o.empty) stats[k].empty++;
         if (o.cited > 0) stats[k].cited++;
         stats[k].dropped += o.dropped;
+        if (o.chat) {
+          const t = chatTotals[k];
+          t.hallucinated += o.chat.hallucinated;
+          t.headings += o.chat.headings;
+          if (o.chat.headings > 0) t.answersWithHeadings++;
+          t.sentences += o.chat.sentences;
+          t.citedSentences += o.chat.citedSentences;
+          t.words += o.chat.words;
+          t.distinctCited += o.cited;
+        }
       }
       n++;
       rows.push({
@@ -659,6 +737,7 @@ async function main(): Promise<void> {
         b: b.shown,
         aRaw: a.raw,
         bRaw: b.raw,
+        ...(a.chat && b.chat ? { aMeasures: a.chat, bMeasures: b.chat } : {}),
         reason1: j1.reason,
         reason2: j2.reason,
       });
@@ -679,6 +758,15 @@ async function main(): Promise<void> {
     failedCalls: failures,
     medianMs: { current: median(timing.a), candidate: median(timing.b) },
     ...(modelB ? { models: { current: env.AI_FAST_MODEL, candidate: modelB } } : {}),
+    ...(name === 'chat'
+      ? {
+          chatTier,
+          chat: {
+            current: { ...chatTotals.a, meanWords: Math.round(chatTotals.a.words / n) },
+            candidate: { ...chatTotals.b, meanWords: Math.round(chatTotals.b.words / n) },
+          },
+        }
+      : {}),
     spentRupees: +(meter.rupees() + (modelB ? meterB.rupees() : 0)).toFixed(2),
   };
   console.log(JSON.stringify(summary, null, 2));

@@ -11,6 +11,7 @@
     "backfill:journals": "dotenv -e ../../.env -- tsx scripts/backfill-journal-citedness.ts",
     "reembed": "dotenv -e ../../.env -- tsx scripts/reembed-chunks.ts",
     "prune-chunks": "dotenv -e ../../.env -- tsx scripts/prune-chunks.ts",
+    "research:thresholds": "dotenv -e ../../.env -- tsx scripts/chat-research-thresholds.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "start:local": "dotenv -e ../../.env -- node dist/main.js",

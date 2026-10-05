@@ -20,8 +20,15 @@ import {
   type Providers,
   postProcessChat,
 } from '@tc/ai';
-import { computeCallCost, type Env } from '@tc/config';
-import { isOffTopic } from '@tc/retrieval';
+import { computeCallCost, computeEmbeddingCost, type Env } from '@tc/config';
+import {
+  cosine,
+  isOffTopic,
+  type LibraryCoverage,
+  libraryCoverage,
+  planResearchQueries,
+  researchEmbedText,
+} from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
 import { ForbiddenError, NotFoundError } from '../../common/errors.js';
 import {
@@ -40,6 +47,7 @@ import {
   BEYOND_EMPTY_REPLY,
   BEYOND_NOT_ENOUGH_REPLY,
   type BeyondPaper,
+  type BeyondPassages,
   type BeyondSetting,
   beyondFilters,
   beyondNote,
@@ -49,6 +57,18 @@ import {
   searchingStep,
   WRITING_STEP,
 } from './beyond-library.js';
+import {
+  keptStep,
+  queryStep,
+  RESEARCH_WRITING_STEP,
+  type ResearchStep,
+  type ResearchSummary,
+  readStep,
+  researchCandidates,
+  researchNote,
+  researchPassages,
+  thinStep,
+} from './chat-research.js';
 import { ContextService } from './context.service.js';
 import { passagesFromChapters } from './document-scope.js';
 import { WebScopeService } from './web-scope.service.js';
@@ -92,8 +112,14 @@ export type BeyondSummary = { papers: number; outsideLibrary: number; note: stri
 
 export type ChatEvent =
   | { event: 'start'; data: { turn: number } }
-  /** ADR-0060: what a beyond-library question is doing, shown while it runs. */
-  | { event: 'step'; data: { id: 'search' | 'read' | 'write'; text: string } }
+  /**
+   * ADR-0060: what a question is doing, shown while it runs. ADR-0074 adds the research steps,
+   * with `params` so the panel can say them in the interface language.
+   */
+  | {
+      event: 'step';
+      data: { id: 'search' | 'read' | 'write'; text: string } | ResearchStep;
+    }
   | { event: 'token'; data: { t: string } }
   | {
       event: 'done';
@@ -112,6 +138,8 @@ export type ChatEvent =
         offerBeyond?: boolean;
         /** Present on an answer written from search abstracts. */
         beyond?: BeyondSummary;
+        /** ADR-0074: present on a library answer that also read abstracts a search found. */
+        research?: ResearchSummary;
       };
     };
 
@@ -132,6 +160,8 @@ export type StoredTurn = ChatTurn & {
   citations?: ChatCitation[];
   /** ADR-0060: the answer was written from search abstracts, not the library. */
   beyond?: BeyondSummary;
+  /** ADR-0074: the library's passages and abstracts a search found. */
+  research?: ResearchSummary;
 };
 
 type ChapterForChat = Parameters<ContextService['memoryBlock']>[0];
@@ -340,26 +370,45 @@ export class ChatService {
       return;
     }
 
+    const librarySources = new Set(passages.map((p) => p.shortRef)).size;
     yield {
       event: 'step',
       data: {
         id: 'read',
-        text: `Reading ${passages.length} passage${passages.length === 1 ? '' : 's'} from ${
-          new Set(passages.map((p) => p.shortRef)).size
-        } source${new Set(passages.map((p) => p.shortRef)).size === 1 ? '' : 's'}`,
+        text: `Reading ${passages.length} passage${passages.length === 1 ? '' : 's'} from ${librarySources} source${librarySources === 1 ? '' : 's'}`,
       },
     };
-    yield { event: 'step', data: { id: 'write', text: WRITING_STEP } };
+
+    // ADR-0074: a library too thin for the question is topped up from the literature, in the same
+    // request and on the same unit — unless the student turned searching off, or named the papers
+    // the question is about with `@` (then those papers are the answer's whole ground).
+    const coverage =
+      scope === 'library'
+        ? libraryCoverage(passages.map((p) => ({ cosine: p.cosine, sourceId: p.sourceId })))
+        : null;
+    const research =
+      coverage?.thin && beyondSetting !== 'off' && (input.sourceIds?.length ?? 0) === 0
+        ? yield* this.research(user.id, input, document.title, chapter, coverage, filters, signal)
+        : null;
+    const found = research?.found ?? { passages: [], papers: new Map<string, BeyondPaper>() };
+    const allPassages = [...passages, ...found.passages];
+
+    yield {
+      event: 'step',
+      data: { id: 'write', text: research ? RESEARCH_WRITING_STEP : WRITING_STEP },
+    };
 
     const request = buildChatRequest({
       memoryBlock: memory.text,
       question: input.message,
       history,
-      passages,
+      passages: allPassages,
       filters,
       userId: user.id,
       documentId: input.documentId,
       signal,
+      tier: this.env.AI_CHAT_TIER,
+      maxPassages: found.passages.length > 0 ? CHAT.researchTopK : CHAT.topK,
     });
 
     const { raw, latencyMs } = yield* this.stream(
@@ -372,21 +421,36 @@ export class ChatService {
 
     const processed = postProcessChat(
       raw,
-      passages.map((p) => p.id),
+      allPassages.map((p) => p.id),
     );
     for (const key of processed.hallucinated) {
       hallucinatedCite.inc();
       this.logger.warn({ documentId: input.documentId, key }, 'HALLUCINATED_CITE');
     }
 
-    // The keys map back to real ids so a citation in the answer opens the passage (FR-4.9).
+    // The keys map back to real ids so a citation in the answer opens the passage (FR-4.9); a
+    // found paper's carries the paper, with Add (ADR-0060's shape).
     const citations: ChatCitation[] = processed.cited.flatMap((key) => {
       const real = retrieved.byKey.get(key);
-      const passage = passages.find((p) => p.id === key);
-      return real
-        ? [{ key, sourceId: real.sourceId, chunkId: real.chunkId, label: passage?.shortRef ?? key }]
+      const passage = allPassages.find((p) => p.id === key);
+      if (real) {
+        return [
+          { key, sourceId: real.sourceId, chunkId: real.chunkId, label: passage?.shortRef ?? key },
+        ];
+      }
+      const paper = found.papers.get(key);
+      return paper
+        ? [{ key, sourceId: '', chunkId: '', label: passage?.shortRef ?? key, beyond: paper }]
         : [];
     });
+    const summary: ResearchSummary | undefined =
+      research && found.passages.length > 0
+        ? {
+            papers: found.passages.length,
+            queries: research.queries,
+            note: researchNote(librarySources, found.passages.length),
+          }
+        : undefined;
 
     const answerId = randomUUID();
     const turns: StoredTurn[] = [
@@ -394,7 +458,13 @@ export class ChatService {
       { id: randomUUID(), role: 'user' as const, text: input.message },
       // The citations stay with the turn (ADR-0045): without them the history rendered no
       // citation after a reload, and the stale `{{cite:S1#c1}}` ids went back to the model.
-      { id: answerId, role: 'assistant' as const, text: processed.text, citations },
+      {
+        id: answerId,
+        role: 'assistant' as const,
+        text: processed.text,
+        citations,
+        ...(summary ? { research: summary } : {}),
+      },
     ].slice(-KEEP_TURNS);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
     await this.prisma.document.update({
@@ -409,10 +479,123 @@ export class ChatService {
         text: processed.text,
         outcome: processed.outcome,
         citations,
-        passagesUsed: passages.length,
+        passagesUsed: allPassages.length,
         latencyMs,
+        ...(summary ? { research: summary } : {}),
       },
     };
+  }
+
+  /**
+   * ADR-0074: search the literature for a question the library is thin on, and keep the found
+   * abstracts that are on it. Every step is shown as it happens. No model call: the plan is
+   * `planResearchQueries`, the indexes are searched within `CHAT_RESEARCH.budget`, and relevance
+   * is one embedding call over at most `CHAT_RESEARCH.maxCandidates` abstracts, logged as `EMBED`
+   * so the ₹100 ceiling sees it.
+   *
+   * Nothing here fails the question: the student asked their library, and an index or the
+   * embedding being down only means the answer is the library's alone (said in a step). The CHAT
+   * unit is the caller's and is refunded there if the answer itself fails.
+   */
+  private async *research(
+    userId: string,
+    input: ChatInput,
+    thesisTitle: string,
+    chapter: ChapterForChat,
+    coverage: LibraryCoverage,
+    filters: ChatFilters,
+    signal: AbortSignal,
+  ): AsyncGenerator<ChatEvent, { found: BeyondPassages; queries: string[] } | null> {
+    yield { event: 'step', data: thinStep(coverage) };
+    const memoryTitle = await this.workingTitle(input.documentId);
+    const plan = planResearchQueries(input.message, memoryTitle ?? thesisTitle ?? chapter.title);
+    yield { event: 'step', data: queryStep(['OpenAlex'], input.message.slice(0, 160)) };
+    for (const query of plan.keyword) {
+      yield { event: 'step', data: queryStep(this.web.indexNames(), query) };
+    }
+
+    let found: BeyondPassages;
+    try {
+      const results = researchCandidates(
+        await this.web.searchPlan(input.documentId, input.message, plan, signal),
+      );
+      yield { event: 'step', data: readStep(results.length) };
+      if (results.length === 0) {
+        yield { event: 'step', data: keptStep(0, 0) };
+        return null;
+      }
+      const began = Date.now();
+      const { vectors, tokens } = await this.providers.embeddings.embedWithUsage([
+        plan.semantic,
+        ...results.map((r) => researchEmbedText(r)),
+      ]);
+      await this.logEmbed(userId, input.documentId, tokens, Date.now() - began);
+      const [asked, ...each] = vectors;
+      found = researchPassages(
+        results.map((result, i) => ({ result, cosine: cosine(asked ?? [], each[i] ?? []) })),
+        beyondFilters(filters),
+      );
+      this.logger.log(
+        {
+          documentId: input.documentId,
+          coverage,
+          candidates: results.length,
+          kept: found.passages.length,
+          embedTokens: tokens,
+        },
+        'chat research',
+      );
+      yield { event: 'step', data: keptStep(found.passages.length, results.length) };
+    } catch (error) {
+      if (signal.aborted) throw error;
+      this.logger.warn({ err: error, documentId: input.documentId }, 'chat research failed');
+      yield {
+        event: 'step',
+        data: {
+          id: 'kept',
+          text: 'The search did not answer in time; answering from your library',
+          params: { kept: 0, read: 0 },
+        },
+      };
+      return null;
+    }
+    return found.passages.length > 0 ? { found, queries: plan.keyword } : null;
+  }
+
+  private async workingTitle(documentId: string): Promise<string | null> {
+    const memory = await this.prisma.documentMemory.findUnique({
+      where: { documentId },
+      select: { scope: true },
+    });
+    const title = (memory?.scope as { workingTitle?: unknown } | null)?.workingTitle;
+    return typeof title === 'string' && title.trim() ? title.trim() : null;
+  }
+
+  /** The research path's embedding call, as the worker logs its own (`EMBED`, real tokens). */
+  private async logEmbed(
+    userId: string,
+    documentId: string,
+    tokens: number,
+    latencyMs: number,
+  ): Promise<void> {
+    const cost = this.env.EMBED_PROVIDER !== 'mock' ? computeEmbeddingCost(tokens) : 0;
+    if (cost > 0) aiCostMicroInr.inc({ action: 'EMBED' }, cost);
+    await this.prisma.aiCallLog.create({
+      data: {
+        userId,
+        documentId,
+        action: 'EMBED',
+        model: this.env.AI_EMBED_MODEL,
+        inputTokens: tokens,
+        cachedInputTokens: 0,
+        cacheWriteTokens: 0,
+        outputTokens: 0,
+        costMicroInr: BigInt(cost),
+        latencyMs,
+        ok: true,
+        error: null,
+      },
+    });
   }
 
   /**
@@ -478,6 +661,7 @@ export class ChatService {
       userId: user.id,
       documentId: input.documentId,
       signal,
+      tier: this.env.AI_CHAT_TIER,
     });
     yield { event: 'step', data: { id: 'write', text: WRITING_STEP } };
 
@@ -558,7 +742,7 @@ export class ChatService {
   ): AsyncGenerator<ChatEvent, { raw: string; latencyMs: number }> {
     let raw = '';
     let ttfbMs: number | null = null;
-    let modelId = this.providers.llm.modelIdFor('fast');
+    let modelId = this.providers.llm.modelIdFor(this.env.AI_CHAT_TIER);
     try {
       for await (const chunk of this.providers.llm.stream(request)) {
         if (signal.aborted) break;
@@ -580,7 +764,7 @@ export class ChatService {
       throw error;
     }
     const latencyMs = Date.now() - startedAt;
-    aiCallLatency.observe({ action: 'CHAT', tier: 'fast' }, latencyMs);
+    aiCallLatency.observe({ action: 'CHAT', tier: this.env.AI_CHAT_TIER }, latencyMs);
     return { raw, latencyMs };
   }
 
@@ -638,7 +822,7 @@ export class ChatService {
   private async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
-      select: { id: true, meta: true },
+      select: { id: true, meta: true, title: true },
     });
     if (!document) throw new NotFoundError('That document');
     return document;
@@ -686,7 +870,7 @@ export class ChatService {
   ): Promise<void> {
     const cost =
       ok && usage && this.env.AI_PROVIDER !== 'mock'
-        ? computeCallCost({ tier: 'fast', modelId: model, usage })
+        ? computeCallCost({ tier: this.env.AI_CHAT_TIER, modelId: model, usage })
         : 0;
     if (cost > 0) aiCostMicroInr.inc({ action: 'CHAT' }, cost);
     await this.prisma.aiCallLog.create({

@@ -598,6 +598,29 @@ export const en = {
   'signin.terms': 'terms',
   'signin.readFirst': 'read that first',
   'signin.language': 'Language',
+
+  // ---- Chat: researching beyond a thin library (ADR-0074) -------------------------------------
+  // The step lines arrive from the server in English; these say them in another language.
+  'chat.step.search': 'Searching your library…',
+  'chat.step.research':
+    'Your library has {papers} papers on this, so I am searching the literature too…',
+  'chat.step.query': 'Searching {indexes} for: {query}…',
+  'chat.step.read': 'Reading {count} abstracts…',
+  'chat.step.kept': '{kept} of {read} are on your question',
+  'chat.step.keptNone':
+    'None of them is close enough to your question; answering from your library',
+  'chat.step.write': 'Writing the answer…',
+  'chat.research.title': 'Papers found by the search',
+  'chat.research.notInLibrary': 'Not in your library',
+  'chat.research.inLibrary': 'In your library',
+  'chat.research.add': 'Add to library',
+  'chat.research.adding': 'Adding…',
+  'chat.research.addAll': 'Add all {count} to library',
+  'chat.research.added': 'Added. Once it has been read, ask again to cite it from your library.',
+  'chat.research.view': 'View paper',
+  'chat.research.searched': 'Searched for: {queries}',
+  'chat.research.addFirst':
+    'Add the papers found by the search to your library before putting this answer in your thesis.',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

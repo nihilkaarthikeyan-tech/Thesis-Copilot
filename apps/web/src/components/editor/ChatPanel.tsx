@@ -12,6 +12,8 @@ import { tokenizeAiText } from '@tc/ui';
 import katex from 'katex';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import type { MessageKey, Vars } from '@/i18n';
+import { useLanguage, useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import { answerPlainText } from '@/lib/chat-copy';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
@@ -56,10 +58,41 @@ type Turn = {
   question?: string;
   /** ADR-0060: written from search abstracts; the line under the answer says so. */
   beyond?: { papers: number; outsideLibrary: number; note: string };
+  /** ADR-0074: the library's passages and abstracts a search found for a thin question. */
+  research?: { papers: number; queries: string[]; note: string };
   /** The student's thumbs; only answers the server stored (it sent their id) can be rated. */
   rating?: 1 | -1;
   stored?: boolean;
 };
+
+/** One line of "what it is doing" (ADR-0060, ADR-0074), as the server sent it. */
+type Step = { id: string; text: string; params?: Record<string, string | number> };
+
+/**
+ * A step in the interface language. English shows the server's own words, which get the plurals
+ * right; another language says the same thing from its catalogue when the step carries what the
+ * sentence needs, and falls back to the English it was sent.
+ */
+function stepLabel(step: Step, language: string, t: (key: MessageKey, vars?: Vars) => string) {
+  if (language === 'en') return step.text;
+  const p = step.params ?? {};
+  switch (step.id) {
+    case 'search':
+      return step.text.startsWith('Searching your library') ? t('chat.step.search') : step.text;
+    case 'research':
+      return 'papers' in p ? t('chat.step.research', p) : step.text;
+    case 'query':
+      return 'query' in p ? t('chat.step.query', p) : step.text;
+    case 'read':
+      return 'count' in p ? t('chat.step.read', p) : step.text;
+    case 'kept':
+      return Number(p.kept ?? 0) === 0 ? t('chat.step.keptNone') : t('chat.step.kept', p);
+    case 'write':
+      return t('chat.step.write');
+    default:
+      return step.text;
+  }
+}
 
 type Filters = {
   yearFrom?: number | null;
@@ -140,6 +173,8 @@ export function ChatPanel({
    */
   onAddToDocument?: (text: string, citations: Citation[]) => void;
 }) {
+  const { t } = useT();
+  const [language] = useLanguage();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
   const [streaming, setStreaming] = useState('');
@@ -244,8 +279,8 @@ export function ChatPanel({
   }
   const [webResults, setWebResults] = useState<WebResult[] | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
-  /** ADR-0060: what a beyond-library question is doing right now, in order. */
-  const [steps, setSteps] = useState<string[]>([]);
+  /** ADR-0060/0074: what a question is doing right now, in order. */
+  const [steps, setSteps] = useState<Step[]>([]);
   /** Papers from an answer's abstracts the student has added, by DOI or title. */
   const [addedPapers, setAddedPapers] = useState<Set<string>>(() => new Set());
 
@@ -350,12 +385,22 @@ export function ChatPanel({
           if (eventName === 'step') {
             // ADR-0060: searching, reading N abstracts, writing — each replaces "now" and the
             // earlier ones stay ticked.
-            setSteps((list) => [...list, String(data.text ?? '')]);
+            setSteps((list) => [
+              ...list,
+              {
+                id: String(data.id ?? ''),
+                text: String(data.text ?? ''),
+                ...(data.params && typeof data.params === 'object'
+                  ? { params: data.params as Step['params'] }
+                  : {}),
+              },
+            ]);
           } else if (eventName === 'token') {
             text += String(data.t ?? '');
             setStreaming(text);
           } else if (eventName === 'done') {
             const beyond = data.beyond as Turn['beyond'] | undefined;
+            const research = data.research as Turn['research'] | undefined;
             setTurns((list) => [
               ...list,
               {
@@ -368,6 +413,7 @@ export function ChatPanel({
                 // An automatic search ("On") answers a library question from abstracts.
                 scope: beyond ? 'beyond' : askScope,
                 ...(beyond ? { beyond } : {}),
+                ...(research ? { research } : {}),
                 ...(data.offerBeyond === true ? { offerBeyond: true, question: message } : {}),
               },
             ]);
@@ -436,6 +482,32 @@ export function ChatPanel({
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not add that paper.',
+      );
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  /** ADR-0074: every found paper an answer cited, in one resolve call, on one press. */
+  async function addAllPapers(papers: BeyondPaper[]) {
+    if (papers.length === 0) return;
+    setAdding('*all*');
+    setError(null);
+    try {
+      await api(`/documents/${documentId}/sources/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ references: papers.map((p) => p.reference) }),
+      });
+      setAddedPapers((set) => {
+        const next = new Set(set);
+        for (const p of papers) next.add(p.doi ?? p.title);
+        return next;
+      });
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not add those papers.',
       );
     } finally {
       setAdding(null);
@@ -757,11 +829,25 @@ export function ChatPanel({
                 onAdd={(paper) => void addBeyondPaper(paper)}
               />
             ) : null}
+            {turn.research ? (
+              <ResearchPapers
+                turn={turn}
+                added={addedPapers}
+                adding={adding}
+                onAdd={(paper) => void addBeyondPaper(paper)}
+                onAddAll={(papers) => void addAllPapers(papers)}
+                t={t}
+              />
+            ) : null}
             {turn.role === 'assistant' && turn.text.trim() ? (
               <div className="mt-2 flex items-center gap-3 text-xs">
                 {/* An answer from abstracts cites papers that are not sources yet; it goes into
-                    the thesis only once they are added and asked about on Library. */}
-                {onAddToDocument && turn.outcome !== 'not-enough' && !turn.beyond ? (
+                    the thesis only once they are added and asked about on Library. ADR-0074: the
+                    same holds for a library answer that also cited a found paper. */}
+                {onAddToDocument &&
+                turn.outcome !== 'not-enough' &&
+                !turn.beyond &&
+                !(turn.citations ?? []).some((c) => c.beyond) ? (
                   <button
                     type="button"
                     data-testid="chat-add-to-document"
@@ -807,14 +893,20 @@ export function ChatPanel({
         ))}
         {steps.length > 0 ? (
           <ol data-testid="chat-steps" className="space-y-0.5 px-1 text-xs text-muted">
-            {steps.map((step, i) => (
-              <li key={step} data-done={i < steps.length - 1}>
-                <span aria-hidden className="mr-1.5 inline-block w-3">
-                  {i < steps.length - 1 ? '✓' : '·'}
-                </span>
-                {step}
-              </li>
-            ))}
+            {steps.map((step, i) => {
+              // Searches run side by side: a search line is done when something other than a
+              // search has followed it, not merely another search.
+              const done = steps.slice(i + 1).some((later) => later.id !== step.id);
+              return (
+                // biome-ignore lint/suspicious/noArrayIndexKey: an append-only list; the same words can recur.
+                <li key={`${i}-${step.text}`} data-done={done} data-step={step.id}>
+                  <span aria-hidden className="mr-1.5 inline-block w-3">
+                    {done ? '✓' : '·'}
+                  </span>
+                  {stepLabel(step, language, t)}
+                </li>
+              );
+            })}
           </ol>
         ) : null}
         {streaming ? (
@@ -915,6 +1007,62 @@ export function ChatPanel({
  * 10^{-10}$" — the formula complaint, in chat (found 2026-10-04 comparing with Jenni).
  */
 function AnswerText({
+  text,
+  citations,
+  onOpen,
+}: {
+  text: string;
+  citations: Citation[];
+  onOpen: (sourceId: string, chunkId: string) => void;
+}) {
+  // ADR-0074: an answer in parts has "### Part" lines; each is a heading, the rest is prose.
+  // Split into blocks first, keyed by where each starts in the answer.
+  const blocks: Array<{ heading: boolean; text: string; at: number }> = [];
+  let at = 0;
+  let prose = '';
+  let proseAt = 0;
+  for (const line of text.split('\n')) {
+    const heading = /^#{1,4}\s+(.+)$/.exec(line.trim());
+    if (heading) {
+      if (prose.trim()) blocks.push({ heading: false, text: prose.trim(), at: proseAt });
+      blocks.push({ heading: true, text: heading[1] ?? '', at });
+      prose = '';
+      proseAt = at + line.length + 1;
+    } else {
+      prose += `${line}\n`;
+    }
+    at += line.length + 1;
+  }
+  if (prose.trim()) blocks.push({ heading: false, text: prose.trim(), at: proseAt });
+  if (blocks.length <= 1 && !blocks[0]?.heading) {
+    return <InlineAnswer text={text} citations={citations} onOpen={onOpen} />;
+  }
+  return (
+    <div data-testid="chat-answer-parts" className="space-y-1.5">
+      {blocks.map((block) =>
+        block.heading ? (
+          <h4
+            key={`h-${block.at}`}
+            data-testid="chat-answer-heading"
+            className="pt-1 text-[13px] font-semibold text-ink"
+          >
+            {block.text}
+          </h4>
+        ) : (
+          <InlineAnswer
+            key={`p-${block.at}`}
+            text={block.text}
+            citations={citations}
+            onOpen={onOpen}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
+/** One run of answer prose: citations as buttons, maths typeset. */
+function InlineAnswer({
   text,
   citations,
   onOpen,
@@ -1060,6 +1208,109 @@ function BeyondPapers({
             </li>
           ))}
         </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * ADR-0074: under a library answer that also read abstracts a search found — what was searched,
+ * the line that says what the answer stood on, and each found paper it cited, with Add and Add
+ * all. Nothing is added without the press; once a paper is read it is a library source and the
+ * same question cites it from the library.
+ */
+function ResearchPapers({
+  turn,
+  added,
+  adding,
+  onAdd,
+  onAddAll,
+  t,
+}: {
+  turn: Turn;
+  added: ReadonlySet<string>;
+  adding: string | null;
+  onAdd: (paper: BeyondPaper) => void;
+  onAddAll: (papers: BeyondPaper[]) => void;
+  t: (key: MessageKey, vars?: Vars) => string;
+}) {
+  const cited = new Map<string, BeyondPaper>();
+  for (const citation of turn.citations ?? []) {
+    if (citation.beyond) cited.set(citation.beyond.doi ?? citation.beyond.title, citation.beyond);
+  }
+  const waiting = [...cited].filter(([key, p]) => !p.inLibrary && !added.has(key));
+  return (
+    <div data-testid="chat-research" className="mt-2 border-t border-line pt-2">
+      <p data-testid="chat-research-note" className="text-xs text-muted">
+        {turn.research?.note}
+      </p>
+      {turn.research && turn.research.queries.length > 0 ? (
+        <p className="mt-0.5 text-[11px] text-faint">
+          {t('chat.research.searched', { queries: turn.research.queries.join(' · ') })}
+        </p>
+      ) : null}
+      {cited.size > 0 ? (
+        <>
+          <p className="mt-1.5 text-xs font-semibold text-ink">{t('chat.research.title')}</p>
+          <ul className="mt-1 space-y-1.5">
+            {[...cited].map(([key, paper]) => (
+              <li key={key} data-testid="chat-research-paper" className="text-xs">
+                <span className="font-medium text-ink">{paper.title}</span>
+                <span className="text-muted">
+                  {[paper.venue, paper.year].filter(Boolean).length > 0
+                    ? ` · ${[paper.venue, paper.year].filter(Boolean).join(' · ')}`
+                    : ''}
+                </span>
+                <span className="mt-0.5 flex items-center gap-3">
+                  {paper.inLibrary ? (
+                    <span className="text-ok">{t('chat.research.inLibrary')}</span>
+                  ) : added.has(key) ? (
+                    <span className="text-ok">{t('chat.research.added')}</span>
+                  ) : (
+                    <>
+                      <span className="text-warn">{t('chat.research.notInLibrary')}</span>
+                      <button
+                        type="button"
+                        data-testid="chat-research-add"
+                        disabled={adding !== null}
+                        onClick={() => onAdd(paper)}
+                        className="font-semibold text-accent underline disabled:opacity-50"
+                      >
+                        {adding === key ? t('chat.research.adding') : t('chat.research.add')}
+                      </button>
+                    </>
+                  )}
+                  {paper.doi ? (
+                    <a
+                      href={`https://doi.org/${paper.doi}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-muted underline hover:text-ink"
+                    >
+                      {t('chat.research.view')}
+                    </a>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {waiting.length > 1 ? (
+            <button
+              type="button"
+              data-testid="chat-research-add-all"
+              disabled={adding !== null}
+              onClick={() => onAddAll(waiting.map(([, p]) => p))}
+              className="mt-2 rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+            >
+              {adding === '*all*'
+                ? t('chat.research.adding')
+                : t('chat.research.addAll', { count: waiting.length })}
+            </button>
+          ) : null}
+          {waiting.length > 0 ? (
+            <p className="mt-1.5 text-[11px] text-faint">{t('chat.research.addFirst')}</p>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

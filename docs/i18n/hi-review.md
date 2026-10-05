@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**484** strings are translated; **2** are deliberately
+**501** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -586,6 +586,28 @@ English. Write corrections in the last column.
 | `signin.terms` | terms | शर्तें | |
 | `signin.readFirst` | read that first | पहले इसे पढ़ें | |
 | `signin.language` | Language | भाषा | |
+
+## Chat (searching beyond a thin library)
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `chat.step.search` | Searching your library… | आपकी library में खोज रहे हैं… | |
+| `chat.step.research` | Your library has {papers} papers on this, so I am searching the literature too… | आपकी library में इस पर {papers} paper हैं, इसलिए literature में भी खोज रहे हैं… | |
+| `chat.step.query` | Searching {indexes} for: {query}… | {indexes} में खोज रहे हैं: {query}… | |
+| `chat.step.read` | Reading {count} abstracts… | {count} abstract पढ़ रहे हैं… | |
+| `chat.step.kept` | {kept} of {read} are on your question | {read} में से {kept} आपके सवाल से जुड़े हैं | |
+| `chat.step.keptNone` | None of them is close enough to your question; answering from your library | इनमें से कोई भी आपके सवाल के काफ़ी क़रीब नहीं है; आपकी library से जवाब दे रहे हैं | |
+| `chat.step.write` | Writing the answer… | जवाब लिख रहे हैं… | |
+| `chat.research.title` | Papers found by the search | खोज में मिले paper | |
+| `chat.research.notInLibrary` | Not in your library | आपकी library में नहीं | |
+| `chat.research.inLibrary` | In your library | आपकी library में है | |
+| `chat.research.add` | Add to library | Library में जोड़ें | |
+| `chat.research.adding` | Adding… | जोड़ा जा रहा है… | |
+| `chat.research.addAll` | Add all {count} to library | सभी {count} library में जोड़ें | |
+| `chat.research.added` | Added. Once it has been read, ask again to cite it from your library. | जोड़ दिया। पढ़ लिए जाने के बाद दोबारा पूछें, तो जवाब आपकी library से साइटेशन देगा। | |
+| `chat.research.view` | View paper | Paper देखें | |
+| `chat.research.searched` | Searched for: {queries} | इसके लिए खोजा: {queries} | |
+| `chat.research.addFirst` | Add the papers found by the search to your library before putting this answer in your thesis. | इस जवाब को थीसिस में डालने से पहले, खोज में मिले paper अपनी library में जोड़ें। | |
 
 ## Left in English on purpose
 

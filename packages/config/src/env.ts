@@ -94,6 +94,11 @@ export const envSchema = z
     // confirmed against the provider by `pnpm ai:verify` (Appendix E.1).
     AI_FAST_MODEL: requiredString('AI_FAST_MODEL'),
     AI_STRONG_MODEL: requiredString('AI_STRONG_MODEL'),
+    /**
+     * ADR-0074: which tier writes a chat answer. The owner chose the strong model for chat
+     * (2026-10-05); `fast` switches it back without a deploy of code.
+     */
+    AI_CHAT_TIER: z.enum(['fast', 'strong']).default('strong'),
 
     // Simulated time-to-first-token for the mock provider. PRD §16 week 1 runs the editor spike
     // at 250 ms; the k6 load test (§15) uses the same figure.
