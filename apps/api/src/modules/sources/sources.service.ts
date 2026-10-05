@@ -100,8 +100,9 @@ export function readingState(
   view: Pick<SourceView, 'status' | 'groundingLevel' | 'hasFile'>,
   jobUnfinished: boolean,
 ): ReadingState {
-  if (view.status === 'PENDING') return 'LOOKING_UP';
+  // An uploaded PDF is read before its record is identified: the text is there to read.
   if (view.groundingLevel === 'FULL_TEXT') return 'FULL_TEXT';
+  if (view.status === 'PENDING') return 'LOOKING_UP';
   if (jobUnfinished) return 'READING';
   if (view.hasFile) return 'UNREADABLE';
   return view.groundingLevel === 'ABSTRACT' ? 'ABSTRACT' : 'NOTHING';

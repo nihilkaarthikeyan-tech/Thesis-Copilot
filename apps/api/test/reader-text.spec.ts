@@ -69,7 +69,10 @@ describe('readingState', () => {
     expect(readingState({ ...base, groundingLevel: 'ABSTRACT' }, false)).toBe('ABSTRACT');
     expect(readingState(base, false)).toBe('NOTHING');
   });
-  it('is full text once the whole paper is held', () => {
+  it('is full text once the whole paper is held, even while the record is looked up', () => {
+    expect(
+      readingState({ status: 'PENDING', groundingLevel: 'FULL_TEXT', hasFile: true }, false),
+    ).toBe('FULL_TEXT');
     expect(readingState({ ...base, groundingLevel: 'FULL_TEXT', hasFile: true }, false)).toBe(
       'FULL_TEXT',
     );
