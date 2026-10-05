@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**519** strings are translated; **2** are deliberately
+**527** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -631,6 +631,14 @@ English. Write corrections in the last column.
 | `chat.research.view` | View paper | Paper देखें | |
 | `chat.research.searched` | Searched for: {queries} | इसके लिए खोजा: {queries} | |
 | `chat.research.addFirst` | Add the papers found by the search to your library before putting this answer in your thesis. | इस जवाब को थीसिस में डालने से पहले, खोज में मिले paper अपनी library में जोड़ें। | |
+| `chat.step.plan` | Planning the research… | शोध की योजना बना रहे हैं… | |
+| `chat.step.planned` | Planned {parts} parts: {titles} | {parts} हिस्सों की योजना बनी: {titles} | |
+| `chat.step.part` | Part {index} of {total}, {title}: searching your library and the indexes for: {query}… | {total} में से हिस्सा {index}, {title}: आपकी library और index में खोज रहे हैं: {query}… | |
+| `chat.step.writeDeep` | Writing the answer, part by part… | हिस्सा-दर-हिस्सा जवाब लिख रहे हैं… | |
+| `chat.deep.toggle` | Research deeply | गहराई से शोध | |
+| `chat.deep.on` | Deep research is on for the next question | अगले सवाल के लिए गहरा शोध चालू है | |
+| `chat.deep.hint` | Plans the question in parts, searches the literature for each, and answers at length. About a minute. Uses one deep research question, not a chat question. | सवाल को हिस्सों में बाँटता है, हर हिस्से के लिए literature खोजता है, और विस्तार से जवाब देता है। लगभग एक मिनट। एक गहरे शोध का सवाल खर्च होता है, chat का सवाल नहीं। | |
+| `chat.research.plan` | Parts: {titles} | हिस्से: {titles} | |
 
 ## Left in English on purpose
 
