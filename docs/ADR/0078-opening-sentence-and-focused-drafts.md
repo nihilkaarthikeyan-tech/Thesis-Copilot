@@ -96,3 +96,27 @@ anywhere and "the study" opening a sentence (`eval/copying.ts`).
   and `docs/COSTING.md` already prices every unit of every cap.
 - What changes is how fast a student's allowance goes, now that automatic suggestions really
   run. That belongs with the owner's open trial-limits decision (`docs/PENDING.md`).
+
+## Addendum (2026-10-05, evening): the same-topic run
+
+A second recorded journey, the same thesis title in both tools ("Mobile banking and the
+financial inclusion of rural women in Tamil Nadu", `apps/web/e2e/_measure/same-topic.spec.ts`),
+found three faults in ours, each fixed in code with tests:
+
+- **A draft leaned on one paper**: 12 of 14 citations to one paper from a library of four
+  full-text papers. `topK` for DRAFT now holds each paper to `PER_SOURCE_CAP` (4) of the 12
+  passages while another paper has candidates; a library of one paper still fills the request
+  (`packages/retrieval/src/rank.ts`). Assist and chat are unchanged.
+- **Citation names were broken**: "(- 2026)", "(A 2026)", "(Sri Kaliswari College et al.,
+  2025)". The indexes list the authors' college as first and last author, put "-" or an initial
+  in the family field, or the whole name there. `cleanAuthors` (`@tc/retrieval`) repairs them as
+  Crossref and OpenAlex records come in; `peopleFirst` (`@tc/citations`) and `shortReference`
+  repair records stored before it. A name only moves between fields or is dropped; nothing is
+  invented, and a list with no person in it is left as it came.
+- **A cited sentence calling the paper "this study"** ("This study focuses on rural women in
+  Virudhunagar district {{cite:…}}") is dropped by `filterSentences` (`isCitedOwnStudy`): the
+  thesis's own study is never cited to a paper. Uncited, it may be the student's and is kept.
+
+Still open from that run: suggestions that restate a paper's **aims** without the phrase
+("The study focuses on…", "This research concentrates on…"), which the renaming and the filter
+do not cover. That is a prompt change with its own evaluation round (ADR-0079).

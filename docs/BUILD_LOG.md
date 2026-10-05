@@ -5308,3 +5308,13 @@ The two "Jenni better" items left by the re-run side-by-side, built at the owner
 - Recorder notes: Playwright's `keyboard.type` waits on each key while a suggestion streams
   (keydown-to-paint measured 24–72 ms, so students do not feel it); the recorder uses
   `insertText`. Two `mark()` keys overwrote recorded values; renamed.
+
+## The same-topic run: three fixes (2026-10-05, ADR-0078 addendum)
+
+One title written in both tools (`e2e/_measure/same-topic.spec.ts`, real models). Ours was ahead
+on planning, suggestion speed and drafting; Jenni's research chat was clearly ahead (two minutes,
+17 sources, figures). Three faults in ours, fixed with tests (`rank.spec.ts`,
+`clean-authors.spec.ts`, `people-first.spec.ts`, `own-study.spec.ts`): a draft with 12 of 14
+citations to one paper (`PER_SOURCE_CAP`), citations printing "(- 2026)" and a college as an
+author (`cleanAuthors`, `peopleFirst`), and a cited "this study" sentence (`isCitedOwnStudy`).
+Left for a prompt round: a paper's aims restated as the thesis's own without the phrase.
