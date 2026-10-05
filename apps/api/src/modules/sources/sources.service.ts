@@ -24,6 +24,7 @@ import {
   repointCitations,
   whyNoFullText,
 } from './library-hygiene.js';
+import { type ReaderPassage, readerPassages } from './reader-text.js';
 import {
   checkLibraryQuota,
   checkSeedPaperQuota,
@@ -76,6 +77,44 @@ export type SourceView = {
 
 /** A library row as `GET /documents/:id/sources` lists it: with the collections it is in. */
 export type LibrarySourceView = SourceView & { collectionIds: string[] };
+
+/**
+ * Where reading a paper stands, as the reader page says it (ADR-0068):
+ *
+ *   LOOKING_UP  — the reference is still being identified
+ *   READING     — a PDF or an open-access copy is being read now
+ *   FULL_TEXT   — the whole paper's text is held
+ *   ABSTRACT    — only the abstract is held
+ *   UNREADABLE  — a PDF is attached and nothing could be read from it
+ *   NOTHING     — no text at all (no abstract, no copy, or the reference was never found)
+ */
+export type ReadingState =
+  | 'LOOKING_UP'
+  | 'READING'
+  | 'FULL_TEXT'
+  | 'ABSTRACT'
+  | 'UNREADABLE'
+  | 'NOTHING';
+
+export function readingState(
+  view: Pick<SourceView, 'status' | 'groundingLevel' | 'hasFile'>,
+  jobUnfinished: boolean,
+): ReadingState {
+  if (view.status === 'PENDING') return 'LOOKING_UP';
+  if (view.groundingLevel === 'FULL_TEXT') return 'FULL_TEXT';
+  if (jobUnfinished) return 'READING';
+  if (view.hasFile) return 'UNREADABLE';
+  return view.groundingLevel === 'ABSTRACT' ? 'ABSTRACT' : 'NOTHING';
+}
+
+/** One paper as the reader page shows it (ADR-0068). */
+export type ReaderSourceView = SourceView & {
+  documentId: string;
+  collections: Array<{ id: string; name: string }>;
+  /** How many passages of text are held — zero means there is nothing for the Text view. */
+  passageCount: number;
+  reading: ReadingState;
+};
 
 /** One side of a possible duplicate, with what the thesis does with it. */
 export type DuplicateSide = SourceView & { citeCount: number; pinCount: number };
@@ -605,6 +644,86 @@ export class SourcesService {
     });
     if (!source?.fileKey) throw new NotFoundError('A file for that source');
     return { url: await this.storage.signedUrl(source.fileKey) };
+  }
+
+  /**
+   * ADR-0068: the source's PDF itself, for the reader's own pdf.js view. Owner only, like every
+   * route here; anyone else gets the same 404 as an id that never existed. The bytes pass through
+   * the API, so the browser never holds a storage link it could hand on.
+   */
+  async openFile(
+    ownerId: string,
+    sourceId: string,
+  ): Promise<{ stream: import('node:stream').Readable; size: number }> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: sourceId, document: { ownerId } },
+      select: { fileKey: true },
+    });
+    if (!source?.fileKey) throw new NotFoundError('A file for that source');
+    try {
+      return await this.storage.open(source.fileKey);
+    } catch (error) {
+      // A row pointing at an object that is gone is a missing file, not a server fault.
+      this.logger.warn({ err: error, sourceId }, 'source file missing from storage');
+      throw new NotFoundError('A file for that source');
+    }
+  }
+
+  /**
+   * ADR-0068: one paper for the reader page — the library row, the collections it is in, and
+   * where its reading stands, so the page can say honestly what it can show.
+   */
+  async readerView(ownerId: string, sourceId: string): Promise<ReaderSourceView> {
+    const row = await this.prisma.source.findFirst({
+      where: { id: sourceId, document: { ownerId } },
+      select: {
+        ...SOURCE_VIEW_SELECT,
+        documentId: true,
+        collectionItems: { select: { collection: { select: { id: true, name: true } } } },
+        _count: { select: { chunks: true } },
+      },
+    });
+    if (!row) throw new NotFoundError('That source');
+    const { documentId, collectionItems, _count, ...rest } = row;
+    const view = toView(rest);
+
+    // Only asked when it could change the answer: a paper with full text, or none and no file
+    // and nothing queued, is settled.
+    const unsettled =
+      view.status !== 'PENDING' && view.groundingLevel !== 'FULL_TEXT'
+        ? await this.queue.hasUnfinishedFor('index-source', view.id).catch(() => false)
+        : false;
+
+    return {
+      ...view,
+      documentId,
+      collections: collectionItems.map((item) => item.collection),
+      passageCount: _count.chunks,
+      reading: readingState(view, unsettled),
+    };
+  }
+
+  /** ADR-0068: the paper's text as we hold it, in order and without the chunker's overlaps. */
+  async readerText(ownerId: string, sourceId: string): Promise<{ passages: ReaderPassage[] }> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: sourceId, document: { ownerId } },
+      select: { id: true },
+    });
+    if (!source) throw new NotFoundError('That source');
+    const rows = await this.prisma.sourceChunk.findMany({
+      where: { sourceId },
+      orderBy: { ordinal: 'asc' },
+      select: {
+        id: true,
+        ordinal: true,
+        page: true,
+        section: true,
+        text: true,
+        charStart: true,
+        charEnd: true,
+      },
+    });
+    return { passages: readerPassages(rows) };
   }
 
   /**

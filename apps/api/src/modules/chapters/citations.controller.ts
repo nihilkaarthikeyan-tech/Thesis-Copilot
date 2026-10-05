@@ -28,6 +28,10 @@ import { CiteParseService } from './cite-parse.service.js';
 // is 119), and the old limit refused them before the style was ever looked up.
 const styleBody = z.object({ style: z.string().trim().min(1).max(160) });
 const localeBody = z.object({ locale: z.string().trim().min(2).max(20).nullable() });
+const quoteQuery = z.object({
+  sourceId: z.string().uuid(),
+  page: z.coerce.number().int().min(1).max(100_000).optional(),
+});
 const parseBody = z.object({ text: z.string().trim().min(4).max(20_000) });
 const acceptBody = z.object({
   reference: z.string().trim().min(4).max(1_000),
@@ -59,6 +63,27 @@ export class DocumentCitationsController {
   @Get('citations/pick')
   pick(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Query('q') q?: string) {
     return this.citations.pickable(user.id, documentId, q);
+  }
+
+  /**
+   * ADR-0068: the label for "Copy with citation" in the paper reader — this source cited once
+   * more, at `page`, in the thesis's own style. Rendered, never assembled by hand.
+   */
+  @Get('citations/quote')
+  quote(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Query('sourceId') sourceId?: string,
+    @Query('page') page?: string,
+  ) {
+    const parsed = quoteQuery.safeParse({ sourceId, page });
+    if (!parsed.success) throw new ValidationError('Name a source', parsed.error.issues);
+    return this.citations.quoteLabel(
+      user.id,
+      documentId,
+      parsed.data.sourceId,
+      parsed.data.page ?? null,
+    );
   }
 
   /**

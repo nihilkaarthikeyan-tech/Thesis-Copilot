@@ -407,6 +407,79 @@ export class CitationsService {
   }
 
   /**
+   * ADR-0068, "Copy with citation" in the paper reader: the label one more citation of this
+   * source would carry in the thesis's own style, with the page as its locator.
+   *
+   * Rendered by citeproc over the thesis's citations with the new one appended last, so the label
+   * is the thesis's, not a guess: an author-date style disambiguates against what is already cited
+   * ("Kumar, 2021a"), and a numeric style gives the number the source already has, or the next one
+   * if it is not cited yet. A note style is rendered alone — appended after a note for the same
+   * paper it would come back as "Ibid.", which means nothing once pasted somewhere else.
+   */
+  async quoteLabel(
+    ownerId: string,
+    documentId: string,
+    sourceId: string,
+    page: number | null,
+  ): Promise<{ label: string; noteStyle: boolean; numeric: boolean; style: string }> {
+    const document = await this.owned(ownerId, documentId);
+    const [chapters, sources] = await Promise.all([
+      this.prisma.chapter.findMany({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, content: true },
+      }),
+      this.prisma.source.findMany({
+        where: { documentId },
+        select: {
+          id: true,
+          title: true,
+          authors: true,
+          year: true,
+          venue: true,
+          doi: true,
+          cslJson: true,
+          isPreprint: true,
+          rawReference: true,
+        },
+      }),
+    ]);
+    if (!sources.some((s) => s.id === sourceId)) throw new NotFoundError('That source');
+
+    const style = resolveStyle(document.citationStyle);
+    await this.styleStore.ensure(style.id);
+    const probe = {
+      key: 'reader-quote',
+      sourceId,
+      locator: page !== null && page > 0 ? String(page) : null,
+    };
+    const existing = chapters.flatMap((chapter) =>
+      citationNodesIn(chapter).map((node) => ({
+        key: node.nodeKey,
+        sourceId: node.sourceId,
+        locator: node.locator ?? null,
+      })),
+    );
+    const renderWith = (citations: Array<typeof probe>) =>
+      renderCitations({
+        style: document.citationStyle,
+        locale: this.localeOf(document),
+        sources,
+        citations,
+      });
+    let rendered = renderWith([...existing, probe]);
+    if (rendered.noteStyle) rendered = renderWith([probe]);
+    const label = rendered.labels[probe.key];
+    if (!label) throw new NotFoundError('A citation for that source');
+    return {
+      label,
+      noteStyle: rendered.noteStyle,
+      numeric: style.family === 'numeric',
+      style: style.id,
+    };
+  }
+
+  /**
    * FR-5.2: "Style switch is global and instant." Instant because it changes one column and the
    * labels are recomputed from it — no chapter is written, so no autosave, no version bump, and
    * no chance of a switch losing a student's unsaved sentence.

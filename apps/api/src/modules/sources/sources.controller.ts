@@ -16,6 +16,7 @@ import {
   Query,
   Req,
   Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import type { Plan } from '@tc/config';
@@ -279,6 +280,38 @@ export class SourcesController {
   @Get('sources/:id/file')
   fileUrl(@CurrentUser() user: SessionUser, @Param('id') sourceId: string) {
     return this.sources.fileUrl(user.id, sourceId);
+  }
+
+  /**
+   * ADR-0068: the PDF's bytes for the reader's own pdf.js view. Fetched by the page with the
+   * session cookie, so it is never framed and the host's `X-Frame-Options` on storage links does
+   * not apply. `private`: a shared cache must never hold one student's paper for another.
+   */
+  @Get('sources/:id/file/content')
+  async fileContent(
+    @CurrentUser() user: SessionUser,
+    @Param('id') sourceId: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<StreamableFile> {
+    const file = await this.sources.openFile(user.id, sourceId);
+    reply.header('cache-control', 'private, max-age=300');
+    return new StreamableFile(file.stream, {
+      type: 'application/pdf',
+      disposition: 'inline; filename="paper.pdf"',
+      length: file.size,
+    });
+  }
+
+  /** ADR-0068: one paper for the reader page — the row, its collections, where reading stands. */
+  @Get('sources/:id')
+  readerView(@CurrentUser() user: SessionUser, @Param('id') sourceId: string) {
+    return this.sources.readerView(user.id, sourceId);
+  }
+
+  /** ADR-0068: the paper's text as held — passages in order, page and section on each. */
+  @Get('sources/:id/text')
+  readerText(@CurrentUser() user: SessionUser, @Param('id') sourceId: string) {
+    return this.sources.readerText(user.id, sourceId);
   }
 
   @Delete('sources/:id')
