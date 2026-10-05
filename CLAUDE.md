@@ -330,3 +330,8 @@ These each cost a debugging session. `docs/BUILD_LOG.md` has the full account.
   byte, so `/^(figure|table)\b/i` reached the file as `/^(figure|table)\x08/i` and silently never
   matched. Use a Python raw string (`r'...'`), or the Write/Edit tools, for anything with a
   backslash in it.
+- **A TipTap extension keeps the options it was built with.** `useEditor` without deps calls
+  `setOptions`, which never rebuilds plugins, so the automatic-suggest setting (fetched after the
+  editor exists) stayed `false` and automatic suggestions never fired in the web app until
+  ADR-0078. Anything that can change after the editor is built is read live (extension storage),
+  and a unit test that builds the editor with the option already set cannot catch it.
