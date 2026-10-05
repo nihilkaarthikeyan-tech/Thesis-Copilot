@@ -429,6 +429,8 @@ function ChapterEditor({
   const guided = useGuidedInput();
   /** The options are built before the editor exists; the retry needs the editor. */
   const editorRef = useRef<Editor | null>(null);
+  /** ADR-0070: an uncited suggestion shown while papers loaded, to replace once one is ready. */
+  const uncitedWhileLoading = useRef<string | null>(null);
   const retriedRef = useRef(false);
 
   const reducedMotion = useMemo(
@@ -545,7 +547,14 @@ function ChapterEditor({
             if (info.papersLoading) {
               // Nothing written: wait, and ask again when a paper is ready. Something written:
               // it cites nothing yet, and the student is told citations will follow.
-              if (info.empty) window.dispatchEvent(new Event(PAPERS_AWAITED));
+              // Either way the editor waits for the first paper. An uncited suggestion still on
+              // screen then is replaced by a cited one (the real-model run, 2026-10-05: it stayed
+              // up and blocked every later request, so no cited suggestion ever came).
+              if (!info.empty) {
+                const shown = editorRef.current ? getGhostState(editorRef.current) : undefined;
+                uncitedWhileLoading.current = shown?.suggestionId ?? null;
+              }
+              window.dispatchEvent(new Event(PAPERS_AWAITED));
               setNotice(
                 tNow(
                   info.empty ? 'editor.notice.papersLoading' : 'editor.notice.papersLoadingShown',
@@ -1497,6 +1506,12 @@ function ChapterEditor({
             documentId={doc.id}
             onFirstReady={() => {
               setNotice(null);
+              const current = editorRef.current;
+              const stale = uncitedWhileLoading.current;
+              uncitedWhileLoading.current = null;
+              if (current && stale && getGhostState(current)?.suggestionId === stale) {
+                current.commands.dismissSuggestion();
+              }
               // A suggestion still on its way makes the command a no-op; try again shortly
               // rather than lose the one the student is waiting for.
               let tries = 0;

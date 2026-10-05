@@ -41,6 +41,8 @@ export function LibraryFilling({
   /** Set while the student is waiting on a suggestion the empty library could not give. */
   const awaited = useRef(false);
   const lastReady = useRef<number | null>(null);
+  /** How many papers could be cited when the student's suggestion came back without a citation. */
+  const readyWhenAsked = useRef(0);
   const [poll, setPoll] = useState(0);
   const onReadyRef = useRef(onFirstReady);
   onReadyRef.current = onFirstReady;
@@ -48,6 +50,7 @@ export function LibraryFilling({
   useEffect(() => {
     const wake = () => {
       awaited.current = true;
+      readyWhenAsked.current = lastReady.current ?? 0;
       setPoll((n) => n + 1);
     };
     const changed = () => setPoll((n) => n + 1);
@@ -76,11 +79,14 @@ export function LibraryFilling({
         if (before === 0) {
           setJustReady(true);
           window.setTimeout(() => setJustReady(false), READY_MS);
-          if (awaited.current) {
-            awaited.current = false;
-            onReadyRef.current();
-          }
         }
+      }
+      // The student is waiting on a suggestion the library could not cite: ask again as soon as
+      // more papers can be cited than when they asked, or once nothing more is on its way.
+      const settled = !next.searching && next.reading === 0;
+      if (awaited.current && next.ready > 0 && (next.ready > readyWhenAsked.current || settled)) {
+        awaited.current = false;
+        onReadyRef.current();
       }
       const moving = next.searching || next.reading > 0 || (awaited.current && next.ready === 0);
       if (moving) timer = window.setTimeout(tick, POLL_MS);
