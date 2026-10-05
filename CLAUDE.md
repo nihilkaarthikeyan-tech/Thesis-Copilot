@@ -214,6 +214,15 @@ passages. Its own allowance, `RESEARCH` (1 trial / 3 paid, ₹1.09 at the ceilin
 ₹93.13). Grounding and Add are ADR-0074's. Proof: 35 s, 60 abstracts read, 12 kept, 648 words,
 13 citations, ₹0.51. The two prompts are new and unevaluated beyond that run (PENDING).
 
+**v0.1.27 is live (2026-10-05 evening)** and the Jenni coverage map's PARTIAL rows were built
+the same evening at the owner's word (ADRs 0081–0086, unreleased): translate and as-a-table edit
+actions, Y/N and all on the Flags tab, Find a source on an unsupported claim, "On" searching on
+every question, a suggestion that copies a passage asked for again once, attachments and pictures
+in chat, a tone review against the profile or a chosen paper, pins per section (migration 0040),
+and the claims map on the Discover tab. The deep research prompts won their round 11–0. What
+remains PARTIAL is the owner's (plan limits, Zotero/Mendeley sync, Springer key, nginx for
+co-editing, languages beyond Hindi, support, videos, a community).
+
 **Chat refuses off-topic questions in code, not just in the prompt.** `RELEVANCE_FLOOR`
 (`@tc/retrieval`) stops a question nothing in the library relates to before any provider call and
 refunds the unit. The threshold is measured; `docs/BUILD_LOG.md` has the cosines.
