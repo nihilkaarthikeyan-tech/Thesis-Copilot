@@ -49,3 +49,22 @@ describe('the draft request', () => {
     expect(body).not.toContain('This study adopts');
   });
 });
+
+describe('a cited "this study" is dropped (ADR-0078)', () => {
+  it('drops it from a suggestion, keeps the rest', async () => {
+    const { filterSentences } = await import('../src/builder/quality.js');
+    const { text } = filterSentences({
+      text: 'Rural women face low digital literacy {{cite:S1#c1}}. This study focuses on rural women in Virudhunagar district {{cite:S1#c2}}.',
+      before: 'Mobile banking is spreading in Tamil Nadu.',
+      existing: '',
+    });
+    expect(text).toContain('low digital literacy');
+    expect(text).not.toContain('This study focuses');
+  });
+
+  it('keeps an uncited "this study": it may be the student’s own', async () => {
+    const { isCitedOwnStudy } = await import('../src/builder/quality.js');
+    expect(isCitedOwnStudy('This study examines adoption in three districts.')).toBe(false);
+    expect(isCitedOwnStudy('The study by Bagla 2026 found delays {{cite:S1#c1}}.')).toBe(false);
+  });
+});

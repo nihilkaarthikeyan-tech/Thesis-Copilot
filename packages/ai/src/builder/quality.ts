@@ -198,6 +198,18 @@ export function isUncitedAttribution(sentence: string): boolean {
   return ATTRIBUTION.some((re) => re.test(sentence));
 }
 
+const OWN_WORK = /\b(this|the present|the current|our)\s+(study|research|investigation|thesis)\b/i;
+
+/**
+ * ADR-0078: "this study" with a citation. In a thesis "this study" is the student's own, and the
+ * student's own study is never cited to a paper, so the sentence describes the paper as if it
+ * were the thesis ("This study focuses on rural women in Virudhunagar district… (College 2025)",
+ * the same-topic run of 2026-10-05). Always wrong, so dropped; uncited, it may be the student's.
+ */
+export function isCitedOwnStudy(sentence: string): boolean {
+  return CITE.test(sentence) && OWN_WORK.test(sentence);
+}
+
 const CONNECTIVE =
   /^(despite (this|these|that)|however|furthermore|moreover|additionally|in addition|nevertheless|nonetheless|consequently|therefore|thus|hence|in contrast|conversely|similarly|likewise|as a result|by contrast)\b/i;
 
@@ -254,7 +266,7 @@ export function filterSentences(input: { text: string; before: string; existing:
       drops.roadmap++;
       continue;
     }
-    if (isUncitedAttribution(sentence)) {
+    if (isUncitedAttribution(sentence) || isCitedOwnStudy(sentence)) {
       drops.unsupported++;
       continue;
     }
