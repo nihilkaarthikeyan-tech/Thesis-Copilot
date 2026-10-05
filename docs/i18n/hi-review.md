@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**477** strings are translated; **2** are deliberately
+**478** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -254,6 +254,7 @@ English. Write corrections in the last column.
 | `editor.notice.serviceDown` | The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute. | सुझाव सेवा ने लगातार दो बार जवाब नहीं दिया। आपका लिखा सेव है; एक मिनट बाद फिर कोशिश करें। | |
 | `editor.notice.findingSources` | No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text. | आपकी लाइब्रेरी का कोई स्रोत अभी इसे कवर नहीं करता{gap}। हम इस पर पेपर खोजकर आपकी लाइब्रेरी में जोड़ रहे हैं — साइटेशन वाले टेक्स्ट के लिए एक मिनट बाद फिर पूछें। | |
 | `editor.notice.papersLoading` | Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready. | आपके पेपर अभी पढ़े जा रहे हैं, इसलिए अभी साइट करने को कुछ नहीं है। जैसे ही एक तैयार होगा, आपका पहला साइटेशन वाला सुझाव यहीं अपने आप आ जाएगा। | |
+| `editor.notice.papersLoadingShown` | This suggestion cites nothing yet: your papers are still being read. Citations will follow once they are ready. | यह सुझाव अभी कुछ साइट नहीं करता: आपके पेपर अभी पढ़े जा रहे हैं। उनके तैयार होते ही साइटेशन आने लगेंगे। | |
 | `editor.filling.searching` | Finding papers on your topic… | आपके विषय पर पेपर खोजे जा रहे हैं… | |
 | `editor.filling.reading` | Found {found} papers · reading {reading}… | {found} पेपर मिले · {reading} पढ़े जा रहे हैं… | |
 | `editor.filling.ready` | {ready} papers ready — suggestions will cite them. | {ready} पेपर तैयार — सुझाव अब इन्हें साइट करेंगे। | |
