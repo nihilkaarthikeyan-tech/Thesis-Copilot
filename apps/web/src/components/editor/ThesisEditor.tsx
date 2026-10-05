@@ -1685,6 +1685,11 @@ function ChapterEditor({
                   chapterId={chapter.id}
                   editor={editor}
                   onSuggestFix={suggestFix}
+                  onFindPapers={(text) => {
+                    setPapersQuery({ text, nonce: Date.now() });
+                    setTab('papers');
+                    setDrawer('panel');
+                  }}
                 />
                 {/* Same tab, because both answer "what should I look at before I hand this in?" */}
                 <ProofreadPanel

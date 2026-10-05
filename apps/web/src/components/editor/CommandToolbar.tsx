@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { tNow } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
+import { tableNodeFromMarkdown } from './table-from-markdown';
 
 type DiffOp = { type: 'same' | 'add' | 'remove'; text: string };
 
@@ -85,6 +86,17 @@ const MORE_EDITS = [
     key: 'counter',
     label: 'Counter-argument',
     title: 'Adds a cited counter-argument from your library after your text',
+  },
+  // ADR-0081: the two ADR-0066 left out.
+  {
+    key: 'translate',
+    label: 'Translate',
+    title: 'Into the language of this thesis, with every citation and figure kept',
+  },
+  {
+    key: 'table',
+    label: 'As a table',
+    title: 'The facts the text compares, as a table with a header row; nothing added',
   },
 ] as const;
 
@@ -232,14 +244,38 @@ export function CommandToolbar({
     // the ones the rewrite added get fresh nodes with the server's label.
     const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
       .citation;
-    const fragment = aiTextToFragment(editor.schema, result.text, {
-      provenance: { kind: 'COMMAND', actionId: null },
+    const options = {
+      provenance: { kind: 'COMMAND' as const, actionId: null },
       existing: citationsInRange(editor.state.doc, selection.from, selection.to),
       citations: result.citations ?? [],
-      onCitation: (key, rendered) => {
+      onCitation: (key: string, rendered: string | null) => {
         if (store?.renderedMap && rendered) store.renderedMap[key] = rendered;
       },
-    });
+    };
+    // ADR-0081: "As a table" answers with a Markdown table, which replaces the selected paragraph
+    // as a real table node (the "/" menu's kind), its citations as citation nodes.
+    const table =
+      result.command === 'table'
+        ? tableNodeFromMarkdown(editor.schema, result.text, options)
+        : null;
+    if (table) {
+      const $from = editor.state.doc.resolve(selection.from);
+      const $to = editor.state.doc.resolve(selection.to);
+      const from = $from.before($from.depth);
+      const to = $to.after($to.depth);
+      editor
+        .chain()
+        .focus()
+        .command(({ tr, dispatch }) => {
+          if (dispatch) tr.replaceWith(from, to, table);
+          return true;
+        })
+        .run();
+      setResult(null);
+      setSelection(null);
+      return;
+    }
+    const fragment = aiTextToFragment(editor.schema, result.text, options);
     editor
       .chain()
       .focus()

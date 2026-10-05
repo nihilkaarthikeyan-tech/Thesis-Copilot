@@ -95,4 +95,18 @@ test('J and K move between flags, and R resolves the focused one', async ({ page
   await expect(rows).toHaveCount(1);
   expect(actions).toEqual([{ id: 'f1', action: 'RESOLVE' }]);
   await expect(rows.first()).toContainText('Second claim');
+
+  // Row 54 (2026-10-05): an unsupported claim can go looking for a source — the Papers tab opens
+  // with the flagged sentence as the search.
+  await rows.first().getByTestId('flag-find-source').click();
+  await expect(page.getByTestId('find-papers')).toBeVisible();
+  await expect(page.getByLabel('Search papers')).toHaveValue('Second claim has no citation.');
+  await page.getByRole('tab', { name: 'check', exact: true }).click();
+
+  // Row 59: Y and N as proofreading has them. N asks why (the prompt is dismissed) and ignores.
+  page.on('dialog', (dialog) => void dialog.dismiss());
+  await rows.first().focus();
+  await page.keyboard.press('n');
+  await expect(rows).toHaveCount(0);
+  expect(actions.at(-1)).toEqual({ id: 'f2', action: 'IGNORE' });
 });

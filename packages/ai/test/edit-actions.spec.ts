@@ -16,7 +16,9 @@ const input = (command: (typeof EDIT_ACTIONS)[number] | 'formalise') => ({
   selection: 'The survey shows cost is the main barrier {{cite:k1}}.',
   contextBefore: '',
   contextAfter: '',
-  passages: [{ id: 'S1#c1', shortRef: 'Rao 2021', text: 'Cost was not the main barrier.' }],
+  passages: [
+    { id: 'S1#c1', shortRef: 'Rao 2021', page: null, text: 'Cost was not the main barrier.' },
+  ],
   userId: 'u',
   documentId: 'd',
 });
@@ -71,5 +73,42 @@ describe('edit actions beyond the section commands (ADR-0066)', () => {
     );
     expect(ask('direct', 'It could perhaps be argued that X {{cite:k1}}.')).toBe('X {{cite:k1}}.');
     expect(ask('past', 'The study finds X.')).toBe('The study finds X.');
+  });
+});
+
+describe('translate and table (ADR-0081)', () => {
+  it('translate names its one target, the thesis language, and nothing else', async () => {
+    const { buildCommandRequest, languageName } = await import('../src/builder/command.js');
+    const req = buildCommandRequest({
+      ...input('translate'),
+      language: 'hi',
+    });
+    expect(req.messages[0]?.content).toContain('<target_language>Hindi</target_language>');
+    expect(buildCommandRequest(input('translate')).messages[0]?.content).toContain(
+      '<target_language>English</target_language>',
+    );
+    expect(languageName('ta-IN')).toBe('Tamil');
+    expect(languageName('xx')).toBe('xx');
+    expect(buildCommandRequest(input('hedge')).messages[0]?.content).not.toContain(
+      '<target_language>',
+    );
+  });
+
+  it('the mock builds a table with a row per sentence and the citations in their own column', async () => {
+    const { mockCommandFor } = await import('../src/builder/command.js');
+    const text = mockCommandFor({
+      messages: [
+        {
+          content:
+            '<command>table</command>\n<selection>\nCost was first {{cite:S1#c1}}. Credit came second.\n</selection>',
+        },
+      ],
+    });
+    expect(text.split('\n')).toEqual([
+      '| Finding | Source |',
+      '| --- | --- |',
+      '| Cost was first. | {{cite:S1#c1}} |',
+      '| Credit came second. |  |',
+    ]);
   });
 });

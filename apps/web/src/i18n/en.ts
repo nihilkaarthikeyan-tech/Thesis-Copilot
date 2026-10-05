@@ -623,6 +623,8 @@ export const en = {
   'chat.step.search': 'Searching your library…',
   'chat.step.research':
     'Your library has {papers} papers on this, so I am searching the literature too…',
+  'chat.step.researchAlways':
+    'Your library has {papers} papers on this; searching the literature too, as your settings ask…',
   'chat.step.query': 'Searching {indexes} for: {query}…',
   'chat.step.read': 'Reading {count} abstracts…',
   'chat.step.kept': '{kept} of {read} are on your question',

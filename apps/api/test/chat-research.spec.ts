@@ -13,6 +13,7 @@ import {
   researchCandidates,
   researchNote,
   researchPassages,
+  shouldResearch,
   thinStep,
 } from '../src/modules/assist/chat-research.js';
 import type { WebResult } from '../src/modules/assist/web-scope.service.js';
@@ -161,5 +162,29 @@ describe('the request', () => {
     expect(out.cited).toEqual(['Sweb2#cabstract', 'S1#c1']);
     expect(out.hallucinated).toEqual(['Sweb9#cabstract']);
     expect(out.text.startsWith('### Cost\n')).toBe(true);
+  });
+});
+
+describe('shouldResearch (row 39, 2026-10-05)', () => {
+  const thin = { best: 0.7, onTopic: 2, sources: 1, thin: true, reason: 'few-sources' as const };
+  const full = { best: 0.8, onTopic: 8, sources: 5, thin: false, reason: null };
+
+  it('"Ask first" searches only a thin library; "On" searches every question; "Off" never', () => {
+    expect(shouldResearch(thin, 'ask', 0)).toBe(true);
+    expect(shouldResearch(full, 'ask', 0)).toBe(false);
+    expect(shouldResearch(full, 'on', 0)).toBe(true);
+    expect(shouldResearch(thin, 'off', 0)).toBe(false);
+  });
+
+  it('papers named with @ are the whole ground, whatever the setting', () => {
+    expect(shouldResearch(thin, 'on', 2)).toBe(false);
+  });
+
+  it('the step says why: thin, or the setting', () => {
+    expect(thinStep(full).text).toBe(
+      'Your library has 5 papers on this; searching the literature too, as your settings ask…',
+    );
+    expect(thinStep(full).params).toEqual({ papers: 5, always: 1 });
+    expect(thinStep(thin).params).toEqual({ papers: 1 });
   });
 });

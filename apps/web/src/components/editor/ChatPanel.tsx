@@ -89,7 +89,8 @@ function stepLabel(step: Step, language: string, t: (key: MessageKey, vars?: Var
     case 'search':
       return step.text.startsWith('Searching your library') ? t('chat.step.search') : step.text;
     case 'research':
-      return 'papers' in p ? t('chat.step.research', p) : step.text;
+      if (!('papers' in p)) return step.text;
+      return 'always' in p ? t('chat.step.researchAlways', p) : t('chat.step.research', p);
     case 'query':
       return 'query' in p ? t('chat.step.query', p) : step.text;
     case 'read':

@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**527** strings are translated; **2** are deliberately
+**528** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -616,6 +616,7 @@ English. Write corrections in the last column.
 |---|---|---|---|
 | `chat.step.search` | Searching your library… | आपकी library में खोज रहे हैं… | |
 | `chat.step.research` | Your library has {papers} papers on this, so I am searching the literature too… | आपकी library में इस पर {papers} paper हैं, इसलिए literature में भी खोज रहे हैं… | |
+| `chat.step.researchAlways` | Your library has {papers} papers on this; searching the literature too, as your settings ask… | आपकी library में इस पर {papers} paper हैं; आपकी सेटिंग के अनुसार literature में भी खोज रहे हैं… | |
 | `chat.step.query` | Searching {indexes} for: {query}… | {indexes} में खोज रहे हैं: {query}… | |
 | `chat.step.read` | Reading {count} abstracts… | {count} abstract पढ़ रहे हैं… | |
 | `chat.step.kept` | {kept} of {read} are on your question | {read} में से {kept} आपके सवाल से जुड़े हैं | |

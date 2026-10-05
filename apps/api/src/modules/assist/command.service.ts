@@ -118,6 +118,8 @@ export class CommandService {
       passages,
       userId: user.id,
       documentId: chapter.documentId,
+      // ADR-0081: translate's one target is the thesis language (§2.2).
+      ...(chapter.document.language ? { language: chapter.document.language } : {}),
     });
 
     const startedAt = Date.now();

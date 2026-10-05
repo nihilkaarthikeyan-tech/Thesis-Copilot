@@ -54,6 +54,15 @@ export type ResearchStep = {
 
 export function thinStep(coverage: LibraryCoverage): ResearchStep {
   const papers = coverage.sources;
+  if (!coverage.thin) {
+    // Row 39 (2026-10-05): "On" in Settings searches on every library question, not only a thin
+    // one, so the answer combines the library and the literature as Jenni's scopes do.
+    return {
+      id: 'research',
+      text: `Your library has ${papers} paper${papers === 1 ? '' : 's'} on this; searching the literature too, as your settings ask…`,
+      params: { papers, always: 1 },
+    };
+  }
   return {
     id: 'research',
     text:
@@ -62,6 +71,20 @@ export function thinStep(coverage: LibraryCoverage): ResearchStep {
         : `Your library has ${papers} paper${papers === 1 ? '' : 's'} on this, so I am searching the literature too…`,
     params: { papers },
   };
+}
+
+/**
+ * Whether a library question also searches the literature (ADR-0074; row 39, 2026-10-05):
+ * never when searching is off or the student named papers with `@`; under "Ask first" only when
+ * the library is thin; under "On" on every question.
+ */
+export function shouldResearch(
+  coverage: LibraryCoverage | null,
+  setting: 'off' | 'ask' | 'on',
+  namedPapers: number,
+): boolean {
+  if (!coverage || setting === 'off' || namedPapers > 0) return false;
+  return setting === 'on' || coverage.thin;
 }
 
 export function queryStep(indexes: readonly string[], query: string): ResearchStep {

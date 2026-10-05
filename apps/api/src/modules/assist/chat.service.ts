@@ -89,6 +89,7 @@ import {
   researchCandidates,
   researchNote,
   researchPassages,
+  shouldResearch,
   thinStep,
 } from './chat-research.js';
 import { ContextService } from './context.service.js';
@@ -429,7 +430,7 @@ export class ChatService {
         ? libraryCoverage(passages.map((p) => ({ cosine: p.cosine, sourceId: p.sourceId })))
         : null;
     const research =
-      coverage?.thin && beyondSetting !== 'off' && (input.sourceIds?.length ?? 0) === 0
+      coverage && shouldResearch(coverage, beyondSetting, input.sourceIds?.length ?? 0)
         ? yield* this.research(user.id, input, document.title, chapter, coverage, filters, signal)
         : null;
     const found = research?.found ?? { passages: [], papers: new Map<string, BeyondPaper>() };

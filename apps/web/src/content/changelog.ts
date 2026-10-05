@@ -28,6 +28,10 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
     date: '2026-10-04',
     title: 'Suggestions you can steer, and sharing with roles',
     changes: [
+      'Two more edits on a selection: Translate (into the language of your thesis) and As a table (the facts the text compares, as a table with the citations kept).',
+      'On the Flags tab, Y resolves and N ignores the focused flag, and Resolve all / Ignore all act on every flag shown.',
+      'A claim flagged as unsupported, or not supported by its source, has Find a source, which searches the indexes for that sentence.',
+      'With "Search beyond my library" set to On, every library question also searches the literature and the answer combines both.',
       'Research deeply: a switch under the chat box plans your question in parts, searches your library and the literature for each, and answers at length with a citation on every finding and advice for your section. About a minute; it uses one deep research question (one on the trial, three a month on the student plan).',
       'Every suggestion has Accept, One word, Refine and Dismiss on screen, so it can be kept on a phone too.',
       'Refine offers ready-made changes (shorter, more formal, closer to your topic, complete the paragraph, a contrasting finding) or your own instruction.',

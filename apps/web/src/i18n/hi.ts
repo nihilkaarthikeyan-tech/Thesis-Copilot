@@ -611,6 +611,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
   // ---- Chat: researching beyond a thin library (ADR-0074) -------------------------------------
   'chat.step.search': 'आपकी library में खोज रहे हैं…',
   'chat.step.research': 'आपकी library में इस पर {papers} paper हैं, इसलिए literature में भी खोज रहे हैं…',
+  'chat.step.researchAlways':
+    'आपकी library में इस पर {papers} paper हैं; आपकी सेटिंग के अनुसार literature में भी खोज रहे हैं…',
   'chat.step.query': '{indexes} में खोज रहे हैं: {query}…',
   'chat.step.read': '{count} abstract पढ़ रहे हैं…',
   'chat.step.kept': '{read} में से {kept} आपके सवाल से जुड़े हैं',

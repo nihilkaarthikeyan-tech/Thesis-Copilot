@@ -21,7 +21,17 @@ import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postp
  * ADR-0066: edit actions with their own prompt (`edit.md`), run through exactly the same path,
  * checks and allowance as the five section commands of A.11.
  */
-export const EDIT_ACTIONS = ['hedge', 'direct', 'active', 'past', 'present', 'counter'] as const;
+export const EDIT_ACTIONS = [
+  'hedge',
+  'direct',
+  'active',
+  'past',
+  'present',
+  'counter',
+  // Row 49 of the Jenni coverage map (2026-10-05, ADR-0081): the two ADR-0066 left out.
+  'translate',
+  'table',
+] as const;
 export type EditAction = (typeof EDIT_ACTIONS)[number];
 
 export const COMMANDS = [
@@ -73,6 +83,14 @@ export const COMMAND_LABELS: Readonly<Record<CommandName, { label: string; hint:
     label: 'Counter-argument',
     hint: 'Adds a counter-argument from your library, cited; keeps your text.',
   },
+  translate: {
+    label: 'Translate',
+    hint: 'Into the language of this thesis, with every citation and figure kept.',
+  },
+  table: {
+    label: 'As a table',
+    hint: 'The facts the text compares, as a table with a header row; nothing added.',
+  },
 };
 
 export type CommandBuildInput = {
@@ -85,7 +103,38 @@ export type CommandBuildInput = {
   userId: string;
   documentId: string;
   signal?: AbortSignal;
+  /**
+   * ADR-0081: the thesis's language (§2.2), the only target `translate` has. A selection drafted
+   * in another language is put into the one the thesis is written in; nothing else.
+   */
+  language?: string;
 };
+
+/** The thesis language's name for the prompt: a BCP-47 tag in, a word out. */
+export function languageName(tag: string | undefined): string {
+  const names: Record<string, string> = {
+    en: 'English',
+    hi: 'Hindi',
+    ta: 'Tamil',
+    te: 'Telugu',
+    kn: 'Kannada',
+    ml: 'Malayalam',
+    mr: 'Marathi',
+    bn: 'Bengali',
+    gu: 'Gujarati',
+    pa: 'Punjabi',
+    ur: 'Urdu',
+    fr: 'French',
+    de: 'German',
+    es: 'Spanish',
+    pt: 'Portuguese',
+    ar: 'Arabic',
+    zh: 'Chinese',
+    ja: 'Japanese',
+  };
+  const base = (tag ?? 'en').toLowerCase().split(/[-_]/)[0] ?? 'en';
+  return names[base] ?? tag ?? 'English';
+}
 
 export function commandUserMessage(input: CommandBuildInput): string {
   const template = loadPrompt('command').user;
@@ -96,23 +145,32 @@ export function commandUserMessage(input: CommandBuildInput): string {
         `<passage id="${p.id}" source="${p.shortRef}"${p.page ? ` page="${p.page}"` : ''}>\n${p.text}\n</passage>`,
     )
     .join('\n');
+  // ADR-0081: translate names its one target, the thesis language.
+  const target =
+    input.command === 'translate'
+      ? `\n\n<target_language>${languageName(input.language)}</target_language>`
+      : '';
   if (template) {
-    return renderTemplate(template, {
-      command: input.command,
-      selection: input.selection,
-      context_before: input.contextBefore,
-      context_after: input.contextAfter,
-      passages: rendered,
-    });
+    return (
+      renderTemplate(template, {
+        command: input.command,
+        selection: input.selection,
+        context_before: input.contextBefore,
+        context_after: input.contextAfter,
+        passages: rendered,
+      }) + target
+    );
   }
   // The prompt file defines no user template; A.11's own description is the fallback shape.
-  return [
-    `<command>${input.command}</command>`,
-    `<selection>\n${input.selection}\n</selection>`,
-    `<context_before>\n${input.contextBefore}\n</context_before>`,
-    `<context_after>\n${input.contextAfter}\n</context_after>`,
-    ...(rendered ? [`<passages>\n${rendered}\n</passages>`] : []),
-  ].join('\n\n');
+  return (
+    [
+      `<command>${input.command}</command>`,
+      `<selection>\n${input.selection}\n</selection>`,
+      `<context_before>\n${input.contextBefore}\n</context_before>`,
+      `<context_after>\n${input.contextAfter}\n</context_after>`,
+      ...(rendered ? [`<passages>\n${rendered}\n</passages>`] : []),
+    ].join('\n\n') + target
+  );
 }
 
 export function buildCommandRequest(input: CommandBuildInput): LlmRequest {
@@ -313,6 +371,25 @@ export function mockCommandFor(req: { messages: ReadonlyArray<{ content: string 
       return selection.replace(/\bshows\b/g, 'suggests').replace(/\bproves\b/g, 'indicates');
     case 'direct':
       return selection.replace(/\bit could (perhaps )?be argued that\s*/gi, '');
+    case 'translate':
+      // ADR-0081: the mock knows no language; the selection comes back as it is, citations kept.
+      return selection;
+    case 'table': {
+      // ADR-0081: one row per sentence, the sentence's citation markers in their own column, so
+      // the whitelist, the diff and the table insertion are exercisable without a provider.
+      const rows = sentences.map((sentence) => {
+        const cites = sentence.match(CITE_RE) ?? [];
+        CITE_RE.lastIndex = 0;
+        const text = sentence
+          .replace(CITE_RE, '')
+          .replace(/\s+/g, ' ')
+          .replace(/\s+([.!?,;])/g, '$1')
+          .trim();
+        CITE_RE.lastIndex = 0;
+        return `| ${text.replace(/\|/g, '/')} | ${cites.join(' ')} |`;
+      });
+      return ['| Finding | Source |', '| --- | --- |', ...rows].join('\n');
+    }
     default:
       // consistency: A.11 says output the selection unchanged when nothing conflicts. The other
       // edit actions are left as they are by the mock: their changes are the model's to make.

@@ -5345,3 +5345,16 @@ abstracts read, 12 kept, 648 words, 13 citations, ₹0.51. Migration 0039 adds t
 Tests: `deep-research.spec.ts` (ai), `chat-deep.spec.ts` and `chat-deep-api.spec.ts` (api,
 with the cap test), `chat-deep.spec.ts` (Playwright). The two prompts are new and unevaluated
 beyond the proof (PENDING).
+
+## v0.1.27 released; the partial list, round one (2026-10-05, ADR-0081)
+
+v0.1.27 (deep research, the aims round, the same-topic fixes, ADRs 0071–0080) went live at the
+owner's word: backup `/root/backups/pre-v0.1.27/`, CI green on 547b32d (one red run first: the
+Hindi review sheet is generated from the catalogue and had not been regenerated), release
+workflow green, containers on v0.1.27, migration 0039 applied, health 200, anonymous admin 401.
+Then the owner asked for every PARTIAL row of the coverage map. Round one: translate and
+as-a-table edit actions, Y/N and all on the Flags tab, Find a source on an unsupported claim,
+"On" searching on every question, and five stale rows corrected. Found on the way: the
+own-comments browser spec expects the mock model's rewrite and fails against the real-provider
+dev API — it is for the mock stack, as the brief says.
+

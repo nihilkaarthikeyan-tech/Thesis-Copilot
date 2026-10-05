@@ -78,12 +78,19 @@ export function FlagsPanel({
   chapterId,
   editor,
   onSuggestFix,
+  onFindPapers,
 }: {
   documentId: string;
   chapterId: string;
   editor: Editor | null;
   /** Hands the flag to the section-command flow (D.1.3); counts as `COMMAND`. */
   onSuggestFix: (flag: Flag) => void;
+  /**
+   * Row 54 of the Jenni coverage map (2026-10-05): a claim with no source, or whose source does
+   * not support it, opens the Papers tab searching for the flagged sentence, so a supporting
+   * paper can be found, added and cited from there. No allowance: the search has no model call.
+   */
+  onFindPapers?: (text: string) => void;
 }) {
   const [data, setData] = useState<FlagsResponse | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
@@ -214,6 +221,29 @@ export function FlagsPanel({
     }
   }
 
+  /**
+   * Every open flag in the list at once (row 59 of the Jenni coverage map, 2026-10-05): the
+   * student has read them and wants them gone, or wants them all kept out of the count. Still
+   * their explicit action, and confirmed, because a resolve cannot be undone from here.
+   */
+  async function actAll(action: 'RESOLVE' | 'IGNORE') {
+    const list = (data?.flags ?? []).filter((f) => !filter || f.type === filter);
+    if (list.length === 0) return;
+    const verb = action === 'RESOLVE' ? 'Resolve' : 'Ignore';
+    if (!window.confirm(`${verb} all ${list.length} flags shown?`)) return;
+    try {
+      for (const flag of list) {
+        await api(`/documents/${documentId}/coherence/flags/${flag.id}`, {
+          method: 'POST',
+          body: JSON.stringify({ action }),
+        });
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not save.');
+    }
+  }
+
   const flags = (data?.flags ?? []).filter((f) => !filter || f.type === filter);
   const byChapter = new Map<string, Flag[]>();
   for (const flag of flags) {
@@ -305,9 +335,29 @@ export function FlagsPanel({
       ) : null}
 
       {flags.length > 1 ? (
-        <p className="mt-3 text-[11px] text-muted" data-testid="flags-keys">
-          Tab to a flag, then G to go to it, R to resolve, I to ignore, J and K to move.
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] text-muted" data-testid="flags-keys">
+            Tab to a flag, then G to go to it, Y or R to resolve, N or I to ignore, J and K to move.
+          </p>
+          <span className="flex gap-2">
+            <button
+              type="button"
+              data-testid="flags-resolve-all"
+              onClick={() => void actAll('RESOLVE')}
+              className="text-[11px] font-semibold text-accent underline"
+            >
+              Resolve all {flags.length}
+            </button>
+            <button
+              type="button"
+              data-testid="flags-ignore-all"
+              onClick={() => void actAll('IGNORE')}
+              className="text-[11px] text-muted underline hover:text-ink"
+            >
+              Ignore all
+            </button>
+          </span>
+        </div>
       ) : null}
 
       <div className="mt-3 space-y-4">
@@ -322,7 +372,7 @@ export function FlagsPanel({
                   data-type={flag.type}
                   // biome-ignore lint/a11y/noNoninteractiveTabindex: a focusable row for keyboard review
                   tabIndex={0}
-                  aria-label={`${flagLabel(flag)}: ${flag.description}. G to go to it, R to resolve, I to ignore, J and K for the next and previous.`}
+                  aria-label={`${flagLabel(flag)}: ${flag.description}. G to go to it, Y to resolve, N to ignore, J and K for the next and previous.`}
                   onKeyDown={(e) => {
                     if (e.target !== e.currentTarget) return;
                     const key = e.key.toLowerCase();
@@ -337,10 +387,11 @@ export function FlagsPanel({
                     if (key === 'j' || key === 'k') {
                       e.preventDefault();
                       rows[at + (key === 'j' ? 1 : -1)]?.focus();
-                    } else if (key === 'r' || key === 'i') {
+                    } else if (key === 'r' || key === 'i' || key === 'y' || key === 'n') {
+                      // Y / N as proofreading has them (row 59); R / I stay for anyone used to them.
                       e.preventDefault();
                       (rows[at + 1] ?? rows[at - 1])?.focus();
-                      void act(flag, key === 'r' ? 'RESOLVE' : 'IGNORE');
+                      void act(flag, key === 'r' || key === 'y' ? 'RESOLVE' : 'IGNORE');
                     } else if (
                       key === 'g' &&
                       flag.chapterId === chapterId &&
@@ -412,6 +463,26 @@ export function FlagsPanel({
                         onClick={() => onSuggestFix(flag)}
                       >
                         Suggest fix
+                      </button>
+                    ) : null}
+                    {onFindPapers &&
+                    (flag.type === 'UNSUPPORTED_CLAIM' || flag.type === 'CITATION_SUPPORT') ? (
+                      <button
+                        type="button"
+                        data-testid="flag-find-source"
+                        className="underline"
+                        onClick={() =>
+                          onFindPapers(
+                            flag.chapterId === chapterId &&
+                              flag.positionTrusted &&
+                              flag.to > flag.from &&
+                              editor
+                              ? editor.state.doc.textBetween(flag.from, flag.to, ' ')
+                              : flag.description,
+                          )
+                        }
+                      >
+                        Find a source
                       </button>
                     ) : null}
                   </div>
