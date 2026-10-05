@@ -86,6 +86,8 @@ export const PROMPT_NAMES = [
   'chat_deep',
   // The tone review, likewise — docs/ADR/0084.
   'tone',
+  // The claims map, likewise — docs/ADR/0086.
+  'claims',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

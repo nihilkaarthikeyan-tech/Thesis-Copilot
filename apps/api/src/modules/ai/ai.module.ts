@@ -17,6 +17,7 @@ import {
   mockCiteParseResponse,
   mockCiteResponse,
   mockCiteRoleResponse,
+  mockClaimsMapResponse,
   mockClassifyResponse,
   mockCommandResponse,
   mockEntitiesFor,
@@ -89,6 +90,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                 mockEquationResponse,
                 // ADR-0026: proofreading is metered as COMMAND too; matched by `<proofread>`.
                 mockProofreadResponse,
+                // ADR-0086: the claims map, one CROSS_PAPER pass; matched by `<papers>`.
+                mockClaimsMapResponse,
                 // ADR-0084: the tone review, metered as COMMAND too; matched by `<tone>`.
                 mockToneResponse,
                 // ADR-0030: viva preparation, its own action; matched by its outer tag.

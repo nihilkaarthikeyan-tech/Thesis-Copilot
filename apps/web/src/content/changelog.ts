@@ -28,6 +28,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
     date: '2026-10-04',
     title: 'Suggestions you can steer, and sharing with roles',
     changes: [
+      'A claims map on the Sources page: what your papers claim, how well each claim is supported, which papers disagree, a direction for your thesis and the limits of the evidence.',
       'Pin sources for one section: with the cursor under a heading, the Sources tab offers “This section”, and suggestions and drafts under that heading draw only on its pins.',
       'Tone of voice, on the Flags tab: the chapter is read against your own writing profile or a paper you choose from your library, and each sentence that clearly differs comes with a rewrite you can accept or dismiss.',
       'Attach a file to a chat question: a picture, a PDF, a Word or text file (up to three). It is read for that question only, cited by its name, and never added to your library.',

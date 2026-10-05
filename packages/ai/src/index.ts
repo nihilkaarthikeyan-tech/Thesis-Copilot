@@ -103,6 +103,20 @@ export {
   postProcessCiteRole,
 } from './builder/cite-role.js';
 export {
+  buildClaimsMapRequest,
+  CLAIMS_MAP,
+  type ClaimsMapPaper,
+  type ClaimsMapResult,
+  claimsMapSchema,
+  claimsMapUserMessage,
+  MAPPED_CLAIM_STATUSES,
+  type MappedClaim,
+  type MappedClaimStatus,
+  mockClaimsMapResponse,
+  postProcessClaimsMap,
+  statusFromEvidence,
+} from './builder/claims.js';
+export {
   buildChapterSummaryRequest,
   buildClaimsRequest,
   buildContradictionRequest,

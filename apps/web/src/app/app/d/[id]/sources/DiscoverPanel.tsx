@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
+import { ClaimsMap } from './ClaimsMap';
 
 type Candidate = {
   id: string;
@@ -477,6 +478,8 @@ export function DiscoverPanel({
           </div>
         </>
       )}
+      {/* ADR-0086: the claims map, beside the gap map. */}
+      <ClaimsMap documentId={documentId} />
     </section>
   );
 }

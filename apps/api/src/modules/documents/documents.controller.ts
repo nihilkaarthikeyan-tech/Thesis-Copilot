@@ -31,6 +31,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { OutlineService } from '../memory/outline.service.js';
+import { ClaimsService } from './claims.service.js';
 import { DocumentCopier } from './document-copier.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
@@ -129,6 +130,7 @@ export class DocumentsController {
     private readonly copier: DocumentCopier,
     private readonly autoSources: AutoSourcesService,
     private readonly outline: OutlineService,
+    private readonly claimsMap: ClaimsService,
   ) {}
 
   /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
@@ -304,6 +306,19 @@ export class DocumentsController {
    * ADR-0057: "Make a copy". A new thesis with its own copies of the chapters, memory, settings
    * and library; no shares, comments, usage or exports. No model call, so no allowance.
    */
+  /** ADR-0086: the claims map of the library — stored, and read again on open. */
+  @Get(':id/claims')
+  claims(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.claimsMap.get(user.id, id);
+  }
+
+  /** ADR-0086: map the claims now (one strong-model pass, once an hour per thesis). */
+  @Post(':id/claims')
+  @HttpCode(200)
+  mapClaims(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.claimsMap.map(user, id);
+  }
+
   @Post(':id/copy')
   @HttpCode(200)
   async copy(@CurrentUser() user: SessionUser, @Param('id') id: string) {

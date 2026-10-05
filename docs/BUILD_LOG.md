@@ -5400,3 +5400,14 @@ eleven cases, judged blind both orders on the strong tier. 11–0 for the deep a
 against 6.73, citations on 93% of sentences against 72%, 4 stripped citations against 11, 578
 words against 229, 17 s against 7.6 s. ₹9.04. The PENDING item is closed.
 
+## The partial list, round two: the claims map (2026-10-05, ADR-0086)
+
+Row 63, the last PARTIAL row the agent could build. A new prompt, `claims.md` (strong tier,
+structured): up to fifteen claims from the library's papers with supporting and contrasting ids,
+a direction and the limits; `postProcessClaimsMap` strips unknown ids, drops unsupported claims
+and sets a stray status from the evidence. `POST /documents/:id/claims` once an hour per thesis,
+logged as CROSS_PAPER, stored on `Document.meta.claims`; the Discover tab shows it under the gap
+map. Tests: `claims.spec.ts` (ai, 6), `claims-api.spec.ts` (api, 4). Found on the way: the
+coherence check already exported `buildClaimsRequest`, so the map's builders carry "Map" in
+their names.
+
