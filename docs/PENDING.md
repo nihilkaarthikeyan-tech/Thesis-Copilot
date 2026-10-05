@@ -28,6 +28,12 @@ and 3".
       month — fewer than Jenni's *free* plan (10 a day). On `gpt-4.1-mini`, 300 a month costs
       ₹85.87 per fully active student; 500 would break the ₹100 ceiling. Say the number and it is
       one line in `packages/config/src/plans.ts`.
+      **More pressing since ADR-0078 (2026-10-05):** automatic suggestions had never actually
+      fired in the web app (the setting arrived after the editor was built). They do now, at
+      each finished sentence and once under each new heading, and each one is a unit. A trial
+      student who writes 50 sentences in a sitting will use the trial's whole month (50). The
+      cost ceiling is unaffected (the caps bound it); the question is only whether 50 / 180 are
+      the right numbers now that the feature works.
 - [x] **Decided 2026-10-04: automatic suggestions and automatic sources are on** (ADR-0053), by
       the `automaticSuggest` and `autoSources` flags in production. Pause suggestions count against
       the allowance above, which makes that decision more pressing.

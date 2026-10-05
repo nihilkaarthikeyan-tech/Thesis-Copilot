@@ -42,14 +42,28 @@ test('the journey, recorded', async ({ page, request }) => {
   // What the student sees above the page.
   record.guide = await page
     .getByTestId('first-session-guide')
-    .innerText()
+    .innerText({ timeout: 5_000 })
     .catch(() => null);
+
+  // ADR-0078: on a new chapter the cursor starts under its heading; before any typing, does a
+  // first sentence appear?
+  const chapterOpener = page.locator('.thesis-editor span.ghost[data-status="shown"]');
+  const openedAt = Date.now();
+  record.chapterOpenerShown = await chapterOpener
+    .waitFor({ timeout: 45_000 })
+    .then(() => true)
+    .catch(() => false);
+  record.chapterOpenerSeconds = Number(((Date.now() - openedAt) / 1000).toFixed(1));
+  record.chapterOpener = record.chapterOpenerShown ? await chapterOpener.innerText() : null;
+  mark('chapterOpenerAt');
 
   // Type the opening sentence and wait for the first cited suggestion (asked once; the editor
   // asks again itself when papers are ready).
   const editor = page.locator('.thesis-editor');
   await editor.locator('p').last().click();
-  await page.keyboard.type(OPENING);
+  // insertText: Playwright waits on every key while a suggestion streams (keydown-to-paint stays
+  // under 75 ms; the wait is Playwright's own), so typing key by key took minutes.
+  await page.keyboard.insertText(OPENING);
   const typedAt = Date.now();
   // Ask, then ask again every 20 s if no cited suggestion is showing, as a student would.
   const cited = page.getByTestId('suggestion-evidence');
@@ -100,10 +114,21 @@ test('the journey, recorded', async ({ page, request }) => {
   await editor.locator('p').last().click();
   await page.keyboard.press('End');
   await page.keyboard.press('Enter');
-  await page.keyboard.type('Financial constraints');
+  await page.keyboard.insertText('Financial constraints');
   await page.getByRole('combobox', { name: 'Text' }).selectOption('Heading');
   await page.keyboard.press('End');
   await page.keyboard.press('Enter');
+  // ADR-0078: an opening sentence under the empty heading, with no keystroke and no button.
+  const openerAt = Date.now();
+  const opener = page.locator('.thesis-editor span.ghost[data-status="shown"]');
+  record.openerShown = await opener
+    .waitFor({ timeout: 90_000 })
+    .then(() => true)
+    .catch(() => false);
+  record.openerSeconds = Number(((Date.now() - openerAt) / 1000).toFixed(1));
+  record.opener = record.openerShown ? await opener.innerText() : null;
+  mark('openerAt');
+  if (record.openerShown) await page.keyboard.press('Escape');
   const draftAt = Date.now();
   await page.getByTestId('draft-section-button').click();
   const status = page.getByTestId('draft-status');
@@ -116,11 +141,12 @@ test('the journey, recorded', async ({ page, request }) => {
     .locator('[data-draft="true"]')
     .innerText()
     .catch(() => null);
-  mark('draft');
+  mark('draftedAt');
 
-  // Chat.
+  // Chat (the chat-only recorder, side-by-side-chat.spec.ts, is the cheaper way to re-run it).
+  if (!process.env.WITH_CHAT) return;
   await page.getByRole('tab', { name: 'chat', exact: true }).click();
-  const box = page.getByTestId('chat-panel').locator('textarea').first();
+  const box = page.locator('#chat-message');
   await box.fill(QUESTION);
   const chatAt = Date.now();
   await page.getByTestId('chat-panel').getByRole('button', { name: 'Ask', exact: true }).click();

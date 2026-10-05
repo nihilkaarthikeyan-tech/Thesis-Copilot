@@ -5283,3 +5283,28 @@ run the harness with `tsx --env-file`; one run stopped after a minute because it
 an evaluated paper's figure). More than planned: the judge (gpt-5-mini) is most of it. The
 assist change is adopted on the copying measures with usefulness a tie, not a judge win; ADR-0075
 says how to revert if the owner wants a judge win to be the bar.
+
+## Opening sentence and focused drafts (2026-10-05, ADR-0078)
+
+The two "Jenni better" items left by the re-run side-by-side, built at the owner's word.
+
+- **Automatic suggestions had never fired in the web app.** The setting arrives from `/settings`
+  after the editor is built, and TipTap keeps an extension's plugins from creation, so
+  `options.autoSuggest` stayed `false`. Found only in a browser: a typed sentence sent no
+  request. The extension now reads the setting live (`setAutoSuggest`). Every unit test had
+  built the editor with the option already set — another fault only a browser shows.
+- **An opening sentence under an empty heading,** once per heading, retried once after 4 s.
+  Without the retry it was refused "already in progress" every time in the full journey: the
+  suggestion the cursor had just left was still finishing on the server.
+- **Automatic requests while typing only at a sentence boundary.** Now that they fire, one per
+  0.8 s pause would have spent a trial's 50 units in one sitting.
+- **Drafts keep to their heading:** no borrowing the chapter's scope; a planned section of the
+  same name anywhere in the outline; otherwise `headingOnlyScope`.
+- **"This study" renamed in code** (`nameTheSource`), after two prompt rules cut it but raised
+  copying (8-word runs 4/12 → 5/6 and 4/6). New eval set `own-study`, from real full-text chunks,
+  because the abstract-based sets never reproduced it. Table in ADR-0078. ₹8.60.
+- Real-model journey after: chapter opener at 31 s with no keystroke; heading opener at 3.6 s;
+  the draft on-topic across three sources, no "this study".
+- Recorder notes: Playwright's `keyboard.type` waits on each key while a suggestion streams
+  (keydown-to-paint measured 24–72 ms, so students do not feel it); the recorder uses
+  `insertText`. Two `mark()` keys overwrote recorded values; renamed.
