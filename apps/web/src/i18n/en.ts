@@ -640,6 +640,17 @@ export const en = {
   'chat.research.searched': 'Searched for: {queries}',
   'chat.research.addFirst':
     'Add the papers found by the search to your library before putting this answer in your thesis.',
+  // ---- Chat: deep research (ADR-0080) ----------------------------------------------------------
+  'chat.step.plan': 'Planning the research…',
+  'chat.step.planned': 'Planned {parts} parts: {titles}',
+  'chat.step.part':
+    'Part {index} of {total}, {title}: searching your library and the indexes for: {query}…',
+  'chat.step.writeDeep': 'Writing the answer, part by part…',
+  'chat.deep.toggle': 'Research deeply',
+  'chat.deep.on': 'Deep research is on for the next question',
+  'chat.deep.hint':
+    'Plans the question in parts, searches the literature for each, and answers at length. About a minute. Uses one deep research question, not a chat question.',
+  'chat.research.plan': 'Parts: {titles}',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

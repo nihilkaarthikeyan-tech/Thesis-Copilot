@@ -386,6 +386,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           refuses — because nothing in your library relates to the question, or your filters left
           nothing — the question is given back.
         </P>
+        <H2>Research deeply</H2>
+        <P>
+          For a question that deserves a literature review rather than an answer, switch on{' '}
+          <L>Research deeply</L> under the chat box before you ask. The question is planned in three
+          to five parts, your library and the scholarly indexes are searched for each part, and the
+          answer comes part by part with a citation on every finding, where the studies disagree,
+          what they do not cover, and a few lines on how to use it in your section. It takes about a
+          minute, every step is shown, and it uses one deep research question (one on the trial,
+          three a month on the student plan), not a chat question. Papers it found are listed under
+          the answer with <L>Add to library</L>; nothing is cited in your thesis until it is in your
+          library.
+        </P>
         <H2>Name a paper with @</H2>
         <P>
           In the Library scope, type <Kbd>@</Kbd> and choose a paper. The answer then comes only

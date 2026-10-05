@@ -15,6 +15,7 @@ export const ACTION_NAMES: Record<string, string> = {
   VIVA: 'Viva preparation',
   CHAPTER_BUILD: 'Chapter builds',
   EXAMINER_REVIEW: 'Examiner reviews',
+  RESEARCH: 'Deep research',
   PROPOSAL: 'Proposal conversation',
   OUTLINE: 'Outline',
   STYLE_PROFILE: 'Writing profile',

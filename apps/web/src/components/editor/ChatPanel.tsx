@@ -58,8 +58,17 @@ type Turn = {
   question?: string;
   /** ADR-0060: written from search abstracts; the line under the answer says so. */
   beyond?: { papers: number; outsideLibrary: number; note: string };
-  /** ADR-0074: the library's passages and abstracts a search found for a thin question. */
-  research?: { papers: number; queries: string[]; note: string };
+  /**
+   * ADR-0074: the library's passages and abstracts a search found for a thin question.
+   * ADR-0080: a deep research answer carries its plan too.
+   */
+  research?: {
+    papers: number;
+    queries: string[];
+    note: string;
+    deep?: true;
+    plan?: Array<{ title: string; question: string }>;
+  };
   /** The student's thumbs; only answers the server stored (it sent their id) can be rated. */
   rating?: 1 | -1;
   stored?: boolean;
@@ -88,7 +97,14 @@ function stepLabel(step: Step, language: string, t: (key: MessageKey, vars?: Var
     case 'kept':
       return Number(p.kept ?? 0) === 0 ? t('chat.step.keptNone') : t('chat.step.kept', p);
     case 'write':
-      return t('chat.step.write');
+      return step.text.includes('part by part') ? t('chat.step.writeDeep') : t('chat.step.write');
+    // ADR-0080: deep research's own steps.
+    case 'plan':
+      return t('chat.step.plan');
+    case 'planned':
+      return 'titles' in p ? t('chat.step.planned', p) : step.text;
+    case 'part':
+      return 'query' in p ? t('chat.step.part', p) : step.text;
     default:
       return step.text;
   }
@@ -283,6 +299,12 @@ export function ChatPanel({
   const [steps, setSteps] = useState<Step[]>([]);
   /** Papers from an answer's abstracts the student has added, by DOI or title. */
   const [addedPapers, setAddedPapers] = useState<Set<string>>(() => new Set());
+  /**
+   * ADR-0080: the next library question is deep research — planned, searched per part, answered
+   * at length, on its own allowance. Switched off again once asked: each one is a deliberate spend.
+   */
+  const [deep, setDeep] = useState(false);
+  const deepOffered = scope === 'library' && mentions.mentions.length === 0;
 
   const shown = turns.length;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when the thread grows
@@ -357,8 +379,12 @@ export function ChatPanel({
           ...(askScope === 'library' && mentions.mentions.length > 0
             ? { sourceIds: mentions.mentions.map((m) => m.id) }
             : {}),
+          ...(askScope === 'library' && deep && mentions.mentions.length === 0
+            ? { deep: true }
+            : {}),
         }),
       });
+      if (deep) setDeep(false);
       if (!response.ok || !response.body) {
         const problem = (await response.json().catch(() => null)) as {
           detail?: string;
@@ -981,10 +1007,29 @@ export function ChatPanel({
         <div className="mt-1 flex min-h-6 items-center justify-between gap-2 px-1 text-[11px] text-faint">
           <span data-testid="chat-box-hint" aria-live="polite">
             {promptNotice ??
-              (scope === 'library' && mentions.hasLibrary
-                ? '@ names a paper · / uses a saved prompt'
-                : '/ uses a saved prompt')}
+              (deep && deepOffered
+                ? t('chat.deep.on')
+                : scope === 'library' && mentions.hasLibrary
+                  ? '@ names a paper · / uses a saved prompt'
+                  : '/ uses a saved prompt')}
           </span>
+          {deepOffered ? (
+            <button
+              type="button"
+              data-testid="chat-deep-toggle"
+              aria-pressed={deep}
+              disabled={busy}
+              title={t('chat.deep.hint')}
+              onClick={() => setDeep((on) => !on)}
+              className={`shrink-0 rounded-full border px-2 py-0.5 transition-colors disabled:opacity-50 ${
+                deep
+                  ? 'border-accent bg-accent text-accent-ink'
+                  : 'border-line text-muted hover:text-ink'
+              }`}
+            >
+              {t('chat.deep.toggle')}
+            </button>
+          ) : null}
           {canSavePrompt ? (
             <button
               type="button"
@@ -1244,6 +1289,11 @@ function ResearchPapers({
       <p data-testid="chat-research-note" className="text-xs text-muted">
         {turn.research?.note}
       </p>
+      {turn.research?.plan && turn.research.plan.length > 0 ? (
+        <p data-testid="chat-research-plan" className="mt-0.5 text-[11px] text-faint">
+          {t('chat.research.plan', { titles: turn.research.plan.map((p) => p.title).join(' · ') })}
+        </p>
+      ) : null}
       {turn.research && turn.research.queries.length > 0 ? (
         <p className="mt-0.5 text-[11px] text-faint">
           {t('chat.research.searched', { queries: turn.research.queries.join(' · ') })}

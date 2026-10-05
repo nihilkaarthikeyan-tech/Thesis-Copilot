@@ -626,4 +626,15 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'chat.research.view': 'Paper देखें',
   'chat.research.searched': 'इसके लिए खोजा: {queries}',
   'chat.research.addFirst': 'इस जवाब को थीसिस में डालने से पहले, खोज में मिले paper अपनी library में जोड़ें।',
+  // ---- Chat: deep research (ADR-0080) ----------------------------------------------------------
+  'chat.step.plan': 'शोध की योजना बना रहे हैं…',
+  'chat.step.planned': '{parts} हिस्सों की योजना बनी: {titles}',
+  'chat.step.part':
+    '{total} में से हिस्सा {index}, {title}: आपकी library और index में खोज रहे हैं: {query}…',
+  'chat.step.writeDeep': 'हिस्सा-दर-हिस्सा जवाब लिख रहे हैं…',
+  'chat.deep.toggle': 'गहराई से शोध',
+  'chat.deep.on': 'अगले सवाल के लिए गहरा शोध चालू है',
+  'chat.deep.hint':
+    'सवाल को हिस्सों में बाँटता है, हर हिस्से के लिए literature खोजता है, और विस्तार से जवाब देता है। लगभग एक मिनट। एक गहरे शोध का सवाल खर्च होता है, chat का सवाल नहीं।',
+  'chat.research.plan': 'हिस्से: {titles}',
 };

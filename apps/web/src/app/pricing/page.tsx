@@ -21,6 +21,7 @@ const ACTION_LABEL: Record<string, string> = {
   CHAT: 'Questions to your library',
   COMMAND: 'Section commands (expand, formalise, shorten…)',
   COHERENCE: 'Coherence checks across chapters',
+  RESEARCH: 'Deep research questions (planned, searched part by part, answered at length)',
 };
 
 const PLANS = ['FREE_TRIAL', 'STUDENT_MONTHLY', 'STUDENT_ANNUAL'] as const;

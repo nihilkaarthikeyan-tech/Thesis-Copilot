@@ -28,6 +28,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
     date: '2026-10-04',
     title: 'Suggestions you can steer, and sharing with roles',
     changes: [
+      'Research deeply: a switch under the chat box plans your question in parts, searches your library and the literature for each, and answers at length with a citation on every finding and advice for your section. About a minute; it uses one deep research question (one on the trial, three a month on the student plan).',
       'Every suggestion has Accept, One word, Refine and Dismiss on screen, so it can be kept on a phone too.',
       'Refine offers ready-made changes (shorter, more formal, closer to your topic, complete the paragraph, a contrasting finding) or your own instruction.',
       'Step back to an earlier suggestion with ‹ › after Refine has replaced it.',
