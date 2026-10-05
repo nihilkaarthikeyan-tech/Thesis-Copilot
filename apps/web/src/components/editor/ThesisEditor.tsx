@@ -111,7 +111,7 @@ import { CitePicker } from './CitePicker';
 import { CiteSuggestions } from './CiteSuggestions';
 import { CommandToolbar } from './CommandToolbar';
 import { DiagramDialog } from './DiagramDialog';
-import { DraftMode } from './DraftMode';
+import { DRAFT_SECTION_EVENT, DraftMode } from './DraftMode';
 import { FindPapersPanel } from './FindPapersPanel';
 import { FirstSessionGuide, markSuggestionKept } from './FirstSessionGuide';
 import { type Flag, FlagsPanel } from './FlagsPanel';
@@ -359,6 +359,9 @@ function ChapterEditor({
     'sources',
   );
   const [autoSuggest, setAutoSuggest] = useState(false);
+  /** ADR-0073: the next-step guide is on screen, so the other first-run cards wait. */
+  const [guideShown, setGuideShown] = useState(false);
+  const [allKeys, setAllKeys] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
 
@@ -1392,37 +1395,46 @@ function ChapterEditor({
         {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}
         <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
           <ScaffoldPanel documentId={doc.id} outlineNodeId={chapter.outlineNodeId} />
-          {/* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */}
-          <AddProposalPrompt
-            documentId={doc.id}
-            variant="editor"
-            className="mx-auto mb-4 max-w-[72ch]"
-          />
-          {/* ADR-0070: the next-step guide. */}
+          {/* ADR-0070: the next-step guide. ADR-0073: while it shows, it is the only card above
+              the page — its last step is planning (the proposal), its second links the
+              walkthrough — so the proposal prompt and the first-run hint wait until it is done. */}
           <FirstSessionGuide
             documentId={doc.id}
             editor={editor}
             onSuggest={() => editor?.chain().focus().requestSuggestion().run()}
             onShowSources={() => setTab('sources')}
+            onHowItWorks={() => setHowOpen(true)}
+            onVisibleChange={setGuideShown}
             className="mx-auto mb-4 max-w-[72ch]"
           />
-          <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
-            {t('editor.hint.intro')} {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
-            {autoSuggest ? null : (
+          {guideShown ? null : (
+            /* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */
+            <AddProposalPrompt
+              documentId={doc.id}
+              variant="editor"
+              className="mx-auto mb-4 max-w-[72ch]"
+            />
+          )}
+          {guideShown ? null : (
+            <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
+              {t('editor.hint.intro')}{' '}
+              {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
+              {autoSuggest ? null : (
+                <span className="hidden sm:inline">
+                  {' '}
+                  {rich('editor.hint.orKey', { key: <kbd>Ctrl+/</kbd> })}
+                </span>
+              )}
+              {t('editor.hint.stop')}{' '}
               <span className="hidden sm:inline">
-                {' '}
-                {rich('editor.hint.orKey', { key: <kbd>Ctrl+/</kbd> })}
+                {rich('editor.hint.keys', { tab: <kbd>Tab</kbd>, esc: <kbd>Esc</kbd> })}{' '}
               </span>
-            )}
-            {t('editor.hint.stop')}{' '}
-            <span className="hidden sm:inline">
-              {rich('editor.hint.keys', { tab: <kbd>Tab</kbd>, esc: <kbd>Esc</kbd> })}{' '}
-            </span>
-            {t('editor.hint.cites')}{' '}
-            <button type="button" className="underline" onClick={() => setHowOpen(true)}>
-              {t('editor.hint.how')}
-            </button>
-          </FirstRunHint>
+              {t('editor.hint.cites')}{' '}
+              <button type="button" className="underline" onClick={() => setHowOpen(true)}>
+                {t('editor.hint.how')}
+              </button>
+            </FirstRunHint>
+          )}
           {noticeState ? (
             <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center px-4 lg:bottom-20">
               <div className="pointer-events-auto flex max-w-xl items-start gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm shadow-lg">
@@ -1511,16 +1523,31 @@ function ChapterEditor({
             >
               {t('editor.suggest')}
             </button>
+            {/* ADR-0073: drafting the section was a shortcut only; now it is a button too. */}
+            <button
+              type="button"
+              data-testid="draft-section-button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => window.dispatchEvent(new Event(DRAFT_SECTION_EVENT))}
+              className="rounded-md border border-line px-2.5 py-1 text-[11.5px] font-semibold text-ink hover:border-line-strong"
+            >
+              {t('editor.draftButton')}
+            </button>
+            {/* ADR-0073: three keys a first-time student needs; the rest behind "More keys". */}
             {(
               [
                 ['Ctrl+/', 'editor.key.suggestion'],
                 ['Tab', 'editor.key.accept'],
-                ['Alt+→', 'editor.key.word'],
-                ['Shift+→', 'editor.key.guided'],
                 ['Esc', 'editor.key.dismiss'],
-                ['Ctrl+Shift+D', 'editor.key.draft'],
-                ['@', 'editor.key.cite'],
-                ['Ctrl+S', 'editor.key.snapshot'],
+                ...(allKeys
+                  ? ([
+                      ['Alt+→', 'editor.key.word'],
+                      ['Shift+→', 'editor.key.guided'],
+                      ['Ctrl+Shift+D', 'editor.key.draft'],
+                      ['@', 'editor.key.cite'],
+                      ['Ctrl+S', 'editor.key.snapshot'],
+                    ] as const)
+                  : []),
               ] as const
             ).map(([key, what]) => (
               // Keys mean nothing on a touch screen, so they start at the small-tablet width.
@@ -1529,6 +1556,13 @@ function ChapterEditor({
                 {t(what)}
               </span>
             ))}
+            <button
+              type="button"
+              className="hidden underline sm:inline"
+              onClick={() => setAllKeys((v) => !v)}
+            >
+              {allKeys ? t('editor.key.fewer') : t('editor.key.more')}
+            </button>
             <WordCount editor={editor} className="ml-auto" />
           </div>
         </main>

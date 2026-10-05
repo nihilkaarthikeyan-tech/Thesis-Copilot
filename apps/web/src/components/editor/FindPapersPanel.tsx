@@ -23,6 +23,7 @@ import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { type MatchedPassage, passageRuns } from '@/lib/passage';
+import { requestReadBeside } from '@/lib/read-beside';
 import { readerHref } from '@/lib/reader';
 
 type Result = {
@@ -395,6 +396,19 @@ export function FindPapersPanel({
                   href={readerHref(documentId, source.id)}
                   target="_blank"
                   rel="noopener"
+                  // ADR-0073: beside the chapter when the screen has room, as "Read PDF" in the
+                  // Sources tab does; a new tab only when it does not.
+                  onClick={(event) => {
+                    if (
+                      requestReadBeside({
+                        sourceId: source.id,
+                        page: null,
+                        label: result.title.slice(0, 60),
+                      })
+                    ) {
+                      event.preventDefault();
+                    }
+                  }}
                   data-testid="paper-read"
                   className="text-xs font-semibold text-accent underline"
                 >

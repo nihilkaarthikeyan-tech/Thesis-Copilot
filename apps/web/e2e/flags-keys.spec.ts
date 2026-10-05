@@ -80,7 +80,7 @@ test('J and K move between flags, and R resolves the focused one', async ({ page
 
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('tab', { name: 'flags', exact: true }).click();
+  await page.getByRole('tab', { name: 'check', exact: true }).click();
   const rows = page.getByTestId('flag');
   await expect(rows).toHaveCount(2);
   await expect(page.getByTestId('flags-keys')).toBeVisible();

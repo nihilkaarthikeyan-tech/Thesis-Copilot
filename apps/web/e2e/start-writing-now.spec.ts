@@ -39,6 +39,12 @@ test('from the thesis list, with no title typed: an untitled thesis opens in the
   await page.keyboard.type('Fish drying in coastal villages loses a fifth of the catch.');
   await expect(editor).toContainText('Fish drying in coastal villages');
 
+  // ADR-0073: while the next-step guide shows, it is the one card; its last step is planning.
+  const guide = page.getByTestId('first-session-guide');
+  await expect(guide).toBeVisible();
+  await expect(page.getByTestId('add-proposal')).toHaveCount(0);
+  await guide.getByRole('button', { name: 'Hide' }).click();
+
   // The proposal is offered, gently, and goes where the proposal lives.
   const prompt = page.getByTestId('add-proposal');
   await expect(prompt).toContainText('This thesis has no proposal yet');
@@ -79,7 +85,8 @@ test('from /app/new, a typed title is kept and the editor opens', async ({ page,
     timeout: 30_000,
   });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('add-proposal')).toBeVisible();
+  // ADR-0073: the guide, whose last step is planning, stands in for the proposal prompt.
+  await expect(page.getByTestId('first-session-guide')).toBeVisible();
 
   await page.goto('/app');
   await expect(page.getByRole('link', { name: title }).first()).toBeVisible({ timeout: 30_000 });

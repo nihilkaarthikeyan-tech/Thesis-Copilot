@@ -32,7 +32,7 @@ test('a student leaves a comment on a passage and finds it under Review', async 
   await page.getByRole('button', { name: 'Save comment' }).click();
   await expect(page.getByTestId('notice')).toContainText('Comment added');
 
-  await page.getByRole('tab', { name: 'review', exact: true }).click();
+  await page.getByRole('tab', { name: 'comments', exact: true }).click();
   await expect(page.getByText('Check against the IMD series')).toBeVisible({ timeout: 15_000 });
 });
 
@@ -174,7 +174,7 @@ test('"Examiner review" on a selection reviews just those sentences', async ({ p
 
   await page.getByTestId('review-selection').click();
   await expect(page.getByTestId('notice')).toContainText('reading the selection');
-  await expect(page.getByRole('tab', { name: 'flags', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'check', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   );

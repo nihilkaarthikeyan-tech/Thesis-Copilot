@@ -63,7 +63,7 @@ test('a comment is drawn on its passage, and accepting the revision changes the 
 
   await page.reload();
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('tab', { name: 'review' }).click();
+  await page.getByRole('tab', { name: 'comments' }).click();
 
   const panel = page.getByTestId('review-panel');
   await expect(panel).toContainText('1 open comment here', { timeout: 20_000 });
@@ -90,7 +90,7 @@ test('a comment is drawn on its passage, and accepting the revision changes the 
   await expect(page.locator('.thesis-editor')).not.toContainText(SENTENCE, { timeout: 30_000 });
 
   // And the comment is off the panel, because it is no longer open.
-  await page.getByRole('tab', { name: 'review' }).click();
+  await page.getByRole('tab', { name: 'comments' }).click();
   await expect(page.getByTestId('review-panel')).toContainText('No open comments', {
     timeout: 20_000,
   });
@@ -138,7 +138,7 @@ test('a comment whose passage has been rewritten says so instead of pointing som
   await page.keyboard.press('Control+s');
   await expect(page.getByText('Saved', { exact: true })).toBeVisible({ timeout: 20_000 });
 
-  await page.getByRole('tab', { name: 'review' }).click();
+  await page.getByRole('tab', { name: 'comments' }).click();
   const panel = page.getByTestId('review-panel');
   await expect(panel).toContainText('That passage has been rewritten', { timeout: 20_000 });
   await expect(panel.getByTestId('review-goto')).toBeDisabled();

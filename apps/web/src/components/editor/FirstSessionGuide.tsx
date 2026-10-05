@@ -68,6 +68,7 @@ export function FirstSessionGuide({
   editor,
   onSuggest,
   onShowSources,
+  onHowItWorks,
   onVisibleChange,
   className,
 }: {
@@ -75,6 +76,8 @@ export function FirstSessionGuide({
   editor: Editor | null;
   onSuggest: () => void;
   onShowSources: () => void;
+  /** Opens the 90-second walkthrough (the first-run hint's link, which waits while this shows). */
+  onHowItWorks?: () => void;
   /** Whether the guide is on screen, so the editor can leave out the hint it replaces. */
   onVisibleChange?: (visible: boolean) => void;
   className?: string;
@@ -247,6 +250,14 @@ export function FirstSessionGuide({
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p className="text-[13px] text-muted" data-testid="guide-detail">
           {current.detail}
+          {current.id === 'suggest' && onHowItWorks ? (
+            <>
+              {' '}
+              <button type="button" className="underline" onClick={onHowItWorks}>
+                {t('guide.howItWorks')}
+              </button>
+            </>
+          ) : null}
         </p>
         {current.action}
       </div>

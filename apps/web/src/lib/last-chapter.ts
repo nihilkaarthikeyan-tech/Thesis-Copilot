@@ -19,6 +19,7 @@ export type LastChapter = {
 };
 
 export function rememberLastChapter(entry: Omit<LastChapter, 'at'>): void {
+  markEnteredThisSession();
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...entry, at: new Date().toISOString() }));
   } catch {
@@ -47,5 +48,29 @@ export function readLastChapter(): LastChapter | null {
     };
   } catch {
     return null;
+  }
+}
+
+const SESSION_KEY = 'tc:in-session';
+
+/**
+ * ADR-0073: whether this browser session has already been inside the app. The first visit to the
+ * thesis list in a session goes straight back to the last chapter (as Jenni reopens the last
+ * document); every visit after that — the "Theses" breadcrumb, a link — shows the list.
+ */
+export function enteredThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_KEY) === '1';
+  } catch {
+    // No session storage: always show the list rather than redirect without being able to stop.
+    return true;
+  }
+}
+
+export function markEnteredThisSession(): void {
+  try {
+    sessionStorage.setItem(SESSION_KEY, '1');
+  } catch {
+    // Nothing to do.
   }
 }

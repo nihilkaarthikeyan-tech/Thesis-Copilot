@@ -18,6 +18,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { API_URL, ApiError, type ProblemDetails } from '@/lib/api';
 import { parseSse } from '@/lib/sse';
 
+/**
+ * ADR-0073: anything outside the editor (the key bar's button, the section guide) asks for a
+ * draft of the section under the cursor by dispatching this on `window`.
+ */
+export const DRAFT_SECTION_EVENT = 'tc:draft-section';
+
 type DraftCitation = { key: string; sourceId: string; chunkId?: string; rendered?: string };
 
 type DraftResult = {
@@ -168,8 +174,13 @@ export function DraftMode({
       void run();
     };
     const dom = editor.view.dom;
+    const onAsk = () => void run();
     dom.addEventListener('keydown', onKeyDown);
-    return () => dom.removeEventListener('keydown', onKeyDown);
+    window.addEventListener(DRAFT_SECTION_EVENT, onAsk);
+    return () => {
+      dom.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener(DRAFT_SECTION_EVENT, onAsk);
+    };
   }, [editor, run]);
 
   if (state.phase === 'idle') return null;

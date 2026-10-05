@@ -72,7 +72,7 @@ test('the student proofreads a chapter and accepts one correction at a time', as
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   const editor = page.locator('.thesis-editor');
   await expect(editor).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('tab', { name: 'flags' }).click();
+  await page.getByRole('tab', { name: 'check' }).click();
 
   const panel = page.getByTestId('proofread-panel');
   await panel.getByTestId('proofread-run').click();
@@ -139,7 +139,7 @@ test('Accept all takes every correction in one step that one Undo reverses; Y ac
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   const editor = page.locator('.thesis-editor');
   await expect(editor).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('tab', { name: 'flags' }).click();
+  await page.getByRole('tab', { name: 'check' }).click();
   const panel = page.getByTestId('proofread-panel');
   await panel.getByTestId('proofread-run').click();
   await expect(panel.getByTestId('proofread-summary')).toBeVisible({ timeout: 90_000 });

@@ -18,7 +18,7 @@ test('the flags tab lists every check with a way to open it', async ({ page, req
 
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('tab', { name: 'flags', exact: true }).click();
+  await page.getByRole('tab', { name: 'check', exact: true }).click();
 
   const index = page.getByTestId('checks-index');
   await index.getByText('Every check, in one list').click();
@@ -47,7 +47,7 @@ test('the flags tab lists every check with a way to open it', async ({ page, req
 
   // The guide's comments open in the same panel.
   await index.getByRole('button', { name: 'Open' }).click();
-  await expect(page.getByRole('tab', { name: 'review', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'comments', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   );

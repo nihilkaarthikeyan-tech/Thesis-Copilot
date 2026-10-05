@@ -223,6 +223,15 @@ export class ChatService {
     // The document scope answers from the student's own chapters, which are passed directly
     // rather than retrieved: they change on every keystroke, so an index of them would be stale
     // before it was written, and skipping the embedding call also skips the Voyage rate limit.
+    // ADR-0073: say what is happening while it happens, as the beyond-the-library path does.
+    yield {
+      event: 'step',
+      data: {
+        id: 'search',
+        text: scope === 'document' ? 'Reading your chapters…' : 'Searching your library…',
+      },
+    };
+
     const ownChapters =
       scope === 'document'
         ? await this.prisma.chapter.findMany({
@@ -330,6 +339,17 @@ export class ChatService {
       };
       return;
     }
+
+    yield {
+      event: 'step',
+      data: {
+        id: 'read',
+        text: `Reading ${passages.length} passage${passages.length === 1 ? '' : 's'} from ${
+          new Set(passages.map((p) => p.shortRef)).size
+        } source${new Set(passages.map((p) => p.shortRef)).size === 1 ? '' : 's'}`,
+      },
+    };
+    yield { event: 'step', data: { id: 'write', text: WRITING_STEP } };
 
     const request = buildChatRequest({
       memoryBlock: memory.text,

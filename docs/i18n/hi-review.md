@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**480** strings are translated; **2** are deliberately
+**484** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -67,7 +67,7 @@ English. Write corrections in the last column.
 | `list.stage.journals` | Journals | जर्नल | |
 | `list.stage.viva` | Viva practice | वाइवा अभ्यास | |
 | `list.titlePlaceholder` | e.g. Low-cost solar dryers for smallholder farms | जैसे: छोटे किसानों के लिए कम लागत वाले सोलर ड्रायर | |
-| `list.startFrom` | Start from | शुरुआत कहाँ से | |
+| `list.startFrom` | If you plan it with a proposal, start from | प्रस्ताव के साथ योजना बनाएँ तो शुरुआत कहाँ से | |
 | `list.create` | Create thesis with a proposal | प्रस्ताव के साथ थीसिस बनाएँ | |
 | `list.startWriting` | Start writing now | अभी लिखना शुरू करें | |
 | `list.startWritingHint` | Start writing now opens your first chapter straight away and starts finding papers on your title while you write. The proposal (a few questions that plan your chapters) can come first, or later from the editor. | अभी लिखना शुरू करें से आपका पहला अध्याय तुरंत खुलता है और आपके लिखते-लिखते आपके शीर्षक पर पेपर खोजे जाने लगते हैं। प्रस्ताव (कुछ सवाल जो आपके अध्यायों की योजना बनाते हैं) पहले भी हो सकता है, या बाद में एडिटर से। | |
@@ -238,13 +238,27 @@ English. Write corrections in the last column.
 | `editor.key.draft` | draft a section | एक खंड का मसौदा | |
 | `editor.key.cite` | cite | साइट करें | |
 | `editor.key.snapshot` | snapshot | स्नैपशॉट | |
+| `editor.key.more` | More keys | और कुंजियाँ | |
+| `editor.key.fewer` | Fewer keys | कम कुंजियाँ | |
+| `editor.draftButton` | Draft a section | एक खंड का ड्राफ़्ट | |
+
+## guide
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `guide.howItWorks` | How suggestions work (90 seconds) | सुझाव कैसे काम करते हैं (90 सेकंड) | |
+
+## The editor
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
 | `editor.tools` | Tools | टूल | |
 | `editor.tab.sources` | sources | स्रोत | |
 | `editor.tab.papers` | papers | पेपर | |
 | `editor.tab.citations` | citations | साइटेशन | |
 | `editor.tab.chat` | chat | चैट | |
-| `editor.tab.flags` | flags | फ़्लैग | |
-| `editor.tab.review` | review | समीक्षा | |
+| `editor.tab.flags` | check | जाँच | |
+| `editor.tab.review` | comments | टिप्पणियाँ | |
 | `editor.chapterAndTools` | Chapter and tools | अध्याय और टूल | |
 | `editor.feedbackLabel` | What happened? The admin gets this note, this document’s id and your last five suggestion events — not your text. | क्या हुआ? एडमिन को यह नोट, इस दस्तावेज़ की id और आपके पिछले पाँच सुझावों का ब्योरा मिलता है — आपका लिखा हुआ नहीं। | |
 | `editor.feedbackSent` | Thanks — your note is on its way, with the ids of your last few suggestions. | धन्यवाद — आपका नोट आपके पिछले कुछ सुझावों की ids के साथ भेज दिया गया है। | |

@@ -115,9 +115,16 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
 
-  const editorHint = page.getByTestId('hint-editor');
-  await expect(editorHint).toContainText('Ctrl+/');
-  await editorHint.getByRole('button', { name: 'How suggestions work (90 seconds)' }).click();
+  // ADR-0073: the next-step guide is the one card above a new chapter; its suggestion step links
+  // the walkthrough, and the first-run hint waits until the guide is put away.
+  const guide = page.getByTestId('first-session-guide');
+  await expect(guide).toBeVisible();
+  await expect(page.getByTestId('hint-editor')).toHaveCount(0);
+  await page.locator('.thesis-editor p').first().click();
+  await page.keyboard.type(
+    'Smallholder farmers in the surveyed districts lose part of every harvest to spoilage. ',
+  );
+  await guide.getByRole('button', { name: 'How suggestions work (90 seconds)' }).click();
 
   const panel = page.getByTestId('how-suggestions-work');
   await expect(panel).toBeVisible();
@@ -132,8 +139,9 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   await expect(page.getByRole('banner')).not.toContainText('week');
   await expect(page.getByRole('button', { name: 'Export .docx' })).toBeEnabled();
 
-  // The first suggestion, as the hint said.
+  // The first suggestion, as the guide said.
   await page.locator('.thesis-editor p').first().click();
+  await page.keyboard.press('End');
   await page.keyboard.type('Farmers in the surveyed districts reported ');
   await page.keyboard.press('Control+/');
   await expect(page.locator('.thesis-editor span.ghost')).toBeVisible({ timeout: 15_000 });
@@ -146,6 +154,10 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
   await page.keyboard.press('Tab');
   await expect(page.locator('.thesis-editor span.ghost')).toHaveCount(0);
 
+  // Put the guide away: the first-run hint takes its place, and is dismissed in turn.
+  await guide.getByRole('button', { name: 'Hide' }).click();
+  const editorHint = page.getByTestId('hint-editor');
+  await expect(editorHint).toContainText('Ctrl+/');
   await editorHint.getByRole('button', { name: 'Got it' }).click();
   // The dismissal is what the student sees before anything else happens. In CI this once failed
   // every run: pressing the button moved focus out of the editor, the save status lengthened, the

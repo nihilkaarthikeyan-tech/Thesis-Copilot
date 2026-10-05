@@ -149,7 +149,7 @@ export function CitationReport({ documentId }: { documentId: string }) {
               {report.supportCheck.lastRunAt === null ? (
                 <span className="text-warn">
                   The support check has never run, so this report cannot yet say whether your
-                  sources say what your sentences claim. Run it with “Check coherence” in the Flags
+                  sources say what your sentences claim. Run it with “Check coherence” in the Check
                   panel of{' '}
                   {firstChapter ? (
                     <Link

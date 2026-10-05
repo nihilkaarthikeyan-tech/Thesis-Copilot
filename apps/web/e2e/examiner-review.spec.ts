@@ -45,7 +45,7 @@ test('a chapter is reviewed by the examiner from the flags tab', async ({ page, 
 
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('tab', { name: 'flags', exact: true }).click();
+  await page.getByRole('tab', { name: 'check', exact: true }).click();
 
   const review = page.getByTestId('examiner-review');
   await expect(review).toContainText('A strict examiner reads each section');
