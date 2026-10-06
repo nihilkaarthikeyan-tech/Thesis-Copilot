@@ -203,6 +203,34 @@ export type CommandPostProcess = {
 
 const wordsOf = (text: string) => text.trim().split(/\s+/).filter(Boolean);
 
+/** The selection's text with citation markers taken out, for reading its edges. */
+const bare = (text: string) => text.replace(/\{\{cite:[^}]+\}\}/g, '').replace(/\s+$/, '');
+
+/**
+ * A rewrite that goes back where part of a sentence was (2026-10-06, seen in the demo video): the
+ * model writes a whole sentence, so a selection that stopped at "…socio-cultural norms " came back
+ * as "…norms." and the paragraph read "norms.that constrain". The rewrite keeps the selection's
+ * own edges: its leading and trailing whitespace, no full stop the selection did not end with, and
+ * a lower-case first letter where the selection began mid-sentence.
+ */
+export function fitToSelection(rewrite: string, selection: string): string {
+  let text = rewrite.trim();
+  if (!text || /^\|/.test(text)) return rewrite;
+  const before = /^\s*/.exec(selection)?.[0] ?? '';
+  const after = /\s*$/.exec(selection)?.[0] ?? '';
+  const end = bare(selection);
+  // "." "!" "?" possibly followed by a closing quote or bracket ends a sentence.
+  const endsSentence = /[.!?…]["'’”)\]]*$/.test(end);
+  if (!endsSentence && /[^.]\.$/.test(text)) text = text.slice(0, -1);
+  const first = /^\s*(\S+)/.exec(selection)?.[1] ?? '';
+  const word = /^(\S+)/.exec(text)?.[1] ?? '';
+  // Lower-case only an ordinary capitalised word: not "UPI", "FinTech" or "I".
+  if (/^[a-z]/.test(first) && /^[A-Z][a-z]+[,;:]?$/.test(word)) {
+    text = text.charAt(0).toLowerCase() + text.slice(1);
+  }
+  return `${before}${text}${after}`;
+}
+
 /**
  * §10.6 applied to a rewrite: a citation may only be one that was already in the selection or is
  * one of the passages sent with the request. Anything else is stripped. Citations the model
@@ -237,9 +265,10 @@ export function postProcessCommand(
 
   const kept = new Set(keysIn(text));
   const dropped = [...inSelection].filter((k) => !kept.has(k));
+  const fitted = fitToSelection(text, selection);
 
   return {
-    text,
+    text: fitted,
     hallucinated,
     dropped,
     words: wordsOf(text).length,

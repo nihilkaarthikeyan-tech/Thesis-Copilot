@@ -25,8 +25,24 @@ export type ChangelogEntry = {
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
     version: null,
-    date: '2026-10-04',
-    title: 'Suggestions you can steer, and sharing with roles',
+    date: '2026-10-06',
+    title: 'Edits that fit the sentence',
+    changes: [
+      'An edit on part of a sentence (Formalise, Shorten and the rest) now fits back into the sentence: no stray full stop in the middle and no missing space, and it starts in lower case where your selection did.',
+    ],
+  },
+  {
+    version: 'v0.1.29',
+    date: '2026-10-06',
+    title: 'Discover from your title',
+    changes: [
+      'Discover works for a thesis started with Start writing now: the search starts from your thesis title when there is no proposal, instead of asking you to save one first.',
+    ],
+  },
+  {
+    version: 'v0.1.28',
+    date: '2026-10-05',
+    title: 'Claims, tone and attachments',
     changes: [
       'A claims map on the Sources page: what your papers claim, how well each claim is supported, which papers disagree, a direction for your thesis and the limits of the evidence.',
       'Pin sources for one section: with the cursor under a heading, the Sources tab offers “This section”, and suggestions and drafts under that heading draw only on its pins.',
@@ -37,7 +53,34 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'On the Flags tab, Y resolves and N ignores the focused flag, and Resolve all / Ignore all act on every flag shown.',
       'A claim flagged as unsupported, or not supported by its source, has Find a source, which searches the indexes for that sentence.',
       'With "Search beyond my library" set to On, every library question also searches the literature and the answer combines both.',
+    ],
+  },
+  {
+    version: 'v0.1.27',
+    date: '2026-10-05',
+    title: 'Research deeply',
+    changes: [
       'Research deeply: a switch under the chat box plans your question in parts, searches your library and the literature for each, and answers at length with a citation on every finding and advice for your section. About a minute; it uses one deep research question (one on the trial, three a month on the student plan).',
+      'Suggestions no longer present a paper’s own aims (“the study aims to…”) as if they were your thesis’s aims.',
+      'Suggestions draw on several papers instead of leaning on your own draft or one source, and author names print correctly in citations and the reference list.',
+    ],
+  },
+  {
+    version: 'v0.1.26',
+    date: '2026-10-05',
+    title: 'A faster first session, the paper reader and the Chrome add-on',
+    changes: [
+      'Start writing now is the first button on a new thesis: the editor opens at once, papers on your title are searched for straight away, and a progress line shows them arriving. A first cited suggestion comes in well under a minute.',
+      'A four-step guide for your first minutes in the editor.',
+      'Read a paper inside Thesis Copilot: the PDF opens in a reader where you can search it, select a passage and cite it where your cursor was.',
+      'The Chrome add-on (0.2.0): save the paper you are reading on a journal site, arXiv or PubMed, or tick several on a PubMed, arXiv or Google Scholar results page; put them in a collection; attach the PDF; then open the paper in Thesis Copilot.',
+    ],
+  },
+  {
+    version: 'v0.1.25',
+    date: '2026-10-05',
+    title: 'Suggestions you can steer, and sharing with roles',
+    changes: [
       'Every suggestion has Accept, One word, Refine and Dismiss on screen, so it can be kept on a phone too.',
       'Refine offers ready-made changes (shorter, more formal, closer to your topic, complete the paragraph, a contrasting finding) or your own instruction.',
       'Step back to an earlier suggestion with ‹ › after Refine has replaced it.',
@@ -63,6 +106,14 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'A High contrast switch in Settings, which works with light, dark and system themes.',
       'Change an earlier answer in the topic conversation with Edit, while turns remain.',
       'Clearer messages: why Suggest has nothing to offer, and "the server could not be reached" instead of "Failed to fetch".',
+      'Import a chapter from a Word file.',
+      'Collections in your library, to keep papers for each chapter together.',
+      'Import your Zotero library, or one collection, with a read-only key.',
+      'Write an equation in words, or from a photo of one, and get it typeset.',
+      'Chat can search beyond your library and show papers you can add.',
+      'Hindi interface (beta), and citations in the language of your choice.',
+      'An email when a long job, such as a chapter build, finishes.',
+      'Help pages, this What’s new page, and a demonstration on the home page.',
     ],
   },
   {

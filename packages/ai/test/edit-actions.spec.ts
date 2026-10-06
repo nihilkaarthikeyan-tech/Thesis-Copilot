@@ -4,6 +4,7 @@ import {
   COMMAND,
   COMMAND_LABELS,
   EDIT_ACTIONS,
+  fitToSelection,
   isEditAction,
   mockCommandFor,
   postProcessCommand,
@@ -110,5 +111,49 @@ describe('translate and table (ADR-0081)', () => {
       '| Cost was first. | {{cite:S1#c1}} |',
       '| Credit came second. |  |',
     ]);
+  });
+});
+
+describe('a rewrite fits the edges of what was selected (2026-10-06)', () => {
+  it('drops the full stop a mid-sentence selection did not have, and keeps its spacing', () => {
+    // The demo video: the selection stopped at "norms " and the paragraph read "norms.that".
+    const selection =
+      'Mobile banking could widen access, yet barriers include socio-cultural norms ';
+    const out = postProcessCommand(
+      'Mobile banking may widen access; however, barriers include socio-cultural norms.',
+      selection,
+      [],
+    );
+    expect(out.text).toBe(
+      'Mobile banking may widen access; however, barriers include socio-cultural norms ',
+    );
+  });
+
+  it('keeps the full stop when the selection ended a sentence', () => {
+    expect(fitToSelection('Uptake remains uneven.', 'Uptake is uneven.')).toBe(
+      'Uptake remains uneven.',
+    );
+    expect(fitToSelection('Uptake remains uneven.', 'Uptake is uneven {{cite:S1#c1}}.')).toBe(
+      'Uptake remains uneven.',
+    );
+  });
+
+  it('starts in lower case where the selection began mid-sentence, but not for a name', () => {
+    expect(
+      fitToSelection('Limited digital literacy constrains use.', 'low digital skills hinder use'),
+    ).toBe('limited digital literacy constrains use');
+    expect(fitToSelection('UPI adoption lags.', 'upi use lags')).toBe('UPI adoption lags');
+    expect(fitToSelection('FinTech services lag.', 'fintech services lag')).toBe(
+      'FinTech services lag',
+    );
+  });
+
+  it('keeps leading space, leaves an ellipsis and a table alone', () => {
+    expect(fitToSelection('the potential grows.', ' the potential is large')).toBe(
+      ' the potential grows',
+    );
+    expect(fitToSelection('and so on...', 'and so on')).toBe('and so on...');
+    const table = '| A | B |\n|---|---|\n| 1 | 2 |';
+    expect(fitToSelection(table, 'some text ')).toBe(table);
   });
 });

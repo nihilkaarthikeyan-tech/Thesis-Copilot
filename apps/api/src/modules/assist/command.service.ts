@@ -133,9 +133,10 @@ export class CommandService {
       const latencyMs = Date.now() - startedAt;
       aiCallLatency.observe({ action: 'COMMAND', tier: 'strong' }, latencyMs);
 
+      // The untrimmed selection, so the rewrite keeps its edges (the space before the next word).
       const processed = postProcessCommand(
         result.value.text,
-        selection,
+        input.selection,
         passages.map((p) => p.id),
       );
       for (const key of processed.hallucinated) {

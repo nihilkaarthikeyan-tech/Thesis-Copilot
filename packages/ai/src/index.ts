@@ -162,6 +162,7 @@ export {
   diffWords,
   EDIT_ACTIONS,
   type EditAction,
+  fitToSelection,
   isEditAction,
   mockCommandFor,
   mockCommandResponse,

@@ -5467,3 +5467,18 @@ none failed, 643 s recorded into 4 min 22 s. Takes one to four found: the dev AP
 restarting mid-run (use `api-real`), a click with no time limit, the dev timing label on screen,
 and the Discover refusal fixed above. Seen in the video and not fixed: Formalise on a selection
 that ends mid-sentence put a full stop before the rest ("norms.that constrain").
+
+## An edit on part of a sentence, and the changelog (2026-10-06)
+
+Seen in the demo video: Formalise on a selection that ended mid-sentence came back as a whole
+sentence, so the paragraph read "norms.that constrain". `fitToSelection` (`@tc/ai`, inside
+`postProcessCommand`) keeps the selection's edges: its whitespace, no full stop it did not end
+with, a lower-case start where it began mid-sentence (not for "UPI" or "FinTech"); a table answer
+is left alone. `command.service.ts` passed the trimmed selection, which lost the trailing space,
+and now passes the original. Real model on the local stack: "…sociocultural norms that constrain…".
+Tests in `edit-actions.spec.ts`. The in-app changelog had one "unreleased" entry covering
+v0.1.25–v0.1.28; it now has an entry per release to v0.1.29 and lists what it never named (the
+reader, the add-on, Start writing now, Word import, Zotero, Hindi). Local stack note: after a
+Docker overload the IPv6 forward of the dev Redis port broke (`::1:6381` resets, `127.0.0.1`
+answers) and every thesis create hung on the queue; `api-real`/`worker-real` now set
+`REDIS_URL=redis://127.0.0.1:6381`.
