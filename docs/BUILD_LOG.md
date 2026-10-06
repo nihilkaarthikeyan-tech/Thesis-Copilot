@@ -5454,3 +5454,16 @@ sources already do; only a thesis with neither is refused. Tests: `search-litera
 `discover-from-title.spec.ts` (api, 202 from the title, 400 with neither). In the browser on the
 real models: a fresh "Start writing now" thesis, Discover literature, 63 candidates in 8 themes,
 an open gap marked, 107 s.
+
+## The demo video (2026-10-06)
+
+The owner asked for a product video without a screen recorder. `e2e/_measure/demo-video.spec.ts`
+drives the app as a student on the real models (title → Start writing now → automatic papers →
+cited suggestion and its evidence → Formalise with tracked changes → chat → deep research →
+library → Discover gap map and claims map → IEEE and back → examiner review → submission → the
+add-on on arXiv), with captions and a pointer drawn on the page; `demo-cut.py` cuts everything
+before the first scene and plays each marked wait at up to 12x, labelled. Take five: 17 scenes,
+none failed, 643 s recorded into 4 min 22 s. Takes one to four found: the dev API's `node --watch`
+restarting mid-run (use `api-real`), a click with no time limit, the dev timing label on screen,
+and the Discover refusal fixed above. Seen in the video and not fixed: Formalise on a selection
+that ends mid-sentence put a full stop before the rest ("norms.that constrain").
