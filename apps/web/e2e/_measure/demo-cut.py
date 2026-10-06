@@ -1,7 +1,7 @@
 """Turns demo-video.spec.ts's raw.webm + timeline.json into the finished MP4.
 
-Everything before the first scene is cut; every wait the recorder marked "fast" plays at up to
-12x, marked "sped up" on screen, and never lasts more than about four seconds. Usage:
+Everything before the first scene is cut; every wait the recorder marked "fast" plays in about five
+seconds, however long it took, marked "sped up" on screen. Usage:
 
     python demo-cut.py <DEMO_OUT> [output.mp4]
 
@@ -37,6 +37,18 @@ if duration is None:
     sys.exit('could not read the video length')
 
 start = next(m['t'] for m in marks if m['kind'] == 'scene') / 1000
+
+# A scene that failed is left out whole: from its start to the next scene's.
+scene_starts = [m['t'] / 1000 for m in marks if m['kind'] == 'scene']
+dropped = []
+for m in marks:
+    if m['kind'] != 'fail':
+        continue
+    t = m['t'] / 1000
+    begun = max((x for x in scene_starts if x <= t), default=None)
+    after = min((x for x in scene_starts if x > t), default=None)
+    if begun is not None:
+        dropped.append((begun, after if after is not None else None))
 fast = []
 open_at = None
 for m in marks:
@@ -53,9 +65,32 @@ for a, b in fast:
         continue
     if a > cursor:
         segments.append((cursor, a, 1.0))
-    segments.append((a, b, max(1.0, min(12.0, (b - a) / 4.0))))
+    segments.append((a, b, max(1.0, (b - a) / 5.0)))
     cursor = b
 segments.append((cursor, duration, 1.0))
+
+
+def cut_out(parts, gaps):
+    out = []
+    for a, b, speed in parts:
+        pieces = [(a, b)]
+        for g0, g1 in gaps:
+            g1 = duration if g1 is None else g1
+            nxt = []
+            for x, y in pieces:
+                if g1 <= x or g0 >= y:
+                    nxt.append((x, y))
+                    continue
+                if x < g0:
+                    nxt.append((x, g0))
+                if g1 < y:
+                    nxt.append((g1, y))
+            pieces = nxt
+        out.extend((x, y, speed) for x, y in pieces if y - x > 0.05)
+    return out
+
+
+segments = cut_out(segments, dropped)
 
 font = 'C\\:/Windows/Fonts/segoeuib.ttf' if os.name == 'nt' else 'DejaVuSans-Bold.ttf'
 parts = []
@@ -78,4 +113,7 @@ cmd = [
 ]
 subprocess.run(cmd, check=True)
 played = sum((b - a) / s for a, b, s in segments)
-print(f'wrote {target}: {played:.0f} s from {duration - start:.0f} s recorded, {len(fast)} waits sped up')
+print(
+    f'wrote {target}: {played:.0f} s from {duration - start:.0f} s recorded, '
+    f'{len(fast)} waits sped up, {len(dropped)} failed scenes left out'
+)
