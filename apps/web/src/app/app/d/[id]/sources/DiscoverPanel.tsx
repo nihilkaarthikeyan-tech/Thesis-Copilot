@@ -344,7 +344,8 @@ export function DiscoverPanel({
 
       {!run ? (
         <p className="mt-8 rounded-lg border border-dashed border-line p-8 text-center text-sm text-muted">
-          No search yet. Discover starts from your saved proposal.
+          No search yet. Discover starts from your proposal, or from the thesis title if there is
+          none.
         </p>
       ) : run.status === 'RUNNING' ? (
         <SearchProgress run={run} />

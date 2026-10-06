@@ -126,8 +126,15 @@ export class SearchService {
         select: { scope: true },
       });
       const scope = memory?.scope as { workingTitle?: string } | null;
-      if (!scope?.workingTitle) {
-        throw new ValidationError('Save the proposal first; the search starts from it.');
+      // Without a proposal ("Start writing now", ADR-0070) the search starts from the title.
+      if (!scope?.workingTitle?.trim()) {
+        const titled = await this.prisma.document.findUnique({
+          where: { id: documentId },
+          select: { title: true },
+        });
+        if (!titled?.title?.trim()) {
+          throw new ValidationError('Give the thesis a title first; the search starts from it.');
+        }
       }
     }
     const runId = randomUUID();

@@ -5442,3 +5442,15 @@ value (PLOS's printable file) was saved as "file.pdf" and is now the paper; a ro
 named as one; a garbled sentence in the Scholar note. Not built: Lens.org results pages (Jenni
 lists Lens; the popup says "No paper"), a Stop button while a list saves, and clicking a listed
 title to scroll the page to it.
+
+## Discover without a proposal (2026-10-06)
+
+Found while recording the demo: a thesis made with "Start writing now" (the primary button since
+ADR-0070) saves no proposal, so Discover refused with "Save the proposal first" and the gap map was
+unreachable on the path most students take. The search now starts from the thesis title when the
+scope has no working title (`search.service.ts` and `jobs/search-literature.ts`), as the automatic
+sources already do; only a thesis with neither is refused. Tests: `search-literature.spec.ts`
+(worker, the title stands in; the old refusal now needs both missing) and
+`discover-from-title.spec.ts` (api, 202 from the title, 400 with neither). In the browser on the
+real models: a fresh "Start writing now" thesis, Discover literature, 63 candidates in 8 themes,
+an open gap marked, 107 s.

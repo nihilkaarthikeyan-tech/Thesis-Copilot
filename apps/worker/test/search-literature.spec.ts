@@ -60,6 +60,8 @@ type Fakes = {
 function fakes(
   options: {
     scope?: unknown;
+    /** The thesis title, which stands in for a scope that was never saved. */
+    title?: string | null;
     library?: Array<{ doi: string | null; title: string | null }>;
     found?: Work[];
     themesFail?: boolean;
@@ -109,7 +111,7 @@ function fakes(
   const deps = {
     prisma: {
       document: {
-        findUnique: vi.fn(async () => ({ meta })),
+        findUnique: vi.fn(async () => ({ meta, title: options.title ?? null })),
         update: vi.fn(async ({ data }: { data: { meta: Record<string, unknown> } }) => {
           meta = data.meta;
           return { meta };
@@ -398,11 +400,23 @@ describe('discover', () => {
 });
 
 describe('when something goes wrong', () => {
-  it('refuses before any call when the proposal has not been saved', async () => {
+  it('refuses before any call when there is neither a proposal nor a title', async () => {
     const f = fakes({ scope: null });
-    await expect(runSearchLiterature(JOB, f.deps)).rejects.toThrow(/Save the proposal first/);
+    await expect(runSearchLiterature(JOB, f.deps)).rejects.toThrow(/Give the thesis a title first/);
     expect(f.requests).toHaveLength(0);
     expect(f.calls).toHaveLength(0);
+  });
+
+  it('searches from the thesis title when "Start writing now" saved no proposal', async () => {
+    const f = fakes({
+      scope: {},
+      title: 'Mobile banking adoption among rural women in Tamil Nadu',
+    });
+    const result = await runSearchLiterature(JOB, f.deps);
+    expect(result.candidates).toBeGreaterThan(0);
+    const queries = f.requests.find((r) => r.tier === 'strong');
+    expect(JSON.stringify(queries)).toContain('Mobile banking adoption among rural women');
+    expect(f.gapMap()).toBeTruthy();
   });
 
   it('records the run FAILED with the reason, rather than leaving it RUNNING forever', async () => {

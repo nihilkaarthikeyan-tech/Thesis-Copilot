@@ -284,11 +284,17 @@ async function discover(
     where: { documentId: job.documentId },
     select: { scope: true, gapMap: true },
   });
-  const scope = readScope(memory?.scope);
+  // "Start writing now" makes no proposal (ADR-0070); the thesis title is then the scope, which is
+  // what the automatic sources already search from.
+  let scope = readScope(memory?.scope);
   if (!scope) {
-    throw new Error(
-      'Save the proposal first: the search needs a working title and problem statement.',
-    );
+    const document = await deps.prisma.document.findUnique({
+      where: { id: job.documentId },
+      select: { title: true },
+    });
+    const title = document?.title?.trim();
+    if (!title) throw new Error('Give the thesis a title first: the search starts from it.');
+    scope = { workingTitle: title, problemStatement: '', objectives: [] };
   }
   const library = await libraryKeys(deps.prisma, job.documentId);
 
