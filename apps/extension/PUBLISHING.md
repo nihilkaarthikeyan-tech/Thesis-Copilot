@@ -23,8 +23,8 @@ pnpm i
 pnpm --filter @tc/extension build
 ```
 
-The last line says `Wrote thesis-copilot-chrome-0.2.0.zip`. The file is
-`apps/extension/thesis-copilot-chrome-0.2.0.zip`; it holds the contents of `dist/` (the manifest at
+The last line says `Wrote thesis-copilot-chrome-0.2.1.zip`. The file is
+`apps/extension/thesis-copilot-chrome-0.2.1.zip`; it holds the contents of `dist/` (the manifest at
 its top level), which is what the store wants.
 
 Try it once before uploading: Chrome → `chrome://extensions` → switch on **Developer mode** →
@@ -42,8 +42,8 @@ article page and click the add-on.
 
 ## 3. Upload
 
-1. **Items** → **New item** → choose `thesis-copilot-chrome-0.2.0.zip`.
-2. The dashboard reads the name, version (0.2.0), description and icon from the zip.
+1. **Items** → **New item** → choose `thesis-copilot-chrome-0.2.1.zip`.
+2. The dashboard reads the name, version (0.2.1), description and icon from the zip.
 
 ## 4. Fill the tabs
 
@@ -107,7 +107,7 @@ Fix what the email names, bump the version (below) and submit again.
 ## 7. Publishing an update later
 
 1. Change the code. Add a line to `apps/extension/CHANGELOG.md`.
-2. Raise `"version"` in `apps/extension/package.json` (e.g. 0.2.0 → 0.2.1). The store refuses a zip
+2. Raise `"version"` in `apps/extension/package.json` (e.g. 0.2.1 → 0.2.2). The store refuses a zip
    whose version is not higher than the published one.
 3. `pnpm --filter @tc/extension build` → `apps/extension/thesis-copilot-chrome-<version>.zip`.
 4. If the popup looks different, `node apps/extension/scripts/store-assets.mjs` redraws the

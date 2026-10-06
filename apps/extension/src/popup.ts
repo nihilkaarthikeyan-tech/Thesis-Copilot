@@ -519,7 +519,7 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
     nodes.push(
       el('p', {
         className: 'small muted',
-        text: 'Google Scholar shows few DOIs, so most of these are matched by title. Any that cannot be matched surely are kept for you to fix in the library.',
+        text: 'Google Scholar shows few DOIs, so most of these are matched by title. Any that cannot be matched are still saved, for you to fix in the library.',
       }),
     );
   }
@@ -618,7 +618,9 @@ function draw(): void {
           testId: 'message',
           text: v.restricted
             ? 'Add-ons cannot read Chrome’s own pages or the Web Store. Open a paper’s page and click again.'
-            : 'Open a paper’s own page — the one with its abstract — or a page of search results, and click again.',
+            : ROBOT_CHECK.test(tabTitle)
+              ? 'The site is checking that you are not a robot. Finish the check on the page, wait for the paper to appear, and click again.'
+              : 'Open a paper’s own page — the one with its abstract — or a page of search results, and click again.',
         }),
         el(
           'ul',
@@ -740,6 +742,11 @@ function pdfTarget(paper: Paper | null, url: string, title: string): Target {
   };
 }
 
+/** The tab's title, for telling a robot check apart from a page with no paper. */
+let tabTitle = '';
+const ROBOT_CHECK =
+  /captcha|client challenge|checking your browser|just a moment|verify you are human|are you a robot|access denied|unusual traffic/i;
+
 async function readTarget(): Promise<{ target: Target | null; restricted: boolean }> {
   // A right-clicked link waits in session storage for the popup it opened.
   const stored = await chrome.storage.session.get(PENDING_KEY);
@@ -761,6 +768,7 @@ async function readTarget(): Promise<{ target: Target | null; restricted: boolea
 
   const tab = await targetTab();
   const url = tab?.url ?? '';
+  tabTitle = tab?.title ?? '';
   if (!tab?.id || !url) return { target: null, restricted: true };
   if (RESTRICTED.test(url) || /^https:\/\/chrome(webstore)?\.google\.com\/webstore/i.test(url)) {
     return { target: null, restricted: true };

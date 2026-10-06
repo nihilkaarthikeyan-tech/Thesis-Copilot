@@ -177,6 +177,16 @@ describe('DOIs as pages write them', () => {
     );
     expect(doiFromUrl('https://doi.org/10.1038/nature14539')).toBe('10.1038/nature14539');
     expect(doiFromUrl('https://example.com/blog/10.1038-ish')).toBeNull();
+    // A PDF whose address carries the DOI as a query value (PLOS's printable file).
+    expect(
+      doiFromUrl(
+        'https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0230527&type=printable',
+      ),
+    ).toBe('10.1371/journal.pone.0230527');
+    expect(doiFromUrl('https://example.com/view?doi=10.1016%2Fj.respol.2019.103834')).toBe(
+      '10.1016/j.respol.2019.103834',
+    );
+    expect(doiFromUrl('https://example.com/view?page=10')).toBeNull();
   });
 
   it('adds a paper found only by its address', () => {

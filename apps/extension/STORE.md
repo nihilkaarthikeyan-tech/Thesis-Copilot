@@ -1,4 +1,4 @@
-# Chrome Web Store listing — drafted for the owner to submit (version 0.2.0)
+# Chrome Web Store listing — drafted for the owner to submit (version 0.2.1)
 
 The agent cannot create the developer account, pay its registration fee or submit the listing;
 everything below is ready to paste. `PUBLISHING.md` walks through the dashboard, form by form.
@@ -10,7 +10,7 @@ Review the wording — it is your product's public description.
 pnpm --filter @tc/extension build
 ```
 
-This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.2.0.zip`** — the
+This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.2.1.zip`** — the
 contents of `dist/` and nothing else. Upload that zip. (It is not committed; build it fresh.)
 
 ## Store listing tab

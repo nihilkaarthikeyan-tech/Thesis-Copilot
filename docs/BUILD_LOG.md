@@ -5424,3 +5424,21 @@ had not observed live, matched the fixture. Screenshots of every popup in the se
 the record is the spec's `record.json`. Still unproven: `activeTab` alone for a publisher's PDF, and
 the right-click item — both need a real Chrome with the add-on from the store.
 
+
+## The add-on against Jenni's extension list, and 0.2.1 (2026-10-06)
+
+`e2e/_measure/extension-parity.spec.ts` opens the popup on eighteen live pages chosen from
+Jenni's own documentation of its extension (jenni-docs-digest §4.4): the publishers it names, pages
+with a DOI in their metadata, direct PDFs, three results lists, and two pages it says it cannot
+read. Saved and read: Nature, arXiv (abstract, PDF, listing of 50 with Select all), bioRxiv, PLOS,
+MDPI, Springer, Europe PMC, a PubMed search, Google Scholar (by title; one of four left for the
+student to fix, as the popup says). 65 rows in the library, nothing duplicated; a new collection
+made inline held every save. Blocked by the site's robot check under automation, not by the
+add-on: a PubMed article (reCAPTCHA), JSTOR ("Client Challenge"), ScienceDirect (403). YouTube
+and Google search: "No paper on this page", as Jenni's. One bioRxiv failure on the first run was
+the dev API restarting under `node --watch` mid-save; on `api-real` (no watch, real models, added to
+`.claude/launch.json`) it saved. Fixed in 0.2.1: a PDF whose address carries the DOI as a query
+value (PLOS's printable file) was saved as "file.pdf" and is now the paper; a robot-check page is
+named as one; a garbled sentence in the Scholar note. Not built: Lens.org results pages (Jenni
+lists Lens; the popup says "No paper"), a Stop button while a list saves, and clicking a listed
+title to scroll the page to it.

@@ -348,7 +348,7 @@ function fakeChrome() {
   window.chrome = {
     runtime: {
       id: 'fake',
-      getManifest: () => ({ version: '0.2.0' }),
+      getManifest: () => ({ version: '0.2.1' }),
       sendMessage: (request) => answer(request),
       onMessage: { addListener: (listener) => listeners.push(listener) },
     },

@@ -1,6 +1,6 @@
 {
   "name": "@tc/extension",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Thesis Copilot for Chrome: save papers to a thesis library (ADR-0031, ADR-0069).",

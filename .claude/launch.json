@@ -59,6 +59,38 @@
         "SMTP_HOST": "",
         "RESEND_API_KEY": ""
       }
+    },
+    {
+      "name": "api-real",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@tc/api",
+        "exec",
+        "dotenv",
+        "-e",
+        "../../.env",
+        "--",
+        "node",
+        "dist/main.js"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "worker-real",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@tc/worker",
+        "exec",
+        "dotenv",
+        "-e",
+        "../../.env",
+        "--",
+        "node",
+        "dist/main.js"
+      ],
+      "port": 3099
     }
   ]
 }

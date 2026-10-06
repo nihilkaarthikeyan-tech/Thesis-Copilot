@@ -1,5 +1,16 @@
 # Changelog — Thesis Copilot for Chrome
 
+## 0.2.1 — 2026-10-06
+
+Found by using the add-on on eighteen live sites against Jenni's own list of what its extension
+does (`apps/web/e2e/_measure/extension-parity.spec.ts`).
+
+- **A PDF whose address carries its DOI** (`…/article/file?id=10.1371/…`, `?doi=10.…`) is now
+  saved as that paper, with its details, not as "file.pdf".
+- **A robot check** (reCAPTCHA, "Client Challenge", "Just a moment…") is named as one: finish the
+  check on the page, then click again — instead of "No paper on this page".
+- The Google Scholar note no longer reads "matched surely".
+
 ## 0.2.0 — 2026-10-05 (ADR-0069)
 
 - **Open in Thesis Copilot** after saving: the paper opens in the reader. "Already in the library"

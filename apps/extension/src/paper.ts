@@ -133,7 +133,7 @@ export function arxivIdFromPageUrl(url: string): string | null {
   return match?.[1] ? cleanArxivId(match[1]) : null;
 }
 
-/** A DOI in the address itself: doi.org links, and publishers' `/doi/…` article paths. */
+/** A DOI in the address itself: doi.org links, publishers' `/doi/…` paths, and `?id=10.…` values. */
 export function doiFromUrl(url: string): string | null {
   let parsed: URL;
   try {
@@ -150,7 +150,12 @@ export function doiFromUrl(url: string): string | null {
   }
   const match =
     /\/doi\/(?:(?:abs|full|pdf|epdf|pdfdirect|reader|book)\/)?(10\.\d{4,9}\/[^?#\s]+)/i.exec(path);
-  return match?.[1] ? cleanDoi(match[1]) : null;
+  if (match?.[1]) return cleanDoi(match[1]);
+  // A DOI as a query value: PLOS's `article/file?id=10.1371/…&type=printable`, `?doi=10.…`.
+  for (const value of parsed.searchParams.values()) {
+    if (/^10\.\d{4,9}\/\S+$/.test(value.trim())) return cleanDoi(value.trim());
+  }
+  return null;
 }
 
 /** Tags that name the article's own DOI, strongest first. */
