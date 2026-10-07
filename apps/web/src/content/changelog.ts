@@ -24,7 +24,7 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    version: null,
+    version: 'v0.1.31',
     date: '2026-10-07',
     title: 'A setup like Jenni’s, and citations from more papers',
     changes: [
