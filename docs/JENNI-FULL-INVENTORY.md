@@ -120,7 +120,40 @@ Each row: what Jenni has · where · how it behaves · ours today · gap.
 | Attach file, **image**, saved prompts, Send | Attach (files and pictures), / prompts | Same |
 | Answer: Copy, **Add to document**, thumbs, **"17 sources · APA" expander** with References / Sources tabs (formatted references are paid) | Copy, Add to document, thumbs, cited passages | Sources expander |
 
-## 12. What to build next, in order (owner to confirm)
+## 12. Flows from the new-document page (2026-10-07, clicked through end to end)
+
+The page a new document opens on: the document title "Untitled", a **document prompt** box (a
+chevron, a Weak→Great meter, the hint "This prompt is used to ensure autocomplete suggestions are
+relevant to your topic", placeholder examples that rotate), **Import from Word (.docx)**, **Next**,
+**Skip and start writing**, and two Explore cards, **Chat with AI** and **Upload Sources**. Every
+path from it, in test documents only:
+
+| # | Path | What happens, step by step | Time | UX notes |
+|---|---|---|---|---|
+| A | **Prompt → Next** | Preferences (style, web/library search, select sources, year, impact factor, cited by, preprints) → structure (IMRaD / Smart / None) → Start writing → title written from the prompt, "Analyzing your topic…" skeleton, headings with sub-headings, section prompts filled on the left, first cited suggestion | Headings ~10 s, first suggestion ~18 s | Section 9. Every step folds into a summary line you can reopen |
+| B | **Import from Word** | Choose a .docx → it shows as a chip with × → Next is enabled **without a prompt** → preferences → **Start Writing** (the structure step is skipped: the file is the structure) → the Word title becomes the document title, each H1 a section with its own section prompt | ~5 s for a short file | The right panel warns at once: "No citations found — your document must include a references section (e.g. 'References' or 'Bibliography') for citations to be matched." It tells the student why, not just that |
+| C | **Skip and start writing** | An empty editor: "Untitled" placeholder title, cursor in the body. Left: Document prompt (folded, empty: "Describe your paper's topic and purpose") and Section prompts ("Your document has no sections — Add headings to access section prompts"). Right: the Review panel (four cards). Autocomplete switch on | Instant | No prompt, no library, nothing set up — and it still writes with citations (web search is on by default) |
+| C1 | … type half a sentence and stop | "Urban heat islands raise night-time temperatures in Indian cities because " → a grey continuation **finishing that sentence** and the next, with a citation (Kumar et al., 2017), the "Jenni AI" cursor tag, and Accept → / Refine suggestion / thumbs | **Under 4 s** after the last key | **It completes mid-sentence**, not only after a full stop. Escape removes it; it does not ask again until you type |
+| C2 | … open Autocomplete ▾ | Autocomplete settings: Web search, Library search, Configure context (Select sources), Publish year (All / Last 5 years / Custom), Impact factor (All / 0.25+ / 3+ / 10+), Cited by (All / 5+ / 20+ / 50+), Include preprints | Instant | The start step's preferences, changeable at any time in the document |
+| C3 | … type "## Literature Review" | It becomes an H2 and **appears in Section prompts at once**, with "Guide AI for this section, e.g. key arguments, tone, focus areas…", an info icon, expand, **Configure context** and **Generate** | Instant | A fault: a suggestion fired after the heading text and continued the *previous* paragraph's sentence under the heading |
+| D | **Chat with AI** card | Opens the chat panel. All Chats: a searchable history of threads. "/" in the box: "No saved prompts" → Create and manage prompts → Create Prompt (Command + Prompt, Cancel / Submit) | Instant | Chat is offered before a word is written |
+| E | **Upload Sources** card | Upload to Library: Connect **Zotero** account, Connect **Mendeley** account, Import .bib/.ris (paste, or select a file), **Paste ID** (DOI, PMID, arXiv, ISBN, with examples) → "Metadata found" (title, authors, journal) → Reset / Import to Library | Lookup ~2 s | Every way in, in one dialog, from the first page |
+| F | "…" menu (blank document) | Only Version history and Document settings (Comments, Export and Copy appear once there is text) | — | The menu grows with the document |
+| G | See Pricing | Annual / Monthly. Plus ₹570.83/mo annual (₹1,141.67 monthly): 5,000 autocompletes, 500 edits, 500 chats, 10 reviews, 10 workflows, unlimited PDFs (100 MB / 500 pages), library export .bib/.ris/.csv, .docx/.tex, live chat, 2.6k styles. Pro ₹1,379.58 (₹2,759.17): unlimited, 1,000 pages, priority support. "50% India discount" | — | Prices in rupees, the discount named |
+| H | Connection | A "Reconnected… synced" toast after a network blip | — | Tells you nothing was lost |
+
+### What the flows show against ours
+
+| Jenni | Ours (v0.1.31) | Gap |
+|---|---|---|
+| Autocomplete finishes a **half-written sentence** within ~4 s of a pause | Automatic suggestions fire only at a sentence boundary (after `.`, `!`, `?`) or in an empty paragraph (`atSentenceBoundary`, `packages/ui/src/editor/ghost-text.ts`); mid-sentence needs the button or shortcut | **The biggest difference in how writing feels** |
+| Skip everything and write; cited suggestions from the web with no prompt | A title is required (`/app/new`); then the setup steps | Ours asks for more before the first word |
+| Import from Word skips the structure step; warns when there is no references section | Create and import from Word opens the chapter with the import | Check our import says why citations were not matched |
+| A heading typed in the page becomes a section prompt at once (notes, context, Generate) | The chapter rail lists headings; per-section pins (ADR-0085); Draft this section | Build-list item 5 |
+| Chat and Upload Sources offered on the first page | Library and chat are inside the thesis | Offer both on the start page |
+| Autocomplete settings in the toolbar | Only at the start | Build-list item 4 |
+
+## 13. What to build next, in order (owner to confirm)
 
 1. **The block handle (+, drag, AI Edit) on every paragraph** with its menu — Turn into, Cite, Highlight, AI Chat, AI Edit, Review, Duplicate, Delete. The single most visible difference in the writing area.
 2. **AI Edit as Jenni has it**: a prompt box on any selection or block (Ctrl+J) with web/library switches, the grouped presets (fluency trio, paraphrase/simplify tones, strengthen argument, tense, list/prose/table conversions, technical precision, confidence up/down), and the result with **"What changed and why"** and a follow-up box.
@@ -129,5 +162,10 @@ Each row: what Jenni has · where · how it behaves · ours today · gap.
 5. **Section prompts panel** on the left: every section's notes visible, editable, expandable, Configure context, Generate.
 6. **Library**: edit a paper's details; year/open-access/type filters; Paste ID; sort Find papers by recent or most cited.
 7. **Small ones**: Table of Contents block, highlight colours, text colour, font style, archive documents, thread history in chat, a document title written from the prompt, sub-headings in Smart headings.
+8. **From the flows (section 12)**: autocomplete that finishes a half-written sentence after a
+   pause, not only after a full stop — ranked first of everything here, since it is what a student
+   feels on every line; let a student start writing without a title (it can be written later from
+   the text); Chat and Upload Sources on the start page; say why citations were not matched after
+   a Word import.
 
 Where ours is already ahead and should stay so: references free (Jenni charges for them), the proposal path, chapter build, viva practice, guide sharing and live progress, Indian context (Hindi, the indexing filter; Jenni translates into no Indian language), examiner review, gap and claims maps, deep research.
