@@ -33,9 +33,17 @@ export type GhostRequestPayload = {
   before: string;
   after: string;
   guided?: string;
+  /**
+   * Jenni build plan R3: `none` — no citation may survive (stripped in code, not only asked);
+   * `library` — cite only papers the student added themselves.
+   */
+  citeMode?: CiteMode;
   /** `section`: the nearest heading above the cursor, so Assist reads that section's note. */
   cursorContext: { blockType: string; section?: string };
 };
+
+/** Jenni build plan R3: where a refined suggestion may cite from. */
+export type CiteMode = 'none' | 'library';
 
 export type GhostEvent =
   | { type: 'start'; suggestionId: string }
@@ -203,7 +211,7 @@ const IDLE: Omit<GhostState, 'decorations'> = {
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     ghostText: {
-      requestSuggestion: (instruction?: string) => ReturnType;
+      requestSuggestion: (instruction?: string, citeMode?: CiteMode) => ReturnType;
       acceptSuggestion: () => ReturnType;
       acceptSuggestionWord: () => ReturnType;
       dismissSuggestion: () => ReturnType;
@@ -850,7 +858,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
 
     return {
       requestSuggestion:
-        (instruction) =>
+        (instruction, citeMode) =>
         ({ state, tr, dispatch, editor }) => {
           const ghost = ghostTextKey.getState(state);
           if (ghost?.status !== 'idle') return false;
@@ -884,6 +892,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
               before,
               after,
               ...(instruction ? { guided: instruction } : {}),
+              ...(citeMode ? { citeMode } : {}),
               cursorContext: {
                 blockType: state.selection.$from.parent.type.name,
                 ...sectionAt(state.doc, state.selection.from),

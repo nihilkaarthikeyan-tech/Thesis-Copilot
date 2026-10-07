@@ -61,6 +61,7 @@ export {
 export { type ThesisEditorOptions, thesisExtensions } from './editor/extensions.js';
 export { FOOTNOTE_MAX, Footnote } from './editor/footnote.js';
 export {
+  type CiteMode,
   type CloseTo,
   type GhostEvent,
   type GhostRequestPayload,

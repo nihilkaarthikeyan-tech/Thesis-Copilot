@@ -17,7 +17,7 @@ import {
   REWORD_INSTRUCTION,
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
-import { closeToPassages } from '@tc/retrieval';
+import { closeToPassages, isOffTopic } from '@tc/retrieval';
 import { findOutlineNode, readOutline, scopeWithSection, sectionUnderHeading } from '@tc/types';
 import { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
@@ -43,6 +43,12 @@ export type SuggestInput = {
   before: string;
   after: string;
   guided?: string;
+  /**
+   * Jenni build plan R3. `none`: every citation is stripped in code, whatever the model writes.
+   * `library`: only the papers the student added themselves; when none of them is about the
+   * sentence, the student is told so and the unit goes back (Jenni says nothing).
+   */
+  citeMode?: 'none' | 'library';
   cursorContext?: { blockType?: string; section?: string };
 };
 
@@ -189,6 +195,9 @@ export class AssistService {
         // ADR-0085: within the pins of the section under the cursor, when it has any.
         this.context.retrieve(chapter, input.before, 'ASSIST', {
           section: input.cursorContext?.section ?? null,
+          ...(input.citeMode === 'library'
+            ? { sourceIds: await this.context.ownSourceIds(chapter.documentId) }
+            : {}),
         }),
         // §2.2's citation toggle, per user and independent of automatic-suggest (ADR-0006).
         this.prisma.user.findUnique({ where: { id: user.id }, select: { settings: true } }),
@@ -197,6 +206,24 @@ export class AssistService {
           select: { outline: true },
         }),
       ]);
+      // R3: "Cite from my library" with nothing of the student's own on this sentence. Said in
+      // words before any provider call, and the unit goes back.
+      if (input.citeMode === 'library' && isOffTopic(retrieved.passages)) {
+        await this.usage.refund(user.id, 'ASSIST');
+        await this.prisma.suggestionEvent.update({
+          where: { id: event.id },
+          data: { outcome: 'CANCELLED', latencyMs: Date.now() - startedAt },
+        });
+        yield {
+          event: 'error',
+          data: {
+            code: 'NO_LIBRARY_MATCH',
+            message:
+              'None of the papers you added yourself is about this sentence, so the suggestion you had is back, unchanged. Add a paper on it to your library to cite your own.',
+          },
+        };
+        return;
+      }
       // Fix list A21 (2026-10-04): under a sub-section heading, that section's own note is read
       // after the chapter's, so a suggestion in "2.3 Credit" is about credit.
       const scopeNote = scopeWithSection(
@@ -209,20 +236,22 @@ export class AssistService {
       // ADR-0037: nothing in the library is on this topic, so ask the worker to find papers on
       // it. Started now and awaited only at the end, so the suggestion is not held up by it.
       // ADR-0087: "nothing" became "fewer than three papers", and each section searches once.
-      const findingSources = enoughPapersOnTopic(retrieved.passages)
-        ? Promise.resolve(false)
-        : this.autoSources
-            .start({
-              documentId: chapter.documentId,
-              userId: user.id,
-              chapterId: chapter.id,
-              query: sourcesQuery(chapter.title, scopeNote, input.before),
-              section: input.cursorContext?.section ?? null,
-            })
-            .catch((error: unknown) => {
-              this.logger.warn({ err: error }, 'could not start a source search');
-              return false;
-            });
+      // R3: a student asking for their own papers has not asked for new ones.
+      const findingSources =
+        input.citeMode === 'library' || enoughPapersOnTopic(retrieved.passages)
+          ? Promise.resolve(false)
+          : this.autoSources
+              .start({
+                documentId: chapter.documentId,
+                userId: user.id,
+                chapterId: chapter.id,
+                query: sourcesQuery(chapter.title, scopeNote, input.before),
+                section: input.cursorContext?.section ?? null,
+              })
+              .catch((error: unknown) => {
+                this.logger.warn({ err: error }, 'could not start a source search');
+                return false;
+              });
       // ADR-0070: an empty library that is still filling. The model is still asked — it may
       // write a sentence that needs no source — and the editor is told the papers are on their
       // way, so an empty answer reads as "wait" and the editor asks again when one is ready.
@@ -238,7 +267,8 @@ export class AssistService {
           : Promise.resolve(false);
       // PRD 2.2: auto-cite is on unless the student turned it off in settings.
       const userSettings = (settings?.settings ?? {}) as Record<string, unknown>;
-      const autoCite = userSettings.autoCite !== false;
+      // R3: "Re-write without citations" turns citing off for this one suggestion.
+      const autoCite = input.citeMode !== 'none' && userSettings.autoCite !== false;
       const request = buildAssistRequest({
         memoryBlock: memory.text,
         chapter: { title: chapter.title, scopeNote },

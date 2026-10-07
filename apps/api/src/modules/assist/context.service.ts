@@ -107,4 +107,17 @@ export class ContextService {
     // No paper found yet: an id that matches nothing, so nothing of the student's own is cited.
     return { sourceIds: found.length > 0 ? found.map((s) => s.id) : [NO_SOURCE] };
   }
+
+  /**
+   * Jenni build plan R3, "Cite from my library": the papers the student added themselves (not the
+   * ones found for them, ADR-0037). None: an id that matches nothing, so the search finds nothing
+   * and the student is told.
+   */
+  async ownSourceIds(documentId: string): Promise<string[]> {
+    const own = await this.prisma.source.findMany({
+      where: { documentId, autoAddedAt: null },
+      select: { id: true },
+    });
+    return own.length > 0 ? own.map((s) => s.id) : [NO_SOURCE];
+  }
 }

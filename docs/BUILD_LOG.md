@@ -5510,3 +5510,11 @@ started 0.12 s after Accept (that provider call then took 9.8 s to its first tok
 1.6–2.9 s for the others — provider variance). Found on the way: side-by-side citations render as
 "(Gadekar et al., 2026)(Raja et al., 2026)" → plan item R40.
 
+R3 (same day, ADR-0089): the Refine menu has Jenni's three groups and five new presets. "Cite from
+my library" searches only papers the student added; on a thesis with only found papers it said so,
+spent nothing (5/50 before and after) and — after a first try showed the bar vanishing with the
+old suggestion — now puts the earlier suggestion back. "Re-write without citations" returned the
+same point uncited (4.1 s); "Validate supporting evidence" reworded the claim to its passage and
+kept the citation (3.1 s). Round 1's "refine presets done 2026-10-04" was not true in the code;
+recorded in the plan.
+

@@ -395,6 +395,14 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'suggest.preset.onTopic': 'मेरे विषय के और करीब रहें',
   'suggest.preset.complete': 'यह अनुच्छेद पूरा करें',
   'suggest.preset.contrast': 'एक विपरीत निष्कर्ष',
+  'suggest.preset.novelty': 'नयापन बढ़ाएँ',
+  'suggest.preset.simplify': 'भाषा सरल करें',
+  'suggest.preset.validate': 'समर्थक साक्ष्य जाँचें',
+  'suggest.preset.library': 'मेरी लाइब्रेरी से उद्धृत करें',
+  'suggest.preset.noCite': 'बिना उद्धरण के फिर से लिखें',
+  'suggest.group.write': 'लिखें',
+  'suggest.group.refine': 'सुधारें',
+  'suggest.group.citations': 'उद्धरण',
 
   // ---- The selection toolbar ------------------------------------------------------------------
   'command.expand': 'विस्तार करें',

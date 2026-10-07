@@ -401,6 +401,14 @@ export const en = {
   'suggest.preset.onTopic': 'Stay closer to my topic',
   'suggest.preset.complete': 'Complete this paragraph',
   'suggest.preset.contrast': 'A contrasting finding',
+  'suggest.preset.novelty': 'Increase novelty',
+  'suggest.preset.simplify': 'Simplify language',
+  'suggest.preset.validate': 'Validate supporting evidence',
+  'suggest.preset.library': 'Cite from my library',
+  'suggest.preset.noCite': 'Re-write without citations',
+  'suggest.group.write': 'Write',
+  'suggest.group.refine': 'Refine',
+  'suggest.group.citations': 'Citations',
 
   // ---- The selection toolbar ------------------------------------------------------------------
   'command.expand': 'Expand',

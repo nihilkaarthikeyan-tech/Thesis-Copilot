@@ -14,33 +14,67 @@
 
 import {
   type CitationPassage,
+  type CiteMode,
   getGhostState,
   type SuggestionCitation,
   sourceMetricBadges,
 } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MessageKey } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { api } from '@/lib/api';
 
-/** The presets: each is an instruction the guided suggestion already accepts. */
-export const REFINE_PRESETS: Array<{ label: string; instruction: string }> = [
-  { label: 'Shorter', instruction: 'Make it shorter: the same point in fewer words.' },
-  { label: 'More formal', instruction: 'Use a more formal academic register.' },
-  {
-    label: 'Stay closer to my topic',
-    instruction: 'Stay strictly on the topic of this paragraph and this chapter.',
-  },
+/**
+ * The presets: each is an instruction the guided suggestion already accepts. Jenni build plan R3
+ * added Jenni's novelty, simplify and citation presets; `citeMode` makes "without citations" and
+ * "from my library" hold in code, not only in the instruction.
+ */
+export const REFINE_PRESETS: Array<{ label: string; instruction: string; citeMode?: CiteMode }> = [
+  // Write
   {
     label: 'Complete this paragraph',
     instruction: 'Finish the current paragraph rather than starting a new point.',
   },
   {
+    label: 'Stay closer to my topic',
+    instruction: 'Stay strictly on the topic of this paragraph and this chapter.',
+  },
+  {
     label: 'A contrasting finding',
     instruction:
       'Give a finding from the sources that contrasts with or qualifies the previous sentence, if one exists.',
+  },
+  // Refine
+  { label: 'Shorter', instruction: 'Make it shorter: the same point in fewer words.' },
+  { label: 'More formal', instruction: 'Use a more formal academic register.' },
+  {
+    label: 'Increase novelty',
+    instruction:
+      'Make the point less obvious: bring out a specific finding, a less-discussed angle or a limitation that the passages report, instead of a general statement.',
+  },
+  {
+    label: 'Simplify language',
+    instruction:
+      'Use plainer words and shorter sentences. Keep the meaning, the claims and the citations exactly.',
+  },
+  {
+    label: 'Validate supporting evidence',
+    instruction:
+      'Check each claim against the passage it cites. Keep only what the cited passage actually says; reword any claim that goes beyond it so it matches the passage, and cite the passage that supports it. Leave out a claim no passage supports.',
+  },
+  {
+    label: 'Cite from my library',
+    instruction:
+      "Support the point with the passages given, which come from the student's own library, and cite them.",
+    citeMode: 'library',
+  },
+  {
+    label: 'Re-write without citations',
+    instruction:
+      'Write the same point without citing any source and without naming any author or study.',
+    citeMode: 'none',
   },
 ];
 
@@ -62,12 +96,24 @@ const NO_HISTORY: History = { anchor: -1, entries: [], index: -1 };
  * What each preset's button says on screen (ADR-0061). The preset's `instruction` is what the
  * model reads and stays in English whatever the interface language is.
  */
+/** R3: the menu's group headings, keyed by the index of the first preset in each (Jenni's order). */
+const REFINE_GROUP_AT: Record<number, MessageKey> = {
+  0: 'suggest.group.write',
+  3: 'suggest.group.refine',
+  7: 'suggest.group.citations',
+};
+
 const REFINE_LABEL: Record<string, MessageKey> = {
   Shorter: 'suggest.preset.shorter',
   'More formal': 'suggest.preset.formal',
   'Stay closer to my topic': 'suggest.preset.onTopic',
   'Complete this paragraph': 'suggest.preset.complete',
   'A contrasting finding': 'suggest.preset.contrast',
+  'Increase novelty': 'suggest.preset.novelty',
+  'Simplify language': 'suggest.preset.simplify',
+  'Validate supporting evidence': 'suggest.preset.validate',
+  'Cite from my library': 'suggest.preset.library',
+  'Re-write without citations': 'suggest.preset.noCite',
 };
 
 export function SuggestionBar({
@@ -86,6 +132,14 @@ export function SuggestionBar({
   const [menu, setMenu] = useState(false);
   const [citations, setCitations] = useState<SuggestionCitation[]>([]);
   const [history, setHistory] = useState<History>(NO_HISTORY);
+  /**
+   * R3: the suggestion a refinement replaced. When the refinement brings nothing back — refused
+   * ("Cite from my library" with nothing of the student's own on the sentence), empty or failed —
+   * it is shown again, so asking to refine never costs the student the suggestion they had.
+   */
+  const fallbackRef = useRef<HistoryEntry | null>(null);
+  const historyRef = useRef<History>(NO_HISTORY);
+  historyRef.current = history;
   /**
    * Thumbs on a suggestion (2026-10-04, from the Jenni study), kept apart from whether it was
    * kept: a suggestion can be dismissed and still have been useful to read. No model call.
@@ -109,7 +163,17 @@ export function SuggestionBar({
       setStatus(ghost?.status ?? 'idle');
       setCitations(ghost?.citations ?? []);
       setCurrentId(ghost?.suggestionId ?? null);
+      if ((ghost?.status ?? 'idle') === 'idle' && fallbackRef.current) {
+        const back = fallbackRef.current;
+        fallbackRef.current = null;
+        // Not inside this transaction's own dispatch.
+        setTimeout(() => {
+          if (!editor.isDestroyed) editor.commands.restoreSuggestion(back);
+        }, 0);
+        return;
+      }
       if (ghost?.status !== 'shown' || !ghost.suggestionId) return;
+      fallbackRef.current = null;
       const { suggestionId, anchorPos, text } = ghost;
       setHistory((h) => {
         const at = h.entries.findIndex((e) => e.suggestionId === suggestionId);
@@ -153,16 +217,20 @@ export function SuggestionBar({
     );
   }
 
-  const ask = (instruction: string) => {
+  const ask = (instruction: string, citeMode?: CiteMode) => {
     setMenu(false);
     // The model never sees a dismissed suggestion, so "shorter" alone meant nothing to it and it
     // wrote nothing (2026-10-04). The preset carries the text it revises, citation markers out.
     const current = (getGhostState(editor)?.text ?? '').replace(CITE_MARKER, '').trim();
+    const h = historyRef.current;
     editor.commands.dismissSuggestion();
+    // Set after the dismissal, so only the refinement's own ending brings it back.
+    fallbackRef.current = h.entries[h.index] ?? null;
     editor.commands.requestSuggestion(
       current
         ? `${instruction}\n\nRevise this suggestion: "${current.slice(0, 900)}"`
         : instruction,
+      citeMode,
     );
   };
 
@@ -399,20 +467,28 @@ export function SuggestionBar({
             role="menu"
             className="absolute bottom-full left-0 mb-2 w-64 rounded-md border border-line bg-surface p-2 shadow-lg"
           >
-            {REFINE_PRESETS.map((preset) => (
+            {REFINE_PRESETS.map((preset, i) => [
+              REFINE_GROUP_AT[i] ? (
+                <p
+                  key={`group-${REFINE_GROUP_AT[i]}`}
+                  className="px-2 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide text-muted uppercase"
+                >
+                  {t(REFINE_GROUP_AT[i] as MessageKey)}
+                </p>
+              ) : null,
               <button
                 key={preset.label}
                 type="button"
                 role="menuitem"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => ask(preset.instruction)}
+                onClick={() => ask(preset.instruction, preset.citeMode)}
                 className="block w-full rounded px-2 py-1.5 text-left text-[13px] hover:bg-sunk"
               >
                 {REFINE_LABEL[preset.label]
                   ? t(REFINE_LABEL[preset.label] as MessageKey)
                   : preset.label}
-              </button>
-            ))}
+              </button>,
+            ])}
             <button
               type="button"
               role="menuitem"
