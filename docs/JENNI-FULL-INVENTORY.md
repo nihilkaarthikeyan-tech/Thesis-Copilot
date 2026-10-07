@@ -64,7 +64,7 @@ a pass before the build list is final.
 
 **Progress (2026-10-07, fresh account, section 13):** [x] done, [~] partly done. Still open: Tone of
 Voice and Proofread results (reviews used up), the gap-analysis run, the remaining Refine and AI
-Edit presets (edits 1 of 3 left), downloading an export (a download needs the owner's yes),
+Edit presets (edits 1 of 3 left), the LaTeX export and the other layout presets,
 co-editing with a second account, Find papers' Save and decade switch, keyboard shortcuts pressed,
 Documents archive/duplicate, Jenni's extension, a phone-sized window, help and videos, themes.
 
@@ -312,6 +312,37 @@ asks **"Search the web?" Skip / Always allow / Allow this time**. The answer was
   and Pro side by side, "You're in — enjoy your IN 🇮🇳 50% local discount", the limits table, a
   testimonial. It does not say which allowance ran out or when it comes back.
 
+### 13.8 Export to Word, downloaded and opened (owner downloaded it, 2026-10-07)
+
+The dialog: Word (.docx) / LaTeX (.tex); in-text citations **MS Word native citations** ("in-text
+cites and bibliography stay linked through References") or **Hyperlink citations** (for Google
+Docs); layout presets **Jenni default** (Word's own page setup and fonts), **Double-spaced
+manuscript** (12pt Times New Roman, double spaced, 1in margins), **Two-column paper** (10pt, two
+columns, narrow margins), **Thesis or report** (12pt, 1.5 spacing, title page and table of
+contents); **Advanced options** (folded); an "Approximate preview" of page one; on the free plan a
+notice "**References are a paid feature** — Bibliography with 3 citations will be missing from
+exports"; Download File.
+
+The file (Word native citations, Jenni default), 138 KB:
+
+| What | Found in the file |
+|---|---|
+| Page | A4, 1-inch margins, no line spacing set (Word's default), no title page, no page breaks |
+| Title and headings | Title style for the document title; sections as Heading 2/3 (no Heading 1) |
+| **Citations** | Real Word `CITATION` fields, each showing "(Author, year)" — and each carrying a page locator nobody chose (`\p 1`, `\p 2`, `\p 1611`); `updateFields` is on, so Word refreshes the fields when the file opens |
+| **Bibliography** | Not in the text — but **all three sources are in Word's own source list** (`customXml` `b:Sources`: title, year, journal, pages, DOI, URL). In Word, References → Bibliography would insert the list, so the paid wall is only on Jenni's side. One chapter was typed as a book section with the book's title in the journal field |
+| Contents | A real Word TOC field (levels 1–4), left where the block was inserted (mid-document), not moved to the front |
+| Comments | Peer Review's two comments exported as **Word comments by "Jenni AI"** |
+| Chart | Exported as a PNG with the caption "Figure 1." and no caption text |
+| Highlight | The green paragraph highlight was dropped |
+| Text | The missing space in ".Building" carried over; dashes intact |
+| Metadata | Author = the account name ("Rad infotech") |
+
+Ours: the submission page's `.docx`/PDF with a real contents page at the front, a title page from
+the template, the reference list always included in every plan, plain / linked / Word citations,
+ten compliance checks. Theirs has the layout presets and a live preview in one dialog; ours puts
+the template and checks on a separate page.
+
 ### 13.7 Faults seen in Jenni (things not to copy)
 
 1. A citation inserted after the full stop: ".(Shastri et al., 2017)".
@@ -321,6 +352,8 @@ asks **"Search the web?" Skip / Always allow / Allow this time**. The answer was
 5. Setup step "Review your document" ticked only by the header's Review button, not by running two
    reviews from the side panel.
 6. Adding a paper by DOI did not count as "Upload source"; only fetching its PDF did.
+7. The Word export gives every citation a page locator nobody chose, drops highlights, leaves the
+   contents field mid-document, and writes an empty figure caption.
 
 ## 14. What to build next, in order (owner to confirm)
 
