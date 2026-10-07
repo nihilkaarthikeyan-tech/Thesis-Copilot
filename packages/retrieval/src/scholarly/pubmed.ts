@@ -175,4 +175,15 @@ export class PubMedClient {
       .sort((a, b) => (rank.get(a.pmid) ?? 0) - (rank.get(b.pmid) ?? 0))
       .map(workFromPubmed);
   }
+
+  /** Jenni build plan R16 (ADR-0103): one record by its PubMed id, or null when there is none. */
+  async byPmid(pmid: string, signal?: AbortSignal): Promise<PubmedRecord | null> {
+    if (!/^\d{1,9}$/.test(pmid)) return null;
+    const xml = await this.http.getText(
+      `${PUBMED.eutils}/efetch.fcgi?db=pubmed&retmode=xml&id=${pmid}&${this.identity}`,
+      'application/xml',
+      signal,
+    );
+    return parsePubmedArticles(xml ?? '').find((record) => record.pmid === pmid) ?? null;
+  }
 }

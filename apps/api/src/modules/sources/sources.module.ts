@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { QueueService } from '../../common/queue.service.js';
+import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { ChaptersModule } from '../chapters/chapters.module.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { CollectionsController } from './collections.controller.js';
 import { CollectionsService } from './collections.service.js';
+import { PaperIdService } from './paper-id.service.js';
 import { SearchController } from './search.controller.js';
 import { SearchService } from './search.service.js';
 import { SourcesController } from './sources.controller.js';
@@ -22,6 +24,9 @@ import { ZoteroImportService } from './zotero-import.service.js';
     SearchService,
     CollectionsService,
     ZoteroImportService,
+    // R16 (ADR-0103): add a paper by its DOI, arXiv id, PubMed id or ISBN.
+    PaperIdService,
+    ScholarlyIndexes,
     StorageService,
     QueueService,
     SessionGuard,

@@ -5603,3 +5603,7 @@ Found: the author repair (ADR-0078) dropped an organisation a student listed bes
 records are now printed as typed. Proven in the browser: a year change reached both chapter
 citations; put back.
 
+R16 (ADR-0103): add by ID — DOI, arXiv, PubMed, ISBN, previewed then imported. All four checked
+on the real services; an arXiv import was read in full within 25 s. Found: PubMed's
+"Surname Initials" names need their own reading.
+

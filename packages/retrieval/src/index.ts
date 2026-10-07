@@ -223,6 +223,13 @@ export {
   type SlotStore,
   sharedGate,
 } from './scholarly/http.js';
+export {
+  type BookRecord,
+  detectPaperId,
+  OpenLibraryClient,
+  type PaperId,
+  validIsbn,
+} from './scholarly/ids.js';
 export { keywordsOf, openAlexSearchText, topicSearchTerms } from './scholarly/keywords.js';
 export { personName } from './scholarly/names.js';
 export {

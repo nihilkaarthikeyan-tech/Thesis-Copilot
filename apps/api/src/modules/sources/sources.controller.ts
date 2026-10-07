@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { PaperIdService } from './paper-id.service.js';
 import { SearchService } from './search.service.js';
 import { SourcesService, UploadRejected } from './sources.service.js';
 import { ZoteroImportService } from './zotero-import.service.js';
@@ -119,6 +120,7 @@ const detailsBody = z.object({
   url: z.string().max(2_000),
 });
 
+const importIdBody = z.object({ q: z.string().trim().min(1).max(300) });
 const fetchPdfsBody = z.object({ sourceIds: z.array(z.string().uuid()).max(200).optional() });
 
 @Controller()
@@ -128,6 +130,7 @@ export class SourcesController {
     private readonly sources: SourcesService,
     private readonly search: SearchService,
     private readonly zotero: ZoteroImportService,
+    private readonly paperIds: PaperIdService,
   ) {}
 
   /**
@@ -213,6 +216,26 @@ export class SourcesController {
   @Get('documents/:documentId/seed-papers/:spId')
   seedPaper(@CurrentUser() user: SessionUser, @Param('spId') seedPaperId: string) {
     return this.sources.seedPaper(user.id, seedPaperId);
+  }
+
+  /** R16 (ADR-0103): what a pasted DOI, arXiv id, PubMed id or ISBN names. Free. */
+  @Get('documents/:id/sources/lookup-id')
+  lookupId(@CurrentUser() _user: SessionUser, @Query('q') q: string | undefined) {
+    if (!q?.trim() || q.length > 300)
+      throw new ValidationError('Paste a DOI, arXiv id, PubMed id or ISBN.');
+    return this.paperIds.lookup(q);
+  }
+
+  /** R16 (ADR-0103): add the paper an identifier names. Free. */
+  @Post('documents/:id/sources/import-id')
+  importId(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = importIdBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Paste a DOI, arXiv id, PubMed id or ISBN.');
+    return this.paperIds.import(user.id, documentId, parsed.data.q);
   }
 
   /** R15 (ADR-0102): a paper's details for the edit form. */

@@ -33,6 +33,7 @@ import { readerHref } from '@/lib/reader';
 import { CollectionsStrip } from './CollectionsStrip';
 import { DiscoverPanel } from './DiscoverPanel';
 import { type DuplicatePair, DuplicatesPanel } from './DuplicatesPanel';
+import { PasteId } from './PasteId';
 import { ZoteroImport, type ZoteroImportResult } from './ZoteroImport';
 
 type Source = {
@@ -456,6 +457,14 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             />
           </label>
           <ZoteroImport documentId={documentId} onImported={zoteroImported} />
+          {/* R16 (ADR-0103): a DOI, arXiv id, PubMed id or ISBN. */}
+          <PasteId
+            documentId={documentId}
+            onImported={(message) => {
+              setNotice(message);
+              void load();
+            }}
+          />
           <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
             {uploading ? 'Uploading…' : 'Add a PDF'}
             <input
