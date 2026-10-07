@@ -9,6 +9,64 @@ were opened freely and AI actions spent only where watching one mattered.
 
 Each row: what Jenni has · where · how it behaves · ours today · gap.
 
+## 0. Not yet explored — honest status (2026-10-07)
+
+Sections 1–12 are what was actually opened and used. This inventory is **not** A to Z yet. Below
+is everything not seen, or seen only as a menu or a card and never run to its result. Each needs
+a pass before the build list is final.
+
+**Whole journeys**
+- [ ] Sign-up and first run as a brand-new user: sign-up screen, email verification, any
+      onboarding questions, welcome tour, empty states. Exploration began already signed in, and the
+      agent may not create accounts: the owner signs up a fresh account, and the agent takes over
+      after the sign-in.
+- [ ] What happens when a free allowance hits zero (the upgrade wall, the wording, what still works).
+- [ ] The upgrade path up to the payment page (stopping before payment).
+- [ ] A whole thesis-sized session: write a section from heading to references, then export.
+
+**Run to the result, not just opened**
+- [ ] Reviews: Claim confidence, Peer Review, Source Quality, Tone of Voice — the output of each,
+      its settings dialog, how fixes are applied, and how long each takes.
+- [ ] Workflows: Literature review run end to end (15–20 min) and its output document; the gap
+      analysis run from a fresh prompt (only an existing output was read).
+- [ ] Section prompt **Generate** and **Configure context** on a section.
+- [ ] Refine suggestion presets, each one: Stay on topic, Complete this paragraph, Increase
+      novelty, Simplify language, Re-write without citations, Validate supporting evidence, Cite
+      from my library, and a free prompt.
+- [ ] AI Edit presets beyond the one tried, and the follow-up box after a result.
+- [ ] Citations: Cite button and "@" search, adding the same paper twice, editing a citation
+      (page numbers, suppress author), changing style mid-document, where the reference list goes.
+- [ ] Export: download the Word and LaTeX files and open them (layout presets, native Word
+      citations vs hyperlinks).
+- [ ] Share: the dialog, roles, link sharing, what a viewer or editor sees, real-time co-editing
+      (needs a second account).
+- [ ] Comments: add, reply, resolve, mention.
+- [ ] Version history: open a version, compare, restore.
+- [ ] Library: upload a PDF (processing time, what it extracts), "Ask AI" on a paper, the PDF
+      viewer's own tools, making and using a collection, Edit metadata saved.
+- [ ] Find papers: Save ▾ options, a decade switch, Most Cited sort results.
+- [ ] AI Chat: web search "Ask" (what the permission prompt looks like), chat on a PDF, image input,
+      "Add to document" result, the Sources expander, a thread reopened later.
+- [ ] Toolbar, each control: image upload, table editing, chart, inline and block equation, code
+      block, link, text colour, highlight.
+- [ ] "/" menu items inserted: Table of Contents, AI Declaration, chart.
+- [ ] Block handle menu, each item: Turn into, Highlight, Duplicate, Delete, Review on a block.
+- [ ] Keyboard shortcuts pressed, not just read: Shift+→ cycle, Alt+→ one word, Ctrl+J, Ctrl+K.
+- [ ] Documents: Duplicate, Archive, restore from archive, open in new tab.
+
+**Not opened at all**
+- [ ] The notifications bell (it shows a red 1).
+- [ ] Jenni's own Chrome extension.
+- [ ] Jenni on a phone-sized window.
+- [ ] Help: live chat, the help documentation site, Discord; the tutorial videos' content.
+- [ ] Appearance themes and interface language switched (settings were read, not changed).
+- [ ] Error and offline states beyond the "Reconnected" toast.
+
+**What blocks a full pass:** the free account has about 6 autocompletes, 2 AI edits, 1 chat,
+1 review and 2 workflows left — not enough to run each item above to its result. Options for the
+owner: one month of Plus (₹1,141.67 monthly) for the study, or a second free account; co-editing
+needs a second account either way.
+
 ## 1. Account menu (click the name, top left)
 
 | Jenni | Detail | Ours | Gap |
