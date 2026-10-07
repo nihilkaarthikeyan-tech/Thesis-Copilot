@@ -264,4 +264,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 
 | Item | State | Commit / ADR |
 |---|---|---|
-| R1–R39 | not started — waiting for the owner's go on the order | — |
+| R1 | Done 2026-10-07 — browser-checked with real models | ADR-0088 |
+| R2–R39 | in order, one at a time (owner: "start to build them one by one") | — |

@@ -126,6 +126,8 @@ export type GhostTextOptions = {
   autoSuggest?: boolean;
   /** FR-4.6: "fires 800 ms after typing pause". */
   autoSuggestIdleMs?: number;
+  /** Jenni build plan R1: the longer pause before finishing a half-written sentence (2000 ms). */
+  autoSuggestMidSentenceIdleMs?: number;
   /** Guided suggestion (Shift+→): asks the student for an instruction. Null cancels. */
   promptForInstruction?: () => Promise<string | null>;
   /** Milliseconds of accepted-text fade (§6.2: 400). 0 disables, e.g. prefers-reduced-motion. */
@@ -408,14 +410,49 @@ function buildDecorations(
 /**
  * ADR-0078: where an automatic suggestion may be asked for — after a finished sentence, or in an
  * empty paragraph. Every automatic request spends one ASSIST unit (50 a month on the trial), and
- * asking at every pause mid-sentence spent them on completions nobody wanted. Mid-sentence, the
- * student asks with Ctrl+/.
+ * asking at every pause mid-sentence spent them on completions nobody wanted. Mid-sentence there is
+ * now a stricter, slower trigger (`midSentencePoint`, ADR-0088); Ctrl+/ still asks at any time.
  */
 export function atSentenceBoundary(state: EditorState): boolean {
   const $from = state.selection.$from;
   const before = $from.parent.textBetween(0, $from.parentOffset, undefined, ' ');
   if (!before.trim()) return true;
   return /[.!?…]["”’')\]]*\s*$/.test(before);
+}
+
+/** ADR-0088 (Jenni build plan R1): words a sentence needs before a mid-sentence request. */
+export const MID_SENTENCE_MIN_WORDS = 4;
+/** R1: words to type after a mid-sentence suggestion before the same sentence is offered again. */
+export const MID_SENTENCE_MORE_WORDS = 6;
+/** R1: the pause before a mid-sentence suggestion — longer than the 800 ms after a full stop. */
+export const MID_SENTENCE_IDLE_MS = 2000;
+
+/**
+ * Jenni build plan R1: where a suggestion may be asked for in the middle of a sentence. Jenni
+ * finishes a half-written sentence after a pause; ADR-0078 had kept automatic requests to
+ * sentence ends because every pause spent a unit. These are the limits that keep the cost down:
+ * the cursor is at the end of an ordinary paragraph, the sentence being written has at least
+ * `MID_SENTENCE_MIN_WORDS` words, the student stopped between words (after a space, a comma, a
+ * semicolon, a colon or a dash, never inside a word), and the last thing written is not a
+ * citation (a sentence ending in one is about to get its full stop). Returns the sentence's key
+ * and its word count, or null.
+ */
+export function midSentencePoint(state: EditorState): { key: string; words: number } | null {
+  if (!cursorEligible(state)) return null;
+  const $from = state.selection.$from;
+  if ($from.parentOffset !== $from.parent.content.size) return null;
+  // An inline node (a citation) reads as U+FFFC so the check below can see it.
+  const before = $from.parent.textBetween(0, $from.parentOffset, undefined, '￼');
+  if (!/[\s,;:–—]$/.test(before)) return null;
+  if (before.trimEnd().endsWith('￼')) return null;
+  if (atSentenceBoundary(state)) return null;
+  const end = /[.!?…]["”’')\]]*\s+/g;
+  let start = 0;
+  for (const match of before.matchAll(end)) start = (match.index ?? 0) + match[0].length;
+  const sentence = before.slice(start);
+  const words = sentence.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  if (words < MID_SENTENCE_MIN_WORDS) return null;
+  return { key: `${$from.before($from.depth)}:${start}`, words };
 }
 
 /**
@@ -605,6 +642,8 @@ export const GhostText = Extension.create<GhostTextOptions>({
           // ADR-0078: headings already offered an opening sentence, so moving the cursor back into
           // the same empty section does not ask (and spend a unit) again.
           const offered = new Set<string>();
+          // R1: the sentences a mid-sentence suggestion was asked for, with their word count then.
+          const midAsked = new Map<string, number>();
           return {
             update: (currentView, previous) => {
               if (!(storage.autoSuggest ?? options.autoSuggest)) return clear();
@@ -643,14 +682,29 @@ export const GhostText = Extension.create<GhostTextOptions>({
               if (!currentView.state.doc.eq(previous.doc)) {
                 clear();
                 const idle = options.autoSuggestIdleMs ?? 800;
-                timer = setTimeout(() => {
+                const free = () => {
                   const ghost = ghostTextKey.getState(currentView.state);
-                  const selection = currentView.state.selection;
-                  if (ghost && ghost.status !== 'idle') return;
-                  if (!selection.empty || !currentView.hasFocus()) return;
-                  if (!atSentenceBoundary(currentView.state)) return;
+                  if (ghost && ghost.status !== 'idle') return false;
+                  return currentView.state.selection.empty && currentView.hasFocus();
+                };
+                if (atSentenceBoundary(currentView.state)) {
+                  timer = setTimeout(() => {
+                    if (free() && atSentenceBoundary(currentView.state))
+                      editor.commands.requestSuggestion();
+                  }, idle);
+                  return;
+                }
+                // Jenni build plan R1: finish a half-written sentence after a longer pause, once
+                // per sentence unless the student has written `MID_SENTENCE_MORE_WORDS` more.
+                if (!midSentencePoint(currentView.state)) return;
+                timer = setTimeout(() => {
+                  const point = midSentencePoint(currentView.state);
+                  if (!point || !free()) return;
+                  const asked = midAsked.get(point.key);
+                  if (asked !== undefined && point.words < asked + MID_SENTENCE_MORE_WORDS) return;
+                  midAsked.set(point.key, point.words);
                   editor.commands.requestSuggestion();
-                }, idle);
+                }, options.autoSuggestMidSentenceIdleMs ?? MID_SENTENCE_IDLE_MS);
               }
             },
             destroy: () => {

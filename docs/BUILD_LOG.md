@@ -5494,3 +5494,14 @@ the first. The first browser run found Chapter 1 without its headings: the open 
 overwrote what the worker wrote, so the editor now lays them out itself. Real models: 15 papers
 from 2022–2026, headings at 33 s, a cited first sentence at 40 s without typing, three papers in
 four citations. The Jenni coverage map had marked rows 4 and 5 MATCH without either; corrected.
+
+## Jenni build plan Round 2 — R1, suggestions mid-sentence (2026-10-07, ADR-0088)
+
+A half-written sentence is now finished after a 2 s pause (four words at least, stopped between
+words, cursor at the end of the paragraph, not after a citation, once per sentence unless six more
+words follow). Real models, local stack, a fresh trial account: "Night-time heat in Chennai harms
+outdoor workers because " → after the pause, first token 2.9 s, done 3.5 s; the continuation
+finished the sentence in lower case and added one, citing two different papers. Seen on the way,
+to check under R5: the opening sentence under the first heading did not come for this new thesis
+(Assist stayed 0/50 until typing).
+
