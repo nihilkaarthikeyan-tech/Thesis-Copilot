@@ -23,6 +23,11 @@ export type DiscoveredWork = {
   citationCount: number | null;
   isPreprint: boolean;
   oaStatus: string | null;
+  /**
+   * ADR-0087: the journal lists OpenAlex records for the paper's venue (`listed_in`: DOAJ,
+   * MEDLINE, CWTS core, ABDC…). Only OpenAlex knows them; the other indexes leave it unset.
+   */
+  listedIn?: string[];
   /** Which index found it; kept for the per-stage log. */
   via: 'openalex' | 'semanticscholar' | 'arxiv' | 'pubmed';
 };
@@ -57,7 +62,7 @@ type OpenAlexWork = {
   publication_year?: number;
   cited_by_count?: number;
   type?: string;
-  primary_location?: { source?: { display_name?: string } };
+  primary_location?: { source?: { display_name?: string; listed_in?: string[] } };
   open_access?: { oa_status?: string };
   abstract_inverted_index?: Record<string, number[]>;
   related_works?: string[];
@@ -102,8 +107,47 @@ function fromOpenAlex(work: OpenAlexWork): DiscoveredWork | null {
     citationCount: work.cited_by_count ?? null,
     isPreprint: work.type === 'preprint',
     oaStatus: work.open_access?.oa_status ?? null,
+    listedIn: Array.isArray(work.primary_location?.source?.listed_in)
+      ? work.primary_location.source.listed_in.filter((l) => typeof l === 'string')
+      : [],
     via: 'openalex',
   };
+}
+
+/**
+ * ADR-0087: the student's choices for papers found for them, as OpenAlex filters. Applied in the
+ * query, so the 25 a search returns are 25 that qualify, not 25 of which a few survive.
+ */
+export type WorkFilters = {
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  /** OpenAlex `listed_in` values; any one of them qualifies. */
+  listedIn?: readonly string[];
+  preprints?: boolean;
+};
+
+function filterClauses(filters: WorkFilters | undefined, defaultFrom: number, semantic: boolean) {
+  const from = filters?.yearFrom ?? defaultFrom;
+  const types =
+    filters?.preprints === false
+      ? DISCOVER.types
+          .split('|')
+          .filter((t) => t !== 'preprint')
+          .join('|')
+      : DISCOVER.types;
+  const clauses = [`type:${types}`];
+  // Semantic search takes `publication_year` and not `from_publication_date`.
+  clauses.push(semantic ? `publication_year:>${from - 1}` : `from_publication_date:${from}-01-01`);
+  if (filters?.yearTo) {
+    clauses.push(
+      semantic
+        ? `publication_year:<${filters.yearTo + 1}`
+        : `to_publication_date:${filters.yearTo}-12-31`,
+    );
+  }
+  const lists = (filters?.listedIn ?? []).filter((l) => /^[a-z0-9-]+$/.test(l));
+  if (lists.length > 0) clauses.push(`primary_location.source.listed_in:${lists.join('|')}`);
+  return clauses;
 }
 
 export class OpenAlexDiscovery {
@@ -121,12 +165,17 @@ export class OpenAlexDiscovery {
   }
 
   /** FR-2.5: one keyword query → up to 25 recent works of the kinds a thesis cites. */
-  async search(query: string, now = new Date(), signal?: AbortSignal): Promise<DiscoveredWork[]> {
+  async search(
+    query: string,
+    now = new Date(),
+    signal?: AbortSignal,
+    filters?: WorkFilters,
+  ): Promise<DiscoveredWork[]> {
     const from = now.getUTCFullYear() - DISCOVER.yearsBack;
     // `is_retracted:false` (ADR-0050): OpenAlex carries Retraction Watch's list; a retracted paper
     // is never worth offering as a candidate.
     const filter = encodeURIComponent(
-      `type:${DISCOVER.types},from_publication_date:${from}-01-01,is_retracted:false`,
+      [...filterClauses(filters, from, false), 'is_retracted:false'].join(','),
     );
     const url = this.base(
       `filter=${filter}&search=${encodeURIComponent(openAlexSearchText(query))}`,
@@ -184,10 +233,11 @@ export class OpenAlexDiscovery {
     text: string,
     now = new Date(),
     signal?: AbortSignal,
+    filters?: WorkFilters,
   ): Promise<DiscoveredWork[]> {
     const from = now.getUTCFullYear() - DISCOVER.yearsBack;
     const filter = encodeURIComponent(
-      `publication_year:>${from - 1},type:${DISCOVER.types},has_abstract:true,is_retracted:false`,
+      [...filterClauses(filters, from, true), 'has_abstract:true', 'is_retracted:false'].join(','),
     );
     const q = openAlexSearchText(text).slice(0, 2_000);
     const url =
@@ -376,6 +426,8 @@ export function mergeWorks(lists: ReadonlyArray<readonly DiscoveredWork[]>): Dis
       existing.venue = existing.venue ?? work.venue;
       existing.citationCount = existing.citationCount ?? work.citationCount;
       existing.year = existing.year ?? work.year;
+      // ADR-0087: OpenAlex's journal lists, when another index found the paper first.
+      if (!existing.listedIn?.length && work.listedIn?.length) existing.listedIn = work.listedIn;
     }
   }
   return order.map((key) => byKey.get(key) as DiscoveredWork);

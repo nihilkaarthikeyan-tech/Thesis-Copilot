@@ -18,10 +18,14 @@ import {
   type RetrievalResult,
   retrievePassages,
 } from '@tc/retrieval';
+import { readSourcePrefs } from '@tc/types';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 
 export type ChapterForContext = ContextChapter;
+
+/** A source id that matches nothing: "search within no papers". */
+const NO_SOURCE = '00000000-0000-0000-0000-000000000000';
 
 /**
  * A chapter as the services select it: Prisma nests the document's language under `document`,
@@ -80,7 +84,27 @@ export class ContextService {
       chapter,
       queryFrom,
       action,
-      options,
+      options.sourceIds ? options : { ...options, ...(await this.foundOnly(chapter.documentId)) },
     );
+  }
+
+  /**
+   * ADR-0087: "Library search" off at the start of the thesis — cite only the papers found for
+   * the student, not the ones they added themselves. Returns the source ids to search within, or
+   * nothing when the setting is on (every thesis made before it has it on). A student who names
+   * papers with `@` has asked for those, so this does not apply then.
+   */
+  private async foundOnly(documentId: string): Promise<{ sourceIds?: string[] }> {
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      select: { meta: true },
+    });
+    if (readSourcePrefs(document?.meta).librarySearch) return {};
+    const found = await this.prisma.source.findMany({
+      where: { documentId, autoAddedAt: { not: null } },
+      select: { id: true },
+    });
+    // No paper found yet: an id that matches nothing, so nothing of the student's own is cited.
+    return { sourceIds: found.length > 0 ? found.map((s) => s.id) : [NO_SOURCE] };
   }
 }

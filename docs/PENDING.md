@@ -9,6 +9,22 @@ The agent builds every phase it can (owner's instruction, 2026-09-04) and lists 
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
 
+## Scopus, Web of Science and UGC-CARE as indexing filters (ADR-0087, 2026-10-07)
+
+The start step's Indexing filter offers the journal lists OpenAlex records (core international
+journals, PubMed/MEDLINE, DOAJ, ABDC, ERIH PLUS, SciELO). Students in India will ask for Scopus and
+UGC-CARE; OpenAlex does not carry them, and they are not offered until a list exists:
+
+1. **Scopus**: Elsevier's "Scopus Source List" (a spreadsheet of ISSNs, free to download from
+   elsevier.com/products/scopus/content). Download it, read its terms of use, and if they allow
+   it, put the file in the repository's `fixtures/indexing/` and tell the agent.
+2. **Web of Science**: Clarivate's Master Journal List needs an account and has its own terms;
+   decide whether to use it.
+3. **UGC-CARE**: the UGC-CARE website offers search, not a download; decide whether to ask UGC or
+   skip it.
+
+With a list file, the agent adds the option and checks each paper's ISSN against it.
+
 ## Decision: proofreading on the stronger model? (2026-09-30)
 
 Proofreading runs on gpt-5-nano and catches about 60% of planted errors (missed typos such as

@@ -56,6 +56,7 @@ function fakes(
     plan?: string;
     flag?: boolean;
     settings?: Record<string, unknown>;
+    meta?: Record<string, unknown>;
   } = {},
 ) {
   const sources: Array<Record<string, unknown>> = [];
@@ -70,7 +71,13 @@ function fakes(
       }),
     },
     chapter: { findFirst: async () => ({ id: JOB.chapterId, title: 'Literature Review' }) },
-    document: { findUnique: async () => ({ title: 'EDM of Hastelloy', memory: null }) },
+    document: {
+      findUnique: async () => ({
+        title: 'EDM of Hastelloy',
+        meta: options.meta ?? {},
+        memory: null,
+      }),
+    },
     featureFlag: { findUnique: async () => ({ enabled: options.flag ?? true }) },
     auditEvent: {
       count: async () => options.usedThisMonth ?? 0,
@@ -82,7 +89,9 @@ function fakes(
     },
   } as unknown as PrismaClient;
   const found = options.found ?? [work(1), work(2)];
+  const searchedWith: unknown[] = [];
   return {
+    searchedWith,
     sources,
     audits,
     resolves,
@@ -90,7 +99,12 @@ function fakes(
     deps: {
       prisma,
       embeddings,
-      openalex: { search: async () => found },
+      openalex: {
+        search: async (_q: string, _now?: Date, _signal?: AbortSignal, filters?: unknown) => {
+          searchedWith.push(filters);
+          return found;
+        },
+      },
       enqueueResolve: async (input: Record<string, unknown>) => resolves.push(input),
       logEmbed: async (call: Record<string, unknown>) => {
         embeds.push(call);
@@ -203,5 +217,66 @@ describe('starting a search', () => {
       ).toBe(false);
       expect(jobs).toHaveLength(0);
     }
+  });
+});
+
+describe('ADR-0087: the paper pool and the preferences the student set', () => {
+  const many = Array.from({ length: 20 }, (_, i) => work(i + 1));
+
+  it('the search made at creation adds up to fifteen papers, a later one five', async () => {
+    const first = fakes({ found: many });
+    await runFindSources({ ...JOB, initial: true }, first.deps);
+    expect(first.sources).toHaveLength(15);
+    const later = fakes({ found: many });
+    await runFindSources(JOB, later.deps);
+    expect(later.sources).toHaveLength(5);
+  });
+
+  it('finds nothing when the student turned web search off', async () => {
+    const f = fakes({
+      meta: {
+        sourcePrefs: {
+          webSearch: false,
+          librarySearch: true,
+          yearFrom: null,
+          yearTo: null,
+          indexedIn: [],
+          preprints: true,
+        },
+      },
+    });
+    const result = await runFindSources(JOB, f.deps);
+    expect(result.status).toBe('off');
+    expect(f.sources).toHaveLength(0);
+    expect(f.audits).toHaveLength(0);
+  });
+
+  it('passes the years, journal lists and preprint choice to the search, and checks them', async () => {
+    const f = fakes({
+      found: [
+        work(1, { year: 2023, listedIn: ['doaj'] }),
+        work(2, { year: 2019, listedIn: ['doaj'] }),
+        work(3, { year: 2023, listedIn: ['cwts-core'] }),
+        work(4, { year: 2023, listedIn: ['doaj'], isPreprint: true }),
+      ],
+      meta: {
+        sourcePrefs: {
+          webSearch: true,
+          librarySearch: true,
+          yearFrom: 2021,
+          yearTo: null,
+          indexedIn: ['doaj'],
+          preprints: false,
+        },
+      },
+    });
+    await runFindSources(JOB, f.deps);
+    expect(f.searchedWith[0]).toEqual({
+      yearFrom: 2021,
+      yearTo: null,
+      listedIn: ['doaj'],
+      preprints: false,
+    });
+    expect(f.sources.map((s) => s.doi)).toEqual(['10.1000/w1']);
   });
 });

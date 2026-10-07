@@ -29,6 +29,9 @@ test('from the thesis list, with no title typed: an untitled thesis opens in the
   const form = page.getByTestId('new-thesis-form');
   await expect(form).toBeVisible({ timeout: 30_000 });
   await form.getByTestId('start-writing-now').click();
+  // ADR-0087: the preference and structure steps, taken with their defaults.
+  await page.getByTestId('setup-next').click();
+  await page.getByTestId('setup-start').click();
 
   await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/write\/[0-9a-f-]{36}$/, {
     timeout: 30_000,
@@ -80,6 +83,8 @@ test('from /app/new, a typed title is kept and the editor opens', async ({ page,
   const title = `Solar dryers ${Date.now()}`;
   await page.getByLabel('Working title').fill(title);
   await page.getByTestId('start-writing-now').click();
+  await page.getByTestId('setup-next').click();
+  await page.getByTestId('setup-start').click();
 
   await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/write\/[0-9a-f-]{36}$/, {
     timeout: 30_000,

@@ -5482,3 +5482,15 @@ reader, the add-on, Start writing now, Word import, Zotero, Hindi). Local stack 
 Docker overload the IPv6 forward of the dev Redis port broke (`::1:6381` resets, `127.0.0.1`
 answers) and every thesis create hung on the queue; `api-real`/`worker-real` now set
 `REDIS_URL=redis://127.0.0.1:6381`.
+
+## Jenni's start and a wider paper pool (2026-10-07, ADR-0087)
+
+The manager's "it revolves around three papers" was the paper pool: five papers at creation, no
+new search once anything matched, six passages that could all be one paper's. Fixed at each step
+(fifteen at creation, two passages per paper, cited papers step back, three papers to cover a
+section, one search per section) and Jenni's start built after the title: sources and citations
+(with indexing from OpenAlex's `listed_in`), structure, headings in the page and an opener under
+the first. The first browser run found Chapter 1 without its headings: the open editor's save
+overwrote what the worker wrote, so the editor now lays them out itself. Real models: 15 papers
+from 2022–2026, headings at 33 s, a cited first sentence at 40 s without typing, three papers in
+four citations. The Jenni coverage map had marked rows 4 and 5 MATCH without either; corrected.

@@ -15,7 +15,9 @@ import type { OutlineNode } from '@tc/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
   type GenerateOutlineDeps,
+  isBlankChapter,
   runGenerateOutline,
+  sectionTitles,
   syncChapters,
 } from '../src/jobs/generate-outline.js';
 
@@ -41,6 +43,7 @@ type ChapterRow = {
   scopeNote: string | null;
   order: number;
   wordCount: number;
+  content?: unknown;
 };
 
 type Fakes = {
@@ -428,5 +431,68 @@ describe('planning from the title alone (ADR-0072)', () => {
     expect(adopted[0]?.data).toMatchObject({ order: 1, title: CHAPTERS[0]?.title });
     // The other chapters are new rows; Chapter 1 is not duplicated.
     expect(f.created).toHaveLength(CHAPTERS.length - 1);
+  });
+
+  it('ADR-0087: an untouched Chapter 1 gets the planned sections as headings', async () => {
+    const f = fakes({
+      scope: {},
+      chapters: [
+        {
+          id: 'ch-blank',
+          outlineNodeId: 'ch-1',
+          title: 'Chapter 1',
+          scopeNote: null,
+          order: 1,
+          wordCount: 0,
+          content: {
+            type: 'doc',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 1 },
+                content: [{ type: 'text', text: 'Chapter 1' }],
+              },
+              { type: 'paragraph' },
+            ],
+          },
+        },
+      ],
+    });
+    await runGenerateOutline(TITLE_JOB, f.deps);
+    const adopted = f.updates.find((u) => (u.where as { id: string }).id === 'ch-blank');
+    expect(adopted?.data).toHaveProperty('content');
+  });
+});
+
+describe('ADR-0087: chapter bodies', () => {
+  it('a body is blank when it holds only headings and empty lines', () => {
+    const heading = (text: string) => ({
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text }],
+    });
+    expect(
+      isBlankChapter({ type: 'doc', content: [heading('Intro'), { type: 'paragraph' }] }),
+    ).toBe(true);
+    expect(
+      isBlankChapter({
+        type: 'doc',
+        content: [heading('Intro'), { type: 'paragraph', content: [{ type: 'text', text: 'Hi' }] }],
+      }),
+    ).toBe(false);
+  });
+
+  it('the sections of a chapter are the titles of its children', () => {
+    expect(
+      sectionTitles({
+        id: 'ch-1',
+        title: 'Introduction',
+        scopeNote: '',
+        children: [
+          { id: 's1', title: 'Background', scopeNote: '', children: [] },
+          { id: 's2', title: ' Aims ', scopeNote: '', children: [] },
+        ],
+      }),
+    ).toEqual(['Background', 'Aims']);
   });
 });

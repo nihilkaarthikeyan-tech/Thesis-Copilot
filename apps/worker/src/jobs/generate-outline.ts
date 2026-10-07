@@ -47,7 +47,12 @@ export type GenerateOutlineDeps = {
   llm: LlmProvider;
   aiProvider: 'anthropic' | 'mock';
   /** An empty chapter body, so a created chapter opens on something (the API owns the shape). */
-  emptyChapter: (title: string) => unknown;
+  /**
+   * A new chapter's body. ADR-0087: with the plan's section titles, each is a heading in the
+   * chapter with an empty line under it, as Jenni lays out its headings, so the editor's opener
+   * (ADR-0078) offers a first sentence under the first one.
+   */
+  emptyChapter: (title: string, sections?: readonly string[]) => unknown;
   log?: (event: Record<string, unknown>) => void;
 };
 
@@ -177,6 +182,27 @@ export async function runGenerateOutline(
  * FR-3.4: "the tree UI and the prompt builder read the same record". `Chapter` rows follow the
  * top-level nodes, keyed by `outlineNodeId`, and are never deleted by a re-run.
  */
+/** ADR-0087: a chapter's planned sections, as headings for its body. */
+export function sectionTitles(node: OutlineNode): string[] {
+  return node.children.map((c) => c.title.trim()).filter((t) => t.length > 0);
+}
+
+/** Whether a chapter body holds no writing: headings and empty paragraphs only. */
+export function isBlankChapter(content: unknown): boolean {
+  let text = '';
+  const visit = (
+    node: { type?: string; text?: string; content?: unknown[] },
+    inHeading: boolean,
+  ) => {
+    if (node.type === 'text' && !inHeading) text += node.text ?? '';
+    for (const child of (node.content ?? []) as Array<Parameters<typeof visit>[0]>) {
+      visit(child, inHeading || node.type === 'heading');
+    }
+  };
+  if (content && typeof content === 'object') visit(content as Parameters<typeof visit>[0], false);
+  return text.trim().length === 0;
+}
+
 export async function syncChapters(
   deps: Pick<GenerateOutlineDeps, 'prisma' | 'emptyChapter'>,
   documentId: string,
@@ -191,6 +217,7 @@ export async function syncChapters(
       scopeNote: true,
       order: true,
       wordCount: true,
+      content: true,
     },
   });
   let created = 0;
@@ -203,9 +230,21 @@ export async function syncChapters(
   const only = existing.length === 1 ? existing[0] : undefined;
   const first = nodes[0];
   if (only && first && !nodes.some((n) => n.id === only.outlineNodeId)) {
+    // ADR-0087: an untouched first chapter gets the plan's headings too; one with writing in it
+    // keeps exactly what the student wrote.
+    // The body itself decides when there is one: the stored word count can count the title.
+    const blank = only.content != null ? isBlankChapter(only.content) : (only.wordCount ?? 0) === 0;
     await deps.prisma.chapter.update({
       where: { id: only.id },
-      data: { outlineNodeId: first.id, title: first.title, scopeNote: first.scopeNote, order: 1 },
+      data: {
+        outlineNodeId: first.id,
+        title: first.title,
+        scopeNote: first.scopeNote,
+        order: 1,
+        ...(blank
+          ? { content: deps.emptyChapter(first.title, sectionTitles(first)) as never }
+          : {}),
+      },
     });
     existing[0] = {
       ...only,
@@ -229,7 +268,7 @@ export async function syncChapters(
           title: node.title,
           scopeNote: node.scopeNote,
           order,
-          content: deps.emptyChapter(node.title) as never,
+          content: deps.emptyChapter(node.title, sectionTitles(node)) as never,
         },
       });
       created++;

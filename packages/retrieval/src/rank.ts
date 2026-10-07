@@ -137,9 +137,36 @@ export function topK(
 /**
  * ADR-0078: the most passages one paper may hold in a draft's request while other papers have
  * candidates. The real-model run of 2026-10-05 drafted "Barriers to adoption" with 12 of 14
- * citations to one paper from a library of four full-text papers.
+ * citations to one paper from a library of four full-text papers. ADR-0087 gives a suggestion the
+ * same rule at 2 of its 6: every suggestion can draw on at least three papers when there are three.
  */
-export const PER_SOURCE_CAP: Partial<Record<RetrievalAction, number>> = { DRAFT: 4 };
+export const PER_SOURCE_CAP: Partial<Record<RetrievalAction, number>> = { DRAFT: 4, ASSIST: 2 };
+
+/**
+ * ADR-0087 (2026-10-07): how much a paper's rank falls for each time the chapter already cites it.
+ * The owner's manager saw suggestions "revolve around three papers": one well-matching paper won
+ * every suggestion's top passages, so the same citation followed sentence after sentence. A small
+ * penalty per citation lets the next-best paper through when the two are close, and never puts an
+ * off-topic paper ahead of an on-topic one (the floor of `SPREAD_FLOOR` stops it compounding).
+ */
+export const CITED_PENALTY = 0.03;
+export const SPREAD_FLOOR = 0.85;
+
+/** Lowers each candidate's score by how often the chapter already cites its paper, then re-sorts. */
+export function spreadCitations(
+  ranked: readonly RankedCandidate[],
+  citedCount: ReadonlyMap<string, number>,
+): RankedCandidate[] {
+  if (citedCount.size === 0) return [...ranked];
+  return ranked
+    .map((candidate) => {
+      const n = citedCount.get(candidate.sourceId) ?? 0;
+      if (n === 0) return candidate;
+      const penalty = Math.min(CITED_PENALTY * n, 1 - SPREAD_FLOOR);
+      return { ...candidate, score: candidate.score - penalty };
+    })
+    .sort((a, b) => b.score - a.score || a.chunkId.localeCompare(b.chunkId));
+}
 
 /**
  * The cosine below which a question is not about the student's library at all.

@@ -82,6 +82,18 @@ export {
   walkOutline,
 } from './outline.js';
 export {
+  DEFAULT_SOURCE_PREFS,
+  INDEX_LIST_LABELS,
+  INDEX_LISTS,
+  type IndexList,
+  listedInFilter,
+  meetsSourcePrefs,
+  OPENALEX_LISTED_IN,
+  readSourcePrefs,
+  type SourcePrefs,
+  sourcePrefsSchema,
+} from './source-prefs.js';
+export {
   bibliographySchema,
   captionSchema,
   FIELD_LABELS,

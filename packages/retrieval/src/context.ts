@@ -17,7 +17,7 @@ import {
 } from '@tc/ai';
 import { findOutlineNode, headingKey, readOutline } from '@tc/types';
 import { findCandidates, type RawClient } from './pgvector.js';
-import { buildQueryText, type RetrievalAction, rerank, topK } from './rank.js';
+import { buildQueryText, type RetrievalAction, rerank, spreadCitations, topK } from './rank.js';
 
 /** The Prisma surface this module uses. Structural, so either app's client satisfies it. */
 export type ContextClient = RawClient & {
@@ -82,6 +82,19 @@ export function pinsInScope(
 }
 
 /** ProseMirror JSON → plain text; A.0.1's glossary trimming needs the chapter as prose. */
+/** ADR-0087: how many times the chapter cites each paper, from its citation nodes. */
+export function citedSourceCounts(doc: unknown): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: { type?: string; attrs?: { sourceId?: unknown }; content?: unknown[] }) => {
+    if (node.type === 'citation' && typeof node.attrs?.sourceId === 'string') {
+      counts.set(node.attrs.sourceId, (counts.get(node.attrs.sourceId) ?? 0) + 1);
+    }
+    for (const child of (node.content ?? []) as Array<Parameters<typeof visit>[0]>) visit(child);
+  };
+  if (doc && typeof doc === 'object') visit(doc as Parameters<typeof visit>[0]);
+  return counts;
+}
+
 export function docToText(doc: unknown): string {
   if (!doc || typeof doc !== 'object') return '';
   const parts: string[] = [];
@@ -198,7 +211,11 @@ export async function retrievePassages(
   });
 
   const node = findOutlineNode(readOutline(memory?.outline), chapter.outlineNodeId);
-  const ranked = topK(rerank(candidates, node?.subTheme), action);
+  // ADR-0087: papers the chapter already cites step back a little, so citations spread.
+  const ranked = topK(
+    spreadCitations(rerank(candidates, node?.subTheme), citedSourceCounts(chapter.content)),
+    action,
+  );
 
   const sourceNumber = new Map<string, number>();
   const chunkCounter = new Map<string, number>();

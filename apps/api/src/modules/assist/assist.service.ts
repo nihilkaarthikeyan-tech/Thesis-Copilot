@@ -34,7 +34,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
-import { AutoSourcesService, anyOnTopic, sourcesQuery } from './auto-sources.service.js';
+import { AutoSourcesService, enoughPapersOnTopic, sourcesQuery } from './auto-sources.service.js';
 import { ContextService } from './context.service.js';
 import { docToText } from './doc-text.js';
 
@@ -208,7 +208,8 @@ export class AssistService {
       );
       // ADR-0037: nothing in the library is on this topic, so ask the worker to find papers on
       // it. Started now and awaited only at the end, so the suggestion is not held up by it.
-      const findingSources = anyOnTopic(retrieved.passages)
+      // ADR-0087: "nothing" became "fewer than three papers", and each section searches once.
+      const findingSources = enoughPapersOnTopic(retrieved.passages)
         ? Promise.resolve(false)
         : this.autoSources
             .start({
@@ -216,6 +217,7 @@ export class AssistService {
               userId: user.id,
               chapterId: chapter.id,
               query: sourcesQuery(chapter.title, scopeNote, input.before),
+              section: input.cursorContext?.section ?? null,
             })
             .catch((error: unknown) => {
               this.logger.warn({ err: error }, 'could not start a source search');

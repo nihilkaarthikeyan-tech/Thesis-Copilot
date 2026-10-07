@@ -24,6 +24,7 @@ export {
   buildChapterMemory,
   type ContextChapter,
   type ContextClient,
+  citedSourceCounts,
   docToText,
   pinsInScope,
   type RetrievalResult,
@@ -123,6 +124,7 @@ export {
   buildQueryText,
   CANDIDATE_LIMIT,
   type Candidate,
+  CITED_PENALTY,
   CREDIBILITY,
   credibility,
   FULL_TEXT_BOOST,
@@ -133,7 +135,9 @@ export {
   RELEVANCE_FLOOR,
   type RetrievalAction,
   rerank,
+  SPREAD_FLOOR,
   SUB_THEME_BOOST,
+  spreadCitations,
   stripUnknownCitations,
   TOP_K,
   topK,
@@ -190,6 +194,7 @@ export {
   OpenAlexDiscovery,
   openalexShortId,
   SemanticScholarClient,
+  type WorkFilters,
 } from './scholarly/discover.js';
 export {
   EUROPE_PMC_REQUESTS_PER_SECOND,

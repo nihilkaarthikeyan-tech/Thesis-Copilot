@@ -12,8 +12,10 @@ import {
   AUTO_SOURCES,
   AUTO_SOURCES_FLAG,
   autoSourcesJobKey,
+  initialSourcesJobKey,
   monthlyAutoSearches,
 } from '@tc/config';
+import { readSourcePrefs } from '@tc/types';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { RedisService } from '../../common/redis.service.js';
@@ -22,6 +24,21 @@ import { FlagsService } from '../flags/flags.service.js';
 /** Whether retrieval found anything on topic: a passage at or above the relevance floor. */
 export function anyOnTopic(passages: ReadonlyArray<{ cosine?: number }>): boolean {
   return passages.some((p) => (p.cosine ?? 0) >= AUTO_SOURCES.minCosine);
+}
+
+/**
+ * ADR-0087: whether enough different papers are on topic for this section. One matching paper
+ * used to count as covered, so the library stopped growing and every suggestion cited it.
+ */
+export function enoughPapersOnTopic(
+  passages: ReadonlyArray<{ cosine?: number; sourceId?: string }>,
+): boolean {
+  const papers = new Set(
+    passages
+      .filter((p) => (p.cosine ?? 0) >= AUTO_SOURCES.minCosine && p.sourceId)
+      .map((p) => p.sourceId),
+  );
+  return papers.size >= AUTO_SOURCES.minPapers;
 }
 
 /**
@@ -69,10 +86,25 @@ export class AutoSourcesService {
 
   /** Starts a search for this chapter if allowed. True when one is running (new or already). */
   async start(
-    input: { documentId: string; userId: string; chapterId: string; query: string },
+    input: {
+      documentId: string;
+      userId: string;
+      chapterId: string;
+      query: string;
+      /** ADR-0087: the search made when the thesis is created, which adds more papers. */
+      initial?: boolean;
+      /** ADR-0087: the heading being written under; each section searches on its own. */
+      section?: string | null;
+    },
     now: Date = new Date(),
   ): Promise<boolean> {
     if (!(await this.flags.isEnabled(AUTO_SOURCES_FLAG))) return false;
+    const document = await this.prisma.document.findUnique({
+      where: { id: input.documentId },
+      select: { meta: true },
+    });
+    // ADR-0087: the student turned web search off for this thesis.
+    if (!readSourcePrefs(document?.meta).webSearch) return false;
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
       select: { plan: true, settings: true },
@@ -84,8 +116,20 @@ export class AutoSourcesService {
       where: { userId: input.userId, kind: 'SOURCES_FOUND', createdAt: { gte: from } },
     });
     if (used >= monthlyAutoSearches(user.plan)) return false;
-    const jobId = autoSourcesJobKey(input.chapterId, now);
-    await this.queue.enqueue('find-sources', input, { jobId });
+    const jobId = input.initial
+      ? initialSourcesJobKey(input.documentId)
+      : autoSourcesJobKey(input.chapterId, now, input.section);
+    await this.queue.enqueue(
+      'find-sources',
+      {
+        documentId: input.documentId,
+        userId: input.userId,
+        chapterId: input.chapterId,
+        query: input.query,
+        ...(input.initial ? { initial: true } : {}),
+      },
+      { jobId },
+    );
     // ADR-0070: which search the editor's progress line should watch for this thesis.
     await this.redis.client.set(searchKey(input.documentId), jobId, 'EX', 15 * 60);
     return true;

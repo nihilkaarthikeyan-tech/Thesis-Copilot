@@ -21,7 +21,9 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
+import { TEMPLATE_SPECS } from '@tc/config';
 import type { Prisma } from '@tc/db';
+import { sourcePrefsSchema } from '@tc/types';
 import { z } from 'zod';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -63,6 +65,14 @@ const createDocument = z.object({
    * proposal when it is saved, as before.
    */
   start: z.enum(['writing', 'proposal']).optional(),
+  /**
+   * ADR-0087, Jenni's heading step: `standard` gives the thesis chapters at once (Introduction to
+   * Conclusion, no AI); `smart` plans chapters and sections from the title (ADR-0072, the default
+   * for "writing"); `none` keeps one chapter and plans nothing.
+   */
+  structure: z.enum(['standard', 'smart', 'none']).optional(),
+  /** ADR-0087: the citation-preferences step. */
+  sourcePrefs: sourcePrefsSchema.optional(),
 });
 
 export type DocumentSummary = {
@@ -159,24 +169,50 @@ export class DocumentsController {
     });
     const institutionTemplateId = member?.institution?.templateId ?? null;
 
+    // ADR-0087: Standard headings are the empirical thesis's chapters, made now, with what each
+    // must establish as its note. No model is asked.
+    const standard =
+      parsed.data.structure === 'standard' ? TEMPLATE_SPECS.STEM_EMPIRICAL.chapters : null;
+    const outline = standard
+      ? standard.map((c, i) => ({
+          id: `ch-${i + 1}`,
+          title: c.title,
+          scopeNote: c.intent,
+          children: [],
+        }))
+      : [];
     const document = await this.prisma.document.create({
       data: {
         ownerId: user.id,
         title: parsed.data.title,
         entryPath: parsed.data.entryPath,
+        ...(parsed.data.sourcePrefs
+          ? { meta: { sourcePrefs: parsed.data.sourcePrefs } as Prisma.InputJsonValue }
+          : {}),
         ...(parsed.data.field ? { field: parsed.data.field } : {}),
         ...(institutionTemplateId ? { institutionTemplateId } : {}),
         // Every document has exactly one memory row (PRD §8). Created with the document so nothing
         // downstream has to handle its absence.
-        memory: { create: { scope: {}, outline: [], glossary: {} } },
-        // A first chapter so the editor has somewhere to land (§6.1).
+        memory: {
+          create: { scope: {}, outline: outline as Prisma.InputJsonValue, glossary: {} },
+        },
+        // A first chapter so the editor has somewhere to land (§6.1); every chapter, for
+        // Standard headings.
         chapters: {
-          create: {
-            outlineNodeId: 'ch-1',
-            title: 'Chapter 1',
-            order: 1,
-            content: emptyChapterDoc('Chapter 1') as Prisma.InputJsonValue,
-          },
+          create: standard
+            ? standard.map((c, i) => ({
+                outlineNodeId: `ch-${i + 1}`,
+                title: c.title,
+                scopeNote: c.intent,
+                order: i + 1,
+                content: emptyChapterDoc(c.title) as Prisma.InputJsonValue,
+              }))
+            : {
+                outlineNodeId: 'ch-1',
+                title: 'Chapter 1',
+                order: 1,
+                content: emptyChapterDoc('Chapter 1') as Prisma.InputJsonValue,
+              },
         },
       },
       select: summarySelect,
@@ -193,6 +229,8 @@ export class DocumentsController {
           userId: user.id,
           chapterId: firstChapter.id,
           query: parsed.data.title,
+          // ADR-0087: a starting library of fifteen papers, not five.
+          initial: true,
         })
         .catch(() => false);
     }
@@ -201,7 +239,12 @@ export class DocumentsController {
     // student sees headings with what each must argue instead of one empty "Chapter 1". Every
     // bound of the button applies (a monthly count, the trial, the ₹100 ceiling, the site budget);
     // a refusal here only means no plan, never a failed create.
-    if (parsed.data.start === 'writing' && namesATopic(parsed.data.title)) {
+    const structure = parsed.data.structure ?? 'smart';
+    if (
+      parsed.data.start === 'writing' &&
+      structure === 'smart' &&
+      namesATopic(parsed.data.title)
+    ) {
       await this.outline
         .planFromTitle(user, document.id, { automatic: true })
         .catch(() => undefined);

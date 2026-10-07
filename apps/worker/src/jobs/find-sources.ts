@@ -34,13 +34,24 @@ import {
   type DiscoveredWork,
   mergeWorks,
   searchWithinBudget,
+  type WorkFilters,
 } from '@tc/retrieval';
-import type { FindSourcesJob } from '@tc/types';
+import { type FindSourcesJob, listedInFilter, meetsSourcePrefs, readSourcePrefs } from '@tc/types';
 
 type Searcher = {
-  search(query: string, now?: Date, signal?: AbortSignal): Promise<DiscoveredWork[]>;
+  search(
+    query: string,
+    now?: Date,
+    signal?: AbortSignal,
+    filters?: WorkFilters,
+  ): Promise<DiscoveredWork[]>;
   /** ADR-0050: OpenAlex only; a fake without it simply contributes nothing. */
-  semanticSearch?(text: string, now?: Date, signal?: AbortSignal): Promise<DiscoveredWork[]>;
+  semanticSearch?(
+    text: string,
+    now?: Date,
+    signal?: AbortSignal,
+    filters?: WorkFilters,
+  ): Promise<DiscoveredWork[]>;
 };
 
 export type FindSourcesDeps = {
@@ -70,7 +81,8 @@ export type FindSourcesDeps = {
 };
 
 export type FindSourcesResult = {
-  status: 'added' | 'none-relevant' | 'capped' | 'gone';
+  /** `off`: the student turned web search off for this thesis (ADR-0087). */
+  status: 'added' | 'none-relevant' | 'capped' | 'gone' | 'off';
   added: number;
   searched: number;
 };
@@ -132,10 +144,21 @@ export async function runFindSources(
     }),
     deps.prisma.document.findUnique({
       where: { id: job.documentId },
-      select: { title: true, memory: { select: { scope: true } } },
+      select: { title: true, meta: true, memory: { select: { scope: true } } },
     }),
   ]);
   if (!user || !chapter || !document) return { status: 'gone', added: 0, searched: 0 };
+  // ADR-0087: the student's choices when starting the thesis. Web search off means no papers are
+  // found for them at all; the rest narrow what is found.
+  const prefs = readSourcePrefs(document.meta);
+  if (!prefs.webSearch) return { status: 'off', added: 0, searched: 0 };
+  const filters: WorkFilters = {
+    yearFrom: prefs.yearFrom,
+    yearTo: prefs.yearTo,
+    listedIn: listedInFilter(prefs),
+    preprints: prefs.preprints,
+  };
+  const perRun = job.initial ? AUTO_SOURCES.initialPerRun : AUTO_SOURCES.perRun;
 
   // The thesis's own title leads the query. Without it, "Electrode wear remains a major cost"
   // found battery and wastewater electrodes for an EDM thesis (2026-09-30).
@@ -154,11 +177,14 @@ export async function runFindSources(
   await deps.assertBudget?.();
 
   // 1. Search every configured index. One index failing loses its results, never the run.
+  // Only OpenAlex can say which journal lists a paper's venue is on, so with an indexing filter
+  // the other indexes are not asked: everything they found would fail it.
+  const onlyOpenAlex = (filters.listedIn ?? []).length > 0;
   const indexes = [
     { name: 'openalex', client: deps.openalex },
-    { name: 'semanticscholar', client: deps.semanticScholar },
-    { name: 'pubmed', client: deps.pubmed },
-    { name: 'arxiv', client: deps.arxiv },
+    { name: 'semanticscholar', client: onlyOpenAlex ? null : deps.semanticScholar },
+    { name: 'pubmed', client: onlyOpenAlex ? null : deps.pubmed },
+    { name: 'arxiv', client: onlyOpenAlex || !prefs.preprints ? null : deps.arxiv },
   ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
   // Two short searches, not one long one: an index matches a long query against every word and
   // returns almost nothing (one usable paper for an EDM thesis, 2026-09-30). The thesis title
@@ -174,7 +200,7 @@ export async function runFindSources(
           [job.query.slice(0, 2_000)],
           (q, signal) =>
             deps.openalex.semanticSearch
-              ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal)
+              ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal, filters)
               : Promise.resolve([]),
           {
             ...SEARCH_BUDGET,
@@ -193,7 +219,7 @@ export async function runFindSources(
         const began = Date.now();
         const found = await searchWithinBudget(
           searches,
-          (q, signal) => client.search(q, now, signal),
+          (q, signal) => client.search(q, now, signal, filters),
           {
             ...SEARCH_BUDGET,
             onSkip: (_q, reason) => log({ level: 40, msg: `${name} search skipped`, reason }),
@@ -220,6 +246,7 @@ export async function runFindSources(
   const titles = new Set(library.map((s) => (s.title ? norm(s.title) : '')).filter(Boolean));
   const fresh = mergeWorks(lists).filter(
     (w) =>
+      meetsSourcePrefs(w, prefs) &&
       w.abstract &&
       w.abstract.trim().length > 200 &&
       !(w.doi && dois.has(w.doi.toLowerCase())) &&
@@ -253,7 +280,7 @@ export async function runFindSources(
       // ADR-0076: among papers on topic, the better-established first. Relevance (the filter
       // above) still decides what is eligible; standing only orders the few that are.
       .sort((a, b) => b.score + credibility(b, now) - (a.score + credibility(a, now)))
-      .slice(0, AUTO_SOURCES.perRun);
+      .slice(0, perRun);
   }
 
   // 4. Into the library, then the path every picked paper takes: resolve, then read.

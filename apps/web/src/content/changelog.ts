@@ -24,6 +24,18 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-07',
+    title: 'A setup like Jenni’s, and citations from more papers',
+    changes: [
+      'After the title, two short steps: your sources and citations (style, web search, library search, publish year, indexing and preprints), then how to structure the thesis (Smart headings, Standard thesis chapters, or none).',
+      'Indexing: papers found for you can be limited to core international journals, PubMed (MEDLINE), DOAJ, ABDC, ERIH PLUS or SciELO. Scopus, Web of Science and UGC-CARE are coming.',
+      'Your planned sections now appear as headings in the chapter, and the first suggestion appears under the first one without you typing.',
+      'A new thesis starts with about fifteen papers instead of five, and each section finds more papers when fewer than three cover it.',
+      'A suggestion draws on several papers instead of leaning on one, and papers you have already cited make way for others.',
+    ],
+  },
+  {
     version: 'v0.1.30',
     date: '2026-10-07',
     title: 'Edits that fit the sentence',

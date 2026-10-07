@@ -11,6 +11,7 @@
  * row was what made the links read as a scattered strip with no owner.
  */
 
+import type { SourcePrefs } from '@tc/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
@@ -19,11 +20,13 @@ import { LogoMark } from '@/components/LogoMark';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import {
+  STARTING_STYLES,
   StartingStyle,
   type StartingStyleChoice,
   saveStartingStyle,
   useDefaultStartingStyle,
 } from '@/components/onboarding/StartingStyle';
+import { StartSetup, type Structure } from '@/components/onboarding/StartSetup';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { TrialNotice } from '@/components/TrialNotice';
 import { ThemeToggle } from '@/components/theme';
@@ -83,6 +86,8 @@ export default function DocumentListPage() {
   useDefaultStartingStyle(citationStyle, setCitationStyle);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** ADR-0087: the preference and structure steps, after the title. */
+  const [setupOpen, setSetupOpen] = useState(false);
   /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */
   const [deleting, setDeleting] = useState<DocumentSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -169,17 +174,20 @@ export default function DocumentListPage() {
    * list and in the editor. `A_TOPIC` because there is no paper: the topic path's proposal is the
    * one that can start from the student's own words later.
    */
-  async function startWriting() {
+  async function startWriting(sourcePrefs?: SourcePrefs, structure?: Structure) {
     setBusy(true);
     setError(null);
     try {
       const created = await api<{ id: string; firstChapterId: string | null }>('/documents', {
         method: 'POST',
         // ADR-0072: `start: 'writing'` plans the chapters from the title in the background.
+        // ADR-0087: with the student's source preferences and structure from the setup steps.
         body: JSON.stringify({
           title: title.trim() || 'Untitled thesis',
           entryPath: 'A_TOPIC',
           start: 'writing',
+          ...(sourcePrefs ? { sourcePrefs } : {}),
+          ...(structure ? { structure } : {}),
         }),
       });
       await saveStartingStyle(created.id, citationStyle);
@@ -265,78 +273,103 @@ export default function DocumentListPage() {
         {/* ADR-0070: writing comes first. Enter, and the filled button, open the first chapter
             with the search for papers already running; the proposal is the second button and
             the editor's next-step guide offers it again. */}
-        <form
-          onSubmit={(event: FormEvent) => {
-            event.preventDefault();
-            void startWriting();
-          }}
-          className="flex flex-col gap-4"
-        >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="title">{t('common.workingTitle')}</Label>
-            <Input
-              id="title"
-              name="title"
-              maxLength={300}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('list.titlePlaceholder')}
+        {setupOpen ? (
+          <div className="flex flex-col gap-4">
+            <button
+              type="button"
+              onClick={() => setSetupOpen(false)}
+              className="self-end rounded-md bg-sunk px-3 py-2 text-left text-[13px] text-ink"
+              data-testid="setup-title-summary"
+            >
+              {title.trim() || 'Untitled thesis'}
+              <span className="ml-2 text-muted underline">Edit</span>
+            </button>
+            <StartSetup
+              stylePicker={<StartingStyle value={citationStyle} onChange={setCitationStyle} />}
+              styleName={
+                STARTING_STYLES.find((s) => s.id === citationStyle)?.label ?? 'Default style'
+              }
+              busy={busy}
+              error={error}
+              onBack={() => setSetupOpen(false)}
+              onStart={(prefs, structure) => void startWriting(prefs, structure)}
             />
           </div>
-
-          <fieldset className="flex flex-col gap-2 border-0 p-0">
-            <legend className="mb-1 text-[13px] font-semibold text-ink">
-              {t('list.startFrom')}
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {ENTRY_PATHS.map((option) => {
-                const checked = entryPath === option.value;
-                return (
-                  <label
-                    key={option.value}
-                    className={`flex min-w-[15rem] flex-1 cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors ${
-                      checked
-                        ? 'border-accent bg-accent-soft'
-                        : 'border-line hover:border-line-strong'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="entryPath"
-                      value={option.value}
-                      checked={checked}
-                      onChange={() => setEntryPath(option.value)}
-                      className="mt-0.5 accent-accent"
-                    />
-                    <span>
-                      <span className="block text-[13.5px] font-semibold text-ink">
-                        {t(option.label)}
-                      </span>
-                      <Hint className="mt-0.5">{t(option.hint)}</Hint>
-                    </span>
-                  </label>
-                );
-              })}
+        ) : (
+          <form
+            onSubmit={(event: FormEvent) => {
+              event.preventDefault();
+              // ADR-0087: the title first, then sources and structure, as Jenni's start does.
+              setSetupOpen(true);
+            }}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="title">{t('common.workingTitle')}</Label>
+              <Input
+                id="title"
+                name="title"
+                maxLength={300}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t('list.titlePlaceholder')}
+              />
             </div>
-          </fieldset>
 
-          <StartingStyle value={citationStyle} onChange={setCitationStyle} />
+            <fieldset className="flex flex-col gap-2 border-0 p-0">
+              <legend className="mb-1 text-[13px] font-semibold text-ink">
+                {t('list.startFrom')}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {ENTRY_PATHS.map((option) => {
+                  const checked = entryPath === option.value;
+                  return (
+                    <label
+                      key={option.value}
+                      className={`flex min-w-[15rem] flex-1 cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors ${
+                        checked
+                          ? 'border-accent bg-accent-soft'
+                          : 'border-line hover:border-line-strong'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="entryPath"
+                        value={option.value}
+                        checked={checked}
+                        onChange={() => setEntryPath(option.value)}
+                        className="mt-0.5 accent-accent"
+                      />
+                      <span>
+                        <span className="block text-[13.5px] font-semibold text-ink">
+                          {t(option.label)}
+                        </span>
+                        <Hint className="mt-0.5">{t(option.hint)}</Hint>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={busy} data-testid="start-writing-now">
-              {busy ? t('common.creating') : t('list.startWriting')}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy || title.trim().length === 0}
-              onClick={() => void create()}
-            >
-              {t('list.create')}
-            </Button>
-          </div>
-          <Hint>{t('list.startWritingHint')}</Hint>
-        </form>
+            <StartingStyle value={citationStyle} onChange={setCitationStyle} />
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" disabled={busy} data-testid="start-writing-now">
+                {busy ? t('common.creating') : t('list.startWriting')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy || title.trim().length === 0}
+                onClick={() => void create()}
+              >
+                {t('list.create')}
+              </Button>
+            </div>
+            <Hint>{t('list.startWritingHint')}</Hint>
+          </form>
+        )}
       </CardBody>
     </Card>
   );

@@ -164,8 +164,14 @@ export function SectionGuide({
     if (!node) return;
     // Folded on a phone, as the scaffold was: open, it filled most of a 375 px screen.
     const wide = window.matchMedia('(min-width: 640px)').matches;
-    setOpen(wide && !isHintDismissed(`sections-${node.id}`));
-  }, [node?.id, node]);
+    // ADR-0087: once the sections are headings in the chapter (and listed in the chapter rail),
+    // the writing comes first, as in Jenni; the guide stays one click away.
+    let laidOut = false;
+    editor?.state.doc.forEach((child) => {
+      if (child.type.name === 'heading' && Number(child.attrs.level ?? 1) === 2) laidOut = true;
+    });
+    setOpen(wide && !laidOut && !isHintDismissed(`sections-${node.id}`));
+  }, [node?.id, node, editor]);
 
   // The chapter opened as "Chapter 1" and the plan has since named it. The heading at the top is
   // our placeholder, not the student's words, so it takes the planned title. Anything else the
@@ -197,6 +203,64 @@ export function SectionGuide({
       editor.off('transaction', retry);
     };
   }, [editor, row]);
+
+  // ADR-0087: Jenni lays the planned headings out in the document. A chapter that is still blank
+  // (its title and empty lines, nothing written) takes its planned sections as headings when the
+  // plan lands, with the cursor on the line under the first, so the opener (ADR-0078) offers a
+  // first sentence there. Anything the student has written means it is left alone. The worker
+  // does the same for chapters nobody has open; this covers the one on screen, which its save
+  // would otherwise overwrite.
+  const sectionTitles = (node?.children ?? []).map((c) => c.title.trim()).filter(Boolean);
+  const sectionsKey = sectionTitles.join('|');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `sectionsKey` stands for `sectionTitles`.
+  useEffect(() => {
+    if (!editor || sectionTitles.length === 0) return;
+    const lay = (): boolean => {
+      const doc = editor.state.doc;
+      let writing = false;
+      let headings = 0;
+      doc.forEach((child, _offset, index) => {
+        if (child.type.name === 'heading') {
+          if (index > 0) headings++;
+        } else if (child.textContent.trim().length > 0 || child.type.name !== 'paragraph') {
+          writing = true;
+        }
+      });
+      if (writing || headings > 0) return true;
+      if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return false;
+      const { schema } = editor.state;
+      const heading = schema.nodes.heading;
+      const paragraph = schema.nodes.paragraph;
+      const first = doc.firstChild;
+      if (!heading || !paragraph || first?.type.name !== 'heading') return true;
+      const nodes = sectionTitles.flatMap((title) => [
+        heading.create({ level: 2 }, schema.text(title)),
+        paragraph.create(),
+      ]);
+      const from = first.nodeSize;
+      editor
+        .chain()
+        .command(({ tr }) => {
+          tr.replaceWith(from, doc.content.size, nodes);
+          return true;
+        })
+        // The empty line under the first section: after the title, the first heading and into
+        // its paragraph.
+        .setTextSelection(from + (nodes[0]?.nodeSize ?? 0) + 1)
+        .focus()
+        .run();
+      setOpen(false);
+      return true;
+    };
+    if (lay()) return;
+    const retry = () => {
+      if (lay()) editor.off('transaction', retry);
+    };
+    editor.on('transaction', retry);
+    return () => {
+      editor.off('transaction', retry);
+    };
+  }, [editor, sectionsKey]);
 
   async function planFromTitle() {
     setAsking(true);

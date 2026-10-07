@@ -66,3 +66,65 @@ describe('the words worth searching for', () => {
     expect(keywordsOf('What does it say?')).toEqual([]);
   });
 });
+
+describe("ADR-0087: the student's source preferences in the query", () => {
+  const capture = () => {
+    const urls: string[] = [];
+    const client = new OpenAlexDiscovery({
+      mailto: 'ops@example.edu',
+      sleep: async () => undefined,
+      fetch: async (url: string) => {
+        urls.push(url);
+        return new Response(
+          JSON.stringify({
+            results: [
+              {
+                id: 'https://openalex.org/W1',
+                title: 'A paper',
+                publication_year: 2023,
+                type: 'article',
+                primary_location: {
+                  source: { display_name: 'J', listed_in: ['doaj', 'cwts-core'] },
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      },
+    });
+    return { client, urls };
+  };
+  const filterOf = (url: string) => new URL(url).searchParams.get('filter') ?? '';
+
+  it('asks only for the years, journal lists and kinds of work chosen', async () => {
+    const { client, urls } = capture();
+    const now = new Date('2026-10-07T00:00:00Z');
+    const found = await client.search('mobile banking', now, undefined, {
+      yearFrom: 2021,
+      yearTo: 2025,
+      listedIn: ['doaj', 'abdc-a'],
+      preprints: false,
+    });
+    const filter = filterOf(urls[0] ?? '');
+    expect(filter).toContain('from_publication_date:2021-01-01');
+    expect(filter).toContain('to_publication_date:2025-12-31');
+    expect(filter).toContain('primary_location.source.listed_in:doaj|abdc-a');
+    expect(filter).not.toContain('preprint');
+    expect(found[0]?.listedIn).toEqual(['doaj', 'cwts-core']);
+
+    await client.semanticSearch('mobile banking', now, undefined, { yearFrom: 2021, yearTo: 2025 });
+    const semantic = filterOf(urls[1] ?? '');
+    expect(semantic).toContain('publication_year:>2020');
+    expect(semantic).toContain('publication_year:<2026');
+  });
+
+  it('without preferences, asks as before', async () => {
+    const { client, urls } = capture();
+    await client.search('mobile banking', new Date('2026-10-07T00:00:00Z'));
+    const filter = filterOf(urls[0] ?? '');
+    expect(filter).toContain('from_publication_date:2011-01-01');
+    expect(filter).toContain('preprint');
+    expect(filter).not.toContain('listed_in');
+  });
+});

@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { citedSourceCounts } from '../src/context.js';
 import {
   buildQueryText,
   CANDIDATE_LIMIT,
@@ -13,7 +14,9 @@ import {
   passageId,
   RELEVANCE_FLOOR,
   rerank,
+  SPREAD_FLOOR,
   SUB_THEME_BOOST,
+  spreadCitations,
   stripUnknownCitations,
   TOP_K,
   topK,
@@ -275,5 +278,88 @@ describe('the relevance floor — what stops chat being a general chatbot', () =
   it('takes a caller-supplied floor, so the threshold can be tuned without a deploy', () => {
     expect(isOffTopic(at(0.4), 0.5)).toBe(true);
     expect(isOffTopic(at(0.4), 0.2)).toBe(false);
+  });
+});
+
+describe('ADR-0087: suggestions draw on several papers', () => {
+  const ranked = (rows: Array<[string, string, number]>) =>
+    rerank(
+      rows.map(([chunkId, sourceId, cosine]) => candidate({ chunkId, sourceId, cosine })),
+      null,
+    );
+
+  it('a suggestion takes at most two passages from one paper while others have candidates', () => {
+    const chosen = topK(
+      ranked([
+        ['a1', 'A', 0.9],
+        ['a2', 'A', 0.89],
+        ['a3', 'A', 0.88],
+        ['a4', 'A', 0.87],
+        ['b1', 'B', 0.6],
+        ['c1', 'C', 0.55],
+        ['d1', 'D', 0.5],
+      ]),
+      'ASSIST',
+    );
+    expect(chosen).toHaveLength(TOP_K.ASSIST);
+    expect(chosen.filter((c) => c.sourceId === 'A')).toHaveLength(3);
+    expect(new Set(chosen.slice(0, 5).map((c) => c.sourceId))).toEqual(
+      new Set(['A', 'B', 'C', 'D']),
+    );
+  });
+
+  it('a library of one paper still fills the suggestion', () => {
+    const chosen = topK(
+      ranked([
+        ['a1', 'A', 0.9],
+        ['a2', 'A', 0.8],
+        ['a3', 'A', 0.7],
+      ]),
+      'ASSIST',
+    );
+    expect(chosen).toHaveLength(3);
+  });
+
+  it('a paper the chapter already cites steps back when another is close', () => {
+    const before = ranked([
+      ['a1', 'A', 0.62],
+      ['b1', 'B', 0.6],
+    ]);
+    const after = spreadCitations(before, new Map([['A', 3]]));
+    expect(after[0]?.sourceId).toBe('B');
+  });
+
+  it('but never lets a much weaker paper overtake an on-topic one', () => {
+    const before = ranked([
+      ['a1', 'A', 0.8],
+      ['b1', 'B', 0.4],
+    ]);
+    const after = spreadCitations(before, new Map([['A', 40]]));
+    expect(after[0]?.sourceId).toBe('A');
+    expect((before[0]?.score ?? 0) - (after[0]?.score ?? 0)).toBeCloseTo(1 - SPREAD_FLOOR, 5);
+  });
+
+  it('counts the citations in a chapter by paper', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'One' },
+            { type: 'citation', attrs: { sourceId: 'A' } },
+            { type: 'citation', attrs: { sourceId: 'A' } },
+            { type: 'citation', attrs: { sourceId: 'B' } },
+          ],
+        },
+      ],
+    };
+    expect(citedSourceCounts(doc)).toEqual(
+      new Map([
+        ['A', 2],
+        ['B', 1],
+      ]),
+    );
+    expect(citedSourceCounts(null).size).toBe(0);
   });
 });

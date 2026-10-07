@@ -59,6 +59,7 @@ export {
   AUTO_SOURCES_FLAG,
   autoSourcesJobKey,
   capFor,
+  initialSourcesJobKey,
   monthlyAutoOutlines,
   monthlyAutoSearches,
   PLAN_LIMITS,

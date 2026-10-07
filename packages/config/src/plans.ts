@@ -122,6 +122,19 @@ export { METERED_ACTIONS, type MeteredAction };
  */
 export const AUTO_SOURCES = {
   perRun: 5,
+  /**
+   * ADR-0087: the search made when a thesis is created adds this many. Five left a new library so
+   * small that every suggestion cited the same two or three papers (the owner's manager,
+   * 2026-10-07). Fifteen candidate abstracts plus full texts stay inside the ~90k-token bound
+   * above, so it is still under ₹0.50, once per thesis.
+   */
+  initialPerRun: 15,
+  /**
+   * ADR-0087: a section is "covered" only when this many different papers have a passage on it.
+   * The search used to start only when nothing at all was on topic, so one matching paper was
+   * enough to stop the library growing.
+   */
+  minPapers: 3,
   /** Library passages at or above this count as covering the text (chat's `RELEVANCE_FLOOR`). */
   minCosine: 0.3,
   /**
@@ -152,9 +165,30 @@ export function monthlyAutoSearches(plan: string): number {
  * requests while the last search is still being read are the same job, which BullMQ ignores.
  * Keyed on the chapter (what the search reads), and free of ':', which job ids cannot contain.
  */
-export function autoSourcesJobKey(chapterId: string, now: Date = new Date()): string {
+export function autoSourcesJobKey(
+  chapterId: string,
+  now: Date = new Date(),
+  section?: string | null,
+): string {
   const window = Math.floor(now.getTime() / (AUTO_SOURCES.cooldownMinutes * 60_000));
-  return `find-sources-${chapterId}-${window}`;
+  // ADR-0087: each section of a chapter may search once per window, not the chapter as a whole.
+  const part = section ? `-${sectionDigest(section)}` : '';
+  return `find-sources-${chapterId}${part}-${window}`;
+}
+
+/** ADR-0087: the one search a thesis makes when it is created (`initialPerRun` papers). */
+export function initialSourcesJobKey(documentId: string): string {
+  return `find-sources-initial-${documentId}`;
+}
+
+/** A short, colon-free tag for a section heading (FNV-1a); job ids cannot contain ':'. */
+function sectionDigest(section: string): string {
+  let hash = 0x811c9dc5;
+  for (const ch of section.trim().toLowerCase()) {
+    hash ^= ch.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
 }
 
 /**

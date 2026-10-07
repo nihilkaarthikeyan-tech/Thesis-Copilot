@@ -4,7 +4,7 @@
  * search rather than another one. With the site switch off, nothing starts.
  */
 
-import { AUTO_SOURCES_FLAG, autoSourcesJobKey } from '@tc/config';
+import { AUTO_SOURCES_FLAG, autoSourcesJobKey, initialSourcesJobKey } from '@tc/config';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -106,10 +106,12 @@ describe('automatic sources from autocomplete', () => {
     });
     expect(res.status).toBe(201);
     const created = (await res.json()) as { id: string; firstChapterId: string };
-    const job = await queue.getJob(autoSourcesJobKey(created.firstChapterId));
+    // ADR-0087: the search made at creation is its own job, and adds fifteen papers.
+    const job = await queue.getJob(initialSourcesJobKey(created.id));
     expect(job?.data).toMatchObject({
       documentId: created.id,
       query: 'Barriers to rooftop solar adoption in rural Karnataka',
+      initial: true,
     });
 
     const progress = await h.api(`/documents/${created.id}/sources/progress`);
@@ -123,7 +125,7 @@ describe('automatic sources from autocomplete', () => {
       body: JSON.stringify({ title: 'Untitled thesis', entryPath: 'A_TOPIC' }),
     });
     const created = (await res.json()) as { id: string; firstChapterId: string };
-    expect(await queue.getJob(autoSourcesJobKey(created.firstChapterId))).toBeUndefined();
+    expect(await queue.getJob(initialSourcesJobKey(created.id))).toBeUndefined();
     const progress = await h.api(`/documents/${created.id}/sources/progress`);
     expect(await progress.json()).toMatchObject({ searching: false });
   });

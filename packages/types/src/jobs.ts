@@ -121,6 +121,11 @@ export type FindSourcesJob = {
   chapterId: string;
   /** What the student is writing about, in words: the section title, scope note and last sentence. */
   query: string;
+  /**
+   * ADR-0087: the search made when the thesis is created. It adds `AUTO_SOURCES.initialPerRun`
+   * papers rather than `perRun`, so a new thesis starts with a library to cite from, not five.
+   */
+  initial?: boolean;
 };
 
 /**
