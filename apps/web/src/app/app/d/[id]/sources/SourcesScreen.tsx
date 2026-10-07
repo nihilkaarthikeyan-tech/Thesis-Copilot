@@ -17,6 +17,7 @@ import { sourceMetricBadges } from '@tc/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { EditDetails } from '@/components/sources/EditDetails';
 import { API_URL, ApiError, api } from '@/lib/api';
 import {
   addedSummary,
@@ -628,6 +629,10 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                   onOpen={openPdf}
                   onAttach={filter === 'missing' ? attachPdf : undefined}
                   onFetchPdf={filter === 'missing' ? (id) => void fetchPdfs([id]) : undefined}
+                  onEdited={() => {
+                    setNotice('Details saved. Every citation of this paper now follows them.');
+                    void load();
+                  }}
                 />
               ))}
             </ul>
@@ -768,6 +773,7 @@ function SourceRow({
   onOpen,
   onAttach,
   onFetchPdf,
+  onEdited,
 }: {
   documentId: string;
   source: Source;
@@ -782,9 +788,13 @@ function SourceRow({
   onAttach?: ((id: string, file: File) => Promise<void>) | undefined;
   /** R14: set in the same view — look again for an open-access copy of this paper. */
   onFetchPdf?: ((id: string) => void) | undefined;
+  /** R15: the paper's details were corrected; the list reads them again. */
+  onEdited?: (() => void) | undefined;
 }) {
   const [fixing, setFixing] = useState(false);
   const [attaching, setAttaching] = useState(false);
+  /** R15 (ADR-0102): the details form, open under the row. */
+  const [editing, setEditing] = useState(false);
   const [doi, setDoi] = useState('');
 
   const meta = [source.year ? String(source.year) : null, source.venue].filter(Boolean).join(' · ');
@@ -908,6 +918,17 @@ function SourceRow({
             PDF file ↗
           </button>
         ) : null}
+        {source.status !== 'PENDING' ? (
+          <button
+            type="button"
+            className="underline"
+            aria-expanded={editing}
+            onClick={() => setEditing((on) => !on)}
+            data-testid="edit-details-open"
+          >
+            Edit details
+          </button>
+        ) : null}
         {onFetchPdf && source.doi && !source.hasFile ? (
           <button
             type="button"
@@ -979,6 +1000,16 @@ function SourceRow({
             Look it up
           </button>
         </form>
+      ) : null}
+      {editing ? (
+        <EditDetails
+          sourceId={source.id}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            onEdited?.();
+          }}
+        />
       ) : null}
     </li>
   );

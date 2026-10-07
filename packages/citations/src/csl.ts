@@ -243,6 +243,9 @@ export function namesFrom(authors: unknown): CslName[] {
     .filter((n): n is CslName => n !== null);
 }
 
+/** On a stored CSL record the student has edited (R15); never sent to citeproc. */
+export const EDITED_KEY = 'tc-edited';
+
 /**
  * One CSL-JSON item for citeproc. The stored CSL-JSON wins field by field; the row fills what it
  * does not have. The id is the source id, so a rendered label can always be traced back to a row.
@@ -279,7 +282,11 @@ export function toCslItem(source: SourceLike): CslItem {
   delete item.subtitle;
 
   const storedAuthors = namesFrom(stored?.author);
-  const authors = peopleFirst(storedAuthors.length > 0 ? storedAuthors : namesFrom(source.authors));
+  const listed = storedAuthors.length > 0 ? storedAuthors : namesFrom(source.authors);
+  // R15 (ADR-0102): names the student typed are printed as typed — an organisation listed beside
+  // people is theirs to list; `peopleFirst` repairs what indexes send, not what a person wrote.
+  const authors = stored?.[EDITED_KEY] === true ? listed : peopleFirst(listed);
+  delete item[EDITED_KEY];
   if (authors.length > 0) item.author = authors;
   else delete item.author;
 

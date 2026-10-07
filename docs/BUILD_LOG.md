@@ -5598,3 +5598,8 @@ with the last try's reason stored (`Source.fullTextNote`, migration 0041 — app
 the next release's migrate). Real run: 1 of 7 read in full via Europe PMC; Nature turns away
 automated requests (curl excepted), Wiley 403s — told to the student, not got round.
 
+R15 (ADR-0102): edit a paper's details — the form by kind, saved to the CSL record and the row.
+Found: the author repair (ADR-0078) dropped an organisation a student listed beside people; edited
+records are now printed as typed. Proven in the browser: a year change reached both chapter
+citations; put back.
+

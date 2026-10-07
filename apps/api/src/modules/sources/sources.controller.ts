@@ -13,12 +13,14 @@ import {
   HttpCode,
   Param,
   Post,
+  Put,
   Query,
   Req,
   Res,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
+import { DETAIL_TYPES } from '@tc/citations';
 import type { Plan } from '@tc/config';
 import { PLANS } from '@tc/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -97,6 +99,25 @@ async function readUpload(
   const buffer = await file.toBuffer();
   return { filename: file.filename, bytes: new Uint8Array(buffer) };
 }
+
+const nameBody = z.object({
+  family: z.string().max(200).optional(),
+  given: z.string().max(200).optional(),
+  literal: z.string().max(300).optional(),
+});
+const detailsBody = z.object({
+  type: z.enum(DETAIL_TYPES),
+  title: z.string().trim().min(1, 'A paper needs a title.').max(1_000),
+  authors: z.array(nameBody).max(100),
+  year: z.number().int().min(1000).max(2100).nullable(),
+  container: z.string().max(500),
+  volume: z.string().max(50),
+  issue: z.string().max(50),
+  pages: z.string().max(50),
+  publisher: z.string().max(300),
+  doi: z.string().max(300),
+  url: z.string().max(2_000),
+});
 
 const fetchPdfsBody = z.object({ sourceIds: z.array(z.string().uuid()).max(200).optional() });
 
@@ -192,6 +213,24 @@ export class SourcesController {
   @Get('documents/:documentId/seed-papers/:spId')
   seedPaper(@CurrentUser() user: SessionUser, @Param('spId') seedPaperId: string) {
     return this.sources.seedPaper(user.id, seedPaperId);
+  }
+
+  /** R15 (ADR-0102): a paper's details for the edit form. */
+  @Get('sources/:id/details')
+  details(@CurrentUser() user: SessionUser, @Param('id') sourceId: string) {
+    return this.sources.details(user.id, sourceId);
+  }
+
+  /** R15 (ADR-0102): the student's corrections; every citation of the paper follows. Free. */
+  @Put('sources/:id/details')
+  saveDetails(
+    @CurrentUser() user: SessionUser,
+    @Param('id') sourceId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = detailsBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Check the details', parsed.error.issues);
+    return this.sources.saveDetails(user.id, sourceId, parsed.data);
   }
 
   /** R14 (ADR-0101): look again for open-access copies of papers that have no PDF. Free. */

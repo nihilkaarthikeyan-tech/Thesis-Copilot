@@ -19,6 +19,15 @@ export {
 } from './checks.js';
 export { type CslItem, type CslName, namesFrom, type SourceLike, toCslItem } from './csl.js';
 export {
+  authorLines,
+  DETAIL_TYPES,
+  type DetailType,
+  detailsOf,
+  parseAuthorLines,
+  type SourceDetails,
+  withDetails,
+} from './details.js';
+export {
   citationKeys,
   csvField,
   exportLibrary,

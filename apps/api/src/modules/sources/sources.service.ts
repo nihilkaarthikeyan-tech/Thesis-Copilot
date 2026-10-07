@@ -7,7 +7,14 @@
 
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { exportLibrary, type LibraryFile, type LibraryFormat } from '@tc/citations';
+import {
+  detailsOf,
+  exportLibrary,
+  type LibraryFile,
+  type LibraryFormat,
+  type SourceDetails,
+  withDetails,
+} from '@tc/citations';
 import type { Plan } from '@tc/config';
 import type { Prisma } from '@tc/db';
 import { openAccessFromStatus } from '@tc/retrieval';
@@ -481,6 +488,70 @@ export class SourcesService {
   }
 
   /** FR-2.3: the student's own PDF joins the library and goes through the same indexing pipeline. */
+  /** R15 (ADR-0102): a paper's details as the edit form shows them. */
+  async details(ownerId: string, sourceId: string): Promise<SourceDetails> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: sourceId, document: { ownerId } },
+      select: {
+        id: true,
+        title: true,
+        authors: true,
+        year: true,
+        venue: true,
+        doi: true,
+        cslJson: true,
+        isPreprint: true,
+        rawReference: true,
+      },
+    });
+    if (!source) throw new NotFoundError('That source');
+    return detailsOf(source);
+  }
+
+  /**
+   * R15 (ADR-0102): the student's corrections to a paper's details, written to the stored CSL
+   * record (which a citation is built from first) and to the row's own columns, so every citation
+   * of it — in every chapter and the bibliography — follows on its next render. Free.
+   */
+  async saveDetails(
+    ownerId: string,
+    sourceId: string,
+    details: SourceDetails,
+  ): Promise<{ details: SourceDetails }> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: sourceId, document: { ownerId } },
+      select: { id: true, cslJson: true },
+    });
+    if (!source) throw new NotFoundError('That source');
+    const cslJson = withDetails(source.cslJson, details);
+    const updated = await this.prisma.source.update({
+      where: { id: sourceId },
+      data: {
+        cslJson: cslJson as Prisma.InputJsonValue,
+        title: details.title.trim() || null,
+        authors: details.authors as unknown as Prisma.InputJsonValue,
+        year: details.year,
+        venue: details.container.trim() || null,
+        doi: details.doi.trim() || null,
+        type: details.type,
+        // A student who has corrected the record has identified the paper.
+        status: 'RESOLVED',
+      },
+      select: {
+        id: true,
+        title: true,
+        authors: true,
+        year: true,
+        venue: true,
+        doi: true,
+        cslJson: true,
+        isPreprint: true,
+        rawReference: true,
+      },
+    });
+    return { details: detailsOf(updated) };
+  }
+
   /**
    * Jenni build plan R14 (ADR-0101): "Fetch PDF" — look again for an open-access copy of papers
    * that have none. `index-source` already tries arXiv, every copy Unpaywall lists and CORE; this
