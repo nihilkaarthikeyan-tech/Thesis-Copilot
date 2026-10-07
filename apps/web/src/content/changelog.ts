@@ -24,8 +24,8 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    version: null,
-    date: '2026-10-06',
+    version: 'v0.1.30',
+    date: '2026-10-07',
     title: 'Edits that fit the sentence',
     changes: [
       'An edit on part of a sentence (Formalise, Shorten and the rest) now fits back into the sentence: no stray full stop in the middle and no missing space, and it starts in lower case where your selection did.',
