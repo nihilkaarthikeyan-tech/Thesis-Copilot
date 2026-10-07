@@ -31,6 +31,7 @@ import { StartSetup, type Structure } from '@/components/onboarding/StartSetup';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { TrialNotice } from '@/components/TrialNotice';
 import { ThemeToggle } from '@/components/theme';
+import { UsageMenu } from '@/components/UsageMenu';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import {
@@ -440,6 +441,10 @@ export default function DocumentListPage() {
             <Button asChild variant="ghost" size="sm">
               <Link href="/app/settings">{t('common.settings')}</Link>
             </Button>
+            <UsageMenu
+              label="Usage"
+              className="inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium text-ink hover:bg-sunk"
+            />
             <Button asChild variant="ghost" size="sm">
               <Link href="/app/account">{t('common.account')}</Link>
             </Button>

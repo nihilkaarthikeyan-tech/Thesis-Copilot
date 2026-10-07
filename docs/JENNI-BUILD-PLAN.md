@@ -283,4 +283,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R9 | Done 2026-10-07 — Copy with citation carries a real citation (HTML); a paste keeps its label and a key of its own; menu: cited → "Put it in my words, cited" / Keep; uncited → Edit with AI / Find a source / Cite it / Keep. No uncited paraphrase (§12.3), no Proofread on the menu | ADR-0096 |
 | R10 | Done 2026-10-07 — the rail's headings are the Sections panel: each opens to its note (edit/add in place; a typed heading becomes a section), Draft, Sources; `PUT /outline/section-note` with a row lock | ADR-0097 |
 | R11 | Done 2026-10-07 — dots on the Sources, Citations, Chat and Check tabs; one line, Try now / Dismiss; gone once used, tried or dismissed; none while the first-session guide shows | ADR-0098 |
-| R12–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R12 | Done 2026-10-07 — Usage menu with a coloured bar per allowance and the renewal date: Usage in the list header, the editor counter opens it, a corner button on every other screen | ADR-0099 |
+| R13–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

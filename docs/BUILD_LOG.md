@@ -5587,3 +5587,6 @@ Assist reads its note), Draft and Sources. API 3 tests; proven in the browser on
 R11 (ADR-0098): feature dots on the panel's tabs. Found in the browser: React's double effect run in
 development marked the starting tab "used" on load; the tab is now compared with the previous one.
 
+R12 (ADR-0099): usage one click away — a bar per allowance in a menu on the list, the editor's
+counter and a corner button on every other signed-in screen. Proven in the browser on all three.
+

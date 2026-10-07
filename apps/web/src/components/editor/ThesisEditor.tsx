@@ -103,6 +103,7 @@ import { FeatureDot, noteFeatureUsed } from '../onboarding/FeatureDot';
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ThemeToggle } from '../theme';
+import { UsageMenu } from '../UsageMenu';
 import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
 import { BlockMenu } from './BlockMenu';
@@ -1287,14 +1288,16 @@ function ChapterEditor({
                       : t('editor.live.with', { names: liveState.others.join(', ') })
               : t(STATUS_LABEL[status])}
           </span>
-          <span
-            data-testid="usage-meter"
-            className="tnum mr-1 whitespace-nowrap border-l border-line pl-3 text-[12px] text-muted"
-          >
-            {t('editor.usage', {
-              assist: assist ? `${assist.used}/${assist.cap}` : '–',
-              draft: draft ? `${draft.used}/${draft.cap}` : '–',
-            })}
+          {/* R12 (ADR-0099): the counter opens every allowance, as bars. */}
+          <span className="mr-1 border-l border-line pl-3">
+            <UsageMenu
+              testId="usage-meter"
+              className="tnum whitespace-nowrap text-[12px] text-muted underline-offset-2 hover:text-ink hover:underline"
+              label={t('editor.usage', {
+                assist: assist ? `${assist.used}/${assist.cap}` : '–',
+                draft: draft ? `${draft.used}/${draft.cap}` : '–',
+              })}
+            />
           </span>
           <Button
             variant="ghost"

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { UsageCorner } from '@/components/UsageMenu';
 import { LanguageAttribute, LanguageProvider } from '@/i18n/react';
 import { requestLanguage } from '@/i18n/server';
 
@@ -12,6 +13,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <LanguageProvider initial={language} syncWithAccount>
       <LanguageAttribute language={language} />
       {children}
+      {/* R12 (ADR-0099): usage one click away on the screens without their own header. */}
+      <UsageCorner />
     </LanguageProvider>
   );
 }
