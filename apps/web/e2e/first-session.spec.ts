@@ -45,6 +45,9 @@ test('the editor says what the library is doing, and the guide moves the student
   await form.getByLabel('Working title').fill('Fish drying losses in coastal Kerala villages');
   // Enter now starts writing (ADR-0070): the proposal is the second button.
   await form.getByLabel('Working title').press('Enter');
+  // ADR-0087: the sources and structure steps, taken with their defaults.
+  await page.getByTestId('setup-next').click();
+  await page.getByTestId('setup-start').click();
   await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
 
