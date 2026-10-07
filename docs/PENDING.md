@@ -234,6 +234,15 @@ then queue `index-source` for each (Admin → Background jobs can retry failed o
 finished as "nothing to index" need a fresh job — a one-off script, run with the owner's go-ahead,
 since each re-index spends a little on embeddings).
 
+**2026-10-07 (R20, ADR-0107):** the same re-index now also names each upload from its first page
+(or its printed DOI) — until then every uploaded PDF sat at "still looking up" with its file name
+as its title. Include the uploads that were read but never named:
+
+```sql
+select count(*) from "Source"
+where "fileKey" is not null and "rawReference" is null and "doi" is null and status = 'PENDING';
+```
+
 ## "We'll email you when it is ready" (ADR-0058, 2026-10-04)
 
 - [ ] **Nothing to configure for the release, but check one thing after it.** The worker now

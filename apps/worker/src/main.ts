@@ -42,6 +42,7 @@ import {
   OpenAlexDiscovery,
   PUBMED,
   PubMedClient,
+  resolveByDoi,
   retrievePassages,
   SemanticScholarClient,
   sharedGate,
@@ -428,6 +429,13 @@ async function main(): Promise<void> {
           extract: (bytes) => extractDocument(bytes, 'pdf'),
           logEmbed: logEmbed(prisma, env),
           assertBudget: assertPlatformBudget(prisma, env),
+          // R20 (ADR-0107): an upload's printed DOI, resolved as a pasted one is.
+          resolveDoi: (doi, signal) =>
+            resolveByDoi(
+              doi,
+              { crossref: scholarly.crossref, openalex: scholarly.openalex },
+              signal,
+            ),
           log: (event) => log({ jobId: job.id, ...event }),
         });
         return result;

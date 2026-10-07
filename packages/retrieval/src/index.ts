@@ -203,6 +203,12 @@ export {
   jatsToText,
 } from './scholarly/europepmc.js';
 export {
+  FIRST_PAGE_CHARS,
+  type FirstPage,
+  joinBrokenWords,
+  readFirstPage,
+} from './scholarly/first-page.js';
+export {
   FETCH_TIMEOUT_MS,
   type FullTextFailure,
   type FullTextFetchOptions,

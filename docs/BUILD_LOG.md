@@ -5617,3 +5617,8 @@ comparing the library before and after. Proven with a new collection and an ISBN
 R19 (ADR-0106): "Sources in this thesis" — every cited paper with counts and chapters, and keep the
 found ones as the student's own. Proven on the real stack (4 papers; one kept, set back).
 
+R20 (ADR-0107): checked with the Jenni study's test PDF, ours was worse than Jenni — an upload kept
+its file name, no authors, no abstract, and stayed PENDING for ever. Now the first page names it
+(printed DOI → the record; else title, byline with initials, year, abstract). Real upload: all
+three of Jenni's failures pass. Old uploads need the PENDING re-index.
+

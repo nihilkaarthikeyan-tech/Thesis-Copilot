@@ -291,4 +291,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R17 | Done 2026-10-07 — filters by year, access and kind; a details drawer (abstract, ↑ ↓, Cite in my chapter, Ask AI with questions, Read, Edit details) | ADR-0104 |
 | R18 | Done 2026-10-07 — "Add into" (a collection or a new one) on the library's add row; files, Zotero, PDFs and IDs go straight in. Discover and the editor's adds not yet | ADR-0105 |
 | R19 | Done 2026-10-07 — "Sources in this thesis (N)" on the Citations tab: every cited paper, how often and where, Read, and Keep in my library (one or all) for papers found for the student | ADR-0106 |
-| R20–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R20 | Done 2026-10-07 — an uploaded PDF names itself from its first page (printed DOI → its record; else title, byline with initials, year, abstract; broken words joined); no more "still looking up" for ever | ADR-0107 |
+| R21–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

@@ -559,3 +559,81 @@ describe('Europe PMC full text (ADR-0054)', () => {
     });
   });
 });
+
+describe('an uploaded PDF names itself from its first page (Jenni build plan R20)', () => {
+  const NOTE = `Night-time heat exposure of street vendors in
+Chennai: a field note
+A. Test Author, Department of Urban Studies (test document for software evaluation, 2026)
+Abstract
+This short field note is a synthetic test document. It describes a hypothetical survey of 40 street vendors in
+two Chennai neighbourhoods and their sleep quality during hot nights in May. It is written only to test how
+reference software reads an uploaded PDF and must not be cited.
+1. Introduction
+Night-time temperatures in coastal South Indian cities stay high during the pre-monsoon months. `.repeat(
+    3,
+  );
+
+  const upload = {
+    doi: null,
+    title: 'upload-check',
+    fileKey: 'sources/doc-1/src-1.pdf',
+    status: 'PENDING',
+    rawReference: null,
+    authors: null,
+  } as unknown as Partial<SourceRow>;
+
+  it('takes the title, the byline with its initial, the year and the abstract', async () => {
+    const { deps, source } = fakeDeps({ source: upload, extractedText: NOTE });
+    await runIndexSource(job(), deps);
+    const row = source as unknown as Record<string, unknown>;
+    expect(row.status).toBe('RESOLVED');
+    expect(row.title).toBe('Night-time heat exposure of street vendors in Chennai: a field note');
+    expect(row.authors).toEqual([{ family: 'Author', given: 'A. Test' }]);
+    expect(row.year).toBe(2026);
+    expect((row.cslJson as { abstract?: string }).abstract).toMatch(/^This short field note/);
+  });
+
+  it('prefers the record of a DOI printed on the page', async () => {
+    const { deps, source } = fakeDeps({
+      source: upload,
+      extractedText: `Journal of Things\nDOI: 10.1000/xyz\n${NOTE}`,
+    });
+    deps.resolveDoi = vi.fn(async () => ({
+      doi: '10.1000/xyz',
+      openalexId: null,
+      title: 'The Real Title From Crossref',
+      authors: [{ family: 'Kumar', given: 'Asha' }],
+      year: 2024,
+      venue: 'Energy Policy',
+      type: 'journal-article',
+      cslJson: { type: 'article-journal' },
+      oaStatus: null,
+      citationCount: 3,
+      isPreprint: false,
+      isRetracted: false,
+      abstract: null,
+      score: 1,
+      via: 'crossref' as const,
+    }));
+    await runIndexSource(job(), deps);
+    const row = source as unknown as Record<string, unknown>;
+    expect(deps.resolveDoi).toHaveBeenCalledWith('10.1000/xyz', expect.anything());
+    expect(row).toMatchObject({
+      status: 'RESOLVED',
+      doi: '10.1000/xyz',
+      title: 'The Real Title From Crossref',
+      venue: 'Energy Policy',
+    });
+    // The abstract the page carried is kept when the record has none.
+    expect((row.cslJson as { abstract?: string }).abstract).toMatch(/^This short field note/);
+  });
+
+  it('a page with nothing readable needs a hand, not "still looking up" for ever', async () => {
+    const { deps, source } = fakeDeps({
+      source: upload,
+      extractedText: 'lorem ipsum '.repeat(200),
+    });
+    await runIndexSource(job(), deps);
+    expect((source as unknown as Record<string, unknown>).status).toBe('UNRESOLVED');
+  });
+});

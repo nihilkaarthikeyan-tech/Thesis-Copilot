@@ -19,10 +19,13 @@ import {
   chunkText,
   type EuropePmcClient,
   type ExtractedDocument,
+  FIRST_PAGE_CHARS,
   type FullTextFailure,
   fetchOpenAccessPdf,
   groundingLevelFor,
+  type ResolvedSource,
   readableFullTextReason,
+  readFirstPage,
   replaceSourceChunks,
   type UnpaywallClient,
 } from '@tc/retrieval';
@@ -56,6 +59,8 @@ export type IndexSourceDeps = {
   logEmbed?: (call: EmbedCall) => Promise<void>;
   /** Throws when the site's monthly AI budget is reached (2026-09-25): nothing is embedded. */
   assertBudget?: () => Promise<void>;
+  /** R20 (ADR-0107): the record a DOI printed on an uploaded PDF's first page names. */
+  resolveDoi?: (doi: string, signal?: AbortSignal) => Promise<ResolvedSource>;
 };
 
 export type EmbedCall = {
@@ -99,6 +104,10 @@ export async function runIndexSource(
       fileKey: true,
       cslJson: true,
       groundingLevel: true,
+      // R20 (ADR-0107): an upload nobody has identified yet.
+      status: true,
+      rawReference: true,
+      authors: true,
     },
   });
   if (!source) {
@@ -125,6 +134,17 @@ export async function runIndexSource(
     } catch (error) {
       log({ msg: 'stored pdf could not be read', sourceId: source.id, error: String(error) });
     }
+  }
+
+  // R20 (ADR-0107): an uploaded PDF arrives titled by its file name, with no reference to resolve.
+  // Its first page says what it is: the printed DOI's record, else its title, authors and abstract.
+  if (
+    source.status === 'PENDING' &&
+    !source.rawReference &&
+    !source.doi &&
+    source.authors === null
+  ) {
+    await identifyUpload(source.id, text, pages, deps, log);
   }
 
   // Embeds and stores a set of chunks, replacing whatever the source had. The one place this job
@@ -451,4 +471,87 @@ function abstractOf(cslJson: unknown): string | null {
   if (!cslJson || typeof cslJson !== 'object') return null;
   const abstract = (cslJson as { abstract?: unknown }).abstract;
   return typeof abstract === 'string' && abstract.trim().length > 0 ? abstract.trim() : null;
+}
+
+/** One lookup's time limit while identifying an upload; the indexing goes on without it. */
+const IDENTIFY_TIMEOUT_MS = 20_000;
+
+/**
+ * R20 (ADR-0107): names an uploaded PDF from its first page. A printed DOI wins (Crossref's record,
+ * or OpenAlex's); otherwise the title, byline, year and abstract read from the page; a page with
+ * nothing readable leaves the paper UNRESOLVED ("needs a hand") rather than "still looking up"
+ * for ever, which is where every upload sat before.
+ */
+async function identifyUpload(
+  sourceId: string,
+  text: string | null,
+  pages: ReadonlyArray<{ page: number; start: number; end: number }> | undefined,
+  deps: IndexSourceDeps,
+  log: (event: Record<string, unknown>) => void,
+): Promise<void> {
+  const first = pages?.find((p) => p.page === 1);
+  const firstText = text
+    ? first
+      ? text.slice(first.start, first.end)
+      : text.slice(0, FIRST_PAGE_CHARS)
+    : '';
+  const page = readFirstPage(firstText);
+
+  if (page.doi && deps.resolveDoi) {
+    const resolved = await deps
+      .resolveDoi(page.doi, AbortSignal.timeout(IDENTIFY_TIMEOUT_MS))
+      .catch(() => null);
+    if (resolved?.title) {
+      const abstract = resolved.abstract ?? page.abstract ?? null;
+      await deps.prisma.source.update({
+        where: { id: sourceId },
+        data: {
+          status: 'RESOLVED',
+          doi: resolved.doi ?? page.doi,
+          ...(resolved.openalexId ? { openalexId: resolved.openalexId } : {}),
+          title: resolved.title,
+          authors: resolved.authors as never,
+          ...(resolved.year !== null ? { year: resolved.year } : {}),
+          ...(resolved.venue ? { venue: resolved.venue } : {}),
+          ...(resolved.type ? { type: resolved.type } : {}),
+          cslJson: { ...(resolved.cslJson ?? {}), ...(abstract ? { abstract } : {}) } as never,
+          ...(resolved.oaStatus ? { oaStatus: resolved.oaStatus } : {}),
+          ...(resolved.citationCount !== null ? { citationCount: resolved.citationCount } : {}),
+          isPreprint: resolved.isPreprint,
+          isRetracted: resolved.isRetracted,
+        },
+      });
+      log({ msg: 'upload identified by its doi', sourceId, doi: page.doi });
+      return;
+    }
+  }
+
+  if (page.title) {
+    await deps.prisma.source.update({
+      where: { id: sourceId },
+      data: {
+        status: 'RESOLVED',
+        title: page.title,
+        authors: (page.authors ?? []) as never,
+        ...(page.year ? { year: page.year } : {}),
+        ...(page.doi ? { doi: page.doi } : {}),
+        cslJson: {
+          type: 'article-journal',
+          title: page.title,
+          ...(page.authors?.length ? { author: page.authors } : {}),
+          ...(page.year ? { issued: { 'date-parts': [[page.year]] } } : {}),
+          ...(page.abstract ? { abstract: page.abstract } : {}),
+        } as never,
+      },
+    });
+    log({
+      msg: 'upload identified from its first page',
+      sourceId,
+      authors: page.authors?.length ?? 0,
+    });
+    return;
+  }
+
+  await deps.prisma.source.update({ where: { id: sourceId }, data: { status: 'UNRESOLVED' } });
+  log({ msg: 'upload could not be identified', sourceId });
 }
