@@ -25,6 +25,7 @@ import {
   parseProposalReply,
   questionsAsked,
   SKELETON_INSTRUCTION,
+  stripProposalMarkers,
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import { OpenAlexClient } from '@tc/retrieval';
@@ -66,12 +67,13 @@ export const proposalChatSchema = z.object({
     })
     .nullable()
     .default(null),
+  // A skeleton stored before markers were stripped (2026-10-07) is cleaned when read back.
   skeleton: z
     .object({
-      workingTitle: z.string(),
-      problemStatement: z.string(),
-      objectives: z.array(z.string()),
-      whyOpen: z.string(),
+      workingTitle: z.string().transform(stripProposalMarkers),
+      problemStatement: z.string().transform(stripProposalMarkers),
+      objectives: z.array(z.string().transform(stripProposalMarkers)),
+      whyOpen: z.string().transform(stripProposalMarkers),
     })
     .nullable()
     .default(null),

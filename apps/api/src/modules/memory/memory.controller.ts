@@ -7,6 +7,7 @@
  */
 
 import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { stripProposalMarkers } from '@tc/ai';
 import { Prisma } from '@tc/db';
 import {
   firstChapterOutline,
@@ -22,11 +23,17 @@ import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js
 import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 
+// A citation marker the proposal model wrote cannot be saved, whichever screen sends it.
 const scopeBody = z.object({
-  workingTitle: z.string().trim().min(1, 'Give the thesis a working title').max(300),
-  problemStatement: z.string().trim().max(4_000),
-  objectives: z.array(z.string().trim().min(1).max(500)).max(20),
-  whyOpen: z.string().trim().max(2_000),
+  workingTitle: z
+    .string()
+    .trim()
+    .min(1, 'Give the thesis a working title')
+    .max(300)
+    .transform(stripProposalMarkers),
+  problemStatement: z.string().trim().max(4_000).transform(stripProposalMarkers),
+  objectives: z.array(z.string().trim().min(1).max(500).transform(stripProposalMarkers)).max(20),
+  whyOpen: z.string().trim().max(2_000).transform(stripProposalMarkers),
 });
 
 export type ScopeView = z.infer<typeof scopeBody>;

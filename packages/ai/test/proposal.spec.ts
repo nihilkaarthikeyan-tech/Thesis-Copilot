@@ -235,3 +235,24 @@ describe('renderGapCheck with nothing to show (docs/JENNI-FIX-LIST.md item 3)', 
     expect(renderGapCheck(gap)).not.toContain(GAP_CHECK_FAILED);
   });
 });
+
+describe('a citation marker in the skeleton (seen 2026-10-07)', () => {
+  it('is removed from every field', () => {
+    const reply = parseProposalReply(
+      `<skeleton>${JSON.stringify({
+        workingTitle: 'Mobile banking among women SHGs {{cite:x}}',
+        problemStatement: 'Determinants are not well characterised in India. {{cite:gap_check}}',
+        objectives: ['Measure adoption {{cite:S1#c2}}.'],
+        whyOpen: 'Related work covers urban users {{cite:gap_check}}.',
+      })}</skeleton>`,
+    );
+    expect(reply.kind).toBe('skeleton');
+    if (reply.kind !== 'skeleton') return;
+    expect(reply.skeleton.workingTitle).toBe('Mobile banking among women SHGs');
+    expect(reply.skeleton.problemStatement).toBe(
+      'Determinants are not well characterised in India.',
+    );
+    expect(reply.skeleton.objectives).toEqual(['Measure adoption.']);
+    expect(reply.skeleton.whyOpen).toBe('Related work covers urban users.');
+  });
+});

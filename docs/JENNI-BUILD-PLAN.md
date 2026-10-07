@@ -275,4 +275,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R2 | Done 2026-10-07 — Accept asks for the next suggestion after 60 ms (was the 800 ms pause timer); browser: next request 0.12 s after Accept | ADR-0088 (R2 note) |
 | R3 | Done 2026-10-07 — five presets, grouped menu, `citeMode` none/library, refused refinement restores the suggestion; browser-checked | ADR-0089 |
 | R41 | Done 2026-10-07 — owner chose B for dark (warm Flexoki dark, Inter, our blue) and to keep light as it is | ADR-0090 |
-| R4–R40 | in order, one at a time (owner: "start to build them one by one") | — |
+| R4 | Done 2026-10-07 — the proposal conversation (A.6) inside Start writing now with Smart headings; Use this / Skip; marker fix on the way; browser-checked with real models | ADR-0091 |
+| R5–R40 | in order, one at a time (owner: "start to build them one by one") | — |

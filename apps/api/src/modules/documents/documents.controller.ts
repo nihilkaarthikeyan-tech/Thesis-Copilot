@@ -73,6 +73,12 @@ const createDocument = z.object({
   structure: z.enum(['standard', 'smart', 'none']).optional(),
   /** ADR-0087: the citation-preferences step. */
   sourcePrefs: sourcePrefsSchema.optional(),
+  /**
+   * ADR-0091 (Jenni build plan R4): the start step asks a few questions first, so the chapters
+   * are not planned from the title yet — they are planned from the answers, or from the title
+   * when the student skips (both by the existing outline routes).
+   */
+  askFirst: z.boolean().optional(),
 });
 
 export type DocumentSummary = {
@@ -243,6 +249,7 @@ export class DocumentsController {
     if (
       parsed.data.start === 'writing' &&
       structure === 'smart' &&
+      !parsed.data.askFirst &&
       namesATopic(parsed.data.title)
     ) {
       await this.outline

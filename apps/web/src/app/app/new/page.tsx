@@ -18,6 +18,7 @@ import {
   saveStartingStyle,
   useDefaultStartingStyle,
 } from '@/components/onboarding/StartingStyle';
+import { StartQuestions } from '@/components/onboarding/StartQuestions';
 import { StartSetup, type Structure } from '@/components/onboarding/StartSetup';
 import { Button } from '@/components/ui/button';
 import type { MessageKey } from '@/i18n';
@@ -42,6 +43,8 @@ export default function NewThesisPage() {
   const [error, setError] = useState<string | null>(null);
   /** ADR-0087: the preference and structure steps after the title. */
   const [setupOpen, setSetupOpen] = useState(false);
+  /** ADR-0091: the thesis just made with Smart headings, while its start questions are open. */
+  const [questions, setQuestions] = useState<{ documentId: string; path: string } | null>(null);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -89,14 +92,21 @@ export default function NewThesisPage() {
           start: 'writing',
           ...(sourcePrefs ? { sourcePrefs } : {}),
           ...(structure ? { structure } : {}),
+          // ADR-0091: Smart headings ask a few questions first; the chapters wait for them.
+          ...(structure === 'smart' ? { askFirst: true } : {}),
         }),
       });
       await saveStartingStyle(document.id, citationStyle);
-      router.push(
-        document.firstChapterId
-          ? `/app/d/${document.id}/write/${document.firstChapterId}`
-          : `/app/d/${document.id}/outline`,
-      );
+      const editorPath = document.firstChapterId
+        ? `/app/d/${document.id}/write/${document.firstChapterId}`
+        : `/app/d/${document.id}/outline`;
+      if (structure === 'smart') {
+        // ADR-0091: the questions, on this screen, before the editor.
+        setQuestions({ documentId: document.id, path: editorPath });
+        setBusy(false);
+        return;
+      }
+      router.push(editorPath);
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not create it.',
@@ -127,16 +137,24 @@ export default function NewThesisPage() {
             {title.trim() || 'Untitled thesis'}
             <span className="ml-2 text-muted underline">Edit</span>
           </button>
-          <StartSetup
-            stylePicker={<StartingStyle value={citationStyle} onChange={setCitationStyle} />}
-            styleName={
-              STARTING_STYLES.find((s) => s.id === citationStyle)?.label ?? 'Default style'
-            }
-            busy={busy}
-            error={error}
-            onBack={() => setSetupOpen(false)}
-            onStart={(prefs, structure) => void startWriting(prefs, structure)}
-          />
+          {questions ? (
+            <StartQuestions
+              documentId={questions.documentId}
+              title={title.trim() || 'Untitled thesis'}
+              onDone={() => router.push(questions.path)}
+            />
+          ) : (
+            <StartSetup
+              stylePicker={<StartingStyle value={citationStyle} onChange={setCitationStyle} />}
+              styleName={
+                STARTING_STYLES.find((s) => s.id === citationStyle)?.label ?? 'Default style'
+              }
+              busy={busy}
+              error={error}
+              onBack={() => setSetupOpen(false)}
+              onStart={(prefs, structure) => void startWriting(prefs, structure)}
+            />
+          )}
         </div>
       ) : (
         <form onSubmit={create} className="mt-6 space-y-4">

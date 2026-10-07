@@ -31,11 +31,26 @@ export const PROPOSAL = {
   gapCheckShown: 5,
 } as const;
 
+/**
+ * A proposal has no passages to cite, but the model sometimes writes a citation marker into it
+ * anyway ("…among rural women in India. {{cite:gap_check}}", seen 2026-10-07 in the R4 start
+ * questions). The marker is removed, with the space before it, so the student never reads it.
+ */
+export function stripProposalMarkers(text: string): string {
+  return text
+    .replace(/\s*\{\{cite:[^}]*\}\}/g, '')
+    .replace(/\s+([.,;:])/g, '$1')
+    .trim();
+}
+
+const proposalText = (max: number) =>
+  z.string().trim().min(1).max(max).transform(stripProposalMarkers);
+
 export const skeletonSchema = z.object({
-  workingTitle: z.string().trim().min(1).max(300),
-  problemStatement: z.string().trim().min(1).max(4_000),
-  objectives: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
-  whyOpen: z.string().trim().max(2_000).default(''),
+  workingTitle: proposalText(300),
+  problemStatement: proposalText(4_000),
+  objectives: z.array(proposalText(500)).min(1).max(20),
+  whyOpen: z.string().trim().max(2_000).default('').transform(stripProposalMarkers),
 });
 export type ProposalSkeleton = z.infer<typeof skeletonSchema>;
 

@@ -61,6 +61,26 @@ describe('POST /documents with the setup steps', () => {
     expect((memory?.outline as unknown[] | undefined)?.length).toBe(6);
   });
 
+  it('Smart headings plan from the title at once, but not when the questions come first (ADR-0091)', async () => {
+    const make = async (askFirst: boolean) => {
+      const res = await h.api('/documents', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: `Mobile banking adoption among women SHGs ${askFirst ? 'asked' : 'plain'}`,
+          entryPath: 'A_TOPIC',
+          start: 'writing',
+          structure: 'smart',
+          ...(askFirst ? { askFirst: true } : {}),
+        }),
+      });
+      const { id } = (await res.json()) as { id: string };
+      const doc = await h.prisma.document.findUnique({ where: { id }, select: { meta: true } });
+      return (doc?.meta as { outlineRun?: { status?: string } } | null)?.outlineRun?.status;
+    };
+    expect(await make(false)).toBe('RUNNING');
+    expect(await make(true)).toBeUndefined();
+  });
+
   it('No headings keeps one chapter', async () => {
     const res = await h.api('/documents', {
       method: 'POST',

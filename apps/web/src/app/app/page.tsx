@@ -26,6 +26,7 @@ import {
   saveStartingStyle,
   useDefaultStartingStyle,
 } from '@/components/onboarding/StartingStyle';
+import { StartQuestions } from '@/components/onboarding/StartQuestions';
 import { StartSetup, type Structure } from '@/components/onboarding/StartSetup';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { TrialNotice } from '@/components/TrialNotice';
@@ -88,6 +89,8 @@ export default function DocumentListPage() {
   const [error, setError] = useState<string | null>(null);
   /** ADR-0087: the preference and structure steps, after the title. */
   const [setupOpen, setSetupOpen] = useState(false);
+  /** ADR-0091: the thesis just made with Smart headings, while its start questions are open. */
+  const [questions, setQuestions] = useState<{ documentId: string; path: string } | null>(null);
   /** The thesis the student asked to delete, while the confirmation is open (2026-09-29). */
   const [deleting, setDeleting] = useState<DocumentSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -188,9 +191,20 @@ export default function DocumentListPage() {
           start: 'writing',
           ...(sourcePrefs ? { sourcePrefs } : {}),
           ...(structure ? { structure } : {}),
+          // ADR-0091: Smart headings ask a few questions first; the chapters wait for them.
+          ...(structure === 'smart' ? { askFirst: true } : {}),
         }),
       });
       await saveStartingStyle(created.id, citationStyle);
+      const editorPath = created.firstChapterId
+        ? `/app/d/${created.id}/write/${created.firstChapterId}`
+        : `/app/d/${created.id}/outline`;
+      if (structure === 'smart') {
+        // ADR-0091: the questions, on this screen, before the editor.
+        setQuestions({ documentId: created.id, path: editorPath });
+        setBusy(false);
+        return;
+      }
       router.push(
         created.firstChapterId
           ? `/app/d/${created.id}/write/${created.firstChapterId}`
@@ -284,16 +298,24 @@ export default function DocumentListPage() {
               {title.trim() || 'Untitled thesis'}
               <span className="ml-2 text-muted underline">Edit</span>
             </button>
-            <StartSetup
-              stylePicker={<StartingStyle value={citationStyle} onChange={setCitationStyle} />}
-              styleName={
-                STARTING_STYLES.find((s) => s.id === citationStyle)?.label ?? 'Default style'
-              }
-              busy={busy}
-              error={error}
-              onBack={() => setSetupOpen(false)}
-              onStart={(prefs, structure) => void startWriting(prefs, structure)}
-            />
+            {questions ? (
+              <StartQuestions
+                documentId={questions.documentId}
+                title={title.trim() || 'Untitled thesis'}
+                onDone={() => router.push(questions.path)}
+              />
+            ) : (
+              <StartSetup
+                stylePicker={<StartingStyle value={citationStyle} onChange={setCitationStyle} />}
+                styleName={
+                  STARTING_STYLES.find((s) => s.id === citationStyle)?.label ?? 'Default style'
+                }
+                busy={busy}
+                error={error}
+                onBack={() => setSetupOpen(false)}
+                onStart={(prefs, structure) => void startWriting(prefs, structure)}
+              />
+            )}
           </div>
         ) : (
           <form

@@ -331,6 +331,7 @@ export {
   renderGapCheck,
   SKELETON_INSTRUCTION,
   skeletonSchema,
+  stripProposalMarkers,
 } from './builder/proposal.js';
 export {
   filterSentences,

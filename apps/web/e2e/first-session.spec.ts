@@ -48,6 +48,8 @@ test('the editor says what the library is doing, and the guide moves the student
   // ADR-0087: the sources and structure steps, taken with their defaults.
   await page.getByTestId('setup-next').click();
   await page.getByTestId('setup-start').click();
+  // ADR-0091: Smart headings ask a few questions first; this run skips them.
+  await page.getByTestId('start-questions-skip').click();
   await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
 

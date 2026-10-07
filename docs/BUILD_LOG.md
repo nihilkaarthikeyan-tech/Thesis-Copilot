@@ -5518,3 +5518,12 @@ same point uncited (4.1 s); "Validate supporting evidence" reworded the claim to
 kept the citation (3.1 s). Round 1's "refine presets done 2026-10-04" was not true in the code;
 recorded in the plan.
 
+R41 (ADR-0090): the owner chose a warm Flexoki dark with Inter and our blue (from
+`demo/Thesis-Copilot-look-round-1.pdf`), light unchanged; checked on the editor, the list and the
+home page in both themes. R4 (ADR-0091): Start writing now with Smart headings asks the proposal
+conversation's questions with tap-able suggested answers; real run: first question ~15 s, the
+drafted plan 7 s after one tap, the editor 1.5 s after "Use this", six chapters planned from the
+answers within 30 s. Found: a `{{cite:gap_check}}` marker in a drafted problem statement, now
+stripped in three places. Seen twice now: no opening sentence under the first heading of a new
+thesis — R5.
+

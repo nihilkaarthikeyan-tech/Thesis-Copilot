@@ -47,11 +47,17 @@ export function PathAChat({
   documentId,
   initialTitle,
   onSkeleton,
+  autoStart = false,
 }: {
   documentId: string;
   /** The working title from `/app/new`, offered as the first message. */
   initialTitle: string;
   onSkeleton: (view: ProposalView, replace?: boolean) => void;
+  /**
+   * Jenni build plan R4: send the title as the first message at once, so the first question is
+   * already on its way when the start step opens (the student typed the title a moment ago).
+   */
+  autoStart?: boolean;
 }) {
   const { t } = useT();
   const [view, setView] = useState<ProposalView | null>(null);
@@ -93,6 +99,15 @@ export function PathAChat({
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' });
   }, [shown]);
+
+  const autoStarted = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the empty view arrives
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || !view || view.visible.length > 0) return;
+    if (!initialTitle.trim()) return;
+    autoStarted.current = true;
+    void send(initialTitle);
+  }, [autoStart, view]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
