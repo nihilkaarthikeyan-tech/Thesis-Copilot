@@ -150,23 +150,34 @@ export {
 } from './builder/coherence.js';
 export {
   buildCommandRequest,
+  buildEditReasonsRequest,
   COMMAND,
   COMMAND_LABELS,
   COMMANDS,
   type CommandBuildInput,
   type CommandName,
   type CommandPostProcess,
+  citationMoved,
+  citationsBeforeStop,
+  claimWords,
+  cleanEditReasons,
   commandResultSchema,
   commandUserMessage,
   type DiffOp,
   diffWords,
   EDIT_ACTIONS,
+  EDIT_REASONS,
   type EditAction,
+  editReasonsSchema,
+  editReasonsUserMessage,
   fitToSelection,
   isEditAction,
   mockCommandFor,
   mockCommandResponse,
+  mockEditReasonsResponse,
   postProcessCommand,
+  saysNothingChanged,
+  sendsPassages,
 } from './builder/command.js';
 export {
   buildClassifyRequest,
@@ -236,6 +247,7 @@ export {
   mockEquationResponse,
   postProcessEquation,
 } from './builder/equation.js';
+export { asksToEvadeDetection, EVASION_REFUSAL } from './builder/evasion.js';
 export {
   buildExaminerReviewRequest,
   EXAMINER_REVIEW,

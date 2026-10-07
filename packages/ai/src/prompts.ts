@@ -88,6 +88,8 @@ export const PROMPT_NAMES = [
   'tone',
   // The claims map, likewise — docs/ADR/0086.
   'claims',
+  // "What changed and why" under an edit, likewise — docs/ADR/0095.
+  'edit_reasons',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

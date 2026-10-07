@@ -41,6 +41,7 @@ import {
   buildContradictionRequest,
   buildCrossPaperRequest,
   buildDraftRequest,
+  buildEditReasonsRequest,
   buildExtractionRequest,
   buildOutlineDriftRequest,
   buildOutlineRequest,
@@ -62,6 +63,7 @@ import {
   contradictionSchema,
   crossPaperSchema,
   draftResultSchema,
+  editReasonsSchema,
   outlineDriftSchema,
   outlineRequestSchema,
   parsedCitationSchema,
@@ -319,6 +321,19 @@ const cases: Case[] = [
       documentId: DOC,
     }),
     schema: commandResultSchema,
+  },
+  {
+    name: 'edit-reasons — what an edit changed and why (ADR-0095)',
+    site: 'apps/api/.../assist/command.service.ts (explain)',
+    request: buildEditReasonsRequest({
+      command: 'shorten',
+      before:
+        'It is worth noting that, in a number of cases, it would appear that trust in the installer may well be as important as the price itself.',
+      after: 'Trust in the installer may be as important as the price.',
+      userId: USER,
+      documentId: DOC,
+    }),
+    schema: editReasonsSchema,
   },
   {
     name: 'cite-role — move a citation to a different role',

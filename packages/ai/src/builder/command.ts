@@ -31,6 +31,19 @@ export const EDIT_ACTIONS = [
   // Row 49 of the Jenni coverage map (2026-10-05, ADR-0081): the two ADR-0066 left out.
   'translate',
   'table',
+  // Jenni build plan R8 (ADR-0095): the presets Jenni's AI Edit has and ours lacked. No general
+  // "paraphrase": rewording any selection on request is the §12.3 ban (ParaphrasePanel.tsx).
+  'flow',
+  'transitions',
+  'redundancy',
+  'strengthen',
+  'precise',
+  'future',
+  'bullets',
+  'numbered',
+  'prose',
+  // The student's own instruction, in their words (the box at the top of the panel).
+  'custom',
 ] as const;
 export type EditAction = (typeof EDIT_ACTIONS)[number];
 
@@ -51,8 +64,13 @@ export const COMMAND = {
   tier: 'strong',
   maxTokens: 900,
   temperature: 0.3,
-  /** A.11 gives passages only to the commands that can use them. */
+  /**
+   * A.11 gives passages only to the commands that can use them. `custom` gets them only when the
+   * student leaves "Use my library" on (ADR-0095).
+   */
   needsPassages: ['expand', 'consistency', 'counter'] as readonly CommandName[],
+  /** The longest instruction the box takes. */
+  maxInstructionChars: 500,
   /** §10.4 top_k when passages are sent. */
   topK: 6,
   /** A.11: "reduce to about 60% of the length" / "may grow to 2x". */
@@ -91,6 +109,31 @@ export const COMMAND_LABELS: Readonly<Record<CommandName, { label: string; hint:
     label: 'As a table',
     hint: 'The facts the text compares, as a table with a header row; nothing added.',
   },
+  flow: {
+    label: 'Fix the flow',
+    hint: 'Each sentence follows from the one before; every point kept.',
+  },
+  transitions: {
+    label: 'Add transitions',
+    hint: 'Linking words where the relation between points is clear; nothing else changes.',
+  },
+  redundancy: {
+    label: 'Remove repetition',
+    hint: 'Drops what says the same thing twice; every point, figure and citation kept.',
+  },
+  strengthen: {
+    label: 'Strengthen the argument',
+    hint: 'Claim, evidence and what follows, made explicit; no new facts, no more certainty.',
+  },
+  precise: {
+    label: 'Technical precision',
+    hint: "The field's exact terms and the figures the text gives, in place of vague words.",
+  },
+  future: { label: 'Future tense', hint: 'For what this research will do, as in a proposal.' },
+  bullets: { label: 'Bulleted list', hint: 'One point per item, each a sentence, citations kept.' },
+  numbered: { label: 'Numbered list', hint: 'One point per item, in order, citations kept.' },
+  prose: { label: 'As prose', hint: 'A list or notes turned into connected paragraphs.' },
+  custom: { label: 'Your instruction', hint: 'Edits the selection as you ask, and nothing more.' },
 };
 
 export type CommandBuildInput = {
@@ -108,7 +151,16 @@ export type CommandBuildInput = {
    * in another language is put into the one the thesis is written in; nothing else.
    */
   language?: string;
+  /** ADR-0095: the student's own instruction, for `custom` only. */
+  instruction?: string;
+  /** ADR-0095: for a follow-up, the student's text before the first edit (`<original>`). */
+  original?: string;
 };
+
+/** Whether the passages go to the model: A.11's commands, and `custom` when it was given some. */
+export function sendsPassages(command: CommandName, passages: readonly unknown[]): boolean {
+  return COMMAND.needsPassages.includes(command) || (command === 'custom' && passages.length > 0);
+}
 
 /** The thesis language's name for the prompt: a BCP-47 tag in, a word out. */
 export function languageName(tag: string | undefined): string {
@@ -138,7 +190,7 @@ export function languageName(tag: string | undefined): string {
 
 export function commandUserMessage(input: CommandBuildInput): string {
   const template = loadPrompt('command').user;
-  const passages = COMMAND.needsPassages.includes(input.command) ? input.passages : [];
+  const passages = sendsPassages(input.command, input.passages) ? input.passages : [];
   const rendered = passages
     .map(
       (p) =>
@@ -149,7 +201,15 @@ export function commandUserMessage(input: CommandBuildInput): string {
   const target =
     input.command === 'translate'
       ? `\n\n<target_language>${languageName(input.language)}</target_language>`
-      : '';
+      : input.command === 'custom'
+        ? `\n\n<instruction>\n${(input.instruction ?? '').trim().slice(0, COMMAND.maxInstructionChars)}\n</instruction>${
+            // A follow-up: the student's own text before any edit, which the instruction may
+            // refer to ("as in my original"). Without it the model could not put a citation back.
+            input.original?.trim()
+              ? `\n\n<original>\n${input.original.trim().slice(0, COMMAND.maxSelectionChars)}\n</original>`
+              : ''
+          }`
+        : '';
   if (template) {
     return (
       renderTemplate(template, {
@@ -197,6 +257,22 @@ export type CommandPostProcess = {
   hallucinated: string[];
   /** Keys that were in the selection and are gone from the rewrite (A.11's "never remove"). */
   dropped: string[];
+  /**
+   * ADR-0095: keys the rewrite wrote more often than the selection had them. The extra copies are
+   * removed (Jenni was seen printing "(Jain, 2023)(Jain, 2023)"); reported for the record.
+   */
+  doubled: string[];
+  /**
+   * ADR-0095: keys whose claim changed — none of the words before the citation in the selection
+   * is before it in the rewrite (Jenni's Hedge was seen moving citations between claims). Not
+   * fixable in code, so the student is warned before Replace, as for a dropped one.
+   */
+  moved: string[];
+  /**
+   * ADR-0095: keys written more often than the selection had them where the extra copy is part of
+   * a sentence ("the findings in …") and could not be taken out without breaking it — a warning.
+   */
+  repeated: string[];
   words: number;
   originalWords: number;
 };
@@ -231,6 +307,109 @@ export function fitToSelection(rewrite: string, selection: string): string {
   return `${before}${text}${after}`;
 }
 
+/** Short and common words, which say nothing about which claim a citation sits on. */
+const FUNCTION_WORDS = new Set(
+  'about above after again against among because before being below between could during every from further have having into itself more most other ought over same should since some such than that their them then there these they this those through under until very were what when where which while with within would your also however although therefore thus whereas'.split(
+    ' ',
+  ),
+);
+
+/**
+ * A citation written after a sentence's full stop (". {{cite:k1}} The data…", seen from the
+ * strong model on Strengthen, 2026-10-07) goes back before it, where the thesis styles put it.
+ */
+export function citationsBeforeStop(text: string): string {
+  return text.replace(
+    /([.!?])[ \t]+((?:\{\{cite:[^}]+\}\}[ \t]*)+)(?=\s|$)/g,
+    (_m, stop: string, cites: string) => ` ${cites.trim()}${stop}`,
+  );
+}
+
+/** The content words of the stretch of sentence before the first `{{cite:key}}`, cut to a stem. */
+export function claimWords(text: string, key: string): Set<string> {
+  const marker = `{{cite:${key}}}`;
+  const at = text.indexOf(marker);
+  if (at < 0) return new Set();
+  // The sentence the citation closes: back to the previous full stop, or a list item's start.
+  // A citation straight after a full stop belongs to the sentence that stop ended.
+  const parts = text
+    .slice(0, at)
+    .replace(/\{\{cite:[^}]+\}\}/g, ' ')
+    .split(/[.!?](?=\s)|\n/);
+  const before = [...parts].reverse().find((p) => p.trim().length > 0) ?? '';
+  return new Set(
+    before
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length >= 5 && !FUNCTION_WORDS.has(w))
+      .map((w) => w.slice(0, 5)),
+  );
+}
+
+/** The content-word stems of a stretch of text, as `claimWords` cuts them. */
+function stemsOf(text: string): Set<string> {
+  return new Set(
+    text
+      .replace(/\{\{cite:[^}]+\}\}/g, ' ')
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length >= 5 && !FUNCTION_WORDS.has(w))
+      .map((w) => w.slice(0, 5)),
+  );
+}
+
+/**
+ * Whether the citation `key` sits on a different claim in `rewrite` than in `selection`. Its claim
+ * is the words before it in the selection; it has moved when its sentence in the rewrite shares
+ * none of them, or when another sentence of the rewrite matches them clearly better (2026-10-07,
+ * real model: "Fix the flow" put a closing sentence's three citations on the sentence before it,
+ * which shared one word with the claim — one shared word is nothing inside a paragraph on one
+ * topic).
+ */
+export function citationMoved(selection: string, rewrite: string, key: string): boolean {
+  const claim = claimWords(selection, key);
+  if (claim.size === 0) return false;
+  const marker = `{{cite:${key}}}`;
+  const sentences = rewrite.split(/(?<=[.!?])\s+|\n/).filter((s) => s.trim().length > 0);
+  const home = sentences.findIndex((s) => s.includes(marker));
+  if (home < 0) return false;
+  const overlap = (s: string) => [...stemsOf(s)].filter((w) => claim.has(w)).length;
+  const scores = sentences.map(overlap);
+  const atHome = scores[home] ?? 0;
+  if (atHome === 0) return true;
+  const best = Math.max(...scores);
+  return best >= atHome + 2 && best >= 2 * atHome;
+}
+
+/**
+ * Removes the copies of `key` after the first `keep` — but only a copy at the end of a clause
+ * ("… claim {{cite:k1}}."), where taking it out leaves a whole sentence. A copy the sentence uses
+ * as a noun ("the findings in {{cite:k1}}") stays, and the student is warned instead: removing it
+ * left "the findings in." on the real model (2026-10-07). Returns the text and whether any copy
+ * had to stay.
+ */
+function keepFirst(text: string, key: string, keep: number): { text: string; stayed: boolean } {
+  let seen = 0;
+  let stayed = false;
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const out = text.replace(
+    new RegExp(`\\s*\\{\\{cite:${escaped}\\}\\}`, 'g'),
+    (m: string, offset: number, whole: string) => {
+      seen += 1;
+      if (seen <= keep) return m;
+      // Closes a clause: only other citations, then punctuation or the end, come after it.
+      const rest = whole.slice(offset + m.length);
+      if (/^(\s*\{\{cite:[^}]+\}\})*\s*([.,;:!?)]|$)/.test(rest)) {
+        // The space it stood after goes too, unless the next citation needs it.
+        return rest.startsWith('{{') && /^\s/.test(m) ? ' ' : '';
+      }
+      stayed = true;
+      return m;
+    },
+  );
+  return { text: out, stayed };
+}
+
 /**
  * §10.6 applied to a rewrite: a citation may only be one that was already in the selection or is
  * one of the passages sent with the request. Anything else is stripped. Citations the model
@@ -241,6 +420,7 @@ export function postProcessCommand(
   raw: string,
   selection: string,
   allowedPassageIds: readonly string[],
+  command?: CommandName,
 ): CommandPostProcess {
   const keysIn = (text: string): string[] =>
     [...text.matchAll(CITE_RE)].map((m) => (m[1] ?? '').trim()).filter(Boolean);
@@ -251,7 +431,7 @@ export function postProcessCommand(
   // One paper's passages side by side print as one label repeated (2026-10-04). The selection's
   // own citations carry editor keys with no `#`, so they never merge with each other here.
   const text = collapseSameSourceRuns(
-    normalizeBareCitations(raw)
+    citationsBeforeStop(normalizeBareCitations(raw))
       .replace(CITE_RE, (match, id: string) => {
         const key = id.trim();
         if (allowed.has(key)) return match;
@@ -263,14 +443,37 @@ export function postProcessCommand(
       .trim(),
   );
 
-  const kept = new Set(keysIn(text));
+  // ADR-0095: a citation of the selection written more often than it was there keeps its first
+  // copies only.
+  const countIn = (t: string, key: string) => keysIn(t).filter((k) => k === key).length;
+  const doubled: string[] = [];
+  const repeated: string[] = [];
+  let deduped = text;
+  for (const key of inSelection) {
+    const want = countIn(selection, key);
+    if (countIn(deduped, key) > want) {
+      doubled.push(key);
+      const fixed = keepFirst(deduped, key, want);
+      deduped = fixed.text;
+      if (fixed.stayed) repeated.push(key);
+    }
+  }
+  const kept = new Set(keysIn(deduped));
   const dropped = [...inSelection].filter((k) => !kept.has(k));
-  const fitted = fitToSelection(text, selection);
+  // A translation has no words in common with its source; a table puts a citation in a column.
+  const moved =
+    command === 'translate' || command === 'table'
+      ? []
+      : [...inSelection].filter((key) => kept.has(key) && citationMoved(selection, deduped, key));
+  const fitted = fitToSelection(deduped, selection);
 
   return {
     text: fitted,
     hallucinated,
     dropped,
+    doubled,
+    moved,
+    repeated,
     words: wordsOf(text).length,
     originalWords: wordsOf(selection).length,
   };
@@ -419,6 +622,15 @@ export function mockCommandFor(req: { messages: ReadonlyArray<{ content: string 
       });
       return ['| Finding | Source |', '| --- | --- |', ...rows].join('\n');
     }
+    case 'bullets':
+    case 'numbered':
+      // ADR-0095: one sentence per item, so the list insertion is exercisable without a provider.
+      return sentences
+        .map((sentence, i) => `${command === 'numbered' ? `${i + 1}.` : '-'} ${sentence.trim()}`)
+        .join('\n');
+    case 'custom':
+      // The mock cannot follow an instruction; it makes the formalise changes, so there is a diff.
+      return FORMAL.reduce((text, [re, to]) => text.replace(re, to), selection);
     default:
       // consistency: A.11 says output the selection unchanged when nothing conflicts. The other
       // edit actions are left as they are by the mock: their changes are the model's to make.
@@ -431,4 +643,108 @@ export const mockCommandResponse = {
   respond: (req: { messages: ReadonlyArray<{ content: string }> }) => ({
     text: mockCommandFor(req),
   }),
+};
+
+// ---------------------------------------------------------------------------------------------
+// "What changed and why" (ADR-0095, Jenni build plan R8)
+// ---------------------------------------------------------------------------------------------
+
+export const EDIT_REASONS = {
+  tier: 'fast',
+  maxTokens: 300,
+  temperature: 0.2,
+  /** Points shown at most. */
+  maxReasons: 4,
+  /** Characters of each side sent; a selection is capped at 6,000 already. */
+  maxChars: 6_000,
+} as const;
+
+/** No `.max()`: OpenAI's strict mode refuses it (CLAUDE.md); the cap is applied in code. */
+export const editReasonsSchema = z.object({ reasons: z.array(z.string()) });
+
+export function editReasonsUserMessage(input: {
+  command: CommandName;
+  instruction?: string;
+  before: string;
+  after: string;
+}): string {
+  const edit =
+    input.command === 'custom' && input.instruction?.trim()
+      ? `custom: ${input.instruction.trim().slice(0, COMMAND.maxInstructionChars)}`
+      : `${input.command} (${COMMAND_LABELS[input.command].label})`;
+  return [
+    `<edit>${edit}</edit>`,
+    `<before>\n${input.before.trim().slice(0, EDIT_REASONS.maxChars)}\n</before>`,
+    `<after>\n${input.after.trim().slice(0, EDIT_REASONS.maxChars)}\n</after>`,
+  ].join('\n\n');
+}
+
+export function buildEditReasonsRequest(input: {
+  command: CommandName;
+  instruction?: string;
+  before: string;
+  after: string;
+  userId: string;
+  documentId: string;
+  signal?: AbortSignal;
+}): Omit<LlmRequest, 'schema'> {
+  return {
+    tier: EDIT_REASONS.tier,
+    system: { cached: `${loadPrompt('_preamble').system}\n\n${loadPrompt('edit_reasons').system}` },
+    messages: [{ role: 'user', content: editReasonsUserMessage(input) }],
+    maxTokens: EDIT_REASONS.maxTokens,
+    temperature: EDIT_REASONS.temperature,
+    // Inside the edit's own unit: logged against COMMAND, never a second unit.
+    action: 'COMMAND',
+    userId: input.userId,
+    documentId: input.documentId,
+    ...(input.signal ? { signal: input.signal } : {}),
+  };
+}
+
+/**
+ * A point that only says something stayed as it was ("The citation remains unchanged", "No facts
+ * were added or removed"). The fast model wrote one under most edits in the 2026-10-07 rounds,
+ * often as a "Check:", which reads as a warning about nothing.
+ */
+export function saysNothingChanged(reason: string): boolean {
+  const stays =
+    /\b(remain(s|ed)?|unchanged|kept|keeps|maintain(s|ed|ing)?|preserv(e|es|ed|ing)|intact|no (facts?|citations?|information|content|details?)\b[^.]*\b(were|was) (added|removed|changed|introduced|lost))\b/i;
+  const changes =
+    /\b(was|were|is|been) (removed|dropped|lost|deleted|weakened|softened|missing|not added)\b|\bnot (present|in the|supported)|\bmissing\b|\badds?\b|\badded\b|\bnew\b/i;
+  return (
+    stays.test(reason) &&
+    !changes.test(reason.replace(/no [^.]*\b(were|was) (added|removed|introduced)/i, ''))
+  );
+}
+
+/** At most four points, each trimmed; empty ones and "nothing changed" ones dropped. */
+export function cleanEditReasons(reasons: readonly string[]): string[] {
+  return (
+    reasons
+      // A list marker the model added ("- ", "• ", "2. "), not a point that starts with a figure.
+      .map((r) => r.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, '').trim())
+      .filter((r) => r.length > 0 && !saysNothingChanged(r))
+      .slice(0, EDIT_REASONS.maxReasons)
+  );
+}
+
+/** The mock's "What changed and why": what a diff can say without a model. */
+export const mockEditReasonsResponse = {
+  match: (req: { messages: ReadonlyArray<{ content: unknown }> }) =>
+    req.messages.some((m) => typeof m.content === 'string' && m.content.startsWith('<edit>')),
+  respond: (req: { messages: ReadonlyArray<{ content: unknown }> }) => {
+    const content = String(req.messages.at(-1)?.content ?? '');
+    const before = /<before>\n([\s\S]*?)\n<\/before>/.exec(content)?.[1] ?? '';
+    const after = /<after>\n([\s\S]*?)\n<\/after>/.exec(content)?.[1] ?? '';
+    const ops = diffWords(before, after);
+    const added = ops.filter((o) => o.type === 'add').length;
+    const removed = ops.filter((o) => o.type === 'remove').length;
+    return {
+      reasons:
+        added + removed === 0
+          ? ['Almost nothing changed.']
+          : [`Changed ${added + removed} places in the wording; the points and citations stay.`],
+    };
+  },
 };

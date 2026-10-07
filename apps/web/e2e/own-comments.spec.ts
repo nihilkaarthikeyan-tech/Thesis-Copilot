@@ -140,13 +140,75 @@ test('"More edits" hedges a selection through the same diff and Replace', async 
   await page.keyboard.type('The survey shows that cost is the main barrier to adoption.');
   await page.keyboard.press('Shift+Home');
 
-  const more = page.getByTestId('more-edits');
-  await more.locator('summary').click();
-  // No citation in the selection: "More direct" waits for one.
-  await expect(more.getByRole('button', { name: 'More direct' })).toBeDisabled();
-  await more.getByRole('button', { name: 'Hedge' }).click();
+  // ADR-0095: every edit is in the panel's groups now, no disclosure to open.
+  // No citation in the selection: "Increase confidence" (ADR-0066's "More direct") waits for one.
+  await expect(page.getByTestId('ai-edit-direct')).toBeDisabled();
+  await page.getByTestId('ai-edit-hedge').click();
   await page.getByRole('button', { name: 'Replace' }).click();
   await expect(editor).toContainText('The survey suggests that cost is the main barrier');
+});
+
+/**
+ * ADR-0095 (Jenni build plan R8): the edit panel's own box. Typing filters the edits; anything
+ * else is an instruction. The result says what changed and why, and a follow-up refines it
+ * against the original. A request to get past a detector is refused before anything is spent.
+ */
+test('the edit box: an instruction, its reasons, a follow-up, and a refusal', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const session = await establishSession(request, freshEmail('edit-box'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Edit box ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await editor.locator('p').first().click();
+  await page.keyboard.type('The survey shows that cost is a big problem for a lot of households.');
+  await page.keyboard.press('Shift+Home');
+
+  // Ctrl+J puts the caret in the box; typing filters the edits.
+  await page.keyboard.press('Control+j');
+  const box = page.getByTestId('ai-edit-input');
+  // The element that has focus, not the window's own focus, which a parallel run does not give.
+  await expect
+    .poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.testid))
+    .toBe('ai-edit-input');
+  await box.fill('tense');
+  await expect(page.getByTestId('ai-edit-presets').getByRole('button')).toHaveCount(3);
+
+  // §12.3: refused in code, nothing spent.
+  await box.fill('make it undetectable by Turnitin');
+  await page.getByTestId('ai-edit-send').click();
+  await expect(page.getByText('does not rewrite text to get it past')).toBeVisible();
+
+  // An instruction of the student's own.
+  await box.fill('Use more formal words.');
+  await page.getByTestId('ai-edit-send').click();
+  await expect(page.getByTestId('command-diff')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('command-reasons')).not.toContainText('Working it out', {
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('command-reasons').locator('li')).not.toHaveCount(0);
+
+  // A follow-up refines it; the diff is still against the original.
+  await page.getByTestId('command-follow-up').fill('Keep it to one sentence.');
+  await page.getByTestId('command-follow-up-send').click();
+  await expect(page.getByTestId('command-toolbar')).toContainText('Your instruction', {
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('command-apply')).toBeEnabled();
 });
 
 /** An examiner review of just the selection (ADR-0067): one section command, flags on its sentences. */

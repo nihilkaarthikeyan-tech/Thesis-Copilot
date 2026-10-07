@@ -20,6 +20,7 @@ import {
   mockClaimsMapResponse,
   mockClassifyResponse,
   mockCommandResponse,
+  mockEditReasonsResponse,
   mockEntitiesFor,
   mockEquationImageResponse,
   mockEquationResponse,
@@ -105,6 +106,8 @@ export function mockSuggestionFor(req: LlmRequest): string {
                     req.messages.some((m) => m.content.startsWith('<entity_types>')),
                   respond: mockEntitiesFor,
                 },
+                // ADR-0095: "What changed and why", a COMMAND-logged call; matched by `<edit>`.
+                mockEditReasonsResponse,
                 mockCommandResponse,
                 mockStyleResponse,
                 {

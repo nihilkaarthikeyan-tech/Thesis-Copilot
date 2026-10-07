@@ -5552,3 +5552,24 @@ a drag. Two faults found building it: the handle was placed relative to a contai
 view had already replaced, and a command's `state.selection` stayed stale until `state.tr` was
 read again, so turning a two-item list into text left the second item a list.
 
+R8 (ADR-0095): the AI edit panel. Ten new edit actions and a free instruction in `edit.md`, a new
+fast prompt `edit_reasons.md` ("What changed and why", inside the run's unit), follow-ups against
+the student's original, lists inserted as lists, Ctrl+J. Four real-model rounds
+(`scripts/eval-edit-actions.ts`), and what they and the browser found:
+- the detector request was refused by the prompt once and followed the next time — now refused in
+  code before any unit or call (`asksToEvadeDetection`);
+- Remove repetition deleted a hedge; Strengthen wrote citations after the full stop, then added
+  implications — prompt narrowed; a citation after a stop is put back before it in code;
+- removing a repeated citation broke a sentence ("the findings in.") — now only a clause-closing
+  copy is removed, any other is a warning;
+- the moved-citation check passed three citations moved onto the neighbouring sentence because the
+  two shared one word — now a sentence that matches the claim clearly better counts;
+- a follow-up was checked against the previous version, so the moved warning vanished and the
+  model could not put anything back — the original now goes with it and is the reference;
+- the command call had no time limit — 90 s now.
+Tests: `packages/ai` 561, `apps/api/test/edit-panel.spec.ts` 7, browser `own-comments.spec.ts` and
+`outline-commands-chat.spec.ts` 12 on the mock stack.
+`pnpm ai:shakedown` after the new schema: 23/24, ₹2.69; the new edit-reasons path ok (1.6 s). The one
+failure, coherence/claims, was an empty response at 50 s; it passed on both reruns (6.7 s, 21 s),
+untouched by this change.
+

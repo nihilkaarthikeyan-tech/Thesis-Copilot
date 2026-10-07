@@ -16,7 +16,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { CITATION_ROLES, COMMANDS } from '@tc/ai';
+import { CITATION_ROLES, COMMAND, COMMANDS } from '@tc/ai';
 import type { Env } from '@tc/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -80,13 +80,24 @@ const proofreadBody = z.object({
   fromSentence: z.number().int().min(0).max(100_000).optional(),
 });
 
-const commandBody = z.object({
-  chapterId: z.string().uuid(),
-  command: z.enum(COMMANDS),
-  selection: z.string().min(1).max(20_000),
-  contextBefore: z.string().max(10_000).optional(),
-  contextAfter: z.string().max(10_000).optional(),
-});
+const commandBody = z
+  .object({
+    chapterId: z.string().uuid(),
+    command: z.enum(COMMANDS),
+    selection: z.string().min(1).max(20_000),
+    contextBefore: z.string().max(10_000).optional(),
+    contextAfter: z.string().max(10_000).optional(),
+    // ADR-0095: the edit panel's own instruction, library switch and follow-up.
+    instruction: z.string().trim().max(COMMAND.maxInstructionChars).optional(),
+    useLibrary: z.boolean().optional(),
+    original: z.string().max(20_000).optional(),
+  })
+  .refine((b) => b.command !== 'custom' || (b.instruction ?? '').length > 0, {
+    message: 'Write what you want changed.',
+    path: ['instruction'],
+  });
+
+const explainBody = z.object({ runId: z.string().uuid() });
 
 const citeRoleBody = z.object({
   chapterId: z.string().uuid(),
@@ -252,6 +263,18 @@ export class ChatController {
     const parsed = commandBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid command', parsed.error.issues);
     return this.commands.run(user, parsed.data);
+  }
+
+  /**
+   * ADR-0095: "What changed and why" for a run just made — once per run, inside its unit, so it
+   * spends nothing more. An expired or repeated request is a 404.
+   */
+  @Post('commands/explain')
+  @HttpCode(200)
+  explain(@CurrentUser() user: SessionUser, @Body() body: unknown) {
+    const parsed = explainBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid request', parsed.error.issues);
+    return this.commands.explain(user, parsed.data.runId);
   }
 
   /**

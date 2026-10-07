@@ -22,6 +22,7 @@ import {
 } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useEffect, useRef, useState } from 'react';
+import { AI_EDIT_FOCUS } from './CommandToolbar';
 
 const TURN_INTO: Array<{ kind: TurnInto; label: string }> = [
   { kind: 'paragraph', label: 'Text' },
@@ -206,7 +207,11 @@ export function BlockMenu(props: {
         role="menuitem"
         className={item}
         disabled={!hasText}
-        onClick={done(() => editor.chain().focus().selectBlock(block.pos).run())}
+        onClick={done(() => {
+          editor.chain().focus().selectBlock(block.pos).run();
+          // The edit panel appears with the selection; the caret goes to its box (ADR-0095).
+          window.setTimeout(() => window.dispatchEvent(new Event(AI_EDIT_FOCUS)), 50);
+        })}
         data-testid="block-menu-edit"
       >
         Edit with AI

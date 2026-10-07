@@ -114,7 +114,7 @@ import { CitationList } from './CitationList';
 import { CitationsPanel, type Rendered } from './CitationsPanel';
 import { CitePicker } from './CitePicker';
 import { CiteSuggestions } from './CiteSuggestions';
-import { CommandToolbar } from './CommandToolbar';
+import { AI_EDIT_FOCUS, CommandToolbar } from './CommandToolbar';
 import { DiagramDialog } from './DiagramDialog';
 import { DRAFT_SECTION_EVENT, DraftMode } from './DraftMode';
 import { FindPapersPanel } from './FindPapersPanel';
@@ -1151,6 +1151,24 @@ function ChapterEditor({
     return () => {
       storage.onMenu = null;
     };
+  }, [editor]);
+  // ADR-0095: Ctrl+J, as in Jenni — the edit box with text selected, the chat without.
+  useEffect(() => {
+    if (!editor) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'j') return;
+      event.preventDefault();
+      const { from, to, empty } = editor.state.selection;
+      if (!empty && editor.state.doc.textBetween(from, to, ' ').trim().length >= 20) {
+        window.dispatchEvent(new Event(AI_EDIT_FOCUS));
+        return;
+      }
+      setTab('chat');
+      setDrawer('panel');
+      window.setTimeout(() => document.getElementById('chat-message')?.focus(), 50);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [editor]);
   const closeBlockMenu = useCallback(() => {
     setBlockMenu(null);

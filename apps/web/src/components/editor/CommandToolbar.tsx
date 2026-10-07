@@ -13,11 +13,15 @@
 
 import { aiTextToFragment, citationsInRange } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { tNow } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
+import { listNodeFromMarkdown } from './list-from-markdown';
 import { tableNodeFromMarkdown } from './table-from-markdown';
+
+/** Dispatched on `window` by Ctrl+J with a selection: the caret goes to the edit box. */
+export const AI_EDIT_FOCUS = 'tc:ai-edit-focus';
 
 type DiffOp = { type: 'same' | 'add' | 'remove'; text: string };
 
@@ -41,6 +45,12 @@ type RunResult = {
   /** Citations the rewrite added from the passages it was sent, resolved (ADR-0045). */
   citations?: Array<{ key: string; sourceId: string; chunkId: string; rendered: string }>;
   unchanged: boolean;
+  /** ADR-0095: citations now on another claim — a warning before Replace, like a dropped one. */
+  movedCitations?: string[];
+  /** ADR-0095: a citation written twice where the copy is part of a sentence — a warning. */
+  repeatedCitations?: string[];
+  /** ADR-0095: "What changed and why", asked for once with this. */
+  runId?: string;
 };
 
 /**
@@ -63,42 +73,107 @@ function readable(text: string, editor: Editor | null, result: RunResult): strin
     );
 }
 
-const COMMANDS = [
-  { key: 'expand', label: 'command.expand' },
-  { key: 'formalise', label: 'command.formalise' },
-  { key: 'simplify', label: 'command.simplify' },
-  { key: 'shorten', label: 'command.shorten' },
-  { key: 'consistency', label: 'command.consistency' },
-] as const;
+type Preset = {
+  key: string;
+  /** An i18n key for the five A.11 commands that have one; the rest are English for now. */
+  label: string;
+  title: string;
+};
 
-/** ADR-0066: more edits, behind one disclosure so the row stays short. */
-const MORE_EDITS = [
-  { key: 'hedge', label: 'Hedge', title: 'More cautious claims where the evidence is limited' },
+/**
+ * ADR-0095 (Jenni build plan R8): every edit, in the groups Jenni's AI Edit uses. Typing in the
+ * box filters them; anything typed that is not one of them is the student's own instruction.
+ * There is no general "Paraphrase": rewording any selection on request is the §12.3 ban.
+ */
+const isList = (command: string) => command === 'bullets' || command === 'numbered';
+
+const PRESET_GROUPS: Array<{ title: string; presets: Preset[] }> = [
   {
-    key: 'direct',
-    label: 'More direct',
-    title: 'Fewer needless qualifiers — only on claims that carry a citation',
+    title: 'Improve the writing',
+    presets: [
+      { key: 'flow', label: 'Fix the flow', title: 'Each sentence follows from the one before' },
+      {
+        key: 'transitions',
+        label: 'Add transitions',
+        title: 'Linking words where the relation is clear',
+      },
+      {
+        key: 'redundancy',
+        label: 'Remove repetition',
+        title: 'Drops what says the same thing twice',
+      },
+      {
+        key: 'strengthen',
+        label: 'Strengthen the argument',
+        title: 'Claim, evidence and what follows, made explicit',
+      },
+      {
+        key: 'counter',
+        label: 'Counter-argument',
+        title: 'Adds a cited counter-argument from your library after your text',
+      },
+      { key: 'expand', label: 'command.expand', title: 'Adds depth from your library, cited' },
+      { key: 'shorten', label: 'command.shorten', title: 'About 60% of the length' },
+    ],
   },
-  { key: 'active', label: 'Active voice', title: 'Active voice where the doer is named' },
-  { key: 'past', label: 'Past tense', title: 'For reporting what a study did' },
-  { key: 'present', label: 'Present tense', title: 'For what is known and argued' },
   {
-    key: 'counter',
-    label: 'Counter-argument',
-    title: 'Adds a cited counter-argument from your library after your text',
+    title: 'Academic style',
+    presets: [
+      {
+        key: 'formalise',
+        label: 'command.formalise',
+        title: 'A formal academic register, same meaning and length',
+      },
+      { key: 'simplify', label: 'command.simplify', title: 'Shorter sentences, plainer words' },
+      {
+        key: 'precise',
+        label: 'Technical precision',
+        title: "The field's exact terms and the text's own figures",
+      },
+      {
+        key: 'direct',
+        label: 'Increase confidence',
+        title: 'Fewer needless qualifiers — only on claims that carry a citation',
+      },
+      {
+        key: 'hedge',
+        label: 'Hedge the claims',
+        title: 'More cautious claims where the evidence is limited',
+      },
+      {
+        key: 'consistency',
+        label: 'command.consistency',
+        title: 'Fixes terms that conflict with the section and glossary',
+      },
+    ],
   },
-  // ADR-0081: the two ADR-0066 left out.
   {
-    key: 'translate',
-    label: 'Translate',
-    title: 'Into the language of this thesis, with every citation and figure kept',
+    title: 'Transform',
+    presets: [
+      { key: 'active', label: 'Active voice', title: 'Active voice where the doer is named' },
+      { key: 'past', label: 'Past tense', title: 'For reporting what a study did' },
+      { key: 'present', label: 'Present tense', title: 'For what is known and argued' },
+      {
+        key: 'future',
+        label: 'Future tense',
+        title: 'For what this research will do, as in a proposal',
+      },
+      { key: 'bullets', label: 'Bulleted list', title: 'One point per item, citations kept' },
+      { key: 'numbered', label: 'Numbered list', title: 'One point per item, in order' },
+      { key: 'prose', label: 'As prose', title: 'A list or notes as connected paragraphs' },
+      {
+        key: 'table',
+        label: 'As a table',
+        title: 'The facts the text compares, as a table; nothing added',
+      },
+      {
+        key: 'translate',
+        label: 'Translate',
+        title: 'Into the language of this thesis, every citation and figure kept',
+      },
+    ],
   },
-  {
-    key: 'table',
-    label: 'As a table',
-    title: 'The facts the text compares, as a table with a header row; nothing added',
-  },
-] as const;
+];
 
 export function CommandToolbar({
   editor,
@@ -136,6 +211,20 @@ export function CommandToolbar({
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<RunResult | null>(null);
+  /** ADR-0095: the box — it filters the presets, or is the student's own instruction. */
+  const [instruction, setInstruction] = useState('');
+  /** ADR-0095: "Use my library" — the student's own instruction is sent passages when on. */
+  const [useLibrary, setUseLibrary] = useState(true);
+  /** ADR-0095: "What changed and why"; null while it is being worked out. */
+  const [reasons, setReasons] = useState<string[] | null>(null);
+  const [followUp, setFollowUp] = useState('');
+  /**
+   * ADR-0095: a follow-up refines the result, so the student's original text and every citation
+   * the earlier rounds added are kept here, for the diff and for Replace.
+   */
+  const [original, setOriginal] = useState<string | null>(null);
+  const [addedCitations, setAddedCitations] = useState<NonNullable<RunResult['citations']>>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Track the selection so the toolbar knows what it would rewrite.
   useEffect(() => {
@@ -158,13 +247,21 @@ export function CommandToolbar({
   }, [editor]);
 
   /** The command the preview came from, for "Try again". */
-  const [lastCommand, setLastCommand] = useState<string | null>(null);
+  const [lastCommand, setLastCommand] = useState<{ command: string; instruction?: string } | null>(
+    null,
+  );
 
   const run = useCallback(
-    async (command: string) => {
+    async (command: string, options: { instruction?: string; followUp?: boolean } = {}) => {
       if (!editor || !selection) return;
       setBusy(command);
-      setLastCommand(command);
+      setLastCommand({
+        command,
+        ...(options.instruction ? { instruction: options.instruction } : {}),
+      });
+      // A follow-up rewrites the last result; anything else starts from the selection again.
+      const refining = options.followUp === true && result !== null;
+      const base = original ?? selection.text;
       try {
         const before = editor.state.doc.textBetween(
           Math.max(0, selection.from - 800),
@@ -181,15 +278,38 @@ export function CommandToolbar({
           body: JSON.stringify({
             chapterId,
             command,
-            selection: selection.text,
+            selection: refining && result ? result.text : selection.text,
             contextBefore: before,
             contextAfter: after,
+            ...(options.instruction ? { instruction: options.instruction, useLibrary } : {}),
+            ...(refining ? { original: base } : {}),
           }),
         });
+        setOriginal(base);
+        setAddedCitations((previous) => {
+          const merged = refining ? [...previous] : [];
+          for (const c of answer.citations ?? []) {
+            if (!merged.some((m) => m.key === c.key)) merged.push(c);
+          }
+          return merged;
+        });
         setResult(answer);
+        setFollowUp('');
+        setReasons(null);
         onUsageChange();
         if (answer.unchanged) {
           onNotice(tNow('command.noConflict'));
+        }
+        // ADR-0095: "What changed and why", once, inside the unit just spent.
+        if (answer.runId && !answer.unchanged) {
+          api<{ reasons: string[] }>('/commands/explain', {
+            method: 'POST',
+            body: JSON.stringify({ runId: answer.runId }),
+          })
+            .then((r) => setReasons(r.reasons))
+            .catch(() => setReasons([]));
+        } else {
+          setReasons([]);
         }
       } catch (e) {
         onNotice(
@@ -199,8 +319,58 @@ export function CommandToolbar({
         setBusy(null);
       }
     },
-    [editor, selection, chapterId, onUsageChange, onNotice],
+    [editor, selection, chapterId, onUsageChange, onNotice, result, original, useLibrary],
   );
+
+  /** Clears the panel after Replace, Insert below or Discard. */
+  function reset() {
+    setResult(null);
+    setReasons(null);
+    setOriginal(null);
+    setAddedCitations([]);
+    setFollowUp('');
+  }
+
+  /** The box's Enter: a preset whose name was typed in full, or the student's own instruction. */
+  function submitBox() {
+    const typed = instruction.trim();
+    if (!typed) return;
+    const exact = PRESET_GROUPS.flatMap((g) => g.presets).find(
+      (p) => presetLabel(p).toLowerCase() === typed.toLowerCase(),
+    );
+    if (exact) void run(exact.key);
+    else void run('custom', { instruction: typed });
+  }
+
+  const presetLabel = (p: Preset) =>
+    p.label.startsWith('command.') ? t(p.label as Parameters<typeof t>[0]) : p.label;
+  const commandName = (key: string) => {
+    if (key === 'custom') return 'Your instruction';
+    const preset = PRESET_GROUPS.flatMap((g) => g.presets).find((p) => p.key === key);
+    return preset ? presetLabel(preset) : key;
+  };
+
+  // Ctrl+J (ThesisEditor) puts the caret in the box when there is a selection. The key can come
+  // before React has drawn the box for a selection just made, so the wish is kept and met on the
+  // first render that has the box (seen under load in the browser suite).
+  const focusWanted = useRef(false);
+  useEffect(() => {
+    const focus = () => {
+      focusWanted.current = true;
+      if (inputRef.current) {
+        inputRef.current.focus();
+        focusWanted.current = false;
+      }
+    };
+    window.addEventListener(AI_EDIT_FOCUS, focus);
+    return () => window.removeEventListener(AI_EDIT_FOCUS, focus);
+  }, []);
+  useEffect(() => {
+    if (focusWanted.current && inputRef.current) {
+      inputRef.current.focus();
+      focusWanted.current = false;
+    }
+  });
 
   /**
    * Places the rewrite after the selected passage instead of over it (2026-10-04, from the Jenni
@@ -214,14 +384,22 @@ export function CommandToolbar({
     const fragment = aiTextToFragment(editor.schema, result.text, {
       provenance: { kind: 'COMMAND', actionId: null },
       existing: citationsInRange(editor.state.doc, selection.from, selection.to),
-      citations: result.citations ?? [],
+      citations: addedCitations,
       onCitation: (key, rendered) => {
         if (store?.renderedMap && rendered) store.renderedMap[key] = rendered;
       },
     });
     const $to = editor.state.doc.resolve(selection.to);
     const after = $to.after($to.depth);
-    const paragraph = editor.schema.nodes.paragraph?.create(null, fragment);
+    // ADR-0095: a list goes in as a list.
+    const listed = isList(result.command)
+      ? listNodeFromMarkdown(editor.schema, result.text, {
+          provenance: { kind: 'COMMAND', actionId: null },
+          existing: citationsInRange(editor.state.doc, selection.from, selection.to),
+          citations: addedCitations,
+        })
+      : null;
+    const paragraph = listed ?? editor.schema.nodes.paragraph?.create(null, fragment);
     if (!paragraph) return;
     editor
       .chain()
@@ -231,7 +409,7 @@ export function CommandToolbar({
         return true;
       })
       .run();
-    setResult(null);
+    reset();
     setSelection(null);
   }
 
@@ -247,17 +425,20 @@ export function CommandToolbar({
     const options = {
       provenance: { kind: 'COMMAND' as const, actionId: null },
       existing: citationsInRange(editor.state.doc, selection.from, selection.to),
-      citations: result.citations ?? [],
+      citations: addedCitations,
       onCitation: (key: string, rendered: string | null) => {
         if (store?.renderedMap && rendered) store.renderedMap[key] = rendered;
       },
     };
     // ADR-0081: "As a table" answers with a Markdown table, which replaces the selected paragraph
     // as a real table node (the "/" menu's kind), its citations as citation nodes.
+    // ADR-0095: likewise a bulleted or numbered list replaces it as a real list.
     const table =
       result.command === 'table'
         ? tableNodeFromMarkdown(editor.schema, result.text, options)
-        : null;
+        : isList(result.command)
+          ? listNodeFromMarkdown(editor.schema, result.text, options)
+          : null;
     if (table) {
       const $from = editor.state.doc.resolve(selection.from);
       const $to = editor.state.doc.resolve(selection.to);
@@ -271,7 +452,7 @@ export function CommandToolbar({
           return true;
         })
         .run();
-      setResult(null);
+      reset();
       setSelection(null);
       return;
     }
@@ -285,7 +466,7 @@ export function CommandToolbar({
       })
       .setTextSelection(selection.from + fragment.size)
       .run();
-    setResult(null);
+    reset();
     setSelection(null);
   }
 
@@ -301,7 +482,7 @@ export function CommandToolbar({
           <div className="flex items-baseline justify-between text-sm">
             <p className="font-medium">
               {t('command.resultWords', {
-                command: result.command,
+                command: commandName(result.command),
                 from: result.originalWords,
                 to: result.words,
               })}
@@ -324,7 +505,7 @@ export function CommandToolbar({
                       : ''
                 }
               >
-                {readable(op.text, editor, result)}
+                {readable(op.text, editor, { ...result, citations: addedCitations })}
               </span>
             ))}
           </div>
@@ -336,8 +517,65 @@ export function CommandToolbar({
               )}
             </p>
           ) : null}
+          {(result.movedCitations?.length ?? 0) > 0 ? (
+            <p role="alert" className="mt-2 text-xs text-warn" data-testid="command-moved">
+              {result.movedCitations?.length === 1
+                ? 'One citation now sits on a different claim. Check it before you replace your text.'
+                : `${result.movedCitations?.length} citations now sit on different claims. Check them before you replace your text.`}
+            </p>
+          ) : null}
+          {(result.repeatedCitations?.length ?? 0) > 0 ? (
+            <p role="alert" className="mt-2 text-xs text-warn" data-testid="command-repeated">
+              A citation now appears twice in this version. Check that each one belongs where it is.
+            </p>
+          ) : null}
+          {result.unchanged ? null : (
+            <div className="mt-2" data-testid="command-reasons">
+              <p className="text-xs font-semibold text-ink">What changed and why</p>
+              {reasons === null ? (
+                <p className="mt-1 text-xs text-muted">Working it out…</p>
+              ) : reasons.length > 0 ? (
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted">
+                  {reasons.map((reason) => (
+                    <li key={reason} className={reason.startsWith('Check:') ? 'text-warn' : ''}>
+                      {/* A citation marker the model quoted reads as its label, as in the diff. */}
+                      {readable(reason, editor, { ...result, citations: addedCitations })}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-muted">Compare the two versions above.</p>
+              )}
+            </div>
+          )}
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const asked = followUp.trim();
+              if (asked) void run('custom', { instruction: asked, followUp: true });
+            }}
+          >
+            <input
+              value={followUp}
+              onChange={(e) => setFollowUp(e.target.value)}
+              maxLength={500}
+              placeholder="Ask for a change to this version…"
+              aria-label="Ask for a change to this version"
+              data-testid="command-follow-up"
+              className="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-ink"
+            />
+            <button
+              type="submit"
+              disabled={busy !== null || !followUp.trim()}
+              className="rounded-md border border-line-strong px-3 py-1 text-sm font-semibold text-ink disabled:opacity-50"
+              data-testid="command-follow-up-send"
+            >
+              {busy === 'custom' ? t('command.working') : 'Refine'}
+            </button>
+          </form>
           <div className="mt-3 flex justify-end gap-3 text-sm">
-            <button type="button" className="underline" onClick={() => setResult(null)}>
+            <button type="button" className="underline" onClick={reset}>
               {t('common.discard')}
             </button>
             {lastCommand ? (
@@ -346,7 +584,12 @@ export function CommandToolbar({
                 className="underline"
                 disabled={busy !== null}
                 data-testid="command-retry"
-                onClick={() => void run(lastCommand)}
+                onClick={() =>
+                  void run(
+                    lastCommand.command,
+                    lastCommand.instruction ? { instruction: lastCommand.instruction } : {},
+                  )
+                }
               >
                 {busy ? t('command.working') : t('command.tryAgain')}
               </button>
@@ -379,6 +622,88 @@ export function CommandToolbar({
               : ''}
             {t('command.costNote')}
           </p>
+          {/* ADR-0095: one box — it filters the edits below, or is your own instruction. */}
+          <form
+            className="mt-2 flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitBox();
+            }}
+          >
+            <input
+              id="ai-edit-input"
+              ref={inputRef}
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setInstruction('');
+              }}
+              maxLength={500}
+              placeholder="Edit with AI: say what to change, or pick below (Ctrl+J)"
+              aria-label="Edit with AI"
+              data-testid="ai-edit-input"
+              className="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
+            />
+            <label
+              className="flex shrink-0 items-center gap-1 text-xs text-muted"
+              title="Your own instruction may use passages from your library, cited"
+            >
+              <input
+                type="checkbox"
+                checked={useLibrary}
+                onChange={(e) => setUseLibrary(e.target.checked)}
+                data-testid="ai-edit-library"
+                className="accent-accent"
+              />
+              Use my library
+            </label>
+            <button
+              type="submit"
+              disabled={busy !== null || !instruction.trim()}
+              className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink disabled:opacity-50"
+              data-testid="ai-edit-send"
+            >
+              {busy === 'custom' ? t('command.working') : 'Edit'}
+            </button>
+          </form>
+          <div className="mt-2 max-h-56 overflow-y-auto" data-testid="ai-edit-presets">
+            {PRESET_GROUPS.map((group) => {
+              const typed = instruction.trim().toLowerCase();
+              const shown = group.presets.filter(
+                (p) =>
+                  !typed ||
+                  presetLabel(p).toLowerCase().includes(typed) ||
+                  p.title.toLowerCase().includes(typed),
+              );
+              if (shown.length === 0) return null;
+              return (
+                <div key={group.title} className="mb-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                    {group.title}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {shown.map((p) => {
+                      // "Increase confidence" only firms up claims that already carry a citation.
+                      const needsCite = p.key === 'direct' && !selection?.text.includes('{{cite:');
+                      return (
+                        <button
+                          key={p.key}
+                          type="button"
+                          title={needsCite ? 'Select a sentence that carries a citation' : p.title}
+                          disabled={busy !== null || needsCite}
+                          onClick={() => void run(p.key)}
+                          data-testid={`ai-edit-${p.key}`}
+                          className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[13px] font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+                        >
+                          {busy === p.key ? t('command.working') : presetLabel(p)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
@@ -420,40 +745,6 @@ export function CommandToolbar({
                 {t('command.askChat')}
               </button>
             ) : null}
-            {COMMANDS.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                disabled={busy !== null}
-                onClick={() => void run(c.key)}
-                className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
-              >
-                {busy === c.key ? t('command.working') : t(c.label)}
-              </button>
-            ))}
-            <details className="w-full" data-testid="more-edits">
-              <summary className="cursor-pointer text-xs font-semibold text-muted hover:text-ink">
-                More edits
-              </summary>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {MORE_EDITS.map((c) => {
-                  // "More direct" only firms up claims that already carry a citation.
-                  const needsCite = c.key === 'direct' && !selection?.text.includes('{{cite:');
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      title={needsCite ? 'Select a sentence that carries a citation' : c.title}
-                      disabled={busy !== null || needsCite}
-                      onClick={() => void run(c.key)}
-                      className="rounded-md border border-line-strong bg-surface px-3 py-1 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
-                    >
-                      {busy === c.key ? 'Working…' : c.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </details>
           </div>
           {noteOpen && selection ? (
             <form

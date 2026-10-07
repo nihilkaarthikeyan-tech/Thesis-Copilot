@@ -278,6 +278,15 @@ since each re-index spends a little on embeddings).
       `pnpm --filter @tc/api research:thresholds --search` there if they do not.
 - [ ] **Owner: the cost model for the strong-tier chat** (the lead is doing it on main). What the
       research path adds per thin question is in ADR-0074, "Cost".
+## The AI edit panel (ADR-0095, 2026-10-07)
+
+- [ ] **Owner: the COMMAND allowance.** The panel puts edits one key away (Ctrl+J), as Jenni
+      does, and each follow-up is a run — but the allowance is still 4 a month on a paid plan and
+      2 on the trial. Decide it with the usage-limit rebalance; nothing else in R8 needs a person.
+- [ ] **A native reader for the panel's words in Hindi** (group names, presets beyond the five
+      A.11 commands, "What changed and why", the follow-up box) — English for now, as the other
+      screens added this week.
+
 ## Attachments in chat (ADR-0083, 2026-10-05)
 
 - [ ] **A sweep of `chat-attachments/` in object storage.** Pictures attached to chat questions
