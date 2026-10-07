@@ -99,6 +99,7 @@ function shortRefOf(source: PassageDto['source']): string {
 }
 
 import { AddProposalPrompt } from '../AddProposalPrompt';
+import { FeatureDot, noteFeatureUsed } from '../onboarding/FeatureDot';
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ThemeToggle } from '../theme';
@@ -181,6 +182,26 @@ const STATUS_LABEL: Record<AutosaveStatus, MessageKey> = {
 
 /** The panel tabs, in order; each label is `editor.tab.<id>`. */
 const TABS = ['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const;
+
+/** R11 (ADR-0098): the features a dot points to, on their tabs. */
+const FEATURE_HINTS: Partial<Record<(typeof TABS)[number], { id: string; line: string }>> = {
+  sources: {
+    id: 'library',
+    line: 'Your library: add your own PDFs, .bib files or Zotero papers, and suggestions cite them.',
+  },
+  citations: {
+    id: 'cite',
+    line: 'Type @ anywhere in your text to cite a paper from your library. It costs nothing.',
+  },
+  chat: {
+    id: 'chat',
+    line: 'Ask about your papers: what they found, where they disagree, what is missing.',
+  },
+  flags: {
+    id: 'checks',
+    line: 'Check this chapter as an examiner would: unsupported claims, weak citations, gaps.',
+  },
+};
 
 /** The passage behind a citation and its paper's record, for the hover card and the evidence card. */
 async function resolvePassage(
@@ -408,6 +429,16 @@ function ChapterEditor({
   } | null>(null);
   /** A selected sentence the student asked papers for; the Papers tab searches it. */
   const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);
+  /** R11: a tab opened (not the one the page starts on) counts as its feature used. */
+  // Compared with the tab before, not "skip the first run": React runs an effect twice in
+  // development, and the second run marked the starting tab used on every load.
+  const previousTab = useRef(tab);
+  useEffect(() => {
+    if (previousTab.current === tab) return;
+    previousTab.current = tab;
+    const hint = FEATURE_HINTS[tab];
+    if (hint) noteFeatureUsed(hint.id);
+  }, [tab]);
   /** R7: the block the grip's menu is open on, and where to draw it. */
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -1723,22 +1754,47 @@ function ChapterEditor({
             </button>
           </div>
           <div className="flex border-b border-line" role="tablist">
-            {TABS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-                className={`flex-1 border-b-2 px-2 py-2 text-[12px] capitalize transition-colors ${
-                  tab === id
-                    ? 'border-accent bg-surface font-semibold text-ink'
-                    : 'border-transparent text-muted hover:text-ink'
-                }`}
-              >
-                {t(`editor.tab.${id}`)}
-              </button>
-            ))}
+            {TABS.map((id) => {
+              const hint = FEATURE_HINTS[id];
+              return (
+                <span key={id} className="relative flex flex-1">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === id}
+                    onClick={() => setTab(id)}
+                    className={`flex-1 border-b-2 px-2 py-2 text-[12px] capitalize transition-colors ${
+                      tab === id
+                        ? 'border-accent bg-surface font-semibold text-ink'
+                        : 'border-transparent text-muted hover:text-ink'
+                    }`}
+                  >
+                    {t(`editor.tab.${id}`)}
+                  </button>
+                  {/* R11: a dot on a feature not yet used, while the first-session guide is not. */}
+                  {hint ? (
+                    <FeatureDot
+                      id={hint.id}
+                      line={hint.line}
+                      hidden={guideShown}
+                      onTry={() => {
+                        setTab(id);
+                        if (id === 'chat') {
+                          window.setTimeout(
+                            () => document.getElementById('chat-message')?.focus(),
+                            50,
+                          );
+                        }
+                        if (id === 'citations') {
+                          // "@" where the student is writing opens the free library picker.
+                          editor?.chain().focus().insertContent(' @').run();
+                        }
+                      }}
+                    />
+                  ) : null}
+                </span>
+              );
+            })}
           </div>
           <div className="p-3 text-[13px] text-muted">
             {tab === 'sources' ? (

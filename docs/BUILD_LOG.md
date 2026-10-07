@@ -5584,3 +5584,6 @@ R10 (ADR-0097): the Sections panel. The chapter rail's headings open to their no
 place through `PUT /documents/:id/outline/section-note`, which adds a typed heading to the plan so
 Assist reads its note), Draft and Sources. API 3 tests; proven in the browser on the real stack.
 
+R11 (ADR-0098): feature dots on the panel's tabs. Found in the browser: React's double effect run in
+development marked the starting tab "used" on load; the tab is now compared with the previous one.
+
