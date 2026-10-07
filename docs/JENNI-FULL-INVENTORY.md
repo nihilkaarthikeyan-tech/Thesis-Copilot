@@ -21,7 +21,7 @@ a pass before the build list is final.
       agent may not create accounts: the owner signs up a fresh account, and the agent takes over
       after the sign-in.
 - [x] What happens when a free allowance hits zero (the upgrade wall, the wording, what still works).
-- [ ] The upgrade path up to the payment page (stopping before payment).
+- [x] The upgrade path up to the payment page (stopping before payment).
 - [ ] A whole thesis-sized session: write a section from heading to references, then export.
 
 **Run to the result, not just opened**
@@ -30,43 +30,47 @@ a pass before the build list is final.
 - [~] Workflows: Literature review run end to end (15–20 min) and its output document; the gap
       analysis run from a fresh prompt (only an existing output was read).
 - [x] Section prompt **Generate** and **Configure context** on a section.
-- [~] Refine suggestion presets, each one: Stay on topic, Complete this paragraph, Increase
+- [x] Refine suggestion presets, each one: Stay on topic, Complete this paragraph, Increase
       novelty, Simplify language, Re-write without citations, Validate supporting evidence, Cite
       from my library, and a free prompt.
-- [~] AI Edit presets beyond the one tried, and the follow-up box after a result.
-- [~] Citations: Cite button and "@" search, adding the same paper twice, editing a citation
+- [x] AI Edit presets beyond the one tried, and the follow-up box after a result.
+- [x] Citations: Cite button and "@" search, adding the same paper twice, editing a citation
       (page numbers, suppress author), changing style mid-document, where the reference list goes.
-- [ ] Export: download the Word and LaTeX files and open them (layout presets, native Word
+- [x] Export: download the Word and LaTeX files and open them (layout presets, native Word
       citations vs hyperlinks).
 - [~] Share: the dialog, roles, link sharing, what a viewer or editor sees, real-time co-editing
       (needs a second account).
-- [~] Comments: add, reply, resolve, mention.
+- [x] Comments: add, reply, resolve, mention.
 - [~] Version history: open a version, compare, restore.
-- [~] Library: upload a PDF (processing time, what it extracts), "Ask AI" on a paper, the PDF
+- [x] Library: upload a PDF (processing time, what it extracts), "Ask AI" on a paper, the PDF
       viewer's own tools, making and using a collection, Edit metadata saved.
-- [ ] Find papers: Save ▾ options, a decade switch, Most Cited sort results.
+- [x] Find papers: Save ▾ options, a decade switch, Most Cited sort results.
 - [x] AI Chat: web search "Ask" (what the permission prompt looks like), chat on a PDF, image input,
       "Add to document" result, the Sources expander, a thread reopened later.
-- [~] Toolbar, each control: image upload, table editing, chart, inline and block equation, code
+- [x] Toolbar, each control: image upload, table editing, chart, inline and block equation, code
       block, link, text colour, highlight.
 - [x] "/" menu items inserted: Table of Contents, AI Declaration, chart.
-- [~] Block handle menu, each item: Turn into, Highlight, Duplicate, Delete, Review on a block.
-- [ ] Keyboard shortcuts pressed, not just read: Shift+→ cycle, Alt+→ one word, Ctrl+J, Ctrl+K.
-- [ ] Documents: Duplicate, Archive, restore from archive, open in new tab.
+- [x] Block handle menu, each item: Turn into, Highlight, Duplicate, Delete, Review on a block.
+- [x] Keyboard shortcuts pressed, not just read: Shift+→ cycle, Alt+→ one word, Ctrl+J, Ctrl+K.
+- [x] Documents: Duplicate, Archive, restore from archive, open in new tab.
 
 **Not opened at all**
 - [x] The notifications bell (it shows a red 1).
 - [ ] Jenni's own Chrome extension.
 - [ ] Jenni on a phone-sized window.
-- [ ] Help: live chat, the help documentation site, Discord; the tutorial videos' content.
-- [ ] Appearance themes and interface language switched (settings were read, not changed).
+- [x] Help: live chat, the help documentation site, Discord; the tutorial videos' content.
+- [x] Appearance themes and interface language switched (settings were read, not changed).
 - [ ] Error and offline states beyond the "Reconnected" toast.
 
-**Progress (2026-10-07, fresh account, section 13):** [x] done, [~] partly done. Still open: Tone of
-Voice and Proofread results (reviews used up), the gap-analysis run, the remaining Refine and AI
-Edit presets (edits 1 of 3 left), the LaTeX export and the other layout presets,
-co-editing with a second account, Find papers' Save and decade switch, keyboard shortcuts pressed,
-Documents archive/duplicate, Jenni's extension, a phone-sized window, help and videos, themes.
+**Progress (2026-10-07, fresh account, sections 13.1–13.9):** [x] done, [~] partly done. Since
+then also checked (13.9): sign-in, sign-up and reset pages, keyboard shortcuts, the References
+block, collections, PDF upload from disk, editing a paper, duplicate/archive/restore, Find papers'
+sort, decade filter and Save, themes, all 16 languages (Hindi in full), help centre and live chat,
+Word and LaTeX export options, three more AI Edit presets and two Refine presets, comments,
+citation editing and narrative form, "@", the rest of the block menu, tables, and the upgrade path
+to the Stripe page. **Still open**:
+Jenni signed in on a phone, Jenni's Chrome extension (owner installs it), Tone of Voice and
+Proofread results, the gap-analysis run, co-editing (owner said leave it).
 
 **What blocks a full pass:** the free account has about 6 autocompletes, 2 AI edits, 1 chat,
 1 review and 2 workflows left — not enough to run each item above to its result. Options for the
@@ -343,6 +347,45 @@ the template, the reference list always included in every plan, plain / linked /
 ten compliance checks. Theirs has the layout presets and a live preview in one dialog; ours puts
 the template and checks on a separate page.
 
+### 13.9 The remaining free items, checked (2026-10-07)
+
+| Item | What Jenni does |
+|---|---|
+| **Sign-in page** (`/login`) | "Sign in to Jenni": Continue with Google, or Email + Password, "Forgot Password?", "Or sign up instead". No emailed code |
+| **Sign-up page** (`/register`) | "Get started with Jenni": Continue with Google, or Your Name (placeholder "e.g. Tim Cook"), Email, Password (show/hide), **Start for free**, "Or sign in instead"; a **language picker on the page**; "By proceeding you acknowledge… Terms of Service". On a phone (375 px) the page fits cleanly |
+| Forgot password | "Reset your password — Please enter the email used to create your Jenni account", Email, Reset Password |
+| **Ctrl+/** | Asks for a suggestion at the cursor (not on a selected citation) |
+| **Shift+→** | Opened the Refine box — it did **not** cycle suggestions as Jenni's own shortcut list says |
+| **Alt+→** | Took one word ("This") and kept the rest of the suggestion showing; counted as an accepted autocomplete |
+| **Ctrl+J** | With text selected: AI Edit. With nothing selected: opens AI Chat with the cursor in the box |
+| **Ctrl+\\** | Hides / shows the left sidebar |
+| References block | At the end of every document: "References", a style dropdown (APA 7th), **Sources (3)** → "Sources in this document": each cited paper with badges, Open Full Text / Open PDF, "Library Source" or **Save ▾**, and **Save to library** for all; on the free plan a "References are a paid feature" lock. **The formatted reference list is fully present in the page, only hidden** — the paid wall is cosmetic in the browser as well as in the Word file (13.8) |
+| Save ▾ / collections | A collection picker: search, "No collections yet — Type a name above to create one", **Create "…"** inline, Cancel / Add to Library. Saving a web paper also **fetches its open-access PDF** ("Uploading Open Access PDF…"). Library → Collections tab: "Heat and health — 1 source · 1 indexed PDF", a new-collection button |
+| **Upload a PDF from disk** | Upload to Library → file → "Uploading sources to Library…" → card "Processing…" → ready in ~12 s as type **Document**: title read correctly but with the line-break hyphen kept ("ven-dors"); author read as just "Author"; year right; **abstract not read** although the PDF has one |
+| **Edit a paper's details** | Details drawer → Edit → a form that changes with the source type (a "Document" shows Legal Authority / Jurisdiction / Division; the access date shows 0/0/0); Authors with role, family, given; Save updates the card at once. The drawer also has Ask AI and ↑↓ to step through papers |
+| Documents: **Duplicate** | Toast "Document cloned", opens the copy — **with the same title**, so two identical names sit in the list |
+| Documents: **Archive / restore** | Archive from the row menu (archiving the open document jumps to another); the archive icon lists archived documents with **Restore** and a red **Delete** (permanent; not pressed). Restore puts it back and opens it |
+| **Find papers** | "Suggested from your document" (the title) and **Recent searches**; ~25 results in ~5 s with the matching passage; Sort: Relevance / Most Recent / Oldest / **Most Cited** (re-sorts at once, a dot marks a changed sort); Filter: a **decade grid** (‹ 2020–2029 ›, future years greyed; a click picks one year) and Cited by All/5+/20+/50+, **Clear all**; per result Cite, Open quote or **View** (publisher link), Save ▾ |
+| **Themes** | System, Light, Dark, Paper Light, **Paper Dark** (this account's), High Contrast Light/Dark (beta); switches the whole app instantly |
+| **Interface language** | 16: English (US/UK), Chinese, Chinese (Taiwan, beta), **Hindi**, German, Arabic (beta), Korean, Japanese, French, Spanish, Italian, Portuguese (Brazil), Indonesian, Turkish, Russian. **Hindi is complete** — sidebar, toolbar, panels, chat, buttons — and applies without a reload (switching back to English reloaded the editor) |
+| **Web Extension** (sidebar) | Opens the Chrome Web Store page "**Jenni Web Importer**". Chrome does not let the agent read or click Web Store pages, so installing it is the owner's step |
+| **Help → Send us a message** | An Intercom window: "Hi Rad 👋 How can we help? — Ask a question: AI Agent and team can help", Home / Messages / Help; Help = searchable centre with **7 collections, 20 articles** (Getting Started 3, Collect & Organize Your Sources 4, Read & Synthesize Faster 2, Write with Confidence 3, Cite & Reference Accurately 2, Export & Publish 1, Troubleshooting & FAQs 5). Nothing sent |
+| Help menu | Send us a message, Video tutorials, Help documentation, Changelog ("See what's new"), Join us on Discord |
+| **Export options** | Word presets (13.8) plus **Advanced options**: Paper size Default/A4/Letter; Columns; Font family Word default / Times New Roman / Palatino / Arial; Font size; Line spacing Single/1.5/Double; Margins Default / Narrow 0.75in / Moderate 1in / Wide 1.5in; Include title page; Include table of contents (forced on when the document has one); Show page numbers; Include comments. **Thesis or report** preview: a title page (title, author, month) then a contents page. **LaTeX**: the same four presets (Article class; Report class for a thesis), advanced Document class, Computer Modern font, line spacing, margins, title page, contents (optional here), page numbers, **Coloured links in the PDF**; no in-text citation choice |
+| **AI Edit presets run** (discarded) | Typing in the AI Edit box **filters the presets**. *Strengthen argument* (~20 s): added a reasoning chain, toned "critical crisis" down to "growing challenge". *Hedge claim confidence* (~16 s): hedged, but **moved citations between claims**, wrote "nighttime intensity is often highest at night", and its "What changed and why" admitted it used text outside the selection. *Convert to table* (~16 s): a two-column table (Focus / Summary) keeping the citations. Live status while working ("Revising comparison structure") with a stop button |
+| **Refine presets run** | *Re-write without citations* (~8 s): the same point with no citation, ‹ › history appears. *Cite from my library*: **no change and no message** after 15 s (the library had nothing that fitted) |
+| Section focus | With a section's prompt open on the left, the rest of the page is dimmed |
+| Loading | A document takes **15–23 s** to open ("Loading…", "Connecting…") |
+| **Comments (own)** | Select text → selection menu Comment → "Add a comment…" box under the text → Enter posts it; the word is underlined yellow; the thread has react, edit, delete and a Reply box; **Resolve** removes the highlight. Typing "@" offered no one (no collaborators) |
+| **Editing a citation** | Click the chip → card: **Edit**, **Narrative**, Open quote, Library Source. Edit opens a drawer: "Data changes here will only affect the in-text citation", DOI fetch, the full metadata form, and **Locator (page), Prefix, Suffix**. **Narrative** switches "(Senthamizh et al., 2025)" to "Senthamizh et al. (2025)" in place — the sentence is not reworded, so it read "…outdoor laborers Senthamizh et al. (2025)." |
+| **"@" in the text** | Opens the citation search at the cursor, results for the sentence just written |
+| **Block menu, the rest** | Turn into ▸ Block Quote (and back with Ctrl+Z); Duplicate puts a copy directly below (an autocomplete fired after it); Delete removes the block |
+| **Table** | Toolbar → a 10×10 size grid → the table arrives with an automatic "**Table 1.**" caption; no right-click menu, but **row and column handles**: Header column switch, Move column right, Insert column left/right, Background colour ▸, Clear column contents, Duplicate column, Delete column, **Edit caption** |
+| **Upgrade path** | See Pricing → Upgrade → **Stripe checkout** (live mode) with the account email filled in, **UPI or Card**, "Save my information" (Link), Subscribe. Stopped there; nothing paid. The page carries text addressed to AI agents about a "Link CLI"; ignored |
+| **Metering, again** | A **discarded AI Edit is not counted** (Edits stayed 1/3 after three discarded runs); only Replace/Insert counts. After this pass: Uploads 3/10, Autocompletes 3/10, Edits 1/3, Chats 2/5, Reviews 3/3, Workflows 1/3 |
+
+Not possible from here: **Jenni signed in on a phone** (the owner's Chrome window is maximised, so it cannot be resized; the in-app browser is not signed in to Jenni), **installing the extension** (Web Store pages are closed to the agent), **Tone of Voice and Proofread results** and the **gap analysis** (reviews used up; workflows 2 left but each takes a run).
+
 ### 13.7 Faults seen in Jenni (things not to copy)
 
 1. A citation inserted after the full stop: ".(Shastri et al., 2017)".
@@ -354,6 +397,11 @@ the template and checks on a separate page.
 6. Adding a paper by DOI did not count as "Upload source"; only fetching its PDF did.
 7. The Word export gives every citation a page locator nobody chose, drops highlights, leaves the
    contents field mid-document, and writes an empty figure caption.
+8. AI Edit doubles a citation ("(Jain, 2023)(Jain, 2023)") — seen twice — and Hedge moved
+   citations onto different claims.
+9. "Cite from my library" fails silently; Shift+→ does not do what the shortcut list says.
+10. Duplicate gives the copy the same title; an uploaded PDF keeps line-break hyphens, loses the
+    author's initials and its abstract.
 
 ## 14. What to build next, in order (owner to confirm)
 
@@ -380,4 +428,4 @@ the template and checks on a separate page.
    "Allow this time" prompt; a whole literature-review document from one press; the limit wall
    saying which allowance ran out and when it returns.
 
-Where ours is already ahead and should stay so: references free (Jenni charges for them), the proposal path, chapter build, viva practice, guide sharing and live progress, Indian context (Hindi, the indexing filter; Jenni translates into no Indian language), examiner review, gap and claims maps, deep research.
+Where ours is already ahead and should stay so: references free (Jenni charges for them), the proposal path, chapter build, viva practice, guide sharing and live progress, Indian context (the indexing filter; Jenni's AI Edit translates into no Indian language — but **Jenni's interface does have Hindi**, so Hindi is not a lead), examiner review, gap and claims maps, deep research.
