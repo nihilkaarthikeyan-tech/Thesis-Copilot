@@ -16,6 +16,8 @@ import {
   type Autosave,
   type AutosaveStatus,
   aiTextToFragment,
+  type BlockHandleStorage,
+  type BlockMenuRequest,
   type CitationPassage,
   createAutosave,
   getGhostState,
@@ -102,6 +104,7 @@ import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { ThemeToggle } from '../theme';
 import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
+import { BlockMenu } from './BlockMenu';
 import { ChapterContents } from './ChapterContents';
 import { ChartDialog } from './ChartDialog';
 import type { Mention } from './ChatMentions';
@@ -404,6 +407,8 @@ function ChapterEditor({
   } | null>(null);
   /** A selected sentence the student asked papers for; the Papers tab searches it. */
   const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);
+  /** R7: the block the grip's menu is open on, and where to draw it. */
+  const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => {
     if (!drawer && !moreOpen) return;
@@ -1133,6 +1138,58 @@ function ChapterEditor({
   const assist = usage?.actions.find((a) => a.action === 'ASSIST');
   const draft = usage?.actions.find((a) => a.action === 'DRAFT');
   const ghost = editor ? getGhostState(editor) : undefined;
+
+  // R7: the grip reads its handler when pressed, so setting it after the editor exists is enough.
+  useEffect(() => {
+    if (!editor) return;
+    const storage = editor.storage.blockHandle as BlockHandleStorage | undefined;
+    if (!storage) return;
+    storage.onMenu = (request) => {
+      editor.commands.setActiveBlock(request.pos);
+      setBlockMenu(request);
+    };
+    return () => {
+      storage.onMenu = null;
+    };
+  }, [editor]);
+  const closeBlockMenu = useCallback(() => {
+    setBlockMenu(null);
+    editor?.commands.setActiveBlock(null);
+  }, [editor]);
+
+  /** The selection toolbar's and the block menu's (R7) shared actions. */
+  function reviewSelection(from: number, to: number): void {
+    // The job reads the saved chapter, so what is on screen is saved first.
+    void (async () => {
+      try {
+        await autosaveRef.current?.flush();
+        await api(`/chapters/${chapter.id}/examiner-review`, {
+          method: 'POST',
+          body: JSON.stringify({ from, to }),
+        });
+        onUsageChange();
+        setTab('flags');
+        setDrawer('panel');
+        setNotice('The examiner is reading the selection. Its findings appear here as flags.');
+      } catch (error) {
+        setNotice(
+          error instanceof ApiError
+            ? (error.problem.detail ?? error.problem.title)
+            : 'The review could not be started.',
+        );
+      }
+    })();
+  }
+  function findPapersFor(text: string): void {
+    setPapersQuery({ text, nonce: Date.now() });
+    setTab('papers');
+    setDrawer('panel');
+  }
+  function askChatAbout(text: string): void {
+    setChatPrefill({ text, nonce: Date.now() });
+    setTab('chat');
+    setDrawer('panel');
+  }
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -1889,40 +1946,18 @@ function ChapterEditor({
         chapterId={chapter.id}
         onUsageChange={onUsageChange}
         onNotice={setNotice}
-        onReviewSelection={(from, to) => {
-          // The job reads the saved chapter, so what is on screen is saved first.
-          void (async () => {
-            try {
-              await autosaveRef.current?.flush();
-              await api(`/chapters/${chapter.id}/examiner-review`, {
-                method: 'POST',
-                body: JSON.stringify({ from, to }),
-              });
-              onUsageChange();
-              setTab('flags');
-              setDrawer('panel');
-              setNotice(
-                'The examiner is reading the selection. Its findings appear here as flags.',
-              );
-            } catch (error) {
-              setNotice(
-                error instanceof ApiError
-                  ? (error.problem.detail ?? error.problem.title)
-                  : 'The review could not be started.',
-              );
-            }
-          })();
-        }}
-        onFindPapers={(text) => {
-          setPapersQuery({ text, nonce: Date.now() });
-          setTab('papers');
-          setDrawer('panel');
-        }}
-        onAskChat={(text) => {
-          setChatPrefill({ text, nonce: Date.now() });
-          setTab('chat');
-          setDrawer('panel');
-        }}
+        onReviewSelection={reviewSelection}
+        onFindPapers={findPapersFor}
+        onAskChat={askChatAbout}
+      />
+
+      <BlockMenu
+        editor={editor}
+        request={blockMenu}
+        onClose={closeBlockMenu}
+        onAskChat={askChatAbout}
+        onFindPapers={findPapersFor}
+        onReview={reviewSelection}
       />
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />

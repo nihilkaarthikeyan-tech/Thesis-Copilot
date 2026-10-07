@@ -278,4 +278,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R4 | Done 2026-10-07 — the proposal conversation (A.6) inside Start writing now with Smart headings; Use this / Skip; marker fix on the way; browser-checked with real models | ADR-0091 |
 | R5 | Partly done 2026-10-07 — the opening sentence fixed (a lost plan mark, focus), Skip says why; title from the topic comes with R4. H3: two prompt candidates evaluated, both lost 0–2 (3 ties), A.9 unchanged; the layout writes sub-sections as H3 when an outline has them. **Open**: first sentence ≤ 20 s (outline call 21–24 s) | ADR-0092 + addendum |
 | R6 | Done 2026-10-07 — Source settings line + Change on the editor's Sources tab (same fields as the start), `PUT /documents/:id/source-prefs`; "select sources" is the pins below it | ADR-0093 |
-| R7–R40 | in order, one at a time (owner: "start to build them one by one") | — |
+| R7 | Done 2026-10-07 — "+" and grip beside each block; menu Turn into, Cite, Highlight, Ask in chat, Edit, Review ▸ (examiner, find a source), Move, Duplicate, Delete; drag to move. Other checks on one block are R26 | ADR-0094 |
+| R8–R40 | in order, one at a time (owner: "start to build them one by one") | — |

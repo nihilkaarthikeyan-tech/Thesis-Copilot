@@ -34,6 +34,18 @@ export {
   type LocalDraft,
   type SaveResult,
 } from './editor/autosave.js';
+export {
+  BLOCK_HIGHLIGHTS,
+  BlockHandle,
+  type BlockHandleStorage,
+  type BlockHighlight,
+  type BlockMenuRequest,
+  blockHandleKey,
+  blockTextAt,
+  citeSlot,
+  type TurnInto,
+  topLevelBlock,
+} from './editor/block-handle.js';
 export type { CitationOptions, CitationPassage } from './editor/citation.js';
 export {
   CITATIONS_RERENDER,
@@ -93,6 +105,7 @@ export {
   MATH_EXAMPLES,
   type MathPattern,
 } from './editor/math-patterns.js';
+export { MoveBlock, moveBlockInto } from './editor/move-block.js';
 export {
   CommentAnchor,
   type ImageResolveUrl,

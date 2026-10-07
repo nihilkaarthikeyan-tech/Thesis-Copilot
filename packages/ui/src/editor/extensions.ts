@@ -21,6 +21,7 @@ import TableRow from '@tiptap/extension-table-row';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
 import type { Doc as YDoc } from 'yjs';
+import { BlockHandle } from './block-handle.js';
 import { Citation, type CitationOptions } from './citation.js';
 import { CrossRef } from './cross-ref.js';
 import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
@@ -76,6 +77,8 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     // The "/" menu takes ↑ ↓ Enter Tab Esc only while it is open, so it sits above ghost text.
     SlashMenu,
     MoveBlock,
+    // R7: the handle beside each block, its menu's commands, and the block highlight attribute.
+    BlockHandle,
     // Before everything else: keymap precedence (B.3).
     GhostText.configure(options.ghostText),
 

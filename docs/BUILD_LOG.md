@@ -5545,3 +5545,10 @@ R6 (ADR-0093): source settings on the editor's Sources tab, `PUT /documents/:id/
 three quick changes saved only the last (each built from a stale value) — now applied to the
 latest. A thesis-wide "select sources" was built and removed: the pins already are that.
 
+R7 (ADR-0094): the block handle. `BlockHandle` in `@tc/ui` (handle, drag, commands, highlight
+attribute) and `BlockMenu` in the web app, reusing the toolbar's actions. Every item proven in the
+browser on a written paragraph, including a real examiner review of one block (2 flags, ₹0.21) and
+a drag. Two faults found building it: the handle was placed relative to a container TipTap's React
+view had already replaced, and a command's `state.selection` stayed stale until `state.tr` was
+read again, so turning a two-item list into text left the second item a list.
+
