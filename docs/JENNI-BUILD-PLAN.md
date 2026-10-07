@@ -97,6 +97,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 
 | # | Item | Source | Code today | Build | Done when |
 |---|---|---|---|---|---|
+| R41 | **Dark mode and typography like Jenni's**: Inter for the interface and the thesis text (15/24), headings 30/20 px bold, the warm Flexoki palette (open source) in dark and light | Owner, 2026-10-07: "the dark mode I don't like… looks like AI generated… the typography… copy from Jenni" | Navy dark, periwinkle accent, Satoshi + Spectral serif (ADR-0034) | Round 1 shown as `demo/Thesis-Copilot-look-round-1.pdf` (real screens, in-browser override, no code change); build after the owner picks A (purple) or B (our blue) | Every main screen in both themes, high contrast kept, landing pages follow |
 | R40 | **Citations side by side read "(Gadekar et al., 2026)(Raja et al., 2026)"** — no space, not merged | Seen in the R1 browser run, 2026-10-07 | Two citation nodes render as two brackets | Adjacent citations render as one: "(Gadekar et al., 2026; Raja et al., 2026)" in the editor and every export (numeric styles: "[3, 7]") | The R1 paragraph reads as one bracket, in the page and in .docx |
 
 ## Owner decisions (not built until answered)
