@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Noto_Sans_Devanagari, Spectral } from 'next/font/google';
+import { Inter, Noto_Sans_Devanagari, Spectral } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { satoshi } from '@/components/marketing/fonts';
 import { ThemeScript } from '@/components/theme';
@@ -20,6 +20,19 @@ const spectral = Spectral({
   style: ['normal', 'italic'],
   variable: '--font-spectral',
   display: 'swap',
+});
+
+/**
+ * Inter for the dark theme (ADR-0090, Jenni build plan R41): the owner chose Jenni's warm dark
+ * with Inter for every screen and the thesis text; light keeps Satoshi and Spectral. Not
+ * preloaded, so a light page does not download it.
+ */
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+  preload: false,
 });
 
 /**
@@ -59,7 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${spectral.variable} ${satoshi.variable} ${devanagari.variable}`}
+      className={`${spectral.variable} ${satoshi.variable} ${devanagari.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <head>

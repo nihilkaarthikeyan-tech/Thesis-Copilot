@@ -400,3 +400,60 @@
 .thesis-editor .citation.citation--note::after {
   content: counter(footnote);
 }
+
+/* ADR-0090 (Jenni build plan R41): in dark, Jenni's type — Inter 15/24, headings 30 and 20 px
+   bold with tightened tracking, less space between blocks. Light keeps the manuscript serif. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .thesis-editor {
+    font-size: 15px;
+    line-height: 24px;
+  }
+  :root:not([data-theme="light"]) .thesis-editor > * + * {
+    margin-top: 12px;
+  }
+  :root:not([data-theme="light"]) .thesis-editor h1 {
+    font-size: 30px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    margin-bottom: 12px;
+  }
+  :root:not([data-theme="light"]) .thesis-editor h2 {
+    font-size: 20px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    margin-top: 24px;
+  }
+  :root:not([data-theme="light"]) .thesis-editor h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-top: 20px;
+  }
+}
+:root[data-theme="dark"] .thesis-editor {
+  font-size: 15px;
+  line-height: 24px;
+}
+:root[data-theme="dark"] .thesis-editor > * + * {
+  margin-top: 12px;
+}
+:root[data-theme="dark"] .thesis-editor h1 {
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  margin-bottom: 12px;
+}
+:root[data-theme="dark"] .thesis-editor h2 {
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin-top: 24px;
+}
+:root[data-theme="dark"] .thesis-editor h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 20px;
+}
