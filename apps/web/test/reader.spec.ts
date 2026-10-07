@@ -15,6 +15,7 @@ import {
   normaliseQuery,
   parseHandoff,
   quoteWithCitation,
+  quoteWithCitationHtml,
   readerHref,
   SearchIndex,
   stepMatch,
@@ -145,5 +146,24 @@ describe('findInLibrary', () => {
   });
   it('finds nothing for a paper not in the library', () => {
     expect(findInLibrary(library, { doi: '10.1000/zzz', reference: { raw: 'x' } })).toBeUndefined();
+  });
+});
+
+describe('copy with citation as HTML (Jenni build plan R9)', () => {
+  it('carries a real citation the editor parses, with its label, page and passage', () => {
+    const html = quoteWithCitationHtml(
+      'Night-time   temperatures stayed\n3.1 °C above <rural> levels',
+      '(Raja et al., 2026, p. 7)',
+      { key: 'c_abc', sourceId: 'src-1', page: 7, chunkId: 'chunk-9' },
+    );
+    expect(html).toBe(
+      '<span>“Night-time temperatures stayed 3.1 °C above &lt;rural&gt; levels” <span data-citation="" data-key="c_abc" data-source-id="src-1" data-chunk-id="chunk-9" data-locator="7" data-label="(Raja et al., 2026, p. 7)">(Raja et al., 2026, p. 7)</span></span>',
+    );
+  });
+
+  it('without a label it is the quotation alone', () => {
+    expect(quoteWithCitationHtml('A finding.', '', { key: 'k', sourceId: 's', page: null })).toBe(
+      '<span>“A finding.”</span>',
+    );
   });
 });

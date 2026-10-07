@@ -5573,3 +5573,10 @@ Tests: `packages/ai` 561, `apps/api/test/edit-panel.spec.ts` 7, browser `own-com
 failure, coherence/claims, was an empty response at 50 s; it passed on both reruns (6.7 s, 21 s),
 untouched by this change.
 
+R9 (ADR-0096): paste with a choice. The reader's Copy with citation now writes HTML with a real
+citation (source, passage, page, label); a paste shows the label at once and re-keys a citation
+already in the chapter; a menu after a paste of four words or more — cited: "Put it in my words,
+cited" (the panel's own-instruction path, citation checked) or keep; uncited: Edit with AI, Find a
+source, Cite it, keep. Proven in the browser on the real stack except the reader's Copy button
+itself, whose menu needs an animation frame a hidden pane never draws (its HTML is unit-tested).
+

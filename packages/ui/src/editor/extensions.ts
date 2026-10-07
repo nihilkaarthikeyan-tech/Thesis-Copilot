@@ -38,6 +38,7 @@ import {
   ThesisHeading,
   ThesisImage,
 } from './nodes.js';
+import { PasteMenu } from './paste-menu.js';
 import { Provenance } from './provenance.js';
 import { TableWithRef } from './ref-ids.js';
 import { ReviewHighlights, type ReviewHighlightsOptions } from './review.js';
@@ -79,6 +80,8 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     MoveBlock,
     // R7: the handle beside each block, its menu's commands, and the block highlight attribute.
     BlockHandle,
+    // R9: a paste of a passage tells the app, which offers what to do with it.
+    PasteMenu,
     // Before everything else: keymap precedence (B.3).
     GhostText.configure(options.ghostText),
 

@@ -9,7 +9,7 @@
  */
 
 import { mergeAttributes, Node } from '@tiptap/core';
-import { DOMSerializer, type Node as PmNode } from '@tiptap/pm/model';
+import { DOMSerializer, Fragment, type Node as PmNode, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { nanoid } from 'nanoid';
 import { sourceMetricBadges } from './source-metrics.js';
@@ -298,6 +298,53 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
                 ? copiedLabel(leaf, storage)
                 : (leaf.type.spec.leafText?.(leaf) ?? ''),
             ),
+          /**
+           * Jenni build plan R9: the paper reader's "Copy with citation" puts the label on the
+           * citation it copies (`data-label`), so a paste shows the real label at once rather
+           * than the placeholder until the next render.
+           */
+          transformPastedHTML: (html) => {
+            if (!html.includes('data-label')) return html;
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            for (const el of Array.from(doc.querySelectorAll('span[data-citation][data-label]'))) {
+              const key = el.getAttribute('data-key');
+              const label = el.getAttribute('data-label');
+              if (key && label && !storage.renderedMap[key]) storage.renderedMap[key] = label;
+            }
+            return html;
+          },
+          /**
+           * R9: a citation pasted twice, or pasted where its key is already in the chapter, gets
+           * a key of its own (keys are per node — ADR-0045), carrying its label with it.
+           */
+          transformPasted: (slice, view) => {
+            const taken = new Set<string>();
+            view.state.doc.descendants((node) => {
+              if (node.type.name === 'citation') taken.add(String(node.attrs.key ?? ''));
+            });
+            const rekey = (fragment: Fragment): Fragment => {
+              const nodes: PmNode[] = [];
+              fragment.forEach((node) => {
+                if (node.type.name === 'citation') {
+                  const key = String(node.attrs.key ?? '');
+                  if (!key || taken.has(key)) {
+                    const fresh = newCitationKey();
+                    const label = storage.renderedMap[key];
+                    if (label) storage.renderedMap[fresh] = label;
+                    taken.add(fresh);
+                    nodes.push(node.type.create({ ...node.attrs, key: fresh }, null, node.marks));
+                    return;
+                  }
+                  taken.add(key);
+                  nodes.push(node);
+                  return;
+                }
+                nodes.push(node.isLeaf ? node : node.copy(rekey(node.content)));
+              });
+              return Fragment.fromArray(nodes);
+            };
+            return new Slice(rekey(slice.content), slice.openStart, slice.openEnd);
+          },
         },
       }),
     ];

@@ -116,6 +116,14 @@ export {
   ThesisImage,
 } from './editor/nodes.js';
 export {
+  lastPaste,
+  PASTE_MENU_MIN_WORDS,
+  type PasteInfo,
+  PasteMenu,
+  type PasteMenuStorage,
+  pasteMenuKey,
+} from './editor/paste-menu.js';
+export {
   AI_KINDS,
   PROVENANCE_KINDS,
   Provenance,

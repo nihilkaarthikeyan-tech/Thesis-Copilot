@@ -22,6 +22,12 @@ import { tableNodeFromMarkdown } from './table-from-markdown';
 
 /** Dispatched on `window` by Ctrl+J with a selection: the caret goes to the edit box. */
 export const AI_EDIT_FOCUS = 'tc:ai-edit-focus';
+/**
+ * Dispatched on `window` with `{ command, instruction? }` (R9, the paste menu): run that edit on
+ * the selection just made. Met on the first render that has the selection.
+ */
+export const AI_EDIT_RUN = 'tc:ai-edit-run';
+export type AiEditRunDetail = { command: string; instruction?: string };
 
 type DiffOp = { type: 'same' | 'add' | 'remove'; text: string };
 
@@ -370,6 +376,24 @@ export function CommandToolbar({
       inputRef.current.focus();
       focusWanted.current = false;
     }
+  });
+  // R9: an edit asked for from outside (the paste menu), run once the selection has arrived.
+  const runWanted = useRef<AiEditRunDetail | null>(null);
+  const [, poke] = useState(0);
+  useEffect(() => {
+    const onRun = (event: Event) => {
+      runWanted.current = (event as CustomEvent<AiEditRunDetail>).detail;
+      // A render, so the effect below sees the wish even if the selection rendered already.
+      poke((n) => n + 1);
+    };
+    window.addEventListener(AI_EDIT_RUN, onRun);
+    return () => window.removeEventListener(AI_EDIT_RUN, onRun);
+  }, []);
+  useEffect(() => {
+    const wanted = runWanted.current;
+    if (!wanted || !selection || busy !== null) return;
+    runWanted.current = null;
+    void run(wanted.command, wanted.instruction ? { instruction: wanted.instruction } : {});
   });
 
   /**

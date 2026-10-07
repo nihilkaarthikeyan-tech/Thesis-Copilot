@@ -14,7 +14,7 @@
  */
 
 import type { CslAuthor } from '@tc/retrieval';
-import { sourceMetricBadges } from '@tc/ui';
+import { newCitationKey, sourceMetricBadges } from '@tc/ui';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,7 +31,13 @@ import { Badge, Kbd } from '@/components/ui/primitives';
 import { ApiError, api } from '@/lib/api';
 import { readLastChapter } from '@/lib/last-chapter';
 import { mentionLabel } from '@/lib/mentions';
-import { matchLabel, quoteWithCitation, stepMatch, writeHandoff } from '@/lib/reader';
+import {
+  matchLabel,
+  quoteWithCitation,
+  quoteWithCitationHtml,
+  stepMatch,
+  writeHandoff,
+} from '@/lib/reader';
 
 type Reading = 'LOOKING_UP' | 'READING' | 'FULL_TEXT' | 'ABSTRACT' | 'UNREADABLE' | 'NOTHING';
 
@@ -72,8 +78,21 @@ function authorLine(authors: CslAuthor[] | null): string {
   return `${names.slice(0, 4).join(', ')} and ${names.length - 4} more`;
 }
 
-async function copyText(text: string): Promise<boolean> {
+/**
+ * Plain text and, where the browser allows it, HTML with a real citation (R9), so a paste into the
+ * chapter keeps the citation. Plain text alone is still a correct quotation.
+ */
+async function copyText(text: string, html?: string): Promise<boolean> {
   try {
+    if (html && typeof ClipboardItem !== 'undefined' && navigator.clipboard.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+          'text/html': new Blob([html], { type: 'text/html' }),
+        }),
+      ]);
+      return true;
+    }
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
@@ -285,7 +304,18 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
           `/documents/${documentId}/citations/quote?${q.toString()}`,
         );
         const text = quoteWithCitation(selected.text, cite.label, cite.noteStyle);
-        const ok = await copyText(text);
+        const html = quoteWithCitationHtml(
+          selected.text,
+          cite.label,
+          {
+            key: newCitationKey(),
+            sourceId,
+            page: selected.page ?? null,
+            chunkId: selected.chunkId ?? null,
+          },
+          cite.noteStyle,
+        );
+        const ok = await copyText(text, html);
         setNotice(
           ok
             ? `Copied, with ${cite.label}.`

@@ -124,6 +124,7 @@ import { type FormatActions, FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { LibraryFilling, PAPERS_AWAITED } from './LibraryFilling';
 import { ParaphrasePanel } from './ParaphrasePanel';
+import { PasteMenu } from './PasteMenu';
 import { ProofreadPanel } from './ProofreadPanel';
 import { ReadBesidePane } from './ReadBesidePane';
 import { ReaderHandoffBar } from './ReaderHandoff';
@@ -1969,6 +1970,7 @@ function ChapterEditor({
         onAskChat={askChatAbout}
       />
 
+      <PasteMenu editor={editor} onFindPapers={findPapersFor} />
       <BlockMenu
         editor={editor}
         request={blockMenu}

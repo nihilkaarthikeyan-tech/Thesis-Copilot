@@ -48,6 +48,35 @@ export function quoteWithCitation(passage: string, label: string, noteStyle = fa
   return noteStyle ? `${quoted}\n${cite}` : `${quoted} ${cite}`;
 }
 
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * Jenni build plan R9: the same quotation as HTML, its citation a real citation (the editor's
+ * `span[data-citation]`), so pasting into the chapter brings the citation, not just its label.
+ * The label rides along (`data-label`) so it reads correctly at once; outside the app the HTML
+ * reads like the plain text.
+ */
+export function quoteWithCitationHtml(
+  passage: string,
+  label: string,
+  citation: { key: string; sourceId: string; page: number | null; chunkId?: string | null },
+  noteStyle = false,
+): string {
+  const quoted = escapeHtml(`“${cleanPassage(passage)}”`);
+  const cite = label.trim();
+  if (!cite) return `<span>${quoted}</span>`;
+  const attrs = [
+    'data-citation=""',
+    `data-key="${escapeHtml(citation.key)}"`,
+    `data-source-id="${escapeHtml(citation.sourceId)}"`,
+    ...(citation.chunkId ? [`data-chunk-id="${escapeHtml(citation.chunkId)}"`] : []),
+    ...(citation.page ? [`data-locator="${citation.page}"`] : []),
+    `data-label="${escapeHtml(cite)}"`,
+  ].join(' ');
+  return `<span>${quoted}${noteStyle ? '' : ' '}<span ${attrs}>${escapeHtml(cite)}</span></span>`;
+}
+
 /**
  * Text indexed for search: lower-cased, every run of whitespace one space, with a map from each
  * character back to where it came from. `push` takes text in reading order; a `null` origin is a
