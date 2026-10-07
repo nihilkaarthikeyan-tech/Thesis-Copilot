@@ -16,51 +16,57 @@ is everything not seen, or seen only as a menu or a card and never run to its re
 a pass before the build list is final.
 
 **Whole journeys**
-- [ ] Sign-up and first run as a brand-new user: sign-up screen, email verification, any
+- [x] Sign-up and first run as a brand-new user: sign-up screen, email verification, any
       onboarding questions, welcome tour, empty states. Exploration began already signed in, and the
       agent may not create accounts: the owner signs up a fresh account, and the agent takes over
       after the sign-in.
-- [ ] What happens when a free allowance hits zero (the upgrade wall, the wording, what still works).
+- [x] What happens when a free allowance hits zero (the upgrade wall, the wording, what still works).
 - [ ] The upgrade path up to the payment page (stopping before payment).
 - [ ] A whole thesis-sized session: write a section from heading to references, then export.
 
 **Run to the result, not just opened**
-- [ ] Reviews: Claim confidence, Peer Review, Source Quality, Tone of Voice — the output of each,
+- [~] Reviews: Claim confidence, Peer Review, Source Quality, Tone of Voice — the output of each,
       its settings dialog, how fixes are applied, and how long each takes.
-- [ ] Workflows: Literature review run end to end (15–20 min) and its output document; the gap
+- [~] Workflows: Literature review run end to end (15–20 min) and its output document; the gap
       analysis run from a fresh prompt (only an existing output was read).
-- [ ] Section prompt **Generate** and **Configure context** on a section.
-- [ ] Refine suggestion presets, each one: Stay on topic, Complete this paragraph, Increase
+- [x] Section prompt **Generate** and **Configure context** on a section.
+- [~] Refine suggestion presets, each one: Stay on topic, Complete this paragraph, Increase
       novelty, Simplify language, Re-write without citations, Validate supporting evidence, Cite
       from my library, and a free prompt.
-- [ ] AI Edit presets beyond the one tried, and the follow-up box after a result.
-- [ ] Citations: Cite button and "@" search, adding the same paper twice, editing a citation
+- [~] AI Edit presets beyond the one tried, and the follow-up box after a result.
+- [~] Citations: Cite button and "@" search, adding the same paper twice, editing a citation
       (page numbers, suppress author), changing style mid-document, where the reference list goes.
 - [ ] Export: download the Word and LaTeX files and open them (layout presets, native Word
       citations vs hyperlinks).
-- [ ] Share: the dialog, roles, link sharing, what a viewer or editor sees, real-time co-editing
+- [~] Share: the dialog, roles, link sharing, what a viewer or editor sees, real-time co-editing
       (needs a second account).
-- [ ] Comments: add, reply, resolve, mention.
-- [ ] Version history: open a version, compare, restore.
-- [ ] Library: upload a PDF (processing time, what it extracts), "Ask AI" on a paper, the PDF
+- [~] Comments: add, reply, resolve, mention.
+- [~] Version history: open a version, compare, restore.
+- [~] Library: upload a PDF (processing time, what it extracts), "Ask AI" on a paper, the PDF
       viewer's own tools, making and using a collection, Edit metadata saved.
 - [ ] Find papers: Save ▾ options, a decade switch, Most Cited sort results.
-- [ ] AI Chat: web search "Ask" (what the permission prompt looks like), chat on a PDF, image input,
+- [x] AI Chat: web search "Ask" (what the permission prompt looks like), chat on a PDF, image input,
       "Add to document" result, the Sources expander, a thread reopened later.
-- [ ] Toolbar, each control: image upload, table editing, chart, inline and block equation, code
+- [~] Toolbar, each control: image upload, table editing, chart, inline and block equation, code
       block, link, text colour, highlight.
-- [ ] "/" menu items inserted: Table of Contents, AI Declaration, chart.
-- [ ] Block handle menu, each item: Turn into, Highlight, Duplicate, Delete, Review on a block.
+- [x] "/" menu items inserted: Table of Contents, AI Declaration, chart.
+- [~] Block handle menu, each item: Turn into, Highlight, Duplicate, Delete, Review on a block.
 - [ ] Keyboard shortcuts pressed, not just read: Shift+→ cycle, Alt+→ one word, Ctrl+J, Ctrl+K.
 - [ ] Documents: Duplicate, Archive, restore from archive, open in new tab.
 
 **Not opened at all**
-- [ ] The notifications bell (it shows a red 1).
+- [x] The notifications bell (it shows a red 1).
 - [ ] Jenni's own Chrome extension.
 - [ ] Jenni on a phone-sized window.
 - [ ] Help: live chat, the help documentation site, Discord; the tutorial videos' content.
 - [ ] Appearance themes and interface language switched (settings were read, not changed).
 - [ ] Error and offline states beyond the "Reconnected" toast.
+
+**Progress (2026-10-07, fresh account, section 13):** [x] done, [~] partly done. Still open: Tone of
+Voice and Proofread results (reviews used up), the gap-analysis run, the remaining Refine and AI
+Edit presets (edits 1 of 3 left), downloading an export (a download needs the owner's yes),
+co-editing with a second account, Find papers' Save and decade switch, keyboard shortcuts pressed,
+Documents archive/duplicate, Jenni's extension, a phone-sized window, help and videos, themes.
 
 **What blocks a full pass:** the free account has about 6 autocompletes, 2 AI edits, 1 chat,
 1 review and 2 workflows left — not enough to run each item above to its result. Options for the
@@ -211,7 +217,112 @@ path from it, in test documents only:
 | Chat and Upload Sources offered on the first page | Library and chat are inside the thesis | Offer both on the start page |
 | Autocomplete settings in the toolbar | Only at the start | Build-list item 4 |
 
-## 13. What to build next, in order (owner to confirm)
+## 13. A brand-new user, end to end (fresh account, 2026-10-07)
+
+The owner signed up a new Google account; the agent took over at the first screen after sign-in and
+went through everything as a PhD student would, on the topic "night-time urban heat and informal
+outdoor workers in Chennai and Delhi". Timings are from the browser.
+
+### 13.1 The first ten minutes
+
+| Step | What Jenni does | Time | Ours |
+|---|---|---|---|
+| Onboarding | **One question**: "What is your current role? Customize your Jenni experience." PhD / Masters-MBA / Undergraduate / Lecturer or Academic Staff / Industry Professional. Get Started stays grey until one is picked. No tour, no welcome modal | — | Sign-up, then the theses page |
+| Lands in | A new Untitled document on the prompt page (not a list of documents) | Instant | `/app` theses list, then Start writing now |
+| **Setup checklist** | Sidebar "Complete setup 0/5" with a progress bar; opens "Finish setting up": **Accept AI autocomplete · Upload source to library · Send chat message · Cite a source · Review your document**, each a line of help and a button that does it (Upload source, Open AI chat, Open citation menu, Open Reviews). Ticks itself as you go; at 5/5 "Setup completed", no fanfare | — | FirstSessionGuide (ADR-0070), four steps, in the editor |
+| **Feature hotspots** | Pulsing purple dots on things not yet used (Library, Cite, Review). A dot opens a card with an illustration, one line and **Try Now** / Dismiss; Try Now opens the feature | — | None |
+| Allowances shown | Account menu: Upload 0/10, Autocompletes 0/10, Edits 0/3, Chats 0/5, Reviews 0/3, Workflows 0/3 | — | Account page; header counter |
+| Prompt meter | Empty "Weak prompt"; at 9 words "Average prompt: Consider including important keywords" (amber); at 33 words "Great prompt: Jenni will reference this when generating text" (green) | Live | Topic meter |
+| Preferences, empty library | **Library search is an "Add sources" button**, not a switch, until the library has something; it opens the upload dialog in place. After one paper it becomes a switch with Configure context | — | A switch either way |
+| Structure | Default for this user: Standard (IMRaD) | — | Smart |
+| After Start (Smart) | **Document title written from the prompt in ~3 s** (also the tab title); "Analyzing your topic…" → "Structuring your outline…"; then 7 headings + 2 sub-headings, every section's notes filled, and a **cited first sentence under Introduction** (two papers, both inside "Last 5 years") | **~17 s** | Headings 33 s, first sentence 40 s (local, ADR-0087) |
+| The prompt itself | Jenni **rewrote the student's prompt** into a cleaner one in the Document prompt panel ("A doctoral-level examination of …") | — | Ours keeps the topic as typed |
+| Accept | The next suggestion appears **as a new paragraph within 3 s**, citing two different papers | 3 s | Next suggestion on the next pause |
+
+### 13.2 Library and the PDF reader
+
+| Step | Jenni | Ours |
+|---|---|---|
+| Paste ID (DOI) | "Metadata found" in ~2 s → Import to Library → toast "Added to Library"; the dialog stays open and clears for the next one | Resolve reference by DOI on the Sources page |
+| A paper without its PDF | Library panel banner "**1 missing PDF — Review**"; the card has **Fetch PDF** → "Processing…" → **Open PDF** in under 30 s (open-access copy found and read) | Automatic sources fetch open-access full text; no per-paper "fetch" button, no missing-PDF banner |
+| Open PDF | Opens in a **new tab** as its own page: sidebar, title, **Explain selection**, search, AI Chat; bottom: thumbnails, page box, zoom | Reader page (ADR-0068): pdf.js, search, Cite |
+| **Explain selection** | Draw a box on the page → AI Chat opens with the box **as a picture attached**, the paper as a chip, and three **questions written for this paper** plus "Summarize this PDF", "What are the limitations of this study?" | Not built |
+| Chat about the PDF | Answer streams in ~8 s, structured ("The one-sentence version", "Why the authors open with this"), every claim cited, ends offering a next step; Copy, thumbs, "1 source · 1 from your library · APA" | Chat with library scope |
+| Citation in an answer | Card: type, Cited by, impact factor, open access, abstract, **Scroll to quote** → the PDF jumps to the passage and **highlights it yellow** | Evidence card with the passage; Read opens the reader |
+| Select text in the PDF | **Copy and Cite** / **Quote in Chat**. Copy and Cite → toast "Text and citation copied, paste anywhere in your Jenni document" | Cite from the reader |
+| **Paste into the document** | The text arrives **with a real citation**, stays selected, and a **paste menu** offers Improve writing / Paraphrase / Proofread / Custom prompt — the copied words are never left as they are without a choice | Not built |
+| Survey | A pop-up in the corner asked whether the student can read paywalled articles through a library (four answers, Submit); closable. Not answered | — |
+
+### 13.3 Writing tools, run to the result
+
+| Tool | What happened | Time | Ours |
+|---|---|---|---|
+| Paraphrase (paste menu) | "Thought for 6 seconds"; kept the citation; the copied quote was cut off at "7% to", and the paraphrase said "an unspecified upper value" instead of inventing a number; **What changed and why** said the excerpt was truncated and to check the source; See edits shows the red/green diff; a follow-up box with Web/Library switches; Replace / Insert below / Try again / Discard. After Replace, autocomplete carried on by itself | 6 s | Edit actions with a diff; no reasons, no follow-up box |
+| Refine → **Validate supporting evidence** | Rewrote the suggestion so the claim matches what its source says (a seasonal contrast, now cited to the paper that reports it); ‹ › to go between versions | <8 s | Not built (build list item 3) |
+| Cite (toolbar) | Search box at the cursor; All / Discover / Library; Sort (Relevance, Most Recent, Oldest, Most Cited); Filter; the first result was the paper for exactly that claim, with its passage; Cite → "✓ Cited", the menu stays open; **Add custom citation** → a drawer with DOI fetch and a full manual form. **Fault**: the citation went after the full stop, ".(Shastri et al., 2017)" | ~2 s | Find papers / Cite here; @ in chat |
+| Section **Generate** | Not a whole section: one ordinary cited suggestion under that heading | ~5 s | Draft this section writes the section |
+| Configure context (section) | Disable sources switch + Select sources | — | Pins per section (ADR-0085) |
+| **Claim confidence** | Live steps ("Searching academic databases" with its queries, "1/2 sections"); a results paragraph; a breakdown **Misrepresented / Contradicted / Unsupported / Weakly supported / Overstated / Unverifiable**; changes shown as tracked edits in the text, each with the reason, the referenced source(s) and passage, Open quote, Reject, Accept. **Review mode** bar: Resume editing (Esc), Reject All, Accept All, ↑ 1/3 ↓, Reject (N), Accept (Y). It tried to swap the student's own library paper for a web paper (rejected) and removed a redundant citation. End: "All suggestions resolved!", Re-scan, **Try next: Peer Review** | ~30 s | Citation-support check; no tracked-change review mode, no Y/N keys |
+| **Peer Review** | Soundness 1/4, Presentation 1/4, Contribution 1/4, **Overall 3/10**; results paragraph; Weaknesses (4, specific — it found the source says 7% to 10%), Strengths, Questions for the authors; **Export review**; and its points left as **comments in the document** signed "Jenni AI", tagged **Minor / Major**, anchored to the text, a Major one naming three papers to cite; the student can reply (the AI does not answer) | ~55 s | Examiner review (ADR-0056): a panel, not comments in the text, no scores |
+| **Source Quality** | "No quality issues found"; **bibliography notes**: a publication-year chart ("median year 2021; 1 of 3 works over a decade old") and venue spread ("3 unique venues across 3 works"); breakdown Retracted / Preprint / Non-research source / Rarely cited / Unverified journal | ~20 s | The citation report covers retractions; no year chart or venue spread in the editor |
+| Comments panel | Sort, Filter; each comment: author, severity, time, thumbs, resolve, replies (react, edit, delete) | — | Comments with replies and resolve |
+| Chart | Toolbar or "/" → "Add a chart": **Describe** in plain English (examples: Bar chart, Line chart, Flowchart) or **Source** (Plotly JSON or Mermaid) → a preview in ~8 s → Retry / Insert; the inserted chart has edit, download and full-screen; **did not use any allowance** | 8 s | Charts from the student's numbers (ADR-0027), no model; diagrams |
+| "/" Table of Contents | A live block listing the title and every heading, indented by level | Instant | Contents page in export only |
+| "/" AI Declaration | Inserts the heading "Declaration of AI Usage" and a publisher-style paragraph naming Jenni AI; it becomes a section in the panel. **Fault**: an autocomplete fired right after it and continued with thesis content | Instant | AI declaration in "/" |
+| Block menu | Cite on a block opens the same citation search at the paragraph's end; Highlight Amber/Green/Blue colours the whole paragraph; **Review ▸ runs any of the five reviews on that block alone** | — | Build list item 1 |
+| Share | "Collaborate with others": invite by email (no role choice shown), collaborators with Owner, General access Restricted / Anyone with the link, Copy Link | — | Roles, link, copy (ADR-0057) |
+| Version history | A modal: versions about a minute apart with author, a preview where **that version's changes are highlighted**, Restore | — | Version history |
+
+### 13.4 The literature review workflow, run
+
+Topic (with the prompt meter) → sources (web, library, a collection) → filters (year, impact factor,
+cited by, preprints) → **Start literature review · 15–20 min**. A running page with a timer and four
+stages (Searching · Selecting literature · Drafting sections · Assembling and citing), "Detailed
+steps", and "Safe to close this tab — you will receive an email"; the Workflows card shows
+"Running 3/4" with a progress bar, then **Ready to open**; the bell shows "**Literature review
+finished** … 212 sources cited · Open".
+
+- **Took 8½ minutes** (estimate said 15–20).
+- **25,270 words**, a title, 7 chapters (Introduction; physical science of night-time heat islands;
+  heat illness and productivity loss among informal workers; exposure pathways; green and blue
+  infrastructure; equity and governance; synthesis), 60 headings, 324 paragraphs, **8 tables**
+  (definitions, studies by city, findings by sector …), dense citations with the numbers from each
+  paper, ending in a research agenda.
+- The document prompt and section prompts are filled; the reference list is not in the document
+  (references are paid).
+- A "How was this document?" thumbs card follows.
+- Ours: chapter build (ADR-0039) builds one chapter from the library as pending draft blocks, with a
+  QA report. Jenni's is one press for a whole review document.
+
+### 13.5 Chat across documents
+
+The chat thread **follows the student from document to document** (an "Opened new document" divider
+and a **New Chat** button). A question that needs the web, with Web search on "Ask", shows its steps
+(Planning, Searching academic databases since 2017 with the queries, Searching library) and then
+asks **"Search the web?" Skip / Always allow / Allow this time**. The answer was grouped by period
+("The most recent work (2024–2026)") with author-led entries.
+
+### 13.6 Running out, and what is counted
+
+- **Only an accepted suggestion counts.** After about seven suggestions were shown (dismissed,
+  regenerated, validated, Generate), the meter read Autocompletes 2/10 — the two accepted. Charts
+  cost nothing. Fetch PDF counted as an upload; Paraphrase as an edit; the PDF chat as a chat.
+  Ours takes an Assist unit for every request (refunded only on failure or an empty answer).
+- **The limit wall**: Run review with none left opens "Upgrade your account" — Annual/Monthly, Plus
+  and Pro side by side, "You're in — enjoy your IN 🇮🇳 50% local discount", the limits table, a
+  testimonial. It does not say which allowance ran out or when it comes back.
+
+### 13.7 Faults seen in Jenni (things not to copy)
+
+1. A citation inserted after the full stop: ".(Shastri et al., 2017)".
+2. An autocomplete continuing the AI Declaration boilerplate with thesis content.
+3. Claim confidence swapping the student's own library paper for a web paper.
+4. A suggestion fired after a new heading continuing the paragraph above (section 12).
+5. Setup step "Review your document" ticked only by the header's Review button, not by running two
+   reviews from the side panel.
+6. Adding a paper by DOI did not count as "Upload source"; only fetching its PDF did.
+
+## 14. What to build next, in order (owner to confirm)
 
 1. **The block handle (+, drag, AI Edit) on every paragraph** with its menu — Turn into, Cite, Highlight, AI Chat, AI Edit, Review, Duplicate, Delete. The single most visible difference in the writing area.
 2. **AI Edit as Jenni has it**: a prompt box on any selection or block (Ctrl+J) with web/library switches, the grouped presets (fluency trio, paraphrase/simplify tones, strengthen argument, tense, list/prose/table conversions, technical precision, confidence up/down), and the result with **"What changed and why"** and a follow-up box.
@@ -225,5 +336,15 @@ path from it, in test documents only:
    feels on every line; let a student start writing without a title (it can be written later from
    the text); Chat and Upload Sources on the start page; say why citations were not matched after
    a Word import.
+9. **From the new-user journey (section 13)**, in the order a student meets them: a setup
+   checklist with a button per step and feature hotspots; the document title (and a cleaned-up
+   prompt) written at the start; count a suggestion only when it is accepted; the paste menu
+   (copied text arrives cited, with Paraphrase / Improve / Proofread offered at once); Explain
+   selection and Copy and Cite in the reader, with Scroll to quote highlighting the passage;
+   Fetch PDF and a "missing PDF" banner in the library; review results as tracked changes with a
+   Y/N review mode and examiner points as anchored comments with severity; a bibliography note
+   (year chart, venue spread); chat that follows the student across documents with a web-search
+   "Allow this time" prompt; a whole literature-review document from one press; the limit wall
+   saying which allowance ran out and when it returns.
 
 Where ours is already ahead and should stay so: references free (Jenni charges for them), the proposal path, chapter build, viva practice, guide sharing and live progress, Indian context (Hindi, the indexing filter; Jenni translates into no Indian language), examiner review, gap and claims maps, deep research.
