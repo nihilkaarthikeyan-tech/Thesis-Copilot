@@ -30,6 +30,7 @@ import {
   type Template,
 } from '@tc/config';
 import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
+import { setMetaKey } from '../../common/document-meta.js';
 import { ENV } from '../../common/env.token.js';
 import {
   CapExceededError,
@@ -184,16 +185,11 @@ export class OutlineService {
     await this.assertRunsLeft(documentId);
     const chosen =
       template ?? (document.template as Template | null) ?? suggestTemplate(document.field);
-    const meta = (document.meta as Record<string, unknown> | null) ?? {};
-    await this.prisma.document.update({
-      where: { id: documentId },
-      data: {
-        template: chosen,
-        meta: {
-          ...meta,
-          outlineRun: { status: 'RUNNING', startedAt: new Date().toISOString(), from: 'proposal' },
-        },
-      },
+    await this.prisma.document.update({ where: { id: documentId }, data: { template: chosen } });
+    await setMetaKey(this.prisma, documentId, 'outlineRun', {
+      status: 'RUNNING',
+      startedAt: new Date().toISOString(),
+      from: 'proposal',
     });
     await this.queue.enqueue(
       'generate-outline',
@@ -255,15 +251,12 @@ export class OutlineService {
       throw new CapExceededError(OUTLINE_FROM_TITLE, allowed, resetsAtFor(now));
     }
 
-    await this.prisma.document.update({
-      where: { id: documentId },
-      data: {
-        template: chosen,
-        meta: {
-          ...meta,
-          outlineRun: { status: 'RUNNING', startedAt: now.toISOString(), from: 'title' },
-        },
-      },
+    await this.prisma.document.update({ where: { id: documentId }, data: { template: chosen } });
+    // Only `outlineRun`, so a proposal turn finishing now cannot lose it, nor this its turn.
+    await setMetaKey(this.prisma, documentId, 'outlineRun', {
+      status: 'RUNNING',
+      startedAt: now.toISOString(),
+      from: 'title',
     });
     await this.prisma.auditEvent.create({
       data: {

@@ -30,6 +30,7 @@ import {
 import { computeCallCost, type Env } from '@tc/config';
 import { OpenAlexClient } from '@tc/retrieval';
 import { z } from 'zod';
+import { setMetaKey } from '../../common/document-meta.js';
 import { ENV } from '../../common/env.token.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -196,12 +197,8 @@ export class ProposalService {
       );
     }
 
-    await this.prisma.document.update({
-      where: { id: documentId },
-      data: {
-        meta: { ...((document.meta as Record<string, unknown> | null) ?? {}), proposalChat: chat },
-      },
-    });
+    // Only `proposalChat`: a plan started while this turn ran keeps its mark (ADR-0091).
+    await setMetaKey(this.prisma, documentId, 'proposalChat', chat);
     return this.view(chat);
   }
 

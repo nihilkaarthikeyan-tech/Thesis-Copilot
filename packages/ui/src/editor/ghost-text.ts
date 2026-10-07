@@ -670,51 +670,85 @@ export const GhostText = Extension.create<GhostTextOptions>({
        */
       new Plugin({
         key: new PluginKey('ghostTextAutoSuggest'),
-        view: () => {
+        view: (editorView) => {
           let timer: ReturnType<typeof setTimeout> | null = null;
           let retry: ReturnType<typeof setTimeout> | null = null;
+          /** The section the pending timer will offer an opening sentence for, if any. */
+          let pendingOpener: string | null = null;
           const clear = () => {
             if (timer) clearTimeout(timer);
             timer = null;
+            pendingOpener = null;
           };
+          const autoOn = () => Boolean(storage.autoSuggest ?? options.autoSuggest);
           // ADR-0078: headings already offered an opening sentence, so moving the cursor back into
           // the same empty section does not ask (and spend a unit) again.
           const offered = new Set<string>();
           // R1: the sentences a mid-sentence suggestion was asked for, with their word count then.
           const midAsked = new Map<string, number>();
+          // ADR-0078: an opening sentence for an empty section. The cursor has come to rest in an
+          // empty paragraph straight under a heading — a new chapter, or a section the student or
+          // the Sections panel has just added — and nothing has been typed there. As Jenni does, a
+          // suggestion is offered without a keystroke. Only once per heading.
+          const scheduleOpener = (currentView: typeof editorView, opener: string) => {
+            clear();
+            const ready = () => {
+              const ghost = ghostTextKey.getState(currentView.state);
+              if (ghost && ghost.status !== 'idle') return false;
+              if (!currentView.hasFocus()) return false;
+              return emptySectionUnderHeading(currentView.state) === opener;
+            };
+            pendingOpener = opener;
+            timer = setTimeout(() => {
+              pendingOpener = null;
+              if (!ready()) return;
+              offered.add(opener);
+              editor.commands.requestSuggestion();
+              // One retry when nothing came back. A suggestion the cursor just left is still
+              // finishing on the server for a moment, and the server allows one at a time, so
+              // the opener was refused ("already in progress") in the real-model run.
+              if (retry) clearTimeout(retry);
+              retry = setTimeout(() => {
+                retry = null;
+                if (ready()) editor.commands.requestSuggestion();
+              }, OPENER_RETRY_MS);
+            }, options.autoSuggestIdleMs ?? 800);
+          };
+          /**
+           * Jenni build plan R5: the headings of a new chapter land ~25 s after it opens, the
+           * cursor goes under the first — and if the student has looked at another tab meanwhile
+           * the editor cannot take focus, the opener's focus check fails, and nothing asked again.
+           * So: asked when the editor gains focus with the cursor still in an un-offered empty
+           * section, and focus is given back to the editor when the tab is shown again and
+           * nothing else on the page has it.
+           */
+          const onFocus = () => {
+            if (!autoOn()) return;
+            const opener = emptySectionUnderHeading(editorView.state);
+            // Already on its way (the editor's own focus call lands a moment after the cursor).
+            if (!opener || offered.has(opener) || (timer && pendingOpener === opener)) return;
+            scheduleOpener(editorView, opener);
+          };
+          const onVisible = () => {
+            if (document.visibilityState !== 'visible' || !autoOn()) return;
+            const opener = emptySectionUnderHeading(editorView.state);
+            if (!opener || offered.has(opener)) return;
+            const active = document.activeElement;
+            if (active && active !== document.body && !editorView.dom.contains(active)) return;
+            editorView.focus();
+          };
+          editorView.dom.addEventListener('focus', onFocus);
+          document.addEventListener('visibilitychange', onVisible);
           return {
             update: (currentView, previous) => {
-              if (!(storage.autoSuggest ?? options.autoSuggest)) return clear();
-              // ADR-0078: an opening sentence for an empty section. The cursor has come to rest in
-              // an empty paragraph straight under a heading — a new chapter, or a section the
-              // student or the Sections panel has just added — and nothing has been typed there.
-              // As Jenni does, a suggestion is offered without a keystroke. Only once per heading.
+              if (!autoOn()) return clear();
               const opener = emptySectionUnderHeading(currentView.state);
               if (
                 opener &&
                 !offered.has(opener) &&
                 !currentView.state.selection.eq(previous.selection)
               ) {
-                clear();
-                const ready = () => {
-                  const ghost = ghostTextKey.getState(currentView.state);
-                  if (ghost && ghost.status !== 'idle') return false;
-                  if (!currentView.hasFocus()) return false;
-                  return emptySectionUnderHeading(currentView.state) === opener;
-                };
-                timer = setTimeout(() => {
-                  if (!ready()) return;
-                  offered.add(opener);
-                  editor.commands.requestSuggestion();
-                  // One retry when nothing came back. A suggestion the cursor just left is still
-                  // finishing on the server for a moment, and the server allows one at a time, so
-                  // the opener was refused ("already in progress") in the real-model run.
-                  if (retry) clearTimeout(retry);
-                  retry = setTimeout(() => {
-                    retry = null;
-                    if (ready()) editor.commands.requestSuggestion();
-                  }, OPENER_RETRY_MS);
-                }, options.autoSuggestIdleMs ?? 800);
+                scheduleOpener(currentView, opener);
                 return;
               }
               if (!currentView.state.doc.eq(previous.doc)) {
@@ -748,6 +782,8 @@ export const GhostText = Extension.create<GhostTextOptions>({
             destroy: () => {
               clear();
               if (retry) clearTimeout(retry);
+              editorView.dom.removeEventListener('focus', onFocus);
+              document.removeEventListener('visibilitychange', onVisible);
             },
           };
         },

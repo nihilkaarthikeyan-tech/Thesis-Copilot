@@ -53,14 +53,28 @@ export function StartQuestions(props: {
     }
   }
 
-  /** No answers: the chapters are planned from the title, as before (ADR-0087). */
+  /**
+   * No answers: the chapters are planned from the title, as before (ADR-0087). A refusal (the
+   * trial's monthly title plans used up) is said, not swallowed — the student can still answer
+   * the questions, whose plan is not counted the same way, or start with one chapter.
+   */
+  const [refused, setRefused] = useState(false);
   async function skip() {
     setBusy(true);
-    await api(`/documents/${props.documentId}/outline/plan-from-title`, {
-      method: 'POST',
-      body: '{}',
-    }).catch(() => undefined);
-    props.onDone();
+    setError(null);
+    try {
+      await api(`/documents/${props.documentId}/outline/plan-from-title`, {
+        method: 'POST',
+        body: '{}',
+      });
+      props.onDone();
+    } catch (e) {
+      setRefused(true);
+      setError(
+        `${problem(e, 'The chapters could not be planned from the title.')} You can still answer the questions above and your chapters are planned from the answers, or start writing without a plan.`,
+      );
+      setBusy(false);
+    }
   }
 
   return (
@@ -123,6 +137,17 @@ export function StartQuestions(props: {
         <p role="alert" className="mt-2 text-xs text-warn">
           {error}
         </p>
+      ) : null}
+      {refused ? (
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-2"
+          onClick={props.onDone}
+          data-testid="start-questions-no-plan"
+        >
+          Start writing without a plan
+        </Button>
       ) : null}
     </section>
   );

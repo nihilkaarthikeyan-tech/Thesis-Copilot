@@ -71,6 +71,22 @@ describe('the opening sentence is offered', () => {
     expect(fake.calls).toHaveLength(1);
   });
 
+  it('when the editor gains focus after the cursor was placed without it (R5)', () => {
+    const { editor, fake } = setup(true);
+    const focused = vi.spyOn(editor.view, 'hasFocus').mockReturnValue(false);
+    moveTo(editor, 1 + editor.state.doc.child(0).nodeSize);
+    vi.advanceTimersByTime(60);
+    expect(fake.calls).toHaveLength(0);
+    focused.mockReturnValue(true);
+    editor.view.dom.dispatchEvent(new FocusEvent('focus'));
+    vi.advanceTimersByTime(60);
+    expect(fake.calls).toHaveLength(1);
+    // Once: focusing again does not ask again.
+    editor.view.dom.dispatchEvent(new FocusEvent('focus'));
+    vi.advanceTimersByTime(60);
+    expect(fake.calls).toHaveLength(1);
+  });
+
   it('not at all when automatic suggestions are off', () => {
     const { editor, fake } = setup(false);
     moveTo(editor, 1 + editor.state.doc.child(0).nodeSize);

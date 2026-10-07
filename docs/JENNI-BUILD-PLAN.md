@@ -276,4 +276,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R3 | Done 2026-10-07 — five presets, grouped menu, `citeMode` none/library, refused refinement restores the suggestion; browser-checked | ADR-0089 |
 | R41 | Done 2026-10-07 — owner chose B for dark (warm Flexoki dark, Inter, our blue) and to keep light as it is | ADR-0090 |
 | R4 | Done 2026-10-07 — the proposal conversation (A.6) inside Start writing now with Smart headings; Use this / Skip; marker fix on the way; browser-checked with real models | ADR-0091 |
-| R5–R40 | in order, one at a time (owner: "start to build them one by one") | — |
+| R5 | Partly done 2026-10-07 — the opening sentence fixed (a lost plan mark, focus), Skip says why; title from the topic comes with R4. **R5b open**: H3 sub-headings (outline prompt change, needs eval) and first sentence ≤ 20 s (outline job ~25 s) | ADR-0092 |
+| R6–R40 | in order, one at a time (owner: "start to build them one by one") | — |

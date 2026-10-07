@@ -519,23 +519,19 @@ async function main(): Promise<void> {
     new Worker(
       QUEUE_GENERATE_OUTLINE,
       async (job: Job<GenerateOutlineJob>) => {
+        // Only `outlineRun.status` / `finishedAt`, in one statement: a proposal turn saved while
+        // the plan ran must not be lost to an older copy of `meta` (ADR-0091).
         const markRun = async (status: 'DONE' | 'FAILED') => {
-          const document = await prisma.document.findUnique({
-            where: { id: job.data.documentId },
-            select: { meta: true },
-          });
-          if (!document) return;
-          const meta = (document.meta as Record<string, unknown> | null) ?? {};
-          const run = (meta.outlineRun as Record<string, unknown> | undefined) ?? {};
-          await prisma.document.update({
-            where: { id: job.data.documentId },
-            data: {
-              meta: {
-                ...meta,
-                outlineRun: { ...run, status, finishedAt: new Date().toISOString() },
-              },
-            },
-          });
+          const finishedAt = new Date().toISOString();
+          await prisma.$executeRaw`
+            UPDATE "Document"
+            SET "meta" = COALESCE("meta", '{}'::jsonb) || jsonb_build_object(
+                  'outlineRun',
+                  COALESCE("meta"->'outlineRun', '{}'::jsonb)
+                    || jsonb_build_object('status', ${status}::text, 'finishedAt', ${finishedAt}::text)
+                ),
+                "updatedAt" = now()
+            WHERE "id" = ${job.data.documentId}::uuid`;
         };
         let result: Awaited<ReturnType<typeof runGenerateOutline>>;
         try {

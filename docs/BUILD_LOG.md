@@ -5527,3 +5527,11 @@ answers within 30 s. Found: a `{{cite:gap_check}}` marker in a drafted problem s
 stripped in three places. Seen twice now: no opening sentence under the first heading of a new
 thesis — R5.
 
+R5, first part (ADR-0092): the missing opening sentence had two causes — `meta` written as a
+whole (a proposal turn wiped the plan's RUNNING mark when the student skipped mid-question, so the
+editor never learnt a plan was coming) and focus (the headings landed while the tab was in the
+background; the opener's focus check failed and nothing asked again). `setMetaKey` writes one key
+in one statement (API and worker); the opener also asks on focus and on the tab being shown. Also:
+Skip now says why a title plan is refused (the trial's 2 a month) instead of leaving a blank
+chapter. Real run: opening sentence requested 1 s after focus, shown at 4 s.
+
