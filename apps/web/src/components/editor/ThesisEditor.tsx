@@ -427,6 +427,9 @@ function ChapterEditor({
     text: string;
     nonce: number;
     mention?: Mention;
+    /** R13 (ADR-0100): a part of a page from the reader, and questions to offer with it. */
+    attachment?: { id: string; kind: 'image'; name: string };
+    questions?: string[];
   } | null>(null);
   /** A selected sentence the student asked papers for; the Papers tab searches it. */
   const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);
@@ -2059,8 +2062,8 @@ function ChapterEditor({
       <ReaderHandoffBar
         editor={editor}
         documentId={doc.id}
-        onAsk={(text, mention) => {
-          setChatPrefill({ text, nonce: Date.now(), mention });
+        onAsk={(text, mention, extra) => {
+          setChatPrefill({ text, nonce: Date.now(), mention, ...extra });
           setTab('chat');
           setDrawer('panel');
         }}

@@ -175,8 +175,26 @@ export type ReaderHandoff =
       label: string;
       /** False when nothing of the paper can be read yet; the chat chip says so. */
       readable: boolean;
+      /** R13 (ADR-0100): a part of a page, already uploaded as a chat attachment. */
+      attachment?: { id: string; kind: 'image'; name: string };
+      /** R13: questions to offer with it, about this paper. */
+      questions?: string[];
       at: number;
     };
+
+/**
+ * R13: what to ask about a part of a page, as Jenni offers three questions for the paper with an
+ * "Explain selection" box. Written from the paper's own label, with no model call.
+ */
+export function boxQuestions(label: string): string[] {
+  const paper = label.trim() || 'this paper';
+  return [
+    'Explain what this part of the page shows.',
+    `How does this support the main finding of ${paper}?`,
+    `What are the limitations of ${paper}?`,
+    `Summarize ${paper} in five sentences.`,
+  ];
+}
 
 const HANDOFF_KEY = 'tc:reader-handoff';
 export const HANDOFF_TTL_MS = 60_000;

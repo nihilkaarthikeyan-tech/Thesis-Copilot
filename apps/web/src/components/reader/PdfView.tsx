@@ -66,6 +66,8 @@ export function PdfView({
   zoom,
   onPageChange,
   className,
+  boxMode = false,
+  onBox,
 }: {
   sourceId: string;
   initialPage?: number | null;
@@ -80,6 +82,12 @@ export function PdfView({
   zoom: 'fit' | number;
   onPageChange?: (page: number, scale: number) => void;
   className?: string;
+  /**
+   * Jenni build plan R13 (ADR-0100): while on, dragging on a page draws a box, and letting go
+   * hands back that part of the page as a picture.
+   */
+  boxMode?: boolean;
+  onBox?: (shot: { page: number; blob: Blob }) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -362,6 +370,7 @@ export function PdfView({
                       onTextLayer={() => readyFor(page).resolve()}
                     />
                   ) : null}
+                  {boxMode && onBox ? <BoxSelect onShot={(blob) => onBox({ page, blob })} /> : null}
                 </div>
               );
             })
@@ -445,5 +454,95 @@ function PdfPage({
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       <div ref={textRef} className="textLayer" data-testid="pdf-text-layer" />
     </>
+  );
+}
+
+/** A box smaller than this, in screen pixels, is a click, not a selection. */
+const MIN_BOX = 12;
+
+/**
+ * R13: the box drawn over a page. The picture is cut from the page's own canvas at its drawn
+ * resolution (the canvas is larger than it shows on a high-density screen), so a figure's small
+ * print stays legible to the model.
+ */
+function BoxSelect({ onShot }: { onShot: (blob: Blob) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBoxState] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Also kept in a ref: the release reads the box as it is, not as of the last render.
+  const boxNow = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const setBox = (next: { x: number; y: number; w: number; h: number } | null) => {
+    boxNow.current = next;
+    setBoxState(next);
+  };
+  const start = useRef<{ x: number; y: number } | null>(null);
+
+  const at = (event: React.PointerEvent) => {
+    const rect = ref.current?.getBoundingClientRect();
+    return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 };
+  };
+
+  function cut(area: { x: number; y: number; w: number; h: number }) {
+    const canvas = ref.current?.parentElement?.querySelector('canvas');
+    if (!canvas || canvas.clientWidth === 0) return;
+    const ratio = canvas.width / canvas.clientWidth;
+    const out = document.createElement('canvas');
+    out.width = Math.round(area.w * ratio);
+    out.height = Math.round(area.h * ratio);
+    const context = out.getContext('2d');
+    if (!context) return;
+    context.drawImage(
+      canvas,
+      Math.round(area.x * ratio),
+      Math.round(area.y * ratio),
+      out.width,
+      out.height,
+      0,
+      0,
+      out.width,
+      out.height,
+    );
+    out.toBlob((blob) => {
+      if (blob) onShot(blob);
+    }, 'image/png');
+  }
+
+  return (
+    <div
+      ref={ref}
+      data-testid="pdf-box-select"
+      className="absolute inset-0 z-10 cursor-crosshair touch-none"
+      onPointerDown={(event) => {
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // A pointer the browser no longer tracks: the drag still works within the page.
+        }
+        start.current = at(event);
+        setBox({ ...start.current, w: 0, h: 0 });
+      }}
+      onPointerMove={(event) => {
+        if (!start.current) return;
+        const now = at(event);
+        setBox({
+          x: Math.min(start.current.x, now.x),
+          y: Math.min(start.current.y, now.y),
+          w: Math.abs(now.x - start.current.x),
+          h: Math.abs(now.y - start.current.y),
+        });
+      }}
+      onPointerUp={() => {
+        const area = boxNow.current;
+        start.current = null;
+        setBox(null);
+        if (area && area.w >= MIN_BOX && area.h >= MIN_BOX) cut(area);
+      }}
+    >
+      {box ? (
+        <div
+          className="pointer-events-none absolute border-2 border-accent bg-accent/10"
+          style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
+        />
+      ) : null}
+    </div>
   );
 }

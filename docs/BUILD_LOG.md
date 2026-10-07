@@ -5590,3 +5590,6 @@ development marked the starting tab "used" on load; the tab is now compared with
 R12 (ADR-0099): usage one click away — a bar per allowance in a menu on the list, the editor's
 counter and a corner button on every other signed-in screen. Proven in the browser on all three.
 
+R13 (ADR-0100): Explain selection — a box on a PDF page goes to the chapter's chat as a picture,
+with the paper as scope and four questions. A real answer described exactly the boxed region.
+

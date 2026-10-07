@@ -28,10 +28,11 @@ import { type Selected, SelectionMenu } from '@/components/reader/SelectionMenu'
 import { type Passage, TextView } from '@/components/reader/TextView';
 import { Button } from '@/components/ui/button';
 import { Badge, Kbd } from '@/components/ui/primitives';
-import { ApiError, api } from '@/lib/api';
+import { API_URL, ApiError, api } from '@/lib/api';
 import { readLastChapter } from '@/lib/last-chapter';
 import { mentionLabel } from '@/lib/mentions';
 import {
+  boxQuestions,
   matchLabel,
   quoteWithCitation,
   quoteWithCitationHtml,
@@ -395,6 +396,56 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
     [documentId, sourceId, label, source, goToEditor, targetChapter],
   );
 
+  /** R13 (ADR-0100): the box drawn on a page, as a picture for the chapter's chat. */
+  const [boxMode, setBoxMode] = useState(false);
+  const explainBox = useCallback(
+    async ({ page: onPage, blob }: { page: number; blob: Blob }) => {
+      setBoxMode(false);
+      if (!targetChapter()) {
+        setNotice('This thesis has no chapter yet, so there is no chat to ask in.');
+        return;
+      }
+      setNotice('Taking that part of the page to the chat…');
+      try {
+        const form = new FormData();
+        form.append('file', blob, `${label} p${onPage}.png`.replace(/[^\w .-]/g, ''));
+        const response = await fetch(
+          `${API_URL}/api/v1/chat/attachments?documentId=${encodeURIComponent(documentId)}`,
+          { method: 'POST', credentials: 'include', body: form },
+        );
+        if (!response.ok) {
+          const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+          throw new Error(problem?.detail ?? 'The picture could not be attached.');
+        }
+        const attachment = (await response.json()) as { id: string; name: string };
+        writeHandoff({
+          kind: 'ask',
+          documentId,
+          sourceId,
+          text: '',
+          label,
+          readable: (source?.groundingLevel ?? 'NONE') !== 'NONE',
+          attachment: { id: attachment.id, kind: 'image', name: attachment.name },
+          questions: boxQuestions(label),
+        });
+        goToEditor();
+      } catch (e) {
+        setNotice((e as Error).message);
+      }
+    },
+    [documentId, sourceId, label, source, goToEditor, targetChapter],
+  );
+
+  // Esc leaves box mode without taking anything.
+  useEffect(() => {
+    if (!boxMode) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setBoxMode(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [boxMode]);
+
   async function attachPdf(file: File) {
     setUploading(true);
     setNotice(null);
@@ -615,6 +666,18 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
             </div>
           ) : null}
           <div className="ml-auto flex items-center gap-2">
+            {showPdf ? (
+              <Button
+                variant={boxMode ? 'secondary' : 'ghost'}
+                size="sm"
+                aria-pressed={boxMode}
+                data-testid="reader-explain"
+                title="Draw a box round a figure, table or passage, and ask the chat about it"
+                onClick={() => setBoxMode((on) => !on)}
+              >
+                {boxMode ? 'Draw a box… (Esc)' : 'Explain selection'}
+              </Button>
+            ) : null}
             {showPdf || hasText ? (
               <Button
                 variant="ghost"
@@ -724,6 +787,8 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
             onState={setPdfState}
             onPageChange={(p, scale) => setPage({ page: p, scale })}
             className={showPdf ? '' : 'hidden'}
+            boxMode={boxMode}
+            onBox={(shot) => void explainBox(shot)}
           />
         ) : null}
         {view === 'text' || !source.hasFile || pdfFailed ? (

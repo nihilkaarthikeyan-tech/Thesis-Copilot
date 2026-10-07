@@ -28,7 +28,12 @@ export function ReaderHandoffBar({
 }: {
   editor: Editor | null;
   documentId: string;
-  onAsk: (text: string, mention: Mention) => void;
+  onAsk: (
+    text: string,
+    mention: Mention,
+    /** R13 (ADR-0100): a part of a page as a picture, and questions to offer with it. */
+    extra?: { attachment?: { id: string; kind: 'image'; name: string }; questions?: string[] },
+  ) => void;
 }) {
   const [cite, setCite] = useState<CiteHandoff | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,11 +47,18 @@ export function ReaderHandoffBar({
     const handoff = takeHandoff(documentId);
     if (!handoff) return;
     if (handoff.kind === 'ask') {
-      onAskRef.current(handoff.text, {
-        id: handoff.sourceId,
-        label: handoff.label,
-        readable: handoff.readable,
-      });
+      onAskRef.current(
+        handoff.text,
+        {
+          id: handoff.sourceId,
+          label: handoff.label,
+          readable: handoff.readable,
+        },
+        {
+          ...(handoff.attachment ? { attachment: handoff.attachment } : {}),
+          ...(handoff.questions ? { questions: handoff.questions } : {}),
+        },
+      );
     } else {
       setCite(handoff);
     }

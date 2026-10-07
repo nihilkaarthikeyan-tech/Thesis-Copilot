@@ -284,4 +284,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R10 | Done 2026-10-07 — the rail's headings are the Sections panel: each opens to its note (edit/add in place; a typed heading becomes a section), Draft, Sources; `PUT /outline/section-note` with a row lock | ADR-0097 |
 | R11 | Done 2026-10-07 — dots on the Sources, Citations, Chat and Check tabs; one line, Try now / Dismiss; gone once used, tried or dismissed; none while the first-session guide shows | ADR-0098 |
 | R12 | Done 2026-10-07 — Usage menu with a coloured bar per allowance and the renewal date: Usage in the list header, the editor counter opens it, a corner button on every other screen | ADR-0099 |
-| R13–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R13 | Done 2026-10-07 — Explain selection in the reader: a box → picture attached in the chapter chat, the paper as its scope, four questions about it (fixed wording) | ADR-0100 |
+| R14–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

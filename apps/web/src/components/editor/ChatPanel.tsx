@@ -185,7 +185,15 @@ export function ChatPanel({
    * A passage the student chose to ask about (2026-10-04, from the Jenni study: select text, ask
    * the chat). It goes into the box with the cursor after it; nothing is sent until they press Ask.
    */
-  prefill?: { text: string; nonce: number; mention?: Mention } | null;
+  prefill?: {
+    text: string;
+    nonce: number;
+    mention?: Mention;
+    /** R13 (ADR-0100): a part of a page from the reader, already uploaded. */
+    attachment?: Attachment;
+    /** R13: questions to offer with it; pressing one puts it in the box. */
+    questions?: string[];
+  } | null;
   onUsageChange: () => void;
   onOpenPassage: (sourceId: string, chunkId: string) => void;
   /**
@@ -241,6 +249,16 @@ export function ChatPanel({
     setScope('library');
     addMention(prefill.mention);
   }, [prefill, addMention]);
+  // R13 (ADR-0100): the reader's box arrives as a picture on the next question, with questions
+  // about the paper to choose from.
+  const [offered, setOffered] = useState<string[]>([]);
+  useEffect(() => {
+    if (!prefill?.attachment) return;
+    const picture = prefill.attachment;
+    setAttachments((list) => [...list.filter((a) => a.id !== picture.id), picture].slice(-3));
+    setOffered(prefill.questions ?? []);
+    requestAnimationFrame(() => boxRef.current?.focus());
+  }, [prefill]);
   // `/` brings back a saved prompt (ADR-0019), in any scope: it only fills the box.
   const saved = useSavedPrompts();
   const typingPrompt = promptQuery(draft);
@@ -424,7 +442,10 @@ export function ChatPanel({
         }),
       });
       if (deep) setDeep(false);
-      if (attachments.length > 0 && response.ok) setAttachments([]);
+      if (attachments.length > 0 && response.ok) {
+        setAttachments([]);
+        setOffered([]);
+      }
       if (!response.ok || !response.body) {
         const problem = (await response.json().catch(() => null)) as {
           detail?: string;
@@ -989,6 +1010,24 @@ export function ChatPanel({
 
       {scope === 'library' ? (
         <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />
+      ) : null}
+      {offered.length > 0 ? (
+        <ul data-testid="chat-offered" className="mt-1 flex flex-wrap gap-1 px-1">
+          {offered.map((question) => (
+            <li key={question}>
+              <button
+                type="button"
+                className="rounded-md border border-line px-2 py-0.5 text-left text-[12px] text-ink hover:bg-sunk"
+                onClick={() => {
+                  setDraft(question);
+                  requestAnimationFrame(() => boxRef.current?.focus());
+                }}
+              >
+                {question}
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : null}
       {attachments.length > 0 ? (
         <ul data-testid="chat-attachments" className="mt-1 flex flex-wrap gap-1 px-1">

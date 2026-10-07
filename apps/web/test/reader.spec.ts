@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  boxQuestions,
   cleanPassage,
   countMatches,
   findAll,
@@ -165,5 +166,17 @@ describe('copy with citation as HTML (Jenni build plan R9)', () => {
     expect(quoteWithCitationHtml('A finding.', '', { key: 'k', sourceId: 's', page: null })).toBe(
       '<span>“A finding.”</span>',
     );
+  });
+});
+
+describe('questions offered with a box from the page (Jenni build plan R13)', () => {
+  it('name the paper, and read sensibly without a label', () => {
+    expect(boxQuestions('Gadekar 2026')).toEqual([
+      'Explain what this part of the page shows.',
+      'How does this support the main finding of Gadekar 2026?',
+      'What are the limitations of Gadekar 2026?',
+      'Summarize Gadekar 2026 in five sentences.',
+    ]);
+    expect(boxQuestions('  ')[2]).toBe('What are the limitations of this paper?');
   });
 });
