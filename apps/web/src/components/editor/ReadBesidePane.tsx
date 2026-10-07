@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PdfView } from '@/components/reader/PdfView';
+import { type PdfController, PdfView } from '@/components/reader/PdfView';
 import {
   clampPaneWidth,
   PANE_DEFAULT_WIDTH,
@@ -39,6 +39,20 @@ function storedWidth(): number {
 
 export function ReadBesidePane({ documentId }: { documentId: string }) {
   const [target, setTarget] = useState<ReadBesideTarget | null>(null);
+  /** R21 (ADR-0108): the PDF view, to find and mark the cited passage once it has drawn. */
+  const controller = useRef<PdfController | null>(null);
+  const targetRef = useRef<ReadBesideTarget | null>(null);
+  targetRef.current = target;
+  const [ready, setReady] = useState(false);
+  // A new target is a new view: not ready until it says so.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the target is what resets it
+  useEffect(() => {
+    setReady(false);
+  }, [target]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `markQuote` reads the target from a ref
+  useEffect(() => {
+    if (ready) void markQuote();
+  }, [ready]);
   const [error, setError] = useState<string | null>(null);
   const [width, setWidth] = useState(PANE_DEFAULT_WIDTH);
   const drag = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -56,6 +70,33 @@ export function ReadBesidePane({ documentId }: { documentId: string }) {
     window.addEventListener(READ_BESIDE, onRequest);
     return () => window.removeEventListener(READ_BESIDE, onRequest);
   }, []);
+
+  /**
+   * The passage's opening words, from its page on, marked — a shorter opening tried before the
+   * page alone, since the PDF's text and the extracted one differ (ligatures, a line-end hyphen).
+   * The same steps as the reader page's `?chunk=` (ADR-0068).
+   */
+  async function markQuote() {
+    const quote = targetRef.current?.quote;
+    if (!quote) return;
+    // "Ready" can come a moment before the view hands over its controller.
+    for (let i = 0; i < 20 && !controller.current; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    const pdf = controller.current;
+    if (!pdf) return;
+    const words = quote.split(/\s+/).filter(Boolean);
+    const from = targetRef.current?.page ?? 1;
+    for (const length of [8, 4]) {
+      if (words.length < 2) break;
+      const opening = words.slice(0, length).join(' ');
+      const at = await pdf.firstFrom(opening, from).catch(() => -1);
+      if (at >= 0) {
+        await pdf.show(opening, at);
+        return;
+      }
+    }
+  }
 
   const sourceId = target?.sourceId ?? null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new source starts without an error
@@ -164,11 +205,16 @@ export function ReadBesidePane({ documentId }: { documentId: string }) {
           </p>
         ) : (
           <PdfView
-            key={`${target.sourceId}:${page ?? ''}`}
+            key={`${target.sourceId}:${page ?? ''}:${target.quote?.slice(0, 40) ?? ''}`}
             sourceId={target.sourceId}
             initialPage={page}
             zoom="fit"
+            controller={controller}
             onState={(state) => {
+              // Marked in an effect once "ready" is in state: here, the controller is still the
+              // one from before the document loaded, whose search has no pages (found in the
+              // browser — the reader page waits for the same reason).
+              if (state.status === 'ready') setReady(true);
               if (state.status === 'error') {
                 setError(
                   state.error === 'There is no PDF for this paper.'

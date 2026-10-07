@@ -75,7 +75,13 @@ export type CitationOptions = {
    * offers it beside "Open PDF" when this is set and `canReadBeside` (if given) says the screen
    * is wide enough; otherwise only the new-tab link shows, as before.
    */
-  readBeside?: (target: { sourceId: string; page: number | null; label: string }) => void;
+  readBeside?: (target: {
+    sourceId: string;
+    page: number | null;
+    label: string;
+    /** R21 (ADR-0108): the cited passage, so the pane opens on it, marked. */
+    quote?: string | null;
+  }) => void;
   canReadBeside?: () => boolean;
   /**
    * ADR-0068: the address of the app's paper reader for a source, opened at the cited page. When
@@ -490,7 +496,12 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
             beside.addEventListener('click', (event) => {
               event.preventDefault();
               event.stopPropagation();
-              options.readBeside?.({ sourceId, page: passage.page, label: passage.shortRef });
+              options.readBeside?.({
+                sourceId,
+                page: passage.page,
+                label: passage.shortRef,
+                quote: passage.text,
+              });
               closePopover();
             });
             el.appendChild(beside);

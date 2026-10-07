@@ -16,6 +16,11 @@ export type ReadBesideTarget = {
   page: number | null;
   /** A short label for the pane's header ("Kumar 2021"); the pane falls back to "Source". */
   label?: string | null;
+  /**
+   * R21 (ADR-0108): the cited passage's text. The pane finds its opening words from `page` on and
+   * marks them, as the reader page does for `?chunk=`.
+   */
+  quote?: string | null;
 };
 
 /**

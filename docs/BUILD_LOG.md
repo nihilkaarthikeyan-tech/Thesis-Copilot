@@ -5622,3 +5622,6 @@ its file name, no authors, no abstract, and stayed PENDING for ever. Now the fir
 (printed DOI → the record; else title, byline with initials, year, abstract). Real upload: all
 three of Jenni's failures pass. Old uploads need the PENDING re-index.
 
+R21 (ADR-0108): Read beside marks the cited passage. Found: marking inside the view's ready callback
+used a controller from before the PDF loaded; now done from an effect after ready.
+
