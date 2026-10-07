@@ -943,6 +943,75 @@ export class SourcesService {
     return toView(view);
   }
 
+  /**
+   * Jenni build plan R19 (ADR-0106): "Sources in this thesis" — every paper the chapters cite,
+   * how often and where, most cited first, and whether it was found for the student (ADR-0037)
+   * rather than added by them. Free.
+   */
+  async citedSources(
+    ownerId: string,
+    documentId: string,
+  ): Promise<Array<SourceView & { citations: number; chapters: string[]; found: boolean }>> {
+    await this.ownedDocument(ownerId, documentId);
+    const rows = await this.prisma.citation.findMany({
+      where: { chapter: { documentId } },
+      select: { sourceId: true, chapter: { select: { title: true, order: true } } },
+    });
+    const bySource = new Map<string, { count: number; chapters: Map<string, number> }>();
+    for (const row of rows) {
+      const entry = bySource.get(row.sourceId) ?? { count: 0, chapters: new Map() };
+      entry.count += 1;
+      entry.chapters.set(row.chapter.title, row.chapter.order);
+      bySource.set(row.sourceId, entry);
+    }
+    if (bySource.size === 0) return [];
+    const sources = await this.prisma.source.findMany({
+      where: { documentId, id: { in: [...bySource.keys()] } },
+      select: SOURCE_VIEW_SELECT,
+    });
+    return sources
+      .map((source) => {
+        const use = bySource.get(source.id) as { count: number; chapters: Map<string, number> };
+        return {
+          ...toView(source),
+          citations: use.count,
+          chapters: [...use.chapters.entries()].sort((a, b) => a[1] - b[1]).map(([title]) => title),
+          found: source.autoAddedAt !== null,
+        };
+      })
+      .sort((a, b) => b.citations - a.citations || (a.title ?? '').localeCompare(b.title ?? ''));
+  }
+
+  /**
+   * R19 (ADR-0106): "Save all to library" — the cited papers that were found for the student
+   * become theirs, as if they had added them: "Cite from my library" (R3) and the library search
+   * setting then count them. Only cited ones, only this thesis.
+   */
+  async keepCitedFound(
+    ownerId: string,
+    documentId: string,
+    sourceIds?: readonly string[],
+  ): Promise<{ kept: number }> {
+    await this.ownedDocument(ownerId, documentId);
+    const cited = await this.prisma.citation.findMany({
+      where: {
+        chapter: { documentId },
+        ...(sourceIds && sourceIds.length > 0 ? { sourceId: { in: [...sourceIds] } } : {}),
+      },
+      select: { sourceId: true },
+      distinct: ['sourceId'],
+    });
+    const result = await this.prisma.source.updateMany({
+      where: {
+        documentId,
+        id: { in: cited.map((c) => c.sourceId) },
+        autoAddedAt: { not: null },
+      },
+      data: { autoAddedAt: null },
+    });
+    return { kept: result.count };
+  }
+
   /** Every source's use in the thesis: citation nodes (as rows) and chapter pins. */
   private async usage(
     documentId: string,

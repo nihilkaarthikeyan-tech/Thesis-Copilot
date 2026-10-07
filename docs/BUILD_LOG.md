@@ -5614,3 +5614,6 @@ the drawer's key handler threw on a non-element target.
 R18 (ADR-0105): "Add into" a collection (or a new one) for every add on the library screen, by
 comparing the library before and after. Proven with a new collection and an ISBN import.
 
+R19 (ADR-0106): "Sources in this thesis" — every cited paper with counts and chapters, and keep the
+found ones as the student's own. Proven on the real stack (4 papers; one kept, set back).
+

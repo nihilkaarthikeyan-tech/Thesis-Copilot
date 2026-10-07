@@ -114,6 +114,7 @@ import { ChatPanel } from './ChatPanel';
 import { ChecksIndex } from './ChecksIndex';
 import { CitationList } from './CitationList';
 import { CitationsPanel, type Rendered } from './CitationsPanel';
+import { CitedSources } from './CitedSources';
 import { CitePicker } from './CitePicker';
 import { CiteSuggestions } from './CiteSuggestions';
 import { AI_EDIT_FOCUS, CommandToolbar } from './CommandToolbar';
@@ -1817,6 +1818,8 @@ function ChapterEditor({
               />
             ) : tab === 'citations' ? (
               <>
+                {/* R19 (ADR-0106): every paper the thesis cites, and keep the found ones. */}
+                <CitedSources documentId={doc.id} />
                 <CitationList editor={editor} chapterId={chapter.id} />
                 <CitationsPanel
                   documentId={doc.id}

@@ -218,6 +218,25 @@ export class SourcesController {
     return this.sources.seedPaper(user.id, seedPaperId);
   }
 
+  /** R19 (ADR-0106): every paper the thesis cites, how often and where. Free. */
+  @Get('documents/:id/cited-sources')
+  citedSources(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.sources.citedSources(user.id, documentId);
+  }
+
+  /** R19 (ADR-0106): keep the cited papers that were found for the student as their own. */
+  @Post('documents/:id/cited-sources/keep')
+  @HttpCode(200)
+  keepCited(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = fetchPdfsBody.safeParse(body ?? {});
+    if (!parsed.success) throw new ValidationError('Invalid request', parsed.error.issues);
+    return this.sources.keepCitedFound(user.id, documentId, parsed.data.sourceIds);
+  }
+
   /** R16 (ADR-0103): what a pasted DOI, arXiv id, PubMed id or ISBN names. Free. */
   @Get('documents/:id/sources/lookup-id')
   lookupId(@CurrentUser() _user: SessionUser, @Query('q') q: string | undefined) {
