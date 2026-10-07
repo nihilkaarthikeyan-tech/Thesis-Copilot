@@ -29,7 +29,7 @@ import {
   TEMPLATES,
   type Template,
 } from '@tc/config';
-import { type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
+import { headingKey, type OutlineNode, outlineSchema, readOutline, walkOutline } from '@tc/types';
 import { setMetaKey } from '../../common/document-meta.js';
 import { ENV } from '../../common/env.token.js';
 import {
@@ -313,6 +313,66 @@ export class OutlineService {
     });
     const sync = await this.syncChapters(documentId, outline);
     return { outline, ...sync };
+  }
+
+  /**
+   * Jenni build plan R10 (ADR-0097): one section's note, edited in the editor's Sections panel.
+   * The section is found under the chapter's outline node by its heading's words (`headingKey`,
+   * as Assist finds it); a heading the student typed that the plan does not have yet becomes a
+   * section of that chapter, so Assist reads its note too. Only this note changes: the outline
+   * row is locked for the read and the write, so the Outline screen saving at the same moment
+   * cannot lose it, nor it the screen's change. Free; no model.
+   */
+  async setSectionNote(
+    ownerId: string,
+    documentId: string,
+    input: { chapterId: string; title: string; scopeNote: string },
+  ): Promise<{ id: string; title: string; scopeNote: string; created: boolean }> {
+    await this.owned(ownerId, documentId);
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: input.chapterId, documentId },
+      select: { outlineNodeId: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+    const title = input.title.trim();
+    const key = headingKey(title);
+    if (!key) throw new ValidationError('A section needs a heading with words in it.');
+
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<Array<{ outline: unknown }>>`
+        SELECT "outline" FROM "DocumentMemory" WHERE "documentId" = ${documentId}::uuid FOR UPDATE`;
+      const outline = readOutline(rows[0]?.outline);
+      const chapterNode = outline.find((n) => n.id === chapter.outlineNodeId);
+      if (!chapterNode) {
+        throw new ValidationError(
+          'This chapter is not in the outline yet. Plan the chapters first, then add notes.',
+        );
+      }
+      const existing = walkOutline(chapterNode.children).find((n) => headingKey(n.title) === key);
+      let result: { id: string; title: string; scopeNote: string; created: boolean };
+      if (existing) {
+        existing.scopeNote = input.scopeNote.trim();
+        result = {
+          id: existing.id,
+          title: existing.title,
+          scopeNote: existing.scopeNote,
+          created: false,
+        };
+      } else {
+        const taken = new Set(walkOutline(outline).map((n) => n.id));
+        const base = `${chapterNode.id}-${key.replace(/\s+/g, '-').slice(0, 40)}`;
+        let id = base;
+        for (let i = 2; taken.has(id); i++) id = `${base}-${i}`;
+        const node: OutlineNode = { id, title, scopeNote: input.scopeNote.trim(), children: [] };
+        chapterNode.children.push(node);
+        result = { id, title, scopeNote: node.scopeNote, created: true };
+      }
+      await tx.documentMemory.update({
+        where: { documentId },
+        data: { outline: outline as never },
+      });
+      return result;
+    });
   }
 
   /**

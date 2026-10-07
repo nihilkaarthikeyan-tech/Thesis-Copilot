@@ -1498,7 +1498,17 @@ function ChapterEditor({
                     <span className="tnum shrink-0 text-[11px] text-faint">{c.wordCount}</span>
                   </span>
                 </Link>
-                {c.id === chapter.id ? <ChapterContents editor={editor} /> : null}
+                {c.id === chapter.id ? (
+                  <ChapterContents
+                    editor={editor}
+                    documentId={doc.id}
+                    chapterId={chapter.id}
+                    onShowSources={() => {
+                      setTab('sources');
+                      setDrawer('panel');
+                    }}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

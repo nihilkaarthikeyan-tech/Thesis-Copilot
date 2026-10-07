@@ -28,6 +28,11 @@ const regenerateBody = z.object({
 
 const generateBody = z.object({ template: z.enum(TEMPLATES).optional() });
 const outlineBody = z.object({ outline: z.array(z.unknown()) });
+const sectionNoteBody = z.object({
+  chapterId: z.string().uuid(),
+  title: z.string().trim().min(1).max(300),
+  scopeNote: z.string().max(2_000),
+});
 const glossaryBody = z.object({ glossary: z.record(z.string(), z.unknown()) });
 const deleteBody = z.object({ wordCount: z.number().int().min(0) });
 /** The service measures and screens it; this only bounds what is accepted at all. */
@@ -116,6 +121,18 @@ export class OutlineController {
   @HttpCode(202)
   planFromTitle(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.outline.planFromTitle(user, documentId);
+  }
+
+  /** R10 (ADR-0097): one section's note, from the editor's Sections panel. */
+  @Put('outline/section-note')
+  sectionNote(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = sectionNoteBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Invalid note', parsed.error.issues);
+    return this.outline.setSectionNote(user.id, documentId, parsed.data);
   }
 
   /** FR-3.4: every tree edit lands here. */

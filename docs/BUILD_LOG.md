@@ -5580,3 +5580,7 @@ cited" (the panel's own-instruction path, citation checked) or keep; uncited: Ed
 source, Cite it, keep. Proven in the browser on the real stack except the reader's Copy button
 itself, whose menu needs an animation frame a hidden pane never draws (its HTML is unit-tested).
 
+R10 (ADR-0097): the Sections panel. The chapter rail's headings open to their notes (edited in
+place through `PUT /documents/:id/outline/section-note`, which adds a typed heading to the plan so
+Assist reads its note), Draft and Sources. API 3 tests; proven in the browser on the real stack.
+
