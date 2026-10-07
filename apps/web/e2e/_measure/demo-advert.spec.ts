@@ -401,7 +401,7 @@ test('the advertising video, recorded', async ({ playwright }) => {
     );
     await click(page, page.getByTestId('suggestion-evidence').getByRole('button').first());
     await hold(page, 4_000);
-    await page.keyboard.press('Escape');
+    // Escape would dismiss the suggestion itself; the card closes when Refine is pressed.
   });
 
   await scene('refine', async () => {
@@ -682,6 +682,9 @@ test('the advertising video, recorded', async ({ playwright }) => {
       '“Research deeply” for the big questions',
       'It plans the question in parts, searches every index for each, and answers part by part',
     );
+    // Deep research is offered for the whole library, not while a paper is @-mentioned.
+    const stop = panel.getByRole('button', { name: /Stop answering from/ });
+    while (await stop.count()) await click(page, stop.first());
     await click(page, panel.getByTestId('chat-deep-toggle'));
     await click(page, panel.locator('textarea, input#chat-message').first());
     await slowType(
@@ -775,6 +778,8 @@ test('the advertising video, recorded', async ({ playwright }) => {
       'Read any paper inside Thesis Copilot',
       'Search it, select a passage, cite it where you were writing',
     );
+    // The new collection is empty and selected; the reader opens from All papers.
+    await click(page, page.getByRole('button', { name: /^All papers/ }).first());
     await click(page, page.getByTestId('library-read-title').first());
     await page.getByTestId('paper-reader').waitFor({ timeout: 60_000 });
     await hold(page, 3_500);
@@ -914,7 +919,7 @@ test('the advertising video, recorded', async ({ playwright }) => {
     );
     await click(page, panel.getByTestId('tone-run'));
     await fast('tone review', async () => {
-      await panel.getByTestId('proofread-summary').waitFor({ timeout: 180_000 });
+      await panel.getByTestId('proofread-summary').waitFor({ timeout: 420_000 });
     });
     await hold(page, 4_000);
   });
@@ -1236,9 +1241,11 @@ test('the advertising video, recorded', async ({ playwright }) => {
   });
 
   await scene('phone', async () => {
+    // The caption is set first so the page that loads at phone width shows it, not the last one.
+    await caption(page, 'On your phone too', 'Suggestions, chat and citations');
     await page.setViewportSize({ width: 390, height: 720 });
     await goWrite();
-    await caption(page, 'On your phone too', 'Suggestions, chat and citations');
+    await editorOf(page).locator('p').first().waitFor({ timeout: 60_000 });
     await hold(page, 3_000);
     const bar = page.getByTestId('mobile-bar');
     if (await bar.count()) {
@@ -1256,14 +1263,19 @@ test('the advertising video, recorded', async ({ playwright }) => {
       'Hindi interface (beta) — citations in the language you choose',
     );
     await page.getByTestId('interface-language').selectOption('hi');
+    await page.getByRole('heading', { name: 'सेटिंग्स', level: 1 }).waitFor({ timeout: 30_000 });
     await hold(page, 2_500);
     await goWrite();
-    await hold(page, 3_500);
+    // Wait for the chapter itself, not the "loading" line.
+    await editorOf(page).locator('p').first().waitFor({ timeout: 60_000 });
+    await hold(page, 4_000);
+    await caption(page, '');
     await page.goto(`${WEB_URL}/app/settings`);
     await page.getByTestId('interface-language').selectOption('en');
-    await hold(page, 1_500);
-    await goWrite();
+    await page.getByRole('heading', { name: 'Settings', level: 1 }).waitFor({ timeout: 30_000 });
     await caption(page, 'Light, dark or high contrast');
+    await goWrite();
+    await editorOf(page).locator('p').first().waitFor({ timeout: 60_000 });
     const theme = page.getByRole('button', { name: /^Colour theme:/ }).first();
     if (await theme.count()) {
       await click(page, theme);

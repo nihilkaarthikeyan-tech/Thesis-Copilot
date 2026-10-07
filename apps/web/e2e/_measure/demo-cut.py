@@ -45,8 +45,10 @@ for m in marks:
     if m['kind'] != 'fail':
         continue
     t = m['t'] / 1000
-    begun = max((x for x in scene_starts if x <= t), default=None)
-    after = min((x for x in scene_starts if x > t), default=None)
+    # The failure is logged as the next scene begins, at the same instant: the failed scene is the
+    # one that started strictly before it, and it ends where the next one starts.
+    begun = max((x for x in scene_starts if x < t), default=None)
+    after = min((x for x in scene_starts if x >= t), default=None)
     if begun is not None:
         dropped.append((begun, after if after is not None else None))
 fast = []
