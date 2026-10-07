@@ -30,7 +30,10 @@ const KIND: Record<Preview['kind'], string> = {
 const nameOf = (a: Preview['authors'][number]) =>
   a.literal ?? [a.given, a.family].filter(Boolean).join(' ');
 
-export function PasteId(props: { documentId: string; onImported: (message: string) => void }) {
+export function PasteId(props: {
+  documentId: string;
+  onImported: (message: string, sourceId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState<'lookup' | 'import' | null>(null);
@@ -61,7 +64,7 @@ export function PasteId(props: { documentId: string; onImported: (message: strin
     setBusy('import');
     setError(null);
     try {
-      const result = await api<{ alreadyPresent: boolean; preview: Preview }>(
+      const result = await api<{ sourceId: string; alreadyPresent: boolean; preview: Preview }>(
         `/documents/${props.documentId}/sources/import-id`,
         { method: 'POST', body: JSON.stringify({ q: q.trim() }) },
       );
@@ -71,6 +74,7 @@ export function PasteId(props: { documentId: string; onImported: (message: strin
           : result.preview.kind === 'isbn'
             ? `"${result.preview.title}" added. A book comes with no abstract: add its PDF (or the chapter you use) to quote from it.`
             : `"${result.preview.title}" added. It is being read now.`,
+        result.sourceId,
       );
       setQ('');
       setPreview(null);

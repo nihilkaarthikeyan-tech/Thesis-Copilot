@@ -98,7 +98,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<Source[] | null> => {
     try {
       const [doc, rows] = await Promise.all([
         api<{ title: string; chapters?: Array<{ id: string }> }>(`/documents/${documentId}`),
@@ -117,11 +117,57 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
         .catch(() => setCollections([]));
       const first = doc.chapters?.[0]?.id;
       if (first) setWriteHref(`/app/d/${documentId}/write/${first}`);
+      return rows;
     } catch (e) {
       if (e instanceof ApiError && e.problem.status === 401) router.replace('/sign-in');
       else setError(e instanceof Error ? e.message : 'Could not load the library.');
+      return null;
     }
   }, [documentId, router]);
+
+  /**
+   * R18 (ADR-0105): "Add into" — the collection every add on this screen files into, or none.
+   * Papers an add created are found by comparing the library before and after it, so every way in
+   * (a file, Zotero, a PDF, an ID) files the same way; ones an add reports by id (an ID already in
+   * the library) are filed too.
+   */
+  const [addInto, setAddInto] = useState<string>('');
+  const [newCollection, setNewCollection] = useState<string | null>(null);
+  const libraryIds = () => new Set((sources ?? []).map((s) => s.id));
+  async function fileInto(before: Set<string>, known: string[] = []): Promise<string> {
+    const rows = await load();
+    if (!addInto || !rows) return '';
+    const ids = [...new Set([...rows.filter((r) => !before.has(r.id)).map((r) => r.id), ...known])];
+    if (ids.length === 0) return '';
+    try {
+      await api(`/collections/${addInto}/sources`, {
+        method: 'POST',
+        body: JSON.stringify({ sourceIds: ids }),
+      });
+      const name = collections.find((c) => c.id === addInto)?.name ?? 'the collection';
+      await load();
+      return ` Filed in ${name}.`;
+    } catch {
+      return ' They could not be filed in the collection; add them from the list.';
+    }
+  }
+  async function createCollection(name: string) {
+    try {
+      const created = await api<{ id: string }>(`/documents/${documentId}/collections`, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      await load();
+      setAddInto(created.id);
+      setNewCollection(null);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'The collection was not made.',
+      );
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -238,10 +284,12 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     setUploading(true);
     setError(null);
     try {
+      const before = libraryIds();
       const form = new FormData();
       form.append('file', file);
       await api(`/documents/${documentId}/sources/upload`, { method: 'POST', body: form });
-      await load();
+      const filed = await fileInto(before);
+      if (filed) setNotice(`PDF added.${filed}`);
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That upload did not work.',
@@ -257,6 +305,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     setError(null);
     setNotice(null);
     try {
+      const before = libraryIds();
       const form = new FormData();
       form.append('file', file);
       const result = await api<{
@@ -275,9 +324,8 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             : '',
         ]
           .filter(Boolean)
-          .join(' '),
+          .join(' ') + (await fileInto(before)),
       );
-      await load();
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That import did not work.',
@@ -289,8 +337,10 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
 
   /** ADR-0062: the same report as a file import, for a read from Zotero by key. */
   async function zoteroImported(result: ZoteroImportResult) {
+    const before = libraryIds();
     setTab('library');
     setError(null);
+    const filed = await fileInto(before);
     setNotice(
       [
         `Imported ${result.queued} of ${result.entries} references from Zotero; they are being looked up.`,
@@ -300,9 +350,8 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
           : '',
       ]
         .filter(Boolean)
-        .join(' '),
+        .join(' ') + filed,
     );
-    await load();
   }
 
   /** "Add the PDF": the student's copy of a paper we could not read in full, on that exact source. */
@@ -460,6 +509,60 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
               ))}
             </span>
           ) : null}
+          {/* R18 (ADR-0105): every add below goes straight into this collection. */}
+          <span className="flex items-center gap-1 text-sm" data-testid="add-into">
+            <label htmlFor="add-into" className="text-muted">
+              Add into
+            </label>
+            {newCollection === null ? (
+              <select
+                id="add-into"
+                value={addInto}
+                onChange={(e) => {
+                  if (e.target.value === '__new') setNewCollection('');
+                  else setAddInto(e.target.value);
+                }}
+                className="h-9 rounded-md border border-line-strong bg-surface px-2 text-ink"
+                data-testid="add-into-select"
+              >
+                <option value="">The library only</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value="__new">New collection…</option>
+              </select>
+            ) : (
+              <form
+                className="flex items-center gap-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (newCollection.trim()) void createCollection(newCollection.trim());
+                }}
+              >
+                <Input
+                  id="add-into"
+                  autoFocus
+                  value={newCollection}
+                  onChange={(e) => setNewCollection(e.target.value)}
+                  placeholder="Name"
+                  className="h-9 w-40"
+                  data-testid="add-into-new"
+                />
+                <button type="submit" className="font-semibold text-accent underline">
+                  Make
+                </button>
+                <button
+                  type="button"
+                  className="text-muted underline"
+                  onClick={() => setNewCollection(null)}
+                >
+                  Cancel
+                </button>
+              </form>
+            )}
+          </span>
           <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">
             {importing ? 'Importing…' : 'Import .bib / .ris'}
             <input
@@ -477,9 +580,9 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
           {/* R16 (ADR-0103): a DOI, arXiv id, PubMed id or ISBN. */}
           <PasteId
             documentId={documentId}
-            onImported={(message) => {
-              setNotice(message);
-              void load();
+            onImported={(message, sourceId) => {
+              const before = libraryIds();
+              void fileInto(before, [sourceId]).then((filed) => setNotice(message + filed));
             }}
           />
           <label className="cursor-pointer rounded-md border border-line px-3 py-2 text-sm hover:bg-paper">

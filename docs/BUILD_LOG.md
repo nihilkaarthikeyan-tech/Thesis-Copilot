@@ -5611,3 +5611,6 @@ R17 (ADR-0104): library filters (year, access, kind) and a details drawer with â
 Two faults found in the browser: the year box reset on every keystroke short of four digits, and
 the drawer's key handler threw on a non-element target.
 
+R18 (ADR-0105): "Add into" a collection (or a new one) for every add on the library screen, by
+comparing the library before and after. Proven with a new collection and an ISBN import.
+
