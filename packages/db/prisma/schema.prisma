@@ -332,6 +332,7 @@ model Source {
   cslJson        Json?    // full CSL-JSON for citeproc
   oaStatus       String?
   fileKey        String?  // MinIO key of PDF if available
+  fullTextNote   String?  // R14 (ADR-0101): why there is no full text, in plain words; null once read
   groundingLevel GroundingLevel @default(NONE)
   subTheme       String?
   /**

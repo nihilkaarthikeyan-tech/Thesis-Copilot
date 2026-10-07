@@ -114,13 +114,19 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
     void load();
   }, [load]);
 
-  // References resolve in the background, so keep refreshing while any are still pending.
+  // References resolve in the background, so keep refreshing while any are still pending — and,
+  // R14, for a few minutes after "Fetch PDF", while the open copies are looked for and read.
   const pending = sources?.some((s) => s.status === 'PENDING').valueOf();
+  const [fetchingUntil, setFetchingUntil] = useState(0);
+  const fetching = fetchingUntil > 0;
   useEffect(() => {
-    if (!pending) return;
-    const timer = setInterval(() => void load(), POLL_MS);
+    if (!pending && !fetching) return;
+    const timer = setInterval(() => {
+      void load();
+      if (fetching && Date.now() > fetchingUntil) setFetchingUntil(0);
+    }, POLL_MS);
     return () => clearInterval(timer);
-  }, [pending, load]);
+  }, [pending, fetching, fetchingUntil, load]);
 
   const counts = useMemo(() => {
     const rows = sources ?? [];
@@ -130,6 +136,8 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
       missing: rows.filter((s) => s.groundingLevel !== 'FULL_TEXT').length,
       unresolved: rows.filter((s) => s.status === 'UNRESOLVED').length,
       pending: rows.filter((s) => s.status === 'PENDING').length,
+      // R14: no PDF at all, so at most the abstract can be quoted.
+      noPdf: rows.filter((s) => !s.hasFile && s.status !== 'PENDING').length,
     };
   }, [sources]);
 
@@ -279,6 +287,35 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   }
 
   /** "Add the PDF": the student's copy of a paper we could not read in full, on that exact source. */
+  /** R14 (ADR-0101): look again for open-access copies — all papers without a PDF, or one. */
+  async function fetchPdfs(sourceIds?: string[]) {
+    try {
+      const result = await api<{ queued: number; noDoi: number }>(
+        `/documents/${documentId}/sources/fetch-pdfs`,
+        { method: 'POST', body: JSON.stringify(sourceIds ? { sourceIds } : {}) },
+      );
+      const parts: string[] = [];
+      if (result.queued > 0) {
+        parts.push(
+          `Looking for open-access copies of ${result.queued} ${result.queued === 1 ? 'paper' : 'papers'}. This list updates as they are found and read; some papers have no free copy anywhere.`,
+        );
+        setFetchingUntil(Date.now() + 4 * 60_000);
+      }
+      if (result.noDoi > 0) {
+        parts.push(
+          `${result.noDoi} ${result.noDoi === 1 ? 'paper has' : 'papers have'} no DOI, so no copy can be looked up: add ${result.noDoi === 1 ? 'its PDF' : 'their PDFs'} yourself.`,
+        );
+      }
+      setNotice(parts.join(' ') || 'Every paper here already has its PDF.');
+    } catch (e) {
+      setNotice(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'Could not start the search.',
+      );
+    }
+  }
+
   async function attachPdf(sourceId: string, file: File) {
     setError(null);
     setNotice(null);
@@ -518,6 +555,27 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             }}
           />
 
+          {/* R14 (ADR-0101): how many have no PDF, and one press to look for free copies. */}
+          {counts.noPdf > 0 && (filter === 'all' || filter === 'missing') ? (
+            <div
+              className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-sunk px-3 py-2 text-sm"
+              data-testid="no-pdf-banner"
+            >
+              <span>
+                {counts.noPdf} {counts.noPdf === 1 ? 'paper has' : 'papers have'} no PDF, so only
+                {counts.noPdf === 1 ? ' its abstract' : ' their abstracts'} can be quoted.
+              </span>
+              <button
+                type="button"
+                className="font-semibold text-accent underline disabled:opacity-50"
+                disabled={fetching}
+                onClick={() => void fetchPdfs()}
+                data-testid="fetch-pdfs"
+              >
+                {fetching ? 'Looking…' : 'Fetch open-access copies'}
+              </button>
+            </div>
+          ) : null}
           {filter === 'missing' && visible.length > 0 ? (
             <p className="mt-4 text-sm text-muted">
               The AI can only quote the abstract of these. If you have the paper, add its PDF and it
@@ -569,6 +627,7 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                   onRemove={remove}
                   onOpen={openPdf}
                   onAttach={filter === 'missing' ? attachPdf : undefined}
+                  onFetchPdf={filter === 'missing' ? (id) => void fetchPdfs([id]) : undefined}
                 />
               ))}
             </ul>
@@ -708,6 +767,7 @@ function SourceRow({
   onRemove,
   onOpen,
   onAttach,
+  onFetchPdf,
 }: {
   documentId: string;
   source: Source;
@@ -720,6 +780,8 @@ function SourceRow({
   onOpen: (id: string) => void;
   /** Set in the "Without full text" view: offers "Add the PDF" and says why it is missing. */
   onAttach?: ((id: string, file: File) => Promise<void>) | undefined;
+  /** R14: set in the same view — look again for an open-access copy of this paper. */
+  onFetchPdf?: ((id: string) => void) | undefined;
 }) {
   const [fixing, setFixing] = useState(false);
   const [attaching, setAttaching] = useState(false);
@@ -844,6 +906,16 @@ function SourceRow({
         {source.hasFile ? (
           <button type="button" className="underline" onClick={() => onOpen(source.id)}>
             PDF file ↗
+          </button>
+        ) : null}
+        {onFetchPdf && source.doi && !source.hasFile ? (
+          <button
+            type="button"
+            className="font-semibold text-accent underline"
+            onClick={() => onFetchPdf(source.id)}
+            data-testid="fetch-pdf"
+          >
+            Fetch PDF
           </button>
         ) : null}
         {onAttach ? (

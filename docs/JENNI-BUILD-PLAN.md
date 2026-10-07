@@ -285,4 +285,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R11 | Done 2026-10-07 — dots on the Sources, Citations, Chat and Check tabs; one line, Try now / Dismiss; gone once used, tried or dismissed; none while the first-session guide shows | ADR-0098 |
 | R12 | Done 2026-10-07 — Usage menu with a coloured bar per allowance and the renewal date: Usage in the list header, the editor counter opens it, a corner button on every other screen | ADR-0099 |
 | R13 | Done 2026-10-07 — Explain selection in the reader: a box → picture attached in the chapter chat, the paper as its scope, four questions about it (fixed wording) | ADR-0100 |
-| R14–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R14 | Done 2026-10-07 — "N papers have no PDF · Fetch open-access copies" and Fetch PDF per paper: re-runs the open-copy search (arXiv, Unpaywall, CORE, Europe PMC); each paper says why when none could be fetched (migration 0041). Publishers that refuse automated downloads are not got round | ADR-0101 |
+| R15–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

@@ -264,6 +264,16 @@ export async function runIndexSource(
 
   const hasFullText = text !== null && text.trim().length > 0;
 
+  // R14 (ADR-0101): why there is no full text, for the library to say per paper ("Fetch PDF");
+  // cleared once one has been read. Only what was actually tried is said.
+  await deps.prisma.source.update({
+    where: { id: source.id },
+    data: {
+      fullTextNote:
+        hasFullText || !fullTextFailure ? null : readableFullTextReason(fullTextFailure),
+    },
+  });
+
   // The abstract is already indexed and nothing better was found: done, without embedding it twice.
   if (!hasFullText && abstractFirst) {
     log({

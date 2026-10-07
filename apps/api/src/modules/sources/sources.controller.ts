@@ -98,6 +98,8 @@ async function readUpload(
   return { filename: file.filename, bytes: new Uint8Array(buffer) };
 }
 
+const fetchPdfsBody = z.object({ sourceIds: z.array(z.string().uuid()).max(200).optional() });
+
 @Controller()
 @UseGuards(SessionGuard)
 export class SourcesController {
@@ -190,6 +192,19 @@ export class SourcesController {
   @Get('documents/:documentId/seed-papers/:spId')
   seedPaper(@CurrentUser() user: SessionUser, @Param('spId') seedPaperId: string) {
     return this.sources.seedPaper(user.id, seedPaperId);
+  }
+
+  /** R14 (ADR-0101): look again for open-access copies of papers that have no PDF. Free. */
+  @Post('documents/:id/sources/fetch-pdfs')
+  @HttpCode(202)
+  fetchPdfs(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = fetchPdfsBody.safeParse(body ?? {});
+    if (!parsed.success) throw new ValidationError('Invalid request', parsed.error.issues);
+    return this.sources.fetchMissingPdfs(user.id, documentId, parsed.data.sourceIds);
   }
 
   @Get('documents/:id/sources')

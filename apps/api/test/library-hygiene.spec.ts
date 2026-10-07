@@ -188,6 +188,17 @@ describe('why a source has no full text', () => {
       expect(reason).not.toMatch(/paywall/i);
     }
   });
+
+  it('R14: says what the last try for an open copy found, and what to do', () => {
+    expect(
+      whyNoFullText({
+        ...base,
+        fullTextNote: 'The open-access link led to a page rather than a PDF.',
+      }),
+    ).toBe(
+      'The open-access link led to a page rather than a PDF. No open copy could be fetched, so only the abstract was read. If you have the paper, add its PDF.',
+    );
+  });
 });
 
 describe('repointCitations', () => {

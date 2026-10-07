@@ -201,6 +201,8 @@ export function whyNoFullText(source: {
   groundingLevel: string;
   doi: string | null;
   hasFile: boolean;
+  /** R14 (ADR-0101): what happened on the last try for an open-access copy, when one was made. */
+  fullTextNote?: string | null;
 }): string | null {
   if (source.groundingLevel === 'FULL_TEXT') return null;
   if (source.status === 'PENDING') return 'Still being looked up.';
@@ -213,9 +215,16 @@ export function whyNoFullText(source: {
   if (!normaliseDoi(source.doi)) {
     return 'No DOI, so there was no way to look for an open-access copy.';
   }
-  return source.groundingLevel === 'ABSTRACT'
-    ? 'No open-access copy could be fetched, so only the abstract was read.'
-    : 'No open-access copy could be fetched, and there was no abstract to read.';
+  const read =
+    source.groundingLevel === 'ABSTRACT'
+      ? 'so only the abstract was read.'
+      : 'and there was no abstract to read.';
+  // The last try's own reason, when there was one ("The open-access link led to a page rather
+  // than a PDF."): a publisher that refuses automated downloads is the commonest, and the student
+  // can still open the paper and add the PDF.
+  return source.fullTextNote
+    ? `${source.fullTextNote} No open copy could be fetched, ${read} If you have the paper, add its PDF.`
+    : `No open-access copy could be fetched, ${read}`;
 }
 
 type PmNode = {

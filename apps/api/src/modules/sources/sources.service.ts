@@ -159,6 +159,7 @@ const SOURCE_VIEW_SELECT = {
   fileKey: true,
   rawReference: true,
   autoAddedAt: true,
+  fullTextNote: true,
 } as const;
 
 type SourceViewRow = {
@@ -178,9 +179,10 @@ type SourceViewRow = {
   fileKey: string | null;
   rawReference: string | null;
   autoAddedAt: Date | null;
+  fullTextNote?: string | null;
 };
 
-function toView({ fileKey, ...rest }: SourceViewRow): SourceView {
+function toView({ fileKey, fullTextNote, ...rest }: SourceViewRow): SourceView {
   const hasFile = Boolean(fileKey);
   return {
     ...rest,
@@ -191,9 +193,13 @@ function toView({ fileKey, ...rest }: SourceViewRow): SourceView {
       groundingLevel: rest.groundingLevel,
       doi: rest.doi,
       hasFile,
+      fullTextNote: fullTextNote ?? null,
     }),
   };
 }
+
+/** R14: papers looked for again in one press; a library is rarely larger, and each is a download. */
+const FETCH_PDFS_MAX = 60;
 
 @Injectable()
 export class SourcesService {
@@ -475,6 +481,53 @@ export class SourcesService {
   }
 
   /** FR-2.3: the student's own PDF joins the library and goes through the same indexing pipeline. */
+  /**
+   * Jenni build plan R14 (ADR-0101): "Fetch PDF" — look again for an open-access copy of papers
+   * that have none. `index-source` already tries arXiv, every copy Unpaywall lists and CORE; this
+   * runs it again for each paper with a DOI and no file (a repository that was down, a copy that has
+   * appeared since). The job id carries the minute, so a second press in the same minute adds
+   * nothing and a later one is a real retry (CLAUDE.md: key a job on what it reads — here, the
+   * outside world at that moment). Papers without a DOI cannot be looked up and are counted.
+   */
+  async fetchMissingPdfs(
+    ownerId: string,
+    documentId: string,
+    sourceIds?: readonly string[],
+  ): Promise<{ queued: number; noDoi: number }> {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerId },
+      select: { id: true },
+    });
+    if (!document) throw new NotFoundError('That document');
+    const candidates = await this.prisma.source.findMany({
+      where: {
+        documentId,
+        fileKey: null,
+        status: { not: 'PENDING' },
+        ...(sourceIds && sourceIds.length > 0 ? { id: { in: [...sourceIds] } } : {}),
+      },
+      select: { id: true, doi: true },
+      orderBy: { createdAt: 'asc' },
+      take: FETCH_PDFS_MAX,
+    });
+    const minute = Math.floor(Date.now() / 60_000);
+    let queued = 0;
+    let noDoi = 0;
+    for (const source of candidates) {
+      if (!source.doi) {
+        noDoi += 1;
+        continue;
+      }
+      await this.queue.enqueue(
+        'index-source',
+        { sourceId: source.id, documentId, userId: ownerId },
+        { jobId: jobId('index-source', source.id, jobKeyDigest(`fetch-pdf ${minute}`)) },
+      );
+      queued += 1;
+    }
+    return { queued, noDoi };
+  }
+
   async uploadLibraryPdf(input: {
     ownerId: string;
     plan: Plan;

@@ -5593,3 +5593,8 @@ counter and a corner button on every other signed-in screen. Proven in the brows
 R13 (ADR-0100): Explain selection — a box on a PDF page goes to the chapter's chat as a picture,
 with the paper as scope and four questions. A real answer described exactly the boxed region.
 
+R14 (ADR-0101): Fetch PDF — the open-copy search again for papers without a PDF, per paper or all,
+with the last try's reason stored (`Source.fullTextNote`, migration 0041 — applied locally; needs
+the next release's migrate). Real run: 1 of 7 read in full via Europe PMC; Nature turns away
+automated requests (curl excepted), Wiley 403s — told to the student, not got round.
+
