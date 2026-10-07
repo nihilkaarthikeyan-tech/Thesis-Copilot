@@ -5607,3 +5607,7 @@ R16 (ADR-0103): add by ID — DOI, arXiv, PubMed, ISBN, previewed then imported.
 on the real services; an arXiv import was read in full within 25 s. Found: PubMed's
 "Surname Initials" names need their own reading.
 
+R17 (ADR-0104): library filters (year, access, kind) and a details drawer with ↑ ↓, Cite, Ask AI.
+Two faults found in the browser: the year box reset on every keystroke short of four digits, and
+the drawer's key handler threw on a non-element target.
+

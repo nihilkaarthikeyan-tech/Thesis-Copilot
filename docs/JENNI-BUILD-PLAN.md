@@ -288,4 +288,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R14 | Done 2026-10-07 — "N papers have no PDF · Fetch open-access copies" and Fetch PDF per paper: re-runs the open-copy search (arXiv, Unpaywall, CORE, Europe PMC); each paper says why when none could be fetched (migration 0041). Publishers that refuse automated downloads are not got round | ADR-0101 |
 | R15 | Done 2026-10-07 — Edit details on each library paper: a form by kind; saved to the CSL record and the row, so every citation follows | ADR-0102 |
 | R16 | Done 2026-10-07 — Paste an ID: DOI, arXiv, PubMed, ISBN → preview → Add to library (DOIs through the reference pipeline; books from Open Library) | ADR-0103 |
-| R17–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R17 | Done 2026-10-07 — filters by year, access and kind; a details drawer (abstract, ↑ ↓, Cite in my chapter, Ask AI with questions, Read, Edit details) | ADR-0104 |
+| R18–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

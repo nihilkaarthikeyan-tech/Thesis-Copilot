@@ -125,6 +125,8 @@ export type ReaderSourceView = SourceView & {
   /** How many passages of text are held — zero means there is nothing for the Text view. */
   passageCount: number;
   reading: ReadingState;
+  /** R17: the abstract the record carries, for the library drawer; null when none. */
+  abstract: string | null;
 };
 
 /** One side of a possible duplicate, with what the thesis does with it. */
@@ -167,6 +169,8 @@ const SOURCE_VIEW_SELECT = {
   rawReference: true,
   autoAddedAt: true,
   fullTextNote: true,
+  // R17 (ADR-0104): the library's kind filter.
+  type: true,
 } as const;
 
 type SourceViewRow = {
@@ -187,6 +191,7 @@ type SourceViewRow = {
   rawReference: string | null;
   autoAddedAt: Date | null;
   fullTextNote?: string | null;
+  type?: string | null;
 };
 
 function toView({ fileKey, fullTextNote, ...rest }: SourceViewRow): SourceView {
@@ -827,11 +832,14 @@ export class SourcesService {
         documentId: true,
         collectionItems: { select: { collection: { select: { id: true, name: true } } } },
         _count: { select: { chunks: true } },
+        // R17 (ADR-0104): the library drawer shows the abstract.
+        cslJson: true,
       },
     });
     if (!row) throw new NotFoundError('That source');
-    const { documentId, collectionItems, _count, ...rest } = row;
+    const { documentId, collectionItems, _count, cslJson, ...rest } = row;
     const view = toView(rest);
+    const storedAbstract = (cslJson as { abstract?: unknown } | null)?.abstract;
 
     // Only asked when it could change the answer: a paper with full text, or none and no file
     // and nothing queued, is settled.
@@ -846,6 +854,7 @@ export class SourcesService {
       collections: collectionItems.map((item) => item.collection),
       passageCount: _count.chunks,
       reading: readingState(view, unsettled),
+      abstract: typeof storedAbstract === 'string' && storedAbstract.trim() ? storedAbstract : null,
     };
   }
 

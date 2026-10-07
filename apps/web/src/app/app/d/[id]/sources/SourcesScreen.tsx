@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EditDetails } from '@/components/sources/EditDetails';
+import { Input } from '@/components/ui/primitives';
 import { API_URL, ApiError, api } from '@/lib/api';
 import {
   addedSummary,
@@ -29,10 +30,18 @@ import {
   selectionState,
   toggleAll,
 } from '@/lib/collections';
+import {
+  anyFilterOn,
+  applyLibraryFilters,
+  type LibraryFilters,
+  type LibraryKind,
+  NO_FILTERS,
+} from '@/lib/library-filters';
 import { readerHref } from '@/lib/reader';
 import { CollectionsStrip } from './CollectionsStrip';
 import { DiscoverPanel } from './DiscoverPanel';
 import { type DuplicatePair, DuplicatesPanel } from './DuplicatesPanel';
+import { LibraryDrawer } from './LibraryDrawer';
 import { PasteId } from './PasteId';
 import { ZoteroImport, type ZoteroImportResult } from './ZoteroImport';
 
@@ -60,6 +69,8 @@ type Source = {
   noFullTextReason?: string | null;
   /** The collections (folders) this paper is in (2026-10-04). */
   collectionIds?: string[];
+  /** R17: the CSL type, for the kind filter. */
+  type?: string | null;
 };
 
 const POLL_MS = 3_000;
@@ -154,13 +165,19 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
   const byCollection = useMemo(() => collectionCounts(sources ?? []), [sources]);
 
   // The collection chosen in the strip, then the full-text filter, both at once.
+  /** R17 (ADR-0104): year, open access and kind, on top of the full-text and collection filters. */
+  const [more, setMore] = useState<LibraryFilters>(NO_FILTERS);
+  // The year boxes keep what is typed; the filter takes it only once it is a whole year.
+  const [yearText, setYearText] = useState({ from: '', to: '' });
+  /** R17: the paper the details drawer is showing. */
+  const [drawerId, setDrawerId] = useState<string | null>(null);
   const visible = useMemo(() => {
-    const rows = inCollection(sources ?? [], activeFilter);
+    const rows = applyLibraryFilters(inCollection(sources ?? [], activeFilter), more);
     if (filter === 'full') return rows.filter((s) => s.groundingLevel === 'FULL_TEXT');
     if (filter === 'missing') return rows.filter((s) => s.groundingLevel !== 'FULL_TEXT');
     if (filter === 'unresolved') return rows.filter((s) => s.status === 'UNRESOLVED');
     return rows;
-  }, [sources, filter, activeFilter]);
+  }, [sources, filter, activeFilter, more]);
 
   const visibleIds = useMemo(() => visible.map((s) => s.id), [visible]);
   // A ticked row that a filter hides is unticked, so an action never reaches a paper off screen.
@@ -557,6 +574,93 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
             ))}
           </div>
 
+          {/* R17 (ADR-0104): narrow the list by year, access and kind. */}
+          <div
+            className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted"
+            data-testid="library-filters"
+          >
+            <span className="flex items-center gap-1">
+              <label htmlFor="filter-year-from">Year</label>
+              <Input
+                id="filter-year-from"
+                inputMode="numeric"
+                placeholder="from"
+                className="h-8 w-20"
+                value={yearText.from}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setYearText((t) => ({ ...t, from: v }));
+                  setMore((m) => ({ ...m, yearFrom: /^\d{4}$/.test(v) ? Number(v) : null }));
+                }}
+                data-testid="filter-year-from"
+              />
+              <span>–</span>
+              <label htmlFor="filter-year-to" className="sr-only">
+                Year to
+              </label>
+              <Input
+                id="filter-year-to"
+                inputMode="numeric"
+                placeholder="to"
+                className="h-8 w-20"
+                value={yearText.to}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setYearText((t) => ({ ...t, to: v }));
+                  setMore((m) => ({ ...m, yearTo: /^\d{4}$/.test(v) ? Number(v) : null }));
+                }}
+                data-testid="filter-year-to"
+              />
+            </span>
+            <span className="flex items-center gap-1">
+              <label htmlFor="filter-access">Access</label>
+              <select
+                id="filter-access"
+                value={more.access}
+                onChange={(e) =>
+                  setMore((m) => ({ ...m, access: e.target.value as LibraryFilters['access'] }))
+                }
+                className="h-8 rounded-md border border-line-strong bg-surface px-2 text-ink"
+                data-testid="filter-access"
+              >
+                <option value="any">Any</option>
+                <option value="open">Open access</option>
+                <option value="closed">Not open</option>
+              </select>
+            </span>
+            <span className="flex items-center gap-1">
+              <label htmlFor="filter-kind">Kind</label>
+              <select
+                id="filter-kind"
+                value={more.kind}
+                onChange={(e) => setMore((m) => ({ ...m, kind: e.target.value as LibraryKind }))}
+                className="h-8 rounded-md border border-line-strong bg-surface px-2 text-ink"
+                data-testid="filter-kind"
+              >
+                <option value="any">Any</option>
+                <option value="article">Journal articles</option>
+                <option value="book">Books</option>
+                <option value="chapter">Book chapters</option>
+                <option value="conference">Conference papers</option>
+                <option value="preprint">Preprints</option>
+                <option value="other">Other</option>
+              </select>
+            </span>
+            {anyFilterOn(more) ? (
+              <button
+                type="button"
+                className="underline"
+                onClick={() => {
+                  setMore(NO_FILTERS);
+                  setYearText({ from: '', to: '' });
+                }}
+                data-testid="filter-clear"
+              >
+                Clear ({visible.length} shown)
+              </button>
+            ) : null}
+          </div>
+
           <DuplicatesPanel
             pairs={duplicates}
             onMerged={(message) => {
@@ -642,11 +746,22 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
                     setNotice('Details saved. Every citation of this paper now follows them.');
                     void load();
                   }}
+                  onDetails={setDrawerId}
                 />
               ))}
             </ul>
           )}
         </>
+      ) : null}
+      {drawerId ? (
+        <LibraryDrawer
+          documentId={documentId}
+          ids={visibleIds}
+          sourceId={drawerId}
+          onStep={setDrawerId}
+          onClose={() => setDrawerId(null)}
+          onEdited={() => void load()}
+        />
       ) : null}
     </main>
   );
@@ -783,6 +898,7 @@ function SourceRow({
   onAttach,
   onFetchPdf,
   onEdited,
+  onDetails,
 }: {
   documentId: string;
   source: Source;
@@ -799,6 +915,8 @@ function SourceRow({
   onFetchPdf?: ((id: string) => void) | undefined;
   /** R15: the paper's details were corrected; the list reads them again. */
   onEdited?: (() => void) | undefined;
+  /** R17: opens the details drawer on this paper. */
+  onDetails?: ((id: string) => void) | undefined;
 }) {
   const [fixing, setFixing] = useState(false);
   const [attaching, setAttaching] = useState(false);
@@ -925,6 +1043,16 @@ function SourceRow({
         {source.hasFile ? (
           <button type="button" className="underline" onClick={() => onOpen(source.id)}>
             PDF file ↗
+          </button>
+        ) : null}
+        {onDetails ? (
+          <button
+            type="button"
+            className="font-semibold text-accent underline"
+            onClick={() => onDetails(source.id)}
+            data-testid="library-details"
+          >
+            Details
           </button>
         ) : null}
         {source.status !== 'PENDING' ? (

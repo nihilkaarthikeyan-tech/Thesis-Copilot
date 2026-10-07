@@ -252,10 +252,13 @@ export function ChatPanel({
   // R13 (ADR-0100): the reader's box arrives as a picture on the next question, with questions
   // about the paper to choose from.
   const [offered, setOffered] = useState<string[]>([]);
+  // R17: the library's Ask AI sends questions about one paper, with no picture.
   useEffect(() => {
-    if (!prefill?.attachment) return;
+    if (!prefill?.attachment && !prefill?.questions?.length) return;
     const picture = prefill.attachment;
-    setAttachments((list) => [...list.filter((a) => a.id !== picture.id), picture].slice(-3));
+    if (picture) {
+      setAttachments((list) => [...list.filter((a) => a.id !== picture.id), picture].slice(-3));
+    }
     setOffered(prefill.questions ?? []);
     requestAnimationFrame(() => boxRef.current?.focus());
   }, [prefill]);
