@@ -14,6 +14,7 @@ import { TEMPLATE_SPECS } from '@tc/config';
 import type { OutlineNode } from '@tc/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  chapterBody,
   type GenerateOutlineDeps,
   isBlankChapter,
   runGenerateOutline,
@@ -493,6 +494,48 @@ describe('ADR-0087: chapter bodies', () => {
           { id: 's2', title: ' Aims ', scopeNote: '', children: [] },
         ],
       }),
-    ).toEqual(['Background', 'Aims']);
+    ).toEqual([
+      { title: 'Background', subsections: [] },
+      { title: 'Aims', subsections: [] },
+    ]);
+  });
+
+  it('R5b: sub-sections are level-3 headings under their section, each with a line', () => {
+    const sections = sectionTitles({
+      id: 'ch-2',
+      title: 'Literature review',
+      scopeNote: '',
+      children: [
+        {
+          id: 's1',
+          title: 'Adoption models',
+          scopeNote: '',
+          children: [
+            { id: 's1a', title: 'TAM and UTAUT', scopeNote: '', children: [] },
+            { id: 's1b', title: ' ', scopeNote: '', children: [] },
+          ],
+        },
+        { id: 's2', title: 'Gaps', scopeNote: '', children: [] },
+      ],
+    });
+    expect(sections).toEqual([
+      { title: 'Adoption models', subsections: ['TAM and UTAUT'] },
+      { title: 'Gaps', subsections: [] },
+    ]);
+    const shape = chapterBody('Literature review', sections).content.map((b) =>
+      b.type === 'heading'
+        ? `h${b.attrs?.level}:${(b.content?.[0] as { text: string } | undefined)?.text}`
+        : 'p',
+    );
+    expect(shape).toEqual([
+      'h1:Literature review',
+      'h2:Adoption models',
+      'p',
+      'h3:TAM and UTAUT',
+      'p',
+      'h2:Gaps',
+      'p',
+    ]);
+    expect(chapterBody('Chapter 1').content.map((b) => b.type)).toEqual(['heading', 'paragraph']);
   });
 });

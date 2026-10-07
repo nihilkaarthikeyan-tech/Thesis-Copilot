@@ -23,8 +23,9 @@ import {
 } from '@nestjs/common';
 import { TEMPLATE_SPECS } from '@tc/config';
 import type { Prisma } from '@tc/db';
-import { sourcePrefsSchema } from '@tc/types';
+import { type SourcePrefs, sourcePrefsSchema } from '@tc/types';
 import { z } from 'zod';
+import { setMetaKey } from '../../common/document-meta.js';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { AutoSourcesService, type SourcesProgress } from '../assist/auto-sources.service.js';
@@ -297,6 +298,32 @@ export class DocumentsController {
     });
     if (updated.count === 0) throw new NotFoundError('That document');
     return { language: parsed.data.language };
+  }
+
+  /**
+   * Jenni build plan R6: the source settings, changed from inside the editor — the same choices as
+   * at the start (ADR-0087). Jenni's "select sources" is our pins (ADR-0085), per chapter and
+   * section. Only `meta.sourcePrefs` is written (`setMetaKey`), so nothing else kept on `meta` is
+   * lost. Free.
+   */
+  @Put(':id/source-prefs')
+  async setSourcePrefs(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<{ sourcePrefs: SourcePrefs }> {
+    const parsed = sourcePrefsSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError('Check the source settings', parsed.error.issues);
+    }
+    const owned = await this.prisma.document.findFirst({
+      where: { id, ownerId: user.id },
+      select: { id: true },
+    });
+    if (!owned) throw new NotFoundError('That document');
+    const sourcePrefs: SourcePrefs = parsed.data;
+    await setMetaKey(this.prisma, id, 'sourcePrefs', sourcePrefs);
+    return { sourcePrefs };
   }
 
   /** PRD §9.1: document + memory + chapters (meta). */

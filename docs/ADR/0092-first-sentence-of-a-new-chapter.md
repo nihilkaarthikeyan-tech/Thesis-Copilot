@@ -46,3 +46,21 @@ Start (the outline job takes ~25 s; the sentence waits for it).
 opening-sentence.spec.ts`: no focus → no request; focus → one request; focus again → none.
 Browser, real models: the tea-plantation thesis's first section offered its opening sentence 1 s
 after the editor had focus (shown at 4 s).
+
+## Addendum (same day) — R5b, sub-headings
+
+The outline prompt (A.9) already allows children of a section, but in fifteen stored outlines the
+model never wrote any. Two candidates asking for them were evaluated side by side on the real
+models (`packages/ai/eval/candidates/outline-h3*.md`, results beside them):
+
+- `outline-h3` ("where a section covers two or three distinct parts"): sub-sections in 2 of 5
+  outlines; current 2, candidate 0, ties 3; mean 8.8 vs 8.2; ₹6.69.
+- `outline-h3b` ("every section of the literature review and methodology"): sub-sections in all 5
+  (8–17 each); current 2, candidate 0, ties 3; mean 8.8 vs 8.3; ₹6.31. The judge preferred the
+  current outlines' fuller chapter notes, which the sub-sections displaced.
+
+Neither won, so A.9 is unchanged. The chapter layout (`chapterBody`, worker) now writes any
+sub-section an outline does have as a level-3 heading with its own line under its section, so a
+later prompt that wins, or a student's own sub-sections, need no further code. The ≤ 20 s first
+sentence stays open: the outline call's median was 21–24 s in these rounds.
+

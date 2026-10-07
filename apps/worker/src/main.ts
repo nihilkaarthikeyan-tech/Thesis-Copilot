@@ -81,7 +81,7 @@ import { runDraftSection } from './jobs/draft-section.js';
 import { runExaminerReview } from './jobs/examiner-review.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
 import { runFindSources, startFindSources, waitForNewSources } from './jobs/find-sources.js';
-import { runGenerateOutline } from './jobs/generate-outline.js';
+import { chapterBody, runGenerateOutline } from './jobs/generate-outline.js';
 import { runIndexSource } from './jobs/index-source.js';
 import {
   isRetryExhausted,
@@ -541,27 +541,7 @@ async function main(): Promise<void> {
               prisma,
               llm: providers.llm,
               aiProvider: env.AI_PROVIDER,
-              emptyChapter: (title, sections = []) => ({
-                type: 'doc',
-                content: [
-                  {
-                    type: 'heading',
-                    attrs: { level: 1 },
-                    content: [{ type: 'text', text: title }],
-                  },
-                  // ADR-0087: the plan's sections as headings, each with a line to write on.
-                  ...(sections.length > 0
-                    ? sections.flatMap((section) => [
-                        {
-                          type: 'heading',
-                          attrs: { level: 2 },
-                          content: [{ type: 'text', text: section }],
-                        },
-                        { type: 'paragraph' },
-                      ])
-                    : [{ type: 'paragraph' }]),
-                ],
-              }),
+              emptyChapter: chapterBody,
               log: (event) => log({ jobId: job.id, ...event }),
             },
           );

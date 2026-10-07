@@ -5535,3 +5535,13 @@ in one statement (API and worker); the opener also asks on focus and on the tab 
 Skip now says why a title plan is refused (the trial's 2 a month) instead of leaving a blank
 chapter. Real run: opening sentence requested 1 s after focus, shown at 4 s.
 
+R5b, sub-headings (ADR-0092 addendum): two outline candidates asking for sub-sections, evaluated on
+the real models — both lost 0–2 with 3 ties (₹6.69 + ₹6.31); the judge preferred the current
+outlines' fuller chapter notes. A.9 unchanged; the worker's `chapterBody` lays out any sub-section
+as an H3 under its section. First sentence ≤ 20 s still open (the outline call alone is 21–24 s).
+
+R6 (ADR-0093): source settings on the editor's Sources tab, `PUT /documents/:id/source-prefs`
+(one `meta` key). One fields component for the start and the editor. Fault found in the browser:
+three quick changes saved only the last (each built from a stale value) — now applied to the
+latest. A thesis-wide "select sources" was built and removed: the pins already are that.
+

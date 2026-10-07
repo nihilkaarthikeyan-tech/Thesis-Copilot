@@ -130,6 +130,7 @@ import { ShareButton } from './ShareButton';
 import { SlashMenu } from './SlashMenu';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
 import { SourceQualityPanel } from './SourceQualityPanel';
+import { SourceSettings } from './SourceSettings';
 import { SuggestionBar } from './SuggestionBar';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 import { WordImport } from './WordImport';
@@ -150,6 +151,8 @@ type DocumentDetail = {
   /** ADR-0028: a co-author has been invited and live editing is on. */
   liveEditing?: boolean;
   ownerEmail?: string;
+  /** R6: read for the source settings (`meta.sourcePrefs`). */
+  meta?: unknown;
 };
 type ChapterView = {
   id: string;
@@ -1653,7 +1656,10 @@ function ChapterEditor({
           </div>
           <div className="p-3 text-[13px] text-muted">
             {tab === 'sources' ? (
-              <SourcePins documentId={doc.id} chapterId={chapter.id} section={cursorSection} />
+              <>
+                <SourceSettings documentId={doc.id} meta={doc.meta} />
+                <SourcePins documentId={doc.id} chapterId={chapter.id} section={cursorSection} />
+              </>
             ) : tab === 'papers' ? (
               <FindPapersPanel
                 documentId={doc.id}

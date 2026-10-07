@@ -52,7 +52,7 @@ export type GenerateOutlineDeps = {
    * chapter with an empty line under it, as Jenni lays out its headings, so the editor's opener
    * (ADR-0078) offers a first sentence under the first one.
    */
-  emptyChapter: (title: string, sections?: readonly string[]) => unknown;
+  emptyChapter: (title: string, sections?: readonly PlannedSection[]) => unknown;
   log?: (event: Record<string, unknown>) => void;
 };
 
@@ -182,9 +182,48 @@ export async function runGenerateOutline(
  * FR-3.4: "the tree UI and the prompt builder read the same record". `Chapter` rows follow the
  * top-level nodes, keyed by `outlineNodeId`, and are never deleted by a re-run.
  */
+/** A planned section and, under it, its sub-sections (R5b): the H2 and H3 of a new chapter. */
+export type PlannedSection = { title: string; subsections: string[] };
+
 /** ADR-0087: a chapter's planned sections, as headings for its body. */
-export function sectionTitles(node: OutlineNode): string[] {
-  return node.children.map((c) => c.title.trim()).filter((t) => t.length > 0);
+export function sectionTitles(node: OutlineNode): PlannedSection[] {
+  const titles = (nodes: readonly OutlineNode[]) =>
+    nodes.map((c) => c.title.trim()).filter((t) => t.length > 0);
+  return node.children
+    .filter((c) => c.title.trim().length > 0)
+    .map((c) => ({ title: c.title.trim(), subsections: titles(c.children) }));
+}
+
+type PmBlock = { type: string; attrs?: Record<string, unknown>; content?: unknown[] };
+
+function headingBlock(level: number, text: string): PmBlock {
+  return { type: 'heading', attrs: { level }, content: [{ type: 'text', text }] };
+}
+
+/**
+ * A new chapter's body. ADR-0087: the plan's sections as headings, each with a line to write on,
+ * so the editor's opener (ADR-0078) offers a first sentence under the first one. R5b: a section
+ * with sub-sections has its own line first, then each sub-section as a level-3 heading with a
+ * line of its own, as Jenni lays out a chapter.
+ */
+export function chapterBody(
+  title: string,
+  sections: readonly PlannedSection[] = [],
+): { type: 'doc'; content: PmBlock[] } {
+  const paragraph: PmBlock = { type: 'paragraph' };
+  return {
+    type: 'doc',
+    content: [
+      headingBlock(1, title),
+      ...(sections.length > 0
+        ? sections.flatMap((section) => [
+            headingBlock(2, section.title),
+            paragraph,
+            ...section.subsections.flatMap((sub) => [headingBlock(3, sub), paragraph]),
+          ])
+        : [paragraph]),
+    ],
+  };
 }
 
 /** Whether a chapter body holds no writing: headings and empty paragraphs only. */
