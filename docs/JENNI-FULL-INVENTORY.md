@@ -27,7 +27,7 @@ a pass before the build list is final.
 **Run to the result, not just opened**
 - [~] Reviews: Claim confidence, Peer Review, Source Quality, Tone of Voice — the output of each,
       its settings dialog, how fixes are applied, and how long each takes.
-- [~] Workflows: Literature review run end to end (15–20 min) and its output document; the gap
+- [x] Workflows: Literature review run end to end (15–20 min) and its output document; the gap
       analysis run from a fresh prompt (only an existing output was read).
 - [x] Section prompt **Generate** and **Configure context** on a section.
 - [x] Refine suggestion presets, each one: Stay on topic, Complete this paragraph, Increase
@@ -56,7 +56,7 @@ a pass before the build list is final.
 
 **Not opened at all**
 - [x] The notifications bell (it shows a red 1).
-- [ ] Jenni's own Chrome extension.
+- [x] Jenni's own Chrome extension.
 - [ ] Jenni on a phone-sized window.
 - [x] Help: live chat, the help documentation site, Discord; the tutorial videos' content.
 - [x] Appearance themes and interface language switched (settings were read, not changed).
@@ -68,9 +68,9 @@ block, collections, PDF upload from disk, editing a paper, duplicate/archive/res
 sort, decade filter and Save, themes, all 16 languages (Hindi in full), help centre and live chat,
 Word and LaTeX export options, three more AI Edit presets and two Refine presets, comments,
 citation editing and narrative form, "@", the rest of the block menu, tables, and the upgrade path
-to the Stripe page. **Still open**:
-Jenni signed in on a phone, Jenni's Chrome extension (owner installs it), Tone of Voice and
-Proofread results, the gap-analysis run, co-editing (owner said leave it).
+to the Stripe page. Then (13.11) the extension on four sites and the gap-analysis run. **Still open**: Jenni signed in
+on a phone (window maximised), Tone of Voice and Proofread results (reviews used up), co-editing
+(owner said leave it), error and offline states.
 
 **What blocks a full pass:** the free account has about 6 autocompletes, 2 AI edits, 1 chat,
 1 review and 2 workflows left — not enough to run each item above to its result. Options for the
@@ -386,6 +386,24 @@ the template and checks on a separate page.
 
 Not possible from here: **Jenni signed in on a phone** (the owner's Chrome window is maximised, so it cannot be resized; the in-app browser is not signed in to Jenni), **installing the extension** (Web Store pages are closed to the agent), **Tone of Voice and Proofread results** and the **gap analysis** (reviews used up; workflows 2 left but each takes a run).
 
+### 13.11 Jenni's Chrome extension and the gap-analysis run (2026-10-07, owner installed the extension)
+
+**Jenni Web Importer** (installed by the owner from the Web Store, signed in as the new account):
+
+| Page | What happened |
+|---|---|
+| How it shows | No toolbar step needed: it **puts "Add to Jenni" buttons into the page** — beside the DOI and in the article sidebar (MDPI), under the author and beside each DOI with an ⓘ (arXiv), beside the DOI and under Full text links (PubMed), and **on every result** of a Google Scholar results page (beside the title and under the PDF link) |
+| Pressing it | The button becomes "Detecting…", then "✓ Metadata found" (~7 s), and a panel opens at the top right inside the page: Jenni Web Importer, refresh, settings, collapse, close; the item (title, Cited by, impact factor, Open Access, type, authors, publisher, date, journal, volume, issue, pages, **File: PDF found**); "Something wrong? Report an issue"; a collection picker (My Library and the account's collections, search or create); **Save**; the signed-in account and **Open Jenni** |
+| MDPI article | **Wrong item**: it detected the journal *issue* ("Int. J. Environ. Res. Public Health, Volume 14, Issue 12 (December 2017) – 172 articles", type Document) instead of the article. Not saved |
+| arXiv abstract | Right: title, Cited by 19, Open Access, author, arXiv, 2023, pages, PDF found. **Save failed** with no reason ("Save failed"; the page button said "Failed to add!"). After the panel's refresh the details improved (published venue: CHI Extended Abstracts, impact factor 3.00); Save again → "Importing…" / "**Processing PDF…**" for over a minute, and **the paper never reached the library** (checked four minutes later) |
+| PubMed article | Right: three authors, Current Sports Medicine Reports, volume 20, issue 7, pages 338–344, publisher, 2021, Cited by 54, impact factor; no PDF row (no free copy). Not saved |
+| Google Scholar | A button per result. The "✦ Quick read" links on the same page are Google Scholar's own AI feature, not Jenni's |
+| Escape | Closes the whole panel |
+
+Ours (add-on 0.2.1, ADR-0069): a toolbar popup that reads the page and saves to a chosen thesis; tested on 18 sites (memory notes). Jenni's in-page buttons on every Scholar result and the item card with Cited by / impact factor / PDF found are the differences; its MDPI misdetection and silent save failures are the faults not to copy.
+
+**Research gap analysis, run** (topic as 13.4; web and library on; no filters): "Start gap analysis · 3–6 min" → a running page with three stages (**Searching · Extracting claims · Mapping the gaps**), "Safe to close this tab — you will receive an email". **Took about 4 minutes**; the bell: "56 sources cited". The document (4,150 words): a title; "This retrieval returned **77 works and 14 claims: 1 under-explored, 1 contested, and 12 well-supported**"; **Table 1** with 14 rows — Claim · Status · Evidence ("Supporting: (Jacobs et al., 2019); (Meade et al., 2025). No contesting markers.") · Direction (a concrete next study); then sections **Under-explored, Contested, Well-supported, Directions, Limits of this retrieval**. Ours: the claims map on the Discover tab (ADR-0086) is a panel, not an editable document.
+
 ### 13.7 Faults seen in Jenni (things not to copy)
 
 1. A citation inserted after the full stop: ".(Shastri et al., 2017)".
@@ -402,6 +420,8 @@ Not possible from here: **Jenni signed in on a phone** (the owner's Chrome windo
 9. "Cite from my library" fails silently; Shift+→ does not do what the shortcut list says.
 10. Duplicate gives the copy the same title; an uploaded PDF keeps line-break hyphens, loses the
     author's initials and its abstract.
+11. The extension detected an MDPI journal issue instead of the article, failed a save with no
+    reason, and a retried save hung on "Processing PDF…" and never arrived.
 
 ## 14. What to build next, in order (owner to confirm)
 
