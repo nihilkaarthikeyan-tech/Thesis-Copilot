@@ -201,6 +201,52 @@ describe('Jenni build plan R1: a half-written sentence is finished after a longe
   });
 });
 
+describe('Jenni build plan R2: Accept asks for the next suggestion at once', () => {
+  const shown = async (autoSuggest: boolean) => {
+    vi.useFakeTimers();
+    const fake = fakeRequest({
+      events: [
+        { type: 'start', suggestionId: 'sug-1' },
+        { type: 'token', t: 'Uptake is low.' },
+        { type: 'done', citations: [], text: 'Uptake is low.' },
+      ],
+    });
+    const editor = createTestEditor(
+      {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Intro. ' }] }],
+      },
+      // A long pause timer, so only the chain can ask within the test's 100 ms.
+      { request: fake.request, autoSuggest, autoSuggestIdleMs: 60_000 },
+    );
+    editor.commands.focus();
+    vi.spyOn(editor.view, 'hasFocus').mockReturnValue(true);
+    editor.commands.setTextSelection(8);
+    editor.commands.requestSuggestion();
+    await vi.advanceTimersByTimeAsync(10);
+    return { editor, fake };
+  };
+
+  it('after a whole suggestion is accepted', async () => {
+    const { editor, fake } = await shown(true);
+    expect(fake.calls).toHaveLength(1);
+    expect(editor.commands.acceptSuggestion()).toBe(true);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(fake.calls).toHaveLength(2);
+  });
+
+  it('not after "One word", and not when automatic suggestions are off', async () => {
+    const word = await shown(true);
+    word.editor.commands.acceptSuggestionWord();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(word.fake.calls).toHaveLength(1);
+    const off = await shown(false);
+    off.editor.commands.acceptSuggestion();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(off.fake.calls).toHaveLength(1);
+  });
+});
+
 describe('midSentencePoint', () => {
   it('keys the sentence being written and counts its words', () => {
     const editor = createTestEditor('<p>One two. Three four five six</p>');

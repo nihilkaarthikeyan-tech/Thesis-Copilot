@@ -420,6 +420,36 @@ export function atSentenceBoundary(state: EditorState): boolean {
   return /[.!?…]["”’')\]]*\s*$/.test(before);
 }
 
+/** Jenni build plan R2: the wait after Accept before the next suggestion is asked for. */
+export const ACCEPT_CHAIN_MS = 60;
+
+/**
+ * Jenni build plan R2: after a whole suggestion is accepted, ask for the next one at once when
+ * automatic suggestions are on — Jenni's next sentence arrives within ~3 s of Accept. Before, the
+ * 800 ms pause timer did this only by chance. The usual conditions hold when it fires: nothing
+ * open or in flight, the cursor at a sentence end in focus. "One word" does not chain.
+ */
+function chainAfterAccept(editor: Editor): void {
+  const storage = (editor.storage as unknown as Record<string, { autoSuggest?: boolean | null }>)
+    .ghostText;
+  const on =
+    storage?.autoSuggest ??
+    (
+      editor.extensionManager.extensions.find((e) => e.name === 'ghostText')?.options as
+        | GhostTextOptions
+        | undefined
+    )?.autoSuggest;
+  if (!on) return;
+  setTimeout(() => {
+    if (editor.isDestroyed) return;
+    const ghost = ghostTextKey.getState(editor.state);
+    if (ghost && ghost.status !== 'idle') return;
+    if (!editor.state.selection.empty || !editor.view.hasFocus()) return;
+    if (!atSentenceBoundary(editor.state)) return;
+    editor.commands.requestSuggestion();
+  }, ACCEPT_CHAIN_MS);
+}
+
 /** ADR-0088 (Jenni build plan R1): words a sentence needs before a mid-sentence request. */
 export const MID_SENTENCE_MIN_WORDS = 4;
 /** R1: words to type after a mid-sentence suggestion before the same sentence is offered again. */
@@ -896,6 +926,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
             shownChars: ghost.shownChars,
           });
           scheduleFadeEnd(editor);
+          chainAfterAccept(editor);
           return true;
         },
 

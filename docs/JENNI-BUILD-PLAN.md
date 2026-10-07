@@ -93,6 +93,12 @@ Items that change cost or need a decision only the owner can take are listed at 
   topics are read instead.
 - A new thesis's only chapter becomes the outline's first instead of a detached copy.
 
+## Found while building
+
+| # | Item | Source | Code today | Build | Done when |
+|---|---|---|---|---|---|
+| R40 | **Citations side by side read "(Gadekar et al., 2026)(Raja et al., 2026)"** — no space, not merged | Seen in the R1 browser run, 2026-10-07 | Two citation nodes render as two brackets | Adjacent citations render as one: "(Gadekar et al., 2026; Raja et al., 2026)" in the editor and every export (numeric styles: "[3, 7]") | The R1 paragraph reads as one bracket, in the page and in .docx |
+
 ## Owner decisions (not built until answered)
 
 - Count only **kept** suggestions against the allowance (Jenni does); today every shown suggestion
@@ -265,4 +271,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | Item | State | Commit / ADR |
 |---|---|---|
 | R1 | Done 2026-10-07 — browser-checked with real models | ADR-0088 |
-| R2–R39 | in order, one at a time (owner: "start to build them one by one") | — |
+| R2 | Done 2026-10-07 — Accept asks for the next suggestion after 60 ms (was the 800 ms pause timer); browser: next request 0.12 s after Accept | ADR-0088 (R2 note) |
+| R3–R40 | in order, one at a time (owner: "start to build them one by one") | — |

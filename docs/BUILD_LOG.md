@@ -5505,3 +5505,8 @@ finished the sentence in lower case and added one, citing two different papers. 
 to check under R5: the opening sentence under the first heading did not come for this new thesis
 (Assist stayed 0/50 until typing).
 
+R2 (same day): Accept now asks for the next suggestion after 60 ms; in the browser the request
+started 0.12 s after Accept (that provider call then took 9.8 s to its first token, against
+1.6–2.9 s for the others — provider variance). Found on the way: side-by-side citations render as
+"(Gadekar et al., 2026)(Raja et al., 2026)" → plan item R40.
+

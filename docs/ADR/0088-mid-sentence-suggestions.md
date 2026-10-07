@@ -51,3 +51,12 @@ Unit tests (`packages/ui/test/opening-sentence.spec.ts`): the longer pause, betw
 four words, no trigger inside a word / after a citation / with text after the cursor, once per
 sentence and again after six words, off when automatic suggestions are off. Browser check on the
 local real stack: see `docs/BUILD_LOG.md`.
+
+## Addendum — R2, Accept chains straight on (same day)
+
+After a whole suggestion is accepted, the next one is asked for after 60 ms (`chainAfterAccept`,
+`ACCEPT_CHAIN_MS`) instead of waiting for the 800 ms pause timer — only when automatic suggestions
+are on, the cursor is at a sentence end and nothing is open or in flight; "One word" does not
+chain. No new cost: the 800 ms timer asked for the same suggestion a moment later. Browser: the
+next request started 0.12 s after Accept.
+
