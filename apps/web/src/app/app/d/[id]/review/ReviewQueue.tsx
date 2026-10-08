@@ -14,6 +14,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CommentThread, type ThreadReply } from '@/components/feedback/CommentThread';
 import { ApiError, api } from '@/lib/api';
 import { diffKeys, diffWords } from '@/lib/diff';
 
@@ -31,6 +32,10 @@ type Comment = {
   createdAt: string;
   anchor: { from: number; to: number } | null;
   currentText: string | null;
+  /** R22 (ADR-0109): the thread under it. */
+  replies: ThreadReply[];
+  thumbs: number;
+  thumbedByMe: boolean;
 };
 
 type Share = {
@@ -461,6 +466,14 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
                     </p>
                   </div>
                 ) : null}
+
+                <CommentThread
+                  documentId={documentId}
+                  comment={comment}
+                  onChange={(next) =>
+                    setComments((list) => (list ?? []).map((c) => (c.id === next.id ? next : c)))
+                  }
+                />
 
                 {rejecting === comment.id ? (
                   <div className="mt-3">

@@ -296,6 +296,13 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       A.11 commands, "What changed and why", the follow-up box) — English for now, as the other
       screens added this week.
 
+## Round 2 of the Jenni build — the next release (2026-10-08)
+
+- [ ] **Release when you say so.** Two migrations apply on deploy: `0041_full_text_note` (R14,
+      ADR-0101) and `0042_comment_replies` (R22, ADR-0109). Nothing to configure for either.
+- [ ] **Optional: an email when someone replies to a comment** (ADR-0109, "Not done"). New comments
+      do not email today either; decide both together if you want them.
+
 ## Attachments in chat (ADR-0083, 2026-10-05)
 
 - [ ] **A sweep of `chat-attachments/` in object storage.** Pictures attached to chat questions

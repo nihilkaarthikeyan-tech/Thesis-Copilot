@@ -641,7 +641,23 @@ model Comment {
   resolutionNote String?
   resolvedAt    DateTime?
   createdAt     DateTime @default(now())
+  /// R22 (ADR-0109): who gave it a thumbs-up, by email.
+  thumbs        String[] @default([])
+  replies       CommentReply[]
   @@index([documentId, status])
+}
+
+/// R22 (ADR-0109): an answer in a comment's thread — the student's or the guide's.
+model CommentReply {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  commentId   String   @db.Uuid
+  comment     Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  authorEmail String
+  body        String
+  thumbs      String[] @default([])
+  createdAt   DateTime @default(now())
+  editedAt    DateTime?
+  @@index([commentId, createdAt])
 }
 
 model CoherenceFlag {

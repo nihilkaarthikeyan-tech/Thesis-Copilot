@@ -31,6 +31,7 @@ import { findPassage, type ReviewAnchor } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CommentThread, type ThreadReply } from '@/components/feedback/CommentThread';
 import { ApiError, api } from '@/lib/api';
 import { changedRatio, diffKeys, diffWords, isUnchanged, REWRITE } from '@/lib/diff';
 
@@ -47,6 +48,10 @@ export type ReviewComment = {
   createdAt: string;
   anchor: { from: number; to: number } | null;
   currentText: string | null;
+  /** R22 (ADR-0109): the thread under it. */
+  replies: ThreadReply[];
+  thumbs: number;
+  thumbedByMe: boolean;
 };
 
 const CLASS_LABEL: Record<string, string> = {
@@ -135,6 +140,11 @@ export function ReviewPanel({
       if (editor && !editor.isDestroyed) editor.commands.setReviewAnchors([], null);
     };
   }, [editor]);
+
+  /** A reply or a thumbs-up came back: the comment as it now stands. */
+  const replace = useCallback((next: ReviewComment) => {
+    setComments((list) => (list ?? []).map((c) => (c.id === next.id ? next : c)));
+  }, []);
 
   const act = useCallback(
     async (comment: ReviewComment, action: 'accept' | 'suggest' | 'edited') => {
@@ -284,6 +294,8 @@ export function ReviewPanel({
                 )}
               </div>
             ) : null}
+
+            <CommentThread documentId={documentId} comment={comment} onChange={replace} compact />
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
               {comment.suggestedRevision ? (

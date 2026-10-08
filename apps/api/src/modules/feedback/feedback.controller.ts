@@ -13,6 +13,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -66,6 +67,8 @@ const commentListQuery = z.object({
   status: z.enum(['OPEN', 'ALL']).optional(),
   chapterId: z.string().uuid().optional(),
 });
+
+const replyBody = z.object({ body: z.string().trim().min(1).max(4_000) });
 
 @Controller('documents/:id/feedback')
 @UseGuards(SessionGuard)
@@ -148,6 +151,66 @@ export class FeedbackController {
     const parsed = commentListQuery.safeParse(query ?? {});
     if (!parsed.success) throw new ValidationError('Invalid comment filter', parsed.error.issues);
     return this.comments.list(user, documentId, parsed.data);
+  }
+
+  /** R22 (ADR-0109): an answer in a comment's thread, from the student or the guide. */
+  @Post('comments/:commentId/replies')
+  @HttpCode(200)
+  reply(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('commentId') commentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = replyBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Write a reply first', parsed.error.issues);
+    return this.comments.reply(user, documentId, commentId, parsed.data.body);
+  }
+
+  @Patch('comments/:commentId/replies/:replyId')
+  editReply(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('commentId') commentId: string,
+    @Param('replyId') replyId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = replyBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Write a reply first', parsed.error.issues);
+    return this.comments.editReply(user, documentId, commentId, replyId, parsed.data.body);
+  }
+
+  @Delete('comments/:commentId/replies/:replyId')
+  deleteReply(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('commentId') commentId: string,
+    @Param('replyId') replyId: string,
+  ) {
+    return this.comments.deleteReply(user, documentId, commentId, replyId);
+  }
+
+  /** R22: a thumbs-up on a comment, given or taken back. */
+  @Post('comments/:commentId/thumb')
+  @HttpCode(200)
+  thumb(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('commentId') commentId: string,
+  ) {
+    return this.comments.thumb(user, documentId, commentId);
+  }
+
+  /** R22: a thumbs-up on a reply. */
+  @Post('comments/:commentId/replies/:replyId/thumb')
+  @HttpCode(200)
+  thumbReply(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('commentId') commentId: string,
+    @Param('replyId') replyId: string,
+  ) {
+    return this.comments.thumb(user, documentId, commentId, replyId);
   }
 
   @Get('comments/counts')

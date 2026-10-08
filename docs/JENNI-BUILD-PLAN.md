@@ -293,4 +293,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R19 | Done 2026-10-07 — "Sources in this thesis (N)" on the Citations tab: every cited paper, how often and where, Read, and Keep in my library (one or all) for papers found for the student | ADR-0106 |
 | R20 | Done 2026-10-07 — an uploaded PDF names itself from its first page (printed DOI → its record; else title, byline with initials, year, abstract; broken words joined); no more "still looking up" for ever | ADR-0107 |
 | R21 | Done 2026-10-07 — Read beside opens at the cited passage, marked | ADR-0108 |
-| R22–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R22 | Done 2026-10-08 — replies under a comment (student and guide), edit and delete your own, thumbs-up on the comment and each reply; in the review panel, the queue and the guide's page | ADR-0109 |
+| R23–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

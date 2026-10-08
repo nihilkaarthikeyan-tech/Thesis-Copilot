@@ -5625,3 +5625,10 @@ three of Jenni's failures pass. Old uploads need the PENDING re-index.
 R21 (ADR-0108): Read beside marks the cited passage. Found: marking inside the view's ready callback
 used a controller from before the PDF loaded; now done from an effect after ready.
 
+R22 (ADR-0109): replies under a comment, from the student and the guide; each edits or deletes only
+their own (403 otherwise); a thumbs-up on the comment and on each reply. One `CommentThread` in the
+review panel, the queue and the guide's page. Migration 0042. Found while testing: the spec read
+the share token from the response, which has none, so the guide's accept went to
+`/guide/accept/undefined` and the test passed without it; it now reads the row, as guide-cycle does.
+Proven as both people on the real stack.
+

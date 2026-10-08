@@ -54,7 +54,27 @@ export type CommentView = {
   anchor: { from: number; to: number } | null;
   /** The quoted text as the chapter reads now (D.2.4: "quoted text as it currently reads (live)"). */
   currentText: string | null;
+  /** R22 (ADR-0109): the thread under it, oldest first. */
+  replies: ReplyView[];
+  /** R22: how many gave it a thumbs-up, and whether the reader did. */
+  thumbs: number;
+  thumbedByMe: boolean;
 };
+
+export type ReplyView = {
+  id: string;
+  authorEmail: string;
+  body: string;
+  createdAt: string;
+  editedAt: string | null;
+  thumbs: number;
+  thumbedByMe: boolean;
+  /** The reader wrote it, so may change or take it back. */
+  mine: boolean;
+};
+
+/** The longest reply a thread takes, as a comment. */
+export const REPLY_MAX_CHARS = 4_000;
 
 /** D.2.4's ordering: chapter order, then class, then position. */
 const CLASS_ORDER: Record<string, number> = { SUBSTANTIVE: 0, CLARIFICATION: 1, MECHANICAL: 2 };
@@ -211,6 +231,7 @@ export class CommentsService {
     filter: CommentListFilter = {},
   ): Promise<CommentView[]> {
     await this.access(user, documentId);
+    const me = user.email.toLowerCase();
     // 2026-09-28: comments are never deleted, so "every comment ever" grew with each review round
     // and was re-anchored in full on every read. Each screen now asks for what it shows — the
     // open ones, or one chapter's — and a ceiling bounds the rest (newest kept).
@@ -224,6 +245,7 @@ export class CommentsService {
         where,
         orderBy: { createdAt: 'desc' },
         take: COMMENT_LIST_MAX,
+        include: { replies: { orderBy: { createdAt: 'asc' } } },
       }),
       this.prisma.chapter.findMany({
         where: { documentId, ...(filter.chapterId ? { id: filter.chapterId } : {}) },
@@ -268,6 +290,18 @@ export class CommentsService {
         createdAt: comment.createdAt.toISOString(),
         anchor: match ? { from: match.from, to: match.to } : null,
         currentText: currentText || comment.quotedText,
+        replies: comment.replies.map((r) => ({
+          id: r.id,
+          authorEmail: r.authorEmail,
+          body: r.body,
+          createdAt: r.createdAt.toISOString(),
+          editedAt: r.editedAt?.toISOString() ?? null,
+          thumbs: r.thumbs.length,
+          thumbedByMe: r.thumbs.includes(me),
+          mine: r.authorEmail === me,
+        })),
+        thumbs: comment.thumbs.length,
+        thumbedByMe: comment.thumbs.includes(me),
       };
     });
 
@@ -490,6 +524,126 @@ export class CommentsService {
     });
     const views = await this.list(user, documentId);
     return views.find((c) => c.id === commentId) as CommentView;
+  }
+
+  // ---- R22 (ADR-0109): the thread under a comment ----------------------------------------------
+
+  /** One comment of this thesis, its thread and thumbs as the reader sees them. */
+  private async one(
+    user: SessionUser,
+    documentId: string,
+    commentId: string,
+  ): Promise<CommentView> {
+    const views = await this.list(user, documentId);
+    const view = views.find((c) => c.id === commentId);
+    if (!view) throw new NotFoundError('That comment');
+    return view;
+  }
+
+  /** An answer from the student or the guide; free, no model. Never from a Reader (`access`). */
+  async reply(
+    user: SessionUser,
+    documentId: string,
+    commentId: string,
+    body: string,
+  ): Promise<CommentView> {
+    await this.access(user, documentId);
+    const comment = await this.prisma.comment.findFirst({
+      where: { id: commentId, documentId },
+      select: { id: true },
+    });
+    if (!comment) throw new NotFoundError('That comment');
+    const text = body.trim();
+    if (!text) throw new ValidationError('Write a reply first.');
+    await this.prisma.commentReply.create({
+      data: {
+        commentId,
+        authorEmail: user.email.toLowerCase(),
+        body: text.slice(0, REPLY_MAX_CHARS),
+      },
+    });
+    return this.one(user, documentId, commentId);
+  }
+
+  /** Only the reply's own author may change or take back what they wrote. */
+  private async ownReply(
+    user: SessionUser,
+    documentId: string,
+    commentId: string,
+    replyId: string,
+  ): Promise<void> {
+    await this.access(user, documentId);
+    const reply = await this.prisma.commentReply.findFirst({
+      where: { id: replyId, commentId, comment: { documentId } },
+      select: { authorEmail: true },
+    });
+    if (!reply) throw new NotFoundError('That reply');
+    if (reply.authorEmail !== user.email.toLowerCase()) {
+      throw new ForbiddenError('Only the person who wrote a reply can change it.');
+    }
+  }
+
+  async editReply(
+    user: SessionUser,
+    documentId: string,
+    commentId: string,
+    replyId: string,
+    body: string,
+  ): Promise<CommentView> {
+    await this.ownReply(user, documentId, commentId, replyId);
+    const text = body.trim();
+    if (!text) throw new ValidationError('A reply cannot be empty; delete it instead.');
+    await this.prisma.commentReply.update({
+      where: { id: replyId },
+      data: { body: text.slice(0, REPLY_MAX_CHARS), editedAt: new Date() },
+    });
+    return this.one(user, documentId, commentId);
+  }
+
+  async deleteReply(
+    user: SessionUser,
+    documentId: string,
+    commentId: string,
+    replyId: string,
+  ): Promise<CommentView> {
+    await this.ownReply(user, documentId, commentId, replyId);
+    await this.prisma.commentReply.delete({ where: { id: replyId } });
+    return this.one(user, documentId, commentId);
+  }
+
+  /** A thumbs-up on the comment or one of its replies, given or taken back. */
+  async thumb(
+    user: SessionUser,
+    documentId: string,
+    commentId: string,
+    replyId?: string,
+  ): Promise<CommentView> {
+    await this.access(user, documentId);
+    const me = user.email.toLowerCase();
+    const toggle = (list: string[]) =>
+      list.includes(me) ? list.filter((e) => e !== me) : [...list, me];
+    if (replyId) {
+      const reply = await this.prisma.commentReply.findFirst({
+        where: { id: replyId, commentId, comment: { documentId } },
+        select: { thumbs: true },
+      });
+      if (!reply) throw new NotFoundError('That reply');
+      await this.prisma.commentReply.update({
+        where: { id: replyId },
+        data: { thumbs: toggle(reply.thumbs) },
+      });
+    } else {
+      const comment = await this.prisma.comment.findFirst({
+        where: { id: commentId, documentId },
+        select: { thumbs: true },
+      });
+      if (!comment) throw new NotFoundError('That comment');
+      await this.prisma.comment.update({
+        where: { id: commentId },
+        data: { thumbs: toggle(comment.thumbs) },
+      });
+    }
+    return this.one(user, documentId, commentId);
   }
 
   private async log(

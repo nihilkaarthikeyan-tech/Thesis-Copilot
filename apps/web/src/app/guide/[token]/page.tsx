@@ -12,6 +12,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { CommentThread, type ThreadReply } from '@/components/feedback/CommentThread';
 import { ApiError, api } from '@/lib/api';
 import { GuideProgress } from './GuideProgress';
 
@@ -38,6 +39,10 @@ type Comment = {
   status: string;
   createdAt: string;
   currentText: string | null;
+  /** R22 (ADR-0109): the student's answers and the guide's, under the comment. */
+  replies: ThreadReply[];
+  thumbs: number;
+  thumbedByMe: boolean;
 };
 
 type Node = { type?: string; text?: string; content?: Node[] };
@@ -295,6 +300,13 @@ export default function GuidePage() {
                           ? 'awaiting the student'
                           : comment.status.toLowerCase()}
                       </p>
+                      <CommentThread
+                        documentId={document.documentId}
+                        comment={comment}
+                        onChange={(next) =>
+                          setComments((list) => list.map((c) => (c.id === next.id ? next : c)))
+                        }
+                      />
                     </li>
                   ))}
                 </ul>
