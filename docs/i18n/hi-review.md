@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**529** strings are translated; **2** are deliberately
+**537** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -416,6 +416,14 @@ English. Write corrections in the last column.
 | `suggest.preset.onTopic` | Stay closer to my topic | मेरे विषय के और करीब रहें | |
 | `suggest.preset.complete` | Complete this paragraph | यह अनुच्छेद पूरा करें | |
 | `suggest.preset.contrast` | A contrasting finding | एक विपरीत निष्कर्ष | |
+| `suggest.preset.novelty` | Increase novelty | नयापन बढ़ाएँ | |
+| `suggest.preset.simplify` | Simplify language | भाषा सरल करें | |
+| `suggest.preset.validate` | Validate supporting evidence | समर्थक साक्ष्य जाँचें | |
+| `suggest.preset.library` | Cite from my library | मेरी लाइब्रेरी से उद्धृत करें | |
+| `suggest.preset.noCite` | Re-write without citations | बिना उद्धरण के फिर से लिखें | |
+| `suggest.group.write` | Write | लिखें | |
+| `suggest.group.refine` | Refine | सुधारें | |
+| `suggest.group.citations` | Citations | उद्धरण | |
 
 ## The selection toolbar
 

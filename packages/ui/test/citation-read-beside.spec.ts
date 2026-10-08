@@ -58,7 +58,7 @@ async function hover(options: CitationOptions, withPdf = true): Promise<HTMLElem
 }
 
 describe('Read beside on the citation card', () => {
-  it('hands the source and the cited page to the app, then closes the card', async () => {
+  it('hands the source, the cited page and the passage to the app, then closes the card', async () => {
     const asked: unknown[] = [];
     const node = await hover({ readBeside: (t) => asked.push(t), canReadBeside: () => true });
     const before = editor.getJSON();
@@ -68,7 +68,15 @@ describe('Read beside on the citation card', () => {
     expect(node.querySelector('a.citation-popover__pdf')).toBeTruthy();
 
     button.click();
-    expect(asked).toEqual([{ sourceId: 'src-9', page: 12, label: 'Iyer 2019' }]);
+    // R21 (ADR-0108): the passage too, so the pane can mark it on the page.
+    expect(asked).toEqual([
+      {
+        sourceId: 'src-9',
+        page: 12,
+        label: 'Iyer 2019',
+        quote: 'Recharge wells raised the water table by 1.2 m over three seasons.',
+      },
+    ]);
     expect(node.querySelector('.citation-popover')).toBeNull();
     expect(editor.getJSON()).toEqual(before);
   });
