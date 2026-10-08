@@ -19,6 +19,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { TEMPLATE_SPECS } from '@tc/config';
@@ -35,6 +36,7 @@ import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { OutlineService } from '../memory/outline.service.js';
 import { ClaimsService } from './claims.service.js';
+import { DocumentArchive } from './document-archive.service.js';
 import { DocumentCopier } from './document-copier.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
@@ -90,6 +92,8 @@ export type DocumentSummary = {
   updatedAt: string;
   /** The chapter the editor opens by default. */
   firstChapterId: string | null;
+  /** R29 (ADR-0114): when the student archived it; null for a thesis on the list. */
+  archivedAt: string | null;
 };
 
 export type DocumentDetail = DocumentSummary & {
@@ -118,6 +122,7 @@ const summarySelect = {
   entryPath: true,
   createdAt: true,
   updatedAt: true,
+  archivedAt: true,
   chapters: { orderBy: { order: 'asc' }, take: 1, select: { id: true } },
 } satisfies Prisma.DocumentSelect;
 
@@ -131,6 +136,7 @@ function toSummary(d: SummaryRow): DocumentSummary {
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
     firstChapterId: d.chapters[0]?.id ?? null,
+    archivedAt: d.archivedAt?.toISOString() ?? null,
   };
 }
 
@@ -145,17 +151,28 @@ export class DocumentsController {
     private readonly flags: FlagsService,
     private readonly deletion: OwnThesisDeletion,
     private readonly copier: DocumentCopier,
+    private readonly archives: DocumentArchive,
     private readonly autoSources: AutoSourcesService,
     private readonly outline: OutlineService,
     private readonly claimsMap: ClaimsService,
   ) {}
 
-  /** Not in §9.1, which has no list route, but the document list screen in §6.1 needs one. */
+  /**
+   * Not in §9.1, which has no list route, but the document list screen in §6.1 needs one.
+   *
+   * R29 (ADR-0114): the theses on the list, without the archived ones — so every screen that asks
+   * for "my theses" (the list, the Chrome add-on's picker) leaves them out without knowing
+   * archiving exists. `?archived=1` is the other half: only the archived ones, last archived first.
+   */
   @Get()
-  async list(@CurrentUser() user: SessionUser): Promise<DocumentSummary[]> {
+  async list(
+    @CurrentUser() user: SessionUser,
+    @Query('archived') archived?: string,
+  ): Promise<DocumentSummary[]> {
+    const onlyArchived = archived === '1' || archived === 'true';
     const documents = await this.prisma.document.findMany({
-      where: { ownerId: user.id },
-      orderBy: { updatedAt: 'desc' },
+      where: { ownerId: user.id, archivedAt: onlyArchived ? { not: null } : null },
+      orderBy: onlyArchived ? { archivedAt: 'desc' } : { updatedAt: 'desc' },
       select: summarySelect,
     });
     return documents.map(toSummary);
@@ -400,6 +417,20 @@ export class DocumentsController {
   @HttpCode(200)
   async copy(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.copier.copy(user.id, id);
+  }
+
+  /** R29 (ADR-0114): off the list, nothing deleted. Free. */
+  @Post(':id/archive')
+  @HttpCode(200)
+  archive(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.archives.archive(user.id, id);
+  }
+
+  /** R29 (ADR-0114): back on the list, as it was. Free. */
+  @Post(':id/restore')
+  @HttpCode(200)
+  restore(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.archives.restore(user.id, id);
   }
 
   /**

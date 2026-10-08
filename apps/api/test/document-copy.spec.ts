@@ -39,9 +39,13 @@ describe('id rewriting, pure', () => {
     expect(before.nested.list).toHaveLength(1);
   });
 
-  it('titles the copy within the limit', () => {
-    expect(copyTitle('Solar Drying')).toBe('Copy of Solar Drying');
-    expect(copyTitle('x'.repeat(300))).toHaveLength(300);
+  it('titles the copy "<title> (copy)" within the limit (R29, ADR-0114)', () => {
+    expect(copyTitle('Solar Drying')).toBe('Solar Drying (copy)');
+    const long = copyTitle('x'.repeat(300));
+    expect(long).toHaveLength(300);
+    // Shortened before the suffix, so a long copy still says what it is.
+    expect(long.endsWith('… (copy)')).toBe(true);
+    expect(copyTitle('y'.repeat(293))).toBe(`${'y'.repeat(293)} (copy)`);
   });
 });
 
@@ -198,14 +202,14 @@ describe('making a copy, through the API', () => {
     expect(await h.prisma.document.count()).toBe(1);
   });
 
-  it('makes "Copy of …" without spending any allowance', async () => {
+  it('makes "… (copy)" without spending any allowance', async () => {
     const usageBefore = await h.prisma.usageLedger.findMany({ orderBy: { action: 'asc' } });
     const res = await owner(`/documents/${originalId}/copy`, { method: 'POST' });
     expect(res.status).toBe(200);
     const copy = (await res.json()) as { id: string; title: string; firstChapterId: string };
     copyId = copy.id;
     copyChapterId = copy.firstChapterId;
-    expect(copy.title).toBe('Copy of Solar Drying of Coastal Catch');
+    expect(copy.title).toBe('Solar Drying of Coastal Catch (copy)');
     expect(copyId).not.toBe(originalId);
     expect(copyChapterId).not.toBe(originalChapterId);
     expect(await h.prisma.usageLedger.findMany({ orderBy: { action: 'asc' } })).toEqual(

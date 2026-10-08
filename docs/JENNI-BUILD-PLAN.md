@@ -299,4 +299,6 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R39 | Done 2026-10-08 — in-page Add buttons on Scholar, PubMed, arXiv and MDPI (add-on 0.3.0, not yet submitted) | ADR-0125 |
 | R40 | Done 2026-10-08 — adjacent citations render as one bracket in the editor and every export | ADR-0117 |
 | R35 | Done 2026-10-08 — Keyboard shortcuts window (keys and Markdown); `$$…$$` equations | ADR-0118 |
+| R29 | Done 2026-10-08 — archive and restore theses; copies named "… (copy)" | ADR-0114 |
+| R36 | Done 2026-10-08 — "How was this?" thumbs after a chapter build and a viva set | ADR-0115 |
 | R25–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

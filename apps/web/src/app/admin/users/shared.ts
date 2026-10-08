@@ -25,6 +25,8 @@ export type UserDetail = UserRow & {
     title: string;
     createdAt: string;
     updatedAt: string;
+    /** R29 (ADR-0114): set while the student has the thesis archived. */
+    archivedAt: string | null;
     chapters: number;
     words: number;
   }>;

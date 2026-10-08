@@ -12,6 +12,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { RateThis, type RunRating } from '@/components/RateThis';
 import { Badge, Select } from '@/components/ui/primitives';
 import { API_URL, ApiError, api } from '@/lib/api';
 import { chapterLabel } from '@/lib/chapter-label';
@@ -141,7 +142,13 @@ type Plan = {
   coverage: Record<string, string[]>;
   uncovered: string[];
 };
-type BuildView = BuildSummary & { profile: Profile; plan: Plan | null; report: Report | null };
+type BuildView = BuildSummary & {
+  profile: Profile;
+  plan: Plan | null;
+  report: Report | null;
+  /** R36 (ADR-0115): the student's thumbs on this build, if given. */
+  rating: RunRating;
+};
 
 const STAGE_LABEL: Record<string, string> = {
   loading: 'Reading the thesis',
@@ -665,6 +672,19 @@ function BuildDetail({
           <p className="mt-2 text-xs text-muted">
             The university profile’s citation and spelling rules are unconfirmed defaults.
           </p>
+        ) : null}
+        {/* R36 (ADR-0115): after a finished build, under its summary. Keyed by the build so a
+            different build's thumbs never carry over. */}
+        {view.status === 'DONE' ? (
+          <RateThis
+            key={view.id}
+            className="mt-3"
+            documentId={documentId}
+            kind="chapter-build"
+            runId={view.id}
+            initial={view.rating ?? null}
+            question="How was this build?"
+          />
         ) : null}
       </div>
 

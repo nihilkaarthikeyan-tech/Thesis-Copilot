@@ -5680,3 +5680,11 @@ Built in a parallel worktree; on main the citations (131), export (141), ui (215
 six citation API files (41) pass, and the 5 new browser tests pass after one fix: the shortcuts
 spec looked for `.thesis-editor .ProseMirror`, but both classes are on one element.
 
+R29 (ADR-0114): archive a thesis from its More menu (off the list, nothing deleted, Undo) and
+restore it from "Archived theses"; `Document.archivedAt` (migration 0043) leaves `updatedAt` alone;
+`GET /documents` leaves archived theses out, so the add-on's picker does too; copies are "<title>
+(copy)". R36 (ADR-0115): "How was this?" thumbs with a one-line note after a chapter build and
+under a viva set, stored per run in `OutputRating` (migration 0044), listed for the superadmin
+under Admin → Feedback → Ratings. On main: 51 API tests across six files and 7 browser tests
+(archive, rating, sharing, layout guard) pass.
+

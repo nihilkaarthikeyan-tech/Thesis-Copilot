@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**538** strings are translated; **2** are deliberately
+**552** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -91,6 +91,20 @@ English. Write corrections in the last column.
 | `list.deleteTitle` | Delete this thesis? | यह थीसिस हटाएँ? | |
 | `list.deleteBody` | “{title}”, with its chapters, sources, versions and files, is removed for good. Export a copy first if you want one. | “{title}” अपने अध्यायों, स्रोतों, संस्करणों और फ़ाइलों के साथ हमेशा के लिए हट जाएगी। चाहें तो पहले एक कॉपी एक्सपोर्ट कर लें। | |
 | `list.exportFirst` | Export .docx first | पहले .docx एक्सपोर्ट करें | |
+| `list.archive` | Archive | संग्रहीत करें | |
+| `list.archiving` | Archiving… | संग्रहीत हो रही है… | |
+| `list.archiveError` | Could not archive the thesis. Try again. | थीसिस संग्रहीत नहीं हो सकी। फिर से कोशिश करें। | |
+| `list.restoreError` | Could not restore the thesis. Try again. | थीसिस वापस नहीं लाई जा सकी। फिर से कोशिश करें। | |
+| `list.archivedNotice` | “{title}” is archived: off this list, nothing deleted. | “{title}” संग्रहीत है: इस सूची से बाहर, कुछ भी मिटाया नहीं गया। | |
+| `list.undo` | Undo | पूर्ववत करें | |
+| `list.archivedToggle` | Archived theses ({count}) | संग्रहीत थीसिस ({count}) | |
+| `list.archivedHint` | Off your list and kept exactly as they were. Restore puts one back. | आपकी सूची से बाहर, ठीक वैसी ही रखी हुई जैसी थीं। "वापस लाएँ" से सूची में लौटती है। | |
+| `list.archivedOn` | archived {date} | संग्रहीत: {date} | |
+| `list.restore` | Restore | वापस लाएँ | |
+| `list.restoring` | Restoring… | वापस ला रहे हैं… | |
+| `list.open` | Open | खोलें | |
+| `list.allArchivedTitle` | Every thesis is archived | हर थीसिस संग्रहीत है | |
+| `list.allArchivedBody` | Restore one from the archive below, or give a new one a working title above. | नीचे संग्रह से किसी थीसिस को वापस लाएँ, या ऊपर नई थीसिस को एक कार्यकारी शीर्षक दें। | |
 
 ## New thesis
 

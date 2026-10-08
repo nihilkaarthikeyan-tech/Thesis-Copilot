@@ -117,8 +117,10 @@ export const EVENT_NAMES: Record<string, string> = {
   DELETION_CANCELLED: 'Account deletion cancelled',
   DELETION_COMPLETED: 'Account erased',
   DELETION_REQUESTED: 'Account deletion requested',
+  DOCUMENT_ARCHIVED: 'Thesis archived',
   DOCUMENT_COPIED: 'Thesis copied',
   DOCUMENT_DELETED: 'Thesis deleted',
+  DOCUMENT_RESTORED: 'Thesis restored from the archive',
   EMAIL_CHANGED: 'Email address changed',
   EXPORT_OVERRIDE: 'Export check overridden',
   FEEDBACK: 'Feedback sent',
@@ -165,6 +167,8 @@ export function describeEvent(kind: string, detail: unknown): string {
     case 'TRIAL_EXTENDED':
       return `+${str(d.days)} days, until ${day(str(d.to))}${d.reason ? ` · “${str(d.reason)}”` : ''}`;
     case 'CHAPTER_VIEWED':
+    case 'DOCUMENT_ARCHIVED':
+    case 'DOCUMENT_RESTORED':
       return `“${str(d.title)}”`;
     case 'PITFALL_APPROVED':
     case 'PITFALL_EDITED':
@@ -202,6 +206,9 @@ const BY_THE_STUDENT = new Set([
   'SHARE_LINK_ON',
   'SHARE_LINK_OFF',
   'DOCUMENT_COPIED',
+  // ADR-0114
+  'DOCUMENT_ARCHIVED',
+  'DOCUMENT_RESTORED',
 ]);
 
 /** Who did it, for the log's "By" column. */

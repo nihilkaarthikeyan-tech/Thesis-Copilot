@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { RatingsModule } from '../ratings/ratings.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { VivaService } from './viva.service.js';
 
@@ -54,7 +55,7 @@ export class VivaController {
 }
 
 @Module({
-  imports: [UsageModule],
+  imports: [UsageModule, RatingsModule],
   controllers: [VivaController],
   providers: [VivaService, SessionGuard],
 })

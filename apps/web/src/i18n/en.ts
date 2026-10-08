@@ -85,6 +85,22 @@ export const en = {
   'list.deleteBody':
     '“{title}”, with its chapters, sources, versions and files, is removed for good. Export a copy first if you want one.',
   'list.exportFirst': 'Export .docx first',
+  // R29 (ADR-0114): archive and restore.
+  'list.archive': 'Archive',
+  'list.archiving': 'Archiving…',
+  'list.archiveError': 'Could not archive the thesis. Try again.',
+  'list.restoreError': 'Could not restore the thesis. Try again.',
+  'list.archivedNotice': '“{title}” is archived: off this list, nothing deleted.',
+  'list.undo': 'Undo',
+  'list.archivedToggle': 'Archived theses ({count})',
+  'list.archivedHint': 'Off your list and kept exactly as they were. Restore puts one back.',
+  'list.archivedOn': 'archived {date}',
+  'list.restore': 'Restore',
+  'list.restoring': 'Restoring…',
+  'list.open': 'Open',
+  'list.allArchivedTitle': 'Every thesis is archived',
+  'list.allArchivedBody':
+    'Restore one from the archive below, or give a new one a working title above.',
 
   // ---- New thesis (/app/new) ------------------------------------------------------------------
   'new.crumb': 'New',

@@ -41,6 +41,7 @@ import { SuperadminGuard } from '../admin/superadmin.guard.js';
 import { AiModule } from '../ai/ai.module.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { RatingsModule } from '../ratings/ratings.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { ChapterBuildService } from './chapter-build.service.js';
 import { PitfallsService } from './pitfalls.service.js';
@@ -245,7 +246,7 @@ export class PitfallsAdminController {
 }
 
 @Module({
-  imports: [UsageModule, AiModule],
+  imports: [UsageModule, AiModule, RatingsModule],
   controllers: [ChapterBuildController, PitfallsAdminController],
   providers: [ChapterBuildService, PitfallsService, QueueService, SessionGuard, SuperadminGuard],
   exports: [PitfallsService],

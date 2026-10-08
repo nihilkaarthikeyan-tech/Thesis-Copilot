@@ -63,6 +63,8 @@ type DocumentSummary = {
   updatedAt: string;
   /** The chapter the editor opens by default; null only for legacy rows without chapters. */
   firstChapterId: string | null;
+  /** R29 (ADR-0114): set on the archived list, null on the main one. */
+  archivedAt: string | null;
 };
 
 const ENTRY_PATHS = [
@@ -111,6 +113,14 @@ export default function DocumentListPage() {
   }, [formOpen, focusForm]);
   /** ADR-0057: the thesis being copied, while the copy is made. */
   const [copying, setCopying] = useState<string | null>(null);
+  /**
+   * R29 (ADR-0114): the archived theses, off the main list and listed under it, folded until
+   * asked for. `moving` is the thesis being archived or restored; `justArchived` offers Undo.
+   */
+  const [archived, setArchived] = useState<DocumentSummary[]>([]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [moving, setMoving] = useState<string | null>(null);
+  const [justArchived, setJustArchived] = useState<DocumentSummary | null>(null);
 
   // The administrator's home is the admin screen, not a student's thesis list (2026-09-29, the
   // owner's instruction). Every sign-in — code, password or Google — lands on `/app`, so this one
@@ -139,7 +149,13 @@ export default function DocumentListPage() {
 
   const load = useCallback(async () => {
     try {
-      setDocuments(await api<DocumentSummary[]>('/documents'));
+      // The archive is a convenience beside the list: if it cannot be read, the list still shows.
+      const [active, archivedList] = await Promise.all([
+        api<DocumentSummary[]>('/documents'),
+        api<DocumentSummary[]>('/documents?archived=1').catch(() => [] as DocumentSummary[]),
+      ]);
+      setDocuments(active);
+      setArchived(archivedList);
     } catch (e) {
       if (e instanceof ApiError && e.problem.status === 401) {
         router.replace('/sign-in');
@@ -223,6 +239,8 @@ export default function DocumentListPage() {
     try {
       await api(`/documents/${doc.id}`, { method: 'DELETE' });
       setDeleting(null);
+      // Nothing left to undo an archive of.
+      setJustArchived((current) => (current?.id === doc.id ? null : current));
       await load();
     } catch (e) {
       setDeleting(null);
@@ -250,6 +268,43 @@ export default function DocumentListPage() {
       );
     } finally {
       setCopying(null);
+    }
+  }
+
+  /**
+   * R29 (ADR-0114): archive takes a thesis off this list and keeps everything; no confirmation,
+   * because Undo (and Restore, later) gives it back exactly as it was.
+   */
+  async function archive(doc: DocumentSummary) {
+    setMoving(doc.id);
+    setError(null);
+    try {
+      await api(`/documents/${doc.id}/archive`, { method: 'POST', body: '{}' });
+      setJustArchived(doc);
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('list.archiveError'),
+      );
+    } finally {
+      setMoving(null);
+    }
+  }
+
+  /** Back on the list where it was: its date and its place are its writing's, not the archive's. */
+  async function restore(doc: DocumentSummary) {
+    setMoving(doc.id);
+    setError(null);
+    try {
+      await api(`/documents/${doc.id}/restore`, { method: 'POST', body: '{}' });
+      setJustArchived((current) => (current?.id === doc.id ? null : current));
+      await load();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('list.restoreError'),
+      );
+    } finally {
+      setMoving(null);
     }
   }
 
@@ -494,7 +549,8 @@ export default function DocumentListPage() {
 
         <TrialNotice className="mt-6" />
 
-        {documents && documents.length === 0 ? (
+        {/* Not for somebody whose theses are all archived: they are past step 1. */}
+        {documents && documents.length === 0 && archived.length === 0 ? (
           <FirstRunHint id="list" className="mt-6">
             {t('list.firstRun')}
           </FirstRunHint>
@@ -511,11 +567,36 @@ export default function DocumentListPage() {
           </p>
         ) : null}
 
+        {justArchived ? (
+          <p
+            role="status"
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line bg-sunk px-3 py-2 text-[13px] text-ink"
+            data-testid="archived-notice"
+          >
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              {t('list.archivedNotice', { title: justArchived.title })}
+            </span>
+            <button
+              type="button"
+              disabled={moving !== null}
+              onClick={() => void restore(justArchived)}
+              className="font-semibold text-accent underline disabled:opacity-50"
+              data-testid="archive-undo"
+            >
+              {t('list.undo')}
+            </button>
+          </p>
+        ) : null}
+
         <section className="mt-8" aria-live="polite">
           {documents === null ? (
             <p className="text-[13px] text-muted">{t('common.loading')}</p>
           ) : documents.length === 0 ? (
-            <Empty title={t('list.emptyTitle')}>{t('list.emptyBody')}</Empty>
+            archived.length > 0 ? (
+              <Empty title={t('list.allArchivedTitle')}>{t('list.allArchivedBody')}</Empty>
+            ) : (
+              <Empty title={t('list.emptyTitle')}>{t('list.emptyBody')}</Empty>
+            )
           ) : (
             <>
               <div className="eyebrow mb-2">
@@ -591,6 +672,17 @@ export default function DocumentListPage() {
                               >
                                 {copying === d.id ? t('list.copying') : t('list.makeCopy')}
                               </button>
+                              {/* In More rather than on the row (R29): the row already wraps on a
+                                  phone, and archiving is occasional. */}
+                              <button
+                                type="button"
+                                disabled={moving !== null}
+                                onClick={() => void archive(d)}
+                                data-testid="archive-thesis"
+                                className="text-left text-muted hover:text-accent disabled:opacity-50"
+                              >
+                                {moving === d.id ? t('list.archiving') : t('list.archive')}
+                              </button>
                             </div>
                           </details>
                           <button
@@ -639,6 +731,79 @@ export default function DocumentListPage() {
                 {t('list.startAnother')}
               </Button>
             )}
+          </section>
+        ) : null}
+
+        {/* R29 (ADR-0114): the archive, last on the page and folded, as the least-used part of it.
+            Jenni's is a popover; a section keeps it readable on a phone. */}
+        {archived.length > 0 ? (
+          <section className="mt-8" data-testid="archived-theses">
+            <button
+              type="button"
+              aria-expanded={archiveOpen}
+              onClick={() => setArchiveOpen((open) => !open)}
+              className="text-[13px] font-semibold text-muted hover:text-accent"
+              data-testid="archived-toggle"
+            >
+              {t('list.archivedToggle', { count: archived.length })}
+            </button>
+            {archiveOpen ? (
+              <>
+                <Hint className="mt-1">{t('list.archivedHint')}</Hint>
+                <ul
+                  className="mt-3 grid list-none grid-cols-1 gap-2 p-0"
+                  data-testid="archived-list"
+                >
+                  {archived.map((d) => (
+                    <li key={d.id} className="min-w-0" data-testid="archived-row">
+                      <Card>
+                        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-[15px] font-semibold text-ink [overflow-wrap:anywhere]">
+                              {d.title}
+                            </p>
+                            <p className="mt-0.5 text-[12px] text-muted">
+                              {d.archivedAt
+                                ? t('list.archivedOn', {
+                                    date: new Date(d.archivedAt).toLocaleDateString(undefined, {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    }),
+                                  })
+                                : null}
+                            </p>
+                          </div>
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={moving !== null}
+                              onClick={() => void restore(d)}
+                              data-testid="restore-thesis"
+                            >
+                              {moving === d.id ? t('list.restoring') : t('list.restore')}
+                            </Button>
+                            <Link href={writeHref(d)} className="text-muted hover:text-accent">
+                              {t('list.open')}
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => setDeleting(d)}
+                              className="text-muted hover:text-danger"
+                              aria-label={t('list.deleteAria', { title: d.title })}
+                              data-testid="delete-archived-thesis"
+                            >
+                              {t('common.delete')}
+                            </button>
+                          </div>
+                        </div>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </section>
         ) : null}
 

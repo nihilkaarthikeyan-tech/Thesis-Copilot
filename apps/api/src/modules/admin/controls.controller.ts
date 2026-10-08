@@ -172,6 +172,12 @@ export class AdminControlsController {
     return this.insight.feedback(parse(feedbackQuery, present(query), 'Invalid filters'));
   }
 
+  /** R36 (ADR-0115): what students answered to "How was this?" after a build or a viva set. */
+  @Get('feedback/ratings')
+  ratings(@Query() query: Record<string, unknown>) {
+    return this.insight.ratings(parse(z.object(page), present(query), 'Invalid filters'));
+  }
+
   @Post('feedback/:id/:mark')
   @HttpCode(200)
   markFeedback(

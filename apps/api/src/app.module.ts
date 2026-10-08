@@ -28,6 +28,7 @@ import { MemoryModule } from './modules/memory/memory.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { OverlapModule } from './modules/overlap/overlap.module.js';
 import { PromptsModule } from './modules/prompts/prompts.module.js';
+import { RatingsModule } from './modules/ratings/ratings.module.js';
 import { SourcesModule } from './modules/sources/sources.module.js';
 import { UsageModule } from './modules/usage/usage.module.js';
 import { VivaModule } from './modules/viva/viva.module.js';
@@ -81,6 +82,8 @@ import { VivaModule } from './modules/viva/viva.module.js';
     InstitutionModule,
     VivaModule,
     ChapterBuildModule,
+    // R36 (ADR-0115): "How was this?" on a build or a viva set.
+    RatingsModule,
     JournalsModule,
     OverlapModule,
     LifecycleModule,

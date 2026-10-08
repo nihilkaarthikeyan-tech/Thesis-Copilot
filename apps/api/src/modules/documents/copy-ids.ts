@@ -52,8 +52,15 @@ export function remapIds<T>(value: T, ids: IdMap): T {
   return value;
 }
 
-/** `Copy of …`, kept inside the title limit the create route enforces. */
+const COPY_SUFFIX = ' (copy)';
+
+/**
+ * `<title> (copy)` (R29, ADR-0114; it was `Copy of …`), kept inside the title limit the create
+ * route enforces. A title too long for the suffix is shortened before it, so the copy still says
+ * what it is: the list sorts and reads by the start of a title, and the end is what marks a copy.
+ */
 export function copyTitle(title: string, max = 300): string {
-  const titled = `Copy of ${title}`;
-  return titled.length <= max ? titled : `${titled.slice(0, max - 1)}…`;
+  const titled = `${title}${COPY_SUFFIX}`;
+  if (titled.length <= max) return titled;
+  return `${title.slice(0, max - COPY_SUFFIX.length - 1)}…${COPY_SUFFIX}`;
 }

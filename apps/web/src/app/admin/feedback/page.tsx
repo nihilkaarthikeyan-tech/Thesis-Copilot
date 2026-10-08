@@ -6,6 +6,9 @@
  * Until this existed feedback went only to one inbox by email. It is kept in the activity log
  * too, so it is listed here with its state: unread, read, answered. "Reply by email" opens the
  * admin's own mail program addressed to the student; nothing is sent from here.
+ *
+ * "Ratings" (R36, ADR-0115) lists the thumbs students gave a chapter build or a viva question
+ * set, with their one-line notes.
  */
 
 import Link from 'next/link';
@@ -32,9 +35,30 @@ type Item = {
   answeredAt: string | null;
 };
 
+/** R36 (ADR-0115): a student's thumbs on a generated run, with their one-line note. */
+type RatingRow = {
+  id: string;
+  updatedAt: string;
+  kind: string;
+  runId: string;
+  rating: 1 | -1;
+  note: string | null;
+  userId: string;
+  userEmail: string | null;
+  documentId: string;
+  documentTitle: string | null;
+};
+type Ratings = { rows: RatingRow[]; total: number; useful: number; notUseful: number };
+
+const RATED: Record<string, string> = {
+  CHAPTER_BUILD: 'Chapter build',
+  VIVA: 'Viva questions',
+};
+
 export default function AdminFeedbackPage() {
   const router = useRouter();
-  const [status, setStatus] = useState<'unread' | 'all'>('unread');
+  const [status, setStatus] = useState<'unread' | 'all' | 'ratings'>('unread');
+  const [ratings, setRatings] = useState<Ratings | null>(null);
   const [items, setItems] = useState<Item[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +67,15 @@ export default function AdminFeedbackPage() {
   const keptUnread = useRef(new Set<string>());
 
   const load = useCallback(() => {
+    if (status === 'ratings') {
+      api<Ratings>('/admin/feedback/ratings?limit=100')
+        .then(setRatings)
+        .catch((e: unknown) => {
+          if (isSessionGone(e)) router.replace(signInUrlFor('/admin/feedback'));
+          else setError(problemText(e, 'Could not load the ratings.'));
+        });
+      return;
+    }
     api<{ rows: Item[] }>(`/admin/feedback?status=${status}&limit=100`)
       .then((page) => {
         setItems(page.rows);
@@ -94,15 +127,17 @@ export default function AdminFeedbackPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
       <PageHeader
         title="Feedback"
-        lede="What students send from the Feedback button in the editor."
+        lede="What students send from the Feedback button in the editor, and how they rated what was built for them."
         actions={
           <Select
             aria-label="Show"
             value={status}
-            onChange={(e) => setStatus(e.target.value as 'unread' | 'all')}
+            onChange={(e) => setStatus(e.target.value as 'unread' | 'all' | 'ratings')}
+            data-testid="feedback-show"
           >
             <option value="unread">Unread</option>
             <option value="all">All</option>
+            <option value="ratings">Ratings</option>
           </Select>
         }
       />
@@ -111,9 +146,13 @@ export default function AdminFeedbackPage() {
           {error}
         </p>
       ) : null}
-      {!items && !error ? <p className="mt-6 text-sm text-muted">Loading…</p> : null}
+      {status === 'ratings' ? (
+        <RatingsList ratings={ratings} />
+      ) : !items && !error ? (
+        <p className="mt-6 text-sm text-muted">Loading…</p>
+      ) : null}
 
-      {items ? (
+      {items && status !== 'ratings' ? (
         items.length === 0 ? (
           <p className="mt-6 text-sm text-muted">
             {status === 'unread' ? 'Nothing unread. ' : 'No feedback yet. '}
@@ -209,5 +248,53 @@ export default function AdminFeedbackPage() {
         )
       ) : null}
     </main>
+  );
+}
+
+/**
+ * R36 (ADR-0115): every "How was this?" a student answered, newest first. Read-only, with no
+ * read or answered state: a rating asks for nothing back the way a feedback message does.
+ */
+function RatingsList({ ratings }: { ratings: Ratings | null }) {
+  if (!ratings) return <p className="mt-6 text-sm text-muted">Loading…</p>;
+  if (ratings.rows.length === 0) {
+    return <p className="mt-6 text-sm text-muted">No ratings yet.</p>;
+  }
+  return (
+    <section className="mt-5" data-testid="ratings">
+      <p className="text-sm text-muted">
+        {ratings.useful} useful · {ratings.notUseful} not useful
+        {ratings.total > ratings.rows.length ? ` · the latest ${ratings.rows.length} shown` : ''}
+      </p>
+      <ul
+        className="mt-3 grid list-none grid-cols-1 divide-y divide-line rounded-md border border-line bg-surface p-0"
+        data-testid="ratings-list"
+      >
+        {ratings.rows.map((r) => (
+          <li key={r.id} className="min-w-0 px-3 py-2.5 text-sm">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <Badge tone={r.rating === 1 ? 'ok' : 'danger'}>
+                {r.rating === 1 ? 'Useful' : 'Not useful'}
+              </Badge>
+              <span className="font-semibold text-ink">{RATED[r.kind] ?? r.kind}</span>
+              <span className="min-w-0 truncate text-muted">{r.userEmail ?? 'unknown'}</span>
+              <span className="ml-auto shrink-0 text-xs text-muted">{ago(r.updatedAt)}</span>
+            </div>
+            {r.documentTitle ? (
+              <p className="mt-0.5 text-xs text-muted [overflow-wrap:anywhere]">
+                “{r.documentTitle}”
+              </p>
+            ) : null}
+            {r.note ? <p className="mt-1 text-ink [overflow-wrap:anywhere]">{r.note}</p> : null}
+            <Link
+              href={`/admin/users/${r.userId}`}
+              className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
+            >
+              Open their account
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

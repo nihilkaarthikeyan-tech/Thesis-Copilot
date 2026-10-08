@@ -292,6 +292,8 @@ export class UsersService {
           title: true,
           createdAt: true,
           updatedAt: true,
+          // R29 (ADR-0114): an archived thesis is still stored, so it is listed here, marked.
+          archivedAt: true,
           _count: { select: { chapters: true } },
         },
       }),
@@ -334,6 +336,7 @@ export class UsersService {
         title: d.title,
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,
+        archivedAt: d.archivedAt,
         chapters: d._count.chapters,
         words: wordsByDoc.get(d.id) ?? 0,
       })),

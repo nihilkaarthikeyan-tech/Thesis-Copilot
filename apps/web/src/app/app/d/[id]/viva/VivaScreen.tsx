@@ -11,6 +11,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { RateThis, type RunRating } from '@/components/RateThis';
 import { Badge } from '@/components/ui/primitives';
 import { ApiError, api } from '@/lib/api';
 
@@ -38,7 +39,13 @@ type Question = {
   answeredAt: string | null;
 };
 
-type View = { setId: string | null; createdAt: string | null; questions: Question[] };
+type View = {
+  setId: string | null;
+  createdAt: string | null;
+  questions: Question[];
+  /** R36 (ADR-0115): the student's thumbs on this question set, if given. */
+  rating?: RunRating;
+};
 type Usage = { actions: Array<{ action: string; used: number; cap: number; remaining: number }> };
 
 const VERDICT = {
@@ -178,6 +185,18 @@ export function VivaScreen({ documentId }: { documentId: string }) {
               />
             ))}
           </ol>
+          {/* R36 (ADR-0115): after the set, on the set; keyed by it, so a new set starts unrated. */}
+          {view?.setId ? (
+            <RateThis
+              key={view.setId}
+              className="mt-4"
+              documentId={documentId}
+              kind="viva"
+              runId={view.setId}
+              initial={view.rating ?? null}
+              question="How were these questions?"
+            />
+          ) : null}
         </section>
       ) : view && !busy ? (
         <p className="mt-6 text-sm text-muted">

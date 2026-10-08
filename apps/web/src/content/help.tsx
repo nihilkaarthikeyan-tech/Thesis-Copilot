@@ -120,7 +120,9 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           From a thesis&rsquo;s <L>More</L> menu, <L>Build a chapter</L> plans a chapter from your
           objectives, writes each section from your library, checks it and has an examiner read it.
           Planning is free; the build is one unit of your monthly allowance. Every section arrives
-          in your chapter as a draft: nothing enters the thesis until you accept it.
+          in your chapter as a draft: nothing enters the thesis until you accept it. Under a
+          finished build, <L>How was this build?</L> takes a thumbs up or down and a line, which the
+          Thesis Copilot team reads with the thesis title, never its text.
         </P>
       </>
     ),
@@ -560,7 +562,15 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         <H2>Make a copy</H2>
         <P>
           <L>Make a copy</L> creates a separate thesis of your own with the chapters, outline and
-          library. Nobody you shared with comes with it, and it uses none of your allowance.
+          library, named after the original with &ldquo;(copy)&rdquo; at the end. Nobody you shared
+          with comes with it, and it uses none of your allowance.
+        </P>
+        <H2>Archive a thesis</H2>
+        <P>
+          <L>Archive</L>, in a thesis&rsquo;s <L>More</L> menu on your list, takes it off the list
+          and deletes nothing: its chapters, library, versions and shares stay as they were, and
+          anyone you shared it with can still open it. <L>Archived theses</L> at the foot of the
+          list shows them; <L>Restore</L> puts one back where it was.
         </P>
       </>
     ),
@@ -618,7 +628,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         <P>
           Writing, editing and exporting; the too-close-to-a-source and originality checks; the
           citation report; the formatting checks; finding papers; sharing; comments; making a copy;
-          planning a chapter build.
+          archiving; planning a chapter build.
         </P>
         <H2>When an allowance runs out</H2>
         <P>

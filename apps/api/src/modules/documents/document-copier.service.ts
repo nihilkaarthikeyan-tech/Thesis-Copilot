@@ -140,7 +140,8 @@ export class DocumentCopier {
               submissionDeadline: original.submissionDeadline,
               institutionTemplateId: original.institutionTemplateId,
               meta: json(remapIds(original.meta, map)),
-              // A copy starts as a draft, whatever the original had reached (ADR-0043).
+              // A copy starts as a draft, whatever the original had reached (ADR-0043), and on
+              // the list even when the original is archived (ADR-0114): `archivedAt` is not copied.
             },
           });
 

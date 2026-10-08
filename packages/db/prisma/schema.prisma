@@ -238,6 +238,9 @@ model Document {
   submissionDeadline DateTime? @db.Date
   institutionTemplateId String? @db.Uuid
   meta        Json?     // PRD §9.1/§15: { proposalChat?: Message[], thesisDetails?: {...} }
+  /// R29 (ADR-0114): set while the student has archived the thesis — off their list, nothing
+  /// deleted, every link and share still working. Null is a thesis on the list.
+  archivedAt  DateTime?
   memory      DocumentMemory?
   chapters    Chapter[]
   sources     Source[]
@@ -253,9 +256,34 @@ model Document {
   sourceCollections SourceCollection[]
   versions    DocumentVersion[]
   exportArtifacts ExportArtifact[]
+  /// R36 (ADR-0115): "How was this?" on what was generated for this thesis.
+  outputRatings OutputRating[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([ownerId])
+}
+
+/// R36 (ADR-0115): a student's thumbs on something the product generated for them, with an
+/// optional one-line note, kept against the run it rates. One row per person per run; answering
+/// again changes it. Goes with its thesis.
+model OutputRating {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId  String   @db.Uuid
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String   @db.Uuid
+  /// What was rated: CHAPTER_BUILD | VIVA (a new kind of generated output adds a value).
+  kind        String
+  /// The run: a ChapterBuild id, or a VivaQuestion setId.
+  runId       String   @db.Uuid
+  /// 1 = useful, -1 = not useful.
+  rating      Int      @db.SmallInt
+  /// One line, at most 200 characters; null when none was written.
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([kind, runId, userId])
+  @@index([documentId])
+  @@index([updatedAt])
 }
 
 model DocumentMemory {

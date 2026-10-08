@@ -83,7 +83,7 @@ test('a Reader is listed with their role and the owner can change it', async ({
   await expect(row).toContainText('can comment and suggest');
 });
 
-test('Make a copy from the thesis list puts "Copy of …" at the top', async ({ page, request }) => {
+test('Make a copy from the thesis list puts "… (copy)" at the top', async ({ page, request }) => {
   test.setTimeout(120_000);
   const title = `Copyable ${Date.now()}`;
   await signedInWithThesis(page, request, 'copy', title);
@@ -91,5 +91,6 @@ test('Make a copy from the thesis list puts "Copy of …" at the top', async ({ 
   const card = page.locator('li', { hasText: title }).first();
   await card.getByText('More', { exact: true }).click();
   await card.getByTestId('copy-thesis').click();
-  await expect(page.getByText(`Copy of ${title}`)).toBeVisible({ timeout: 15_000 });
+  // R29 (ADR-0114): the copy is named "<title> (copy)", no longer "Copy of <title>".
+  await expect(page.getByText(`${title} (copy)`)).toBeVisible({ timeout: 15_000 });
 });

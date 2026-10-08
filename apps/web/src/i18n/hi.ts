@@ -88,6 +88,21 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'list.deleteBody':
     '“{title}” अपने अध्यायों, स्रोतों, संस्करणों और फ़ाइलों के साथ हमेशा के लिए हट जाएगी। चाहें तो पहले एक कॉपी एक्सपोर्ट कर लें।',
   'list.exportFirst': 'पहले .docx एक्सपोर्ट करें',
+  'list.archive': 'संग्रहीत करें',
+  'list.archiving': 'संग्रहीत हो रही है…',
+  'list.archiveError': 'थीसिस संग्रहीत नहीं हो सकी। फिर से कोशिश करें।',
+  'list.restoreError': 'थीसिस वापस नहीं लाई जा सकी। फिर से कोशिश करें।',
+  'list.archivedNotice': '“{title}” संग्रहीत है: इस सूची से बाहर, कुछ भी मिटाया नहीं गया।',
+  'list.undo': 'पूर्ववत करें',
+  'list.archivedToggle': 'संग्रहीत थीसिस ({count})',
+  'list.archivedHint': 'आपकी सूची से बाहर, ठीक वैसी ही रखी हुई जैसी थीं। "वापस लाएँ" से सूची में लौटती है।',
+  'list.archivedOn': 'संग्रहीत: {date}',
+  'list.restore': 'वापस लाएँ',
+  'list.restoring': 'वापस ला रहे हैं…',
+  'list.open': 'खोलें',
+  'list.allArchivedTitle': 'हर थीसिस संग्रहीत है',
+  'list.allArchivedBody':
+    'नीचे संग्रह से किसी थीसिस को वापस लाएँ, या ऊपर नई थीसिस को एक कार्यकारी शीर्षक दें।',
 
   // ---- New thesis (/app/new) ------------------------------------------------------------------
   'new.crumb': 'नई',

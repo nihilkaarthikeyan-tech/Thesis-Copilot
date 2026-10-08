@@ -31,7 +31,7 @@ import {
   whole,
 } from '@/components/admin/kit';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, Input, Label, Textarea } from '@/components/ui/primitives';
+import { Badge, Card, CardHeader, Input, Label, Textarea } from '@/components/ui/primitives';
 import { actionName } from '@/lib/action-names';
 import { isSessionGone, signInUrlFor } from '@/lib/admin-gate';
 import { ApiError, api } from '@/lib/api';
@@ -339,7 +339,13 @@ export default function AdminUserPage() {
                     <tbody>
                       {user.documentList.map((d) => (
                         <tr key={d.id} className="border-t border-line">
-                          <td className="px-4 py-2 font-medium">{d.title}</td>
+                          <td className="px-4 py-2 font-medium">
+                            {d.title}
+                            {/* R29 (ADR-0114): off the student's list, still stored. */}
+                            {d.archivedAt ? (
+                              <Badge className="ml-2 align-middle">Archived</Badge>
+                            ) : null}
+                          </td>
                           <td className="tnum px-3 py-2">{whole(d.words)}</td>
                           <td className="tnum px-3 py-2">{d.chapters}</td>
                           <td className="px-3 py-2 text-xs text-muted">{ago(d.updatedAt)}</td>

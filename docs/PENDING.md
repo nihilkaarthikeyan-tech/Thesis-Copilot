@@ -310,6 +310,8 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
 - [ ] **Word citations with several sources (R40, ADR-0117)** — open a "Word citations" .docx whose
       field holds two sources in Microsoft Word (Windows, Mac, web), change the style in
       References and update fields. No Word on the build machine.
+- [ ] **Optional: say on /privacy that build and viva ratings (with the thesis title and the note)
+      reach the team** (R36, ADR-0115), as feedback already is.
 - [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
       shown because presentation and contribution did not track the text. A next attempt could
       run that one call at a higher reasoning effort (priced first: about ₹0.36 a review before

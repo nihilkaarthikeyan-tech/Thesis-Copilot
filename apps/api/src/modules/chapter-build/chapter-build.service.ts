@@ -46,6 +46,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../../common/erro
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import { RatingsService, type RunRating } from '../ratings/ratings.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { qaReportHtml } from './qa-report-html.js';
 
@@ -66,6 +67,8 @@ export type BuildView = BuildSummary & {
   profile: ChapterProfile;
   plan: ChapterBuildPlan | null;
   report: ChapterBuildReport | null;
+  /** R36 (ADR-0115): the student's "How was this?" on this build, so the card opens as left. */
+  rating: RunRating;
 };
 
 export type ProfilesView = {
@@ -109,6 +112,7 @@ export class ChapterBuildService {
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
     private readonly queue: QueueService,
+    private readonly ratings: RatingsService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -588,6 +592,10 @@ export class ChapterBuildService {
       profile: profile.success ? profile.data : this.profileFor(document).profile,
       plan: (build.plan as ChapterBuildPlan | null) ?? null,
       report: (build.report as ChapterBuildReport | null) ?? null,
+      rating:
+        build.status === 'DONE'
+          ? await this.ratings.forRun(ownerId, 'CHAPTER_BUILD', build.id)
+          : null,
     };
   }
 

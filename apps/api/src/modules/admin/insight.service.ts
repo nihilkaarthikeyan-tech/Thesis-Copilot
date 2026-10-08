@@ -476,6 +476,61 @@ export class AdminInsightService {
     };
   }
 
+  /**
+   * R36 (ADR-0115): the "How was this?" answers, newest first, with the useful / not useful
+   * counts. Each carries the student, the thesis title and their note — never thesis text.
+   */
+  async ratings(options: { limit?: number; offset?: number }) {
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const offset = Math.max(options.offset ?? 0, 0);
+    const [total, counts, rows] = await Promise.all([
+      this.prisma.outputRating.count(),
+      this.prisma.outputRating.groupBy({ by: ['rating'], _count: { _all: true } }),
+      this.prisma.outputRating.findMany({
+        orderBy: { updatedAt: 'desc' },
+        take: limit,
+        skip: offset,
+        select: {
+          id: true,
+          updatedAt: true,
+          kind: true,
+          runId: true,
+          rating: true,
+          note: true,
+          userId: true,
+          documentId: true,
+          document: { select: { title: true } },
+        },
+      }),
+    ]);
+    const userIds = [...new Set(rows.map((r) => r.userId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, email: true },
+    });
+    const email = new Map(users.map((u) => [u.id, u.email]));
+    const count = (value: number) => counts.find((c) => c.rating === value)?._count._all ?? 0;
+    return {
+      rows: rows.map((r) => ({
+        id: r.id,
+        updatedAt: r.updatedAt,
+        kind: r.kind,
+        runId: r.runId,
+        rating: r.rating,
+        note: r.note,
+        userId: r.userId,
+        userEmail: email.get(r.userId) ?? null,
+        documentId: r.documentId,
+        documentTitle: r.document.title,
+      })),
+      total,
+      useful: count(1),
+      notUseful: count(-1),
+      limit,
+      offset,
+    };
+  }
+
   async markFeedback(
     actorId: string,
     id: string,

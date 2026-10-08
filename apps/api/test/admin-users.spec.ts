@@ -116,10 +116,10 @@ describe('GET /admin/users', () => {
       capExceeded: number;
     };
     expect(body.documentList).toHaveLength(1);
-    // Still no chapter text in the list: counts and dates only. Reading a thesis is its own,
-    // logged route (ADR-0035).
+    // Still no chapter text in the list: counts and dates only (`archivedAt`, ADR-0114, is one
+    // more date). Reading a thesis is its own, logged route (ADR-0035).
     expect(Object.keys(body.documentList[0] ?? {}).sort()).toEqual(
-      ['chapters', 'createdAt', 'id', 'title', 'updatedAt', 'words'].sort(),
+      ['archivedAt', 'chapters', 'createdAt', 'id', 'title', 'updatedAt', 'words'].sort(),
     );
   });
 

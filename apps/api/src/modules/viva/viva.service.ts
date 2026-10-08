@@ -29,6 +29,7 @@ import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { aiCostMicroInr, capExceeded, hallucinatedCite } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import { RatingsService, type RunRating } from '../ratings/ratings.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { relatedPassages, selectVivaPassages } from './passages.js';
 
@@ -58,6 +59,8 @@ export type VivaView = {
   setId: string | null;
   createdAt: string | null;
   questions: VivaQuestionView[];
+  /** R36 (ADR-0115): the student's "How was this?" on this set; null until given. */
+  rating: RunRating;
 };
 
 type Usage = {
@@ -74,6 +77,7 @@ export class VivaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
+    private readonly ratings: RatingsService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -101,7 +105,7 @@ export class VivaService {
       orderBy: { createdAt: 'desc' },
       select: { setId: true, createdAt: true },
     });
-    if (!latest) return { setId: null, createdAt: null, questions: [] };
+    if (!latest) return { setId: null, createdAt: null, questions: [], rating: null };
     const rows = await this.prisma.vivaQuestion.findMany({
       where: { documentId, setId: latest.setId },
       orderBy: { order: 'asc' },
@@ -110,6 +114,7 @@ export class VivaService {
     return {
       setId: latest.setId,
       createdAt: latest.createdAt.toISOString(),
+      rating: await this.ratings.forRun(ownerId, 'VIVA', latest.setId),
       questions: rows.map((row) => {
         const chapter = chapters.get(row.chapterId);
         const unchanged = chapter ? chapter.updatedAt <= row.createdAt : false;
