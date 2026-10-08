@@ -1,4 +1,8 @@
-# Chrome Web Store listing — drafted for the owner to submit (version 0.2.1)
+# Chrome Web Store listing — drafted for the owner to submit (version 0.3.0)
+
+0.3.0 adds the in-page buttons (ADR-0125) and with them one new permission: a content script on
+five sites. Submit it only after 0.2.1's review is approved, as an update to the same item
+(`PUBLISHING.md` §7). What changed from 0.2.1's listing is marked **(new in 0.3.0)** below.
 
 The agent cannot create the developer account, pay its registration fee or submit the listing;
 everything below is ready to paste. `PUBLISHING.md` walks through the dashboard, form by form.
@@ -10,17 +14,17 @@ Review the wording — it is your product's public description.
 pnpm --filter @tc/extension build
 ```
 
-This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.2.1.zip`** — the
+This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.3.0.zip`** — the
 contents of `dist/` and nothing else. Upload that zip. (It is not committed; build it fresh.)
 
 ## Store listing tab
 
 **Name:** Thesis Copilot
 
-**Summary** (132 characters max — this is 95; it is also the manifest's description, so the store
-fills it in from the zip):
+**Summary** (132 characters max — this is 115; it is also the manifest's description, so the store
+fills it in from the zip) **(new in 0.3.0)**:
 
-> Save the papers you read — one, a page of results, or the PDF — to your Thesis Copilot library.
+> Save the papers you read to your Thesis Copilot library — from a button on the page, a page of results, or the PDF.
 
 **Description:**
 
@@ -28,6 +32,10 @@ fills it in from the zip):
 > library — looked up, its free full text fetched where there is one, and ready to cite, read and
 > chat with. Then open it in Thesis Copilot in one more click.
 >
+> • Right on the page: on Google Scholar, PubMed, arXiv and MDPI, press "Add to Thesis Copilot" on
+>   any result or beside the article's DOI. A small card shows the paper as Thesis Copilot finds
+>   it — with "Cited by", open access and "PDF found" when they are known — and saves it in one
+>   more click.
 > • Journal article pages, PubMed and arXiv: it reads the paper's DOI and details the way Google
 >   Scholar does.
 > • A page of results: on PubMed, arXiv and Google Scholar results, tick the papers you want and
@@ -41,10 +49,13 @@ fills it in from the zip):
 > • Light and dark, following your system.
 > • Uses your existing Thesis Copilot sign-in — nothing new to set up, no password stored.
 >
-> Privacy: the add-on looks at a page only when you click its button (or choose it from the
-> right-click menu), and then only at the page's address, the tags that describe the article, and
-> on a results page the titles and identifiers of the results shown. It never reads other tabs or
-> your browsing history, and it sends nothing anywhere but your own Thesis Copilot account.
+> Privacy: on most sites the add-on looks at a page only when you click its button (or choose it
+> from the right-click menu), and then only at the page's address, the tags that describe the
+> article, and on a results page the titles and identifiers of the results shown. On Google
+> Scholar, PubMed, arXiv and MDPI it reads the same things as the page loads, to put its buttons
+> in, and sends nothing until you press one. It never reads other tabs or your browsing history,
+> never contacts those sites itself, and sends nothing anywhere but your own Thesis Copilot
+> account.
 >
 > You need a Thesis Copilot account: https://thesis.rademics.ai
 
@@ -60,6 +71,9 @@ transparent padding, as the store asks).
    paper saved, "Open in Thesis Copilot".
 2. `apps/extension/store/screenshot-2-save-results.png` — saving a page of results.
 
+0.3.0 has no picture of the in-page button or card yet: `scripts/store-assets.mjs` draws the popup
+only. The two pictures above are still true of 0.3.0 and are enough for the update.
+
 **Small promotional tile (440×280):** `apps/extension/store/promo-small-440x280.png`
 
 Every journal, paper and person in the pictures is invented (the DOIs use Crossref's test prefix
@@ -74,9 +88,11 @@ redraws them after a design change.
 **Single purpose** (paste as is):
 
 > Save scholarly papers the user is viewing — the article on the page, results the user ticks on a
-> search results page, or the PDF open in the tab — to the user's own Thesis Copilot library.
+> search results page or picks with a button beside them, or the PDF open in the tab — to the
+> user's own Thesis Copilot library.
 
-**Permission justifications** (one box each):
+**Permission justifications** (one box each; the dashboard shows the content script's sites under
+host permissions):
 
 - **`activeTab`** — When the user clicks the button (or uses its shortcut), the add-on reads the
   article's identifiers (DOI, title, authors, journal, year) from that one tab, and on a PubMed,
@@ -84,7 +100,8 @@ redraws them after a design change.
   what lets the add-on download the PDF open in that tab when the user chooses "Attach this PDF".
   Nothing is read from any other tab, or without the click.
 - **`scripting`** — To run the one function that collects those identifiers in the tab the user
-  clicked on. No script runs on any page otherwise; the add-on has no content scripts.
+  clicked on. Apart from the content script on the five sites below, no script runs on any page
+  otherwise.
 - **`storage`** — To remember which of the user's theses, and which collection, they saved to
   last; and, for at most two minutes and in memory only, a link the user right-clicked, so the
   window that opens can show that paper.
@@ -94,6 +111,18 @@ redraws them after a design change.
 - **Host permission `https://thesis.rademics.ai/*`** — The add-on's own service: to list the user's
   theses and collections and save papers into the one they choose, on the user's own account, with
   the sign-in they already have on that site.
+- **Content script on `scholar.google.com/scholar*`, `scholar.google.co.in/scholar*`,
+  `pubmed.ncbi.nlm.nih.gov`, `arxiv.org/abs|list|search` and `www.mdpi.com`** **(new in 0.3.0)** —
+  To put an "Add to Thesis Copilot" button beside each search result and beside an article's DOI
+  on these scholarly sites, the ones students search most. The script reads only the tags that
+  describe the article and, on a results page, each result's title, authors and identifier, as the
+  page shows them. It makes no request to these sites and sends nothing until the user presses a
+  button; then it sends the paper's identifier (DOI, arXiv id or PubMed id) to the user's own
+  Thesis Copilot account. It runs on no other site; elsewhere the user clicks the toolbar button.
+
+Paste the content-script box into the host-permission justification as well if the dashboard has
+only one box for hosts. If the dashboard lists a permission or a site not named here, stop: the
+build is not the one described here.
 
 **Remote code:** No, I am not using remote code. (All code is in the package; the manifest's
 content security policy is `script-src 'self'`.)
@@ -102,8 +131,10 @@ content security policy is `script-src 'self'`.)
 
 - **Website content** — the article's title, authors, journal, year and DOI from the page the user
   clicked on; on a results page, the titles and identifiers of the results the user ticks; and,
-  when the user chooses "Attach this PDF", the PDF file open in the tab. Sent only to the user's own
-  Thesis Copilot library, only when the user chooses Save.
+  when the user chooses "Attach this PDF", the PDF file open in the tab. From an in-page button
+  (new in 0.3.0), the paper's identifier — or, for a search result that has none, its title,
+  authors and year as shown. Sent only to the user's own Thesis Copilot library, only when the user
+  chooses it.
 - **Authentication information** — no. The add-on stores no token or password; the browser sends
   the site's own session cookie to the site.
 - Personally identifiable information, health, financial, personal communications, location, web
@@ -114,7 +145,8 @@ approved use), not used or transferred for purposes unrelated to the item's sing
 used or transferred to determine creditworthiness or for lending.
 
 **Privacy policy URL:** https://thesis.rademics.ai/privacy (its section "The Chrome add-on" covers
-version 0.2.0 — results pages and the PDF — from the release that carries this change).
+version 0.2.0 — results pages and the PDF — and, from the site release carrying ADR-0125, the
+0.3.0 in-page buttons. That release must be live before 0.3.0 is submitted).
 
 ## Distribution tab
 

@@ -296,4 +296,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R22 | Done 2026-10-08 — replies under a comment (student and guide), edit and delete your own, thumbs-up on the comment and each reply; in the review panel, the queue and the guide's page | ADR-0109 |
 | R23 | Done 2026-10-08 — review mode: proofreading and tone fixes as tracked changes in the text, flags as highlights; Y / N, ↑ ↓, Accept all (one Undo), Reject all, Esc, "All suggestions resolved!", Try next | ADR-0110 |
 | R24 | Done 2026-10-08 — examiner points tagged Major / Minor, opened in the text when a review finishes; the score card built and evaluated (four rounds), not shown: it did not judge presentation or contribution reliably | ADR-0111 |
+| R39 | Done 2026-10-08 — in-page Add buttons on Scholar, PubMed, arXiv and MDPI (add-on 0.3.0, not yet submitted) | ADR-0125 |
 | R25–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

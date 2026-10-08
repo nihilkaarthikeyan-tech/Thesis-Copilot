@@ -5663,3 +5663,10 @@ box; all fixed (f26dbb3), and the audit now finds none. `e2e/layout.spec.ts` gua
 in CI. A screenshot then showed what a measuring script cannot: "Not checked yet" squeezed into a
 one-word column and "uses one coherence check from your plan" on a plan without them — fixed.
 
+R39 (ADR-0125, add-on 0.3.0): "Add to Thesis Copilot" buttons inside Google Scholar, PubMed, arXiv
+and MDPI pages, by a content script on exactly five hosts; each saves the paper the page's own
+metadata names (an MDPI issue gets no button) through lookup-id / import-id, with cited-by, open
+access and PDF shown only when stated. Built by a parallel agent; on main: 112 add-on unit tests,
+the 6 paper-id API tests and the 6 in-page browser tests (fixtures, 390 and 1440 px) pass. Not
+tried on the live sites. The 0.3.0 zip waits for 0.2.1's store approval (PENDING).
+

@@ -37,8 +37,15 @@ export function collectPageMeta(): PageMeta {
  * page — only what each result shows (its title, its byline line, the id or link it carries).
  * Nothing is fetched: Google Scholar in particular is read as it is on the screen, never asked
  * for more. `host` is for the tests; in the tab it is the page's own.
+ *
+ * `withNodes` is for the in-page buttons (ADR-0125), which run in the page and put a button on
+ * each result: it adds the result's element to each item. The popup never asks for it — an
+ * element cannot cross back from `chrome.scripting`.
  */
-export function collectResultList(host: string = location.hostname): RawListing | null {
+export function collectResultList(
+  host: string = location.hostname,
+  withNodes = false,
+): RawListing | null {
   const MAX = 100;
   const text = (node: Element | null | undefined, max = 600): string =>
     (node?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -69,6 +76,7 @@ export function collectResultList(host: string = location.hostname): RawListing 
         pmid: attr(link, 'data-article-id', 20) || text(article.querySelector('.docsum-pmid'), 20),
         arxivId: '',
         href: href(link),
+        ...(withNodes ? { node: article } : {}),
       });
       if (items.length >= MAX) break;
     }
@@ -89,6 +97,7 @@ export function collectResultList(host: string = location.hostname): RawListing 
         pmid: '',
         arxivId: (attr(abs, 'href', 200).split('/abs/')[1] ?? attr(abs, 'id', 50)).slice(0, 50),
         href: href(abs),
+        ...(withNodes ? { node: dt } : {}),
       });
       if (items.length >= MAX) break;
     }
@@ -104,6 +113,7 @@ export function collectResultList(host: string = location.hostname): RawListing 
         pmid: '',
         arxivId: (link.split('/abs/')[1] ?? '').slice(0, 50),
         href: link,
+        ...(withNodes ? { node: result } : {}),
       });
     }
     return items.length ? { site: 'arxiv', items } : null;
@@ -125,6 +135,7 @@ export function collectResultList(host: string = location.hostname): RawListing 
         pmid: '',
         arxivId: '',
         href: href(heading.querySelector('a[href]')),
+        ...(withNodes ? { node: result } : {}),
       });
       if (items.length >= MAX) break;
     }

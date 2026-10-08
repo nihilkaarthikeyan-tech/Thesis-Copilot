@@ -17,7 +17,41 @@
  */
 
 import type { Api } from './api.js';
-import type { ItemResult, PdfOutcome, SaveJob, SaveResult } from './messages.js';
+import { isId } from './api.js';
+import type {
+  ItemResult,
+  PdfOutcome,
+  SaveJob,
+  SaveOneJob,
+  SaveOneResult,
+  SaveResult,
+} from './messages.js';
+import { checkPaper } from './paper.js';
+import { checkRef, refQuery } from './refs.js';
+
+/**
+ * An in-page button's save as the service worker accepts it (ADR-0125): every id a UUID, the
+ * identifier exactly one the cleaners would make, the paper checked field by field. A content
+ * script runs inside someone else's page, so its message is checked like any other input.
+ */
+export function checkSaveOneJob(value: unknown): SaveOneJob | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  if (!isId(v.documentId)) return null;
+  let collectionId: string | null = null;
+  if (v.collectionId !== null && v.collectionId !== undefined) {
+    if (!isId(v.collectionId)) return null;
+    collectionId = v.collectionId;
+  }
+  let ref: SaveOneJob['ref'] = null;
+  if (v.ref !== null && v.ref !== undefined) {
+    ref = checkRef(v.ref);
+    if (!ref) return null;
+  }
+  const paper = checkPaper(v.paper);
+  if (!paper) return null;
+  return { documentId: v.documentId, collectionId, ref, paper };
+}
 
 export const RESOLVE_BATCH = 10;
 
@@ -202,4 +236,87 @@ async function collect(
   if (ids.length === 0) return null;
   const reply = await deps.api.addToCollection(job.collectionId, ids);
   return reply.ok ? 'added' : 'failed';
+}
+
+export type SaveOneDeps = {
+  api: Pick<
+    Api,
+    'importId' | 'library' | 'resolve' | 'addToCollection' | 'uploadPdf' | 'attachPdf'
+  >;
+};
+
+/**
+ * One paper from an in-page button — ADR-0125.
+ *
+ * With an identifier, through the library's paste-an-ID import (`import-id`, ADR-0103): the
+ * server reads the record for that identifier again, so what is saved is what the identifier
+ * names and nothing the page could misdescribe; a DOI already in the library is found, not
+ * added twice. Only when the server has no record for it (404) does the paper go the popup's way
+ * — `runSave`, through resolve, by its details and DOI — and so does a result with no identifier
+ * at all. Every failure carries its reason; nothing fails silently.
+ */
+export async function saveOne(job: SaveOneJob, deps: SaveOneDeps): Promise<SaveOneResult> {
+  const key = 'one';
+  if (job.ref) {
+    const reply = await deps.api.importId(job.documentId, refQuery(job.ref));
+    if (reply.ok) {
+      const { sourceId, alreadyPresent } = reply.value;
+      const collection = job.collectionId
+        ? (await deps.api.addToCollection(job.collectionId, [sourceId])).ok
+          ? ('added' as const)
+          : ('failed' as const)
+        : null;
+      return {
+        key,
+        status: alreadyPresent ? 'present' : 'saved',
+        sourceId,
+        collection,
+        signedOut: false,
+        via: 'id',
+      };
+    }
+    if (reply.status === 401) {
+      return {
+        key,
+        status: 'failed',
+        sourceId: null,
+        message: reply.message,
+        collection: null,
+        signedOut: true,
+        via: 'id',
+      };
+    }
+    if (reply.status !== 404) {
+      return {
+        key,
+        status: 'failed',
+        sourceId: null,
+        message: reply.message,
+        collection: null,
+        signedOut: false,
+        via: 'id',
+      };
+    }
+    // 404: no record for the identifier. The paper as the page describes it still goes in.
+  }
+  const saved = await runSave(
+    {
+      runId: 'in-page',
+      documentId: job.documentId,
+      collectionId: job.collectionId,
+      items: [{ key, paper: job.paper }],
+      pdf: null,
+    },
+    { api: deps.api, fetchPdf: async () => ({ ok: false, message: 'No PDF from the page.' }) },
+  );
+  const result = saved.results[0] ?? { key, status: 'failed' as const, sourceId: null };
+  return {
+    ...result,
+    ...(result.status === 'failed' && !result.message
+      ? { message: 'Thesis Copilot did not take this one.' }
+      : {}),
+    collection: saved.collection,
+    signedOut: saved.signedOut,
+    via: 'details',
+  };
 }

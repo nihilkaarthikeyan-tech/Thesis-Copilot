@@ -133,6 +133,22 @@ export function arxivIdFromPageUrl(url: string): string | null {
   return match?.[1] ? cleanArxivId(match[1]) : null;
 }
 
+/**
+ * `https://pubmed.ncbi.nlm.nih.gov/34247157/` → `34247157`. Only PubMed's own article address
+ * counts: a search page (`/?term=…`) or any other site's number is not a PMID.
+ */
+export function pmidFromUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname.toLowerCase() !== 'pubmed.ncbi.nlm.nih.gov') return null;
+  const match = /^\/(\d{1,9})\/?$/.exec(parsed.pathname);
+  return match?.[1] ? cleanPmid(match[1]) : null;
+}
+
 /** A DOI in the address itself: doi.org links, publishers' `/doi/…` paths, and `?id=10.…` values. */
 export function doiFromUrl(url: string): string | null {
   let parsed: URL;
@@ -288,4 +304,34 @@ export function pdfFilename(url: string): string {
       .replace(/^[-.]+|[-.]+$/g, '')
       .slice(0, 100) || 'paper';
   return `${base}.pdf`;
+}
+
+/**
+ * A paper from somewhere untrusted — an in-page button's message (ADR-0125) — checked field by
+ * field, or null. A DOI that is not a DOI refuses the whole paper rather than being dropped: the
+ * content script cleans its DOIs, so a bad one means the message was tampered with.
+ */
+export function checkPaper(value: unknown): Paper | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const text = (field: unknown, max: number): string =>
+    typeof field === 'string' ? clip(field, max) : '';
+  let doi: string | null = null;
+  if (v.doi !== null && v.doi !== undefined) {
+    doi = typeof v.doi === 'string' ? cleanDoi(v.doi) : null;
+    if (!doi) return null;
+  }
+  const title = text(v.title, 500);
+  const reference = text(v.reference, 1_000);
+  if (!reference && !doi) return null;
+  // Checked whole, before any cutting: "20255" is not a year, and must not become "2025".
+  const year = typeof v.year === 'string' ? v.year.trim() : '';
+  return {
+    title: title || (doi ?? reference.slice(0, 500)),
+    doi,
+    reference: reference || `https://doi.org/${doi}`,
+    byline: text(v.byline, 400) || null,
+    year: /^\d{4}$/.test(year) ? year : null,
+    venue: text(v.venue, 200) || null,
+  };
 }

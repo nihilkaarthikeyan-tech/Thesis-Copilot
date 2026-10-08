@@ -8,5 +8,6 @@
     "sourceMap": false,
     "types": ["chrome"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/content.ts", "src/inpage.ts", "src/card.ts"]
 }

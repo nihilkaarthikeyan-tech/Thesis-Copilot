@@ -9,8 +9,9 @@
  *   records ("Radiology. 2024 Jul;312(1):e232085. doi: 10.1148/radiol.232085.").
  * - arXiv: the arXiv id, so the DOI arXiv registers (`10.48550/arxiv.<id>`).
  * - Google Scholar: only the title, the "authors - venue, year - host" line and the link the
- *   title points to; a DOI only when that link has one in it. The rest are looked up by their
- *   text, which the library matches strictly or leaves unresolved, never guesses.
+ *   title points to; a DOI (or a PubMed id) only when that link has one in it. The rest are
+ *   looked up by their text, which the library matches strictly or leaves unresolved, never
+ *   guesses.
  */
 
 import {
@@ -22,6 +23,7 @@ import {
   clip,
   doiFromUrl,
   type Paper,
+  pmidFromUrl,
   referenceLine,
 } from './paper.js';
 
@@ -37,6 +39,11 @@ export type RawResult = {
   arxivId: string;
   /** Where the result's title links to, absolute. */
   href: string;
+  /**
+   * The result's element on the page, when the in-page buttons asked for it (ADR-0125). Never
+   * present in what `chrome.scripting` hands back to the popup: an element cannot be serialised.
+   */
+  node?: Element;
 };
 
 export type RawListing = { site: Site; items: RawResult[] };
@@ -44,6 +51,11 @@ export type RawListing = { site: Site; items: RawResult[] };
 export type ListItem = Paper & {
   /** What makes two results one paper on this page: the DOI, else the PMID, else the title. */
   key: string;
+  /**
+   * The PubMed id, when the result carries one: PubMed's own results, or a Scholar result whose
+   * title links to PubMed. The in-page buttons import by it (ADR-0125); the popup does not use it.
+   */
+  pmid?: string | null;
 };
 
 /** The most one save sends — a page of results, not a library. */
@@ -86,6 +98,7 @@ function fromPubmed(raw: RawResult): ListItem | null {
     key: doi ?? (pmid ? `pmid:${pmid}` : `title:${title.toLowerCase()}`),
     title: title || (doi ?? ''),
     doi,
+    pmid,
     byline: authors,
     year,
     venue,
@@ -117,6 +130,7 @@ function fromScholar(raw: RawResult): ListItem | null {
   if (!title) return null;
   const arxivId = raw.href ? arxivIdFromPageUrl(raw.href) : null;
   const doi = raw.href ? (doiFromUrl(raw.href) ?? (arxivId ? arxivDoi(arxivId) : null)) : null;
+  const pmid = raw.href ? pmidFromUrl(raw.href) : null;
   // "A Author, B Author - Journal of Things, 2015 - publisher.com"
   const [who = '', where = ''] = clip(raw.byline, 600).split(/\s+-\s+/);
   const year = yearIn(where);
@@ -130,9 +144,10 @@ function fromScholar(raw: RawResult): ListItem | null {
     ) || null;
   const authors = byline(who);
   return {
-    key: doi ?? `title:${title.toLowerCase()}`,
+    key: doi ?? (pmid ? `pmid:${pmid}` : `title:${title.toLowerCase()}`),
     title,
     doi,
+    pmid,
     byline: authors,
     year,
     venue,
@@ -140,15 +155,19 @@ function fromScholar(raw: RawResult): ListItem | null {
   };
 }
 
+/** One result as a paper, or null when nothing in it checks out. */
+export function itemFrom(site: Site, raw: RawResult): ListItem | null {
+  const read = site === 'pubmed' ? fromPubmed : site === 'arxiv' ? fromArxiv : fromScholar;
+  return read(raw);
+}
+
 /** The papers on the page, each once, in page order. */
 export function itemsFrom(listing: RawListing | null | undefined): ListItem[] {
   if (!listing || !Array.isArray(listing.items)) return [];
-  const read =
-    listing.site === 'pubmed' ? fromPubmed : listing.site === 'arxiv' ? fromArxiv : fromScholar;
   const seen = new Set<string>();
   const items: ListItem[] = [];
   for (const raw of listing.items.slice(0, 100)) {
-    const item = read(raw);
+    const item = itemFrom(listing.site, raw);
     if (!item || seen.has(item.key)) continue;
     seen.add(item.key);
     items.push(item);

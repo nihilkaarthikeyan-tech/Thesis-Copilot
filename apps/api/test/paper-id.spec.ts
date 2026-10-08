@@ -41,6 +41,7 @@ function stubOutside() {
             issued: { 'date-parts': [[2021]] },
             'container-title': ['Energy Policy'],
             type: 'journal-article',
+            'is-referenced-by-count': 42,
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } },
@@ -78,6 +79,21 @@ describe('adding a paper by its identifier', () => {
     const res = await h.api(`/documents/${documentId}/sources/lookup-id?q=rooftop%20solar`);
     expect(res.status).toBe(400);
     expect(((await res.json()) as { detail: string }).detail).toMatch(/not a DOI/);
+  });
+
+  it('passes on the citation count Crossref sent, and states no access it was not told', async () => {
+    // ADR-0125: the add-on's in-page card shows these only when the lookup knows them.
+    stubOutside();
+    const res = await h.api(`/documents/${documentId}/sources/lookup-id?q=10.1000/abc`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      kind: 'doi',
+      title: 'Barriers to rooftop solar',
+      citedBy: 42,
+      openAccessVia: null,
+    });
+    const book = await h.api(`/documents/${documentId}/sources/lookup-id?q=9780262033848`);
+    expect(await book.json()).toMatchObject({ kind: 'isbn', citedBy: null, openAccessVia: null });
   });
 
   it('creates a book from its ISBN, and finds it the second time', async () => {

@@ -11,6 +11,13 @@
  * `--extra-host <pattern>` adds a host the add-on may read without the toolbar click. It exists
  * for the browser test, which cannot click Chrome's toolbar and so cannot grant `activeTab`; the
  * production build never has one, and reads a page only when the student clicks.
+ *
+ * The content script (ADR-0125) is the one file not compiled by tsc alone: Chrome loads a
+ * content script as a classic script, not a module, so `src/content.ts` and what it imports are
+ * joined into one `content.js` by esbuild — not minified, so a reviewer reads it as written. It
+ * runs only on `INPAGE_MATCHES` (`src/hosts.ts`). `--open-shadow` (development only, for the
+ * browser test) opens the in-page shadow roots so a test can read the card; production keeps
+ * them closed.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -25,8 +32,9 @@ import {
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { build } from 'esbuild';
 import JSZip from 'jszip';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,6 +45,7 @@ const { values } = parseArgs({
     api: { type: 'string' },
     web: { type: 'string' },
     'extra-host': { type: 'string', multiple: true, default: [] },
+    'open-shadow': { type: 'boolean', default: false },
     'no-zip': { type: 'boolean', default: false },
   },
 });
@@ -49,9 +58,12 @@ const preset = TARGETS[values.target];
 if (!preset) {
   throw new Error(`Unknown target "${values.target}". Known: ${Object.keys(TARGETS).join(', ')}`);
 }
-if (values.target === 'production' && (values.api || values.web || values['extra-host'].length)) {
+if (
+  values.target === 'production' &&
+  (values.api || values.web || values['extra-host'].length || values['open-shadow'])
+) {
   throw new Error(
-    'The production build talks to thesis.rademics.ai only; --api/--web/--extra-host are for development.',
+    'The production build talks to thesis.rademics.ai only, with closed shadow roots; --api/--web/--extra-host/--open-shadow are for development.',
   );
 }
 const target = { api: values.api ?? preset.api, web: values.web ?? preset.web };
@@ -69,10 +81,40 @@ execFileSync(process.execPath, [tsc, '-p', join(root, 'tsconfig.build.json'), '-
 });
 
 // 2. Where this build talks to (declared for the type checker in src/config.d.ts).
+const shadow = values['open-shadow'] ? 'open' : 'closed';
 writeFileSync(
   join(out, 'config.js'),
-  `export const API_URL = ${JSON.stringify(target.api)};\nexport const WEB_URL = ${JSON.stringify(target.web)};\n`,
+  `export const API_URL = ${JSON.stringify(target.api)};\nexport const WEB_URL = ${JSON.stringify(target.web)};\nexport const INPAGE_SHADOW = ${JSON.stringify(shadow)};\n`,
 );
+
+// 2b. The content script: one classic script, joined by esbuild (see the header). Its
+//     `./config.js` is the one just written for this target.
+const { INPAGE_MATCHES } = await import(pathToFileURL(join(out, 'hosts.js')).href);
+await build({
+  // The file names esbuild writes as comments are relative to the package, not this machine.
+  absWorkingDir: root,
+  entryPoints: [join(root, 'src', 'content.ts')],
+  outfile: join(out, 'content.js'),
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: 'chrome127',
+  minify: false,
+  legalComments: 'none',
+  charset: 'utf8',
+  logLevel: 'warning',
+  tsconfig: join(root, 'tsconfig.build.json'),
+  plugins: [
+    {
+      name: 'target-config',
+      setup(esbuild) {
+        esbuild.onResolve({ filter: /^\.\/config\.js$/ }, () => ({
+          path: join(out, 'config.js'),
+        }));
+      },
+    },
+  ],
+});
 
 // 3. The manifest. Every permission is justified in STORE.md, one by one.
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
@@ -81,7 +123,7 @@ const manifest = {
   manifest_version: 3,
   name: 'Thesis Copilot',
   description:
-    'Save the papers you read — one, a page of results, or the PDF — to your Thesis Copilot library.',
+    'Save the papers you read to your Thesis Copilot library — from a button on the page, a page of results, or the PDF.',
   version: pkg.version,
   // 127: `chrome.action.openPopup` for every add-on, which the right-click item uses.
   minimum_chrome_version: '127',
@@ -104,6 +146,16 @@ const manifest = {
   },
   permissions: ['activeTab', 'scripting', 'storage', 'contextMenus'],
   host_permissions: [`${target.api}/*`, ...values['extra-host']],
+  // ADR-0125: the "Add to Thesis Copilot" buttons, on these pages only (src/hosts.ts), in the top
+  // frame, once the page has loaded. Each host is justified in STORE.md.
+  content_scripts: [
+    {
+      matches: [...INPAGE_MATCHES],
+      js: ['content.js'],
+      run_at: 'document_idle',
+      all_frames: false,
+    },
+  ],
   // Stated rather than left to the default, so a reviewer sees it: only the package's own code.
   content_security_policy: {
     extension_pages:

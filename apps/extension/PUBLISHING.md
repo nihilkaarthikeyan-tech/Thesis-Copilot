@@ -3,6 +3,11 @@
 For someone who has never published an extension. Allow an hour for the first time, then a few
 days for Google's review. `STORE.md` has every piece of text to paste; this file says where it goes.
 
+> **Where things stand (2026-10-08).** 0.2.1 was submitted as a new item and is in review —
+> sections 1–5 below are how that was done. **0.3.0** (the in-page buttons, ADR-0125) is built but
+> **not submitted**: wait until 0.2.1 is approved, then follow **section 7a** to send 0.3.0 as an
+> update to the same item. Do not create a second item.
+
 ## 0. Before you start
 
 - A Google account you will keep for the product (a shared work account is better than a personal
@@ -95,7 +100,7 @@ The email names the policy. The common ones, and why this add-on should pass the
 
 | Reason | Where this add-on stands |
 |---|---|
-| **Permissions not justified, or broader than needed** | Five permissions, each explained in `STORE.md`; no `<all_urls>`, no `tabs`, no content scripts. If a reviewer queries one, reply quoting the justification. |
+| **Permissions not justified, or broader than needed** | Five permissions, each explained in `STORE.md`; no `<all_urls>`, no `tabs`. From 0.3.0, one content script on five named scholarly sites (no wildcard host), justified in `STORE.md`. If a reviewer queries one, reply quoting the justification. |
 | **Misleading or keyword-stuffed description** | The description says only what the add-on does; no other product's name is used to attract searches. Keep it that way when you edit it. |
 | **Missing or inadequate privacy policy** | The `/privacy` page must be live and must mention the add-on, results pages and PDFs (it does from the release carrying ADR-0069). |
 | **Single purpose unclear** | "Save scholarly papers you are viewing to your Thesis Copilot library" — every feature is a way of doing that. |
@@ -116,6 +121,41 @@ Fix what the email names, bump the version (below) and submit again.
    facts changed (a **new permission needs a new justification**, and Chrome will ask existing
    users to approve a permission that adds a warning) → **Submit for review**.
 6. After approval, installed copies update themselves within a few hours.
+
+## 7a. The 0.3.0 update (in-page buttons, ADR-0125) — only after 0.2.1 is approved
+
+What changed for the store: **one new permission** — a content script on five sites — so the
+listing needs one new justification, and the summary, description, single purpose, data usage and
+privacy note changed. Everything to paste is in `STORE.md`, marked "(new in 0.3.0)".
+
+1. **First, the site.** The privacy page's add-on section now describes the in-page buttons
+   (`apps/web/src/app/privacy/page.tsx`, "From version 0.3.0…"). Release the site version that
+   carries it, and check https://thesis.rademics.ai/privacy shows that paragraph, before step 4.
+2. **Build:** `pnpm --filter @tc/extension build`. The last line says
+   `Wrote thesis-copilot-chrome-0.3.0.zip`; the file is `apps/extension/thesis-copilot-chrome-0.3.0.zip`.
+3. **Try it once** (Load unpacked → `apps/extension/dist`, signed in at thesis.rademics.ai): open a
+   Google Scholar results page, a PubMed search and article, an arXiv abstract and an MDPI
+   article; each shows "Add to Thesis Copilot"; press one and save it.
+4. **Dashboard** → the Thesis Copilot item → **Package** → **Upload new package** → the 0.3.0 zip.
+   The dashboard reads version 0.3.0 and the new summary from it.
+5. **Privacy practices tab:** the permission list now includes the content script's sites
+   (`scholar.google.com`, `scholar.google.co.in`, `pubmed.ncbi.nlm.nih.gov`, `arxiv.org`,
+   `www.mdpi.com`) beside `thesis.rademics.ai`. Paste the "Content script on …" box from
+   `STORE.md` into its justification (and into the host-permission box, if the dashboard has only
+   one for hosts). Replace the single-purpose text, the `scripting` box and the "Website content"
+   note with the 0.3.0 wording. If the dashboard lists anything `STORE.md` does not explain, stop.
+6. **Store listing tab:** replace the description with the 0.3.0 one from `STORE.md`. The
+   screenshots stay as they are.
+7. **Submit for review.** A new site permission usually means a longer review than a plain update.
+8. **What existing users see:** Chrome turns the add-on off on their machine until they accept
+   a wider warning — that it can read and change their data on those five sites as well as
+   thesis.rademics.ai (Chrome chooses the exact words; with this many sites it may say "a number
+   of websites" and list them). Worth a line in the changelog page or an email to the pilot
+   students when it goes out.
+
+If it is rejected over the content script, the fallback is to remove a site from
+`src/hosts.ts` (the build, the manifest and the service worker all read that one list), bump to
+0.3.1 and submit again.
 
 ## 8. After publishing
 

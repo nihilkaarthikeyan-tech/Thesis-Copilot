@@ -302,6 +302,11 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       ADR-0101) and `0042_comment_replies` (R22, ADR-0109). Nothing to configure for either.
 - [ ] **Optional: an email when someone replies to a comment** (ADR-0109, "Not done"). New comments
       do not email today either; decide both together if you want them.
+- [ ] **Add-on 0.3.0 (R39, ADR-0125)** — after 0.2.1 is approved: release the site (its /privacy
+      has a new paragraph the reviewer reads), then follow `apps/extension/PUBLISHING.md` §7a: upload
+      `thesis-copilot-chrome-0.3.0.zip` as an update, paste the new "Content script on …"
+      justification and the STORE.md wording marked "new in 0.3.0", submit. Existing users accept the
+      wider permission once. Try it on the live Scholar/PubMed/arXiv/MDPI pages first.
 - [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
       shown because presentation and contribution did not track the text. A next attempt could
       run that one call at a higher reasoning effort (priced first: about ₹0.36 a review before

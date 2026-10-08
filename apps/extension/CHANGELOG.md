@@ -1,5 +1,22 @@
 # Changelog — Thesis Copilot for Chrome
 
+## 0.3.0 — 2026-10-08 (ADR-0125) — not yet submitted to the store
+
+- **"Add to Thesis Copilot" inside the page**, with no toolbar step: on every Google Scholar
+  result (scholar.google.com and .co.in), on PubMed results and article pages, on arXiv abstract
+  pages, listings and searches, and beside the DOI on MDPI articles.
+- **A card** at the top right: the paper as Thesis Copilot finds it for the page's DOI, arXiv id or
+  PubMed id; "Cited by" (Google Scholar's count on a Scholar result, Crossref's elsewhere), open
+  access (arXiv, PubMed Central) and "PDF found on this page" — each only when it is known; the
+  thesis and collection; Save; then "Open in Thesis Copilot". Escape closes it.
+- **The right paper, every time**: a button is tied to an identifier the page itself states; a
+  page that names no article (an MDPI issue's contents) gets no button.
+- **Saved by its identifier** through the library's paste-an-ID import, so a PubMed record with
+  no DOI now goes in by its PMID; already-saved papers say so. Every failure gives its reason.
+- **New permission**: the content script on those five sites (Chrome asks existing users to
+  accept it). Every other article page keeps the toolbar button.
+- API: the identifier lookup also answers `citedBy` and `openAccessVia`.
+
 ## 0.2.1 — 2026-10-06
 
 Found by using the add-on on eighteen live sites against Jenni's own list of what its extension

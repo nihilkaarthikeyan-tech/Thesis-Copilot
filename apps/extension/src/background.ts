@@ -1,6 +1,7 @@
 /**
- * The add-on's service worker — ADR-0031, ADR-0069. It makes the calls to Thesis Copilot for the
- * popup (the student's theses, a thesis's collections, saving), and owns the right-click item.
+ * The add-on's service worker — ADR-0031, ADR-0069, ADR-0125. It makes the calls to Thesis
+ * Copilot for the popup and for the in-page buttons (the student's theses, a thesis's
+ * collections, a lookup, saving), and owns the right-click item.
  *
  * It signs nobody in. The student's own session cookie for the site goes with each request, the
  * same one the website uses, so a student signed in to Thesis Copilot in this browser is signed in
@@ -9,10 +10,12 @@
 
 import { fetchPdf, makeApi } from './api.js';
 import { API_URL } from './config.js';
-import type { Failure, Progress, Request } from './messages.js';
+import { senderMay } from './hosts.js';
+import { type Failure, INPAGE_REQUESTS, type Progress, type Request } from './messages.js';
 import { paperFromLink } from './paper.js';
 import { PENDING_KEY, type PendingLink } from './pending.js';
-import { runSave } from './save.js';
+import { checkRef, refQuery } from './refs.js';
+import { checkSaveOneJob, runSave, saveOne } from './save.js';
 
 const api = makeApi(API_URL);
 const MENU_ID = 'add-link';
@@ -61,9 +64,15 @@ chrome.contextMenus.onClicked.addListener((info) => {
   });
 });
 
+/** A request a content script sent that does not check out. */
+const refused = (message: string): Promise<Failure> =>
+  Promise.resolve({ ok: false, status: 400, message });
+
 chrome.runtime.onMessage.addListener((message: Request, sender, sendResponse) => {
-  // Only this add-on's own pages talk to it; a web page cannot reach `onMessage`.
+  // Only this add-on talks to it; a web page itself cannot reach `onMessage`.
   if (sender.id !== chrome.runtime.id || !message || typeof message !== 'object') return false;
+  // The popup may ask anything; a content script only what the in-page card needs (ADR-0125).
+  if (!senderMay(sender, message.type, chrome.runtime.getURL(''), INPAGE_REQUESTS)) return false;
   let work: Promise<unknown>;
   switch (message.type) {
     case 'theses':
@@ -75,6 +84,20 @@ chrome.runtime.onMessage.addListener((message: Request, sender, sendResponse) =>
     case 'create-collection':
       work = api.createCollection(message.documentId, message.name);
       break;
+    case 'lookup': {
+      const ref = checkRef(message.ref);
+      work = ref
+        ? api.lookupId(message.documentId, refQuery(ref))
+        : refused('That is not a DOI, an arXiv id or a PubMed id.');
+      break;
+    }
+    case 'save-one': {
+      const job = checkSaveOneJob(message.job);
+      work = job
+        ? saveOne(job, { api }).then((value) => ({ ok: true, value }))
+        : refused('The add-on could not read what to save. Reload the page and try again.');
+      break;
+    }
     case 'save': {
       const { job } = message;
       const total = job.items.length;

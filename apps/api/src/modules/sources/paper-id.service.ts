@@ -43,7 +43,22 @@ export type PaperPreview = {
   doi: string | null;
   abstract: string | null;
   type: 'article-journal' | 'article' | 'book';
+  /**
+   * ADR-0125: Crossref's `is-referenced-by-count`, from the record the DOI lookup already reads;
+   * null when the lookup was not by DOI or Crossref sent none — never defaulted to 0.
+   */
+  citedBy: number | null;
+  /**
+   * ADR-0125: where the record itself says it is free to read — every arXiv e-print, and a PubMed
+   * record with a PubMed Central copy. Null means "not stated", not "closed".
+   */
+  openAccessVia: 'arXiv' | 'PubMed Central' | null;
 };
+
+/** Crossref's citation count, when it is a count. */
+export function crossrefCitedBy(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
 
 const names = (list: readonly string[]): CslAuthor[] =>
   list
@@ -140,6 +155,8 @@ export class PaperIdService {
           doi: item.DOI ?? found.id,
           abstract: null,
           type: item.type === 'book' || item.type === 'monograph' ? 'book' : 'article-journal',
+          citedBy: crossrefCitedBy(item['is-referenced-by-count']),
+          openAccessVia: null,
         };
       }
       case 'arxiv': {
@@ -155,6 +172,8 @@ export class PaperIdService {
           doi: entry.doi ?? arxivDoi(entry.id),
           abstract: entry.abstract,
           type: 'article',
+          citedBy: null,
+          openAccessVia: 'arXiv',
         };
       }
       case 'pmid': {
@@ -170,6 +189,8 @@ export class PaperIdService {
           doi: record.doi,
           abstract: record.abstract,
           type: 'article-journal',
+          citedBy: null,
+          openAccessVia: record.pmcid ? 'PubMed Central' : null,
         };
       }
       case 'isbn': {
@@ -185,6 +206,8 @@ export class PaperIdService {
           doi: null,
           abstract: null,
           type: 'book',
+          citedBy: null,
+          openAccessVia: null,
         };
       }
     }

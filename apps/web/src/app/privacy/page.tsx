@@ -64,6 +64,14 @@ export default function PrivacyPage() {
         thesis and collection you saved to last, and for at most two minutes a link you
         right-clicked.
       </p>
+      <p className="mt-2 text-muted">
+        From version 0.3.0, on Google Scholar, PubMed, arXiv and MDPI pages only, it also puts an{' '}
+        <em>Add to Thesis Copilot</em> button into the page. To do that it reads the same tags and
+        results as the page loads, inside your browser; it sends nothing until you press a button.
+        Then it sends the paper&rsquo;s identifier (its DOI, arXiv id or PubMed id) to look it up
+        and, when you choose <em>Save</em>, to add it — or, for a search result that has no
+        identifier, its title, authors and year as shown. It never contacts those sites itself.
+      </p>
 
       <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">What we log</h2>
       <p className="mt-2 text-muted">
