@@ -19,7 +19,14 @@ import {
   usageToDocx,
   type WordCounts,
 } from '@tc/export';
-import { type CitationMode, numberingMap } from '@tc/types';
+import {
+  type CitationMode,
+  type ExportLayout,
+  FONT_STYLE_DOCX,
+  numberingMap,
+  type ResolvedLayout,
+  readFontStyle,
+} from '@tc/types';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -27,6 +34,7 @@ import { StorageService } from '../../common/storage.service.js';
 import { CitationsService } from '../chapters/citations.service.js';
 import { citationModeFor } from './citation-mode.js';
 import { loadFigures } from './figure-bytes.js';
+import { ThesisExportService } from './thesis-export.service.js';
 
 export type ExportFormat = 'docx' | 'pdf';
 
@@ -40,6 +48,7 @@ export class ExportService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly citations: CitationsService,
+    private readonly thesis: ThesisExportService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -49,7 +58,8 @@ export class ExportService {
     chapterId: string,
     format: ExportFormat,
     citations?: CitationMode,
-  ): Promise<ExportResult> {
+    layoutChoice?: ExportLayout,
+  ): Promise<ExportResult & { layout?: ResolvedLayout }> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId } },
       select: {
@@ -83,9 +93,43 @@ export class ExportService {
     const bibliography = entries.map((entry) => entry.text);
     // ADR-0055: linked citations or Word fields in the .docx download; the PDF is always plain.
     const mode = citationModeFor(format, citations);
+    // R33 (ADR-0120): the chapter is the student's working copy, in their own font style.
+    const owner = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { settings: true },
+    });
+    const font =
+      FONT_STYLE_DOCX[
+        readFontStyle((owner?.settings as { fontStyle?: unknown } | null)?.fontStyle)
+      ];
+
+    // R27 (ADR-0121): the export dialog's layout, over this thesis's template.
+    const layout = layoutChoice
+      ? await this.thesis.chapterLayout(ownerId, chapter.documentId, layoutChoice, chapter.content)
+      : null;
+    const comments = layout?.comments
+      ? await this.thesis.openComments(chapter.documentId, chapter.id)
+      : [];
 
     const docx = await chapterToDocx(chapter.content, {
       title: chapter.title,
+      ...(font ? { font } : {}),
+      ...(layout
+        ? {
+            page: {
+              size: layout.paper,
+              marginsMm: layout.marginsMm,
+              font: layout.font,
+              sizePt: layout.sizePt,
+              lineSpacing: layout.lineSpacing,
+              paragraphSpacingPt: layout.paragraphSpacingPt,
+              justify: layout.justify,
+              columns: layout.columns,
+              pageNumbers: layout.pageNumbers,
+            },
+          }
+        : {}),
+      ...(comments.length > 0 ? { comments: { chapterId: chapter.id, list: comments } } : {}),
       renderedMap,
       // R40 (ADR-0117): citations side by side print once, as the one citation citeproc made.
       citationClusters: rendered.clusters,
@@ -124,12 +168,16 @@ export class ExportService {
     });
 
     const safeTitle = slug(chapter.title);
+    const withLayout = layout ? { layout } : {};
     if (format === 'docx') {
-      return this.store(chapter.documentId, `${safeTitle}.docx`, docx);
+      return {
+        ...(await this.store(chapter.documentId, `${safeTitle}.docx`, docx)),
+        ...withLayout,
+      };
     }
 
     const pdf = await this.toPdf(docx, `${safeTitle}.docx`);
-    return this.store(chapter.documentId, `${safeTitle}.pdf`, pdf);
+    return { ...(await this.store(chapter.documentId, `${safeTitle}.pdf`, pdf)), ...withLayout };
   }
 
   /** FR-8.6. */
@@ -192,6 +240,9 @@ export class ExportService {
   private async toPdf(docx: Buffer, filename: string): Promise<Buffer> {
     const form = new FormData();
     form.append('files', new Blob([new Uint8Array(docx)]), filename);
+    // R28 (ADR-0119): a contents block is a TOC field; LibreOffice fills in its page numbers
+    // during the conversion, as for the thesis (`ThesisExportService.toPdf`).
+    form.append('updateIndexes', 'true');
 
     const response = await fetch(`${this.env.GOTENBERG_URL}/forms/libreoffice/convert`, {
       method: 'POST',

@@ -232,10 +232,10 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'editor.howSuggestions': 'सुझाव कैसे काम करते हैं',
   'editor.feedback': 'फ़ीडबैक',
   'editor.download': '{file} डाउनलोड करें',
-  'editor.exportTitle': 'इस अध्याय की सादी .docx फ़ाइल (FR-8.1)',
+  'editor.exportTitle': 'Word, PDF, LaTeX या वेब पेज, लेआउट और प्रीव्यू के साथ',
   'editor.exportError': 'एक्सपोर्ट पूरा नहीं हुआ। एक मिनट बाद फिर कोशिश करें।',
   'editor.exporting': 'एक्सपोर्ट हो रहा है…',
-  'editor.export': '.docx एक्सपोर्ट करें',
+  'editor.export': 'एक्सपोर्ट',
   'editor.conflictBanner': 'यह अध्याय कहीं और बदला गया है — आगे बढ़ने के लिए पेज रीलोड करें। ऑटोसेव रुका हुआ है।',
   'editor.reload': 'रीलोड करें',
   'editor.restoreBanner':
@@ -402,6 +402,22 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'fmt.style.heading': 'शीर्षक',
   'fmt.style.subheading': 'उपशीर्षक',
   'fmt.style.quote': 'उद्धरण',
+  'fmt.textColor': 'टेक्स्ट का रंग',
+  'fmt.highlight': 'हाइलाइट (Ctrl+Shift+H)',
+  'fmt.color.grey': 'स्लेटी',
+  'fmt.color.red': 'लाल',
+  'fmt.color.orange': 'नारंगी',
+  'fmt.color.green': 'हरा',
+  'fmt.color.blue': 'नीला',
+  'fmt.color.purple': 'बैंगनी',
+  'fmt.color.yellow': 'पीला',
+  'fmt.color.pink': 'गुलाबी',
+  'fmt.defaultColor': 'सामान्य रंग',
+  'fmt.noHighlight': 'हाइलाइट हटाएँ',
+  'fmt.colorsPrint': 'Word फ़ाइल, PDF, LaTeX और वेब पेज में भी रहता है।',
+  'toc.title': 'विषय-सूची',
+  'toc.empty': 'इस अध्याय के शीर्षक जोड़ते ही यहाँ दिखेंगे।',
+  'toc.goTo': 'यहाँ जाएँ',
 
   // ---- The suggestion bar ---------------------------------------------------------------------
   'suggest.floating': 'आगे का सुझाव दें',
@@ -508,6 +524,20 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'settings.contrast.title': 'हाई कंट्रास्ट',
   'settings.contrast.body':
     'गहरा टेक्स्ट और मोटी रेखाएँ, लाइट या डार्क दोनों में। सिर्फ़ इसी डिवाइस पर रहता है।',
+  'settings.theme.title': 'थीम',
+  'settings.theme.body':
+    'सिस्टम आपके डिवाइस के हिसाब से चलता है। पेपर लाइट और पेपर डार्क छपे हुए पन्ने जैसे गर्म रंग हैं, दिन और रात के लिए। सिर्फ़ इसी डिवाइस पर रहता है।',
+  'settings.theme.system': 'सिस्टम',
+  'settings.theme.light': 'लाइट',
+  'settings.theme.dark': 'डार्क',
+  'settings.theme.paperLight': 'पेपर लाइट',
+  'settings.theme.paperDark': 'पेपर डार्क',
+  'settings.font.title': 'फ़ॉन्ट स्टाइल',
+  'settings.font.body':
+    'एडिटर में आपकी थीसिस के टेक्स्ट का टाइपफ़ेस, Word में एक्सपोर्ट किए अध्याय में और वेब पेज एक्सपोर्ट में भी। थीसिस की .docx और PDF आपकी यूनिवर्सिटी टेम्पलेट के फ़ॉन्ट में बनती हैं।',
+  'settings.font.default': 'डिफ़ॉल्ट (थीम का अपना)',
+  'settings.font.serif': 'सेरिफ़',
+  'settings.font.sans': 'सैन्स-सेरिफ़',
   'settings.month.note':
     'AI आपके लिए जो कुछ भी करता है, वह यहीं गिना जाता है, और कहीं नहीं। सुझाव हटाने पर भी वह गिना जाता है: आपके देखने से पहले टेक्स्ट लिखा जा चुका था।',
 

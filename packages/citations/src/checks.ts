@@ -106,6 +106,8 @@ const LEAF_NODES = new Set([
   'needsSourceNote',
   'crossRef',
   'chart',
+  // R28 (ADR-0119): the contents block, an atom.
+  'tableOfContents',
 ]);
 
 const attr = (node: Node, name: string): string | null => {

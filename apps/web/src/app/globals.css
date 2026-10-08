@@ -78,8 +78,9 @@
 
 /*
  * Dark, three states. The bare `:root` above is light. The media query covers the default
- * "system" setting, guarded so an explicit light choice still wins on a dark OS; the
- * `[data-theme="dark"]` block covers the explicit choice.
+ * "system" setting — no `data-theme` at all, so any explicit choice (light, or a paper theme)
+ * still wins on a dark OS; the `[data-theme="dark"]` block covers the explicit choice. The two
+ * paper themes (R33, ADR-0120) are explicit choices with their own blocks, after high contrast.
  */
 /*
  * High contrast (2026-10-04, from the Jenni study: Jenni offers a high-contrast theme). An
@@ -106,10 +107,17 @@
   --color-danger: #8c1a11;
 }
 
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant dark (
+  &:where(
+    [data-theme="dark"],
+    [data-theme="dark"] *,
+    [data-theme="paper-dark"],
+    [data-theme="paper-dark"] *
+  )
+);
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
     --color-paper: #100f0f;
     --color-surface: #1c1b1a;
     --color-sunk: #171615;
@@ -144,7 +152,9 @@
   }
 }
 
-:root[data-theme="dark"] {
+/* Paper dark with high contrast is dark with high contrast: accessibility wins over the paper. */
+:root[data-theme="dark"],
+:root[data-theme="paper-dark"][data-contrast="high"] {
   --color-paper: #100f0f;
   --color-surface: #1c1b1a;
   --color-sunk: #171615;
@@ -186,8 +196,76 @@
   color-scheme: light;
 }
 
+/*
+ * The paper themes (R33, ADR-0120, from Jenni's Paper Light and Paper Dark): a warm printed page,
+ * by day and by night — cream paper with brown-black ink, and deep brown with cream ink. Both keep
+ * the manuscript serif for the thesis text (Spectral) and Satoshi for the screens, as light does.
+ * `:not([data-contrast="high"])`: with high contrast on, paper light is high-contrast light and
+ * paper dark is high-contrast dark. Text at least 4.5:1 on its ground; the accent at least 4.5:1
+ * on the surface; unaccepted AI text (`--color-ghost`) visibly lighter than the student's own.
+ */
+:root[data-theme="paper-light"]:not([data-contrast="high"]) {
+  --color-paper: #f4efe6;
+  --color-surface: #fbf8f2;
+  --color-sunk: #ece5d8;
+
+  --color-ink: #2a241c;
+  --color-muted: #6a6052;
+  --color-faint: #857a6a;
+
+  --color-line: #e3dacb;
+  --color-line-strong: #d1c5b2;
+
+  --color-accent: #1f5a8c;
+  --color-accent-hover: #164570;
+  --color-accent-soft: #e4eaf0;
+  --color-accent-ink: #ffffff;
+
+  --color-ghost: #9c9180;
+  --color-draft: #f1eadc;
+
+  --color-ok: #2e6b3c;
+  --color-ok-soft: #e5efdf;
+  --color-warn: #8a5a0e;
+  --color-warn-soft: #f6ead0;
+  --color-danger: #a8321f;
+  --color-danger-soft: #f8e3dc;
+
+  color-scheme: light;
+}
+
+:root[data-theme="paper-dark"]:not([data-contrast="high"]) {
+  --color-paper: #1c1813;
+  --color-surface: #25201a;
+  --color-sunk: #201b16;
+
+  --color-ink: #e8dfcc;
+  --color-muted: #a99d88;
+  --color-faint: #8f846f;
+
+  --color-line: #362f26;
+  --color-line-strong: #463d31;
+
+  --color-accent: #86b4d9;
+  --color-accent-hover: #a5c8e4;
+  --color-accent-soft: #1f2c37;
+  --color-accent-ink: #1c1813;
+
+  --color-ghost: #8f846f;
+  --color-draft: #25201a;
+
+  --color-ok: #a3c172;
+  --color-ok-soft: #262d18;
+  --color-warn: #e2b558;
+  --color-warn-soft: #322815;
+  --color-danger: #e5826d;
+  --color-danger-soft: #361d16;
+
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"])[data-contrast="high"] {
+  :root:not([data-theme])[data-contrast="high"] {
     --color-paper: #000000;
     --color-surface: #0a0e16;
     --color-sunk: #000000;
@@ -206,7 +284,8 @@
   }
 }
 
-:root[data-theme="dark"][data-contrast="high"] {
+:root[data-theme="dark"][data-contrast="high"],
+:root[data-theme="paper-dark"][data-contrast="high"] {
   --color-paper: #000000;
   --color-surface: #0a0e16;
   --color-sunk: #000000;
@@ -234,17 +313,108 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
     --logo-tile: #cecdc3;
     --logo-glyph: #100f0f;
     --logo-dot: #205ea6;
   }
 }
 
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+:root[data-theme="paper-dark"] {
   --logo-tile: #cecdc3;
   --logo-glyph: #100f0f;
   --logo-dot: #205ea6;
+}
+
+/* ----------------------------------------------- colours on the words ---- */
+/* R28 (ADR-0119): the text colours and highlights a student puts on their words, by palette name
+   (`@tc/types` TEXT_COLORS, HIGHLIGHT_COLORS). Each theme draws the same name in its own shade, so
+   a red that reads on paper is not lost on the dark ground; the exports print one fixed colour
+   for paper whatever the theme. Light text colours are the print colours (4.5:1 or more on white). */
+:root {
+  --ink-grey: #535862;
+  --ink-red: #b42318;
+  --ink-orange: #b54708;
+  --ink-green: #067647;
+  --ink-blue: #175cd3;
+  --ink-purple: #6941c6;
+  --hl-yellow: #fef08a;
+  --hl-green: #bbf7d0;
+  --hl-blue: #bfdbfe;
+  --hl-pink: #fbcfe8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --ink-grey: #a4a7ae;
+    --ink-red: #f97066;
+    --ink-orange: #fdb022;
+    --ink-green: #47cd89;
+    --ink-blue: #84adff;
+    --ink-purple: #b692f6;
+    --hl-yellow: rgb(234 179 8 / 0.32);
+    --hl-green: rgb(34 197 94 / 0.28);
+    --hl-blue: rgb(59 130 246 / 0.32);
+    --hl-pink: rgb(236 72 153 / 0.3);
+  }
+}
+
+:root[data-theme="dark"],
+:root[data-theme="paper-dark"] {
+  --ink-grey: #a4a7ae;
+  --ink-red: #f97066;
+  --ink-orange: #fdb022;
+  --ink-green: #47cd89;
+  --ink-blue: #84adff;
+  --ink-purple: #b692f6;
+  --hl-yellow: rgb(234 179 8 / 0.32);
+  --hl-green: rgb(34 197 94 / 0.28);
+  --hl-blue: rgb(59 130 246 / 0.32);
+  --hl-pink: rgb(236 72 153 / 0.3);
+}
+
+/* High contrast: 7:1 or more for the text colours, and solid highlights. */
+:root[data-contrast="high"] {
+  --ink-grey: #333741;
+  --ink-red: #912018;
+  --ink-orange: #93370d;
+  --ink-green: #054f31;
+  --ink-blue: #1849a9;
+  --ink-purple: #4a1fb8;
+  --hl-yellow: #fde047;
+  --hl-green: #86efac;
+  --hl-blue: #93c5fd;
+  --hl-pink: #f9a8d4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme])[data-contrast="high"] {
+    --ink-grey: #d0d5dd;
+    --ink-red: #fda29b;
+    --ink-orange: #fec84b;
+    --ink-green: #75e0a7;
+    --ink-blue: #b2ccff;
+    --ink-purple: #d6bbfb;
+    --hl-yellow: #5c4a00;
+    --hl-green: #0b4a2a;
+    --hl-blue: #1e3a8a;
+    --hl-pink: #6b1c4a;
+  }
+}
+
+:root[data-theme="dark"][data-contrast="high"],
+:root[data-theme="paper-dark"][data-contrast="high"] {
+  --ink-grey: #d0d5dd;
+  --ink-red: #fda29b;
+  --ink-orange: #fec84b;
+  --ink-green: #75e0a7;
+  --ink-blue: #b2ccff;
+  --ink-purple: #d6bbfb;
+  --hl-yellow: #5c4a00;
+  --hl-green: #0b4a2a;
+  --hl-blue: #1e3a8a;
+  --hl-pink: #6b1c4a;
 }
 
 /* ---------------------------------------------------------------- base ---- */

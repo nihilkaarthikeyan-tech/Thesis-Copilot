@@ -12,13 +12,15 @@
  * patterns, and no AI draft the student has not accepted (`withoutPendingDrafts`).
  */
 
-import { formatRef, numberingMap } from '@tc/types';
+import { type FontStyle, formatRef, numberingMap } from '@tc/types';
 import katex from 'katex';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
 import { printCitation } from './clusters.js';
+import { HTML_COLOR_CSS, htmlColors } from './colors.js';
 import { footnoteText } from './footnotes.js';
 import { spanOf } from './table-grid.js';
 import {
+  frontMatterOf,
   renderLabel,
   type ThesisChapter,
   type ThesisExportInput,
@@ -40,6 +42,8 @@ export type HtmlExportInput = Omit<ThesisExportInput, 'bibliography'> & {
   citeSources?: Readonly<Record<string, string>>;
   /** The document's language (§2.2), for `<html lang>`. */
   language?: string;
+  /** R33 (ADR-0120): the student's font style. `sans` sets the page in a sans-serif; else serif. */
+  fontStyle?: FontStyle;
   /** `YYYY-MM-DD`, for the footer. */
   exportedOn: string;
 };
@@ -110,7 +114,8 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
             if (href) text = `<a href="${href}" rel="noopener noreferrer">${text}</a>`;
           }
         }
-        out += text;
+        // R28 (ADR-0119): the text colour and highlight, by palette name.
+        out += htmlColors(text, node.marks);
         break;
       }
       case 'citation': {
@@ -231,6 +236,12 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
       case 'codeBlock':
         out += `<pre><code>${escapeHtml(textOf(node))}</code></pre>\n`;
         break;
+      case 'horizontalRule':
+        out += '<hr>\n';
+        break;
+      case 'tableOfContents':
+        // R28: the contents list is the front matter's, where the template puts it.
+        break;
       case 'mathBlock': {
         const latex = String(node.attrs?.latex ?? '').trim();
         if (latex) out += `<div class="equation">${math(latex, true)}</div>\n`;
@@ -325,15 +336,20 @@ pre { overflow-x: auto; background: #f5f5f2; padding: 0.75rem; }
 .bibliography li:target { background: #fff6d6; }
 nav ol { padding-left: 1.25rem; }
 footer { max-width: 44rem; margin: 0 auto; padding: 1rem; font-size: 0.8rem; color: #777; }
+hr { border: 0; border-top: 1px solid #999; margin: 1.5rem 0; }
+${HTML_COLOR_CSS}
 @media print { body { font-size: 12pt; } main { max-width: none; } .chapter { break-before: page; } }
 `;
+
+/** R33 (ADR-0120): the page in a sans-serif, for a student whose font style is sans. */
+const SANS_BODY = `body { font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif; }\n`;
 
 /** The front matter the template asks for, in its order — what the `.docx` builds, as HTML. */
 function frontMatter(
   input: HtmlExportInput,
   lists: { figures: string; tables: string; toc: string },
 ): string {
-  const { spec, details } = input;
+  const { details } = input;
   const paragraphs = (text: string) =>
     text
       .split(/\n+/)
@@ -345,7 +361,7 @@ function frontMatter(
     `<section class="front" id="${id}"><h1>${escapeHtml(title)}</h1>\n${body}\n</section>\n`;
 
   let out = '';
-  for (const part of spec.frontMatter) {
+  for (const part of frontMatterOf(input)) {
     switch (part.id) {
       case 'TITLE_PAGE':
         out += `<header class="title-page">
@@ -504,7 +520,7 @@ ${appendix.paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join('\n')}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(input.documentTitle)}</title>
-<style>${STYLE}</style>
+<style>${STYLE}${input.fontStyle === 'sans' ? SANS_BODY : ''}</style>
 </head>
 <body>
 <main>

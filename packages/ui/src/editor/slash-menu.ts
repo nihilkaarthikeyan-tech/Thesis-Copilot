@@ -46,7 +46,19 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
   { id: 'bulletList', title: 'Bulleted list', keywords: ['bullet', 'unordered', 'ul', 'points'] },
   { id: 'orderedList', title: 'Numbered list', keywords: ['ordered', 'ol', 'numbers', '1.'] },
   { id: 'quote', title: 'Quote', hint: 'An indented quotation', keywords: ['blockquote'] },
+  {
+    id: 'horizontalRule',
+    title: 'Horizontal rule',
+    hint: 'A line across the page',
+    keywords: ['hr', 'divider', 'separator', 'line', '---'],
+  },
   { id: 'table', title: 'Table', hint: 'Three by three, with a header row', keywords: ['grid'] },
+  {
+    id: 'tableOfContents',
+    title: 'Table of contents',
+    hint: 'This chapter’s headings, kept up to date',
+    keywords: ['toc', 'contents', 'outline', 'index'],
+  },
   {
     id: 'mathInline',
     title: 'Equation',

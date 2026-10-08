@@ -26,6 +26,8 @@ import {
 import type { Env } from '@tc/config';
 import {
   type ComplianceResult,
+  type ExportComment,
+  hasContentsBlock,
   pageSetupOf,
   runComplianceChecks,
   type ThesisChapter,
@@ -35,9 +37,15 @@ import {
   withoutPendingDrafts,
 } from '@tc/export';
 import {
+  applyLayout,
   type CitationMode,
+  type ExportLayout,
+  type FontStyle,
+  type ResolvedLayout,
+  readFontStyle,
   readTemplateSpec,
   readThesisDetails,
+  resolveLayout,
   type TemplateSpec,
   type ThesisDetails,
 } from '@tc/types';
@@ -71,6 +79,8 @@ export type ThesisExportResult = {
   compliance: ComplianceResult;
   /** Set when the PDF was produced despite failures, with the reason recorded. */
   overrideReason?: string;
+  /** R27 (ADR-0121): the layout the file was built with, when the dialog sent one. */
+  layout?: ResolvedLayout;
 };
 
 /** D.3.2 step 5: "keep the last 5 exports per document". */
@@ -298,11 +308,12 @@ export class ThesisExportService {
     format: ThesisExportFormat,
     overrideReason?: string,
     citations?: CitationMode,
+    layoutChoice?: ExportLayout,
   ): Promise<ThesisExportResult> {
     const document = await this.owned(user.id, documentId);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
     const details = readThesisDetails(meta.thesisDetails);
-    const { view, spec } = await this.templateFor(document.institutionTemplateId);
+    const { view, spec: template } = await this.templateFor(document.institutionTemplateId);
 
     const chapterRows = await this.prisma.chapter.findMany({
       where: { documentId },
@@ -311,12 +322,30 @@ export class ThesisExportService {
     });
     if (chapterRows.length === 0) throw new ValidationError('This thesis has no chapters yet.');
 
+    // R27 (ADR-0121): the dialog's layout over the template. The checks below still ask for the
+    // template; PAGE_SETUP reads the layout the file is built with, so a departure from it is a
+    // finding the PDF waits on (or is overridden with a reason), never a silent change.
+    const layout = layoutChoice
+      ? resolveLayout(template, layoutChoice, {
+          fontStyle: await this.fontStyleOf(user.id),
+          contentsBlock: chapterRows.some((c) => hasContentsBlock(withoutPendingDrafts(c.content))),
+        })
+      : null;
+    const spec = layout ? applyLayout(template, layout) : template;
+    const comments = layout?.comments ? await this.openComments(documentId) : [];
+    const extras = layout
+      ? {
+          layout: { columns: layout.columns, pageNumbers: layout.pageNumbers },
+          ...(comments.length > 0 ? { comments } : {}),
+        }
+      : {};
+
     // FR-5.2: the bibliography and every label come from one citeproc pass over the whole
     // document, in the style the template demands rather than whatever the editor is showing.
     // Any style in the catalogue, not only the twenty shipped: a university template can name the
     // journal style its department follows.
-    const styleForExport = isKnownStyle(spec.bibliography.style)
-      ? spec.bibliography.style
+    const styleForExport = isKnownStyle(template.bibliography.style)
+      ? template.bibliography.style
       : document.citationStyle;
     // Rendered in the template's style without touching the thesis's own: before ADR-0045 the
     // export wrote the template style to the document and never put the old one back, so every
@@ -328,7 +357,7 @@ export class ThesisExportService {
     });
 
     const compliance = runComplianceChecks({
-      spec,
+      spec: template,
       details,
       documentTitle: document.title,
       chapters: chapterRows,
@@ -393,6 +422,7 @@ export class ThesisExportService {
             ? 'numeric'
             : 'authoryear',
         styleLabel: style.label,
+        ...extras,
         // ADR-0065: biblatex in the citation locale; automatic English leaves it as before.
         citationLocale: citationLocaleFor(document.citationLocale, document.language),
         exportedOn,
@@ -413,6 +443,9 @@ export class ThesisExportService {
           language: document.language,
           exportedOn,
           noteStyle: rendered.noteStyle,
+          // R33 (ADR-0120): the web page is for reading, in the student's font style.
+          fontStyle: await this.fontStyleOf(user.id),
+          ...extras,
         }),
         'utf8',
       );
@@ -428,6 +461,7 @@ export class ThesisExportService {
         bibliography: rendered.bibliography.map((b) => b.text),
         images,
         noteStyle: rendered.noteStyle,
+        ...extras,
         citationLinks: {
           mode,
           entrySources: rendered.bibliography.map((b) => b.sourceId),
@@ -473,7 +507,59 @@ export class ThesisExportService {
       format,
       compliance,
       ...(overrideReason?.trim() ? { overrideReason: overrideReason.trim() } : {}),
+      ...(layout ? { layout } : {}),
     };
+  }
+
+  /**
+   * R27 (ADR-0121): the layout a chapter export is built with — the same resolution as the
+   * thesis's, over this document's template.
+   */
+  async chapterLayout(
+    ownerId: string,
+    documentId: string,
+    choice: ExportLayout,
+    content: unknown,
+  ): Promise<ResolvedLayout> {
+    const document = await this.owned(ownerId, documentId);
+    const { spec } = await this.templateFor(document.institutionTemplateId);
+    return resolveLayout(spec, choice, {
+      fontStyle: await this.fontStyleOf(ownerId),
+      contentsBlock: hasContentsBlock(withoutPendingDrafts(content)),
+    });
+  }
+
+  /** R27: the guide's open comments, with their replies, as the `.docx` writes them. */
+  async openComments(documentId: string, chapterId?: string): Promise<ExportComment[]> {
+    const rows = await this.prisma.comment.findMany({
+      where: { documentId, status: 'OPEN', ...(chapterId ? { chapterId } : {}) },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        chapterId: true,
+        authorEmail: true,
+        createdAt: true,
+        quotedText: true,
+        body: true,
+        replies: {
+          orderBy: { createdAt: 'asc' },
+          select: { authorEmail: true, body: true, createdAt: true },
+        },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      chapterId: row.chapterId,
+      author: row.authorEmail,
+      date: row.createdAt,
+      quotedText: row.quotedText,
+      body: row.body,
+      replies: row.replies.map((reply) => ({
+        author: reply.authorEmail,
+        body: reply.body,
+        date: reply.createdAt,
+      })),
+    }));
   }
 
   private async toPdf(docx: Buffer, filename: string): Promise<Buffer> {
@@ -581,6 +667,15 @@ export class ThesisExportService {
       // print in the thesis's reference list; the editor's reference sweep is where those belong.
       bibtex: exportLibrary(sources, 'bib', { statusNotes: false }).body,
     };
+  }
+
+  /** R33 (ADR-0120): the student's font style, from their account settings. */
+  private async fontStyleOf(userId: string): Promise<FontStyle> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    return readFontStyle((row?.settings as { fontStyle?: unknown } | null)?.fontStyle);
   }
 
   /** ADR-0055: the bibliography's sources, described for Word's source list. */

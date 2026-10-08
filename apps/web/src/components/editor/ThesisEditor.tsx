@@ -24,6 +24,7 @@ import {
   type LocalDraft,
   sectionAt,
   setAutoSuggest as setEditorAutoSuggest,
+  setTableOfContentsLabels,
   tableRowsAt,
   tableToChartInput,
   thesisExtensions,
@@ -92,11 +93,12 @@ function shortRefOf(source: PassageDto['source']): string {
 }
 
 import { AddProposalPrompt } from '../AddProposalPrompt';
+import { ExportDialog } from '../export/ExportDialog';
 import { LimitNotice } from '../LimitNotice';
 import { FeatureDot, noteFeatureUsed } from '../onboarding/FeatureDot';
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
-import { ThemeToggle } from '../theme';
+import { applyFontStyle, ThemeToggle } from '../theme';
 import { UsageMenu } from '../UsageMenu';
 import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
@@ -138,8 +140,6 @@ import { SuggestionBar } from './SuggestionBar';
 import { ThesisSwitcher } from './ThesisSwitcher';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 import { WordImport } from './WordImport';
-
-type ExportResult = { url: string; filename: string; bytes: number };
 
 type ChapterMeta = {
   id: string;
@@ -407,8 +407,12 @@ function ChapterEditor({
 
   // FR-4.6: automatic-suggest is per user and off by default (ADR-0006).
   useEffect(() => {
-    api<{ automaticSuggest?: boolean }>('/settings')
-      .then((s) => setAutoSuggest(s.automaticSuggest === true))
+    api<{ automaticSuggest?: boolean; fontStyle?: unknown }>('/settings')
+      .then((s) => {
+        setAutoSuggest(s.automaticSuggest === true);
+        // R33 (ADR-0120): the account's font style, so a new device opens in it too.
+        applyFontStyle(s.fontStyle);
+      })
       .catch(() => undefined);
   }, []);
   const [howOpen, setHowOpen] = useState(false);
@@ -475,8 +479,7 @@ function ChapterEditor({
   const [undoing, setUndoing] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackBusy, setFeedbackBusy] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exported, setExported] = useState<ExportResult | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const autosaveRef = useRef<Autosave | null>(null);
   const guided = useGuidedInput();
   /** The options are built before the editor exists; the retry needs the editor. */
@@ -766,10 +769,30 @@ function ChapterEditor({
     };
   }, [editor]);
   editorRef.current = editor;
+  // R27: the chapter the export dialog previews and exports; the text is read when it opens.
+  const chapterOrder = doc.chapters.find((c) => c.id === chapter.id)?.order ?? 1;
+  const exportChapter = useMemo(
+    () => ({
+      id: chapter.id,
+      title: chapter.title,
+      order: chapterOrder,
+      content: () => editorRef.current?.getJSON() ?? null,
+    }),
+    [chapter.id, chapter.title, chapterOrder],
+  );
   // ADR-0078: the setting arrives after the editor is built; the extension reads it live.
   useEffect(() => {
     if (editor) setEditorAutoSuggest(editor, autoSuggest);
   }, [editor, autoSuggest]);
+  // R28 (ADR-0119): the contents block's words in the interface language, read live.
+  useEffect(() => {
+    if (!editor) return;
+    setTableOfContentsLabels(editor, {
+      title: t('toc.title'),
+      empty: t('toc.empty'),
+      goTo: t('toc.goTo'),
+    });
+  }, [editor, t]);
 
   /** The chapter the editor last placed the cursor in on opening; see the autosave effect. */
   const focusedChapterRef = useRef<string | null>(null);
@@ -1374,43 +1397,28 @@ function ChapterEditor({
               </span>
             ) : null}
           </span>
-          {exported ? (
-            <a
-              href={exported.url}
-              download={exported.filename}
-              data-testid="export-link"
-              className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-accent transition-colors hover:bg-sunk"
-            >
-              {t('editor.download', { file: exported.filename })}
-            </a>
-          ) : (
-            <button
-              type="button"
-              className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-45"
-              disabled={exporting}
-              title={t('editor.exportTitle')}
-              onClick={() => {
-                // FR-8.1: the export is a signed link, shown rather than opened, because a tab
-                // opened after an await is what popup blockers exist to stop.
-                setExporting(true);
-                api<ExportResult>(`/documents/${doc.id}/export`, {
-                  method: 'POST',
-                  body: JSON.stringify({ chapterId: chapter.id, format: 'docx' }),
-                })
-                  .then(setExported)
-                  .catch((e: unknown) =>
-                    setNotice(
-                      e instanceof ApiError
-                        ? (e.problem.detail ?? e.problem.title)
-                        : tNow('editor.exportError'),
-                    ),
-                  )
-                  .finally(() => setExporting(false));
-              }}
-            >
-              {exporting ? t('editor.exporting') : t('editor.export')}
-            </button>
-          )}
+          {/* R27 (ADR-0121): one export dialog — this chapter or the whole thesis, any format,
+              a layout and a preview. The file is a signed link shown in the dialog, because a
+              tab opened after an await is what popup blockers exist to stop (FR-8.1). */}
+          <button
+            type="button"
+            data-testid="open-export"
+            className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink transition-colors hover:bg-sunk"
+            title={t('editor.exportTitle')}
+            onClick={() => setExportOpen(true)}
+          >
+            {t('editor.export')}
+          </button>
+          {exportOpen ? (
+            <ExportDialog
+              open
+              onClose={() => setExportOpen(false)}
+              documentId={doc.id}
+              documentTitle={doc.title}
+              chapter={exportChapter}
+              initialScope="chapter"
+            />
+          ) : null}
         </div>
       </header>
 

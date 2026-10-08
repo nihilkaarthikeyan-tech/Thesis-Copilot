@@ -5,6 +5,7 @@
  * `thesis-editor` class gives it the editor's own typography (`app/editor.css`).
  */
 
+import { isHighlightColor, isTextColor } from '@tc/types';
 import katex from 'katex';
 import type { ReactNode } from 'react';
 import 'katex/dist/katex.min.css';
@@ -54,6 +55,26 @@ function withMarks(text: string, marks: Mark[] | undefined, key: string): ReactN
       case 'code':
         out = <code>{out}</code>;
         break;
+      // R28 (ADR-0119): by palette name, in the theme's shade, as the editor draws them.
+      case 'highlight':
+        out = (
+          <mark
+            className="tc-hl"
+            data-color={isHighlightColor(mark.attrs?.color) ? mark.attrs?.color : 'yellow'}
+          >
+            {out}
+          </mark>
+        );
+        break;
+      case 'textColor':
+        if (isTextColor(mark.attrs?.color)) {
+          out = (
+            <span className="tc-ink" data-text-color={mark.attrs?.color}>
+              {out}
+            </span>
+          );
+        }
+        break;
       case 'link':
         out = (
           <a href={str(mark.attrs?.href)} rel="noreferrer noopener" target="_blank">
@@ -68,8 +89,27 @@ function withMarks(text: string, marks: Mark[] | undefined, key: string): ReactN
   return <span key={key}>{out}</span>;
 }
 
-function render(node: Node, key: string, labels: Record<string, string>): ReactNode {
-  const kids = () => (node.content ?? []).map((child, i) => render(child, `${key}.${i}`, labels));
+/** The headings a contents block lists, outside any pending draft (as `tocEntries` in `@tc/ui`). */
+function headingsIn(root: Node): Array<{ level: number; text: string }> {
+  const out: Array<{ level: number; text: string }> = [];
+  const textOf = (node: Node): string =>
+    node.type === 'text' ? (node.text ?? '') : (node.content ?? []).map(textOf).join('');
+  const walk = (node: Node) => {
+    if (node.type === 'draftBlock') return;
+    if (node.type === 'heading') {
+      const text = textOf(node).replace(/\s+/g, ' ').trim();
+      if (text) out.push({ level: Number(node.attrs?.level) || 2, text });
+      return;
+    }
+    for (const child of node.content ?? []) walk(child);
+  };
+  walk(root);
+  return out;
+}
+
+function render(node: Node, key: string, labels: Record<string, string>, root: Node): ReactNode {
+  const kids = () =>
+    (node.content ?? []).map((child, i) => render(child, `${key}.${i}`, labels, root));
   switch (node.type) {
     case 'doc':
       return <>{kids()}</>;
@@ -94,6 +134,24 @@ function render(node: Node, key: string, labels: Record<string, string>): ReactN
       return <br key={key} />;
     case 'horizontalRule':
       return <hr key={key} />;
+    case 'tableOfContents':
+      return (
+        <div key={key} className="tc-toc">
+          <p className="tc-toc-title">Contents</p>
+          <ol className="tc-toc-list">
+            {headingsIn(root).map((entry, i) => (
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: headings in document order.
+                key={i}
+                className="tc-toc-entry"
+                data-level={Math.min(Math.max(entry.level, 1), 3)}
+              >
+                {entry.text}
+              </li>
+            ))}
+          </ol>
+        </div>
+      );
     case 'codeBlock':
       return (
         <pre key={key}>
@@ -179,7 +237,7 @@ export function ReadOnlyChapter({
 }) {
   return (
     <div className="thesis-editor" data-testid="admin-read-only-chapter">
-      {render((content ?? {}) as Node, 'c', citeLabels)}
+      {render((content ?? {}) as Node, 'c', citeLabels, (content ?? {}) as Node)}
     </div>
   );
 }

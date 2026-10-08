@@ -13,9 +13,11 @@
  * Two rules from §6.2 shape what this is *not*:
  *
  * - **Nothing competes with body text.** The bar is one row of quiet icons on the page's own
- *   surface, not a ribbon. No colours, no fonts, no sizes: a thesis is typeset by the template at
- *   export (`packages/export`), so letting someone pick 14pt Verdana here would be offering a
- *   choice the `.docx` is going to overrule anyway.
+ *   surface, not a ribbon. No fonts, no sizes: a thesis is typeset by the template at export
+ *   (`packages/export`), so letting someone pick 14pt Verdana here would be offering a choice the
+ *   `.docx` is going to overrule anyway. Colour is the one exception (R28, ADR-0119): six text
+ *   colours and four highlights, by name, because students mark words for themselves and their
+ *   guide, and each prints in every export.
  * - **The writing column stays 72ch.** The bar aligns to it rather than to the window, so the
  *   controls sit over the text they act on.
  *
@@ -23,7 +25,15 @@
  * document owns and the student does not type.
  */
 
-import { numberTargets } from '@tc/types';
+import {
+  HIGHLIGHT_COLORS,
+  type HighlightColor,
+  isHighlightColor,
+  isTextColor,
+  numberTargets,
+  TEXT_COLORS,
+  type TextColor,
+} from '@tc/types';
 import {
   insertLatexAt,
   latexError,
@@ -33,9 +43,11 @@ import {
 } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import {
+  Baseline,
   Bold,
   Braces,
   Code,
+  Highlighter,
   Italic,
   Link2,
   Link2Off,
@@ -53,6 +65,8 @@ import {
   Undo2,
 } from 'lucide-react';
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { MessageKey } from '@/i18n/en';
 import { useT } from '@/i18n/react';
 import { cn } from '@/lib/utils';
 import { MathHelp } from './MathHelp';
@@ -318,6 +332,188 @@ function BlockStyle({ editor }: { editor: Editor }) {
   );
 }
 
+const COLOR_LABEL: Record<TextColor | HighlightColor, MessageKey> = {
+  grey: 'fmt.color.grey',
+  red: 'fmt.color.red',
+  orange: 'fmt.color.orange',
+  green: 'fmt.color.green',
+  blue: 'fmt.color.blue',
+  purple: 'fmt.color.purple',
+  yellow: 'fmt.color.yellow',
+  pink: 'fmt.color.pink',
+};
+
+/** The picker's width: six 28 px swatches, their gaps and the padding. */
+const PICKER_WIDTH = 216;
+
+/**
+ * R28 (ADR-0119): the text colour or highlight picker — a button, and under it a row of swatches
+ * by palette name. The panel is drawn in `document.body` at the button's position, clamped to the
+ * window, because the toolbar's `backdrop-blur` makes it the containing block of anything `fixed`
+ * inside it, and an `absolute` panel at the button would run off a phone's screen at the bar's
+ * right edge. Choosing keeps the selection: every control here prevents the mousedown.
+ */
+function ColorPicker({ editor, kind }: { editor: Editor; kind: 'text' | 'highlight' }) {
+  const { t } = useT();
+  const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const raw =
+    kind === 'text'
+      ? editor.getAttributes('textColor').color
+      : editor.isActive('highlight')
+        ? (editor.getAttributes('highlight').color ?? 'yellow')
+        : null;
+  const current =
+    kind === 'text' ? (isTextColor(raw) ? raw : null) : isHighlightColor(raw) ? raw : null;
+  const names: readonly (TextColor | HighlightColor)[] =
+    kind === 'text' ? TEXT_COLORS : HIGHLIGHT_COLORS;
+  const label = kind === 'text' ? t('fmt.textColor') : t('fmt.highlight');
+
+  const close = useCallback(() => setPlace(null), []);
+
+  useEffect(() => {
+    if (!place) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (panelRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      close();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    // The panel is placed once; a scroll or a resize would leave it beside nothing.
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [place, close]);
+
+  const toggle = () => {
+    if (place) {
+      close();
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = Math.min(PICKER_WIDTH, window.innerWidth - 16);
+    setPlace({
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+      top: rect.bottom + 4,
+    });
+  };
+
+  const apply = (name: TextColor | HighlightColor | null) => {
+    const chain = editor.chain().focus();
+    if (kind === 'text') {
+      if (name && isTextColor(name)) chain.setTextColor(name).run();
+      else chain.unsetTextColor().run();
+    } else if (name && isHighlightColor(name)) chain.setHighlight(name).run();
+    else chain.unsetHighlight().run();
+    close();
+  };
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        title={label}
+        aria-label={label}
+        aria-haspopup="true"
+        aria-expanded={Boolean(place)}
+        data-testid={kind === 'text' ? 'fmt-text-color' : 'fmt-highlight'}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={toggle}
+        className={cn(
+          'relative inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md px-1 transition-colors',
+          current || place
+            ? 'bg-accent-soft text-accent'
+            : 'text-muted hover:bg-sunk hover:text-ink',
+        )}
+      >
+        {kind === 'text' ? (
+          <Baseline className="size-[15px]" strokeWidth={1.75} />
+        ) : (
+          <Highlighter className="size-[15px]" strokeWidth={1.75} />
+        )}
+        {current ? (
+          <span
+            aria-hidden="true"
+            className={cn(
+              'absolute inset-x-1.5 bottom-0.5 h-[3px] rounded-full',
+              kind === 'text' ? 'tc-ink-swatch' : 'tc-hl-swatch',
+            )}
+            {...(kind === 'text' ? { 'data-text-color': current } : { 'data-color': current })}
+          />
+        ) : null}
+      </button>
+      {place && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="dialog"
+              aria-label={label}
+              data-testid={kind === 'text' ? 'text-color-picker' : 'highlight-picker'}
+              style={{
+                left: place.left,
+                top: place.top,
+                width: Math.min(PICKER_WIDTH, window.innerWidth - 16),
+              }}
+              className="fixed z-50 rounded-md border border-line bg-surface p-2 shadow-lg"
+            >
+              <p className="text-[11px] font-semibold text-ink">{label}</p>
+              <div
+                className={cn(
+                  'mt-1.5 grid gap-1.5',
+                  kind === 'text' ? 'grid-cols-6' : 'grid-cols-4',
+                )}
+              >
+                {names.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    title={t(COLOR_LABEL[name])}
+                    aria-label={t(COLOR_LABEL[name])}
+                    aria-pressed={current === name}
+                    data-testid={`${kind === 'text' ? 'text-color' : 'highlight'}-${name}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => apply(name)}
+                    className={cn(
+                      'h-7 w-full min-w-0 rounded-md border',
+                      kind === 'text' ? 'tc-ink-swatch' : 'tc-hl-swatch',
+                      current === name ? 'border-ink ring-2 ring-accent' : 'border-line-strong',
+                    )}
+                    {...(kind === 'text' ? { 'data-text-color': name } : { 'data-color': name })}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                data-testid={kind === 'text' ? 'text-color-none' : 'highlight-none'}
+                disabled={!current}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => apply(null)}
+                className="mt-1.5 w-full rounded-md px-2 py-1 text-left text-[12px] text-ink transition-colors hover:bg-sunk disabled:opacity-45"
+              >
+                {kind === 'text' ? t('fmt.defaultColor') : t('fmt.noHighlight')}
+              </button>
+              <p className="mt-1 text-[11px] leading-snug text-muted">{t('fmt.colorsPrint')}</p>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
 /**
  * The toolbar's own actions that open its inline field or its file picker, handed to the "/"
  * menu (`SlashMenu`) so an item there does exactly what the button does.
@@ -559,6 +755,8 @@ export function FormatToolbar({
         >
           <Strikethrough className="size-[15px]" strokeWidth={2} />
         </Tool>
+        <ColorPicker editor={editor} kind="text" />
+        <ColorPicker editor={editor} kind="highlight" />
 
         <Divider />
 

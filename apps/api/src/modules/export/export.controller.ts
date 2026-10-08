@@ -6,7 +6,7 @@
  */
 
 import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { citationModeSchema, thesisDetailsSchema } from '@tc/types';
+import { citationModeSchema, exportLayoutSchema, thesisDetailsSchema } from '@tc/types';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -20,6 +20,8 @@ const exportBody = z.object({
   chapterId: z.string().uuid(),
   /** ADR-0055: plain, linked to the bibliography, or Word citation fields. `.docx` only. */
   citations: citationModeSchema.optional(),
+  /** R27 (ADR-0121): the export dialog's preset and options. Absent is Word's own page. */
+  layout: exportLayoutSchema.optional(),
 });
 
 const templateBody = z.object({ templateId: z.string().uuid() });
@@ -29,6 +31,8 @@ const thesisExportBody = z.object({
   overrideReason: z.string().trim().min(10).max(500).optional(),
   /** ADR-0055: plain, linked to the bibliography, or Word citation fields. `.docx` only. */
   citations: citationModeSchema.optional(),
+  /** R27 (ADR-0121): the export dialog's preset and options. Absent is the template. */
+  layout: exportLayoutSchema.optional(),
 });
 
 /** A calendar date, or null to clear it. Shape checked here; meaning checked in the service. */
@@ -120,6 +124,7 @@ export class ExportController {
       parsed.data.format,
       parsed.data.overrideReason,
       parsed.data.citations,
+      parsed.data.layout,
     );
   }
 
@@ -138,6 +143,7 @@ export class ExportController {
       parsed.data.chapterId,
       parsed.data.format,
       parsed.data.citations,
+      parsed.data.layout,
     );
   }
 

@@ -254,7 +254,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         </P>
         <H2>The Word file</H2>
         <P>
-          On <L>Submit</L>, under <L>Citations in the .docx</L>:
+          In the <L>Export</L> dialog (in the editor, and on <L>Submit</L>), under{' '}
+          <L>Citations in the .docx</L>:
         </P>
         <List>
           <li>
@@ -270,8 +271,16 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           </li>
         </List>
         <P>
-          The PDF always uses plain citations. The chapter <L>Export .docx</L> in the editor is
-          always plain. There are also a LaTeX project for Overleaf and a single web page.
+          The PDF always uses plain citations. There are also a LaTeX project for Overleaf and a
+          single web page.
+        </P>
+        <P>
+          The same dialog lays the file out: <L>Thesis</L> is your university template; <L>Plain</L>
+          , <L>Double-spaced</L> and <L>Two-column</L> are for a draft, a manuscript or a paper.{' '}
+          <L>Advanced options</L> change the paper, font, size, spacing and margins, and turn the
+          title page, contents, page numbers and your guide&rsquo;s comments on or off. The preview
+          shows the first pages as you change them. A layout that is not your template is fine for
+          the .docx; the PDF then asks for a reason.
         </P>
         <P>
           Before you submit, the <L>Citation report</L> lists every citation problem in the thesis

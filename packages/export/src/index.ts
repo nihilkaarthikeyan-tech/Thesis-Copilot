@@ -11,6 +11,7 @@ export {
 } from './ai-usage.js';
 export { captionOf, typedCaption, withCaption, withCaptionsResolved } from './captions.js';
 export { type CitationLinksInput, wordSourcesXml } from './citation-links.js';
+export { hasContentsBlock } from './colors.js';
 export {
   CHECK_LABELS,
   type CheckId,
@@ -42,6 +43,7 @@ export {
   responseTableToDocx,
 } from './response-table.js';
 export {
+  frontMatterOf,
   pageSetupOf,
   renderLabel,
   type ThesisChapter,
@@ -49,3 +51,4 @@ export {
   thesisToDocx,
   withoutPendingDrafts,
 } from './thesis.js';
+export type { ExportComment } from './word-comments.js';

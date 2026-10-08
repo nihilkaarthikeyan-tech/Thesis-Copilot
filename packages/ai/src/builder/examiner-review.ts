@@ -57,6 +57,7 @@ const LEAF_NODES = new Set([
   'hardBreak',
   'horizontalRule',
   'image',
+  'tableOfContents', // R28 (ADR-0119): the contents block, an atom
 ]);
 
 /** Blocks whose text is not prose an examiner reads. */

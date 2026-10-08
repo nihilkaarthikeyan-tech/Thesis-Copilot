@@ -9,7 +9,7 @@
  * the chart and diagram dialogs — so a block inserted from here is the same block the toolbar
  * would have inserted. Two are new: the AI declaration (ordinary text to edit, item 24) and the
  * "citation needed" marker, which is the needs-source note the export already prints visibly and
- * the citation report lists.
+ * the citation report lists. R28 (ADR-0119) added the horizontal rule and the contents block.
  */
 
 import {
@@ -80,6 +80,13 @@ export function SlashMenu({
           break;
         case 'quote':
           chain.setParagraph().toggleBlockquote().run();
+          break;
+        // R28 (ADR-0119): both print in every export.
+        case 'horizontalRule':
+          chain.setHorizontalRule().run();
+          break;
+        case 'tableOfContents':
+          chain.insertTableOfContents().run();
           break;
         case 'table':
           chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();

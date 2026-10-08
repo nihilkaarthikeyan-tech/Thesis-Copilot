@@ -511,28 +511,28 @@ body.tc-reviewing [data-testid="suggest-floating"] {
 /* ADR-0090 (Jenni build plan R41): in dark, Jenni's type — Inter 15/24, headings 30 and 20 px
    bold with tightened tracking, less space between blocks. Light keeps the manuscript serif. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .thesis-editor {
+  :root:not([data-theme]) .thesis-editor {
     font-size: 15px;
     line-height: 24px;
   }
-  :root:not([data-theme="light"]) .thesis-editor > * + * {
+  :root:not([data-theme]) .thesis-editor > * + * {
     margin-top: 12px;
   }
-  :root:not([data-theme="light"]) .thesis-editor h1 {
+  :root:not([data-theme]) .thesis-editor h1 {
     font-size: 30px;
     line-height: 1.15;
     font-weight: 700;
     letter-spacing: -0.6px;
     margin-bottom: 12px;
   }
-  :root:not([data-theme="light"]) .thesis-editor h2 {
+  :root:not([data-theme]) .thesis-editor h2 {
     font-size: 20px;
     line-height: 1.3;
     font-weight: 700;
     letter-spacing: -0.2px;
     margin-top: 24px;
   }
-  :root:not([data-theme="light"]) .thesis-editor h3 {
+  :root:not([data-theme]) .thesis-editor h3 {
     font-size: 17px;
     font-weight: 600;
     margin-top: 20px;
@@ -563,6 +563,27 @@ body.tc-reviewing [data-testid="suggest-floating"] {
   font-size: 17px;
   font-weight: 600;
   margin-top: 20px;
+}
+
+/* R33 (ADR-0120): the student's font style for the thesis text, over the theme's own (`default`
+   sets no attribute). `data-font-style` is on <html>, from the account setting (theme.tsx). Serif
+   in dark keeps the manuscript's size: Spectral at Inter's 15 px reads small. */
+:root[data-font-style="serif"] .thesis-editor {
+  font-family: var(--font-spectral), Charter, "Iowan Old Style", Georgia, serif;
+}
+:root[data-font-style="sans"] .thesis-editor {
+  font-family:
+    var(--font-inter), var(--font-devanagari), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme])[data-font-style="serif"] .thesis-editor {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+}
+:root[data-theme="dark"][data-font-style="serif"] .thesis-editor {
+  font-size: 1.0625rem;
+  line-height: 1.7;
 }
 
 /* R7: the block handle beside the paragraph under the mouse (`block-handle.ts`). */
@@ -622,4 +643,136 @@ body.tc-reviewing [data-testid="suggest-floating"] {
   background: rgb(59 130 246 / 0.18);
   box-shadow: 0 0 0 3px rgb(59 130 246 / 0.18);
   border-radius: 2px;
+}
+
+/* ---- R28 (ADR-0119): colours on the words, the rule and the contents block ---- */
+/* Each palette name in the theme's own shade (`--ink-*`, `--hl-*` in globals.css). */
+.thesis-editor mark.tc-hl {
+  background: var(--hl-yellow);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.thesis-editor mark.tc-hl[data-color="green"],
+.tc-hl-swatch[data-color="green"] {
+  background: var(--hl-green);
+}
+.thesis-editor mark.tc-hl[data-color="blue"],
+.tc-hl-swatch[data-color="blue"] {
+  background: var(--hl-blue);
+}
+.thesis-editor mark.tc-hl[data-color="pink"],
+.tc-hl-swatch[data-color="pink"] {
+  background: var(--hl-pink);
+}
+.tc-hl-swatch[data-color="yellow"] {
+  background: var(--hl-yellow);
+}
+.thesis-editor .tc-ink[data-text-color="grey"] {
+  color: var(--ink-grey);
+}
+.thesis-editor .tc-ink[data-text-color="red"] {
+  color: var(--ink-red);
+}
+.thesis-editor .tc-ink[data-text-color="orange"] {
+  color: var(--ink-orange);
+}
+.thesis-editor .tc-ink[data-text-color="green"] {
+  color: var(--ink-green);
+}
+.thesis-editor .tc-ink[data-text-color="blue"] {
+  color: var(--ink-blue);
+}
+.thesis-editor .tc-ink[data-text-color="purple"] {
+  color: var(--ink-purple);
+}
+.tc-ink-swatch[data-text-color="grey"] {
+  background: var(--ink-grey);
+}
+.tc-ink-swatch[data-text-color="red"] {
+  background: var(--ink-red);
+}
+.tc-ink-swatch[data-text-color="orange"] {
+  background: var(--ink-orange);
+}
+.tc-ink-swatch[data-text-color="green"] {
+  background: var(--ink-green);
+}
+.tc-ink-swatch[data-text-color="blue"] {
+  background: var(--ink-blue);
+}
+.tc-ink-swatch[data-text-color="purple"] {
+  background: var(--ink-purple);
+}
+
+.thesis-editor hr {
+  border: 0;
+  border-top: 1px solid var(--color-line-strong);
+  margin: 1.5em 0;
+}
+.thesis-editor hr.ProseMirror-selectednode {
+  border-top-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+/* The contents block: the chapter's headings, indented by level, each one a way to it. */
+.thesis-editor .tc-toc {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: 0.75em 1em;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  min-width: 0;
+}
+.thesis-editor .tc-toc.ProseMirror-selectednode {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.thesis-editor .tc-toc-title {
+  margin: 0 0 0.35em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+html[lang="hi"] .thesis-editor .tc-toc-title {
+  letter-spacing: 0;
+}
+.thesis-editor .tc-toc-list {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+.thesis-editor .tc-toc-entry[data-level="2"] {
+  padding-left: 1em;
+}
+.thesis-editor .tc-toc-entry[data-level="3"] {
+  padding-left: 2em;
+}
+.thesis-editor .tc-toc-entry button {
+  display: block;
+  max-width: 100%;
+  border: 0;
+  background: none;
+  padding: 0.1em 0;
+  font: inherit;
+  color: var(--color-ink);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.thesis-editor .tc-toc-entry[data-level="1"] button {
+  font-weight: 600;
+}
+.thesis-editor .tc-toc-entry button:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.thesis-editor .tc-toc-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
 }

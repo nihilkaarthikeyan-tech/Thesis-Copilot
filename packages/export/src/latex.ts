@@ -25,9 +25,15 @@ import { numberingMap, type TemplateSpec } from '@tc/types';
 import JSZip from 'jszip';
 import { captionOf, withCaptionsResolved } from './captions.js';
 import { printCitation } from './clusters.js';
+import { LATEX_COLOR_PREAMBLE, latexHighlight, latexTextColor, ulemSafe } from './colors.js';
 import { footnoteText } from './footnotes.js';
 import { gridOf, ruleUnder } from './table-grid.js';
-import { type ThesisChapter, type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
+import {
+  frontMatterOf,
+  type ThesisChapter,
+  type ThesisExportInput,
+  withoutPendingDrafts,
+} from './thesis.js';
 
 type Node = {
   type?: string;
@@ -203,8 +209,9 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
         for (const mark of node.marks ?? []) {
           if (mark.type === 'bold') text = `\\textbf{${text}}`;
           else if (mark.type === 'italic') text = `\\emph{${text}}`;
-          else if (mark.type === 'underline') text = `\\uline{${text}}`;
-          else if (mark.type === 'strike') text = `\\sout{${text}}`;
+          // `ulemSafe`: an underlined or struck-through CO₂ stopped the compile until 2026-10-08.
+          else if (mark.type === 'underline') text = `\\uline{${ulemSafe(text)}}`;
+          else if (mark.type === 'strike') text = `\\sout{${ulemSafe(text)}}`;
           else if (mark.type === 'superscript') text = `\\textsuperscript{${text}}`;
           else if (mark.type === 'subscript') text = `\\textsubscript{${text}}`;
           else if (mark.type === 'code') text = `\\texttt{${text}}`;
@@ -214,7 +221,8 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
           }
           // `provenance` and `commentAnchor` are the editor's own bookkeeping; they do not print.
         }
-        out += text;
+        // R28 (ADR-0119): the highlight round every other mark, the text colour round that.
+        out += latexTextColor(latexHighlight(text, node.marks), node.marks);
         break;
       }
       case 'citation': {
@@ -341,6 +349,13 @@ function blocks(nodes: readonly Node[], ctx: ChapterContext, inTable = false): s
         if (latex) out.push(`\\[\n${latex}\n\\]`);
         break;
       }
+      case 'horizontalRule':
+        // R28: a rule across the text block.
+        out.push('\\noindent\\rule{\\linewidth}{0.4pt}');
+        break;
+      case 'tableOfContents':
+        // R28: the contents list is `\tableofcontents` in the front matter (`frontMatterOf`).
+        break;
       case 'image': {
         const body = graphic(node, ctx);
         // A figure inside a table cell is part of the table, not a numbered figure of its own —
@@ -483,7 +498,7 @@ function fontPackages(spec: TemplateSpec): string[] {
 }
 
 function frontMatter(input: LatexExportInput): string[] {
-  const { spec, details } = input;
+  const { details } = input;
   const out: string[] = [];
   const unnumbered = (title: string) => [
     `\\chapter*{${escapeLatex(title)}}`,
@@ -495,7 +510,7 @@ function frontMatter(input: LatexExportInput): string[] {
       .map((line) => escapeLatex(line.trim()))
       .filter(Boolean);
 
-  for (const section of spec.frontMatter) {
+  for (const section of frontMatterOf(input)) {
     switch (section.id) {
       case 'TITLE_PAGE':
         out.push(
@@ -620,7 +635,8 @@ function preamble(input: LatexExportInput): string[] {
     `% ${input.styleLabel.replace(/[\r\n]+/g, ' ')}; here biblatex formats them in its built-in`,
     `% "${input.bibStyle}" style, the nearest to it. For the exact style your university requires,`,
     '% change `style=` below, or load its own biblatex style.',
-    `\\documentclass[${size},${paper},oneside]{report}`,
+    // R27 (ADR-0121): the export dialog's two-column layout.
+    `\\documentclass[${size},${paper},oneside${input.layout?.columns === 2 ? ',twocolumn' : ''}]{report}`,
     '\\usepackage{iftex}',
     ...fontPackages(spec),
     `\\usepackage[top=${m.top}mm,bottom=${m.bottom}mm,left=${m.left}mm,right=${m.right}mm]{geometry}`,
@@ -636,6 +652,8 @@ function preamble(input: LatexExportInput): string[] {
     // Footnotes number through the whole thesis, as Word and the web page number them.
     '\\counterwithout{footnote}{chapter}',
     '\\usepackage[normalem]{ulem}',
+    // R28 (ADR-0119): text colours and the highlighter, which is built on ulem.
+    ...LATEX_COLOR_PREAMBLE,
     '\\usepackage{titlesec}',
     `\\titleformat{\\chapter}[display]{\\normalfont${chapter.bold ? '\\bfseries' : ''}\\Large${align}}{${chapterLabel}}{1em}{${chapter.caps ? '\\MakeUppercase' : ''}}`,
     `\\renewcommand{\\thesection}{${sectionNumber}}`,
@@ -691,13 +709,14 @@ export function thesisToLatexFiles(input: LatexExportInput): LatexFile[] {
     ...preamble(input),
     '',
     '\\begin{document}',
-    pageNumbering(spec.numbering.frontMatter),
+    // R27: "Show page numbers" off is LaTeX's `gobble`, front and body alike.
+    pageNumbering(input.layout?.pageNumbers === false ? 'none' : spec.numbering.frontMatter),
     ...frontMatter(input),
     '',
     // The page break first: `\pagenumbering` resets the counter on the page being built, which
     // numbered the last front-matter page as page 1.
     '\\clearpage',
-    pageNumbering(spec.numbering.body),
+    pageNumbering(input.layout?.pageNumbers === false ? 'none' : spec.numbering.body),
     ...body,
     '',
     `\\printbibliography[heading=bibintoc,title={${escapeLatex(spec.bibliography.title)}}]`,

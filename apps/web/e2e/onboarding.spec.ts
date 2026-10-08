@@ -137,7 +137,7 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
 
   // The stale-label check: nothing in the header promises a later week.
   await expect(page.getByRole('banner')).not.toContainText('week');
-  await expect(page.getByRole('button', { name: 'Export .docx' })).toBeEnabled();
+  await expect(page.getByTestId('open-export')).toBeEnabled();
 
   // The first suggestion, as the guide said.
   await page.locator('.thesis-editor p').first().click();
@@ -182,7 +182,11 @@ test('the chapter exports as a .docx from the header', async ({ page, request })
   await page.getByRole('link', { name: title }).click();
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 20_000 });
 
-  await page.getByRole('button', { name: 'Export .docx' }).click();
+  // R27 (ADR-0121): the header opens the export dialog; this chapter, Word, as before.
+  await page.getByTestId('open-export').click();
+  await expect(page.getByTestId('export-scope-chapter')).toBeChecked();
+  await expect(page.getByTestId('export-format-docx')).toBeChecked();
+  await page.getByTestId('export-download').click();
   const link = page.getByTestId('export-link');
   await expect(link).toBeVisible({ timeout: 30_000 });
   await expect(link).toContainText(/\.docx$/);

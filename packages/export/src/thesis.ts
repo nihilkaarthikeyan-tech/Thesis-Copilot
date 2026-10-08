@@ -16,7 +16,13 @@
  */
 
 import type { CitationCluster } from '@tc/citations';
-import { formatRef, numberingMap, type TemplateSpec, type ThesisDetails } from '@tc/types';
+import {
+  type FrontMatterSection,
+  formatRef,
+  numberingMap,
+  type TemplateSpec,
+  type ThesisDetails,
+} from '@tc/types';
 import {
   AlignmentType,
   convertMillimetersToTwip,
@@ -50,8 +56,16 @@ import {
   noteChildren,
 } from './citation-links.js';
 import { printCitation } from './clusters.js';
+import { docxColors, hasContentsBlock } from './colors.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
+import {
+  type ExportComment,
+  planComments,
+  withBlockComments,
+  withTitleComments,
+  wordComments,
+} from './word-comments.js';
 import { latexToWordMath } from './word-math.js';
 
 export type ThesisChapter = {
@@ -100,13 +114,20 @@ export type ThesisExportInput = {
    * entries, or as Word's own citation fields. Omitted means plain, as before.
    */
   citationLinks?: CitationLinksInput;
+  /**
+   * R27 (ADR-0121): what the export dialog chose that the spec cannot carry. The page, font and
+   * front matter are already in `spec` (`applyLayout`). Omitted is one column, numbered pages.
+   */
+  layout?: { columns?: 1 | 2; pageNumbers?: boolean };
+  /** R27: the guide's open comments, as Word comments; omitted or empty writes none. */
+  comments?: readonly ExportComment[];
 };
 
 type Node = {
   type?: string;
   text?: string;
   attrs?: Record<string, unknown>;
-  marks?: Array<{ type: string }>;
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
   content?: Node[];
 };
 
@@ -245,8 +266,12 @@ function runsFrom(
           bold: marks.has('bold'),
           italics: marks.has('italic'),
           underline: marks.has('underline') ? {} : undefined,
+          // Was missing: a struck-through word printed plain in the thesis, unlike the chapter.
+          strike: marks.has('strike'),
           superScript: marks.has('superscript'),
           subScript: marks.has('subscript'),
+          // R28 (ADR-0119): a text colour and Word's own highlight.
+          ...docxColors(node.marks),
         }),
       );
       continue;
@@ -341,7 +366,11 @@ function cellBlocks(cell: Node, input: ThesisExportInput, chapter: ThesisChapter
 }
 
 /** One chapter's blocks, with the template's heading styles and numbering. */
-function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<Paragraph | Table> {
+function chapterBlocks(
+  chapter: ThesisChapter,
+  input: ThesisExportInput,
+  first = false,
+): Array<Paragraph | Table> {
   const { spec } = input;
   const out: Array<Paragraph | Table> = [];
   const counters = { h2: 0, h3: 0, figure: 0, table: 0 };
@@ -387,14 +416,15 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
       outlineLevel: 0,
       alignment: AlignmentType.CENTER,
       spacing: { after: 360 },
-      children: [
+      // R27: comments whose words are no longer in the chapter sit on its title line.
+      children: withTitleComments(input, chapter.id, first, [
         new TextRun({
           text: title,
           font: spec.font.body,
           size: pt(spec.headings.chapter.sizePt),
           bold: spec.headings.chapter.bold,
         }),
-      ],
+      ]),
     }),
   );
 
@@ -422,7 +452,7 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
             heading: level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
             outlineLevel: level - 1,
             spacing: { before: 240, after: 120 },
-            children: [
+            children: withBlockComments(input, block, [
               new TextRun({
                 text: `${number} ${textOf(block)}`.trim(),
                 font: spec.font.body,
@@ -430,7 +460,7 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
                 bold: style.bold,
                 italics: style.italic,
               }),
-            ],
+            ]),
           }),
         );
         break;
@@ -441,7 +471,12 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
           new Paragraph({
             alignment: spec.font.justify ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
             spacing: spacingFor(spec),
-            children: runsFrom(block.content ?? [], input, chapter),
+            // R27: a guide's comment on these words, when the export includes comments.
+            children: withBlockComments(
+              input,
+              block,
+              runsFrom(block.content ?? [], input, chapter),
+            ),
           }),
         );
         break;
@@ -479,6 +514,16 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
 
       case 'mathBlock':
         out.push(mathParagraph(block, spec));
+        break;
+
+      case 'horizontalRule':
+        // R28: a rule across the column — Word's bottom border on an empty paragraph.
+        out.push(new Paragraph({ thematicBreak: true, spacing: spacingFor(spec), children: [] }));
+        break;
+
+      case 'tableOfContents':
+        // R28: a contents block asks for the thesis's contents page, which goes at the front where
+        // the template puts it (`frontMatterOf`), not a second list in the middle of a chapter.
         break;
 
       case 'image': {
@@ -544,6 +589,30 @@ function chapterBlocks(chapter: ThesisChapter, input: ThesisExportInput): Array<
   return out;
 }
 
+/**
+ * The front matter this export prints: the template's, in its order, with a contents page added
+ * when a chapter holds a contents block and the template has none (R28, ADR-0119) — before the
+ * lists of figures and tables and the abbreviations, or last. Shared by the `.docx`, LaTeX and
+ * HTML builders, so all three agree.
+ */
+export function frontMatterOf(
+  input: Pick<ThesisExportInput, 'spec' | 'chapters'>,
+): FrontMatterSection[] {
+  const sections = input.spec.frontMatter;
+  if (sections.some((section) => section.id === 'TOC')) return sections;
+  const asked = input.chapters.some((chapter) =>
+    hasContentsBlock(withoutPendingDrafts(chapter.content)),
+  );
+  if (!asked) return sections;
+  const contents: FrontMatterSection = { id: 'TOC', required: false, fields: [] };
+  const at = sections.findIndex((section) =>
+    ['LIST_OF_FIGURES', 'LIST_OF_TABLES', 'ABBREVIATIONS'].includes(section.id),
+  );
+  return at < 0
+    ? [...sections, contents]
+    : [...sections.slice(0, at), contents, ...sections.slice(at)];
+}
+
 /** D.3.2 step 1: the front matter the template asks for, in its order. */
 function frontMatter(input: ThesisExportInput): Array<Paragraph | TableOfContents> {
   const { spec, details } = input;
@@ -551,7 +620,7 @@ function frontMatter(input: ThesisExportInput): Array<Paragraph | TableOfContent
   const heading = (text: string) =>
     centred(text.toUpperCase(), spec, spec.headings.chapter.sizePt, true);
 
-  for (const section of spec.frontMatter) {
+  for (const section of frontMatterOf(input)) {
     switch (section.id) {
       case 'TITLE_PAGE':
         out.push(
@@ -711,8 +780,10 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
       ...chapter,
       content: withCaptionsResolved(withoutPendingDrafts(chapter.content)),
     }));
-  const bodyChildren: Array<Paragraph | Table> = chapters.flatMap((chapter) =>
-    chapterBlocks(chapter, input),
+  // R27 (ADR-0121): the comments are placed on the very blocks the loop below writes.
+  if (input.comments?.length) planComments(input, input.comments, chapters);
+  const bodyChildren: Array<Paragraph | Table> = chapters.flatMap((chapter, index) =>
+    chapterBlocks(chapter, input, index === 0),
   );
 
   // D.3.1: the bibliography, then the appendices.
@@ -772,9 +843,22 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
     );
   });
 
+  // R27 (ADR-0121): page numbers can be turned off, and the body set in two columns. A layout
+  // with no front matter at all (a manuscript without a title page) starts on the body.
+  const numbered = input.layout?.pageNumbers !== false;
+  const footers = (): { footers?: { default: Footer } } =>
+    numbered ? { footers: { default: pageNumberFooter(spec) } } : {};
+  const columns =
+    input.layout?.columns === 2
+      ? { column: { count: 2, space: convertMillimetersToTwip(8), equalWidth: true } }
+      : {};
+  const front = frontMatter(input);
+  const comments = wordComments(input, input.comments);
+
   const document = new Document({
     // Collected while the body above was built (footnotes.ts).
     footnotes: notesFor(input).entries,
+    ...(comments ? { comments } : {}),
     numbering: {
       config: [
         {
@@ -795,36 +879,41 @@ export async function thesisToDocx(input: ThesisExportInput): Promise<Buffer> {
     },
     sections: [
       // Front matter, numbered in its own sequence (D.3.1: usually lower roman).
-      {
-        properties: {
-          page: {
-            size,
-            margin: margins,
-            pageNumbers: {
-              formatType:
-                spec.numbering.frontMatter === 'lowerRoman'
-                  ? NumberFormat.LOWER_ROMAN
-                  : spec.numbering.frontMatter === 'upperRoman'
-                    ? NumberFormat.UPPER_ROMAN
-                    : NumberFormat.DECIMAL,
-              start: 1,
+      ...(front.length > 0
+        ? [
+            {
+              properties: {
+                page: {
+                  size,
+                  margin: margins,
+                  pageNumbers: {
+                    formatType:
+                      spec.numbering.frontMatter === 'lowerRoman'
+                        ? NumberFormat.LOWER_ROMAN
+                        : spec.numbering.frontMatter === 'upperRoman'
+                          ? NumberFormat.UPPER_ROMAN
+                          : NumberFormat.DECIMAL,
+                    start: 1,
+                  },
+                },
+              },
+              ...footers(),
+              children: front,
             },
-          },
-        },
-        footers: { default: pageNumberFooter(spec) },
-        children: frontMatter(input),
-      },
+          ]
+        : []),
       // The body, restarting at 1 in the template's body format.
       {
         properties: {
-          type: SectionType.NEXT_PAGE,
+          ...(front.length > 0 ? { type: SectionType.NEXT_PAGE } : {}),
           page: {
             size,
             margin: margins,
             pageNumbers: { formatType: NumberFormat.DECIMAL, start: 1 },
           },
+          ...columns,
         },
-        footers: { default: pageNumberFooter(spec) },
+        ...footers(),
         children: bodyChildren,
       },
     ],

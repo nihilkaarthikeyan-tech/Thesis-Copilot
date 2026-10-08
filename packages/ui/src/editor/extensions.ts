@@ -2,8 +2,10 @@
  * The thesis editor schema — PRD Appendix B.2, assembled in one place.
  *
  * Nodes: doc, heading (1–3), paragraph, bulletList, orderedList, listItem, table*, image,
- * mathInline, mathBlock, codeBlock, blockquote, hardBreak, citation, draftBlock, needsSourceNote.
- * Marks: bold, italic, underline, strike, link, superscript, subscript, provenance, commentAnchor.
+ * mathInline, mathBlock, codeBlock, blockquote, hardBreak, horizontalRule, citation, draftBlock,
+ * needsSourceNote, tableOfContents.
+ * Marks: bold, italic, underline, strike, link, superscript, subscript, highlight, textColor,
+ * provenance, commentAnchor.
  *
  * GhostText carries priority 1000 so its Tab handler runs before list indentation (B.3).
  */
@@ -23,6 +25,7 @@ import StarterKit from '@tiptap/starter-kit';
 import type { Doc as YDoc } from 'yjs';
 import { BlockHandle } from './block-handle.js';
 import { Citation, type CitationOptions } from './citation.js';
+import { Highlight, TextColorMark } from './colors.js';
 import { CrossRef } from './cross-ref.js';
 import { DraftBlock, type DraftBlockOptions } from './draft-block.js';
 import { Footnote } from './footnote.js';
@@ -43,6 +46,7 @@ import { Provenance } from './provenance.js';
 import { TableWithRef } from './ref-ids.js';
 import { ReviewHighlights, type ReviewHighlightsOptions } from './review.js';
 import { SlashMenu } from './slash-menu.js';
+import { TableOfContents } from './table-of-contents.js';
 import { TrackedChanges } from './tracked-changes.js';
 
 export type ThesisEditorOptions = {
@@ -106,6 +110,9 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     Superscript,
     Subscript,
     Link.configure({ openOnClick: false, autolink: true }),
+    // R28 (ADR-0119): colours by palette name, drawn per theme and printed by every export.
+    Highlight,
+    TextColorMark,
     // The table that carries a refId, so a cross-reference can point at it (cross-ref.ts).
     TableWithRef.configure({ resizable: options.resizableTables ?? false }),
     TableRow,
@@ -117,6 +124,9 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
       ...(options.imageResolveUrl ? { resolveUrl: options.imageResolveUrl } : {}),
     }),
     CrossRef.configure({ chapterNumber: options.chapterNumber ?? 1 }),
+    // R28 (ADR-0119): the live contents block; a Word TOC field or the contents page on export.
+    // `configure()` so each editor has its own storage (TipTap v2 shares it per instance).
+    TableOfContents.configure(),
     Footnote,
     MathInline,
     MathBlock,

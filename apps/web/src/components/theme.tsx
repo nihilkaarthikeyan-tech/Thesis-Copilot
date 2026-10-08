@@ -1,6 +1,7 @@
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { type FontStyle, readFontStyle } from '@tc/types';
+import { BookOpen, Monitor, Moon, MoonStar, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -22,15 +23,31 @@ import { cn } from '@/lib/utils';
  * to keep its own answer.
  */
 
-/** `system` means "no choice stamped" — `prefers-color-scheme` in `globals.css` decides. */
-export type Theme = 'light' | 'dark' | 'system';
+/**
+ * `system` means "no choice stamped" — `prefers-color-scheme` in `globals.css` decides. The two
+ * paper themes (R33, ADR-0120) are chosen in Settings; the button below shows them but its cycle
+ * stays light, dark, system.
+ */
+export type Theme = 'light' | 'dark' | 'system' | 'paper-light' | 'paper-dark';
+
+/** Every theme, in the order Settings lists them. */
+export const THEMES: readonly Theme[] = ['system', 'light', 'dark', 'paper-light', 'paper-dark'];
 
 const KEY = 'tc-theme';
 /** High contrast is its own switch (2026-10-04): it combines with light, dark and system. */
 const CONTRAST_KEY = 'tc-contrast';
+/**
+ * R33 (ADR-0120): the font style is the account's (`User.settings.fontStyle`), kept here too so a
+ * page opens in it before the settings arrive, with no flash of the other typeface.
+ */
+const FONT_KEY = 'tc-font-style';
 
 /** The cycle. Light and dark first, because those are the two anyone is actually reaching for. */
 const ORDER: readonly Theme[] = ['light', 'dark', 'system'];
+
+const STAMPED: readonly Theme[] = ['light', 'dark', 'paper-light', 'paper-dark'];
+const isStamped = (value: string | null): value is Theme =>
+  value !== null && (STAMPED as readonly string[]).includes(value);
 
 /**
  * Applies the stored choice before first paint.
@@ -39,7 +56,7 @@ const ORDER: readonly Theme[] = ['light', 'dark', 'system'];
  * theme first and then repaint dark, which is the flash every themed app has to design around.
  */
 export function ThemeScript() {
-  const js = `(function(){try{var t=localStorage.getItem('${KEY}');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}if(localStorage.getItem('${CONTRAST_KEY}')==='high'){document.documentElement.setAttribute('data-contrast','high')}}catch(e){}})()`;
+  const js = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('${KEY}');if(t==='dark'||t==='light'||t==='paper-light'||t==='paper-dark'){d.setAttribute('data-theme',t)}if(localStorage.getItem('${CONTRAST_KEY}')==='high'){d.setAttribute('data-contrast','high')}var f=localStorage.getItem('${FONT_KEY}');if(f==='serif'||f==='sans'){d.setAttribute('data-font-style',f)}}catch(e){}})()`;
   // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed literal, no interpolated input.
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }
@@ -56,7 +73,7 @@ export function useTheme(): [Theme, (next: Theme) => void] {
     } catch {
       // Site data blocked. The device preference still applies for this page view.
     }
-    if (stored === 'dark' || stored === 'light') setThemeState(stored);
+    if (isStamped(stored)) setThemeState(stored);
   }, []);
 
   const setTheme = (next: Theme) => {
@@ -79,10 +96,12 @@ export function useTheme(): [Theme, (next: Theme) => void] {
   return [theme, setTheme];
 }
 
-const FACES: Record<Theme, { Icon: typeof Sun; label: string }> = {
+export const FACES: Record<Theme, { Icon: typeof Sun; label: string }> = {
   light: { Icon: Sun, label: 'Light' },
   dark: { Icon: Moon, label: 'Dark' },
   system: { Icon: Monitor, label: 'System' },
+  'paper-light': { Icon: BookOpen, label: 'Paper light' },
+  'paper-dark': { Icon: MoonStar, label: 'Paper dark' },
 };
 
 /**
@@ -116,7 +135,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         className,
       )}
     >
-      {ORDER.map((option) => {
+      {THEMES.map((option) => {
         const { Icon, label } = FACES[option];
         const active = theme === option;
         return (
@@ -162,4 +181,24 @@ export function useHighContrast(): [boolean, (on: boolean) => void] {
     }
   };
   return [on, set];
+}
+
+/**
+ * The thesis text's font style (R33, ADR-0120) on this page: `data-font-style` on <html>, which
+ * `editor.css` reads, and the copy in `localStorage` that `ThemeScript` applies before first paint.
+ * The account keeps the choice (`PUT /settings`); this only draws it.
+ */
+export function applyFontStyle(value: unknown): FontStyle {
+  const style = readFontStyle(value);
+  if (typeof document !== 'undefined') {
+    if (style === 'default') document.documentElement.removeAttribute('data-font-style');
+    else document.documentElement.setAttribute('data-font-style', style);
+  }
+  try {
+    if (style === 'default') localStorage.removeItem(FONT_KEY);
+    else localStorage.setItem(FONT_KEY, style);
+  } catch {
+    // Holds for this page view even when it cannot be stored.
+  }
+  return style;
 }

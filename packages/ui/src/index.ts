@@ -73,6 +73,7 @@ export {
   needsSpaceBefore,
   spaceAfterCitation,
 } from './editor/cite-point.js';
+export { Highlight, TextColorMark } from './editor/colors.js';
 export { CrossRef, type CrossRefOptions } from './editor/cross-ref.js';
 export {
   DraftBlock,
@@ -183,6 +184,14 @@ export {
   type SourceMetricFacts,
   sourceMetricBadges,
 } from './editor/source-metrics.js';
+export {
+  setTableOfContentsLabels,
+  TableOfContents,
+  type TableOfContentsStorage,
+  type TocEntry,
+  type TocLabels,
+  tocEntries,
+} from './editor/table-of-contents.js';
 export {
   blockText,
   CHARS_PER_TOKEN,

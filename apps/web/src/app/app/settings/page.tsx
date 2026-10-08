@@ -12,11 +12,12 @@
  * thing a student needs told before they switch it on.
  */
 
+import { FONT_STYLES, type FontStyle, readFontStyle } from '@tc/types';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { STARTING_STYLES } from '@/components/onboarding/StartingStyle';
-import { useHighContrast } from '@/components/theme';
-import { LANGUAGES, type Language, tNow } from '@/i18n';
+import { applyFontStyle, THEMES, type Theme, useHighContrast, useTheme } from '@/components/theme';
+import { LANGUAGES, type Language, type MessageKey, tNow } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
@@ -44,6 +45,22 @@ type Settings = {
   defaultCitationStyle?: string | null;
   /** ADR-0061: the language of the screens, not of the thesis. */
   interfaceLanguage?: Language;
+  /** ADR-0120: the typeface of the thesis text. Absent is the theme's own. */
+  fontStyle?: FontStyle;
+};
+
+const THEME_LABEL: Record<Theme, MessageKey> = {
+  system: 'settings.theme.system',
+  light: 'settings.theme.light',
+  dark: 'settings.theme.dark',
+  'paper-light': 'settings.theme.paperLight',
+  'paper-dark': 'settings.theme.paperDark',
+};
+
+const FONT_LABEL: Record<FontStyle, MessageKey> = {
+  default: 'settings.font.default',
+  serif: 'settings.font.serif',
+  sans: 'settings.font.sans',
 };
 
 export default function SettingsPage() {
@@ -51,6 +68,7 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [busy, setBusy] = useState(false);
   const [highContrast, setHighContrast] = useHighContrast();
+  const [theme, setTheme] = useTheme();
   const { t, rich } = useT();
   const [language, setLanguage] = useLanguage();
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +76,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     api<Settings>('/settings')
-      .then(setSettings)
+      .then((loaded) => {
+        setSettings(loaded);
+        applyFontStyle(loaded.fontStyle);
+      })
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.problem.title : tNow('settings.loadError')),
       );
@@ -335,6 +356,53 @@ export default function SettingsPage() {
             {STARTING_STYLES.filter((style) => style.id !== 'apa').map((style) => (
               <option key={style.id} value={style.id}>
                 {style.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      {/* R33 (ADR-0120): the theme is this browser's; the font style is the account's. */}
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-60">
+            <h2 className="eyebrow">{t('settings.theme.title')}</h2>
+            <p className="mt-1 text-sm">{t('settings.theme.body')}</p>
+          </div>
+          <select
+            aria-label={t('settings.theme.title')}
+            data-testid="theme-select"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as Theme)}
+            className="max-w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+          >
+            {THEMES.map((option) => (
+              <option key={option} value={option}>
+                {t(THEME_LABEL[option])}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-4 border-t border-line pt-4">
+          <div className="min-w-0 flex-1 basis-60">
+            <h2 className="eyebrow">{t('settings.font.title')}</h2>
+            <p className="mt-1 text-sm">{t('settings.font.body')}</p>
+          </div>
+          <select
+            aria-label={t('settings.font.title')}
+            data-testid="font-style"
+            disabled={busy || settings === null}
+            value={readFontStyle(settings?.fontStyle)}
+            onChange={(e) => {
+              // The editor changes at once; the account keeps it for every device.
+              const next = applyFontStyle(e.target.value);
+              void save({ fontStyle: next });
+            }}
+            className="max-w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+          >
+            {FONT_STYLES.map((option) => (
+              <option key={option} value={option}>
+                {t(FONT_LABEL[option])}
               </option>
             ))}
           </select>

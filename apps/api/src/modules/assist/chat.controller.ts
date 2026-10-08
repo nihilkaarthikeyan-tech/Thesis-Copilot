@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { CITATION_ROLES, COMMAND, COMMANDS } from '@tc/ai';
 import type { Env } from '@tc/config';
+import { FONT_STYLES } from '@tc/types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ENV } from '../../common/env.token.js';
@@ -152,6 +153,11 @@ const settingsBody = z.object({
    * this one. Absent means English.
    */
   interfaceLanguage: z.enum(['en', 'hi']).optional(),
+  /**
+   * ADR-0120 (Jenni's "default font style"): the typeface of the thesis text in the editor, the
+   * chapter `.docx` and the web page export. Absent means the theme's own.
+   */
+  fontStyle: z.enum(FONT_STYLES).optional(),
   /**
    * 2026-10-04 (Jenni's "document defaults"): the style a new thesis starts on. Only the five
    * the start screen offers; null clears it (APA 7, as before).

@@ -12,9 +12,9 @@
  * checks, and even then an override with a reason is offered rather than a wall.
  */
 
-import type { CitationMode } from '@tc/types';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import { ApiError, api } from '@/lib/api';
 import { LifecycleBar } from './LifecycleBar';
 import { ReadinessBanner } from './ReadinessBanner';
@@ -65,32 +65,6 @@ const FIELDS: Array<{ key: keyof Details; label: string; hint?: string }> = [
   { key: 'declarationDate', label: 'Date on the declaration' },
 ];
 
-/**
- * ADR-0055: how citations are written into the .docx. The PDF is always built from the plain file.
- */
-const CITATION_CHOICES: Array<{ mode: CitationMode; label: string; hint: string }> = [
-  { mode: 'plain', label: 'Plain text', hint: 'As they appear in the editor.' },
-  {
-    mode: 'linked',
-    label: 'Linked to the references',
-    hint: 'Each citation links to its entry in the reference list. Works in Word, LibreOffice and Google Docs.',
-  },
-  {
-    mode: 'word',
-    label: 'Word citations',
-    hint: 'Your sources go into Word’s References › Manage Sources, and the citations and reference list become Word citations you can restyle or update there. Microsoft Word only: LibreOffice and Google Docs redraw the reference list. A footnote style is written as linked citations instead.',
-  },
-];
-
-/** What to expect from each file, said once it is built. */
-const EXPORT_NOTICE: Record<'docx' | 'pdf' | 'latex' | 'html', string> = {
-  docx: 'Built. Word will offer to update the contents pages when you open it — say yes.',
-  pdf: 'Built. The contents pages were filled in during the conversion.',
-  latex:
-    'Built. Upload the .zip to Overleaf as a new project. Its reference list is formatted by biblatex, so it will not match the editor exactly — README.txt explains.',
-  html: 'Built. One file, figures included: open it in any browser, or send it on.',
-};
-
 export function SubmitScreen({ documentId }: { documentId: string }) {
   const [data, setData] = useState<DetailsResponse | null>(null);
   const [details, setDetails] = useState<Details | null>(null);
@@ -98,12 +72,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [override, setOverride] = useState('');
-  const [showOverride, setShowOverride] = useState(false);
-  const [citationMode, setCitationMode] = useState<CitationMode>('plain');
-  const [downloads, setDownloads] = useState<
-    Array<{ filename: string; url: string; sha256: string }>
-  >([]);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -151,39 +120,6 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not switch.');
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function exportThesis(format: 'docx' | 'pdf' | 'latex' | 'html') {
-    setBusy(format);
-    setError(null);
-    try {
-      const result = await api<{ url: string; filename: string; bytes: number; sha256: string }>(
-        `/documents/${documentId}/export/thesis`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            format,
-            ...(format === 'pdf' && override.trim() ? { overrideReason: override.trim() } : {}),
-            ...(format === 'docx' ? { citations: citationMode } : {}),
-          }),
-        },
-      );
-      setDownloads((prev) =>
-        [{ filename: result.filename, url: result.url, sha256: result.sha256 }, ...prev].slice(
-          0,
-          5,
-        ),
-      );
-      setNotice(EXPORT_NOTICE[format]);
-      setShowOverride(false);
-      setOverride('');
-    } catch (e) {
-      const problem = e instanceof ApiError ? e.problem : null;
-      setError(problem ? (problem.detail ?? problem.title) : 'The export did not finish.');
-      if (format === 'pdf' && problem?.status === 400) setShowOverride(true);
     } finally {
       setBusy(null);
     }
@@ -390,125 +326,37 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         </ul>
       </section>
 
+      {/* R27 (ADR-0121): one export dialog — the format, citations, a layout preset, the
+          advanced options and a live preview. The .docx is always available; the PDF waits for
+          the checks above, or a reason. */}
       <section className="mt-6 rounded-md border border-line bg-surface p-4">
         <h2 className="eyebrow">Build the thesis</h2>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <button
-            type="button"
-            disabled={busy !== null}
-            onClick={() => void exportThesis('docx')}
-            data-testid="export-docx"
-            className="rounded-md border border-line-strong bg-surface px-4 py-2 text-sm disabled:opacity-50 font-semibold text-ink transition-colors hover:bg-sunk"
-          >
-            {busy === 'docx' ? 'Building…' : 'Download .docx'}
-          </button>
-          <button
-            type="button"
-            disabled={busy !== null}
-            onClick={() => void exportThesis('pdf')}
-            data-testid="export-pdf"
-            className="rounded-md px-4 py-2 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
-          >
-            {busy === 'pdf' ? 'Building…' : 'Download PDF'}
-          </button>
-        </div>
+        <p className="mt-1 text-sm">
+          Word, PDF, LaTeX or a web page, in your template or another layout, with a preview of the
+          pages before you build them. The reference list is always in the file.
+        </p>
+        <button
+          type="button"
+          onClick={() => setExportOpen(true)}
+          data-testid="open-export"
+          className="mt-3 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+        >
+          Export…
+        </button>
         <p className="mt-2 text-xs text-muted">
           The .docx is always available, whatever the checks say — it is your writing. The PDF waits
           for the checks, because it is what you hand in.
         </p>
-        {/* ADR-0055. Only the .docx: the PDF is always built with plain citations. */}
-        <fieldset className="mt-3" data-testid="citation-mode">
-          <legend className="text-xs font-semibold text-ink">Citations in the .docx</legend>
-          <div className="mt-1 space-y-1">
-            {CITATION_CHOICES.map((choice) => (
-              <label key={choice.mode} className="flex items-start gap-2 text-xs text-muted">
-                <input
-                  type="radio"
-                  name="citation-mode"
-                  value={choice.mode}
-                  checked={citationMode === choice.mode}
-                  onChange={() => setCitationMode(choice.mode)}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-semibold text-ink">{choice.label}.</span> {choice.hint}
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        {/* ADR-0021. Working formats, like the .docx: not what is handed in, so never gated. */}
-        <div className="mt-4 border-t border-line pt-3">
-          <p className="text-xs font-semibold text-ink">Other formats</p>
-          <div className="mt-2 flex flex-wrap gap-3">
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void exportThesis('latex')}
-              data-testid="export-latex"
-              className="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
-            >
-              {busy === 'latex' ? 'Building…' : 'LaTeX project (.zip)'}
-            </button>
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void exportThesis('html')}
-              data-testid="export-html"
-              className="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
-            >
-              {busy === 'html' ? 'Building…' : 'Web page (.html)'}
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-muted">
-            LaTeX: main.tex, references.bib and your figures, ready to upload to Overleaf; citations
-            are real \cite commands. Web page: one file with the figures inside it, for reading on a
-            phone or sharing.
-          </p>
-        </div>
-
-        {showOverride ? (
-          <div className="mt-3 rounded-md border border-warn/40 bg-warn/5 p-3 text-sm">
-            <label className="text-xs text-muted" htmlFor="override">
-              If your university’s rule differs from what we checked, say so and the PDF will be
-              built anyway. The reason is kept with the export.
-            </label>
-            <textarea
-              id="override"
-              rows={2}
-              value={override}
-              onChange={(e) => setOverride(e.target.value)}
-              className="mt-1 w-full rounded-md border border-line-strong bg-surface px-2 py-1 font-semibold text-ink transition-colors hover:bg-sunk"
-            />
-            <button
-              type="button"
-              disabled={override.trim().length < 10 || busy !== null}
-              onClick={() => void exportThesis('pdf')}
-              data-testid="override-export"
-              className="mt-2 rounded-md bg-warn px-3 py-1 text-xs text-paper disabled:opacity-50"
-            >
-              Build the PDF anyway
-            </button>
-          </div>
-        ) : null}
-
-        {downloads.length > 0 ? (
-          <ul className="mt-4 space-y-2 text-xs" data-testid="downloads">
-            {downloads.map((file) => (
-              <li key={file.url}>
-                <a href={file.url} className="underline" target="_blank" rel="noreferrer">
-                  {file.filename}
-                </a>
-                <span
-                  className="mt-0.5 block select-all font-mono text-[10.5px] text-muted"
-                  title="SHA-256 fingerprint — verify your file with: sha256sum (Linux) or Get-FileHash (Windows)"
-                  data-testid="export-sha256"
-                >
-                  SHA-256 {file.sha256}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {exportOpen ? (
+          <ExportDialog
+            open
+            onClose={() => {
+              setExportOpen(false);
+              void load();
+            }}
+            documentId={documentId}
+            initialScope="thesis"
+          />
         ) : null}
       </section>
     </main>

@@ -30,11 +30,19 @@ function unzip(bytes: Buffer): Map<string, Buffer> {
   return files;
 }
 
-async function exportFrom(page: Page, testId: string): Promise<{ url: string; filename: string }> {
+/** R27 (ADR-0121): the export dialog — open it if it is not, pick the format, build. */
+async function exportFrom(
+  page: Page,
+  format: 'latex' | 'html',
+): Promise<{ url: string; filename: string }> {
+  if (!(await page.getByTestId('export-dialog').isVisible())) {
+    await page.getByTestId('open-export').click();
+  }
+  await page.getByTestId(`export-format-${format}`).check();
   const response = page.waitForResponse(
     (r) => r.url().endsWith('/export/thesis') && r.request().method() === 'POST',
   );
-  await page.getByTestId(testId).click();
+  await page.getByTestId('export-download').click();
   const result = await response;
   expect(result.ok(), `export: ${result.status()}`).toBe(true);
   return (await result.json()) as { url: string; filename: string };
@@ -74,10 +82,10 @@ test('the thesis comes out as a LaTeX project and as a web page', async ({ page,
   await expect(page.getByText('Saved', { exact: true })).toBeVisible({ timeout: 20_000 });
 
   await page.goto(`/app/d/${doc.id}/submit`);
-  await expect(page.getByTestId('export-latex')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('open-export')).toBeVisible({ timeout: 30_000 });
 
   // LaTeX: a project that compiles as it stands.
-  const latex = await exportFrom(page, 'export-latex');
+  const latex = await exportFrom(page, 'latex');
   expect(latex.filename).toMatch(/-latex\.zip$/);
   await expect(page.getByTestId('downloads')).toContainText(latex.filename);
   const zip = unzip(Buffer.from(await (await request.get(latex.url)).body()));
@@ -99,7 +107,7 @@ test('the thesis comes out as a LaTeX project and as a web page', async ({ page,
   ).toBe('PNG');
 
   // HTML: one file, figure and all.
-  const html = await exportFrom(page, 'export-html');
+  const html = await exportFrom(page, 'html');
   expect(html.filename).toMatch(/\.html$/);
   const body = await (await request.get(html.url)).text();
   expect(body.startsWith('<!doctype html>')).toBe(true);

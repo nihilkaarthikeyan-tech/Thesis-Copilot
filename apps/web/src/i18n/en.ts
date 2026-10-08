@@ -232,10 +232,10 @@ export const en = {
   'editor.howSuggestions': 'How suggestions work',
   'editor.feedback': 'Feedback',
   'editor.download': 'Download {file}',
-  'editor.exportTitle': 'Plain .docx of this chapter (FR-8.1)',
+  'editor.exportTitle': 'Word, PDF, LaTeX or a web page, with a layout and a preview',
   'editor.exportError': 'The export did not complete. Try again in a minute.',
   'editor.exporting': 'Exporting…',
-  'editor.export': 'Export .docx',
+  'editor.export': 'Export',
   'editor.conflictBanner':
     'This chapter was changed elsewhere — reload to continue. Autosave is paused.',
   'editor.reload': 'Reload',
@@ -409,6 +409,22 @@ export const en = {
   'fmt.style.heading': 'Heading',
   'fmt.style.subheading': 'Subheading',
   'fmt.style.quote': 'Quote',
+  'fmt.textColor': 'Text colour',
+  'fmt.highlight': 'Highlight (Ctrl+Shift+H)',
+  'fmt.color.grey': 'Grey',
+  'fmt.color.red': 'Red',
+  'fmt.color.orange': 'Orange',
+  'fmt.color.green': 'Green',
+  'fmt.color.blue': 'Blue',
+  'fmt.color.purple': 'Purple',
+  'fmt.color.yellow': 'Yellow',
+  'fmt.color.pink': 'Pink',
+  'fmt.defaultColor': 'Default colour',
+  'fmt.noHighlight': 'No highlight',
+  'fmt.colorsPrint': 'Kept in the Word file, the PDF, LaTeX and the web page.',
+  'toc.title': 'Contents',
+  'toc.empty': 'The headings of this chapter appear here as you add them.',
+  'toc.goTo': 'Go to',
 
   // ---- The suggestion bar ---------------------------------------------------------------------
   'suggest.floating': 'Suggest a continuation',
@@ -518,6 +534,20 @@ export const en = {
   'settings.contrast.title': 'High contrast',
   'settings.contrast.body':
     'Darker text and stronger lines, in light or dark. Kept on this device only.',
+  'settings.theme.title': 'Theme',
+  'settings.theme.body':
+    'System follows your device. Paper light and paper dark are a warm printed page, by day and by night. Kept on this device only.',
+  'settings.theme.system': 'System',
+  'settings.theme.light': 'Light',
+  'settings.theme.dark': 'Dark',
+  'settings.theme.paperLight': 'Paper light',
+  'settings.theme.paperDark': 'Paper dark',
+  'settings.font.title': 'Font style',
+  'settings.font.body':
+    'The typeface of your thesis text in the editor, in a chapter you export to Word and in the web page export. The thesis .docx and PDF use your university template’s font.',
+  'settings.font.default': 'Default (the theme’s own)',
+  'settings.font.serif': 'Serif',
+  'settings.font.sans': 'Sans-serif',
   'settings.month.note':
     'Everything the AI does for you is counted here and nowhere else. Dismissing a suggestion still counts: the text was written before you saw it.',
 

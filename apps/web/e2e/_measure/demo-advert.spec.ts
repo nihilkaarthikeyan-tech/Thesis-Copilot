@@ -1153,7 +1153,11 @@ test('the advertising video, recorded', async ({ playwright }) => {
     await hold(page, 3_500);
     await page.mouse.wheel(0, 500);
     await hold(page, 2_000);
-    await click(page, page.getByTestId('export-docx'));
+    // R27 (ADR-0121): the export dialog, with its preview, then the build.
+    await click(page, page.getByTestId('open-export'));
+    await page.getByTestId('layout-preview').waitFor({ timeout: 30_000 });
+    await hold(page, 2_500);
+    await click(page, page.getByTestId('export-download'));
     await fast('exporting', async () => {
       await page.getByTestId('downloads').waitFor({ timeout: 120_000 });
     });

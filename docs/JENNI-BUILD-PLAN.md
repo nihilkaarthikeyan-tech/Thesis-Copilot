@@ -309,4 +309,7 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R37 | Done 2026-10-08 — whole literature review from one press, behind an off flag at a cap of 0 (owner sets the price) | ADR-0124 |
 | R30 | Done 2026-10-08 — chat threads, a chat on one collection, web search asked inline (a chat across theses waits) | ADR-0116 |
 | R32 | Done 2026-10-08 — the theses beside the open one, and one New menu | ADR-0127 |
-| R25–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+| R28 | Done 2026-10-08 — contents block, text colour, highlight, horizontal rule, in every export | ADR-0119 |
+| R33 | Done 2026-10-08 — paper light/dark themes and a font style | ADR-0120 |
+| R27 | Done 2026-10-08 — one export dialog with presets, options and a live preview | ADR-0121 |
+| R25–R40 | all built and merged 2026-10-08 (R37 behind an off flag) | — | (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

@@ -485,7 +485,7 @@ test('the product demo, recorded', async ({ playwright }) => {
     await page.waitForTimeout(3_500);
     await page.mouse.wheel(0, 500);
     await page.waitForTimeout(2_500);
-    const docx = page.getByTestId('export-docx');
+    const docx = page.getByTestId('open-export');
     if (await docx.count()) await point(page, docx);
     await page.waitForTimeout(2_000);
   });

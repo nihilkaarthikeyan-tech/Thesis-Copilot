@@ -12,12 +12,15 @@ export function Dialog({
   onClose,
   children,
   testId,
+  size = 'md',
 }: {
   open: boolean;
   title: ReactNode;
   onClose: () => void;
   children: ReactNode;
   testId?: string;
+  /** `wide` for a dialog with two columns (the export dialog, R27); never wider than the screen. */
+  size?: 'md' | 'wide';
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -36,10 +39,10 @@ export function Dialog({
       }}
       data-testid={testId}
       aria-labelledby={testId ? `${testId}-title` : undefined}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40"
+      className={`m-auto max-h-[calc(100dvh-2rem)] ${size === 'wide' ? 'w-[min(60rem,calc(100vw-2rem))]' : 'w-[min(32rem,calc(100vw-2rem))]'} overflow-y-auto rounded-lg border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40`}
     >
       {open ? (
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
           <h2 id={testId ? `${testId}-title` : undefined} className="text-[17px] font-bold">
             {title}
           </h2>

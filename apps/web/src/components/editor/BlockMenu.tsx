@@ -239,6 +239,11 @@ export function BlockMenu(props: {
           >
             No highlight
           </button>
+          {/* ADR-0094: a reading aid. R28 (ADR-0119) added the highlight that prints. */}
+          <p className="px-2 pb-1 pt-0.5 text-[11px] leading-snug text-muted">
+            On screen only. To highlight words in the file, select them and use Highlight in the
+            toolbar.
+          </p>
         </div>
       ) : null}
       <div className="my-1 border-t border-line" />

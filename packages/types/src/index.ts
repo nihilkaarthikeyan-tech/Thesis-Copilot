@@ -25,6 +25,21 @@ export {
   type ParsedDiagram,
   parseDiagram,
 } from './diagram.js';
+export {
+  applyLayout,
+  type ExportLayout,
+  exportLayoutSchema,
+  LAYOUT_FONTS,
+  LAYOUT_MARGINS,
+  LAYOUT_PRESETS,
+  LAYOUT_SIZES,
+  LAYOUT_SPACINGS,
+  type LayoutMargins,
+  type LayoutPreset,
+  MARGIN_MM,
+  type ResolvedLayout,
+  resolveLayout,
+} from './export-layout.js';
 export { CITATION_MODES, type CitationMode, citationModeSchema } from './export-options.js';
 export {
   emptyExtraction,
@@ -42,6 +57,13 @@ export {
   THESIS_REFERENCE_RANGE,
   terminologySchema,
 } from './extraction.js';
+export {
+  FONT_STYLE_DOCX,
+  FONT_STYLES,
+  type FontStyle,
+  isFontStyle,
+  readFontStyle,
+} from './font-style.js';
 export { analyseGap, draftScopeFrom, type ProposalScope } from './gap.js';
 export {
   type CoherenceRunJob,
@@ -115,3 +137,14 @@ export {
   templateSpecSchema,
   thesisDetailsSchema,
 } from './template.js';
+export {
+  colorsOf,
+  HIGHLIGHT_COLORS,
+  HIGHLIGHT_PRINT,
+  type HighlightColor,
+  isHighlightColor,
+  isTextColor,
+  TEXT_COLOR_PRINT,
+  TEXT_COLORS,
+  type TextColor,
+} from './text-colors.js';

@@ -13,14 +13,18 @@ import type { CitationCluster } from '@tc/citations';
 import { formatRef, type NumberedTarget } from '@tc/types';
 import {
   AlignmentType,
+  convertMillimetersToTwip,
   Document,
+  Footer,
   HeadingLevel,
   ImageRun,
   Packer,
+  PageNumber,
   Paragraph,
   type ParagraphChild,
   Table,
   TableCell,
+  TableOfContents,
   TableRow,
   TextRun,
   Math as WordMath,
@@ -35,8 +39,16 @@ import {
   noteChildren,
 } from './citation-links.js';
 import { printCitation } from './clusters.js';
+import { docxColors } from './colors.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
+import {
+  type ExportComment,
+  planComments,
+  withBlockComments,
+  withTitleComments,
+  wordComments,
+} from './word-comments.js';
 import { latexToWordMath } from './word-math.js';
 
 type PmMark = { type?: string; attrs?: Record<string, unknown> };
@@ -90,7 +102,34 @@ export type ExportOptions = {
   refTargets?: ReadonlyMap<string, NumberedTarget>;
   /** ADR-0055: plain (the default), linked to the bibliography, or Word citation fields. */
   citationLinks?: CitationLinksInput;
+  /** R33 (ADR-0120): the document's font (`FONT_STYLE_DOCX`); absent is Word's own default. */
+  font?: string;
+  /**
+   * R27 (ADR-0121): the export dialog's page — paper, margins, font, size, spacing, columns, page
+   * numbers. Absent is Word's own page setup, as before; `font` above still applies then.
+   */
+  page?: {
+    size: 'A4' | 'Letter';
+    marginsMm: { top: number; bottom: number; left: number; right: number };
+    font: string;
+    sizePt: number;
+    lineSpacing: number;
+    paragraphSpacingPt: number;
+    justify: boolean;
+    columns: 1 | 2;
+    pageNumbers: boolean;
+  };
+  /** R27: the guide's open comments on this chapter, as Word comments. */
+  comments?: { chapterId: string; list: readonly ExportComment[] };
 };
+
+const PAGE_MM = { A4: [210, 297], Letter: [215.9, 279.4] } as const;
+
+/**
+ * Each export's contents entries, keyed on its options object as `notesFor` keys its footnotes:
+ * a copy of the options would collect the footnotes under the copy and lose them.
+ */
+const contentsFor = new WeakMap<object, Array<{ title: string; level: number }>>();
 
 /** Running heading counters for one export (H2 within the chapter, H3 within the H2). */
 type HeadingCounter = { h2: number; h3: number };
@@ -201,18 +240,22 @@ function runsFrom(nodes: readonly PmNode[], options: ExportOptions): ParagraphCh
         strike: marks.has('strike'),
         superScript: marks.has('superscript'),
         subScript: marks.has('subscript'),
+        // R28 (ADR-0119): a text colour and Word's own highlight.
+        ...docxColors(node.marks),
       }),
     );
   }
   return runs;
 }
 
+type Block = Paragraph | Table | TableOfContents;
+
 function paragraphsFrom(
   node: PmNode,
   options: ExportOptions,
   context: { listLevel?: number; ordered?: boolean; counter?: HeadingCounter } = {},
-): Array<Paragraph | Table> {
-  const out: Array<Paragraph | Table> = [];
+): Block[] {
+  const out: Block[] = [];
 
   switch (node.type) {
     case 'heading': {
@@ -226,17 +269,44 @@ function paragraphsFrom(
         {
           paragraph: new Paragraph({
             heading: HEADING[level as 1 | 2 | 3] ?? HeadingLevel.HEADING_3,
-            children: runs,
+            // A TOC field collects by outline level; the Heading styles `docx` writes carry none,
+            // so without this a contents block converts to an empty list (as in `thesis.ts`).
+            outlineLevel: Math.min(Math.max(level, 1), 3) - 1,
+            children: withBlockComments(options, node, runs),
           }),
         }.paragraph,
       );
       break;
     }
 
+    case 'horizontalRule':
+      // R28: a rule across the column — Word's bottom border on an empty paragraph.
+      out.push(new Paragraph({ thematicBreak: true, children: [] }));
+      break;
+
+    case 'tableOfContents':
+      // R28: the editor's contents block becomes Word's own contents field, filled with this
+      // chapter's headings so it reads before Word (or the PDF conversion) adds the page numbers.
+      out.push(
+        new Paragraph({ children: [new TextRun({ text: 'Contents', bold: true })] }),
+        new TableOfContents('Contents', {
+          hyperlink: true,
+          headingStyleRange: '1-3',
+          cachedEntries: contentsFor.get(options) ?? [],
+        }),
+      );
+      break;
+
     case 'paragraph':
       out.push(
         new Paragraph({
-          children: runsFrom(node.content ?? [], options),
+          // R27: a guide's comment on these words, when the export includes comments.
+          children: withBlockComments(options, node, runsFrom(node.content ?? [], options)),
+          ...(options.page && context.listLevel === undefined
+            ? {
+                alignment: options.page.justify ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
+              }
+            : {}),
           ...(context.listLevel !== undefined
             ? {
                 bullet: context.ordered ? undefined : { level: context.listLevel },
@@ -347,6 +417,33 @@ function paragraphsFrom(
   return out;
 }
 
+/** The chapter's headings as the exported file numbers them, for the contents field's text. */
+function contentsEntries(
+  root: PmNode,
+  options: ExportOptions,
+  title: string,
+): Array<{ title: string; level: number }> {
+  const counter: HeadingCounter = { h2: 0, h3: 0 };
+  const chapter = options.chapterNumber ?? 1;
+  const entries: Array<{ title: string; level: number }> = [
+    { title: options.numberHeadings ? `${chapter}. ${title}` : title, level: 1 },
+  ];
+  const walk = (node: PmNode) => {
+    if (node.type === 'draftBlock') return;
+    if (node.type === 'heading') {
+      const level = Number(node.attrs?.level ?? 2);
+      if (level <= 1) return;
+      const text = textOf(node).trim();
+      const number = options.numberHeadings ? `${headingNumber(level, counter, chapter)} ` : '';
+      if (text) entries.push({ title: `${number}${text}`, level: Math.min(level, 3) });
+      return;
+    }
+    for (const child of node.content ?? []) walk(child);
+  };
+  for (const child of root.content ?? []) walk(child);
+  return entries;
+}
+
 function tableFrom(node: PmNode, options: ExportOptions): Table {
   const rows = (node.content ?? []).map((row) => {
     const cells = (row.content ?? []).map((cell) => {
@@ -386,14 +483,30 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
   const root = (doc ?? {}) as PmNode;
   const counter: HeadingCounter = { h2: 0, h3: 0 };
   const chapterNumber = options.chapterNumber ?? 1;
-  const body: Array<Paragraph | Table> = [
+  // The chapter's own level-1 heading is its title line, printed once. Until 2026-10-08 it was
+  // printed twice — the title, then the same words again as the first heading. The words the
+  // student typed win over the stored title, as in the thesis export (`thesis.ts`).
+  const ownTitle = (root.content ?? []).find(
+    (node) => node.type === 'heading' && Number(node.attrs?.level ?? 2) === 1,
+  );
+  const title = (ownTitle ? textOf(ownTitle).trim() : '') || options.title;
+  contentsFor.set(options, contentsEntries(root, options, title));
+  if (options.comments?.list.length) {
+    planComments(options, options.comments.list, [
+      { id: options.comments.chapterId, content: root },
+    ]);
+  }
+  const body: Block[] = [
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      children: [
-        new TextRun(options.numberHeadings ? `${chapterNumber}. ${options.title}` : options.title),
-      ],
+      outlineLevel: 0,
+      children: withTitleComments(options, options.comments?.chapterId ?? '', true, [
+        new TextRun(options.numberHeadings ? `${chapterNumber}. ${title}` : title),
+      ]),
     }),
-    ...(root.content ?? []).flatMap((node) => paragraphsFrom(node, options, { counter })),
+    ...(root.content ?? [])
+      .filter((node) => node !== ownTitle)
+      .flatMap((node) => paragraphsFrom(node, options, { counter })),
   ];
 
   const bibliography = options.bibliography ?? [];
@@ -416,6 +529,8 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
     );
   }
 
+  const page = options.page;
+  const comments = wordComments(options, options.comments?.list);
   const document = new Document({
     footnotes: notesFor(options).entries,
     numbering: {
@@ -431,7 +546,66 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
         },
       ],
     },
-    sections: [{ children: body }],
+    ...(comments ? { comments } : {}),
+    // R27 (ADR-0121) the dialog's font, size and spacing; else R33 (ADR-0120) the student's font
+    // style; neither leaves Word on its own default.
+    ...(page
+      ? {
+          styles: {
+            default: {
+              document: {
+                run: { font: page.font, size: page.sizePt * 2 },
+                paragraph: {
+                  spacing: {
+                    line: Math.round(page.lineSpacing * 240),
+                    after: page.paragraphSpacingPt * 20,
+                  },
+                },
+              },
+            },
+          },
+        }
+      : options.font
+        ? { styles: { default: { document: { run: { font: options.font } } } } }
+        : {}),
+    sections: [
+      page
+        ? {
+            properties: {
+              page: {
+                size: {
+                  width: convertMillimetersToTwip(PAGE_MM[page.size][0]),
+                  height: convertMillimetersToTwip(PAGE_MM[page.size][1]),
+                },
+                margin: {
+                  top: convertMillimetersToTwip(page.marginsMm.top),
+                  bottom: convertMillimetersToTwip(page.marginsMm.bottom),
+                  left: convertMillimetersToTwip(page.marginsMm.left),
+                  right: convertMillimetersToTwip(page.marginsMm.right),
+                },
+              },
+              ...(page.columns === 2
+                ? { column: { count: 2, space: convertMillimetersToTwip(8), equalWidth: true } }
+                : {}),
+            },
+            ...(page.pageNumbers
+              ? {
+                  footers: {
+                    default: new Footer({
+                      children: [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [new TextRun({ children: [PageNumber.CURRENT] })],
+                        }),
+                      ],
+                    }),
+                  },
+                }
+              : {}),
+            children: body,
+          }
+        : { children: body },
+    ],
   });
 
   // ADR-0055: the parts `docx` cannot write (a no-op for plain citations).

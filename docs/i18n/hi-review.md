@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**576** strings are translated; **19** are deliberately
+**604** strings are translated; **19** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -246,10 +246,10 @@ English. Write corrections in the last column.
 | `editor.howSuggestions` | How suggestions work | सुझाव कैसे काम करते हैं | |
 | `editor.feedback` | Feedback | फ़ीडबैक | |
 | `editor.download` | Download {file} | {file} डाउनलोड करें | |
-| `editor.exportTitle` | Plain .docx of this chapter (FR-8.1) | इस अध्याय की सादी .docx फ़ाइल (FR-8.1) | |
+| `editor.exportTitle` | Word, PDF, LaTeX or a web page, with a layout and a preview | Word, PDF, LaTeX या वेब पेज, लेआउट और प्रीव्यू के साथ | |
 | `editor.exportError` | The export did not complete. Try again in a minute. | एक्सपोर्ट पूरा नहीं हुआ। एक मिनट बाद फिर कोशिश करें। | |
 | `editor.exporting` | Exporting… | एक्सपोर्ट हो रहा है… | |
-| `editor.export` | Export .docx | .docx एक्सपोर्ट करें | |
+| `editor.export` | Export | एक्सपोर्ट | |
 | `editor.conflictBanner` | This chapter was changed elsewhere — reload to continue. Autosave is paused. | यह अध्याय कहीं और बदला गया है — आगे बढ़ने के लिए पेज रीलोड करें। ऑटोसेव रुका हुआ है। | |
 | `editor.reload` | Reload | रीलोड करें | |
 | `editor.restoreBanner` | An older version of this chapter is back. What you had before is saved as a version. | इस अध्याय का पुराना संस्करण वापस आ गया है। पहले जो था, वह एक संस्करण के रूप में सेव है। | |
@@ -426,6 +426,27 @@ English. Write corrections in the last column.
 | `fmt.style.heading` | Heading | शीर्षक | |
 | `fmt.style.subheading` | Subheading | उपशीर्षक | |
 | `fmt.style.quote` | Quote | उद्धरण | |
+| `fmt.textColor` | Text colour | टेक्स्ट का रंग | |
+| `fmt.highlight` | Highlight (Ctrl+Shift+H) | हाइलाइट (Ctrl+Shift+H) | |
+| `fmt.color.grey` | Grey | स्लेटी | |
+| `fmt.color.red` | Red | लाल | |
+| `fmt.color.orange` | Orange | नारंगी | |
+| `fmt.color.green` | Green | हरा | |
+| `fmt.color.blue` | Blue | नीला | |
+| `fmt.color.purple` | Purple | बैंगनी | |
+| `fmt.color.yellow` | Yellow | पीला | |
+| `fmt.color.pink` | Pink | गुलाबी | |
+| `fmt.defaultColor` | Default colour | सामान्य रंग | |
+| `fmt.noHighlight` | No highlight | हाइलाइट हटाएँ | |
+| `fmt.colorsPrint` | Kept in the Word file, the PDF, LaTeX and the web page. | Word फ़ाइल, PDF, LaTeX और वेब पेज में भी रहता है। | |
+
+## toc
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `toc.title` | Contents | विषय-सूची | |
+| `toc.empty` | The headings of this chapter appear here as you add them. | इस अध्याय के शीर्षक जोड़ते ही यहाँ दिखेंगे। | |
+| `toc.goTo` | Go to | यहाँ जाएँ | |
 
 ## The suggestion bar
 
@@ -527,6 +548,18 @@ English. Write corrections in the last column.
 | `settings.style.default` | APA 7 (the default) | APA 7 (डिफ़ॉल्ट) | |
 | `settings.contrast.title` | High contrast | हाई कंट्रास्ट | |
 | `settings.contrast.body` | Darker text and stronger lines, in light or dark. Kept on this device only. | गहरा टेक्स्ट और मोटी रेखाएँ, लाइट या डार्क दोनों में। सिर्फ़ इसी डिवाइस पर रहता है। | |
+| `settings.theme.title` | Theme | थीम | |
+| `settings.theme.body` | System follows your device. Paper light and paper dark are a warm printed page, by day and by night. Kept on this device only. | सिस्टम आपके डिवाइस के हिसाब से चलता है। पेपर लाइट और पेपर डार्क छपे हुए पन्ने जैसे गर्म रंग हैं, दिन और रात के लिए। सिर्फ़ इसी डिवाइस पर रहता है। | |
+| `settings.theme.system` | System | सिस्टम | |
+| `settings.theme.light` | Light | लाइट | |
+| `settings.theme.dark` | Dark | डार्क | |
+| `settings.theme.paperLight` | Paper light | पेपर लाइट | |
+| `settings.theme.paperDark` | Paper dark | पेपर डार्क | |
+| `settings.font.title` | Font style | फ़ॉन्ट स्टाइल | |
+| `settings.font.body` | The typeface of your thesis text in the editor, in a chapter you export to Word and in the web page export. The thesis .docx and PDF use your university template’s font. | एडिटर में आपकी थीसिस के टेक्स्ट का टाइपफ़ेस, Word में एक्सपोर्ट किए अध्याय में और वेब पेज एक्सपोर्ट में भी। थीसिस की .docx और PDF आपकी यूनिवर्सिटी टेम्पलेट के फ़ॉन्ट में बनती हैं। | |
+| `settings.font.default` | Default (the theme’s own) | डिफ़ॉल्ट (थीम का अपना) | |
+| `settings.font.serif` | Serif | सेरिफ़ | |
+| `settings.font.sans` | Sans-serif | सैन्स-सेरिफ़ | |
 | `settings.month.note` | Everything the AI does for you is counted here and nowhere else. Dismissing a suggestion still counts: the text was written before you saw it. | AI आपके लिए जो कुछ भी करता है, वह यहीं गिना जाता है, और कहीं नहीं। सुझाव हटाने पर भी वह गिना जाता है: आपके देखने से पहले टेक्स्ट लिखा जा चुका था। | |
 
 ## Account

@@ -5746,3 +5746,16 @@ Upload a paper and Import from Word through the existing /app/new chooser (`?sta
 migration. On main: web 232, documents-beside and the layout guard pass; path-a (reached through
 the new menu) timed out on the real proposal model's three answers and runs on the mock at release.
 
+R28 (ADR-0119): text colour and highlight stored by palette name and printed in every export (Word's
+own highlight); the "/" menu gains a live contents block (Word's TOC field, or the thesis contents
+page) and a horizontal rule. Fixed on the way: the chapter .docx printed its title twice, the
+thesis .docx dropped strike-through, an underlined CO₂ broke the LaTeX compile. R33 (ADR-0120):
+paper light and paper dark themes; a font style on the account for the thesis text and the chapter
+.docx (the thesis .docx/PDF keep the template's font). R27 (ADR-0121): one export dialog for the
+chapter and the thesis — four presets, advanced options, a live preview from the same numbers as
+the file; the ten checks still run against the template and a non-template PDF asks for a reason;
+guide comments can go in as Word comments. Merged over R40's citation clusters in the same
+exporters (import conflicts only); on main types 75, citations 131, export 164, ui 231, ai 566,
+web 238, three API files (17, including R33's font-style test never run before) and the 7 browser
+tests pass.
+

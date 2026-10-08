@@ -45,7 +45,8 @@
 }
 
 /* In dark the page ground is the product's darkest surface and panels sit one step above it. */
-:root[data-theme="dark"] .mk {
+:root[data-theme="dark"] .mk,
+:root[data-theme="paper-dark"] .mk {
   --mk-bg: var(--color-paper);
   --mk-surface: var(--color-surface);
   --mk-surface-2: #1d2636;
@@ -61,7 +62,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .mk {
+  :root:not([data-theme]) .mk {
     --mk-bg: var(--color-paper);
     --mk-surface: var(--color-surface);
     --mk-surface-2: #1d2636;
