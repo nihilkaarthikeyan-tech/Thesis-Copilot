@@ -11,6 +11,9 @@
  *
  * Opened from the chapter list, or straight away when the page is reached with `?import=word`
  * (the "Create and import from Word" button on the new-thesis screen).
+ *
+ * R34 (ADR-0113): the preview and the summary both say why the file's citations were not linked —
+ * no references section, or, with one, that an import adds no papers — and where the list went.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,6 +21,7 @@ import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { ApiError, api } from '@/lib/api';
+import { citationNotice, type ReferencesFound } from '@/lib/word-import-notice';
 
 export const IMPORT_PARAM = 'import';
 
@@ -28,6 +32,8 @@ type Summary = {
   footnotes: number;
   tables: number;
   citationLike: number;
+  /** References sections found in the file (ADR-0113); their entries are not counted as citations. */
+  references: ReferencesFound[];
   splitAtHeadings: boolean;
 };
 type Preview = Summary & {
@@ -45,6 +51,31 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 function problemText(error: unknown, fallback: string): string {
   return error instanceof ApiError ? (error.problem.detail ?? error.problem.title) : fallback;
+}
+
+/** R34 (ADR-0113): why the citations were not linked, said before and after the import. */
+function CitationNotice({ summary }: { summary: Summary }) {
+  const notice = citationNotice({
+    citationLike: summary.citationLike,
+    references: summary.references ?? [],
+  });
+  return (
+    <div
+      role="note"
+      data-testid="word-import-citations"
+      data-tone={notice.tone}
+      className={`min-w-0 break-words rounded-md border p-3 text-[13px] ${
+        notice.tone === 'warn' ? 'border-warn/40 bg-warn-soft' : 'border-line bg-sunk'
+      }`}
+    >
+      <p className="font-semibold text-ink">{notice.title}</p>
+      {notice.lines.map((line) => (
+        <p key={line} className="mt-1 text-muted">
+          {line}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 export function WordImport({ documentId }: { documentId: string }) {
@@ -150,15 +181,9 @@ export function WordImport({ documentId }: { documentId: string }) {
                 — insert {result.images === 1 ? 'it as a figure' : 'them as figures'}.
               </li>
             ) : null}
-            {result.citationLike > 0 ? (
-              <li>
-                {plural(result.citationLike, 'citation')} typed as text{' '}
-                {result.citationLike === 1 ? 'was' : 'were'} kept as text — link{' '}
-                {result.citationLike === 1 ? 'it' : 'them'} to your library when you are ready.
-              </li>
-            ) : null}
             {result.footnotes > 0 ? <li>{plural(result.footnotes, 'footnote')} kept.</li> : null}
           </ul>
+          <CitationNotice summary={result} />
           <div className="flex flex-wrap gap-2 pt-1">
             {first ? (
               <Button
@@ -212,10 +237,8 @@ export function WordImport({ documentId }: { documentId: string }) {
                 will come across.
               </li>
             ) : null}
-            {preview.citationLike > 0 ? (
-              <li>{plural(preview.citationLike, 'citation')} typed as text will stay as text.</li>
-            ) : null}
           </ul>
+          <CitationNotice summary={preview} />
 
           <fieldset className="space-y-2 rounded-md border border-line p-3">
             <legend className="px-1 text-[12px] font-semibold">Where the chapters go</legend>

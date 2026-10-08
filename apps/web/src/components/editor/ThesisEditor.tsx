@@ -1924,7 +1924,13 @@ function ChapterEditor({
                   onUsageChange={onUsageChange}
                 />
                 <ParaphrasePanel chapterId={chapter.id} editor={editor} />
-                <SourceQualityPanel documentId={doc.id} />
+                <SourceQualityPanel
+                  documentId={doc.id}
+                  chapterId={chapter.id}
+                  save={async () => {
+                    await autosaveRef.current?.flush();
+                  }}
+                />
               </>
             )}
           </div>
@@ -2124,7 +2130,7 @@ function ChapterEditor({
       {process.env.NODE_ENV !== 'production' ? (
         <div
           data-testid="dev-timing"
-          className="fixed bottom-3 right-3 rounded bg-ink/85 px-3 py-2 font-mono text-[11px] text-paper"
+          className="pointer-events-none fixed bottom-3 right-3 rounded bg-ink/85 px-3 py-2 font-mono text-[11px] text-paper"
         >
           ghost: {ghost?.status ?? 'idle'} · ttfb {timing ? `${timing.ttfbMs} ms` : '–'} · latency{' '}
           {timing ? `${timing.latencyMs} ms` : '–'}

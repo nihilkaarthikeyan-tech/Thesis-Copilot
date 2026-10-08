@@ -5705,3 +5705,12 @@ conflicts resolved by hand (both sides kept). On main: ui 216, web 209, the cap/
 concurrency API files (62) and the new limit-message browser spec pass; `states.spec.ts` needs the
 mock AI and waits for the release run on the mock stack.
 
+R25 (ADR-0112): Source quality opens with notes on the open chapter's citations, each paper once —
+a publication-year chart (median year, works over a decade old) and the venue spread, plain HTML
+bars that fit the 288 px panel; missing years or venues are counted out and said to be. R34
+(ADR-0113): Word import finds references sections, stops counting their entries as citations (an
+IEEE list's "[1]" was counted), and says why citations were not linked. On main: 45 API tests and
+221 web tests pass, and the new browser specs (with a five-width layout check). Found on the way:
+the development-only timing box in the editor's corner sat over "Check my sources" and swallowed
+the click; it now lets clicks through (`pointer-events-none`).
+

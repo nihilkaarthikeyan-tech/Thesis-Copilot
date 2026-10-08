@@ -16,6 +16,10 @@
  *   - Pictures do not: the caller counts them, and the student inserts each as a figure.
  *   - Citations typed as text — "(Kumar, 2021)", "[3]" — stay text. They are counted so the
  *     student knows how many to link; nothing here guesses which source one means.
+ *   - A references section ("References", "Bibliography", …) comes across as text too. It is
+ *     found and reported, so the dialog can say why the citations were not linked (R34,
+ *     ADR-0113), and its entries are left out of the citation count: an IEEE list's "[1]" is an
+ *     entry, not a citation.
  */
 
 import { FOOTNOTE_MAX } from '@tc/ui';
@@ -51,9 +55,33 @@ export type DocxChapters = {
   splitAtHeadings: boolean;
   footnotes: number;
   tables: number;
-  /** Text that looks like a citation typed by hand — "(Kumar, 2021)", "Kumar (2021)", "[3]". */
+  /**
+   * Text that looks like a citation typed by hand — "(Kumar, 2021)", "Kumar (2021)", "[3]" —
+   * outside any references section.
+   */
   citationLike: number;
+  /** Every references section found, in order (ADR-0113). */
+  references: ReferencesSection[];
 };
+
+/** A references section: its heading as written, the chapter it came in as, its entries. */
+export type ReferencesSection = { heading: string; chapter: string; entries: number };
+
+/** A references heading is a short line; anything longer is a sentence that mentions them. */
+const REFERENCES_HEADING_MAX = 60;
+
+/**
+ * The names a references section goes by, after an optional number ("7.", "Chapter 7:", "VII."),
+ * in any case, with an optional colon. The whole line must be the name: "References to the old
+ * scheme" is a sentence.
+ */
+const REFERENCES_HEADING =
+  /^(?:(?:chapter|section|part)\s+)?(?:(?:\d+(?:\.\d+)*|[ivxlc]+)[\s.):–-]+)?(?:references?(?:\s+cited)?|reference\s+list|list\s+of\s+references|(?:select(?:ed)?\s+)?bibliography|works\s+cited|literature\s+cited|sources\s+cited|cited\s+(?:works|literature))\s*:?$/iu;
+
+export function isReferencesHeading(text: string): boolean {
+  const line = collapse(text);
+  return line.length <= REFERENCES_HEADING_MAX && REFERENCES_HEADING.test(line);
+}
 
 /** A chapter title is a heading, not a paragraph; anything longer is cut. */
 export const TITLE_MAX = 200;
@@ -339,6 +367,79 @@ class Converter {
   }
 }
 
+/** The entries of a reference list: its paragraphs and list items with text. */
+function entriesIn(blocks: readonly PmNode[]): number {
+  let entries = 0;
+  for (const block of blocks) {
+    if (block.type === 'paragraph') {
+      if (plainText([block]).trim()) entries++;
+    } else if (block.type === 'bulletList' || block.type === 'orderedList') {
+      entries += (block.content ?? []).filter((item) => plainText([item]).trim()).length;
+    } else if (block.type === 'blockquote') {
+      entries += entriesIn(block.content ?? []);
+    }
+  }
+  return entries;
+}
+
+/**
+ * A chapter's references sections, and its blocks outside them (where citations are counted).
+ *
+ *   - A chapter whose Heading 1 is a references name is one whole section. `titled` is false for
+ *     a title the import made up (the file's name, "Front matter"), which says nothing.
+ *   - A Heading 2 or 3 with the name runs to the next heading of the same or a higher level.
+ *   - A paragraph that is only the name (a bold "REFERENCES" not styled as a heading) runs to
+ *     the next heading of any level.
+ */
+function referencesIn(
+  chapter: ImportedChapter,
+  titled: boolean,
+): { found: ReferencesSection[]; rest: PmNode[] } {
+  const heading = (text: string) => text.slice(0, REFERENCES_HEADING_MAX);
+  if (titled && isReferencesHeading(chapter.title)) {
+    return {
+      found: [
+        {
+          heading: heading(chapter.title),
+          chapter: chapter.title,
+          entries: entriesIn(chapter.blocks),
+        },
+      ],
+      rest: [],
+    };
+  }
+  const found: ReferencesSection[] = [];
+  const rest: PmNode[] = [];
+  const { blocks } = chapter;
+  let i = 0;
+  while (i < blocks.length) {
+    const block = blocks[i] as PmNode;
+    const text = collapse(plainText([block]));
+    const opens =
+      (block.type === 'heading' || block.type === 'paragraph') && isReferencesHeading(text);
+    if (!opens) {
+      rest.push(block);
+      i++;
+      continue;
+    }
+    const level =
+      block.type === 'heading' ? Number(block.attrs?.level ?? 2) : Number.POSITIVE_INFINITY;
+    let end = i + 1;
+    while (end < blocks.length) {
+      const next = blocks[end] as PmNode;
+      if (next.type === 'heading' && Number(next.attrs?.level ?? 2) <= level) break;
+      end++;
+    }
+    found.push({
+      heading: heading(text),
+      chapter: chapter.title,
+      entries: entriesIn(blocks.slice(i + 1, end)),
+    });
+    i = end;
+  }
+  return { found, rest };
+}
+
 /**
  * Splits mammoth's HTML into chapters. `fallbackTitle` names the one chapter of a file with no
  * Heading 1 (the file's own name, usually).
@@ -383,6 +484,8 @@ export function htmlToChapters(html: string, fallbackTitle: string): DocxChapter
   drafts.push(current);
 
   const chapters: ImportedChapter[] = [];
+  /** Per chapter: whether its title is a Heading 1 from the file, not one the import made up. */
+  const titled: boolean[] = [];
   for (const draft of drafts) {
     const blocks = converter.blocks(draft.nodes);
     const words = wordsIn(plainText(blocks));
@@ -405,15 +508,19 @@ export function htmlToChapters(html: string, fallbackTitle: string): DocxChapter
       words,
       preamble: draft.preamble && headings > 0,
     });
+    titled.push(!draft.preamble && draft.title.length > 0);
   }
 
-  const allText = chapters.map((c) => plainText(c.blocks)).join(' ');
+  // Citations are counted outside the reference lists: an entry is not a citation (ADR-0113).
+  const scanned = chapters.map((c, i) => referencesIn(c, titled[i] ?? false));
+  const allText = scanned.map((s) => plainText(s.rest)).join(' ');
   return {
     chapters,
     splitAtHeadings: headings > 0,
     footnotes: converter.footnotes,
     tables: converter.tables,
     citationLike: countCitationLike(allText),
+    references: scanned.flatMap((s) => s.found),
   };
 }
 

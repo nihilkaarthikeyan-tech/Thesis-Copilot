@@ -122,6 +122,7 @@ const detailsBody = z.object({
 
 const importIdBody = z.object({ q: z.string().trim().min(1).max(300) });
 const fetchPdfsBody = z.object({ sourceIds: z.array(z.string().uuid()).max(200).optional() });
+const qualityChapter = z.string().uuid().optional();
 
 @Controller()
 @UseGuards(SessionGuard)
@@ -320,13 +321,22 @@ export class SourcesController {
     });
   }
 
-  /** Possible duplicates in the library — the same DOI, or the same title, year and first author. */
-  /** ADR-0076: papers with a standing problem (retracted, preprint, uncited, weak venue). Free. */
+  /**
+   * ADR-0076: papers with a standing problem (retracted, preprint, uncited, weak venue). Free.
+   * `?chapterId=` adds that chapter's bibliography notes, a year chart and venue spread (ADR-0112).
+   */
   @Get('documents/:id/sources/quality')
-  quality(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
-    return this.sources.sourceQuality(user.id, documentId);
+  quality(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Query('chapterId') chapterId: string | undefined,
+  ) {
+    const parsed = qualityChapter.safeParse(chapterId);
+    if (!parsed.success) throw new ValidationError('Invalid chapter', parsed.error.issues);
+    return this.sources.sourceQuality(user.id, documentId, parsed.data);
   }
 
+  /** Possible duplicates in the library — the same DOI, or the same title, year and first author. */
   @Get('documents/:id/sources/duplicates')
   duplicates(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.sources.listDuplicates(user.id, documentId);

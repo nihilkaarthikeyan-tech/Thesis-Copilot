@@ -90,3 +90,30 @@ export async function setAllowanceUsed(
     await prisma.$disconnect();
   }
 }
+
+/**
+ * R25 (ADR-0112): a resolved paper with only the record fields the bibliography notes read — its
+ * year and venue, either of which may be missing, as they are for some real records. No passage:
+ * the notes never read one.
+ */
+export async function seedRecordOnlySource(
+  documentId: string,
+  paper: { title: string; year: number | null; venue: string | null },
+): Promise<string> {
+  const prisma = await client();
+  try {
+    const source = await prisma.source.create({
+      data: {
+        documentId,
+        status: 'RESOLVED',
+        title: paper.title,
+        year: paper.year,
+        venue: paper.venue,
+        groundingLevel: 'NONE',
+      },
+    });
+    return source.id;
+  } finally {
+    await prisma.$disconnect();
+  }
+}

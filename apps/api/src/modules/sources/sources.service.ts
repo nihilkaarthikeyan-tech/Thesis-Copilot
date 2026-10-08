@@ -24,6 +24,7 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import { SnapshotsService } from '../chapters/snapshots.service.js';
+import { type BibliographyNotes, bibliographyNotes } from './bibliography-notes.js';
 import {
   type DuplicatePair,
   findDuplicates,
@@ -1037,10 +1038,14 @@ export class SourcesService {
   /**
    * ADR-0076: the library's papers with a standing problem (retracted, preprint, uncited, weak
    * venue), the ones the thesis actually cites first. Free: no model, only what we hold.
+   *
+   * With `chapterId` (R25, ADR-0112), also the bibliography notes for the papers that chapter
+   * cites: a publication-year chart and the venue spread. `notes` is null without one.
    */
   async sourceQuality(
     ownerId: string,
     documentId: string,
+    chapterId?: string,
   ): Promise<{
     checked: number;
     sources: Array<{
@@ -1050,8 +1055,10 @@ export class SourcesService {
       citedInThesis: number;
       issues: Array<{ code: QualityIssue; advice: string }>;
     }>;
+    notes: BibliographyNotes | null;
   }> {
     await this.ownedDocument(ownerId, documentId);
+    const notes = chapterId ? await this.chapterNotes(documentId, chapterId) : null;
     const [rows, usage] = await Promise.all([
       this.prisma.source.findMany({
         where: { documentId },
@@ -1083,7 +1090,29 @@ export class SourcesService {
           b.citedInThesis - a.citedInThesis ||
           b.issues.length - a.issues.length,
       );
-    return { checked: rows.length, sources };
+    return { checked: rows.length, sources, notes };
+  }
+
+  /**
+   * R25 (ADR-0112): the year and venue notes over the papers one chapter cites, each once. From
+   * the citation rows kept on every save, so the panel saves the chapter before it asks.
+   */
+  private async chapterNotes(documentId: string, chapterId: string): Promise<BibliographyNotes> {
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: chapterId, documentId },
+      select: { id: true },
+    });
+    if (!chapter) throw new NotFoundError('That chapter');
+    const cited = await this.prisma.citation.findMany({
+      where: { chapterId },
+      select: { sourceId: true },
+      distinct: ['sourceId'],
+    });
+    const sources = await this.prisma.source.findMany({
+      where: { documentId, id: { in: cited.map((c) => c.sourceId) } },
+      select: { year: true, venue: true, venueOpenalexId: true },
+    });
+    return bibliographyNotes(sources);
   }
 
   /** Possible duplicates in one library (the Jenni "Library Issues" view). Nothing is changed. */

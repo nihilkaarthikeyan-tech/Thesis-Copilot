@@ -12,6 +12,7 @@ import {
   chapterDoc,
   countCitationLike,
   htmlToChapters,
+  isReferencesHeading,
   type PmNode,
 } from '../src/modules/chapters/docx-chapters.js';
 import { buildWord, heading2, para, thesisWord } from './_word.js';
@@ -119,6 +120,75 @@ describe('htmlToChapters', () => {
       { type: 'link', attrs: { href: 'https://example.org' } },
     ]);
     expect(texts.find((t) => t.text === 'x')?.marks).toBeUndefined();
+  });
+});
+
+describe('references sections (R34, ADR-0113)', () => {
+  it('finds a References chapter, counts its entries, and has none in a file without one', async () => {
+    const result = htmlToChapters(
+      '<h1>Introduction</h1><p>Wells are deeper (Kumar, 2021).</p><h1>References</h1><p>Kumar, A. (2021). Falling tables.</p><p>Rao, S. (2019). Borewells.</p>',
+      'x',
+    );
+    expect(result.references).toEqual([
+      { heading: 'References', chapter: 'References', entries: 2 },
+    ]);
+    expect(result.citationLike).toBe(1);
+    // The list still comes across as the student's text.
+    expect(result.chapters.map((c) => c.title)).toEqual(['Introduction', 'References']);
+    const { html } = await docxToHtml(await thesisWord());
+    expect(htmlToChapters(html, 'thesis').references).toEqual([]);
+  });
+
+  it('finds a Heading 2 and a plain paragraph inside a chapter, each ending at the next heading', () => {
+    const result = htmlToChapters(
+      [
+        '<h1>Conclusion</h1><p>As before [1].</p>',
+        '<h2>Bibliography</h2><ol><li>[1] A. Kumar, Falling tables, 2021.</li><li>[2] S. Rao, Borewells, 2019.</li></ol>',
+        '<h2>Further work</h2><p>Extend it [2].</p>',
+        '<h1>Chapter 2</h1><p>Seasons differ (Sen, 2020).</p>',
+        '<p><strong>REFERENCES</strong></p><p>Sen, K. (2020). Monsoon wells.</p>',
+        '<h3>Notes</h3><p>Field notes from Kolar.</p>',
+      ].join(''),
+      'x',
+    );
+    expect(result.references).toEqual([
+      { heading: 'Bibliography', chapter: 'Conclusion', entries: 2 },
+      { heading: 'REFERENCES', chapter: 'Chapter 2', entries: 1 },
+    ]);
+    // "[1]" and "[2]" open entries of the list; only the three in the text are citations.
+    expect(result.citationLike).toBe(3);
+  });
+
+  it('knows a references heading by its name, numbered or not, and not a sentence that mentions one', () => {
+    for (const heading of [
+      'References',
+      'REFERENCES:',
+      '7. References',
+      'Chapter 7: References',
+      'VII. Bibliography',
+      'Selected bibliography',
+      'Works Cited',
+      'Literature cited',
+      'Reference list',
+    ]) {
+      expect(isReferencesHeading(heading), heading).toBe(true);
+    }
+    for (const line of [
+      'References to the old scheme are common in the district reports.',
+      'Methods',
+      'Referees',
+      'Sources',
+      'A bibliography of irrigation',
+    ]) {
+      expect(isReferencesHeading(line), line).toBe(false);
+    }
+  });
+
+  it('does not take a title the import made up for a references heading', () => {
+    // A file with no Heading 1 is named after the file, which says nothing about its content.
+    const result = htmlToChapters('<p>Wells are deeper [1].</p>', 'References');
+    expect(result.references).toEqual([]);
+    expect(result.citationLike).toBe(1);
   });
 });
 

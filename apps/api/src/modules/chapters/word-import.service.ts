@@ -48,6 +48,7 @@ import {
   type DocxChapters,
   htmlToChapters,
   type ImportedChapter,
+  type ReferencesSection,
 } from './docx-chapters.js';
 import { SnapshotsService } from './snapshots.service.js';
 import { stripUnsafeKeys, totalWords, wordCountsOf } from './word-counts.js';
@@ -71,8 +72,10 @@ export type ImportSummary = {
   images: number;
   footnotes: number;
   tables: number;
-  /** Citations typed as text, left as text for the student to link. */
+  /** Citations typed as text, left as text for the student to link; reference lists excluded. */
   citationLike: number;
+  /** References sections found, so the dialog can say why nothing was linked (R34, ADR-0113). */
+  references: ReferencesSection[];
   /** False when the file had no Heading 1 and came in as one chapter. */
   splitAtHeadings: boolean;
 };
@@ -288,6 +291,7 @@ export class WordImportService {
         chapters: created.length,
         words: result.words,
         images: result.images,
+        references: result.references.length,
         replaced,
       },
       'imported a Word document',
@@ -410,6 +414,7 @@ function summary(read: DocxChapters & { images: number }): ImportSummary {
     footnotes: read.footnotes,
     tables: read.tables,
     citationLike: read.citationLike,
+    references: read.references,
     splitAtHeadings: read.splitAtHeadings,
   };
 }

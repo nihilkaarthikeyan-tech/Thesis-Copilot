@@ -100,6 +100,7 @@ describe('preview', () => {
       footnotes: number;
       tables: number;
       citationLike: number;
+      references: unknown[];
       canReplace: boolean;
       existing: { chapters: number; withText: number };
     };
@@ -118,7 +119,38 @@ describe('preview', () => {
       canReplace: true,
       existing: { chapters: 1, withText: 0 },
     });
+    // R34 (ADR-0113): the file has no references section, and the answer says so.
+    expect(preview.references).toEqual([]);
     expect(await h.prisma.chapter.count({ where: { documentId: doc.id } })).toBe(1);
+  });
+
+  it('says where a references section is, before and after the import, and leaves its entries out of the citations', async () => {
+    const doc = await newThesis('With references');
+    const file = await buildWord([
+      heading1('Introduction'),
+      para('Wells are deeper every year [1], as surveys show [2].'),
+      heading1('References'),
+      para('[1] A. Kumar, “Falling water tables in Kolar,” J. Hydrol., 2021.'),
+      para('[2] S. Rao, “Borewells and their failures,” Water Policy, 2019.'),
+    ]);
+    type Answer = {
+      citationLike: number;
+      references: Array<{ heading: string; chapter: string; entries: number }>;
+    };
+    const expected = {
+      citationLike: 2,
+      references: [{ heading: 'References', chapter: 'References', entries: 2 }],
+    };
+    const preview = (await (await upload(doc.id, file, 'preview')).json()) as Answer;
+    expect(preview).toMatchObject(expected);
+    const res = await upload(doc.id, file, 'append');
+    expect(res.status).toBe(200);
+    expect((await res.json()) as Answer).toMatchObject(expected);
+    // The list itself comes across unchanged, as the student's text.
+    const references = await h.prisma.chapter.findFirstOrThrow({
+      where: { documentId: doc.id, title: 'References' },
+    });
+    expect(JSON.stringify(references.content)).toContain('Falling water tables in Kolar');
   });
 });
 

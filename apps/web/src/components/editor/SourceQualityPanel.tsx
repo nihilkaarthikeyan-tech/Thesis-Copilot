@@ -8,14 +8,21 @@
  * in a journal with a citedness of 0.2. This lists the library's papers with a standing problem,
  * the ones the thesis cites first, with one plain sentence each. Facts from the record we hold;
  * nothing is changed, and no model is called.
+ *
+ * R25 (ADR-0112): above that list, the bibliography notes for the open chapter — a
+ * publication-year chart and the venue spread of the papers it cites. The chapter is saved first,
+ * because the notes are read from the citation rows each save keeps.
  */
 
 import { useCallback, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import type { BibliographyNotes } from '@/lib/bibliography-notes';
 import { readerHref } from '@/lib/reader';
+import { BibliographyNotesView } from './BibliographyNotes';
 
 type Report = {
   checked: number;
+  notes: BibliographyNotes | null;
   sources: Array<{
     id: string;
     title: string | null;
@@ -32,7 +39,16 @@ const LABEL: Record<string, string> = {
   WEAK_VENUE: 'Rarely cited journal',
 };
 
-export function SourceQualityPanel({ documentId }: { documentId: string }) {
+export function SourceQualityPanel({
+  documentId,
+  chapterId,
+  save,
+}: {
+  documentId: string;
+  chapterId: string;
+  /** Flushes the chapter's pending autosave, so its citation rows are what is on screen. */
+  save: () => Promise<void>;
+}) {
   const [report, setReport] = useState<Report | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +57,12 @@ export function SourceQualityPanel({ documentId }: { documentId: string }) {
     setBusy(true);
     setError(null);
     try {
-      setReport(await api<Report>(`/documents/${documentId}/sources/quality`));
+      await save();
+      setReport(
+        await api<Report>(
+          `/documents/${documentId}/sources/quality?chapterId=${encodeURIComponent(chapterId)}`,
+        ),
+      );
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not run the check.',
@@ -49,14 +70,15 @@ export function SourceQualityPanel({ documentId }: { documentId: string }) {
     } finally {
       setBusy(false);
     }
-  }, [documentId]);
+  }, [documentId, chapterId, save]);
 
   return (
     <section className="mt-4 border-t border-line pt-3" data-testid="source-quality-panel">
       <p className="eyebrow">Source quality</p>
       <p className="mt-1 text-xs text-muted">
-        Checks the papers in your library for retractions, preprints, papers no one has cited, and
-        rarely cited journals — the ones your thesis cites first. Nothing is sent to a model.
+        Charts the years and journals of the papers this chapter cites, and checks the papers in
+        your library for retractions, preprints, papers no one has cited, and rarely cited journals
+        — the ones your thesis cites first. Nothing is sent to a model.
       </p>
       <button
         type="button"
@@ -74,15 +96,26 @@ export function SourceQualityPanel({ documentId }: { documentId: string }) {
         </p>
       ) : null}
 
+      {report?.notes ? <BibliographyNotesView notes={report.notes} /> : null}
+
+      {report?.notes ? (
+        <p className="mt-3 text-[11px] font-semibold text-ink">The papers in your library</p>
+      ) : null}
       {report ? (
         report.sources.length === 0 ? (
           <p className="mt-2 text-xs text-ok" data-testid="source-quality-clean">
             Nothing to flag. {report.checked} papers checked.
           </p>
         ) : (
-          <ul className="mt-2 grid list-none gap-2 p-0" data-testid="source-quality-list">
+          <ul
+            className="mt-2 grid list-none grid-cols-1 gap-2 p-0"
+            data-testid="source-quality-list"
+          >
             {report.sources.map((source) => (
-              <li key={source.id} className="rounded-md border border-line bg-surface p-2 text-xs">
+              <li
+                key={source.id}
+                className="min-w-0 break-words rounded-md border border-line bg-surface p-2 text-xs"
+              >
                 <a
                   href={readerHref(documentId, source.id)}
                   className="font-medium text-ink underline-offset-2 hover:underline"
