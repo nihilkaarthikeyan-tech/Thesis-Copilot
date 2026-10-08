@@ -487,7 +487,9 @@ export function OutlineScreen({ documentId }: { documentId: string }) {
                         aria-label={`Title of ${node.title}`}
                         value={node.title}
                         onChange={(e) => edit(path, (n) => ({ ...n, title: e.target.value }))}
-                        className="flex-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-medium font-semibold text-ink transition-colors hover:bg-sunk"
+                        // min-w-0: an input keeps a default width of about 20 characters, which on a
+                        // phone pushed the five buttons out of the row (2026-10-08 audit).
+                        className="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm font-medium font-semibold text-ink transition-colors hover:bg-sunk"
                       />
                       <div className="flex shrink-0 gap-1 text-xs">
                         <button

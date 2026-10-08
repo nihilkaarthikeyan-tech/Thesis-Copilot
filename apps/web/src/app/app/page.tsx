@@ -418,15 +418,18 @@ export default function DocumentListPage() {
   return (
     <div className="min-h-dvh">
       <header className="border-b border-line">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-[16px] font-bold tracking-tight"
+            aria-label="Thesis Copilot"
+            className="inline-flex shrink-0 items-center gap-2 text-[16px] font-bold tracking-tight"
           >
             <LogoMark size={22} />
-            Thesis Copilot
+            {/* The mark alone on a phone: with the name, the bar was 2 px wider than a 390 px
+                screen once Usage joined it (2026-10-08 layout audit). */}
+            <span className="hidden sm:inline">Thesis Copilot</span>
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex min-w-0 flex-wrap items-center justify-end gap-1">
             <ThemeToggle className="mr-1 hidden sm:inline-flex" />
             {isAdmin ? (
               <Button asChild variant="ghost" size="sm">
@@ -520,9 +523,9 @@ export default function DocumentListPage() {
                   count: documents.length,
                 })}
               </div>
-              <ul className="grid list-none gap-2 p-0">
+              <ul className="grid list-none grid-cols-1 gap-2 p-0">
                 {documents.map((d) => (
-                  <li key={d.id}>
+                  <li key={d.id} className="min-w-0">
                     <Card className="transition-colors hover:border-line-strong">
                       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
                         <div className="min-w-0">
@@ -550,7 +553,9 @@ export default function DocumentListPage() {
                             </span>
                           </p>
                         </div>
-                        <nav className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
+                        {/* min-w-0, not shrink-0: kept at its one-line width, the row ran 80 px past
+                            the card on a phone and the page scrolled sideways (2026-10-08 audit). */}
+                        <nav className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
                           <Button asChild size="sm">
                             <Link href={writeHref(d)}>{t('list.write')}</Link>
                           </Button>

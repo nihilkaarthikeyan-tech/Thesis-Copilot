@@ -1520,9 +1520,12 @@ function ChapterEditor({
               {t('editor.outline')}
             </Link>
           </p>
-          <ul className="grid list-none gap-0.5 p-0">
+          {/* grid-cols-1 is minmax(0, 1fr): without it the column grew to the longest section
+              title in the list below (they do not wrap), wider than the rail, and every
+              chapter's word count slid under the editor (2026-10-08, the owner's screenshot). */}
+          <ul className="grid list-none grid-cols-1 gap-0.5 p-0">
             {doc.chapters.map((c, index) => (
-              <li key={c.id}>
+              <li key={c.id} className="min-w-0">
                 <Link
                   href={`/app/d/${doc.id}/write/${c.id}`}
                   aria-current={c.id === chapter.id ? 'page' : undefined}
@@ -1761,20 +1764,23 @@ function ChapterEditor({
               {t('common.close')}
             </button>
           </div>
-          <div className="flex border-b border-line" role="tablist">
+          {/* Three by two (2026-10-08): six labels need 357 px in one row and the panel is 288,
+              so "Comments" ran off the screen and the page scrolled sideways. In a grid every
+              label fits, in English and Hindi, at every width. */}
+          <div className="grid grid-cols-3 gap-1 border-b border-line p-1.5" role="tablist">
             {TABS.map((id) => {
               const hint = FEATURE_HINTS[id];
               return (
-                <span key={id} className="relative flex flex-1">
+                <span key={id} className="relative flex min-w-0">
                   <button
                     type="button"
                     role="tab"
                     aria-selected={tab === id}
                     onClick={() => setTab(id)}
-                    className={`flex-1 border-b-2 px-2 py-2 text-[12px] capitalize transition-colors ${
+                    className={`min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-[12px] capitalize transition-colors ${
                       tab === id
-                        ? 'border-accent bg-surface font-semibold text-ink'
-                        : 'border-transparent text-muted hover:text-ink'
+                        ? 'bg-surface font-semibold text-ink shadow-sm ring-1 ring-line'
+                        : 'text-muted hover:bg-surface hover:text-ink'
                     }`}
                   >
                     {t(`editor.tab.${id}`)}

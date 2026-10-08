@@ -136,14 +136,23 @@ export function ChapterContents({
   }
 
   return (
-    <ul className="mt-1 mb-1 grid list-none gap-0.5 p-0 pl-3" data-testid="chapter-contents">
+    // grid-cols-1 (minmax(0, 1fr)) so a long section title truncates inside the rail instead of
+    // widening it (2026-10-08).
+    <ul
+      className="mt-1 mb-1 grid list-none grid-cols-1 gap-0.5 p-0 pl-3"
+      data-testid="chapter-contents"
+    >
       {entries.map((entry) => {
         const id = `${entry.pos}-${entry.text}`;
         const key = headingKey(entry.text);
         const note = notes.get(key) ?? '';
         const isOpen = open === key;
         return (
-          <li key={id} className={entry.level === 3 ? 'pl-3' : ''} data-testid="section-entry">
+          <li
+            key={id}
+            className={entry.level === 3 ? 'min-w-0 pl-3' : 'min-w-0'}
+            data-testid="section-entry"
+          >
             <span className="flex items-center gap-1">
               <button
                 type="button"

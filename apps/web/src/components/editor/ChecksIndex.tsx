@@ -107,11 +107,14 @@ export function ChecksIndex({
       <ul className="mt-2 grid gap-2">
         {rows.map((row) => (
           <li key={row.name} className="flex items-start justify-between gap-3">
-            <span>
+            <span className="min-w-0">
               <span className="block text-[13px] font-medium text-ink">{row.name}</span>
               <span className="block text-[12px] text-muted">{row.what}</span>
             </span>
-            <span className="shrink-0">{row.action}</span>
+            {/* At most 45% of the row, wrapping inside it: kept to one line, "Below — Check
+                coherence" ran 9 px out of the box in the 288 px panel; allowed to shrink freely,
+                "Open" was squeezed 7 px out on a phone (2026-10-08 layout audit). */}
+            <span className="max-w-[45%] shrink-0 text-right">{row.action}</span>
           </li>
         ))}
       </ul>
