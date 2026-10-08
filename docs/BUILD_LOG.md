@@ -5759,3 +5759,10 @@ exporters (import conflicts only); on main types 75, citations 131, export 164, 
 web 238, three API files (17, including R33's font-style test never run before) and the 7 browser
 tests pass.
 
+Release check (2026-10-08 evening): CI had been red on main since 2026-10-07 — first the Hindi
+review sheet (fixed in e8748fe), then, hidden behind it, `web-passage.spec.ts`. Cause: R16 made a
+third module provide its own `ScholarlyIndexes`; the test faked the copy `app.get` returned, not
+the chat's, so the chat searched the real arXiv and returned 6 results instead of the recorded 4.
+The product was right; the test now fakes the clients' prototypes. Full API suite on main: 865
+passed, the 3 failures being that file. Lesson: a red CI on main must be read the same day.
+

@@ -12,7 +12,9 @@
 
 import { readFileSync } from 'node:fs';
 import {
+  ArxivClient,
   OpenAlexDiscovery,
+  PubMedClient,
   parseArxivFeed,
   parsePubmedArticles,
   workFromArxiv,
@@ -48,9 +50,11 @@ describe('the passage on a web result', () => {
     });
     documentId = ((await created.json()) as { id: string }).id;
 
-    const indexes = h.app.get(ScholarlyIndexes);
-    vi.spyOn(indexes.arxiv, 'search').mockResolvedValue(arxivWorks);
-    vi.spyOn(indexes.pubmed, 'search').mockResolvedValue(pubmedWorks);
+    // On the prototypes: several modules each hold their own ScholarlyIndexes, and the one
+    // `app.get` returns is not always the one the chat uses (R16 added a third; the chat then
+    // searched the real arXiv and the counts here went wrong).
+    vi.spyOn(ArxivClient.prototype, 'search').mockResolvedValue(arxivWorks);
+    vi.spyOn(PubMedClient.prototype, 'search').mockResolvedValue(pubmedWorks);
     vi.spyOn(OpenAlexDiscovery.prototype, 'search').mockResolvedValue([]);
 
     const res = await h.api('/chat/web', {
