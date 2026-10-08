@@ -5775,3 +5775,15 @@ wide fallback font locally reproduced it: the chat's Ask pushed out by an input 
 and the Papers tab's root grid with no `grid-cols-1` (14 px). Both fixed; a wide-font sweep of every
 editor tab, the list, outline, sources and submit at 1280 and 390 px is clean.
 
+**Released as v0.1.32 on 2026-10-08** (backup `/root/backups/pre-v0.1.32/thesis-copilot.dump`,
+tag on aeb9085 with CI green on both stages). Jenni build plan Round 2, R22–R40, all merged:
+R22 replies, R23 review mode, R24 Major/Minor examiner points, R25 source charts, R26 block checks,
+R27 export dialog, R28 colours and contents block, R29 archive, R30 chat threads, R31 limit messages,
+R32 theses panel, R33 paper themes and fonts, R34 Word-import notice, R35 shortcuts window, R36
+"How was this?", R37 literature review (flag off, cap 0), R38 gap document, R39 add-on 0.3.0 (built,
+not submitted), R40 citation clusters; plus the layout audit (150 screens, five widths, 0 faults).
+Migrations 0041–0050 applied on the VPS; every container on the tag, API healthy, health 200,
+anonymous admin 401, the one production chat moved into `ChatThread`. Seventeen of the items were
+built by parallel agents in their own worktrees and merged one at a time with a test run, browser
+check and layout guard on main each; `docs/ADR/0109`–`0127` record them.
+

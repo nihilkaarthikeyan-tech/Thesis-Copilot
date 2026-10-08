@@ -24,6 +24,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: 'v0.1.32',
+    date: '2026-10-08',
+    title: 'Replies, reviews in the text, and more of what Jenni has',
+    changes: [
+      'Your guide and you can reply to each other under a comment, with a thumbs-up on any reply.',
+      'Proofreading, the tone review and the examiner now show their fixes in the text: Y accepts, N rejects, Accept all takes them all (one Undo brings them back). Examiner points are tagged Major or Minor.',
+      'Check one paragraph from its ⋮⋮ handle: spelling, tone or an examiner read on that block only.',
+      'Citations side by side read as one bracket — (Kumar, 2021; Rao, 2022) — in the editor and every export.',
+      'Any number of chats per thesis, a chat on one collection, and "Allow this time / Always allow / Skip" when a question needs the wider literature.',
+      'Archive a thesis and restore it later; copies are named "… (copy)"; switch between your theses from the chapter rail, with one New menu.',
+      'Text colour, highlight, a live contents block and a horizontal rule; paper light and paper dark themes; a serif or sans-serif font for the thesis text.',
+      'One export dialog with presets (thesis, plain, double-spaced, two-column), advanced options and a live preview; the compliance checks still run against your university template.',
+      'The gap analysis opens as an editable chapter with every claim cited; Source quality charts the years and venues your chapter cites; Word import says why citations were not linked.',
+      'When a monthly allowance is used up, every screen says which one, how many of how many, and the date it resets.',
+      'A Keyboard shortcuts window; "How was this?" after a chapter build or viva set; nothing sticks out of its box at any width.',
+    ],
+  },
+  {
     version: 'v0.1.31',
     date: '2026-10-07',
     title: 'A setup like Jenni’s, and citations from more papers',

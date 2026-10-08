@@ -296,10 +296,10 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       A.11 commands, "What changed and why", the follow-up box) — English for now, as the other
       screens added this week.
 
-## Round 2 of the Jenni build — the next release (2026-10-08)
+## Round 2 of the Jenni build — released as v0.1.32 (2026-10-08)
 
-- [ ] **Release when you say so.** Two migrations apply on deploy: `0041_full_text_note` (R14,
-      ADR-0101) and `0042_comment_replies` (R22, ADR-0109). Nothing to configure for either.
+- [x] **Released** as v0.1.32 at the owner's word; migrations 0041–0050 applied; backup
+      `/root/backups/pre-v0.1.32/`. The items below are what only the owner can do.
 - [ ] **Optional: an email when someone replies to a comment** (ADR-0109, "Not done"). New comments
       do not email today either; decide both together if you want them.
 - [ ] **Add-on 0.3.0 (R39, ADR-0125)** — after 0.2.1 is approved: release the site (its /privacy
