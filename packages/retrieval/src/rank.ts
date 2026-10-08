@@ -4,7 +4,7 @@
  *   query      = embed(lastSentence(before) + " " + chapter.scopeNote)
  *   candidates = SourceChunk WHERE source.documentId = :doc
  *                AND (pins empty OR source.id IN pins)
- *                ORDER BY embedding <=> :query LIMIT 24
+ *                ORDER BY embedding <=> :query LIMIT 24   (ADR-0128: 48, at most 3 per paper first)
  *   rerank     = cosine + 0.15 * (source.subTheme == chapter.subTheme)
  *                       + 0.1  * (groundingLevel == FULL_TEXT)
  *   top_k      = first 6 (Assist) / 12 (Draft) / 8 (Chat)
@@ -15,7 +15,15 @@
 
 import { splitSentences } from './text.js';
 
-export const CANDIDATE_LIMIT = 24;
+/**
+ * ADR-0128: how many chunks the vector query hands to the rerank, and how many of them one paper
+ * may hold. §10.4 said "the 24 nearest chunks"; a full-text paper has dozens of chunks, so those
+ * 24 came from four to six papers of a fifteen-paper library and the rest were never considered.
+ * Now each paper offers its best `CANDIDATE_PER_SOURCE` chunks, up to `CANDIDATE_LIMIT` in all
+ * (sixteen papers); slots no other paper can fill go back to the nearest of the rest.
+ */
+export const CANDIDATE_LIMIT = 48;
+export const CANDIDATE_PER_SOURCE = 3;
 
 /** §10.4 top_k per action. */
 export const TOP_K = { ASSIST: 6, DRAFT: 12, CHAT: 8 } as const;
@@ -139,8 +147,9 @@ export function topK(
  * candidates. The real-model run of 2026-10-05 drafted "Barriers to adoption" with 12 of 14
  * citations to one paper from a library of four full-text papers. ADR-0087 gives a suggestion the
  * same rule at 2 of its 6: every suggestion can draw on at least three papers when there are three.
+ * ADR-0128 lowers the draft's to 2 of its 12, so a section draft reads six papers when there are six.
  */
-export const PER_SOURCE_CAP: Partial<Record<RetrievalAction, number>> = { DRAFT: 4, ASSIST: 2 };
+export const PER_SOURCE_CAP: Partial<Record<RetrievalAction, number>> = { DRAFT: 2, ASSIST: 2 };
 
 /**
  * ADR-0087 (2026-10-07): how much a paper's rank falls for each time the chapter already cites it.

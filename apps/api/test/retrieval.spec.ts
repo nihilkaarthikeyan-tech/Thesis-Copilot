@@ -246,4 +246,64 @@ describe('pgvector retrieval (§10.4)', () => {
     const candidates = await findCandidates(raw, oldQuery as number[], { documentId });
     expect(candidates.some((c) => c.text === PASSAGES.policy)).toBe(false);
   });
+  it('ADR-0128: a paper with many near chunks leaves room for the others when asked to', async () => {
+    const raw = prisma as unknown as RawClient;
+    const user = await prisma.user.create({
+      data: { email: 'spread@example.com', name: 'Spread' },
+    });
+    const doc = await prisma.document.create({
+      data: { ownerId: user.id, title: 'Spread test', entryPath: 'A_TOPIC' },
+    });
+    // A unit vector at a known angle from the query: the larger `off`, the further away.
+    const at = (off: number) => {
+      const v = new Array<number>(EMBEDDING_DIMENSIONS).fill(0);
+      v[0] = 1;
+      v[1] = off;
+      const n = Math.hypot(1, off);
+      return v.map((x) => x / n);
+    };
+    const paper = async (title: string, offs: number[]) => {
+      const source = await prisma.source.create({
+        data: { documentId: doc.id, status: 'RESOLVED', title },
+      });
+      await replaceSourceChunks(
+        raw,
+        source.id,
+        offs.map((off, i) => ({
+          sourceId: source.id,
+          ordinal: i,
+          text: `${title} passage ${i}`,
+          tokenCount: 5,
+          page: 1,
+          charStart: 0,
+          charEnd: 10,
+          section: null,
+          embedding: at(off),
+        })),
+      );
+      return source.id;
+    };
+    const big = await paper('Big', [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]);
+    const others = [await paper('B', [1]), await paper('C', [1.2]), await paper('D', [1.4])];
+    const query = at(0);
+
+    const nearest = await findCandidates(raw, query, { documentId: doc.id, limit: 6 });
+    expect(nearest.every((c) => c.sourceId === big)).toBe(true);
+
+    const spread = await findCandidates(raw, query, { documentId: doc.id, limit: 6, perSource: 3 });
+    expect(spread).toHaveLength(6);
+    expect(spread.filter((c) => c.sourceId === big)).toHaveLength(3);
+    expect(new Set(spread.map((c) => c.sourceId))).toEqual(new Set([big, ...others]));
+    // Nearest first within what was chosen.
+    expect(spread[0]?.sourceId).toBe(big);
+
+    // One paper alone still fills the window from its later chunks.
+    const only = await findCandidates(raw, query, {
+      documentId: doc.id,
+      limit: 6,
+      perSource: 3,
+      pinnedSourceIds: [big],
+    });
+    expect(only).toHaveLength(6);
+  });
 });

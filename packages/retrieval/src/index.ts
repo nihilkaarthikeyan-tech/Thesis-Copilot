@@ -123,6 +123,7 @@ export {
 export {
   buildQueryText,
   CANDIDATE_LIMIT,
+  CANDIDATE_PER_SOURCE,
   type Candidate,
   CITED_PENALTY,
   CREDIBILITY,

@@ -7,6 +7,7 @@ import { citedSourceCounts } from '../src/context.js';
 import {
   buildQueryText,
   CANDIDATE_LIMIT,
+  CANDIDATE_PER_SOURCE,
   type Candidate,
   FULL_TEXT_BOOST,
   isOffTopic,
@@ -107,11 +108,12 @@ describe('topK (§10.4)', () => {
     expect(topK(ranked, 'CHAT')).toHaveLength(8);
   });
 
-  it('the candidate limit is 24', () => {
-    expect(CANDIDATE_LIMIT).toBe(24);
+  it('ADR-0128: the candidate window is 48 chunks, at most 3 from one paper while others have any', () => {
+    expect(CANDIDATE_LIMIT).toBe(48);
+    expect(CANDIDATE_PER_SOURCE).toBe(3);
   });
 
-  it('ADR-0078: a draft takes at most 4 passages from one paper while others have candidates', () => {
+  it('ADR-0128: a draft takes at most 2 passages from one paper while others have candidates', () => {
     // Paper A holds the 10 best passages; B and C follow.
     const mixed = rerank(
       [
@@ -129,9 +131,10 @@ describe('topK (§10.4)', () => {
     );
     const taken = topK(mixed, 'DRAFT');
     expect(taken).toHaveLength(12);
-    expect(taken.filter((c) => c.sourceId === 'A')).toHaveLength(4);
-    // Best first within the cap: A's top four, then B and C in rank order.
-    expect(taken.slice(0, 4).map((c) => c.chunkId)).toEqual(['a0', 'a1', 'a2', 'a3']);
+    // Two per paper fill six places; the six left go back to the best of the rest (A's next).
+    expect(taken.slice(0, 6).filter((c) => c.sourceId === 'A')).toHaveLength(2);
+    expect(taken.slice(0, 2).map((c) => c.chunkId)).toEqual(['a0', 'a1']);
+    expect(new Set(taken.slice(0, 6).map((c) => c.sourceId))).toEqual(new Set(['A', 'B', 'C']));
     // Assist and chat are unchanged.
     expect(topK(mixed, 'CHAT').every((c) => c.sourceId === 'A')).toBe(true);
   });

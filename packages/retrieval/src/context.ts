@@ -17,7 +17,14 @@ import {
 } from '@tc/ai';
 import { findOutlineNode, headingKey, readOutline } from '@tc/types';
 import { findCandidates, type RawClient } from './pgvector.js';
-import { buildQueryText, type RetrievalAction, rerank, spreadCitations, topK } from './rank.js';
+import {
+  buildQueryText,
+  CANDIDATE_PER_SOURCE,
+  type RetrievalAction,
+  rerank,
+  spreadCitations,
+  topK,
+} from './rank.js';
 
 /** The Prisma surface this module uses. Structural, so either app's client satisfies it. */
 export type ContextClient = RawClient & {
@@ -208,6 +215,8 @@ export async function retrievePassages(
   const candidates = await findCandidates(db, embedding, {
     documentId: chapter.documentId,
     pinnedSourceIds: named.length > 0 ? [...named] : pinnedSourceIds,
+    // ADR-0128: the candidates span the library, not the four or five papers nearest the query.
+    perSource: CANDIDATE_PER_SOURCE,
   });
 
   const node = findOutlineNode(readOutline(memory?.outline), chapter.outlineNodeId);

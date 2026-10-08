@@ -5787,3 +5787,18 @@ anonymous admin 401, the one production chat moved into `ChatThread`. Seventeen 
 built by parallel agents in their own worktrees and merged one at a time with a test run, browser
 check and layout guard on main each; `docs/ADR/0109`–`0127` record them.
 
+
+## Writing reads more of the library (2026-10-08, ADR-0128)
+
+The owner's manager, after the demo video: writing "has to refer more number of indexed papers".
+ADR-0087 had spread citations among the candidates, but the candidates were §10.4's 24 nearest
+chunks, which came from 4–6 papers of a 15-paper library. Now each paper offers its best three
+chunks first, in a window of 48, and a section draft takes at most two passages per paper.
+Measured on the dev theses with `apps/worker/scripts/measure-paper-spread.ts`: a section draft's
+passages now come from 7.94 papers on average (was 4.19), a suggestion's from 3.81 (was 3.56).
+
+**A real fault found on the way:** the 56-paper dev library got **no** candidates at all. The
+planner walked the global HNSW index (~40 nearest chunks of every thesis) and filtered by
+document afterwards. Every vector query now ranks one thesis's chunks exactly (window function or
+`OFFSET 0` fence); 0.1 s for 3,850 chunks. Production (624 chunks) was not yet affected.
+Production theses have 3–6 indexed papers each: all were created before v0.1.31's 15-paper start.

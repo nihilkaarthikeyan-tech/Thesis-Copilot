@@ -109,6 +109,11 @@ export type CandidateQuery = {
   /** §10.4: "AND (pins empty OR source.id IN pins)". */
   pinnedSourceIds?: readonly string[];
   limit?: number;
+  /**
+   * ADR-0128: the most chunks one paper may offer while other papers have candidates. Absent, the
+   * query is §10.4's plain nearest-first list.
+   */
+  perSource?: number;
 };
 
 type CandidateRow = {
@@ -142,10 +147,8 @@ export async function findCandidates(
   const pins = query.pinnedSourceIds ?? [];
   const limit = query.limit ?? CANDIDATE_LIMIT;
 
-  // `<=>` is cosine distance under the HNSW index built in Phase 0; ordering by it is what makes
-  // the index usable at all, so the ordering expression must stay exactly this.
-  const sql = `
-    SELECT c."id"             AS "chunkId",
+  const columns = `
+           c."id"             AS "chunkId",
            c."sourceId"       AS "sourceId",
            c."embedding" <=> $1::vector AS "distance",
            s."subTheme"       AS "subTheme",
@@ -157,14 +160,39 @@ export async function findCandidates(
            s."authors"        AS "authors",
            s."citationCount"  AS "citationCount",
            s."isPreprint"     AS "isPreprint",
-           s."venueCitedness" AS "venueCitedness"
+           s."venueCitedness" AS "venueCitedness"`;
+  const from = `
       FROM "SourceChunk" c
       JOIN "Source" s ON s."id" = c."sourceId"
      WHERE s."documentId" = $2::uuid
        -- ADR-0076: a retracted paper is never offered as evidence.
        AND s."isRetracted" = false
-       AND ($3::uuid[] IS NULL OR s."id" = ANY($3::uuid[]))
-     ORDER BY c."embedding" <=> $1::vector
+       AND ($3::uuid[] IS NULL OR s."id" = ANY($3::uuid[]))`;
+
+  // ADR-0128: never let the planner walk the HNSW index here. It returns the ~40 nearest chunks
+  // in the whole table (`hnsw.ef_search`) and only then applies the document filter, so a large
+  // library got none of its own passages back: measured on the dev database, a 56-paper thesis
+  // received 0 candidates. One student's library is a few thousand chunks at most, so ranking all
+  // of them exactly costs milliseconds. `OFFSET 0` keeps the subquery from being flattened back
+  // into an index walk; the window function does the same for the per-paper form.
+  const sql =
+    query.perSource === undefined
+      ? `SELECT * FROM (
+         SELECT ${columns} ${from}
+         OFFSET 0
+       ) scoped
+     ORDER BY "distance", "chunkId"
+     LIMIT $4`
+      : // Each paper's chunks ranked by distance; a paper's first `perSource` come before anyone's
+        // later ones, so the window spans as many papers as it can.
+        `SELECT * FROM (
+         SELECT ${columns},
+                ROW_NUMBER() OVER (
+                  PARTITION BY c."sourceId" ORDER BY c."embedding" <=> $1::vector, c."id"
+                ) AS "paperRank"
+         ${from}
+       ) ranked
+     ORDER BY ("paperRank" > ${Math.max(1, Math.floor(query.perSource))}), "distance", "chunkId"
      LIMIT $4`;
 
   const rows = await db.$queryRawUnsafe<CandidateRow[]>(
@@ -296,7 +324,10 @@ export async function findChapterNeighbours(
      WHERE ch."documentId" = $2::uuid
        AND cc."chapterId" <> $3::uuid
        AND cc."embedding" IS NOT NULL
-     ORDER BY cc."embedding" <=> $1::vector
+     -- ADR-0128: OFFSET 0 keeps this an exact ranking of one thesis's chunks; an HNSW walk would
+     -- take the nearest chunks of every thesis and filter afterwards, often leaving none.
+    OFFSET 0`;
+  const ranked = `SELECT * FROM (${sql}) scoped ORDER BY "distance", "chunkId"
      LIMIT ${Math.max(1, Math.floor(limit))}`;
-  return db.$queryRawUnsafe<NeighbourChunk[]>(sql, literal, documentId, excludeChapterId);
+  return db.$queryRawUnsafe<NeighbourChunk[]>(ranked, literal, documentId, excludeChapterId);
 }

@@ -130,9 +130,21 @@ describe('findCandidates (§10.4)', () => {
     await findCandidates(db, vector(), { documentId: 'doc-1' });
 
     const sql = queried[0]?.sql ?? '';
-    expect(sql).toContain('ORDER BY c."embedding" <=> $1::vector');
-    // 24 is §10.4's candidate limit, before the rerank narrows to top_k.
-    expect(queried[0]?.values.at(-1)).toBe(24);
+    // ADR-0128: an exact ranking of this document's chunks, fenced from an HNSW walk.
+    expect(sql).toContain('OFFSET 0');
+    expect(sql).toContain('ORDER BY "distance", "chunkId"');
+    // ADR-0128: 48 candidates (it was §10.4's 24), before the rerank narrows to top_k.
+    expect(queried[0]?.values.at(-1)).toBe(48);
+    expect(sql).not.toContain('PARTITION BY');
+  });
+
+  it('ADR-0128: with perSource, each paper offers its nearest chunks first', async () => {
+    const { db, queried } = fakeDb([row()]);
+    await findCandidates(db, vector(), { documentId: 'doc-1', perSource: 3 });
+    const sql = queried[0]?.sql ?? '';
+    expect(sql).toContain('PARTITION BY c."sourceId" ORDER BY c."embedding" <=> $1::vector');
+    expect(sql).toContain('ORDER BY ("paperRank" > 3), "distance"');
+    expect(sql).toContain('s."documentId" = $2::uuid');
   });
 
   it('converts pgvector distance to the similarity the rerank expects', async () => {
