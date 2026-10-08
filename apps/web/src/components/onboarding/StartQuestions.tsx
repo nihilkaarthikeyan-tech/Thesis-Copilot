@@ -17,6 +17,7 @@ import { PathAChat, type ProposalView } from '@/components/proposal/PathAChat';
 import { Button } from '@/components/ui/button';
 import { Hint } from '@/components/ui/primitives';
 import { ApiError, api } from '@/lib/api';
+import { limitRefusal } from '@/lib/limit';
 
 type Skeleton = NonNullable<ProposalView['skeleton']>;
 
@@ -72,6 +73,13 @@ export function StartQuestions(props: {
       });
       props.onDone();
     } catch (e) {
+      // No title worth planning from (a 400, not a limit): the button says "Skip and start
+      // writing", so the editor opens without a plan rather than stopping on the list
+      // (2026-10-08, CI's start-writing-now spec).
+      if (!limitRefusal(e) && e instanceof ApiError && e.problem.status === 400) {
+        props.onDone();
+        return;
+      }
       setRefused(true);
       const next =
         'You can still answer the questions above and your chapters are planned from the answers, or start writing without a plan.';

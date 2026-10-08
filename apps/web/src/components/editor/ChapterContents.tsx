@@ -170,6 +170,7 @@ export function ChapterContents({
               </button>
               <button
                 type="button"
+                data-testid="section-go"
                 onClick={() =>
                   editor
                     .chain()

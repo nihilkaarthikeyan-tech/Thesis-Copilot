@@ -228,13 +228,15 @@ export function FindPapersPanel({
     'rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50';
 
   return (
-    <div data-testid="find-papers" className="grid gap-2">
+    // grid-cols-1 (minmax(0, 1fr)): a grid column otherwise grows to its widest child, and with a
+    // wider font this tab ran 14 px past the 288 px panel (2026-10-08).
+    <div data-testid="find-papers" className="grid grid-cols-1 gap-2">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void run(query);
         }}
-        className="flex gap-2"
+        className="flex min-w-0 gap-2"
       >
         <input
           aria-label="Search papers"
@@ -249,7 +251,7 @@ export function FindPapersPanel({
       </form>
 
       {results === null && !busy ? (
-        <div className="grid gap-1 text-xs">
+        <div className="grid grid-cols-1 gap-1 text-xs">
           <p className="text-muted">Suggested from your thesis</p>
           <button
             type="button"

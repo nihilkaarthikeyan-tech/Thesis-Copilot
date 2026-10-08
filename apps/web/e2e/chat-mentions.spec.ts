@@ -117,7 +117,9 @@ test('a question can be confined to the papers named with @', async ({
       l.trim() !== '' &&
       l !== 'Add to document' &&
       l !== 'Copy' &&
-      !l.startsWith('Search beyond your library'),
+      !l.startsWith('Search beyond your library') &&
+      // R30 (ADR-0116): the inline offer under a refusal; buttons, not answer text.
+      !['Allow this time', 'Always allow', 'Skip'].includes(l.trim()),
   );
   for (const label of labels) expect(label).not.toContain('LeCun');
 

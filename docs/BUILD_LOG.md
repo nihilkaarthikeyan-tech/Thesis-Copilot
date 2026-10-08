@@ -5766,3 +5766,12 @@ the chat's, so the chat searched the real arXiv and returned 6 results instead o
 The product was right; the test now fakes the clients' prototypes. Full API suite on main: 865
 passed, the 3 failures being that file. Lesson: a red CI on main must be read the same day.
 
+CI's browser suite on the mock (first run since 2026-10-07) failed four tests, each fixed:
+"Skip and start writing" on an untitled thesis stopped on the list with the server's "give it a
+title first" — it now opens the editor without a plan (a real fault); chapter-contents and
+chat-mentions were stale against R10's section toggles and R30's Allow/Always/Skip offer; and the
+layout guard found the page 22 px wider at 1280 with Chat open — only on CI's Linux fonts. Forcing a
+wide fallback font locally reproduced it: the chat's Ask pushed out by an input with no `min-w-0`,
+and the Papers tab's root grid with no `grid-cols-1` (14 px). Both fixed; a wide-font sweep of every
+editor tab, the list, outline, sources and submit at 1280 and 390 px is clean.
+

@@ -1514,12 +1514,14 @@ export function ChatPanel({
           }}
           onKeyDown={onBoxKeyDown}
           placeholder={SCOPE_PLACEHOLDER[scope]}
-          className="h-9 flex-1 rounded-md border border-line px-2 text-sm"
+          // min-w-0: an input keeps a default width of about 20 characters, which with a wider
+          // font (CI's Linux, 2026-10-08) pushed Ask 35 px out of the 288 px panel.
+          className="h-9 min-w-0 flex-1 rounded-md border border-line px-2 text-sm"
         />
         <button
           type="submit"
           disabled={busy || draft.trim().length === 0 || chat.collectionDeleted}
-          className="rounded-md px-3 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
+          className="shrink-0 rounded-md px-3 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
         >
           {busy ? '…' : 'Ask'}
         </button>

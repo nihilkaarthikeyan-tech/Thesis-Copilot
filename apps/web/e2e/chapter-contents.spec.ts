@@ -33,11 +33,11 @@ test('a heading typed in the chapter is listed beside it, and pressing it goes t
   await page.keyboard.type('Rainfall fell by a fifth.');
 
   const contents = page.getByTestId('chapter-contents');
-  await expect(contents.getByRole('button')).toHaveText(['Study area', 'Rainfall']);
-  await contents.getByRole('button', { name: 'Study area' }).click();
+  await expect(contents.getByTestId('section-go')).toHaveText(['Study area', 'Rainfall']);
+  await contents.getByRole('button', { name: 'Study area', exact: true }).click();
   // The cursor is now in that heading: what is typed lands there.
   await page.keyboard.press('End');
   await page.keyboard.type(' and data');
   await expect(editor.getByRole('heading', { name: 'Study area and data' })).toBeVisible();
-  await expect(contents.getByRole('button').first()).toHaveText('Study area and data');
+  await expect(contents.getByTestId('section-go').first()).toHaveText('Study area and data');
 });
