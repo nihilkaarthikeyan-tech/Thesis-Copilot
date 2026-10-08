@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**560** strings are translated; **19** are deliberately
+**576** strings are translated; **19** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -73,7 +73,6 @@ English. Write corrections in the last column.
 | `list.startWritingHint` | Start writing now opens your first chapter straight away and starts finding papers on your title while you write. The proposal (a few questions that plan your chapters) can come first, or later from the editor. | अभी लिखना शुरू करें से आपका पहला अध्याय तुरंत खुलता है और आपके लिखते-लिखते आपके शीर्षक पर पेपर खोजे जाने लगते हैं। प्रस्ताव (कुछ सवाल जो आपके अध्यायों की योजना बनाते हैं) पहले भी हो सकता है, या बाद में एडिटर से। | |
 | `list.title` | Your theses | आपकी थीसिस | |
 | `list.lede` | Each one keeps its own sources, outline and citation style. | हर थीसिस के अपने स्रोत, रूपरेखा और साइटेशन शैली होती है। | |
-| `list.startFromPaper` | Start from a paper | पेपर से शुरू करें | |
 | `list.continueWriting` | Continue writing | लिखना जारी रखें | |
 | `list.firstRun` | Step 1 of 3: name the thesis and say whether it grows from a paper you have written. You can change the title later; nothing here is final. | चरण 1/3: थीसिस का नाम दें और बताएँ कि क्या यह आपके लिखे किसी पेपर से निकली है। शीर्षक बाद में बदल सकते हैं; यहाँ कुछ भी अंतिम नहीं है। | |
 | `list.emptyTitle` | No theses yet | अभी कोई थीसिस नहीं | |
@@ -106,10 +105,37 @@ English. Write corrections in the last column.
 | `list.allArchivedTitle` | Every thesis is archived | हर थीसिस संग्रहीत है | |
 | `list.allArchivedBody` | Restore one from the archive below, or give a new one a working title above. | नीचे संग्रह से किसी थीसिस को वापस लाएँ, या ऊपर नई थीसिस को एक कार्यकारी शीर्षक दें। | |
 
+## newMenu
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `newMenu.button` | New | नया | |
+| `newMenu.label` | Start something new | कुछ नया शुरू करें | |
+| `newMenu.thesis` | New thesis | नई थीसिस | |
+| `newMenu.thesisHint` | Start writing now, or plan it with a proposal first | अभी लिखना शुरू करें, या पहले प्रस्ताव से योजना बनाएँ | |
+| `newMenu.paper` | Upload a paper | पेपर अपलोड करें | |
+| `newMenu.paperHint` | A thesis that grows from a paper you have written | ऐसी थीसिस जो आपके लिखे पेपर से निकलती है | |
+| `newMenu.word` | Import from Word | Word से इम्पोर्ट करें | |
+| `newMenu.wordHint` | A new thesis from the chapters in a .docx | .docx के अध्यायों से एक नई थीसिस | |
+
+## switcher
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `switcher.heading` | Theses | थीसिस | |
+| `switcher.headingCount` | Theses ({count}) | थीसिस ({count}) | |
+| `switcher.open` | Open now | अभी खुली है | |
+| `switcher.all` | All theses | सभी थीसिस | |
+| `switcher.filter` | Find a thesis | थीसिस खोजें | |
+| `switcher.none` | No thesis matches. | कोई थीसिस मेल नहीं खाती। | |
+| `switcher.error` | Your theses could not be loaded. | आपकी थीसिस लोड नहीं हो सकीं। | |
+| `switcher.retry` | Try again | फिर से कोशिश करें | |
+
 ## New thesis
 
 | Key | English | हिन्दी | Correction |
 |---|---|---|---|
+| `new.wordStart` | Name the thesis, then press Create and import from Word: it opens with the import ready for your .docx. | थीसिस का नाम दें, फिर "बनाएँ और Word से इम्पोर्ट करें" दबाएँ: यह आपकी .docx के इम्पोर्ट के साथ खुलेगी। | |
 | `new.crumb` | New | नई | |
 | `new.heading` | Where does this thesis start? | यह थीसिस कहाँ से शुरू होगी? | |
 | `new.startingPoint` | Starting point | शुरुआत | |

@@ -135,6 +135,7 @@ import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
 import { SourceQualityPanel } from './SourceQualityPanel';
 import { SourceSettings } from './SourceSettings';
 import { SuggestionBar } from './SuggestionBar';
+import { ThesisSwitcher } from './ThesisSwitcher';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
 import { WordImport } from './WordImport';
 
@@ -1509,6 +1510,8 @@ function ChapterEditor({
               : 'hidden'
           }`}
         >
+          {/* R32 (ADR-0127): the student's other theses and New ▾, above the chapters. */}
+          <ThesisSwitcher documentId={doc.id} />
           <p className="mb-2 flex items-baseline justify-between gap-2">
             <span className="eyebrow">{t('editor.chapters')}</span>
             <Link

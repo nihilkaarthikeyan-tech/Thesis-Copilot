@@ -99,6 +99,15 @@ test('the editor, the thesis list and the outline fit their boxes on a laptop an
     await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
     await settle(page);
     await check(`${width} editor`);
+    // R32 (ADR-0127): the theses beside the open one, unfolded at the top of the rail (remembered
+    // open after the first width). On a phone the rail is a drawer, measured in
+    // documents-beside.spec.ts.
+    if (width >= 768) {
+      const toggle = page.getByTestId('thesis-switcher-toggle');
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+      await expect(page.getByTestId('thesis-switcher-list')).toBeVisible();
+      await check(`${width} editor [theses open]`);
+    }
     // On a phone the panel is a drawer: opened from the bottom bar, then its own tabs, as a
     // student does; the drawer covers the bottom bar while it is open.
     const panel = page.getByTestId('tool-panel');

@@ -68,7 +68,6 @@ export const hi: Partial<Record<MessageKey, string>> = {
     'अभी लिखना शुरू करें से आपका पहला अध्याय तुरंत खुलता है और आपके लिखते-लिखते आपके शीर्षक पर पेपर खोजे जाने लगते हैं। प्रस्ताव (कुछ सवाल जो आपके अध्यायों की योजना बनाते हैं) पहले भी हो सकता है, या बाद में एडिटर से।',
   'list.title': 'आपकी थीसिस',
   'list.lede': 'हर थीसिस के अपने स्रोत, रूपरेखा और साइटेशन शैली होती है।',
-  'list.startFromPaper': 'पेपर से शुरू करें',
   'list.continueWriting': 'लिखना जारी रखें',
   'list.firstRun':
     'चरण 1/3: थीसिस का नाम दें और बताएँ कि क्या यह आपके लिखे किसी पेपर से निकली है। शीर्षक बाद में बदल सकते हैं; यहाँ कुछ भी अंतिम नहीं है।',
@@ -104,7 +103,27 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'list.allArchivedBody':
     'नीचे संग्रह से किसी थीसिस को वापस लाएँ, या ऊपर नई थीसिस को एक कार्यकारी शीर्षक दें।',
 
+  // ---- R32 (ADR-0127): New ▾ and the theses beside the open one -------------------------------
+  'newMenu.button': 'नया',
+  'newMenu.label': 'कुछ नया शुरू करें',
+  'newMenu.thesis': 'नई थीसिस',
+  'newMenu.thesisHint': 'अभी लिखना शुरू करें, या पहले प्रस्ताव से योजना बनाएँ',
+  'newMenu.paper': 'पेपर अपलोड करें',
+  'newMenu.paperHint': 'ऐसी थीसिस जो आपके लिखे पेपर से निकलती है',
+  'newMenu.word': 'Word से इम्पोर्ट करें',
+  'newMenu.wordHint': '.docx के अध्यायों से एक नई थीसिस',
+  'switcher.heading': 'थीसिस',
+  'switcher.headingCount': 'थीसिस ({count})',
+  'switcher.open': 'अभी खुली है',
+  'switcher.all': 'सभी थीसिस',
+  'switcher.filter': 'थीसिस खोजें',
+  'switcher.none': 'कोई थीसिस मेल नहीं खाती।',
+  'switcher.error': 'आपकी थीसिस लोड नहीं हो सकीं।',
+  'switcher.retry': 'फिर से कोशिश करें',
+
   // ---- New thesis (/app/new) ------------------------------------------------------------------
+  'new.wordStart':
+    'थीसिस का नाम दें, फिर "बनाएँ और Word से इम्पोर्ट करें" दबाएँ: यह आपकी .docx के इम्पोर्ट के साथ खुलेगी।',
   'new.crumb': 'नई',
   'new.heading': 'यह थीसिस कहाँ से शुरू होगी?',
   'new.startingPoint': 'शुरुआत',

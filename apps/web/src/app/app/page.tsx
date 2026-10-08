@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AddProposalPrompt } from '@/components/AddProposalPrompt';
 import { LogoMark } from '@/components/LogoMark';
+import { NewMenu } from '@/components/NewMenu';
 import { NextAction } from '@/components/NextAction';
 import { FirstRunHint } from '@/components/onboarding/FirstRunHint';
 import {
@@ -54,6 +55,7 @@ import {
   markEnteredThisSession,
   readLastChapter,
 } from '@/lib/last-chapter';
+import { thesisWriteHref } from '@/lib/thesis-href';
 
 type DocumentSummary = {
   id: string;
@@ -329,10 +331,7 @@ export default function DocumentListPage() {
     { href: `/app/d/${id}/viva`, label: t('list.stage.viva') },
   ];
   /** The chapter to write in: the last one open here for this thesis, else the first. */
-  const writeHref = (d: DocumentSummary) =>
-    lastChapter?.documentId === d.id
-      ? `/app/d/${d.id}/write/${lastChapter.chapterId}`
-      : `/app/d/${d.id}/write/${d.firstChapterId ?? 'none'}`;
+  const writeHref = (d: DocumentSummary) => thesisWriteHref(d, lastChapter);
   const continueWith =
     lastChapter && documents?.some((d) => d.id === lastChapter.documentId) ? lastChapter : null;
 
@@ -522,9 +521,8 @@ export default function DocumentListPage() {
           title={t('list.title')}
           lede={t('list.lede')}
           actions={
-            <Button asChild variant="secondary" size="sm">
-              <Link href="/app/new">{t('list.startFromPaper')}</Link>
-            </Button>
+            // R32 (ADR-0127): one New menu — a thesis, a paper, a Word file — as in the editor.
+            <NewMenu align="end" />
           }
         />
 

@@ -10,7 +10,7 @@
 import type { SourcePrefs } from '@tc/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import {
   STARTING_STYLES,
   StartingStyle,
@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import type { MessageKey } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
+import { readNewStart } from '@/lib/thesis-href';
 
 type EntryPath = 'A_TOPIC' | 'B_PAPER';
 
@@ -45,6 +46,18 @@ export default function NewThesisPage() {
   const [setupOpen, setSetupOpen] = useState(false);
   /** ADR-0091: the thesis just made with Smart headings, while its start questions are open. */
   const [questions, setQuestions] = useState<{ documentId: string; path: string } | null>(null);
+  /**
+   * R32 (ADR-0127): the New ▾ menu arrives with `?start=topic|paper|word`, the starting point
+   * already chosen. `word` puts "Create and import from Word" first. Read from `window` after
+   * mount, as the list's `?new=1` is, rather than `useSearchParams` and a Suspense boundary.
+   */
+  const [wordFirst, setWordFirst] = useState(false);
+  useEffect(() => {
+    const start = readNewStart(window.location.search);
+    if (start === 'paper') setEntryPath('B_PAPER');
+    if (start === 'topic' || start === 'word') setEntryPath('A_TOPIC');
+    setWordFirst(start === 'word');
+  }, []);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -115,6 +128,18 @@ export default function NewThesisPage() {
     }
   }
 
+  const importButton = (
+    <Button
+      type="submit"
+      variant={wordFirst ? undefined : 'secondary'}
+      data-word-import="true"
+      data-testid="create-import-word"
+      disabled={busy || title.trim().length === 0}
+    >
+      {t('new.createImport')}
+    </Button>
+  );
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
       <nav className="text-xs text-muted">
@@ -158,6 +183,14 @@ export default function NewThesisPage() {
         </div>
       ) : (
         <form onSubmit={create} className="mt-6 space-y-4">
+          {wordFirst ? (
+            <p
+              className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm text-ink"
+              data-testid="new-word-start"
+            >
+              {t('new.wordStart')}
+            </p>
+          ) : null}
           <fieldset className="space-y-3">
             <legend className="sr-only">{t('new.startingPoint')}</legend>
             {PATHS.map((path) => (
@@ -217,10 +250,14 @@ export default function NewThesisPage() {
             </p>
           ) : null}
 
+          {/* With `?start=word` the Word button comes first in the page as well as on screen, so
+              Enter (which presses the first submit button) imports rather than plans. */}
           <div className="flex flex-wrap items-center gap-3">
+            {wordFirst ? importButton : null}
             {/* ADR-0070: writing first; the paper search starts from the title at once. */}
             <Button
               type="button"
+              variant={wordFirst ? 'secondary' : undefined}
               disabled={busy}
               onClick={() => setSetupOpen(true)}
               data-testid="start-writing-now"
@@ -230,14 +267,7 @@ export default function NewThesisPage() {
             <Button type="submit" variant="secondary" disabled={busy || title.trim().length === 0}>
               {busy ? t('common.creating') : t('new.continue')}
             </Button>
-            <Button
-              type="submit"
-              variant="secondary"
-              data-word-import="true"
-              disabled={busy || title.trim().length === 0}
-            >
-              {t('new.createImport')}
-            </Button>
+            {wordFirst ? null : importButton}
           </div>
           <p className="text-xs text-muted">{t('new.wordHint')}</p>
           <p className="text-xs text-muted">{t('list.startWritingHint')}</p>

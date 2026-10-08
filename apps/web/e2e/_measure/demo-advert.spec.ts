@@ -271,7 +271,8 @@ test('the advertising video, recorded', async ({ playwright }) => {
 
   await scene('proposal path', async () => {
     await page.goto(`${WEB_URL}/app`);
-    await click(page, page.getByRole('link', { name: 'Start from a paper' }));
+    await click(page, page.getByTestId('new-menu-button'));
+    await click(page, page.getByRole('menuitem', { name: /Upload a paper/ }));
     await caption(
       page,
       'Start from a topic, or from a paper you have written',

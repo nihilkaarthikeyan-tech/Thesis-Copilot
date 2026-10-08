@@ -5740,3 +5740,9 @@ chat-threads browser spec pass. R38's browser spec, first run here, found its bo
 ending in a space that hung past the line at a wrap; the space is now plain text, and the layout
 measurer ignores an overshoot of up to 6 px by a run that holds a space (a hanging space).
 
+R32 (ADR-0127): the editor's chapter rail opens with a folding "Theses" list (archived ones left
+out) to switch thesis without going back, and one New ▾ menu (list and rail) offers New thesis,
+Upload a paper and Import from Word through the existing /app/new chooser (`?start=`). No API, no
+migration. On main: web 232, documents-beside and the layout guard pass; path-a (reached through
+the new menu) timed out on the real proposal model's three answers and runs on the mock at release.
+

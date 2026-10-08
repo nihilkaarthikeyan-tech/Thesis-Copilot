@@ -65,7 +65,6 @@ export const en = {
     'Start writing now opens your first chapter straight away and starts finding papers on your title while you write. The proposal (a few questions that plan your chapters) can come first, or later from the editor.',
   'list.title': 'Your theses',
   'list.lede': 'Each one keeps its own sources, outline and citation style.',
-  'list.startFromPaper': 'Start from a paper',
   'list.continueWriting': 'Continue writing',
   'list.firstRun':
     'Step 1 of 3: name the thesis and say whether it grows from a paper you have written. You can change the title later; nothing here is final.',
@@ -102,7 +101,27 @@ export const en = {
   'list.allArchivedBody':
     'Restore one from the archive below, or give a new one a working title above.',
 
+  // ---- R32 (ADR-0127): New ▾ and the theses beside the open one -------------------------------
+  'newMenu.button': 'New',
+  'newMenu.label': 'Start something new',
+  'newMenu.thesis': 'New thesis',
+  'newMenu.thesisHint': 'Start writing now, or plan it with a proposal first',
+  'newMenu.paper': 'Upload a paper',
+  'newMenu.paperHint': 'A thesis that grows from a paper you have written',
+  'newMenu.word': 'Import from Word',
+  'newMenu.wordHint': 'A new thesis from the chapters in a .docx',
+  'switcher.heading': 'Theses',
+  'switcher.headingCount': 'Theses ({count})',
+  'switcher.open': 'Open now',
+  'switcher.all': 'All theses',
+  'switcher.filter': 'Find a thesis',
+  'switcher.none': 'No thesis matches.',
+  'switcher.error': 'Your theses could not be loaded.',
+  'switcher.retry': 'Try again',
+
   // ---- New thesis (/app/new) ------------------------------------------------------------------
+  'new.wordStart':
+    'Name the thesis, then press Create and import from Word: it opens with the import ready for your .docx.',
   'new.crumb': 'New',
   'new.heading': 'Where does this thesis start?',
   'new.startingPoint': 'Starting point',
