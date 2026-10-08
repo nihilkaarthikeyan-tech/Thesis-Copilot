@@ -81,6 +81,8 @@ export type GhostEvent =
       resetsAt?: string;
       action?: string;
       cap?: number;
+      /** A refusal's whole problem-details body, for the app's limit message (R31, ADR-0122). */
+      problem?: Record<string, unknown>;
     };
 
 /** ADR-0071: where a suggestion's wording follows a cited passage too closely. */
@@ -107,6 +109,7 @@ export type GhostTextOptions = {
     resetsAt?: string;
     action?: string;
     cap?: number;
+    problem?: Record<string, unknown>;
   }) => void;
   /** Fires on `done` with what the server knew about grounding, for the §6.2 hint. */
   onDone?: (info: {
@@ -864,6 +867,7 @@ export const GhostText = Extension.create<GhostTextOptions>({
               ...(event.resetsAt ? { resetsAt: event.resetsAt } : {}),
               ...(event.action ? { action: event.action } : {}),
               ...(typeof event.cap === 'number' ? { cap: event.cap } : {}),
+              ...(event.problem ? { problem: event.problem } : {}),
             });
             editor.view.dispatch(editor.state.tr.setMeta(ghostTextKey, { type: 'reset' }));
           }

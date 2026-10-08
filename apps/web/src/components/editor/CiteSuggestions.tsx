@@ -15,7 +15,9 @@ import { citationPointForSentence, newCitationKey } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { type LimitRefusal, limitRefusal } from '@/lib/limit';
+import { LimitNotice } from '../LimitNotice';
 
 type Suggestion = {
   key: string;
@@ -57,7 +59,8 @@ export function CiteSuggestions({
 }) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [sentence, setSentence] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  /** R31 (ADR-0122): a refused suggestion says which allowance ran out and when it resets. */
+  const [limit, setLimit] = useState<LimitRefusal | null>(null);
   // Sentences already asked about, so finishing one never asks twice (FR-4.5).
   const askedRef = useRef<Set<string>>(new Set());
   const inFlightRef = useRef(false);
@@ -67,7 +70,7 @@ export function CiteSuggestions({
   const dismiss = useCallback(() => {
     setSuggestions([]);
     setSentence(null);
-    setError(null);
+    setLimit(null);
   }, []);
 
   const ask = useCallback(
@@ -89,8 +92,9 @@ export function CiteSuggestions({
           onUsageChange();
         }
       } catch (e) {
-        if (e instanceof ApiError && e.problem.type === 'CAP_EXCEEDED') {
-          setError(e.problem.detail ?? 'You have used this month’s citation suggestions.');
+        const refused = limitRefusal(e);
+        if (refused) {
+          setLimit(refused);
           setSentence(text);
         }
         // Any other failure stays silent: an unasked-for feature must not interrupt with an error.
@@ -180,19 +184,19 @@ export function CiteSuggestions({
   return (
     <aside
       data-testid="cite-suggestions"
-      className="fixed bottom-20 left-1/2 z-30 w-[34rem] -translate-x-1/2 rounded-md border border-line bg-surface p-3 shadow-lg"
+      className="fixed bottom-20 left-1/2 z-30 w-[34rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-md border border-line bg-surface p-3 shadow-lg"
     >
       <div className="flex items-baseline justify-between">
         <p className="text-xs text-muted">
-          {error ? 'Citation suggestions' : 'Sources that may support that sentence'}
+          {limit ? 'Citation suggestions' : 'Sources that may support that sentence'}
         </p>
         <button type="button" className="text-xs underline" onClick={dismiss}>
           Dismiss
         </button>
       </div>
 
-      {error ? (
-        <p className="mt-2 text-sm text-warn">{error}</p>
+      {limit ? (
+        <LimitNotice limit={limit} className="mt-2" />
       ) : (
         <ul className="mt-2 space-y-2">
           {suggestions.map((suggestion) => (

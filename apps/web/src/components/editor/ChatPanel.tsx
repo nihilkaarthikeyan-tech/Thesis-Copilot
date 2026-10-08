@@ -14,12 +14,13 @@ import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import type { MessageKey, Vars } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, type ProblemDetails } from '@/lib/api';
 import { answerPlainText } from '@/lib/chat-copy';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
 import { matchPrompts, promptQuery, type SavedPrompt, suggestPromptTitle } from '@/lib/prompts';
 import { findInLibrary, readerHref } from '@/lib/reader';
 import { cn } from '@/lib/utils';
+import { LimitNotice, useLimit } from '../LimitNotice';
 import { type Mention, MentionChips, MentionPicker, useChatMentions } from './ChatMentions';
 import { PromptPicker, SavePromptForm, useSavedPrompts } from './ChatPrompts';
 
@@ -210,6 +211,7 @@ export function ChatPanel({
   const [streaming, setStreaming] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   const [filters, setFilters] = useState<Filters>({});
   const [showFilters, setShowFilters] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -395,6 +397,7 @@ export function ChatPanel({
   ) {
     setBusy(true);
     setError(null);
+    limit.clear();
     setSteps([]);
 
     // The web scope is not a conversation. It returns papers, so it does not join the thread,
@@ -450,10 +453,9 @@ export function ChatPanel({
         setOffered([]);
       }
       if (!response.ok || !response.body) {
-        const problem = (await response.json().catch(() => null)) as {
-          detail?: string;
-          title?: string;
-        } | null;
+        const problem = (await response.json().catch(() => null)) as ProblemDetails | null;
+        // R31: kept as the problem itself, so a used-up allowance shows the limit message.
+        if (problem?.type) throw new ApiError(problem);
         throw new Error(problem?.detail ?? problem?.title ?? `HTTP ${response.status}`);
       }
 
@@ -516,9 +518,11 @@ export function ChatPanel({
       }
       onUsageChange();
     } catch (e) {
-      setError(
-        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : (e as Error).message,
-      );
+      if (!limit.take(e)) {
+        setError(
+          e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : (e as Error).message,
+        );
+      }
       setStreaming('');
       setSteps([]);
     } finally {
@@ -1010,6 +1014,7 @@ export function ChatPanel({
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="my-2" />
 
       {scope === 'library' ? (
         <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />

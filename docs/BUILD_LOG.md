@@ -5697,3 +5697,11 @@ the three range API files (21, never run in the agent's worktree under the Docke
 13 of 14 browser tests; the 14th (own-comments "More edits hedges") expects the mock's exact words,
 and on the real models the hedge came back "a major barrier" — CI runs it on the mock.
 
+R31 (ADR-0122): a refused action says the same thing on every screen — which allowance, how many
+used of how many, the reset date in the student's own calendar, and a link to Usage and plans (or
+pricing). The API's refusals carry `allowance` and `used`, read after the unchanged atomic check;
+`lib/limit.ts` and `<LimitNotice>` serve 14 call sites. Merged after R26 and R36 with five
+conflicts resolved by hand (both sides kept). On main: ui 216, web 209, the cap/trial/ceiling/
+concurrency API files (62) and the new limit-message browser spec pass; `states.spec.ts` needs the
+mock AI and waits for the release run on the mock stack.
+

@@ -12,6 +12,7 @@ import { applyCitationRole, type CitationRole, sentenceAroundCitation } from '@t
 import type { Editor } from '@tiptap/core';
 import { useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { LimitNotice, useLimit } from '../LimitNotice';
 
 type Entry = {
   key: string;
@@ -64,6 +65,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
   const [rewrite, setRewrite] = useState<{ key: string; result: RoleRewrite } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
 
   useEffect(() => {
     if (!editor) return;
@@ -97,6 +99,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
     }
     setBusy(entry.key);
     setError(null);
+    limit.clear();
     try {
       const result = await api<RoleRewrite>('/citations/role', {
         method: 'POST',
@@ -109,6 +112,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
       });
       setRewrite({ key: entry.key, result });
     } catch (e) {
+      if (limit.take(e)) return;
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not rewrite that.',
       );
@@ -153,6 +157,7 @@ export function CitationList({ editor, chapterId }: { editor: Editor | null; cha
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="mb-2" />
       <ol className="space-y-2">
         {entries.map((entry, index) => {
           const passage = passages[entry.key];

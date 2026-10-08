@@ -30,6 +30,7 @@ import { ApiError, api } from '@/lib/api';
 import { type BlockCheckRequest, takeBlockCheck } from '@/lib/block-check';
 import { locateSpan, type TextRun } from '@/lib/proofread';
 import { openCheck, type ReviewItem, startReview } from '@/lib/review-mode';
+import { LimitNotice, useLimit } from '../LimitNotice';
 
 type Correction = {
   sentenceId: string;
@@ -130,6 +131,7 @@ export function ProofreadPanel({
   const [checkedSoFar, setCheckedSoFar] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   const [moved, setMoved] = useState<Set<string>>(new Set());
   /** R23 (ADR-0110): set after a run that found something, so the review opens in the text. */
   const [reviewAfterRun, setReviewAfterRun] = useState(0);
@@ -163,10 +165,11 @@ export function ProofreadPanel({
     setProgress(null);
     setCheckedSoFar(0);
     setError(null);
+    limit.clear();
     setMoved(new Set());
     setParagraph(false);
     paragraphAt.current = null;
-  }, [chapterId]);
+  }, [chapterId, limit.clear]);
 
   // R26: the paragraph's start, mapped through each edit, so a later run reads the same block.
   useEffect(() => {
@@ -196,6 +199,7 @@ export function ProofreadPanel({
       setBusy(true);
       setReadingParagraph(inParagraph);
       setError(null);
+      limit.clear();
       try {
         await save();
         const range = inParagraph
@@ -237,6 +241,7 @@ export function ProofreadPanel({
         }
         if (fresh.length > 0) setReviewAfterRun((n) => n + 1);
       } catch (e) {
+        if (limit.take(e)) return;
         setError(
           e instanceof ApiError
             ? (e.problem.detail ?? e.problem.title)
@@ -247,7 +252,7 @@ export function ProofreadPanel({
         setBusy(false);
       }
     },
-    [chapterId, save, onUsageChange, mode, sampleSourceId, editor],
+    [chapterId, save, onUsageChange, mode, sampleSourceId, editor, limit],
   );
 
   // R26: "Check this paragraph" from the block menu, once per press.
@@ -468,6 +473,7 @@ export function ProofreadPanel({
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="mt-2" />
 
       {progress ? (
         <p className="mt-2 text-xs text-muted" data-testid="proofread-summary">

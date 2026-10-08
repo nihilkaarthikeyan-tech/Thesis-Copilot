@@ -21,6 +21,7 @@ import type { BlockCheckRequest } from '@/lib/block-check';
 import { examinerLabel } from '@/lib/examiner-review';
 import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 import { openCheck, startReview } from '@/lib/review-mode';
+import { LimitNotice, useLimit } from '../LimitNotice';
 import { ExaminerReview } from './ExaminerReview';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -111,6 +112,7 @@ export function FlagsPanel({
   const [running, setRunning] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   /**
    * False when the plan has no coherence checks (the free trial): the button is replaced by a
    * plain line instead of a refusal after the press (2026-10-04, found writing the help pages).
@@ -166,6 +168,7 @@ export function FlagsPanel({
   async function run() {
     setRunning(true);
     setError(null);
+    limit.clear();
     setStage('starting');
     try {
       const { runId } = await api<{ runId: string }>(`/documents/${documentId}/coherence/run`, {
@@ -207,6 +210,7 @@ export function FlagsPanel({
       }
       await load();
     } catch (e) {
+      if (limit.take(e)) return;
       setError(
         e instanceof ApiError
           ? (e.problem.detail ?? e.problem.title)
@@ -379,6 +383,7 @@ export function FlagsPanel({
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="mt-2" />
 
       {data && (data.counts.total ?? 0) > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1 text-xs">

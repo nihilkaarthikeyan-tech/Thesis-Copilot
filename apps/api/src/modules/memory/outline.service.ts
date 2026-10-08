@@ -248,7 +248,7 @@ export class OutlineService {
     });
     const allowed = monthlyAutoOutlines(plan);
     if (used >= allowed) {
-      throw new CapExceededError(OUTLINE_FROM_TITLE, allowed, resetsAtFor(now));
+      throw new CapExceededError(OUTLINE_FROM_TITLE, allowed, resetsAtFor(now), used);
     }
 
     await this.prisma.document.update({ where: { id: documentId }, data: { template: chosen } });

@@ -15,6 +15,8 @@ import { pathToFileURL } from 'node:url';
 type Prisma = {
   source: { create: (args: unknown) => Promise<{ id: string }> };
   sourceChunk: { create: (args: unknown) => Promise<unknown> };
+  user: { findUniqueOrThrow: (args: unknown) => Promise<{ id: string }> };
+  usageLedger: { upsert: (args: unknown) => Promise<unknown> };
   $disconnect: () => Promise<void>;
 };
 
@@ -60,6 +62,30 @@ export async function seedAbstractOnlySource(
       data: { sourceId: source.id, ordinal: 0, text: paper.abstract, tokenCount: 20 },
     });
     return source.id;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/**
+ * R31 (ADR-0122): this month's count of one allowance for the account at `email`, set directly,
+ * so a test can be refused without spending real units first. The row is the one
+ * `UsageService.consume` keys on: (user, `YYYY-MM` in UTC, action).
+ */
+export async function setAllowanceUsed(
+  email: string,
+  action: string,
+  count: number,
+): Promise<void> {
+  const prisma = await client();
+  try {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, select: { id: true } });
+    const period = new Date().toISOString().slice(0, 7);
+    await prisma.usageLedger.upsert({
+      where: { userId_period_action: { userId: user.id, period, action } },
+      create: { userId: user.id, period, action, count },
+      update: { count },
+    });
   } finally {
     await prisma.$disconnect();
   }

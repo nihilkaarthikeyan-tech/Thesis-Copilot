@@ -15,6 +15,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CommentThread, type ThreadReply } from '@/components/feedback/CommentThread';
+import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import { ApiError, api } from '@/lib/api';
 import { diffKeys, diffWords } from '@/lib/diff';
 
@@ -61,6 +62,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   const [notice, setNotice] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState('');
@@ -94,6 +96,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
     async (comment: Comment, action: 'accept' | 'edited' | 'suggest', note?: string) => {
       setBusy(true);
       setError(null);
+      limit.clear();
       try {
         if (action === 'suggest') {
           await api(`/documents/${documentId}/feedback/comments/${comment.id}/suggest`, {
@@ -116,6 +119,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
         }
         await load();
       } catch (e) {
+        if (limit.take(e)) return;
         setError(
           e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That did not work.',
         );
@@ -123,7 +127,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
         setBusy(false);
       }
     },
-    [documentId, load],
+    [documentId, load, limit],
   );
 
   async function reject(comment: Comment) {
@@ -292,6 +296,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="mt-4" />
       {notice ? (
         <p role="status" data-testid="review-notice" className="mt-4 text-sm">
           {notice}

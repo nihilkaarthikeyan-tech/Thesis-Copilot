@@ -26,6 +26,7 @@ import {
   isReviewRunning as running,
 } from '@/lib/examiner-review';
 import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
+import { LimitNotice, useLimit } from '../LimitNotice';
 
 const POLL_MS = 3_000;
 
@@ -48,6 +49,7 @@ export function ExaminerReview({
 }) {
   const [state, setState] = useState<ExaminerReviewState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   const [starting, setStarting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const wasRunning = useRef(false);
@@ -99,6 +101,7 @@ export function ExaminerReview({
     seq.current += 1;
     setStarting(true);
     setError(null);
+    limit.clear();
     try {
       // The job reads the saved chapter, so what is on screen is saved first.
       await save?.();
@@ -114,6 +117,11 @@ export function ExaminerReview({
         onNotice?.(`The examiner is reading the ${scope}. Its findings appear here as flags.`);
       }
     } catch (e) {
+      // R31 (ADR-0122): a cap refusal is shown as the shared limit notice, with its reset date.
+      if (limit.take(e)) {
+        void load();
+        return;
+      }
       const message =
         e instanceof ApiError
           ? (e.problem.detail ?? e.problem.title)
@@ -179,6 +187,7 @@ export function ExaminerReview({
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="mt-2" />
     </div>
   );
 }

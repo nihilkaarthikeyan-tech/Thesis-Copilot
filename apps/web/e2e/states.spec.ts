@@ -135,12 +135,16 @@ test.describe('§6.2 states, forced through the mock', () => {
 
     await page.keyboard.press('Control+/');
     const notice = page.getByTestId('notice');
-    await expect(notice).toContainText('used all 50', { timeout: 15_000 });
+    // R31 (ADR-0122): the limit message every screen shows — the allowance, used of how many.
+    await expect(notice).toContainText('Assist suggestions: 50 of 50 used this month', {
+      timeout: 15_000,
+    });
     // The reset moment is 00:00 UTC on the 1st, rendered through Intl in the browser's timezone:
     // a real date, not the ISO string the API sent.
-    await expect(notice).toContainText(/resets on .*\d{4}/);
+    await expect(notice).toContainText(/Resets on .*\d{4}/);
     await expect(notice).not.toContainText('T00:00:00');
-    await expect(notice).toContainText('nothing you type is affected');
+    await expect(notice).toContainText('Writing, editing and exporting still work');
+    await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/app/account');
   });
 
   test('autosave conflict: a stale save shows the 409 screen rather than overwriting', async ({

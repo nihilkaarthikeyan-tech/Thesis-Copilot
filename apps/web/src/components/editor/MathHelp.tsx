@@ -13,6 +13,7 @@
 import { MATH_CHEAT_SHEET, MATH_EXAMPLES, type MathPattern } from '@tc/ui';
 import katex from 'katex';
 import { useMemo, useState } from 'react';
+import { LimitNotice, useLimit } from '../LimitNotice';
 import type { DescribeEquation, ReadEquationPhoto } from './FormatToolbar';
 
 /** KaTeX's drawing of `latex`; broken LaTeX comes out as KaTeX's own red source, never a throw. */
@@ -90,11 +91,14 @@ export function MathHelp({
   const [words, setWords] = useState('');
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<{ reading: string; refusal: string | null } | null>(null);
+  /** R31 (ADR-0122): a refused request says which allowance ran out and when it resets. */
+  const limit = useLimit();
 
   async function fromPhoto(file: File) {
     if (!photo || !onReplace || asking) return;
     setAsking(true);
     setAnswer(null);
+    limit.clear();
     try {
       const result = await photo(await shrinkImage(file));
       if (result.ok) {
@@ -104,6 +108,7 @@ export function MathHelp({
         setAnswer({ reading: result.reading, refusal: result.refusal });
       }
     } catch (error) {
+      if (limit.take(error)) return;
       setAnswer({
         reading: '',
         refusal: error instanceof Error ? error.message : 'That picture could not be read.',
@@ -117,6 +122,7 @@ export function MathHelp({
     if (!describe || !onReplace || !words.trim() || asking) return;
     setAsking(true);
     setAnswer(null);
+    limit.clear();
     try {
       const result = await describe(words.trim(), value);
       if (result.ok) {
@@ -126,6 +132,7 @@ export function MathHelp({
         setAnswer({ reading: result.reading, refusal: result.refusal });
       }
     } catch (error) {
+      if (limit.take(error)) return;
       setAnswer({
         reading: '',
         refusal: error instanceof Error ? error.message : 'That did not work. Try again.',
@@ -186,7 +193,9 @@ export function MathHelp({
               Or take a photo of it
             </label>
           ) : null}
-          {answer?.refusal ? (
+          {limit.value ? (
+            <LimitNotice limit={limit.value} className="mt-1" />
+          ) : answer?.refusal ? (
             <p className="mt-1 text-xs text-warn" role="alert">
               {answer.refusal}
             </p>

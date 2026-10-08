@@ -12,6 +12,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import { RateThis, type RunRating } from '@/components/RateThis';
 import { Badge, Select } from '@/components/ui/primitives';
 import { API_URL, ApiError, api } from '@/lib/api';
@@ -995,6 +996,7 @@ function PlanEditor({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   const questions = view.plan?.clarifications ?? [];
 
   const save = async () => {
@@ -1020,6 +1022,7 @@ function PlanEditor({
   const build = async () => {
     setBusy(true);
     setError(null);
+    limit.clear();
     try {
       await save();
       await api(`/documents/${documentId}/chapter-build/${view.id}/start`, {
@@ -1028,7 +1031,7 @@ function PlanEditor({
       });
       await onChanged();
     } catch (e) {
-      setError(problem(e, 'Could not start the build. Nothing was charged.'));
+      if (!limit.take(e)) setError(problem(e, 'Could not start the build. Nothing was charged.'));
     } finally {
       setBusy(false);
     }
@@ -1183,6 +1186,7 @@ function PlanEditor({
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} className="mt-3" />
     </section>
   );
 }

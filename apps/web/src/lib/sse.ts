@@ -73,6 +73,8 @@ export async function* assistRequest(
       ...(typeof problem?.resetsAt === 'string' ? { resetsAt: problem.resetsAt } : {}),
       ...(typeof problem?.action === 'string' ? { action: problem.action } : {}),
       ...(typeof problem?.cap === 'number' ? { cap: problem.cap } : {}),
+      // R31 (ADR-0122): the editor's limit message is built from the whole refusal.
+      ...(problem && typeof problem === 'object' ? { problem } : {}),
     };
     return;
   }

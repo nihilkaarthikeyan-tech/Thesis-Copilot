@@ -12,6 +12,7 @@
  */
 
 import { useState } from 'react';
+import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import { PathAChat, type ProposalView } from '@/components/proposal/PathAChat';
 import { Button } from '@/components/ui/button';
 import { Hint } from '@/components/ui/primitives';
@@ -28,6 +29,7 @@ export function StartQuestions(props: {
   const [skeleton, setSkeleton] = useState<Skeleton | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
 
   const problem = (e: unknown, fallback: string) =>
     e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : fallback;
@@ -62,6 +64,7 @@ export function StartQuestions(props: {
   async function skip() {
     setBusy(true);
     setError(null);
+    limit.clear();
     try {
       await api(`/documents/${props.documentId}/outline/plan-from-title`, {
         method: 'POST',
@@ -70,8 +73,13 @@ export function StartQuestions(props: {
       props.onDone();
     } catch (e) {
       setRefused(true);
+      const next =
+        'You can still answer the questions above and your chapters are planned from the answers, or start writing without a plan.';
+      // R31 (ADR-0122): a used-up allowance is said as the limit message, with what to do next.
       setError(
-        `${problem(e, 'The chapters could not be planned from the title.')} You can still answer the questions above and your chapters are planned from the answers, or start writing without a plan.`,
+        limit.take(e)
+          ? next
+          : `${problem(e, 'The chapters could not be planned from the title.')} ${next}`,
       );
       setBusy(false);
     }
@@ -133,6 +141,7 @@ export function StartQuestions(props: {
         </div>
       ) : null}
 
+      <LimitNotice limit={limit.value} className="mt-2" />
       {error ? (
         <p role="alert" className="mt-2 text-xs text-warn">
           {error}

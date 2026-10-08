@@ -113,7 +113,7 @@ describe('extra allowance', () => {
     expect(first).toMatchObject({ ok: true, cap: 4, remaining: 1 });
     expect((await usage.consume(studentId, 'FREE_TRIAL', 'DRAFT')).ok).toBe(true);
     const refused = await usage.consume(studentId, 'FREE_TRIAL', 'DRAFT');
-    expect(refused).toMatchObject({ ok: false, reason: 'cap', cap: 4 });
+    expect(refused).toMatchObject({ ok: false, reason: 'cap', cap: 4, used: 4 });
 
     const logged = await h.prisma.auditEvent.findFirst({
       where: { kind: 'ALLOWANCE_GRANTED', userId: studentId },

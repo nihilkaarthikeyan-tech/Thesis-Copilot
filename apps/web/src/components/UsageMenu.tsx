@@ -12,6 +12,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { api } from '@/lib/api';
+import { formatResetDate } from '@/lib/limit';
 import { barTone } from '@/lib/usage';
 
 type Usage = {
@@ -125,11 +126,8 @@ export function UsageMenu(props: {
                 <p className="mt-2 text-[11.5px] text-muted">Not in your plan: {missing}.</p>
               ) : null}
               <p className="mt-2 text-[11.5px] text-muted">
-                Renews{' '}
-                {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
-                  new Date(usage.resetsAt),
-                )}
-                .{' '}
+                {/* R31: the same date, in the same words, as a refused action's message. */}
+                Renews {formatResetDate(usage.resetsAt)}.{' '}
                 <Link href="/app/account" className="underline">
                   Account and plans
                 </Link>

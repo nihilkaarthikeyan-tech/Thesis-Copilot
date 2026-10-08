@@ -11,6 +11,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import { RateThis, type RunRating } from '@/components/RateThis';
 import { Badge } from '@/components/ui/primitives';
 import { ApiError, api } from '@/lib/api';
@@ -63,6 +64,7 @@ export function VivaScreen({ documentId }: { documentId: string }) {
   const [left, setLeft] = useState<{ remaining: number; cap: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
 
   const refreshUsage = useCallback(async () => {
     try {
@@ -93,6 +95,7 @@ export function VivaScreen({ documentId }: { documentId: string }) {
   const ask = async () => {
     setBusy(true);
     setError(null);
+    limit.clear();
     try {
       setView(
         await api<View>(`/viva/${documentId}/questions`, {
@@ -101,7 +104,7 @@ export function VivaScreen({ documentId }: { documentId: string }) {
         }),
       );
     } catch (e) {
-      setError(problem(e, 'Could not ask for questions. Nothing was charged.'));
+      if (!limit.take(e)) setError(problem(e, 'Could not ask for questions. Nothing was charged.'));
     } finally {
       setBusy(false);
       void refreshUsage();
@@ -167,6 +170,7 @@ export function VivaScreen({ documentId }: { documentId: string }) {
             {error}
           </p>
         ) : null}
+        <LimitNotice limit={limit.value} className="mt-3" />
       </section>
 
       {questions.length > 0 ? (
@@ -222,12 +226,14 @@ function QuestionCard({
   const [draft, setDraft] = useState(question.answer ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   const [showProbe, setShowProbe] = useState(false);
   const feedback = question.feedback;
 
   const submit = async () => {
     setBusy(true);
     setError(null);
+    limit.clear();
     try {
       onAnswered(
         await api<Question>(`/viva/questions/${question.id}/answer`, {
@@ -236,7 +242,7 @@ function QuestionCard({
         }),
       );
     } catch (e) {
-      setError(problem(e, 'Could not get feedback. Nothing was charged.'));
+      if (!limit.take(e)) setError(problem(e, 'Could not get feedback. Nothing was charged.'));
     } finally {
       setBusy(false);
     }
@@ -297,6 +303,7 @@ function QuestionCard({
           </span>
         ) : null}
       </div>
+      <LimitNotice limit={limit.value} className="mt-2" />
 
       {feedback ? (
         <div className="mt-4 border-t border-line pt-3" data-testid="viva-feedback">

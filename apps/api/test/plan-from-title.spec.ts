@@ -146,6 +146,13 @@ describe('the bounds on a title plan (cap tests)', () => {
     const problem = (await pressed.json()) as { type: string; detail: string };
     expect(problem.type).toBe('CAP_EXCEEDED');
     expect(problem.detail).toContain('chapter plans from a title');
+    // R31 (ADR-0122): what the message on screen is built from.
+    expect(problem).toMatchObject({
+      action: 'OUTLINE_FROM_TITLE',
+      allowance: 'Chapter plans from a title',
+      used: allowed,
+      cap: allowed,
+    });
     expect(await jobsFor(over.id)).toHaveLength(0);
   });
 

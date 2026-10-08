@@ -16,7 +16,9 @@ import { findDraft, sectionUnderCursor } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { API_URL, ApiError, type ProblemDetails } from '@/lib/api';
+import { type LimitRefusal, limitRefusal } from '@/lib/limit';
 import { parseSse } from '@/lib/sse';
+import { LimitNotice } from '../LimitNotice';
 
 /**
  * Asks for a draft of the section under the cursor, as Ctrl+Shift+D does. The key bar's button
@@ -39,6 +41,8 @@ type State =
   | { phase: 'working'; stage: string }
   | { phase: 'refused'; reason: string; title?: string }
   | { phase: 'error'; message: string }
+  /** R31 (ADR-0122): refused by an allowance, the trial or a budget. */
+  | { phase: 'limit'; limit: LimitRefusal }
   | {
       phase: 'done';
       words: number;
@@ -129,6 +133,11 @@ export function DraftMode({
         }
       }
     } catch (error) {
+      const limit = limitRefusal(error);
+      if (limit) {
+        setState({ phase: 'limit', limit });
+        return;
+      }
       // ADR-0071: no topic for this section. Said as a refusal with its fix, not as a failure.
       if (error instanceof ApiError && error.problem.type === 'SECTION_NEEDS_TOPIC') {
         setState({
@@ -215,6 +224,8 @@ export function DraftMode({
       ) : null}
 
       {state.phase === 'error' ? <p className="text-warn">{state.message}</p> : null}
+
+      {state.phase === 'limit' ? <LimitNotice limit={state.limit} /> : null}
 
       {state.phase === 'done' ? (
         <>

@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { tNow } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
+import { type LimitNoticeMessage, limitNotice, limitRefusal } from '@/lib/limit';
 import { listNodeFromMarkdown } from './list-from-markdown';
 import { tableNodeFromMarkdown } from './table-from-markdown';
 
@@ -195,7 +196,8 @@ export function CommandToolbar({
   documentId: string;
   chapterId: string;
   onUsageChange: () => void;
-  onNotice: (message: string) => void;
+  /** A message for the editor's strip; a limit refusal is drawn as the limit message (R31). */
+  onNotice: (message: string | LimitNoticeMessage) => void;
   /** Opens the chat with the selected text in the box (2026-10-04, from the Jenni study). */
   onAskChat?: (text: string) => void;
   /** Opens the Papers tab searching for the selected sentence (2026-10-04, Jenni study). */
@@ -318,8 +320,13 @@ export function CommandToolbar({
           setReasons([]);
         }
       } catch (e) {
+        const limit = limitRefusal(e);
         onNotice(
-          e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : tNow('command.failed'),
+          limit
+            ? limitNotice(limit)
+            : e instanceof ApiError
+              ? (e.problem.detail ?? e.problem.title)
+              : tNow('command.failed'),
         );
       } finally {
         setBusy(null);

@@ -6,7 +6,14 @@
  */
 
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { capRefusalDetail } from '@tc/config';
+import { ALLOWANCE_NAMES, capRefusalDetail } from '@tc/config';
+
+/**
+ * R31 (ADR-0122): the allowance a refused action counts against, in the student's words, carried
+ * on every refusal so a screen can name it without knowing the codes. Null for an action that is
+ * not an allowance of its own (`OUTLINE`, refused only by the trial or a budget).
+ */
+const allowanceOf = (action: string): string | null => ALLOWANCE_NAMES[action] ?? null;
 
 /** RFC 9457 problem details, plus the extension members this API adds. */
 export type ProblemDetails = {
@@ -32,10 +39,6 @@ export class AppError extends HttpException {
 }
 
 /**
- * The cap refusal — PRD §11.5, FR-9.2.
- * Carries `resetsAt` so the UI can say when the student gets more.
- */
-/**
  * ADR-0071: Draft mode was asked for a section that names no topic ("Chapter 1" with no scope
  * note and no heading above the cursor). Refused before any unit is taken.
  */
@@ -52,14 +55,21 @@ export class SectionNeedsTopicError extends AppError {
   }
 }
 
+/**
+ * The cap refusal — PRD §11.5, FR-9.2.
+ *
+ * Carries what a screen needs to say it plainly (R31, ADR-0122): the allowance, how many of it
+ * were used of how many (`cap` is this month's total, an admin's extra allowance included), and
+ * `resetsAt`, 00:00 UTC on the 1st, which the web app shows as the student's own local date.
+ */
 export class CapExceededError extends AppError {
-  constructor(action: string, cap: number, resetsAt: Date) {
+  constructor(action: string, cap: number, resetsAt: Date, used: number = cap) {
     super(
       'CAP_EXCEEDED',
       'Monthly limit reached',
       HttpStatus.TOO_MANY_REQUESTS,
       capRefusalDetail(action, cap),
-      { action, cap, resetsAt: resetsAt.toISOString() },
+      { action, allowance: allowanceOf(action), used, cap, resetsAt: resetsAt.toISOString() },
     );
   }
 }
@@ -84,7 +94,13 @@ export class TrialEndedError extends AppError {
         year: 'numeric',
         timeZone: 'Asia/Kolkata',
       })}. Your theses are safe and you can keep writing; subscribe to use the AI features again.`,
-      { action, cap: 0, trialEnded: true, trialEndedAt: endedAt.toISOString() },
+      {
+        action,
+        allowance: allowanceOf(action),
+        cap: 0,
+        trialEnded: true,
+        trialEndedAt: endedAt.toISOString(),
+      },
     );
   }
 }
@@ -106,7 +122,13 @@ export class CeilingExceededError extends AppError {
       HttpStatus.TOO_MANY_REQUESTS,
       `You have used this month's AI allowance. It resets on the 1st. ` +
         'You can keep writing, editing and exporting in the meantime.',
-      { action, spentInr, ceilingInr, resetsAt: resetsAt.toISOString() },
+      {
+        action,
+        allowance: allowanceOf(action),
+        spentInr,
+        ceilingInr,
+        resetsAt: resetsAt.toISOString(),
+      },
     );
   }
 }
@@ -124,7 +146,13 @@ export class PlatformCeilingExceededError extends AppError {
       "The service's AI budget for this month has been used up, so AI features are paused until " +
         'the 1st. Writing, editing, sharing and exporting all still work. This is not your ' +
         'allowance; the administrator has been alerted.',
-      { action, spentInr, ceilingInr, resetsAt: resetsAt.toISOString() },
+      {
+        action,
+        allowance: allowanceOf(action),
+        spentInr,
+        ceilingInr,
+        resetsAt: resetsAt.toISOString(),
+      },
     );
   }
 }

@@ -26,6 +26,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import { findSectionHeading, headingSlot, scopeBullets, sectionEnd } from '@/lib/section-guide';
+import { LimitNotice, useLimit } from '../LimitNotice';
 import { dismissHint, isHintDismissed } from '../onboarding/FirstRunHint';
 import { DRAFT_SECTION_EVENT } from './DraftMode';
 
@@ -116,6 +117,7 @@ export function SectionGuide({
   const [open, setOpen] = useState(true);
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
   /** Bumped after "Plan my chapters", which restarts the polling loop below. */
   const [polls, setPolls] = useState(0);
   /** Bumped on every edit, so "in your chapter" follows the headings as they are typed. */
@@ -265,6 +267,7 @@ export function SectionGuide({
   async function planFromTitle() {
     setAsking(true);
     setError(null);
+    limit.clear();
     try {
       await api(`/documents/${documentId}/outline/plan-from-title`, {
         method: 'POST',
@@ -277,6 +280,7 @@ export function SectionGuide({
       );
       setPolls((n) => n + 1);
     } catch (e) {
+      if (limit.take(e)) return;
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : t('sections.failed'),
       );
@@ -330,6 +334,7 @@ export function SectionGuide({
             {error}
           </p>
         ) : null}
+        <LimitNotice limit={limit.value} className="mt-2" />
       </section>
     );
   }

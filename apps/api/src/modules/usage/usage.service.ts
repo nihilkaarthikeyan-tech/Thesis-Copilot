@@ -49,6 +49,11 @@ export type ConsumeResult =
       readonly ok: false;
       readonly reason: RefusalReason;
       readonly cap: number;
+      /**
+       * R31 (ADR-0122): this month's count of the action when its cap (or an ended trial) is what
+       * refused, so the student is told "10 of 10 used". Read after the refusal; never part of it.
+       */
+      readonly used?: number;
       readonly resetsAt: Date;
       /** Month-to-date spend in rupees, present when a ceiling is what refused. */
       readonly spentInr?: number;
@@ -96,10 +101,11 @@ export class UsageService {
     const trialEndedAt = plan === 'FREE_TRIAL' ? await this.trialEndedAt(userId, now) : null;
     const cap = trialEndedAt ? 0 : capFor(plan, action);
     const refusedFor: RefusalReason = trialEndedAt ? 'trial' : 'cap';
-    const capRefusal = (shown: number) => ({
+    const capRefusal = (shown: number, used: number) => ({
       ok: false as const,
       reason: refusedFor,
       cap: shown,
+      used,
       resetsAt: resetsAtFor(now),
       ...(trialEndedAt ? { trialEndedAt } : {}),
     });
@@ -111,9 +117,12 @@ export class UsageService {
     // An admin's extra allowance (2026-09-29) sits on the ledger row as `bonus` and raises the
     // cap for this period only; a zero-cap action with a bonus is let through to the statement,
     // whose WHERE reads the bonus off the same locked row.
-    if (cap <= 0 && (await this.bonusFor(userId, period, action)) <= 0) {
-      await this.audit(userId, plan, action, cap, refusedFor);
-      return capRefusal(cap);
+    if (cap <= 0) {
+      const ledger = await this.ledgerFor(userId, period, action);
+      if (ledger.bonus <= 0) {
+        await this.audit(userId, plan, action, cap, refusedFor);
+        return capRefusal(cap, ledger.count);
+      }
     }
 
     // PRD §11's ₹100 is a constraint on money, and caps are only a proxy for money: they assume a
@@ -163,9 +172,11 @@ export class UsageService {
 
     const row = rows[0];
     if (!row) {
-      const bonus = await this.bonusFor(userId, period, action);
-      await this.audit(userId, plan, action, cap + bonus, refusedFor);
-      return capRefusal(cap + bonus);
+      // Refused by the statement above. What the row holds now is only read, to say how much of
+      // the allowance was used (R31); the decision is already made.
+      const ledger = await this.ledgerFor(userId, period, action);
+      await this.audit(userId, plan, action, cap + ledger.bonus, refusedFor);
+      return capRefusal(cap + ledger.bonus, ledger.count);
     }
 
     const allowed = cap + row.bonus;
@@ -243,12 +254,17 @@ export class UsageService {
     return ends && ends.getTime() <= now.getTime() ? ends : null;
   }
 
-  private async bonusFor(userId: string, period: string, action: MeteredAction): Promise<number> {
+  /** This period's count and extra allowance for one action; zeros when there is no row yet. */
+  private async ledgerFor(
+    userId: string,
+    period: string,
+    action: MeteredAction,
+  ): Promise<{ count: number; bonus: number }> {
     const row = await this.prisma.usageLedger.findUnique({
       where: { userId_period_action: { userId, period, action } },
-      select: { bonus: true },
+      select: { count: true, bonus: true },
     });
-    return row?.bonus ?? 0;
+    return { count: row?.count ?? 0, bonus: row?.bonus ?? 0 };
   }
 
   /**
@@ -396,5 +412,5 @@ export function refusal(
       result.resetsAt,
     );
   }
-  return new CapExceededError(action, result.cap, result.resetsAt);
+  return new CapExceededError(action, result.cap, result.resetsAt, result.used ?? result.cap);
 }

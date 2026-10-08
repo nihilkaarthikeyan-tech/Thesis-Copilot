@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentThread, type ThreadReply } from '@/components/feedback/CommentThread';
 import { ApiError, api } from '@/lib/api';
 import { changedRatio, diffKeys, diffWords, isUnchanged, REWRITE } from '@/lib/diff';
+import { LimitNotice, useLimit } from '../LimitNotice';
 
 export type ReviewComment = {
   id: string;
@@ -91,6 +92,7 @@ export function ReviewPanel({
   const [comments, setComments] = useState<ReviewComment[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const limit = useLimit();
 
   const load = useCallback(async () => {
     try {
@@ -150,6 +152,7 @@ export function ReviewPanel({
     async (comment: ReviewComment, action: 'accept' | 'suggest' | 'edited') => {
       setBusy(comment.id);
       setError(null);
+      limit.clear();
       try {
         // The server works from the stored chapter; make sure that is the one on screen.
         await save();
@@ -173,6 +176,7 @@ export function ReviewPanel({
         }
         await load();
       } catch (e) {
+        if (limit.take(e)) return;
         setError(
           e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'That did not work.',
         );
@@ -180,7 +184,7 @@ export function ReviewPanel({
         setBusy(null);
       }
     },
-    [documentId, load, onChapterChanged, save],
+    [documentId, load, onChapterChanged, save, limit],
   );
 
   if (comments === null) return <p className="text-xs text-muted">Loading comments…</p>;
@@ -210,6 +214,7 @@ export function ReviewPanel({
           {error}
         </p>
       ) : null}
+      <LimitNotice limit={limit.value} />
 
       {open.map((comment) => {
         const found =

@@ -41,18 +41,10 @@ import { type BlockCheck, type BlockCheckRequest, blockCheckRequest } from '@/li
 import { chapterLabel } from '@/lib/chapter-label';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
 import { rememberLastChapter } from '@/lib/last-chapter';
+import { type LimitRefusal, limitNotice, limitRefusal } from '@/lib/limit';
 import { canReadBeside, requestReadBeside } from '@/lib/read-beside';
 import { readerHref } from '@/lib/reader';
 import { assistRequest } from '@/lib/sse';
-
-/** §6.2: the cap resets at 00:00 UTC on the 1st; shown in the student's own timezone. */
-function formatResetsAt(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
-    date,
-  );
-}
 
 /** `GET /sources/:id/chunks/:chunkId` (PHASES 3.5). */
 type PassageDto = {
@@ -100,6 +92,7 @@ function shortRefOf(source: PassageDto['source']): string {
 }
 
 import { AddProposalPrompt } from '../AddProposalPrompt';
+import { LimitNotice } from '../LimitNotice';
 import { FeatureDot, noteFeatureUsed } from '../onboarding/FeatureDot';
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
@@ -245,7 +238,7 @@ async function resolvePassage(
  * above the toolbar it was off-screen whenever the student had scrolled down to the Suggest bar,
  * and a 4 s fade meant Ctrl+/ looked like it did nothing (2026-10-04 journey).
  */
-type Notice = { text: string; action: 'findPapers' | null };
+type Notice = { text: string; action: 'findPapers' | null; limit?: LimitRefusal };
 
 export function ThesisEditor({ documentId, chapterId }: { documentId: string; chapterId: string }) {
   const router = useRouter();
@@ -550,15 +543,12 @@ function ChapterEditor({
             onUsageChange();
           },
           onError: (e) => {
-            // §6.2 / PHASES 5.2. Cap: say when it resets, in the student's own timezone.
-            if (e.code === 'CAP_EXCEEDED') {
-              // A trial that has ended (ADR-0036) has no reset date and says all it needs to.
-              const when = e.resetsAt ? formatResetsAt(e.resetsAt) : null;
-              setNotice(
-                when
-                  ? `${e.message} It resets on ${when}. Until then, keep writing — nothing you type is affected.`
-                  : e.message,
-              );
+            // §6.2 / PHASES 5.2, R31 (ADR-0122): a limit says which allowance, how much of it
+            // was used, and when it resets in the student's own calendar — the same message as
+            // every other screen. A trial that has ended (ADR-0036) has no reset date.
+            const limit = limitRefusal(e.problem ?? { type: e.code, ...e });
+            if (limit) {
+              setNotice(limitNotice(limit));
               return;
             }
             // Provider error: retry once before showing anything. A single blip should not cost
@@ -1094,7 +1084,8 @@ function ChapterEditor({
   useEffect(() => {
     if (!noticeRaw) return;
     // Keyed on the stored value, not the derived object, which is new on every render.
-    const lingers = typeof noticeRaw !== 'string' && noticeRaw.action !== null;
+    const lingers =
+      typeof noticeRaw !== 'string' && (noticeRaw.action !== null || noticeRaw.limit !== undefined);
     // Long enough to read a sentence; longer when there is something to do about it.
     const t = setTimeout(() => setNotice(null), lingers ? 15_000 : 8_000);
     return () => clearTimeout(t);
@@ -1615,10 +1606,17 @@ function ChapterEditor({
           )}
           {noticeState ? (
             <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center px-4 lg:bottom-20">
-              <div className="pointer-events-auto flex max-w-xl items-start gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm shadow-lg">
-                <p data-testid="notice" role="status" className="flex-1">
-                  {noticeState.text}
-                </p>
+              <div className="pointer-events-auto flex min-w-0 max-w-xl items-start gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm shadow-lg">
+                {noticeState.limit ? (
+                  // R31 (ADR-0122): the same limit message as every other screen.
+                  <div data-testid="notice" className="min-w-0 flex-1">
+                    <LimitNotice limit={noticeState.limit} bare />
+                  </div>
+                ) : (
+                  <p data-testid="notice" role="status" className="flex-1">
+                    {noticeState.text}
+                  </p>
+                )}
                 {noticeState.action === 'findPapers' ? (
                   <a
                     data-testid="notice-action"
