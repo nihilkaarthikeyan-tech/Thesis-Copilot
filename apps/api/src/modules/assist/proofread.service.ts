@@ -27,6 +27,7 @@ import { aiCostMicroInr, capExceeded } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
+import { type CheckRange, sentencesInRange } from './check-range.js';
 
 export type ProofreadCorrection = Correction & {
   /** The sentence as it was read, so the editor can find the span even if positions moved. */
@@ -59,10 +60,15 @@ export class ProofreadService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
+  /**
+   * `range` (R26, ADR-0126): read only the sentences inside it — one paragraph, from the block
+   * handle. `fromSentence` then counts within the range.
+   */
   async run(
     user: { id: string; plan: string },
     chapterId: string,
     fromSentence = 0,
+    range?: CheckRange,
   ): Promise<ProofreadRunResult> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId: user.id } },
@@ -78,8 +84,11 @@ export class ProofreadService {
     // A pending AI draft is not the student's text yet (FR-4.10), so it is not read; nor is a
     // sentence with no letters in it — a heading of "2.1" or an equation has nothing to fix.
     const drafts = blocksOf(chapter.content).filter((b) => b.type === 'draftBlock');
-    const sentences = sentencesOf(chapter.id, chapter.content).filter(
-      (s) => /\p{L}{2}/u.test(s.text) && !drafts.some((d) => s.from >= d.from && s.to <= d.to),
+    const sentences = sentencesInRange(
+      sentencesOf(chapter.id, chapter.content).filter(
+        (s) => /\p{L}{2}/u.test(s.text) && !drafts.some((d) => s.from >= d.from && s.to <= d.to),
+      ),
+      range,
     );
     const totalWords = sentences.reduce((n, s) => n + wordCount(s.text), 0);
     const toCheck: typeof sentences = [];

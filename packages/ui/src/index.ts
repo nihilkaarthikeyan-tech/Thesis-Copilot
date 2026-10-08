@@ -41,6 +41,7 @@ export {
   type BlockHighlight,
   type BlockMenuRequest,
   blockHandleKey,
+  blockRange,
   blockTextAt,
   citeSlot,
   type TurnInto,

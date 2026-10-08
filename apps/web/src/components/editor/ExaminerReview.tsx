@@ -9,10 +9,16 @@
  *
  * The review runs as a job for a minute or two, so the button polls its state and shows how long
  * it has been running; a student who leaves and comes back finds it still running, or finished.
+ *
+ * A review of one paragraph or a selection (ADR-0067; R26, ADR-0126) starts here too, from a
+ * `request` the block menu or the selection toolbar sends: one COMMAND unit, the same polling, and
+ * the same opening of its points in the text when it finishes. It used to be started by the editor
+ * screen behind this component's back, so a Flags tab that was already open never saw it run.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { type BlockCheckRequest, takeBlockCheck } from '@/lib/block-check';
 import {
   type ExaminerReviewState,
   elapsed,
@@ -26,10 +32,19 @@ const POLL_MS = 3_000;
 export function ExaminerReview({
   chapterId,
   onFinished,
+  request,
+  save,
+  onNotice,
 }: {
   chapterId: string;
   /** Reloads the flag list once the review has written its flags. */
   onFinished: () => void | Promise<void>;
+  /** R26: review just this range (a paragraph from the block menu, or a selection). */
+  request?: BlockCheckRequest | null;
+  /** Saves what is on screen first: the job reads the saved chapter. */
+  save?: () => Promise<void>;
+  /** The editor's notice line, for a review started from the text rather than this button. */
+  onNotice?: (text: string) => void;
 }) {
   const [state, setState] = useState<ExaminerReviewState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,13 +55,21 @@ export function ExaminerReview({
   // Held in a ref so a parent that passes a fresh function each render does not restart polling.
   const finished = useRef(onFinished);
   finished.current = onFinished;
+  /**
+   * Bumped when a review is started, so a status read that was already on its way (the one this
+   * component makes when it mounts) cannot land after the start and say "not running" — that
+   * would stop the polling, and the finished review would never open in the text.
+   */
+  const seq = useRef(0);
 
   const load = useCallback(async () => {
+    const asked = seq.current;
     try {
       // ADR-0058: a visible tab's poll tells the worker someone is looking, so no email.
       const next = await api<ExaminerReviewState>(
         `/chapters/${chapterId}/examiner-review${watchingParam()}`,
       );
+      if (asked !== seq.current) return;
       setState(next);
       if (wasRunning.current && !running(next)) void finished.current();
       wasRunning.current = running(next);
@@ -72,27 +95,44 @@ export function ExaminerReview({
     };
   }, [isRunning, load]);
 
-  async function start() {
+  async function start(range?: { from: number; to: number }, scope?: BlockCheckRequest['scope']) {
+    seq.current += 1;
     setStarting(true);
     setError(null);
     try {
+      // The job reads the saved chapter, so what is on screen is saved first.
+      await save?.();
       const next = await api<ExaminerReviewState>(`/chapters/${chapterId}/examiner-review`, {
         method: 'POST',
-        body: '{}',
+        body: range ? JSON.stringify({ from: range.from, to: range.to }) : '{}',
       });
+      seq.current += 1;
       setNow(Date.now());
       setState(next);
       wasRunning.current = running(next);
+      if (scope) {
+        onNotice?.(`The examiner is reading the ${scope}. Its findings appear here as flags.`);
+      }
     } catch (e) {
-      setError(
+      const message =
         e instanceof ApiError
           ? (e.problem.detail ?? e.problem.title)
-          : 'The review could not be started.',
-      );
+          : 'The review could not be started.';
+      setError(message);
+      if (scope) onNotice?.(message);
+      // The read made on mounting was set aside for the start; show the review as it stands.
+      void load();
     } finally {
       setStarting(false);
     }
   }
+
+  // R26: a review of one paragraph or a selection, asked for from the text. Once per press.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request starts a review
+  useEffect(() => {
+    if (!takeBlockCheck(request, 'examiner')) return;
+    void start({ from: request.from, to: request.to }, request.scope);
+  }, [request]);
 
   return (
     <div data-testid="examiner-review" className="mb-4 rounded-md border border-line bg-paper p-3">
@@ -116,6 +156,11 @@ export function ExaminerReview({
         A strict examiner reads each section of this chapter against the passages it cites. One
         examiner review from your monthly allowance.
       </p>
+      {isRunning && state?.selection ? (
+        <p data-testid="examiner-review-scope" className="mt-2 text-[12px] text-muted">
+          Reading the selected text only, for one command from your allowance.
+        </p>
+      ) : null}
       {isRunning && emailOn ? (
         <p data-testid="job-email-note" className="mt-2 text-[12px] text-muted">
           {JOB_EMAIL_NOTE}

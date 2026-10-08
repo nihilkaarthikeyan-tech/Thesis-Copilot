@@ -301,4 +301,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R35 | Done 2026-10-08 — Keyboard shortcuts window (keys and Markdown); `$$…$$` equations | ADR-0118 |
 | R29 | Done 2026-10-08 — archive and restore theses; copies named "… (copy)" | ADR-0114 |
 | R36 | Done 2026-10-08 — "How was this?" thumbs after a chapter build and a viva set | ADR-0115 |
+| R26 | Done 2026-10-08 — "Check this paragraph" from the block handle: proofread, tone, examiner on one block | ADR-0126 |
 | R25–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

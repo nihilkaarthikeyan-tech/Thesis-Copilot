@@ -2,10 +2,11 @@
  * The tone review through the API — ADR-0084. Pinned: the sample (a chosen paper's passages, or
  * the learned profile), one COMMAND unit a run, rewrites as data with the sentence and a position,
  * no profile and no paper refused before any unit, another thesis's paper refused, the refund when
- * nothing was served.
+ * nothing was served. R26 (ADR-0126): a range reads one paragraph only, for the same one unit.
  */
 
 import type { Providers } from '@tc/ai';
+import { blocksOf } from '@tc/retrieval';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PROVIDERS } from '../src/modules/ai/ai.module.js';
 import { periodFor } from '../src/modules/usage/usage.service.js';
@@ -158,6 +159,44 @@ describe('the tone review', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { sample: { kind: string } };
     expect(body.sample.kind).toBe('profile');
+    expect(await units()).toBe(1);
+  });
+
+  it('reads only the paragraph given as a range, for one unit (R26)', async () => {
+    const chapter = await h.prisma.chapter.findUniqueOrThrow({ where: { id: chapterId } });
+    const blocks = blocksOf(chapter.content);
+    const third = blocks[2] as { from: number; to: number };
+    expect(third).toMatchObject({ from: 135, to: 185 });
+
+    const res = await h.api('/tone-review', {
+      method: 'POST',
+      body: JSON.stringify({ chapterId, sampleSourceId: sourceId, range: third }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      corrections: Array<{ original: string; near: number }>;
+      checkedWords: number;
+      totalWords: number;
+    };
+    // The chapter has two conversational sentences; only the third paragraph's is read.
+    expect(body.corrections.map((c) => c.original)).toEqual([
+      'This is really a very big problem for the state.',
+    ]);
+    expect(body.corrections[0]?.near).toBe(third.from + 1);
+    expect(body.totalWords).toBe(10);
+    expect(body.checkedWords).toBe(10);
+    expect(await units()).toBe(1);
+
+    // A range with nothing of the student's in it is refused before any unit.
+    const empty = await h.api('/tone-review', {
+      method: 'POST',
+      body: JSON.stringify({
+        chapterId,
+        sampleSourceId: sourceId,
+        range: { from: third.to + 5, to: third.to + 30 },
+      }),
+    });
+    expect(empty.status).toBe(400);
     expect(await units()).toBe(1);
   });
 

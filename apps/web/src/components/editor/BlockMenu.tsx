@@ -4,11 +4,17 @@
  * The block menu (Jenni build plan R7), opened from the grip beside a paragraph
  * (`packages/ui/src/editor/block-handle.ts`). Every item reuses something that already exists:
  * Edit selects the block so the selection toolbar's edits apply (ADR-0066), Ask in chat and Find
- * a source are the toolbar's own actions, Review is the examiner review of a selection
- * (ADR-0067), Cite opens the `@` library picker at the paragraph's end — free, it cannot cite
- * anything the student has not added. The rest are editor commands that call no model.
+ * a source are the toolbar's own actions, Cite opens the `@` library picker at the paragraph's
+ * end — free, it cannot cite anything the student has not added. The rest are editor commands
+ * that call no model.
  *
- * Submenus open in place rather than on hover, so the menu works the same on a touch screen.
+ * "Check this paragraph" (R26, ADR-0126) runs a check of the Check tab on this block only:
+ * spelling and grammar (ADR-0026), the tone review (ADR-0084) and the examiner (ADR-0067). Each is
+ * the check's own run with the block's range, for the unit it takes today (one command), and its
+ * results open in the text through review mode (ADR-0110).
+ *
+ * Submenus open in place rather than on hover, so the menu works the same on a touch screen. The
+ * menu is measured once drawn and kept inside the window, with a submenu open, at any size.
  */
 
 import {
@@ -21,7 +27,9 @@ import {
   topLevelBlock,
 } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { BlockCheck } from '@/lib/block-check';
+import { placeMenu } from '@/lib/place-menu';
 import { AI_EDIT_FOCUS } from './CommandToolbar';
 
 const TURN_INTO: Array<{ kind: TurnInto; label: string }> = [
@@ -42,21 +50,57 @@ const HIGHLIGHT_LABEL: Record<BlockHighlight, string> = {
 
 type Open = 'turn' | 'highlight' | 'review' | null;
 
+/** The checks a paragraph can have on its own, in the order the Check tab lists them. */
+const CHECKS: Array<{ check: BlockCheck; label: string }> = [
+  { check: 'proofread', label: 'Spelling and grammar' },
+  { check: 'tone', label: 'Tone of voice' },
+  { check: 'examiner', label: 'As an examiner' },
+];
+
 export function BlockMenu(props: {
   editor: Editor | null;
   request: BlockMenuRequest | null;
   onClose: () => void;
   onAskChat: (text: string) => void;
   onFindPapers: (text: string) => void;
-  onReview: (from: number, to: number) => void;
+  /** R26: run one of the Check tab's checks on this block's range. */
+  onCheck: (check: BlockCheck, from: number, to: number) => void;
 }) {
   const { editor, request, onClose } = props;
   const [open, setOpen] = useState<Open>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
+
+  // A menu opened on a new block starts with every submenu closed, before it is first painted
+  // (it used to close the last one after painting it open for a frame).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new request closes the submenus
+  useLayoutEffect(() => {
+    setOpen(null);
+  }, [request]);
+
+  // Measured before the browser paints, so the menu never shows where it does not fit; again when
+  // a submenu opens (the menu grows) and when the window changes size.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `open` changes the menu's height
+  useLayoutEffect(() => {
+    if (!request) return;
+    const measure = () => {
+      const menu = ref.current;
+      if (!menu) return;
+      setPlace(
+        placeMenu(
+          request.rect,
+          { width: menu.offsetWidth, height: menu.offsetHeight },
+          { width: window.innerWidth, height: window.innerHeight },
+        ),
+      );
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [request, open]);
 
   useEffect(() => {
     if (!request) return;
-    setOpen(null);
     const onDown = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) onClose();
     };
@@ -99,8 +143,14 @@ export function BlockMenu(props: {
       .run();
   };
 
-  const top = Math.min(request.rect.top, window.innerHeight - 380);
-  const left = Math.min(request.rect.right + 6, window.innerWidth - 248);
+  // Before the first measurement: beside the grip, at the estimated size.
+  const at =
+    place ??
+    placeMenu(
+      request.rect,
+      { width: 240, height: 380 },
+      { width: window.innerWidth, height: window.innerHeight },
+    );
   const item =
     'flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left text-[13px] text-ink hover:bg-sunk disabled:cursor-not-allowed disabled:opacity-50';
   const sub = 'ml-3 border-l border-line pl-1';
@@ -111,8 +161,8 @@ export function BlockMenu(props: {
       role="menu"
       aria-label="Block menu"
       data-testid="block-menu"
-      className="fixed z-50 w-60 rounded-md border border-line bg-surface p-1 shadow-lg"
-      style={{ top: Math.max(8, top), left: Math.max(8, left) }}
+      className="fixed z-50 max-h-[calc(100dvh-16px)] w-60 max-w-[calc(100vw-16px)] overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-lg"
+      style={{ top: at.top, left: at.left }}
     >
       <button
         type="button"
@@ -225,19 +275,22 @@ export function BlockMenu(props: {
         onClick={() => setOpen(open === 'review' ? null : 'review')}
         data-testid="block-menu-review"
       >
-        Review <span className="text-muted">▸</span>
+        Check this paragraph <span className="text-muted">▸</span>
       </button>
       {open === 'review' ? (
-        <div className={sub}>
-          <button
-            type="button"
-            role="menuitem"
-            className={item}
-            onClick={done(() => props.onReview(block.pos, block.pos + block.node.nodeSize))}
-            data-testid="block-menu-review-examiner"
-          >
-            As an examiner
-          </button>
+        <div className={sub} data-testid="block-menu-checks">
+          {CHECKS.map(({ check, label }) => (
+            <button
+              key={check}
+              type="button"
+              role="menuitem"
+              className={item}
+              onClick={done(() => props.onCheck(check, block.pos, block.pos + block.node.nodeSize))}
+              data-testid={`block-menu-review-${check}`}
+            >
+              {label}
+            </button>
+          ))}
           <button
             type="button"
             role="menuitem"
@@ -247,6 +300,9 @@ export function BlockMenu(props: {
           >
             Find a source for it
           </button>
+          <p className="px-2.5 pt-0.5 pb-1 text-[11px] leading-snug text-muted">
+            The three checks take one command each. Finding a source is free.
+          </p>
         </div>
       ) : null}
       <div className="my-1 border-t border-line" />

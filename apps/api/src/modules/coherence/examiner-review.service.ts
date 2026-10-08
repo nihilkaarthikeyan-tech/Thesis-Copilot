@@ -40,6 +40,8 @@ export type ExaminerReviewView = {
   issues: number | null;
   blocking: number | null;
   error: string | null;
+  /** ADR-0067: the latest run read a selection (or one paragraph, R26), not the chapter. */
+  selection: boolean;
 };
 
 export function readExaminerReviews(meta: unknown): Record<string, ExaminerReviewRecord> {
@@ -233,6 +235,7 @@ export class ExaminerReviewService {
         issues: null,
         blocking: null,
         error: null,
+        selection: false,
       };
     }
     const stale = isStale(record);
@@ -248,6 +251,7 @@ export class ExaminerReviewService {
       issues: record.issues ?? null,
       blocking: record.blocking ?? null,
       error: stale ? 'The review did not finish. You can start it again.' : (record.error ?? null),
+      selection: record.selection === true,
     };
   }
 }

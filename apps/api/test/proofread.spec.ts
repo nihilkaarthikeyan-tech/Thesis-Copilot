@@ -6,10 +6,11 @@
  * endpoint can show: the corrections come back as data and the chapter is untouched; a chapter
  * with nothing to read costs nothing; a pending AI draft is not read, because it is not the
  * student's text yet; and a chapter longer than one run is read in parts, each saying where the
- * next one starts.
+ * next one starts. R26 (ADR-0126): a range reads one paragraph only, for the same one unit.
  */
 
 import type { Prisma } from '@tc/db';
+import { blocksOf } from '@tc/retrieval';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { periodFor } from '../src/modules/usage/usage.service.js';
 import { type Harness, startHarness } from './_harness.js';
@@ -29,6 +30,10 @@ async function setChapter(content: unknown[]): Promise<void> {
     data: { content: { type: 'doc', content } as Prisma.InputJsonValue },
   });
 }
+
+/** Each top-level block's range in the saved chapter: what the block handle sends (R26). */
+const rangesOf = (content: unknown[]) =>
+  blocksOf({ type: 'doc', content }).map(({ from, to }) => ({ from, to }));
 
 async function commandUnits(): Promise<number> {
   const row = await h.prisma.usageLedger.findFirst({
@@ -163,6 +168,55 @@ describe('POST /proofread', () => {
     expect(second.corrections.map((c) => c.original)).toEqual(['recieved']);
     // Two runs, two units.
     expect(await commandUnits()).toBe(2);
+  });
+
+  it('reads only the paragraph given as a range, for one command unit (R26)', async () => {
+    const content = [
+      paragraph('The farmers recieved the subsidy late in the season.'),
+      paragraph('Dealers described a difficult enviroment for selling drip kits.'),
+    ];
+    await setChapter(content);
+    const second = rangesOf(content)[1];
+    // ProseMirror's own accounting: the first paragraph's 52 letters and its two tokens.
+    expect(second).toEqual({ from: 54, to: 54 + 63 + 2 });
+    const before = await calls();
+
+    const response = await proofread({ chapterId, range: second });
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as RunResult;
+    // The first paragraph's misspelling is not read; the second's is.
+    expect(result.corrections.map((c) => `${c.original}→${c.replacement}`)).toEqual([
+      'enviroment→environment',
+    ]);
+    expect(result.corrections[0]?.near).toBeGreaterThan(54);
+    expect(result.totalWords).toBe(9);
+    expect(result.checkedWords).toBe(9);
+    expect(result.nextSentence).toBeNull();
+    expect(await commandUnits()).toBe(1);
+    expect(await calls()).toBe(before + 1);
+  });
+
+  it('refuses a range holding no sentence of the student’s own, before any unit (R26)', async () => {
+    const content = [
+      paragraph('The farmers recieved the subsidy late in the season.'),
+      {
+        type: 'draftBlock',
+        attrs: { draftId: '00000000-0000-7000-8000-000000000002' },
+        content: [paragraph('The draft recieved no review before it was inserted.')],
+      },
+    ];
+    await setChapter(content);
+    const before = await calls();
+    const draft = rangesOf(content)[1] as { from: number; to: number };
+
+    for (const range of [draft, { from: draft.to + 10, to: draft.to + 40 }]) {
+      const response = await proofread({ chapterId, range });
+      expect(response.status).toBe(400);
+    }
+    // A range that ends before it starts is not a range.
+    expect((await proofread({ chapterId, range: { from: 20, to: 5 } })).status).toBe(400);
+    expect(await commandUnits()).toBe(0);
+    expect(await calls()).toBe(before);
   });
 
   it('refuses a request without a chapter', async () => {

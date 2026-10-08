@@ -17,6 +17,7 @@ import { wordsAt } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import type { BlockCheckRequest } from '@/lib/block-check';
 import { examinerLabel } from '@/lib/examiner-review';
 import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 import { openCheck, startReview } from '@/lib/review-mode';
@@ -81,10 +82,19 @@ export function FlagsPanel({
   editor,
   onSuggestFix,
   onFindPapers,
+  request,
+  save,
+  onNotice,
 }: {
   documentId: string;
   chapterId: string;
   editor: Editor | null;
+  /** R26 (ADR-0126): an examiner review of one paragraph or a selection, asked for in the text. */
+  request?: BlockCheckRequest | null;
+  /** Saves what is on screen before a review reads the saved chapter. */
+  save?: () => Promise<void>;
+  /** The editor's notice line. */
+  onNotice?: (text: string) => void;
   /** Hands the flag to the section-command flow (D.1.3); counts as `COMMAND`. */
   onSuggestFix: (flag: Flag) => void;
   /**
@@ -307,6 +317,9 @@ export function FlagsPanel({
     <section data-testid="flags-panel">
       <ExaminerReview
         chapterId={chapterId}
+        request={request}
+        save={save}
+        onNotice={onNotice}
         onFinished={async () => {
           await load();
           setOpenExaminer(true);

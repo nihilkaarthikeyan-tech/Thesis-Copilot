@@ -16,6 +16,8 @@ export type ExaminerReviewState = {
   issues: number | null;
   blocking: number | null;
   error: string | null;
+  /** ADR-0067 / R26: the latest run read a selection or one paragraph, not the chapter. */
+  selection?: boolean;
 };
 
 export const isReviewRunning = (s: ExaminerReviewState | null): boolean =>
@@ -31,10 +33,13 @@ export function elapsed(startedAt: string | null, now: number): string {
 /** The finished review in one line. */
 export function resultLine(s: ExaminerReviewState): string {
   const issues = s.issues ?? 0;
+  // R26 (ADR-0126): a run on one paragraph or a selection says so, so "nothing" is not read as
+  // a verdict on the whole chapter.
+  const where = s.selection ? ' in the selected text' : '';
   const found =
     issues === 0
-      ? 'The examiner found nothing to flag.'
-      : `The examiner found ${issues} issue${issues === 1 ? '' : 's'}${
+      ? `The examiner found nothing to flag${where}.`
+      : `The examiner found ${issues} issue${issues === 1 ? '' : 's'}${where}${
           s.blocking ? `, ${s.blocking} major` : ''
         } — see the flags below.`;
   const n = s.failedSections.length;

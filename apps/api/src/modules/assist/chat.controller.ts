@@ -29,6 +29,7 @@ import { FlagsService } from '../flags/flags.service.js';
 import { BEYOND_SETTINGS, beyondSettingOf } from './beyond-library.js';
 import { ChatService } from './chat.service.js';
 import { ChatAttachmentsService } from './chat-attachments.service.js';
+import { checkRangeSchema } from './check-range.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
 import { EquationService } from './equation.service.js';
@@ -72,12 +73,16 @@ const toneBody = z.object({
   chapterId: z.string().uuid(),
   sampleSourceId: z.string().uuid().optional(),
   fromSentence: z.number().int().min(0).optional(),
+  /** R26 (ADR-0126): one paragraph of the saved chapter, from the block handle. */
+  range: checkRangeSchema.optional(),
 });
 
 const proofreadBody = z.object({
   chapterId: z.string().uuid(),
   /** Where a previous run stopped, for a chapter longer than one run reads. */
   fromSentence: z.number().int().min(0).max(100_000).optional(),
+  /** R26 (ADR-0126): one paragraph of the saved chapter, from the block handle. */
+  range: checkRangeSchema.optional(),
 });
 
 const commandBody = z
@@ -236,7 +241,12 @@ export class ChatController {
     const parsed = proofreadBody.safeParse(body);
     if (!parsed.success)
       throw new ValidationError('Invalid proofread request', parsed.error.issues);
-    return this.proofread.run(user, parsed.data.chapterId, parsed.data.fromSentence ?? 0);
+    return this.proofread.run(
+      user,
+      parsed.data.chapterId,
+      parsed.data.fromSentence ?? 0,
+      parsed.data.range,
+    );
   }
 
   /**
@@ -253,6 +263,7 @@ export class ChatController {
     return this.tone.run(user, parsed.data.chapterId, {
       ...(parsed.data.sampleSourceId ? { sampleSourceId: parsed.data.sampleSourceId } : {}),
       fromSentence: parsed.data.fromSentence ?? 0,
+      ...(parsed.data.range ? { range: parsed.data.range } : {}),
     });
   }
 

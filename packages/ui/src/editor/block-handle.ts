@@ -81,6 +81,15 @@ export function topLevelBlock(doc: PmNode, pos: number): { pos: number; node: Pm
   return node ? { pos: start, node } : null;
 }
 
+/**
+ * The whole top-level block at `pos`, start to end: the range a check of one paragraph reads
+ * (R26). Positions are the saved chapter's too, so the API can take them as they are.
+ */
+export function blockRange(doc: PmNode, pos: number): { from: number; to: number } | null {
+  const block = topLevelBlock(doc, pos);
+  return block ? { from: block.pos, to: block.pos + block.node.nodeSize } : null;
+}
+
 /** The block's plain text, for "Ask in chat". */
 export function blockTextAt(doc: PmNode, pos: number): string {
   const block = topLevelBlock(doc, pos);

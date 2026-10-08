@@ -37,6 +37,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type MessageKey, tNow } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { API_URL, ApiError, api } from '@/lib/api';
+import { type BlockCheck, type BlockCheckRequest, blockCheckRequest } from '@/lib/block-check';
 import { chapterLabel } from '@/lib/chapter-label';
 import { COLLAB_CLOSE, connectLive, createLiveDoc, type LiveDoc, othersIn } from '@/lib/collab';
 import { rememberLastChapter } from '@/lib/last-chapter';
@@ -438,6 +439,12 @@ function ChapterEditor({
   } | null>(null);
   /** A selected sentence the student asked papers for; the Papers tab searches it. */
   const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);
+  /**
+   * R26 (ADR-0126): a check on one paragraph (the block menu) or a selection (the toolbar's
+   * examiner review). The Check tab's panel for that check runs it, once, and opens its results
+   * in the text.
+   */
+  const [blockCheck, setBlockCheck] = useState<BlockCheckRequest | null>(null);
   /** R11: a tab opened (not the one the page starts on) counts as its feature used. */
   // Compared with the tab before, not "skip the first run": React runs an effect twice in
   // development, and the second run marked the starting tab used on every load.
@@ -1218,28 +1225,23 @@ function ChapterEditor({
     editor?.commands.setActiveBlock(null);
   }, [editor]);
 
-  /** The selection toolbar's and the block menu's (R7) shared actions. */
+  /**
+   * A check of the Check tab on part of the chapter (R26): the tab opens, and the panel that owns
+   * the check saves the chapter, runs it on the range and opens what it finds in the text.
+   */
+  function checkRange(
+    check: BlockCheck,
+    from: number,
+    to: number,
+    scope: BlockCheckRequest['scope'],
+  ): void {
+    setBlockCheck(blockCheckRequest(check, from, to, scope));
+    setTab('flags');
+    setDrawer('panel');
+  }
+  /** The selection toolbar's examiner review of a selection (ADR-0067). */
   function reviewSelection(from: number, to: number): void {
-    // The job reads the saved chapter, so what is on screen is saved first.
-    void (async () => {
-      try {
-        await autosaveRef.current?.flush();
-        await api(`/chapters/${chapter.id}/examiner-review`, {
-          method: 'POST',
-          body: JSON.stringify({ from, to }),
-        });
-        onUsageChange();
-        setTab('flags');
-        setDrawer('panel');
-        setNotice('The examiner is reading the selection. Its findings appear here as flags.');
-      } catch (error) {
-        setNotice(
-          error instanceof ApiError
-            ? (error.problem.detail ?? error.problem.title)
-            : 'The review could not be started.',
-        );
-      }
-    })();
+    checkRange('examiner', from, to, 'selection');
   }
   function findPapersFor(text: string): void {
     setPapersQuery({ text, nonce: Date.now() });
@@ -1886,6 +1888,14 @@ function ChapterEditor({
                   documentId={doc.id}
                   chapterId={chapter.id}
                   editor={editor}
+                  request={blockCheck}
+                  save={async () => {
+                    await autosaveRef.current?.flush();
+                  }}
+                  onNotice={(text) => {
+                    setNotice(text);
+                    onUsageChange();
+                  }}
                   onSuggestFix={suggestFix}
                   onFindPapers={(text) => {
                     setPapersQuery({ text, nonce: Date.now() });
@@ -1897,6 +1907,7 @@ function ChapterEditor({
                 <ProofreadPanel
                   chapterId={chapter.id}
                   editor={editor}
+                  request={blockCheck}
                   save={async () => {
                     await autosaveRef.current?.flush();
                   }}
@@ -1908,6 +1919,7 @@ function ChapterEditor({
                   documentId={doc.id}
                   chapterId={chapter.id}
                   editor={editor}
+                  request={blockCheck}
                   save={async () => {
                     await autosaveRef.current?.flush();
                   }}
@@ -2084,7 +2096,7 @@ function ChapterEditor({
         onClose={closeBlockMenu}
         onAskChat={askChatAbout}
         onFindPapers={findPapersFor}
-        onReview={reviewSelection}
+        onCheck={(check, from, to) => checkRange(check, from, to, 'paragraph')}
       />
 
       <CiteSuggestions editor={editor} chapterId={chapter.id} onUsageChange={onUsageChange} />

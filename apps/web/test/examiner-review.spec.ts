@@ -44,6 +44,15 @@ describe('resultLine', () => {
     );
   });
 
+  it('says when it read only the selected text (R26)', () => {
+    expect(resultLine(done({ selection: true }))).toBe(
+      'The examiner found nothing to flag in the selected text.',
+    );
+    expect(resultLine(done({ selection: true, issues: 2, blocking: 1 }))).toBe(
+      'The examiner found 2 issues in the selected text, 1 major — see the flags below.',
+    );
+  });
+
   it('names the sections it could not review, and an edit since', () => {
     const line = resultLine(done({ issues: 1, failedSections: ['Methods'], chapterChanged: true }));
     expect(line).toContain('1 section could not be reviewed (Methods)');

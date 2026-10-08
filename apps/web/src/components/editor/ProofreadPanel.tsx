@@ -16,11 +16,18 @@
  *
  * A correction is placed in the chapter as it is *now* (`locateSpan`), because the student may
  * have typed since the run. One whose words are no longer there says so, and is not applied.
+ *
+ * R26 (ADR-0126): the block menu's "Check this paragraph" runs either mode on one block. The run
+ * is the same one — saved chapter, one COMMAND unit — with the block's range, and its results land
+ * in this list and open in the text like a chapter's. The block is followed through edits, so
+ * "Read the next part" and "again" read the same paragraph.
  */
 
-import type { Editor } from '@tiptap/core';
-import { useCallback, useEffect, useState } from 'react';
+import { blockRange } from '@tc/ui';
+import type { Editor, EditorEvents } from '@tiptap/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { type BlockCheckRequest, takeBlockCheck } from '@/lib/block-check';
 import { locateSpan, type TextRun } from '@/lib/proofread';
 import { openCheck, type ReviewItem, startReview } from '@/lib/review-mode';
 
@@ -97,6 +104,7 @@ export function ProofreadPanel({
   onUsageChange,
   mode = 'proofread',
   documentId,
+  request,
 }: {
   chapterId: string;
   editor: Editor | null;
@@ -107,8 +115,17 @@ export function ProofreadPanel({
   mode?: Mode;
   /** For the tone mode's list of papers to use as the model. */
   documentId?: string;
+  /** R26: run this mode on one paragraph, asked for from the block menu. */
+  request?: BlockCheckRequest | null;
 }) {
   const [items, setItems] = useState<Correction[]>([]);
+  /** R26: the list on screen is one paragraph's, not the chapter's. */
+  const [paragraph, setParagraph] = useState(false);
+  /** The start of that paragraph, followed through every edit (null once it is deleted). */
+  const paragraphAt = useRef<number | null>(null);
+  const busyRef = useRef(false);
+  const [readingParagraph, setReadingParagraph] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState<Omit<RunResult, 'corrections'> | null>(null);
   const [checkedSoFar, setCheckedSoFar] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -135,22 +152,61 @@ export function ProofreadPanel({
       .catch(() => setSamples([]));
   }, [mode, documentId]);
 
-  // A different chapter is a different list.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the chapter changes
+  // A different chapter is a different list. Only a real change resets it: React runs effects
+  // twice in development, and a second reset on mounting cleared the paragraph a block check from
+  // the menu (R26) had just started reading.
+  const listChapter = useRef(chapterId);
   useEffect(() => {
+    if (listChapter.current === chapterId) return;
+    listChapter.current = chapterId;
     setItems([]);
     setProgress(null);
     setCheckedSoFar(0);
     setError(null);
     setMoved(new Set());
+    setParagraph(false);
+    paragraphAt.current = null;
   }, [chapterId]);
 
+  // R26: the paragraph's start, mapped through each edit, so a later run reads the same block.
+  useEffect(() => {
+    if (!editor) return;
+    const follow = ({ transaction }: EditorEvents['transaction']) => {
+      if (paragraphAt.current === null || !transaction.docChanged) return;
+      const mapped = transaction.mapping.mapResult(paragraphAt.current);
+      paragraphAt.current = mapped.deleted ? null : mapped.pos;
+    };
+    editor.on('transaction', follow);
+    return () => {
+      editor.off('transaction', follow);
+    };
+  }, [editor]);
+
+  /**
+   * One run: from `fromSentence`, over the chapter or (R26) over just the paragraph at
+   * `paragraphAt`. The range is taken after the save, from the chapter as it was saved.
+   */
   const run = useCallback(
-    async (fromSentence: number) => {
+    async (fromSentence: number, inParagraph = false) => {
+      if (busyRef.current) {
+        setError('A check is already reading. Try again when it has finished.');
+        return;
+      }
+      busyRef.current = true;
       setBusy(true);
+      setReadingParagraph(inParagraph);
       setError(null);
       try {
         await save();
+        const range = inParagraph
+          ? editor && paragraphAt.current !== null
+            ? blockRange(editor.state.doc, paragraphAt.current)
+            : null
+          : undefined;
+        if (range === null) {
+          setError('That paragraph is no longer there.');
+          return;
+        }
         const result = await api<RunResult & { sample?: { label: string } }>(
           mode === 'tone' ? '/tone-review' : '/proofread',
           {
@@ -158,6 +214,7 @@ export function ProofreadPanel({
             body: JSON.stringify({
               chapterId,
               ...(fromSentence > 0 ? { fromSentence } : {}),
+              ...(range ? { range } : {}),
               ...(mode === 'tone' && sampleSourceId ? { sampleSourceId } : {}),
             }),
           },
@@ -174,7 +231,10 @@ export function ProofreadPanel({
           refused: result.refused,
           nextSentence: result.nextSentence,
         });
-        if (fromSentence === 0) setMoved(new Set());
+        if (fromSentence === 0) {
+          setMoved(new Set());
+          setParagraph(inParagraph);
+        }
         if (fresh.length > 0) setReviewAfterRun((n) => n + 1);
       } catch (e) {
         setError(
@@ -183,11 +243,21 @@ export function ProofreadPanel({
             : 'The proofread did not run. Try again in a minute.',
         );
       } finally {
+        busyRef.current = false;
         setBusy(false);
       }
     },
-    [chapterId, save, onUsageChange, mode, sampleSourceId],
+    [chapterId, save, onUsageChange, mode, sampleSourceId, editor],
   );
+
+  // R26: "Check this paragraph" from the block menu, once per press.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request runs a check
+  useEffect(() => {
+    if (!takeBlockCheck(request, mode)) return;
+    paragraphAt.current = request.from;
+    sectionRef.current?.scrollIntoView({ block: 'nearest' });
+    void run(0, true);
+  }, [request]);
 
   const idOf = (c: Correction) => `${c.sentenceId}:${keyOf(c)}`;
 
@@ -295,7 +365,7 @@ export function ProofreadPanel({
     }
     if (placed.length === 0) return;
     startReview({
-      title: mode === 'tone' ? 'Tone of voice' : 'Spelling and grammar',
+      title: `${mode === 'tone' ? 'Tone of voice' : 'Spelling and grammar'}${paragraph ? ' · this paragraph' : ''}`,
       items: placed,
       decide: (id, accepted) => {
         const c = byId.get(id);
@@ -304,10 +374,16 @@ export function ProofreadPanel({
         if (accepted) setItems((current) => current.filter((x) => idOf(x) !== id));
         else dismiss(c);
       },
-      rerun: {
-        label: mode === 'tone' ? 'Review the tone again' : 'Proofread again',
-        run: () => void run(0),
-      },
+      // A paragraph's check runs again on that paragraph, not on the whole chapter.
+      rerun: paragraph
+        ? {
+            label: mode === 'tone' ? 'Review its tone again' : 'Proofread it again',
+            run: () => void run(0, true),
+          }
+        : {
+            label: mode === 'tone' ? 'Review the tone again' : 'Proofread again',
+            run: () => void run(0),
+          },
       next:
         mode === 'tone'
           ? { label: 'Coherence check', open: () => openCheck('run-coherence') }
@@ -329,9 +405,15 @@ export function ProofreadPanel({
   }
 
   const remaining = progress ? Math.max(0, progress.totalWords - checkedSoFar) : 0;
+  // R26: a paragraph's run says so, so "no mistakes" is not read as the whole chapter's verdict.
+  const read = checkedSoFar.toLocaleString();
+  const inWords = paragraph
+    ? `this paragraph (${read} word${checkedSoFar === 1 ? '' : 's'})`
+    : `${read} words`;
 
   return (
     <section
+      ref={sectionRef}
       className="mt-4 border-t border-line pt-3"
       data-testid={mode === 'tone' ? 'tone-panel' : 'proofread-panel'}
       data-mode={mode}
@@ -339,8 +421,8 @@ export function ProofreadPanel({
       <p className="eyebrow">{mode === 'tone' ? 'Tone of voice' : 'Spelling and grammar'}</p>
       <p className="mt-1 text-xs text-muted">
         {mode === 'tone'
-          ? 'Reads this chapter against the tone you want — your own writing profile, or a paper from your library — and offers a rewrite where a sentence clearly differs. Nothing changes until you accept one. One command unit a run, up to 2,000 words.'
-          : 'Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown to you, and nothing changes until you accept it. One command unit a run, up to 2,000 words.'}
+          ? 'Reads this chapter against the tone you want — your own writing profile, or a paper from your library — and offers a rewrite where a sentence clearly differs. Nothing changes until you accept one. One command unit a run, up to 2,000 words. For one paragraph, use Check this paragraph in the menu beside it.'
+          : 'Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown to you, and nothing changes until you accept it. One command unit a run, up to 2,000 words. For one paragraph, use Check this paragraph in the menu beside it.'}
       </p>
       {mode === 'tone' ? (
         <label className="mt-2 flex items-center gap-2 text-xs">
@@ -369,12 +451,14 @@ export function ProofreadPanel({
         className="mt-2 rounded-md border border-line-strong bg-surface px-3 py-1 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
       >
         {busy
-          ? 'Reading…'
+          ? readingParagraph
+            ? 'Reading the paragraph…'
+            : 'Reading…'
           : mode === 'tone'
-            ? progress
+            ? progress && !paragraph
               ? 'Review the tone again'
               : 'Review the tone'
-            : progress
+            : progress && !paragraph
               ? 'Proofread again'
               : 'Proofread this chapter'}
       </button>
@@ -389,11 +473,11 @@ export function ProofreadPanel({
         <p className="mt-2 text-xs text-muted" data-testid="proofread-summary">
           {mode === 'tone'
             ? items.length === 0
-              ? `Nothing out of tone in ${checkedSoFar.toLocaleString()} words${sampleLabel ? `, compared with ${sampleLabel}` : ''}.`
-              : `${items.length} sentence${items.length === 1 ? '' : 's'} out of tone in ${checkedSoFar.toLocaleString()} words${sampleLabel ? `, compared with ${sampleLabel}` : ''}.`
+              ? `Nothing out of tone in ${inWords}${sampleLabel ? `, compared with ${sampleLabel}` : ''}.`
+              : `${items.length} sentence${items.length === 1 ? '' : 's'} out of tone in ${inWords}${sampleLabel ? `, compared with ${sampleLabel}` : ''}.`
             : items.length === 0
-              ? `No mistakes found in ${checkedSoFar.toLocaleString()} words.`
-              : `${items.length} correction${items.length === 1 ? '' : 's'} in ${checkedSoFar.toLocaleString()} words.`}
+              ? `No mistakes found in ${inWords}.`
+              : `${items.length} correction${items.length === 1 ? '' : 's'} in ${inWords}.`}
           {progress.nextSentence !== null && remaining > 0 ? (
             <>
               {' '}
@@ -403,7 +487,7 @@ export function ProofreadPanel({
                 disabled={busy}
                 className="underline disabled:opacity-50"
                 data-testid="proofread-continue"
-                onClick={() => void run(progress.nextSentence ?? 0)}
+                onClick={() => void run(progress.nextSentence ?? 0, paragraph)}
               >
                 Read the next part
               </button>{' '}

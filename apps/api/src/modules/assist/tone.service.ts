@@ -27,6 +27,7 @@ import { aiCostMicroInr, capExceeded } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
+import { type CheckRange, sentencesInRange } from './check-range.js';
 
 export type ToneCorrection = ToneItem & { sentence: string; near: number };
 
@@ -56,7 +57,8 @@ export class ToneService {
   async run(
     user: { id: string; plan: string },
     chapterId: string,
-    options: { sampleSourceId?: string; fromSentence?: number } = {},
+    /** `range` (R26, ADR-0126): only the sentences inside it — one paragraph. */
+    options: { sampleSourceId?: string; fromSentence?: number; range?: CheckRange } = {},
   ): Promise<ToneRunResult> {
     const chapter = await this.prisma.chapter.findFirst({
       where: { id: chapterId, document: { ownerId: user.id } },
@@ -72,8 +74,11 @@ export class ToneService {
     const sample = await this.sampleFor(chapter.documentId, options.sampleSourceId);
 
     const drafts = blocksOf(chapter.content).filter((b) => b.type === 'draftBlock');
-    const sentences = sentencesOf(chapter.id, chapter.content).filter(
-      (s) => /\p{L}{2}/u.test(s.text) && !drafts.some((d) => s.from >= d.from && s.to <= d.to),
+    const sentences = sentencesInRange(
+      sentencesOf(chapter.id, chapter.content).filter(
+        (s) => /\p{L}{2}/u.test(s.text) && !drafts.some((d) => s.from >= d.from && s.to <= d.to),
+      ),
+      options.range,
     );
     const totalWords = sentences.reduce((n, s) => n + wordCount(s.text), 0);
     const toCheck: typeof sentences = [];

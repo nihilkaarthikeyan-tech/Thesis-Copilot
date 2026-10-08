@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   blockHandleKey,
+  blockRange,
   blockTextAt,
   citeSlot,
   topLevelBlock,
@@ -115,6 +116,22 @@ describe('the block handle (Jenni build plan R7)', () => {
     expect(blocks()).toEqual(['paragraph:Alpha', 'paragraph:', 'paragraph:Beta']);
     expect(editor.state.selection.$from.parent.textContent).toBe('');
     expect(editor.state.selection.$from.index(0)).toBe(1);
+  });
+
+  it('gives the range of a whole block, for a check of one paragraph (R26)', () => {
+    editor = createTestEditor('<h1>Chapter 1</h1><p>Alpha beta.</p><ul><li><p>One</p></li></ul>');
+    const alpha = blockAt('Alpha');
+    // From anywhere inside the paragraph: its opening token to just after its closing one.
+    expect(blockRange(editor.state.doc, alpha + 4)).toEqual({
+      from: alpha,
+      to: alpha + 'Alpha beta.'.length + 2,
+    });
+    const list = blockAt('One');
+    expect(blockRange(editor.state.doc, list + 3)).toEqual({
+      from: list,
+      to: editor.state.doc.content.size,
+    });
+    expect(blockRange(editor.state.doc, -1)).toBeNull();
   });
 
   it('places a citation before the closing full stop', () => {

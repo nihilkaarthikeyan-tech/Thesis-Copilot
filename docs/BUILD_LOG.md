@@ -5688,3 +5688,12 @@ under a viva set, stored per run in `OutputRating` (migration 0044), listed for 
 under Admin → Feedback → Ratings. On main: 51 API tests across six files and 7 browser tests
 (archive, rating, sharing, layout guard) pass.
 
+R26 (ADR-0126): the block menu's "Check this paragraph" runs spelling and grammar, the tone review or
+the examiner on one block (one COMMAND each, as before); `/proofread` and `/tone-review` take a
+range in the saved chapter; results open in the text through review mode. Found on the way: an
+examiner review of a selection started with the Check tab open was never polled or opened in the
+text; the block menu now stays inside the window with a submenu open. On main: ui 216, web 195 and
+the three range API files (21, never run in the agent's worktree under the Docker load) pass, and
+13 of 14 browser tests; the 14th (own-comments "More edits hedges") expects the mock's exact words,
+and on the real models the hedge came back "a major barrier" — CI runs it on the mock.
+
