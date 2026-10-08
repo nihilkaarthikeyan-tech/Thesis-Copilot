@@ -82,7 +82,7 @@ const RUN_STALE_MS = 15 * 60_000;
 
 type OutlineRun = { status?: string; startedAt?: string; from?: string };
 
-function runIsLive(run: OutlineRun | undefined, now: Date): boolean {
+export function runIsLive(run: OutlineRun | undefined, now: Date): boolean {
   if (run?.status !== 'RUNNING') return false;
   const started = run.startedAt ? Date.parse(run.startedAt) : Number.NaN;
   return Number.isNaN(started) || now.getTime() - started < RUN_STALE_MS;

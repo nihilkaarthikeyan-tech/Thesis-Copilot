@@ -5714,3 +5714,11 @@ IEEE list's "[1]" was counted), and says why citations were not linked. On main:
 the development-only timing box in the editor's corner sat over "Check my sources" and swallowed
 the click; it now lets clicks through (`pointer-events-none`).
 
+R38 (ADR-0123): "Open as a document" on the claims map builds the stored map into a new chapter at
+the end of the outline — a claims table and five sections, each a pending AI draft with every claim
+cited from the papers and passages the map read; no model call, no allowance. Editor tables scroll
+inside their own box with the citation card kept on screen (merged with R40's cluster card: both
+the single and the cluster card use `placeInTable`), and draft headers wrap on a phone. On main:
+ui 218, the claims/section/draft API files (38) and web 221 pass. Its browser spec
+(`e2e/claims-document.spec.ts`) is not yet run — next session, before the release.
+

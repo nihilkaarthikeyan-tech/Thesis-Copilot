@@ -612,6 +612,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       let popover: HTMLElement | null = null;
       let hoverTimer: ReturnType<typeof setTimeout> | null = null;
       let hoverToken = 0;
+      let closeOnScroll: (() => void) | null = null;
 
       /** The cluster this node shows, when it is the first node of one the server rendered. */
       const shownCluster = (): { id: string; keys: string[]; label: string } | null => {
@@ -631,6 +632,8 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         hoverToken++;
         popover?.remove();
         popover = null;
+        if (closeOnScroll) window.removeEventListener('scroll', closeOnScroll, true);
+        closeOnScroll = null;
       };
 
       const popoverShell = (): HTMLElement => {
@@ -772,10 +775,28 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         }
       };
 
+      /**
+       * ADR-0123: a table scrolls sideways inside its own box (`.tableWrapper`), and that box would
+       * cut the card off at its edge. There the card is placed against the window, kept on screen,
+       * and closed by any scroll, since it no longer moves with the citation.
+       */
+      const placeInTable = (el: HTMLElement) => {
+        if (!dom.closest('.tableWrapper')) return;
+        const at = dom.getBoundingClientRect();
+        const width = Math.min(352, Math.max(0, window.innerWidth - 16));
+        el.style.position = 'fixed';
+        el.style.top = `${at.bottom}px`;
+        el.style.left = `${Math.max(8, Math.min(at.left, window.innerWidth - width - 8))}px`;
+        el.style.width = `${width}px`;
+        closeOnScroll = closePopover;
+        window.addEventListener('scroll', closeOnScroll, true);
+      };
+
       const showPopover = (passage: CitationPassage) => {
         closePopover();
         const el = popoverShell();
         fillPassage(el, passage, current.attrs as CitationAttrs);
+        placeInTable(el);
         dom.appendChild(el);
         popover = el;
       };
@@ -894,6 +915,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         el.appendChild(tabs);
         el.appendChild(body);
         select(0);
+        placeInTable(el);
         dom.appendChild(el);
         popover = el;
       };

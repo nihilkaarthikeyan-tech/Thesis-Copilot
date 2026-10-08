@@ -7,6 +7,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { ClaimsService } from './claims.service.js';
+import { ClaimsDocumentService } from './claims-document.service.js';
 import { DocumentArchive } from './document-archive.service.js';
 import { DocumentCopier } from './document-copier.service.js';
 import { DocumentsController } from './documents.controller.js';
@@ -28,6 +29,7 @@ import { ProgressService } from './progress.service.js';
     DocumentEraser,
     StorageService,
     ClaimsService,
+    ClaimsDocumentService,
     RedisService,
   ],
 })

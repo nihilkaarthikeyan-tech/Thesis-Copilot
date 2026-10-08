@@ -4,8 +4,12 @@
  * The claims map — ADR-0086: what the library's papers claim, how well each claim is supported,
  * which papers contrast, and what a thesis could do about it. Beside the gap map, which reasons
  * over counts; this one reasons over claims. One strong-model pass, once an hour per thesis.
+ *
+ * R38 (ADR-0123): "Open as a document" puts the map in a new chapter, each section a pending AI
+ * draft, every claim cited. Free; no model call. The same map opens the same chapter again.
  */
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 
@@ -32,15 +36,27 @@ const STATUS: Record<Claim['status'], { label: string; className: string }> = {
 
 const ORDER: Claim['status'][] = ['under-explored', 'contested', 'well-supported'];
 
+/** The chapter this map was opened as (ADR-0123), while it exists. */
+type OpenedDocument = { chapterId: string; title: string };
+
+const problemText = (e: unknown, fallback: string) =>
+  e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : fallback;
+
 export function ClaimsMap({ documentId }: { documentId: string }) {
+  const router = useRouter();
   const [map, setMap] = useState<ClaimsMapData | null>(null);
+  const [opened, setOpened] = useState<OpenedDocument | null>(null);
   const [busy, setBusy] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await api<{ map: ClaimsMapData | null }>(`/documents/${documentId}/claims`);
+      const res = await api<{ map: ClaimsMapData | null; document?: OpenedDocument | null }>(
+        `/documents/${documentId}/claims`,
+      );
       setMap(res.map);
+      setOpened(res.document ?? null);
     } catch {
       // The gap map above still works; the claims map is an addition.
     }
@@ -59,14 +75,28 @@ export function ClaimsMap({ documentId }: { documentId: string }) {
         body: '{}',
       });
       setMap(res.map);
+      // A new map opens as a new chapter; the old one stays the student's.
+      setOpened(null);
     } catch (e) {
-      setError(
-        e instanceof ApiError
-          ? (e.problem.detail ?? e.problem.title)
-          : 'The claims could not be mapped. Try again in a minute.',
-      );
+      setError(problemText(e, 'The claims could not be mapped. Try again in a minute.'));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function openAsDocument() {
+    setOpening(true);
+    setError(null);
+    try {
+      const res = await api<{ chapterId: string; title: string }>(
+        `/documents/${documentId}/claims/document`,
+        { method: 'POST', body: '{}' },
+      );
+      setOpened({ chapterId: res.chapterId, title: res.title });
+      router.push(`/app/d/${documentId}/write/${res.chapterId}`);
+    } catch (e) {
+      setError(problemText(e, 'The analysis could not be opened. Try again in a minute.'));
+      setOpening(false);
     }
   }
 
@@ -86,16 +116,37 @@ export function ClaimsMap({ documentId }: { documentId: string }) {
             What the papers claim, how well each claim is supported, which papers contrast, and what
             your thesis could do about it. Read from up to thirty papers; once an hour.
           </p>
+          {map && map.claims.length > 0 ? (
+            <p className="mt-1 text-xs text-muted">
+              <span className="font-medium text-ink">Open as a document</span> puts it in a new
+              chapter you can edit: the table and the gaps, each section an AI draft you accept or
+              discard, every claim cited from its papers.
+            </p>
+          ) : null}
         </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void run()}
-          data-testid="claims-run"
-          className="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
-        >
-          {busy ? 'Reading…' : map ? 'Map the claims again' : 'Map the claims'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy || opening}
+            onClick={() => void run()}
+            data-testid="claims-run"
+            className="rounded-md border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+          >
+            {busy ? 'Reading…' : map ? 'Map the claims again' : 'Map the claims'}
+          </button>
+          {map && map.claims.length > 0 ? (
+            <button
+              type="button"
+              disabled={busy || opening}
+              onClick={() => void openAsDocument()}
+              data-testid="claims-open-document"
+              title={opened ? `Opens “${opened.title}”` : undefined}
+              className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50"
+            >
+              {opening ? 'Opening…' : opened ? 'Open the document' : 'Open as a document'}
+            </button>
+          ) : null}
+        </div>
       </div>
       {error ? (
         <p role="alert" className="mt-2 text-xs text-warn">

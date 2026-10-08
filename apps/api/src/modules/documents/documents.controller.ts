@@ -36,6 +36,7 @@ import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { OutlineService } from '../memory/outline.service.js';
 import { ClaimsService } from './claims.service.js';
+import { ClaimsDocumentService } from './claims-document.service.js';
 import { DocumentArchive } from './document-archive.service.js';
 import { DocumentCopier } from './document-copier.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
@@ -155,6 +156,7 @@ export class DocumentsController {
     private readonly autoSources: AutoSourcesService,
     private readonly outline: OutlineService,
     private readonly claimsMap: ClaimsService,
+    private readonly claimsDocument: ClaimsDocumentService,
   ) {}
 
   /**
@@ -411,6 +413,17 @@ export class DocumentsController {
   @HttpCode(200)
   mapClaims(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.claimsMap.map(user, id);
+  }
+
+  /**
+   * R38 (ADR-0123): the stored claims map as a new chapter of pending drafts, every claim cited
+   * from the papers the map read. Free: no model call, no allowance. The same map opens the same
+   * chapter again.
+   */
+  @Post(':id/claims/document')
+  @HttpCode(200)
+  openClaimsDocument(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.claimsDocument.open(user, id);
   }
 
   @Post(':id/copy')

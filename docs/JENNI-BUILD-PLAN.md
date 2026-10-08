@@ -305,4 +305,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R31 | Done 2026-10-08 — the limit message with the reset date on every screen | ADR-0122 |
 | R25 | Done 2026-10-08 — publication-year chart and venue spread in Source quality | ADR-0112 |
 | R34 | Done 2026-10-08 — Word import says why its citations were not linked | ADR-0113 |
+| R38 | Done 2026-10-08 — the gap analysis opens as an editable chapter of pending drafts | ADR-0123 |
 | R25–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

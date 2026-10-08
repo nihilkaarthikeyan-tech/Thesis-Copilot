@@ -21,11 +21,16 @@ import { aiCostMicroInr } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import { ClaimsDocumentService } from './claims-document.service.js';
 
 export type ClaimsMap = {
   computedAt: string;
-  /** The papers the map was read from, for the chips. */
-  papers: Array<{ id: string; title: string; year: number | null }>;
+  /**
+   * The papers the map was read from, for the chips. `chunkId` (ADR-0123) is the passage each was
+   * read from, so a citation made from the map points at what was actually read; maps made before
+   * it have none, and their citations name the paper alone.
+   */
+  papers: Array<{ id: string; title: string; year: number | null; chunkId?: string | null }>;
   claims: MappedClaim[];
 };
 
@@ -40,13 +45,23 @@ export class ClaimsService {
     private readonly redis: RedisService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
+    private readonly documents: ClaimsDocumentService,
   ) {}
 
-  /** The stored map, or null when the library has not been mapped. */
-  async get(ownerId: string, documentId: string): Promise<{ map: ClaimsMap | null }> {
+  /**
+   * The stored map, or null when the library has not been mapped; and the chapter this map was
+   * opened as (ADR-0123), while it exists.
+   */
+  async get(
+    ownerId: string,
+    documentId: string,
+  ): Promise<{ map: ClaimsMap | null; document: { chapterId: string; title: string } | null }> {
     const document = await this.owned(ownerId, documentId);
     const meta = (document.meta as { claims?: ClaimsMap } | null) ?? {};
-    return { map: meta.claims ?? null };
+    return {
+      map: meta.claims ?? null,
+      document: meta.claims ? await this.documents.current(documentId, meta) : null,
+    };
   }
 
   async map(user: { id: string }, documentId: string): Promise<{ map: ClaimsMap }> {
@@ -59,9 +74,13 @@ export class ClaimsService {
         id: true,
         title: true,
         year: true,
-        chunks: { orderBy: { ordinal: 'asc' }, take: 1, select: { text: true } },
+        chunks: { orderBy: { ordinal: 'asc' }, take: 1, select: { id: true, text: true } },
       },
     });
+    // The passage each paper is read from, kept with the map (ADR-0123).
+    const chunkOf = new Map(
+      sources.flatMap((s) => (s.chunks[0] ? [[s.id, s.chunks[0].id] as const] : [])),
+    );
     const papers: ClaimsMapPaper[] = sources.flatMap((s) => {
       // The first stored chunk: the abstract when that is all there is, else the paper's start.
       const text = (s.chunks[0]?.text ?? '').trim();
@@ -101,7 +120,12 @@ export class ClaimsService {
       );
       const map: ClaimsMap = {
         computedAt: new Date().toISOString(),
-        papers: papers.map(({ id, title, year }) => ({ id, title, year })),
+        papers: papers.map(({ id, title, year }) => ({
+          id,
+          title,
+          year,
+          chunkId: chunkOf.get(id) ?? null,
+        })),
         claims: processed.claims,
       };
       const meta = (document.meta as Record<string, unknown> | null) ?? {};

@@ -317,6 +317,16 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           {STUDENT.libraryPdfs} PDFs of up to {STUDENT.pdfMaxBytes / MB} MB and{' '}
           {STUDENT.pdfMaxPages} pages.
         </P>
+        <H2>Claims in your library</H2>
+        <P>
+          On the <L>Discover</L> tab, <L>Map the claims</L> reads your papers and lists what they
+          claim: under-explored, contested or well supported, with the papers for and against, a
+          direction for your thesis and the limits of the evidence. <L>Open as a document</L> puts
+          it in a new chapter you can edit: a table of the claims, then Under-explored, Contested,
+          Well supported, Directions and Limits, every claim cited from its papers. Each section
+          arrives as an AI draft you accept or discard; nothing is part of your thesis until you
+          accept it. Opening it costs nothing; the chapter can be deleted on the Outline screen.
+        </P>
         <H2>The badges</H2>
         <List>
           <li>
