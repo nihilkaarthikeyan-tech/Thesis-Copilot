@@ -224,7 +224,7 @@ describe('citation passage popover and rendered labels (PHASES 3.5)', () => {
     expect(popover).toBeTruthy();
     expect(popover.querySelector('.citation-popover__text')?.textContent).toBe(passage.text);
     expect(popover.querySelector('.citation-popover__ref')?.textContent).toBe(
-      'Kumar 2021 · p. 7 · Findings',
+      'Kumar 2021 · p. 7 · from its Findings',
     );
     const link = popover.querySelector('a.citation-popover__pdf') as HTMLAnchorElement;
     expect(link.textContent).toBe('Open PDF at page 7');

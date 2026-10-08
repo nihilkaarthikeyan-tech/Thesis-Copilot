@@ -6,12 +6,14 @@
  */
 
 import { Editor } from '@tiptap/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { thesisExtensions } from '../src/editor/extensions.js';
 
 let editor: Editor | null = null;
 let host: HTMLElement | null = null;
 afterEach(() => {
+  vi.restoreAllMocks();
+  delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight;
   editor?.destroy();
   editor = null;
   host?.remove();
@@ -95,5 +97,46 @@ describe('the citation card in a scrolling table', () => {
     window.dispatchEvent(new Event('scroll'));
     // A scroll moves the citation and its card together; nothing closes it.
     expect(node.querySelector('.citation-popover')).toBeTruthy();
+  });
+  it('opens upwards when there is no room below, within the window, and scrolls inside itself', async () => {
+    // QA 2026-10-08: a 721-px card ran off the bottom of a 768-px window, out of reach.
+    const real = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains('citation')) {
+        return {
+          top: 600,
+          bottom: 620,
+          left: 20,
+          right: 80,
+          width: 60,
+          height: 20,
+          x: 20,
+          y: 600,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      return real.call(this);
+    });
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.classList.contains('citation-popover') ? 500 : 0;
+      },
+    });
+    const node = await hover(true);
+    const card = node.querySelector('.citation-popover') as HTMLElement;
+    expect(window.innerHeight).toBe(768);
+    // 140 px below the citation, 592 above: the card goes above, its bottom at the citation.
+    expect(Number.parseFloat(card.style.top)).toBe(100);
+    expect(Number.parseFloat(card.style.maxHeight)).toBe(592);
+    expect(card.style.overflowY).toBe('auto');
+
+    // Scrolling the card's own passage does not close it; a scroll anywhere else does.
+    card.dispatchEvent(new Event('scroll'));
+    expect(node.querySelector('.citation-popover')).toBeTruthy();
+    window.dispatchEvent(new Event('scroll'));
+    expect(node.querySelector('.citation-popover')).toBeNull();
   });
 });

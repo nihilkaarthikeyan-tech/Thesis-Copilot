@@ -187,6 +187,25 @@ describe('claimsDocument', () => {
     );
   });
 
+  it('lists a "well supported" claim with fewer than three papers as under-explored', () => {
+    // QA 2026-10-08: the section says "three or more papers agree"; it listed one two supported.
+    const built = build({
+      ...MAP,
+      claims: [
+        claim({
+          claim: 'Two papers agree on this',
+          status: 'well-supported',
+          supporting: ['p1', 'p2'],
+        }),
+      ],
+    });
+    const blocks = built.blocks as Node[];
+    expect(textOf(blockOf(blocks, 'well-supported'))).not.toContain('Two papers agree on this');
+    expect(textOf(blockOf(blocks, 'under-explored'))).toContain(
+      'Two papers agree on this [p1][p2]. Supported here by two papers.',
+    );
+  });
+
   it('leaves out a claim with none of its papers left, and says so', () => {
     const built = build();
     expect(built.claims).toBe(3);
@@ -209,9 +228,9 @@ describe('claimsDocument', () => {
   it('puts the claims in a table: claim, status, evidence, direction', () => {
     const block = blockOf(build().blocks as Node[], 'claims');
     const summary = textOf(block.content?.[1] as Node);
-    expect(summary).toContain('This mapping read 4 papers in your library on 5 October 2026');
-    expect(summary).toContain('found 3 claims');
-    expect(summary).toContain('1 under-explored, 1 contested, 1 well supported');
+    expect(summary).toContain('This mapping read four papers in your library on 5 October 2026');
+    expect(summary).toContain('found three claims');
+    expect(summary).toContain('one under-explored, one contested, one well supported');
     const table = block.content?.[2] as Node;
     expect(table.type).toBe('table');
     expect(table.attrs?.refId).toBe('r_test1');

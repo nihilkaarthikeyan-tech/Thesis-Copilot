@@ -100,8 +100,11 @@ const day = (iso: string): string => {
       });
 };
 
+const SMALL = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+/** "one paper", "two papers", "12 papers": small numbers in words, the same way every time. */
 const count = (n: number, one: string, many: string): string =>
-  n === 1 ? `one ${one}` : `${n} ${many}`;
+  `${SMALL[n] ?? n} ${n === 1 ? one : many}`;
 
 const Count = (n: number, one: string, many: string): string => {
   const s = count(n, one, many);
@@ -135,7 +138,11 @@ export function claimsDocument(input: ClaimsDocumentInput): ClaimsDocument {
       continue;
     }
     for (const id of [...claim.supporting, ...claim.contrasting]) if (!has(id)) missing.add(id);
-    kept.push({ ...claim, supporting, contrasting: claim.contrasting.filter(has) });
+    // QA 2026-10-08: the section says "three or more papers agree"; the model's label is held to
+    // that by count, so a claim two papers support is listed as under-explored, as its text says.
+    const status =
+      claim.status === 'well-supported' && supporting.length < 3 ? 'under-explored' : claim.status;
+    kept.push({ ...claim, status, supporting, contrasting: claim.contrasting.filter(has) });
   }
   kept.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
   const byStatus = (status: MappedClaimStatus) => kept.filter((c) => c.status === status);
@@ -185,7 +192,7 @@ export function claimsDocument(input: ClaimsDocumentInput): ClaimsDocument {
       case 'claims': {
         const statusLine = STATUS_ORDER.map((status) => {
           const n = byStatus(status).length;
-          return `${n} ${STATUS_LABEL[status].toLowerCase()}`;
+          return `${SMALL[n] ?? n} ${STATUS_LABEL[status].toLowerCase()}`;
         }).join(', ');
         body.push(
           paragraph(

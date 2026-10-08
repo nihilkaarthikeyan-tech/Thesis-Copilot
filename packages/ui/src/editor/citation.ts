@@ -612,7 +612,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       let popover: HTMLElement | null = null;
       let hoverTimer: ReturnType<typeof setTimeout> | null = null;
       let hoverToken = 0;
-      let closeOnScroll: (() => void) | null = null;
+      let closeOnScroll: ((event: Event) => void) | null = null;
 
       /** The cluster this node shows, when it is the first node of one the server rendered. */
       const shownCluster = (): { id: string; keys: string[]; label: string } | null => {
@@ -659,7 +659,8 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         head.textContent = [
           passage.shortRef,
           passage.page !== null ? `p. ${passage.page}` : null,
-          passage.section,
+          // "from its Abstract": the part of the paper this passage is, not how much was read.
+          passage.section ? `from its ${passage.section}` : null,
         ]
           .filter(Boolean)
           .join(' · ');
@@ -785,10 +786,26 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         const at = dom.getBoundingClientRect();
         const width = Math.min(352, Math.max(0, window.innerWidth - 16));
         el.style.position = 'fixed';
-        el.style.top = `${at.bottom}px`;
         el.style.left = `${Math.max(8, Math.min(at.left, window.innerWidth - width - 8))}px`;
         el.style.width = `${width}px`;
-        closeOnScroll = closePopover;
+        // QA 2026-10-08: a long passage ran off the bottom of a 768-px window, out of reach. The
+        // card goes where there is more room, below or above the citation, and scrolls inside
+        // itself when even that is not enough.
+        const below = window.innerHeight - at.bottom - 8;
+        const above = at.top - 8;
+        const room = Math.max(below, above);
+        el.style.maxHeight = `${Math.max(120, room)}px`;
+        el.style.overflowY = 'auto';
+        el.style.marginTop = '0';
+        const height = Math.min(el.offsetHeight, Math.max(120, room));
+        el.style.top =
+          below >= height || below >= above ? `${at.bottom}px` : `${at.top - height}px`;
+        closeOnScroll = (event: Event) => {
+          // Scrolling the card's own passage keeps it open; anything else moves the citation.
+          const target = event.target as { nodeType?: number } | null;
+          if (target?.nodeType && el.contains(target as globalThis.Node)) return;
+          closePopover();
+        };
         window.addEventListener('scroll', closeOnScroll, true);
       };
 
@@ -796,8 +813,9 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         closePopover();
         const el = popoverShell();
         fillPassage(el, passage, current.attrs as CitationAttrs);
-        placeInTable(el);
+        // Placed after it is in the page, so its height can be measured.
         dom.appendChild(el);
+        placeInTable(el);
         popover = el;
       };
 
@@ -915,8 +933,8 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         el.appendChild(tabs);
         el.appendChild(body);
         select(0);
-        placeInTable(el);
         dom.appendChild(el);
+        placeInTable(el);
         popover = el;
       };
 
