@@ -89,6 +89,7 @@ enum AiAction {
   CHAPTER_BUILD // ADR-0039: one planned, checked chapter, delivered as drafts to accept
   EXAMINER_REVIEW // ADR-0056: a strict examiner's reading of a chapter the student wrote
   RESEARCH      // ADR-0080: deep research in chat — plan, searches and a part-by-part answer
+  LIT_REVIEW_BUILD // ADR-0124: a whole literature review, delivered as drafts to accept
 }
 enum FlagType {
   TERM_DRIFT
@@ -748,6 +749,8 @@ model ChapterBuild {
   userId      String    @db.Uuid
   /// QUEUED | RUNNING | DONE | REFUSED | FAILED
   status      String    @default("QUEUED")
+  /// ADR-0124: CHAPTER (one chapter, ADR-0039) | LIT_REVIEW (the whole literature review)
+  kind        String    @default("CHAPTER")
   /// { disciplineId, paradigm, universityId, language }
   profile     Json
   /// The stage the worker is at and how far: { stage, sectionsTotal, sectionsDone, note? }

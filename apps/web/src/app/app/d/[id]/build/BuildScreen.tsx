@@ -8,8 +8,13 @@
  * section from the library, checks it, has the examiner review it, fixes what it can once, and
  * delivers the sections as pending drafts in the chapter with the QA report shown here. Nothing
  * becomes thesis text until the student accepts each block in the editor.
+ *
+ * ADR-0124: behind its flag, "Write the whole literature review" does the same for every theme of
+ * the literature review chapter — the themes planned in code from the outline and the literature
+ * search, confirmed here, then one unit of its own allowance.
  */
 
+import { LIT_REVIEW_MAX_THEMES } from '@tc/types';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { LimitNotice, useLimit } from '@/components/LimitNotice';
@@ -38,6 +43,8 @@ type Profiles = {
 type Progress = { stage: string; sectionsTotal: number; sectionsDone: number; note?: string };
 type BuildSummary = {
   id: string;
+  /** ADR-0124: CHAPTER, or LIT_REVIEW for a whole literature review. */
+  kind?: string;
   chapterId: string;
   chapterTitle: string;
   status: string;
@@ -61,6 +68,23 @@ type Overview = {
   builds: BuildSummary[];
   remaining: { used: number; cap: number } | null;
   hasCoAuthor: boolean;
+  /** ADR-0124: off (the flag), or the chapters a whole review can be written into. */
+  literatureReview?: LiteratureReviewOffer;
+};
+type LiteratureReviewOffer =
+  | { enabled: false }
+  | {
+      enabled: true;
+      chapters: Array<{ id: string; title: string; order: number; pendingBuild: boolean }>;
+      remaining: { used: number; cap: number };
+    };
+type Theme = {
+  id: string;
+  title: string;
+  note: string;
+  outlineNodeId: string | null;
+  children: Array<{ title: string; scopeNote: string }>;
+  from: 'outline' | 'library' | 'student';
 };
 type Issue = {
   id: string;
@@ -142,6 +166,7 @@ type Plan = {
   sections: Array<{ id: string; title: string; isObjectives: boolean }>;
   coverage: Record<string, string[]>;
   uncovered: string[];
+  themes?: Theme[];
 };
 type BuildView = BuildSummary & {
   profile: Profile;
@@ -163,6 +188,16 @@ const STAGE_LABEL: Record<string, string> = {
   fixing: 'Fixing flagged sentences',
   delivering: 'Placing the drafts in your chapter',
 };
+
+/** The stage in words; a literature review plans a review, not a chapter (ADR-0124). */
+const stageLabel = (stage: string, kind?: string): string =>
+  kind === 'LIT_REVIEW' && stage === 'planning'
+    ? 'Planning the review'
+    : kind === 'LIT_REVIEW' && stage === 'delivering'
+      ? 'Placing the review’s sections in your chapter'
+      : (STAGE_LABEL[stage] ?? stage);
+
+const isReview = (b: { kind?: string }) => b.kind === 'LIT_REVIEW';
 
 const problem = (e: unknown, fallback: string) =>
   e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : fallback;
@@ -420,6 +455,22 @@ export function BuildScreen({ documentId }: { documentId: string }) {
         ) : null}
       </section>
 
+      {/* ADR-0124: offered only while the flag is on; the API refuses it otherwise. */}
+      {overview?.literatureReview?.enabled && profile ? (
+        <LiteratureReviewCard
+          documentId={documentId}
+          offer={overview.literatureReview}
+          allChapters={overview.chapters}
+          profile={profile}
+          running={running}
+          hasCoAuthor={overview.hasCoAuthor}
+          onPlanned={async (id) => {
+            setSelected(id);
+            await load();
+          }}
+        />
+      ) : null}
+
       {overview && overview.builds.length > 0 ? (
         <section className="mt-6">
           <h2 className="eyebrow">Builds</h2>
@@ -434,8 +485,10 @@ export function BuildScreen({ documentId }: { documentId: string }) {
                   onClick={() => setSelected(b.id)}
                   className={`flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left hover:bg-surface-2 ${selected === b.id ? 'bg-surface-2' : ''}`}
                 >
-                  <span>
-                    <span className="font-medium text-ink">{b.chapterTitle}</span>
+                  <span className="min-w-0">
+                    <span className="font-medium text-ink">
+                      {isReview(b) ? `Literature review · ${b.chapterTitle}` : b.chapterTitle}
+                    </span>
                     <span className="ml-2 text-xs text-muted">
                       {new Date(b.createdAt).toLocaleString()}
                     </span>
@@ -463,13 +516,17 @@ export function BuildScreen({ documentId }: { documentId: string }) {
 
 function StatusBadge({ build }: { build: BuildSummary }) {
   if (build.status === 'PLANNED')
-    return <Badge tone="neutral">Planned · confirm the key terms</Badge>;
+    return (
+      <Badge tone="neutral">
+        {isReview(build) ? 'Planned · confirm the themes' : 'Planned · confirm the key terms'}
+      </Badge>
+    );
   if (build.status === 'RUNNING' || build.status === 'QUEUED') {
     const p = build.progress;
     return (
       <Badge tone="accent">
         {p
-          ? `${STAGE_LABEL[p.stage] ?? p.stage}${p.sectionsTotal ? ` · ${p.sectionsDone}/${p.sectionsTotal}` : ''}`
+          ? `${stageLabel(p.stage, build.kind)}${p.sectionsTotal ? ` · ${p.sectionsDone}/${p.sectionsTotal}` : ''}`
           : 'Queued'}
       </Badge>
     );
@@ -532,6 +589,20 @@ function BuildDetail({
   const report = view.report;
   const plan = view.plan;
 
+  if (view.status === 'PLANNED' && isReview(view)) {
+    return (
+      <ThemesEditor
+        key={view.id}
+        documentId={documentId}
+        view={view}
+        onChanged={async () => {
+          await load();
+          onChanged();
+        }}
+      />
+    );
+  }
+
   if (view.status === 'PLANNED') {
     return (
       // Keyed by the build, so a re-plan starts the editor's state from the new terms rather than
@@ -556,7 +627,7 @@ function BuildDetail({
         className="mt-6 rounded-md border border-line bg-surface p-4 text-sm"
         data-testid="build-progress"
       >
-        <p className="font-medium text-ink">{p ? (STAGE_LABEL[p.stage] ?? p.stage) : 'Queued'}</p>
+        <p className="font-medium text-ink">{p ? stageLabel(p.stage, view.kind) : 'Queued'}</p>
         {p?.note ? <p className="mt-1 text-xs text-muted">{p.note}</p> : null}
         {p && p.sectionsTotal > 0 ? (
           <div className="mt-3 h-2 w-full overflow-hidden rounded bg-surface-2">
@@ -567,7 +638,9 @@ function BuildDetail({
           </div>
         ) : null}
         <p className="mt-3 text-xs text-muted" data-testid="job-email-note">
-          A chapter takes a few minutes.{' '}
+          {isReview(view)
+            ? 'A whole literature review takes ten to twenty minutes.'
+            : 'A chapter takes a few minutes.'}{' '}
           {emailOn ? JOB_EMAIL_NOTE : 'You can leave this page; the build carries on.'}
         </p>
       </section>
@@ -619,7 +692,10 @@ function BuildDetail({
     <section className="mt-6" data-testid="build-report">
       <div className="rounded-md border border-line bg-surface p-4 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-[17px] font-bold text-ink">QA report · {view.chapterTitle}</h2>
+          <h2 className="min-w-0 text-[17px] font-bold text-ink">
+            QA report · {isReview(view) ? 'Literature review · ' : ''}
+            {view.chapterTitle}
+          </h2>
           <StatusBadge build={view} />
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
@@ -1187,6 +1263,338 @@ function PlanEditor({
         </p>
       ) : null}
       <LimitNotice limit={limit.value} className="mt-3" />
+    </section>
+  );
+}
+
+/**
+ * ADR-0124: "Write the whole literature review". Planning is free and makes no model call; the
+ * unit is taken when the student presses Write on the themes below.
+ */
+function LiteratureReviewCard({
+  documentId,
+  offer,
+  allChapters,
+  profile,
+  running,
+  hasCoAuthor,
+  onPlanned,
+}: {
+  documentId: string;
+  offer: Extract<LiteratureReviewOffer, { enabled: true }>;
+  allChapters: Overview['chapters'];
+  profile: Profile;
+  running: boolean;
+  hasCoAuthor: boolean;
+  onPlanned: (buildId: string) => Promise<void>;
+}) {
+  const [chapterId, setChapterId] = useState(offer.chapters[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!offer.chapters.some((c) => c.id === chapterId)) setChapterId(offer.chapters[0]?.id ?? '');
+  }, [offer.chapters, chapterId]);
+
+  const chapter = offer.chapters.find((c) => c.id === chapterId) ?? null;
+  const left = Math.max(0, offer.remaining.cap - offer.remaining.used);
+
+  const plan = async () => {
+    if (!chapter) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const view = await api<{ id: string }>(`/documents/${documentId}/literature-review`, {
+        method: 'POST',
+        body: JSON.stringify({ chapterId: chapter.id, profile }),
+      });
+      await onPlanned(view.id);
+    } catch (e) {
+      setError(problem(e, 'Could not plan the review. Nothing was charged.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section
+      className="mt-6 rounded-md border border-line bg-surface p-4 text-sm"
+      data-testid="litreview-card"
+    >
+      <h2 className="text-[17px] font-bold text-ink">Write the whole literature review</h2>
+      <p className="mt-1 text-muted">
+        One press writes every section of your literature review chapter: an introduction to the
+        review, a section for each theme (from your outline and your literature search — you can
+        change them first), the framework where your discipline needs one, the gaps, the link to
+        your objectives and a summary. Each is written from your library, searching for papers where
+        it has none, checked, read by an examiner, and placed in the chapter as a draft for you to
+        accept or discard, with the QA report. Up to {LIT_REVIEW_MAX_THEMES + 5} sections.
+      </p>
+      {offer.chapters.length === 0 ? (
+        <p className="mt-3 text-xs text-warn" data-testid="litreview-no-chapter">
+          Your thesis has no literature review chapter yet. Give a chapter a title such as
+          “Literature review” on the{' '}
+          <Link href={`/app/d/${documentId}/outline`} className="underline">
+            Outline page
+          </Link>
+          .
+        </p>
+      ) : (
+        <label className="mt-3 block text-xs text-muted" htmlFor="lr-chapter">
+          Literature review chapter
+          <Select
+            id="lr-chapter"
+            value={chapterId}
+            onChange={(e) => setChapterId(e.target.value)}
+            className="mt-1 w-full min-w-0"
+            data-testid="litreview-chapter"
+          >
+            {offer.chapters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {chapterLabel(
+                  c.title,
+                  Math.max(
+                    0,
+                    allChapters.findIndex((a) => a.id === c.id),
+                  ),
+                )}
+                {c.pendingBuild ? ' (drafts waiting)' : ''}
+              </option>
+            ))}
+          </Select>
+        </label>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void plan()}
+          disabled={
+            busy || running || !chapter || left === 0 || hasCoAuthor || chapter.pendingBuild
+          }
+          data-testid="litreview-plan"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
+        >
+          {busy ? 'Planning…' : 'Plan the review'}
+        </button>
+        <span className="text-xs text-muted" data-testid="litreview-left">
+          {offer.remaining.cap > 0
+            ? `${left} of ${offer.remaining.cap} literature review builds left this month · planning is free`
+            : 'Not included in your plan yet'}
+        </span>
+      </div>
+      {chapter?.pendingBuild ? (
+        <p className="mt-2 text-xs text-warn">
+          This chapter still has built sections waiting for your decision.{' '}
+          <Link href={`/app/d/${documentId}/write/${chapter.id}`} className="underline">
+            Open it
+          </Link>{' '}
+          and accept or discard them first.
+        </p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-warn">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+type ThemeRow = {
+  key: number;
+  id?: string;
+  title: string;
+  note: string;
+  from: Theme['from'];
+  subheadings: number;
+};
+
+const FROM_LABEL: Record<Theme['from'], string> = {
+  outline: 'from your outline',
+  library: 'from your literature search',
+  student: 'added by you',
+};
+
+/**
+ * ADR-0124: the review's themes, one section each, for the student to rename, reorder, remove or
+ * add before the unit is taken. Nothing is charged on this screen.
+ */
+function ThemesEditor({
+  documentId,
+  view,
+  onChanged,
+}: {
+  documentId: string;
+  view: BuildView;
+  onChanged: () => Promise<void>;
+}) {
+  const [rows, setRows] = useState<ThemeRow[]>(
+    (view.plan?.themes ?? []).map((t) => ({
+      key: ++rowKey,
+      id: t.id,
+      title: t.title,
+      note: t.note,
+      from: t.from,
+      subheadings: t.children.length,
+    })),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const update = (i: number, patch: Partial<ThemeRow>) =>
+    setRows((current) => current.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const move = (i: number, by: -1 | 1) =>
+    setRows((current) => {
+      const j = i + by;
+      const a = current[i];
+      const b = current[j];
+      if (!a || !b) return current;
+      const next = [...current];
+      next[i] = b;
+      next[j] = a;
+      return next;
+    });
+
+  const write = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/documents/${documentId}/literature-review/${view.id}/plan`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          themes: rows
+            .filter((r) => r.title.trim().length > 0)
+            .map((r) => ({
+              title: r.title.trim(),
+              note: r.note.trim(),
+              ...(r.id ? { id: r.id } : {}),
+            })),
+        }),
+      });
+      await api(`/documents/${documentId}/literature-review/${view.id}/start`, {
+        method: 'POST',
+        body: '{}',
+      });
+      await onChanged();
+    } catch (e) {
+      setError(problem(e, 'Could not start the review. Nothing was charged.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section
+      className="mt-6 rounded-md border border-line bg-surface p-4 text-sm"
+      data-testid="litreview-plan-editor"
+    >
+      <h2 className="min-w-0 text-[17px] font-bold text-ink">
+        Confirm the themes · {view.chapterTitle}
+      </h2>
+      <p className="mt-1 text-xs text-muted">
+        Each theme becomes one section of the review, in this order, after the introduction and
+        before the gaps. They come from your outline and from your literature search: rename,
+        reorder, remove or add (up to {LIT_REVIEW_MAX_THEMES}). A note says what the section should
+        cover. Nothing is charged until you press Write.
+      </p>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-xs text-muted" data-testid="litreview-no-themes">
+          No themes yet. Add the themes your review should cover, or leave the list empty and the
+          review will be planned from the key terms of your objectives.
+        </p>
+      ) : null}
+      <ol className="mt-3 grid grid-cols-1 gap-3" data-testid="litreview-themes">
+        {rows.map((row, i) => (
+          <li
+            key={row.key}
+            className="grid min-w-0 grid-cols-1 gap-2 rounded-md border border-line p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+          >
+            <label className="min-w-0 text-xs text-muted" htmlFor={`theme-${row.key}`}>
+              Theme {i + 1} · {FROM_LABEL[row.from]}
+              <input
+                id={`theme-${row.key}`}
+                value={row.title}
+                maxLength={120}
+                onChange={(e) => update(i, { title: e.target.value })}
+                className="mt-1 w-full min-w-0 rounded border border-line bg-transparent px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <label className="min-w-0 text-xs text-muted" htmlFor={`theme-note-${row.key}`}>
+              What it should cover (optional)
+              <input
+                id={`theme-note-${row.key}`}
+                value={row.note}
+                maxLength={400}
+                onChange={(e) => update(i, { note: e.target.value })}
+                className="mt-1 w-full min-w-0 rounded border border-line bg-transparent px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:col-span-2">
+              <button
+                type="button"
+                className="text-muted underline disabled:opacity-40"
+                disabled={i === 0}
+                onClick={() => move(i, -1)}
+              >
+                Move up
+              </button>
+              <button
+                type="button"
+                className="text-muted underline disabled:opacity-40"
+                disabled={i === rows.length - 1}
+                onClick={() => move(i, 1)}
+              >
+                Move down
+              </button>
+              <button
+                type="button"
+                className="text-muted underline"
+                onClick={() => setRows((current) => current.filter((_, j) => j !== i))}
+              >
+                Remove
+              </button>
+              {row.subheadings > 0 ? (
+                <span className="text-faint">
+                  {row.subheadings} subheading{row.subheadings === 1 ? '' : 's'} from your outline
+                </span>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        className="mt-2 text-xs text-accent underline disabled:opacity-40"
+        disabled={rows.length >= LIT_REVIEW_MAX_THEMES}
+        onClick={() =>
+          setRows((current) => [
+            ...current,
+            { key: ++rowKey, title: '', note: '', from: 'student', subheadings: 0 },
+          ])
+        }
+        data-testid="litreview-add-theme"
+      >
+        Add a theme
+      </button>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void write()}
+          disabled={busy}
+          data-testid="litreview-start"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
+        >
+          {busy ? 'Starting…' : 'Write the literature review (1 unit)'}
+        </button>
+        <span className="text-xs text-muted">
+          About ten to twenty minutes. The sections arrive in the chapter as drafts to accept.
+        </span>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-warn">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }

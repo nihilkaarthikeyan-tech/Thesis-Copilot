@@ -5,7 +5,7 @@
  * charge and the cap check read, so this page cannot drift from what actually happens.
  */
 
-import { METERED_ACTIONS, PLAN_LIMITS, PRICING } from '@tc/config';
+import { METERED_ACTIONS, offeredOnSomePlan, PLAN_LIMITS, PRICING } from '@tc/config';
 import Link from 'next/link';
 import { allowanceName } from '@/lib/action-names';
 
@@ -88,7 +88,8 @@ export default function PricingPage() {
             </tr>
           </thead>
           <tbody>
-            {METERED_ACTIONS.map((action) => (
+            {/* ADR-0124: an allowance no plan includes yet is not advertised. */}
+            {METERED_ACTIONS.filter(offeredOnSomePlan).map((action) => (
               <tr key={action} className="border-t border-line">
                 <td className="px-3 py-2">{ACTION_LABEL[action] ?? allowanceName(action)}</td>
                 {PLANS.map((plan) => (

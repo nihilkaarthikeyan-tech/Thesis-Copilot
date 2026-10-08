@@ -204,6 +204,22 @@ describe('starting a search', () => {
     expect(jobs[0]?.id).not.toContain(':');
   });
 
+  it('given a section, keys on it: each theme of a review is its own search (ADR-0124)', async () => {
+    const jobs: Array<{ id: string }> = [];
+    const f = fakes();
+    const now = new Date('2026-10-01T10:00:00Z');
+    const start = (section: string) =>
+      startFindSources({ prisma: f.deps.prisma, enqueue: enqueueInto(jobs) }, JOB, now, section);
+    expect(await start('Wear of hybrid composites')).toBe(true);
+    expect(await start('Corrosion behaviour')).toBe(true);
+    expect(jobs.map((j) => j.id)).toEqual([
+      autoSourcesJobKey('ch-1', now, 'Wear of hybrid composites'),
+      autoSourcesJobKey('ch-1', now, 'Corrosion behaviour'),
+    ]);
+    expect(new Set(jobs.map((j) => j.id)).size).toBe(2);
+    expect(jobs.every((j) => !j.id.includes(':'))).toBe(true);
+  });
+
   it('does not start one when the switch is off, the student opted out, or the month is used up', async () => {
     for (const options of [
       { flag: false },

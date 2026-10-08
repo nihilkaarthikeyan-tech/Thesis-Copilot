@@ -15,15 +15,18 @@ import {
 import {
   CHECKS,
   capFor,
+  chapterRoleFor,
   computeCallCost,
   DISCIPLINE_PROFILES,
   disciplineProfile,
   type Env,
   LANGUAGES,
+  LIT_REVIEW_BUILD_FLAG,
   PARADIGM_LABELS,
   PARADIGMS,
   type Plan,
   suggestDiscipline,
+  type Template,
   UNIVERSITY_PROFILES,
   universityProfile,
 } from '@tc/config';
@@ -46,12 +49,15 @@ import { ConflictError, NotFoundError, ValidationError } from '../../common/erro
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import { FlagsService } from '../flags/flags.service.js';
 import { RatingsService, type RunRating } from '../ratings/ratings.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { qaReportHtml } from './qa-report-html.js';
 
 export type BuildSummary = {
   id: string;
+  /** ADR-0124: CHAPTER (ADR-0039) or LIT_REVIEW, the whole literature review. */
+  kind: string;
   chapterId: string;
   chapterTitle: string;
   status: string;
@@ -102,7 +108,21 @@ export type OverviewView = {
   builds: BuildSummary[];
   remaining: { used: number; cap: number } | null;
   hasCoAuthor: boolean;
+  /**
+   * ADR-0124: the whole literature review. `enabled` is the feature flag; off, nothing else is
+   * said and the screen does not offer it. On: the chapters it can write (the ones the build
+   * calls LITERATURE) and the allowance, which is 0 on every plan until the owner sets one.
+   */
+  literatureReview: LiteratureReviewOffer;
 };
+
+export type LiteratureReviewOffer =
+  | { enabled: false }
+  | {
+      enabled: true;
+      chapters: Array<{ id: string; title: string; order: number; pendingBuild: boolean }>;
+      remaining: { used: number; cap: number };
+    };
 
 @Injectable()
 export class ChapterBuildService {
@@ -115,6 +135,7 @@ export class ChapterBuildService {
     private readonly ratings: RatingsService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
+    private readonly flags: FlagsService,
   ) {}
 
   profiles(): ProfilesView {
@@ -140,7 +161,7 @@ export class ChapterBuildService {
     };
   }
 
-  private async owned(ownerId: string, documentId: string) {
+  async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
       select: {
@@ -148,9 +169,17 @@ export class ChapterBuildService {
         title: true,
         field: true,
         language: true,
+        template: true,
         meta: true,
         chapters: {
-          select: { id: true, title: true, order: true, wordCount: true, content: true },
+          select: {
+            id: true,
+            title: true,
+            order: true,
+            outlineNodeId: true,
+            wordCount: true,
+            content: true,
+          },
           orderBy: { order: 'asc' },
         },
         shares: { where: { canEdit: true }, select: { id: true }, take: 1 },
@@ -190,6 +219,7 @@ export class ChapterBuildService {
       take: 20,
       select: {
         id: true,
+        kind: true,
         chapterId: true,
         status: true,
         progress: true,
@@ -201,10 +231,12 @@ export class ChapterBuildService {
     });
     const titles = new Map(document.chapters.map((c) => [c.id, c.title]));
     const usage = await this.usage.usageFor(user.id);
-    const row = usage.find((a) => a.action === 'CHAPTER_BUILD');
-    const line = {
-      used: row?.count ?? 0,
-      cap: capFor(user.plan as Plan, 'CHAPTER_BUILD') + (row?.bonus ?? 0),
+    const lineFor = (action: 'CHAPTER_BUILD' | 'LIT_REVIEW_BUILD') => {
+      const row = usage.find((a) => a.action === action);
+      return {
+        used: row?.count ?? 0,
+        cap: capFor(user.plan as Plan, action) + (row?.bonus ?? 0),
+      };
     };
     return {
       profile,
@@ -217,9 +249,26 @@ export class ChapterBuildService {
         pendingBuild: hasPendingBuildBlocks(c.content),
       })),
       builds: builds.map((b) => summarise(b, titles.get(b.chapterId) ?? 'A deleted chapter')),
-      remaining: line,
+      remaining: lineFor('CHAPTER_BUILD'),
       hasCoAuthor: document.shares.length > 0,
+      literatureReview: (await this.literatureReviewEnabled())
+        ? {
+            enabled: true,
+            chapters: literatureChapters(document).map((c) => ({
+              id: c.id,
+              title: c.title,
+              order: c.order,
+              pendingBuild: hasPendingBuildBlocks(c.content),
+            })),
+            remaining: lineFor('LIT_REVIEW_BUILD'),
+          }
+        : { enabled: false },
     };
+  }
+
+  /** ADR-0124: the DB-backed switch, read at request time (cached 60 s), off by default. */
+  literatureReviewEnabled(): Promise<boolean> {
+    return this.flags.isEnabled(LIT_REVIEW_BUILD_FLAG);
   }
 
   async saveProfile(ownerId: string, documentId: string, body: unknown): Promise<ChapterProfile> {
@@ -244,8 +293,11 @@ export class ChapterBuildService {
     return parsed.data;
   }
 
-  /** The refusals that cost nothing, shared by the plan step and the start. */
-  private async guard(user: { id: string }, documentId: string, chapterId: string) {
+  /**
+   * The refusals that cost nothing, shared by the plan step and the start — of a chapter build and
+   * of a literature review build (ADR-0124), which write the chapter the same way.
+   */
+  async guard(user: { id: string }, documentId: string, chapterId: string) {
     const document = await this.owned(user.id, documentId);
     const chapter = document.chapters.find((c) => c.id === chapterId);
     if (!chapter) throw new NotFoundError('That chapter');
@@ -296,7 +348,7 @@ export class ChapterBuildService {
 
     // Older PLANNED rows for this chapter are superseded; they never cost anything.
     await this.prisma.chapterBuild.deleteMany({
-      where: { documentId, chapterId, status: 'PLANNED' },
+      where: { documentId, chapterId, status: 'PLANNED', kind: 'CHAPTER' },
     });
 
     const input = {
@@ -380,7 +432,9 @@ export class ChapterBuildService {
     const parsed = planEditSchema.safeParse(body);
     if (!parsed.success) throw new ValidationError('Check the key terms.', parsed.error.issues);
     await this.owned(ownerId, documentId);
-    const build = await this.prisma.chapterBuild.findFirst({ where: { id: buildId, documentId } });
+    const build = await this.prisma.chapterBuild.findFirst({
+      where: { id: buildId, documentId, kind: 'CHAPTER' },
+    });
     if (!build) throw new NotFoundError('That build');
     if (build.status !== 'PLANNED') {
       throw new ConflictError('This build has already started; its key terms are fixed.');
@@ -444,8 +498,9 @@ export class ChapterBuildService {
     documentId: string,
     buildId: string,
   ): Promise<{ buildId: string }> {
+    // A literature review row (ADR-0124) is started by its own route, on its own unit.
     const build = await this.prisma.chapterBuild.findFirst({
-      where: { id: buildId, documentId, userId: user.id },
+      where: { id: buildId, documentId, userId: user.id, kind: 'CHAPTER' },
     });
     if (!build) throw new NotFoundError('That build');
     if (build.status !== 'PLANNED') throw new ConflictError('This build has already started.');
@@ -497,7 +552,8 @@ export class ChapterBuildService {
     );
     const html = qaReportHtml({
       thesisTitle: document.title,
-      chapterTitle: view.chapterTitle,
+      chapterTitle:
+        view.kind === 'LIT_REVIEW' ? `Literature review · ${view.chapterTitle}` : view.chapterTitle,
       studentName: details.studentName,
       disciplineName: disciplineProfile(view.profile.disciplineId).displayName,
       paradigm:
@@ -652,6 +708,7 @@ export class ChapterBuildService {
 function summarise(
   b: {
     id: string;
+    kind: string;
     chapterId: string;
     status: string;
     progress: unknown;
@@ -665,6 +722,7 @@ function summarise(
   const report = b.report as ChapterBuildReport | null;
   return {
     id: b.id,
+    kind: b.kind,
     chapterId: b.chapterId,
     chapterTitle,
     status: b.status,
@@ -675,6 +733,23 @@ function summarise(
     sections: report?.sections.length ?? null,
     error: b.error,
   };
+}
+
+/**
+ * ADR-0124: the chapters a literature review build may write — the ones the chapter build itself
+ * would plan as LITERATURE (`chapterRoleFor`, the worker's rule).
+ */
+export function literatureChapters<
+  C extends { id: string; title: string; order: number; outlineNodeId: string },
+>(document: {
+  chapters: readonly C[];
+  template: Template | null;
+  memory: { outline: unknown } | null;
+}): C[] {
+  const outline = readOutline(document.memory?.outline);
+  return document.chapters.filter(
+    (c) => chapterRoleFor(c, outline, document.template) === 'LITERATURE',
+  );
 }
 
 /** A chapter with a `draftBlock` still `pending` from a build: the student has not decided yet. */

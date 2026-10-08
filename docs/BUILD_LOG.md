@@ -5722,3 +5722,11 @@ the single and the cluster card use `placeInTable`), and draft headers wrap on a
 ui 218, the claims/section/draft API files (38) and web 221 pass. Its browser spec
 (`e2e/claims-document.spec.ts`) is not yet run — next session, before the release.
 
+R37 (ADR-0124): a whole literature review from one press — the chapter build's pipeline over up
+to 15 confirmed themes (20 sections), themes planned in code from the outline and the search's gap
+map, delivered as pending drafts with the QA report and the email. Its own LIT_REVIEW_BUILD unit
+(migration 0050), priced ₹12.92 a build, cap 0 on every plan and behind the off
+`literatureReviewBuild` flag (the owner sets the price later), so no total moves. On the way:
+/draft accept knows the review's sections, and each theme searches on its own key. On main: config
+84, worker 222, web 221 and four API files (28) pass, after Docker Desktop had to be restarted.
+

@@ -9,7 +9,7 @@
  * change the article with it.
  */
 
-import { METERED_ACTIONS, PLAN_LIMITS } from '@tc/config';
+import { METERED_ACTIONS, offeredOnSomePlan, PLAN_LIMITS } from '@tc/config';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Kbd } from '@/components/ui/primitives';
@@ -606,7 +606,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
               </tr>
             </thead>
             <tbody>
-              {METERED_ACTIONS.map((action) => (
+              {METERED_ACTIONS.filter(offeredOnSomePlan).map((action) => (
                 <tr key={action} className="border-b border-line">
                   <td className="py-1.5 pr-3 text-ink">{allowanceName(action)}</td>
                   <td className="py-1.5 pr-3 tabular-nums text-muted">

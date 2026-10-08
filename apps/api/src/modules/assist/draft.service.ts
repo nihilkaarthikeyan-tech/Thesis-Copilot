@@ -259,8 +259,13 @@ export class DraftService {
   ): Promise<{ outcome: string }> {
     const updated = await this.prisma.suggestionEvent.updateMany({
       // ADR-0039: a chapter build's sections are draft blocks too, accepted the same way; so are
-      // the sections of a claims map opened as a document (ADR-0123).
-      where: { id: draftId, userId, action: { in: ['DRAFT', 'CHAPTER_BUILD', 'CROSS_PAPER'] } },
+      // the sections of a claims map opened as a document (ADR-0123), a literature review build's
+      // (ADR-0124).
+      where: {
+        id: draftId,
+        userId,
+        action: { in: ['DRAFT', 'CHAPTER_BUILD', 'CROSS_PAPER', 'LIT_REVIEW_BUILD'] },
+      },
       data: { outcome, keptChars: Math.max(0, Math.floor(keptChars)) },
     });
     if (updated.count === 0) throw new NotFoundError('That draft');

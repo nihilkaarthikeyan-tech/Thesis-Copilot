@@ -3,7 +3,7 @@
  */
 
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { METERED_ACTIONS, PLAN_LIMITS, PLANS, type Plan } from '@tc/config';
+import { METERED_ACTIONS, offeredOnSomePlan, PLAN_LIMITS, PLANS, type Plan } from '@tc/config';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { periodFor, resetsAtFor, UsageService } from './usage.service.js';
@@ -32,12 +32,18 @@ export class UsageController {
       METERED_ACTIONS.map((a) => [a, (trial?.ended ? 0 : planCaps[a]) + (bonus[a] ?? 0)]),
     ) as Record<string, number>;
 
+    // ADR-0124: an allowance no plan includes yet (the literature review build) is not listed as
+    // "not included" for everyone; an account an admin gave units to still sees its line.
+    const listed = METERED_ACTIONS.filter(
+      (action) => offeredOnSomePlan(action) || (bonus[action] ?? 0) > 0 || (used[action] ?? 0) > 0,
+    );
+
     return {
       period: periodFor(),
       resetsAt: resetsAtFor().toISOString(),
       plan,
       trial,
-      actions: METERED_ACTIONS.map((action) => ({
+      actions: listed.map((action) => ({
         action,
         used: used[action] ?? 0,
         cap: caps[action] ?? 0,

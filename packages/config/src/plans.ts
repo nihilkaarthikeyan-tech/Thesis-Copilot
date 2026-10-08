@@ -47,6 +47,9 @@ const STUDENT: PlanLimits = {
     CHAPTER_BUILD: 3,
     EXAMINER_REVIEW: 6,
     RESEARCH: 3,
+    // ADR-0124: built and priced, not yet sold. The owner sets the allowance (docs/PENDING.md);
+    // until then only an admin's extra allowance lets an account run one.
+    LIT_REVIEW_BUILD: 0,
   },
   seedPapers: 3,
   libraryPdfs: 60,
@@ -69,6 +72,7 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
       CHAPTER_BUILD: 1,
       EXAMINER_REVIEW: 1,
       RESEARCH: 1,
+      LIT_REVIEW_BUILD: 0,
     },
     seedPapers: 1,
     libraryPdfs: 10,
@@ -91,6 +95,7 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
       CHAPTER_BUILD: 3,
       EXAMINER_REVIEW: 6,
       RESEARCH: 3,
+      LIT_REVIEW_BUILD: 0,
     },
     seedPapers: 3,
     libraryPdfs: 60,
@@ -105,6 +110,19 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
 export function capFor(plan: Plan, action: MeteredAction): number {
   return PLAN_LIMITS[plan].caps[action] ?? 0;
 }
+
+/**
+ * ADR-0124: an allowance some plan actually includes. One that no plan includes yet (the
+ * literature review build, until the owner prices it) is left off the pricing page, the help
+ * page and the student's usage list, so nothing advertises what is not on sale; an account an
+ * admin gave extra units still sees its line.
+ */
+export function offeredOnSomePlan(action: MeteredAction): boolean {
+  return PLANS.some((plan) => capFor(plan, action) > 0);
+}
+
+/** ADR-0124: the switch that shows "Write the whole literature review" on the build screen. */
+export const LIT_REVIEW_BUILD_FLAG = 'literatureReviewBuild';
 
 export { METERED_ACTIONS, type MeteredAction };
 

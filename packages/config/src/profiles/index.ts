@@ -2,6 +2,7 @@ export {
   applicableElements,
   blueprintFor,
   CHAPTER_BLUEPRINTS,
+  chapterRoleFor,
 } from './blueprints.js';
 export {
   CHECK_IDS,

@@ -8,7 +8,7 @@
  * element with `isObjectives` is where "earlier" is measured from.
  */
 
-import type { ChapterRole } from '../templates.js';
+import { type ChapterRole, TEMPLATE_SPECS, type Template } from '../templates.js';
 import type { BlueprintElement, ChapterBlueprint, Paradigm } from './types.js';
 
 const el = (
@@ -594,6 +594,42 @@ export const CHAPTER_BLUEPRINTS: Readonly<Partial<Record<ChapterRole, ChapterBlu
 
 export function blueprintFor(role: ChapterRole): ChapterBlueprint | null {
   return CHAPTER_BLUEPRINTS[role] ?? null;
+}
+
+const CHAPTER_ROLES: readonly ChapterRole[] = [
+  'INTRODUCTION',
+  'LITERATURE',
+  'METHOD',
+  'RESULTS',
+  'DISCUSSION',
+  'CONCLUSION',
+  'PAPER',
+];
+
+/**
+ * A chapter's role: the outline node's, else the title's, else the template's by position.
+ * The chapter build (ADR-0039) plans from it; the literature review build (ADR-0124) offers only
+ * the chapters it names LITERATURE. Here rather than in the worker so the API asks the same
+ * question the worker answers.
+ */
+export function chapterRoleFor(
+  chapter: { title: string; order: number; outlineNodeId: string },
+  outline: ReadonlyArray<{ id: string }>,
+  template: Template | null,
+): ChapterRole {
+  const node = outline.find((n) => n.id === chapter.outlineNodeId) as { role?: string } | undefined;
+  if (node?.role && (CHAPTER_ROLES as readonly string[]).includes(node.role)) {
+    return node.role as ChapterRole;
+  }
+  const title = chapter.title.toLowerCase();
+  if (/introduction/.test(title)) return 'INTRODUCTION';
+  if (/literature|review|related work|background/.test(title)) return 'LITERATURE';
+  if (/method|materials and|experimental|design of/.test(title)) return 'METHOD';
+  if (/result|finding|analysis/.test(title)) return 'RESULTS';
+  if (/discussion/.test(title)) return 'DISCUSSION';
+  if (/conclusion|summary and|future/.test(title)) return 'CONCLUSION';
+  if (template) return TEMPLATE_SPECS[template].chapters[chapter.order]?.role ?? 'DISCUSSION';
+  return 'DISCUSSION';
 }
 
 /**

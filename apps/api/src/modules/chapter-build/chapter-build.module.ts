@@ -10,6 +10,9 @@
  *   GET  /documents/:id/chapter-build/:buildId                    state, plan and QA report
  *   GET  /documents/:id/chapter-build/:buildId/report.pdf|.html    the QA report as a file (spec §11)
  *   POST /documents/:id/chapter-build/:buildId/issues/:issueId    accept (dismiss) or reopen an issue
+ *   POST /documents/:id/literature-review                         ADR-0124: plan a whole review (code only, no unit) → 201
+ *   PUT  /documents/:id/literature-review/:buildId/plan           the student's themes
+ *   POST /documents/:id/literature-review/:buildId/start          start it (one LIT_REVIEW_BUILD unit) → 202
  *   GET  /documents/:id/chapter-build/pitfalls                    what the bank checks for this discipline
  *   POST /documents/:id/chapter-build/pitfalls                    report a pitfall (goes to the queue)
  *
@@ -41,9 +44,11 @@ import { SuperadminGuard } from '../admin/superadmin.guard.js';
 import { AiModule } from '../ai/ai.module.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { FlagsModule } from '../flags/flags.module.js';
 import { RatingsModule } from '../ratings/ratings.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { ChapterBuildService } from './chapter-build.service.js';
+import { LitReviewBuildService } from './lit-review-build.service.js';
 import { PitfallsService } from './pitfalls.service.js';
 
 const startBody = z.object({
@@ -61,6 +66,7 @@ const statusParam = z.enum(['approve', 'retire', 'pending']);
 export class ChapterBuildController {
   constructor(
     private readonly builds: ChapterBuildService,
+    private readonly reviews: LitReviewBuildService,
     private readonly pitfalls: PitfallsService,
     private readonly watch: JobWatchService,
   ) {}
@@ -121,6 +127,41 @@ export class ChapterBuildController {
     @Param('buildId') buildId: string,
   ) {
     return this.builds.start(user, documentId, buildId);
+  }
+
+  // ADR-0124: the whole literature review. Behind the `literatureReviewBuild` flag; its state,
+  // report and issue decisions are the chapter-build routes above and below, on the same row.
+  @Post('documents/:id/literature-review')
+  @HttpCode(201)
+  planReview(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = startBody.safeParse(body);
+    if (!parsed.success)
+      throw new ValidationError('Pick the literature review chapter.', parsed.error.issues);
+    return this.reviews.plan(user, documentId, parsed.data.chapterId, parsed.data.profile);
+  }
+
+  @Put('documents/:id/literature-review/:buildId/plan')
+  updateReviewPlan(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('buildId') buildId: string,
+    @Body() body: unknown,
+  ) {
+    return this.reviews.updatePlan(user.id, documentId, buildId, body);
+  }
+
+  @Post('documents/:id/literature-review/:buildId/start')
+  @HttpCode(202)
+  startReview(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Param('buildId') buildId: string,
+  ) {
+    return this.reviews.start(user, documentId, buildId);
   }
 
   @Get('documents/:id/chapter-build/pitfalls')
@@ -246,9 +287,16 @@ export class PitfallsAdminController {
 }
 
 @Module({
-  imports: [UsageModule, AiModule, RatingsModule],
+  imports: [UsageModule, AiModule, RatingsModule, FlagsModule],
   controllers: [ChapterBuildController, PitfallsAdminController],
-  providers: [ChapterBuildService, PitfallsService, QueueService, SessionGuard, SuperadminGuard],
+  providers: [
+    ChapterBuildService,
+    LitReviewBuildService,
+    PitfallsService,
+    QueueService,
+    SessionGuard,
+    SuperadminGuard,
+  ],
   exports: [PitfallsService],
 })
 export class ChapterBuildModule {}

@@ -314,6 +314,12 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       reach the team** (R36, ADR-0115), as feedback already is.
 - [ ] **Hindi for the limit message** (R31, ADR-0122) — English only for now, like the panels it
       appears in.
+- [ ] **R37 literature-review build (ADR-0124): set its allowance and turn the flag on.** ₹12.92 a
+      build (worst case). At production prices (Assist on gpt-4.1-mini) one a month on a paid plan
+      makes ₹106.05 — over the ₹100 ceiling — unless something gives: chapter builds 3→2 plus one
+      review is ₹97.00; examiner reviews 6→2 plus one review is ₹98.60. One fits the trial. Then
+      Admin → Settings → "Whole literature review build", and run one real review to compare
+      `totals.spentInr` with ₹12.92. About 8,700 words, no tables.
 - [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
       shown because presentation and contribution did not track the text. A next attempt could
       run that one call at a higher reasoning effort (priced first: about ₹0.36 a review before

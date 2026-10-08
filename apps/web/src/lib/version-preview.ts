@@ -88,6 +88,7 @@ const REASON_LABEL: Record<string, string> = {
   PRE_REVISION: 'Before accepting a revision',
   PRE_RESTORE: 'Before restoring an older version',
   PRE_CHAPTER_BUILD: 'Before a chapter build added its sections',
+  PRE_LIT_REVIEW_BUILD: 'Before a literature review build added its sections',
   PRE_MERGE: 'Before two duplicate sources were merged',
   PRE_IMPORT: 'Before a Word document was imported',
 };

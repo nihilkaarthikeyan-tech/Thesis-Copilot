@@ -162,10 +162,33 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
     cachedInputTokens: 2 * 4_000,
     outputTokens: 900 + 3_400,
   },
+  /**
+   * ADR-0124. One unit is one whole literature review: the chapter build's pipeline (ADR-0039)
+   * over up to `LIT_REVIEW_BUILD_MAX_SECTIONS` sections — the review's introduction, up to fifteen
+   * themes, the framework, the gap analysis, the link to the objectives and the summary — priced
+   * per section exactly as `CHAPTER_BUILD` is: each written once (6k in, 800 out) and examined
+   * once (5.5k in, 600 out), half of them fixed once (2.5k in, 900 out), the fast-tier proofread
+   * scaled from fourteen sections to twenty (16,000 × 20 / 14 strong-tier input tokens), and the
+   * fast-tier key-term extraction folded in. The 4k cached block once per call (50 calls). At
+   * `gpt-5-mini` that is ₹12.92 a build, 20/14 of a chapter build's ₹9.04. Its cap is 0 on every
+   * plan, so it adds nothing to any monthly total until the owner sets one.
+   */
+  LIT_REVIEW_BUILD: {
+    tier: 'strong',
+    inputTokens: 20 * (6_000 + 5_500) + 10 * 2_500 + 22_857,
+    cachedInputTokens: 50 * 4_000,
+    outputTokens: 20 * (800 + 600) + 10 * 900,
+  },
 };
 
 /** The most sections one examiner review sends (ADR-0056); the cost row above is priced on it. */
 export const EXAMINER_REVIEW_MAX_SECTIONS = 8;
+
+/**
+ * The most sections one literature review build writes (ADR-0124): five blueprint elements and up
+ * to fifteen themes. The `LIT_REVIEW_BUILD` row above is priced on it; the worker caps on it.
+ */
+export const LIT_REVIEW_BUILD_MAX_SECTIONS = 20;
 
 /** One-time per-document operations, amortised over 4 months in PRD §11.4. */
 export const ONE_TIME_PROFILES = {
@@ -303,6 +326,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
       ['Chapter builds', 'CHAPTER_BUILD'],
       ['Examiner reviews', 'EXAMINER_REVIEW'],
       ['Deep research', 'RESEARCH'],
+      ['Literature review builds', 'LIT_REVIEW_BUILD'],
     ] as const
   )
     .filter(([, action]) => !options.actions || options.actions.includes(action))

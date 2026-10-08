@@ -2,9 +2,9 @@
  * "We will email you when it is ready" — ADR-0058, coverage-map row 64.
  *
  * Jenni tells a student a long job is safe to close. Ours made them keep the tab open and watch.
- * Now, when a long job the student started ends — a literature search, a chapter build, an
- * examiner review or a coherence check — the worker sends one short email with a link back to the
- * result, but only when all of these hold:
+ * Now, when a long job the student started ends — a literature search, a chapter build, a
+ * literature review build (ADR-0124), an examiner review or a coherence check — the worker sends
+ * one short email with a link back to the result, but only when all of these hold:
  *
  * - the job took longer than `JOB_EMAIL.minRunMs` (a minute) from the press to the end;
  * - no visible page has polled it for `JOB_EMAIL.watchedWithinMs` (the `job-watch:<runId>`
@@ -41,7 +41,12 @@ export const JOB_EMAIL = {
   claimTtlSeconds: 7 * 24 * 3600,
 } as const;
 
-export type JobKind = 'search' | 'chapter-build' | 'examiner-review' | 'coherence';
+export type JobKind =
+  | 'search'
+  | 'chapter-build'
+  | 'literature-review'
+  | 'examiner-review'
+  | 'coherence';
 
 export type EmailDecision =
   | { send: true }
@@ -138,6 +143,7 @@ export type JobEmailDeps = {
 const WHAT: Record<JobKind, string> = {
   search: 'literature search',
   'chapter-build': 'chapter build',
+  'literature-review': 'literature review',
   'examiner-review': 'examiner review',
   coherence: 'coherence check',
 };
@@ -145,6 +151,7 @@ const WHAT: Record<JobKind, string> = {
 const ALLOWANCE: Record<JobKind, string> = {
   search: 'search',
   'chapter-build': 'chapter build',
+  'literature-review': 'literature review build',
   'examiner-review': 'examiner review',
   coherence: 'coherence check',
 };
@@ -156,6 +163,8 @@ export function resultPath(job: Pick<FinishedJob, 'kind' | 'documentId' | 'chapt
     case 'search':
       return `${base}/sources?tab=discover`;
     case 'chapter-build':
+    case 'literature-review':
+      // ADR-0124: the review's QA report is on the build screen, beside the chapter builds.
       return `${base}/build`;
     case 'examiner-review':
     case 'coherence':
@@ -299,6 +308,25 @@ export function chapterBuildFinished(
     ...(done
       ? {
           summary: `${plural(result.drafted, 'section')} ${result.drafted === 1 ? 'is' : 'are'} waiting in your chapter as drafts for you to accept or reject, with the QA report beside them.`,
+        }
+      : {}),
+  };
+}
+
+/** ADR-0124: the whole literature review, mailed under ADR-0058's rule like a chapter build. */
+export function litReviewBuildFinished(
+  job: ChapterBuildJob,
+  result: ChapterBuildResult,
+  startedAt: number,
+): FinishedJob | null {
+  const chapter = chapterBuildFinished(job, result, startedAt);
+  if (!chapter) return null;
+  return {
+    ...chapter,
+    kind: 'literature-review',
+    ...(result.status === 'DONE'
+      ? {
+          summary: `${plural(result.drafted, 'section')} of your literature review ${result.drafted === 1 ? 'is' : 'are'} waiting in the chapter as drafts for you to accept or reject, with the QA report beside them.`,
         }
       : {}),
   };

@@ -15,14 +15,16 @@ import {
   UNMETERED_ACTIONS,
 } from '../src/actions.js';
 import {
+  ACTION_PROFILES,
   computeCallCost,
   computeEmbeddingCost,
   computeMonthlyBudget,
   formatBudget,
+  LIT_REVIEW_BUILD_MAX_SECTIONS,
   microToInr,
   PRD_ACTION_PROFILES,
 } from '../src/cost.js';
-import { capFor, PLAN_LIMITS, PLANS } from '../src/plans.js';
+import { capFor, offeredOnSomePlan, PLAN_LIMITS, PLANS } from '../src/plans.js';
 import { applyPricingOverride, DEFAULT_PRICING, parsePricingOverride } from '../src/pricing.js';
 
 /**
@@ -73,6 +75,48 @@ describe('Appendix E.2 — cost self-check', () => {
     // from ₹89.85 to ₹93.13.
     expect(assistModel.totalInr).toBeCloseTo(93.13, 2);
     expect(assistModel.withinCeiling).toBe(true);
+  });
+
+  it('literature review builds are priced per section and add nothing while the cap is 0 (ADR-0124)', () => {
+    // Twenty sections at the chapter build's per-section shape: 20/14 of a chapter build.
+    const unit = microToInr(
+      computeCallCost({
+        tier: 'strong',
+        modelId: PRODUCTION_MODELS.strong,
+        usage: {
+          inputTokens: ACTION_PROFILES.LIT_REVIEW_BUILD.inputTokens,
+          cachedInputTokens: ACTION_PROFILES.LIT_REVIEW_BUILD.cachedInputTokens,
+          outputTokens: ACTION_PROFILES.LIT_REVIEW_BUILD.outputTokens,
+        },
+      }),
+    );
+    expect(unit).toBeCloseTo(12.9164, 4);
+    expect(LIT_REVIEW_BUILD_MAX_SECTIONS).toBe(20);
+    const chapter = microToInr(
+      computeCallCost({
+        tier: 'strong',
+        modelId: PRODUCTION_MODELS.strong,
+        usage: {
+          inputTokens: ACTION_PROFILES.CHAPTER_BUILD.inputTokens,
+          cachedInputTokens: ACTION_PROFILES.CHAPTER_BUILD.cachedInputTokens,
+          outputTokens: ACTION_PROFILES.CHAPTER_BUILD.outputTokens,
+        },
+      }),
+    );
+    expect(unit).toBeCloseTo((chapter * 20) / 14, 2);
+
+    for (const plan of PLANS) {
+      expect(capFor(plan, 'LIT_REVIEW_BUILD'), plan).toBe(0);
+      const budget = computeMonthlyBudget(plan, { models: PRODUCTION_MODELS });
+      const line = budget.lines.find((l) => l.label === 'Literature review builds');
+      expect(line?.count, plan).toBe(0);
+      expect(line?.totalMicroInr, plan).toBe(0);
+      expect(microToInr(line?.unitMicroInr ?? 0), plan).toBeCloseTo(12.9164, 4);
+    }
+    // Not on sale yet, so the pricing and help pages leave it off.
+    expect(offeredOnSomePlan('LIT_REVIEW_BUILD')).toBe(false);
+    expect(offeredOnSomePlan('CHAPTER_BUILD')).toBe(true);
+    expect(offeredOnSomePlan('COHERENCE')).toBe(true);
   });
 
   it('STUDENT_ANNUAL and INSTITUTION_SEAT are within the ceiling too, on both bases', () => {
@@ -147,6 +191,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       EXAMINER_REVIEW: 1,
       // ADR-0080: one deep research question to see what it does.
       RESEARCH: 1,
+      // ADR-0124: not on sale until the owner sets the allowance.
+      LIT_REVIEW_BUILD: 0,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
     expect(PLAN_LIMITS.FREE_TRIAL.libraryPdfs).toBe(10);
@@ -176,6 +222,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       EXAMINER_REVIEW: 6,
       // ADR-0080: three deep research questions a month (₹1.09 each).
       RESEARCH: 3,
+      // ADR-0124: not on sale until the owner sets the allowance (₹12.92 a build).
+      LIT_REVIEW_BUILD: 0,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);

@@ -79,6 +79,7 @@ const FLAG_NAMES: Record<string, string> = {
   costModelVerified: 'Cost figures confirmed',
   draftModeStrongTier: 'Draft mode on the stronger model',
   grobid: 'GROBID PDF reader',
+  literatureReviewBuild: 'Whole literature review build',
   livingGapMap: 'Living gap map',
 };
 const FLAG_NOTES: Record<string, string> = {
@@ -93,6 +94,8 @@ const FLAG_NOTES: Record<string, string> = {
   draftModeStrongTier:
     'Draft mode uses the stronger, dearer model. Off routes drafts to the fast model.',
   grobid: 'Read uploaded PDFs with the GROBID service instead of the built-in reader.',
+  literatureReviewBuild:
+    'Shows “Write the whole literature review” on the Build page: up to 20 sections from the library, as drafts to accept, with the QA report (about ₹12.92 a build at worst). Every plan’s allowance is 0 until one is set, so only accounts given extra allowance can run it.',
   livingGapMap: 'Recompute the literature gap map whenever the library changes.',
 };
 

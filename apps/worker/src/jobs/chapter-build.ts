@@ -10,6 +10,12 @@
  *
  * Nothing here writes thesis text. Every section lands as a `draftBlock` with `status: pending`
  * and `DRAFT` provenance; the student accepts or discards each (Appendix B.6).
+ *
+ * ADR-0124: the same run is the literature review build (`job.kind === 'LIT_REVIEW'`, its own
+ * `lit-review-build` queue and `LIT_REVIEW_BUILD` unit). Only the plan differs: the literature
+ * blueprint with one section per confirmed theme instead of one per group of key terms, up to
+ * `LIT_REVIEW_BUILD_MAX_SECTIONS`. Every call, check, the examiner, the one fix and the delivery
+ * are the chapter build's, unchanged; the caller's deps log and refund under the review's action.
  */
 
 import {
@@ -54,12 +60,13 @@ import {
   CHECKS,
   type ChapterRole,
   type CheckId,
+  chapterRoleFor,
   type DisciplineProfile,
   disciplineProfile,
+  LIT_REVIEW_BUILD_MAX_SECTIONS,
   languageSetting,
   PARADIGMS,
   type Paradigm,
-  TEMPLATE_SPECS,
   type Template,
   type UniversityProfile,
   universityProfile,
@@ -74,6 +81,8 @@ import {
   type ChapterBuildJob,
   type ChapterBuildPlan,
   type ChapterBuildReport,
+  LIT_REVIEW_MAX_THEMES,
+  type LitReviewTheme,
   type PlanSection,
   type ReportCheck,
   type ReportReference,
@@ -122,7 +131,7 @@ export type ChapterBuildDeps = {
   snapshot: (input: { documentId: string; chapterId: string; content: unknown }) => Promise<void>;
   /** Writes the `AiCallLog` row and returns its cost in micro-INR. */
   logCall: (call: BuildCallLog) => Promise<number>;
-  /** Gives the `CHAPTER_BUILD` unit back (a build that delivered nothing). */
+  /** Gives the unit back — `CHAPTER_BUILD`, or `LIT_REVIEW_BUILD` for a review (a build that delivered nothing). */
   refund: (userId: string) => Promise<void>;
   /** The site-wide budget (ADR-0037's guard); throws when reached. */
   assertBudget?: () => Promise<void>;
@@ -131,7 +140,12 @@ export type ChapterBuildDeps = {
    * papers on a section the library does not cover (ADR-0037's search); resolves true when a
    * search was started. Optional: without it the build writes from the library alone.
    */
-  findSources?: (input: { chapterId: string; query: string }) => Promise<boolean>;
+  findSources?: (input: {
+    chapterId: string;
+    query: string;
+    /** ADR-0124: a review's theme searches on its own key, not the chapter's one per window. */
+    section?: string;
+  }) => Promise<boolean>;
   /** For the wait between polls while found papers are indexed; tests pass a no-op. */
   sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
@@ -280,7 +294,15 @@ export async function runChapterBuild(
       ? (job.profile.paradigm as Paradigm)
       : (discipline.defaultParadigms[0] ?? 'experimental');
     const outline = readOutline(memory?.outline);
-    const role = chapterRoleOf(chapter, outline, document.template);
+    // ADR-0124: a literature review is planned on the literature blueprint whatever the chapter's
+    // title says; the API offers it only on a chapter `chapterRoleFor` calls LITERATURE.
+    const literatureReview = job.kind === 'LIT_REVIEW';
+    const maxSections = literatureReview
+      ? LIT_REVIEW_BUILD_MAX_SECTIONS
+      : CHAPTER_BUILD_MAX_SECTIONS;
+    const role: ChapterRole = literatureReview
+      ? 'LITERATURE'
+      : chapterRoleOf(chapter, outline, document.template);
     const blueprint = blueprintFor(role);
     if (!blueprint) {
       return finish(
@@ -383,13 +405,17 @@ export async function runChapterBuild(
       disabled: job.profile.disabledElements ?? [],
     });
     const outlineNode = outline.find((n) => n.id === chapter.outlineNodeId);
-    const sections = planSections(
-      elements,
-      entities,
-      objectives,
-      discipline,
-      outlineNode?.children ?? [],
-    );
+    const themes = literatureReview ? (planned?.themes ?? []) : [];
+    const sections = literatureReview
+      ? planLiteratureReview(
+          elements,
+          entities,
+          objectives,
+          discipline,
+          outlineNode?.children ?? [],
+          themes,
+        )
+      : planSections(elements, entities, objectives, discipline, outlineNode?.children ?? []);
     const plan: ChapterBuildPlan = {
       chapterRole: role,
       entities,
@@ -398,6 +424,7 @@ export async function runChapterBuild(
       uncovered: [],
       clarifications: planned?.clarifications ?? [],
       confirmedAt: planned?.confirmedAt ?? null,
+      ...(literatureReview ? { themes } : {}),
     };
     await prisma.chapterBuild.update({ where: { id: job.buildId }, data: { plan } });
 
@@ -425,7 +452,11 @@ export async function runChapterBuild(
           .catch(() => ({ passages: [], byKey: new Map() }) as Retrieved);
         if (found.passages.length > 0) continue;
         const started = await deps
-          .findSources({ chapterId: chapter.id, query: `${document.title}. ${query}` })
+          .findSources({
+            chapterId: chapter.id,
+            query: `${document.title}. ${query}`,
+            ...(literatureReview ? { section: section.title } : {}),
+          })
           .catch(() => false);
         if (started) searches++;
       }
@@ -500,7 +531,8 @@ export async function runChapterBuild(
           outlineNodeId: section.outlineNodeId ?? section.id,
           title: section.title,
           scopeNote,
-          children: [],
+          // ADR-0124: a review theme from the outline keeps its subheadings, as in Draft mode.
+          children: section.children ?? [],
         },
         passages,
         targetWords: section.targetWords,
@@ -884,7 +916,7 @@ export async function runChapterBuild(
       }))
       .filter((s) => s.blocking.length > 0)
       .sort((a, b) => b.blocking.length - a.blocking.length)
-      .slice(0, Math.floor(CHAPTER_BUILD_MAX_SECTIONS / 2));
+      .slice(0, Math.floor(maxSections / 2));
 
     let fixedCount = 0;
     for (const { section, blocking } of fixable) {
@@ -986,7 +1018,7 @@ export async function runChapterBuild(
           userId: job.userId,
           documentId: job.documentId,
           chapterId: chapter.id,
-          action: 'CHAPTER_BUILD',
+          action: literatureReview ? 'LIT_REVIEW_BUILD' : 'CHAPTER_BUILD',
           shownChars: section.markdown.length,
           outcome: 'SHOWN',
           latencyMs: 0,
@@ -1113,32 +1145,17 @@ export async function runChapterBuild(
 // Planning
 // --------------------------------------------------------------------------------------------
 
-/** The chapter's role: the outline node's, else the title's, else the template's by position. */
+/**
+ * The chapter's role: the outline node's, else the title's, else the template's by position.
+ * The rule lives in `@tc/config` (`chapterRoleFor`) since ADR-0124, so the API offers the
+ * literature review build on exactly the chapters this calls LITERATURE.
+ */
 export function chapterRoleOf(
   chapter: { title: string; order: number; outlineNodeId: string },
   outline: ReturnType<typeof readOutline>,
   template: Template | null,
 ): ChapterRole {
-  const node = outline.find((n) => n.id === chapter.outlineNodeId) as { role?: string } | undefined;
-  const roles: ChapterRole[] = [
-    'INTRODUCTION',
-    'LITERATURE',
-    'METHOD',
-    'RESULTS',
-    'DISCUSSION',
-    'CONCLUSION',
-    'PAPER',
-  ];
-  if (node?.role && (roles as string[]).includes(node.role)) return node.role as ChapterRole;
-  const title = chapter.title.toLowerCase();
-  if (/introduction/.test(title)) return 'INTRODUCTION';
-  if (/literature|review|related work|background/.test(title)) return 'LITERATURE';
-  if (/method|materials and|experimental|design of/.test(title)) return 'METHOD';
-  if (/result|finding|analysis/.test(title)) return 'RESULTS';
-  if (/discussion/.test(title)) return 'DISCUSSION';
-  if (/conclusion|summary and|future/.test(title)) return 'CONCLUSION';
-  if (template) return TEMPLATE_SPECS[template].chapters[chapter.order]?.role ?? 'DISCUSSION';
-  return 'DISCUSSION';
+  return chapterRoleFor(chapter, outline, template);
 }
 
 const entityText = (entities: readonly BuildEntity[], id: string): string =>
@@ -1233,6 +1250,93 @@ export function planSections(
     }
   }
   return sections.slice(0, CHAPTER_BUILD_MAX_SECTIONS);
+}
+
+/**
+ * ADR-0124: the literature blueprint instantiated as a whole review. Every element is planned as
+ * the chapter build plans it, except the thematic review: one section per confirmed theme (the
+ * literature chapter's outline subsections and the literature search's themes, as the student
+ * left them on the plan screen), in their order, up to `LIT_REVIEW_MAX_THEMES`, titled with the
+ * theme itself. A review with no theme left is planned from the key terms, exactly as a chapter
+ * build is. Each key term goes to the first theme whose title, note or subheadings name it; a term
+ * from an objective that no theme names goes to the first theme, as `planSections` gives it to the
+ * first subject section.
+ */
+export function planLiteratureReview(
+  elements: readonly BlueprintElement[],
+  entities: readonly BuildEntity[],
+  objectives: readonly string[],
+  discipline: DisciplineProfile,
+  outlineChildren: ReadonlyArray<{ id: string; title: string }>,
+  themes: readonly LitReviewTheme[],
+): PlanSection[] {
+  const chosen = themes.filter((t) => t.title.trim().length > 0).slice(0, LIT_REVIEW_MAX_THEMES);
+  if (chosen.length === 0) {
+    return planSections(elements, entities, objectives, discipline, outlineChildren);
+  }
+
+  const sections: PlanSection[] = [];
+  const themed: Array<{ section: PlanSection; theme: LitReviewTheme }> = [];
+  const section = (
+    element: BlueprintElement,
+    title: string,
+    extra: Partial<PlanSection> = {},
+  ): PlanSection => ({
+    id: `s${sections.length + 1}`,
+    title,
+    blueprintRef: element.key,
+    purpose: element.purpose,
+    instructions: element.instructions,
+    entities: [],
+    targetWords: element.targetWords ?? DRAFT.defaultTargetWords,
+    isObjectives: Boolean(element.isObjectives),
+    generic: Boolean(element.generic),
+    organisation: Boolean(element.organisation),
+    summary: Boolean(element.summary),
+    dataOnly: Boolean(element.dataOnly),
+    noEvidence: Boolean(element.noEvidence),
+    outlineNodeId: matchOutlineChild(title, outlineChildren),
+    ...extra,
+  });
+
+  for (const element of elements) {
+    if (!element.perEntityGroup) {
+      sections.push(section(element, element.title));
+      continue;
+    }
+    for (const theme of chosen) {
+      const title = theme.title.trim();
+      const note = theme.note.trim();
+      const planned = section(element, title, {
+        purpose: note ? `${element.purpose} This theme: ${note}` : element.purpose,
+        instructions: note
+          ? `${element.instructions}\nThis theme covers: ${note}`
+          : element.instructions,
+        outlineNodeId: theme.outlineNodeId ?? matchOutlineChild(title, outlineChildren),
+        ...(theme.children.length > 0
+          ? { children: theme.children.map((c) => ({ title: c.title, scopeNote: c.scopeNote })) }
+          : {}),
+      });
+      sections.push(planned);
+      themed.push({ section: planned, theme });
+    }
+  }
+
+  const words = (text: string): string =>
+    ` ${text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()} `;
+  for (const entity of entities) {
+    const names = [entity.text, ...entity.aliases].map(words).filter((n) => n.trim().length > 1);
+    const home = themed.find(({ theme }) => {
+      const hay = words([theme.title, theme.note, ...theme.children.map((c) => c.title)].join(' '));
+      return names.some((n) => hay.includes(n));
+    });
+    if (home) home.section.entities.push(entity.id);
+    else if (entity.sourceObjective > 0) themed[0]?.section.entities.push(entity.id);
+  }
+  return sections.slice(0, LIT_REVIEW_BUILD_MAX_SECTIONS);
 }
 
 function groupEntities(

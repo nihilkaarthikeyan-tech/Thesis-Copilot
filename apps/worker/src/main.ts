@@ -71,11 +71,12 @@ import {
   examinerReviewFinished,
   type FinishedJob,
   failedAfterRetries,
+  litReviewBuildFinished,
   notifyJobFinished,
   redisWatchStore,
   searchFinished,
 } from './job-email.js';
-import { runChapterBuild } from './jobs/chapter-build.js';
+import { type ChapterBuildDeps, runChapterBuild } from './jobs/chapter-build.js';
 import { runCoherence } from './jobs/coherence-run.js';
 import { runCrossPaper } from './jobs/cross-paper.js';
 import { runDraftSection } from './jobs/draft-section.js';
@@ -101,6 +102,7 @@ import {
   QUEUE_FIND_SOURCES,
   QUEUE_GENERATE_OUTLINE,
   QUEUE_INDEX_SOURCE,
+  QUEUE_LIT_REVIEW_BUILD,
   QUEUE_NOOP,
   QUEUE_RESOLVE_REFERENCE,
   QUEUE_SEARCH_LITERATURE,
@@ -353,6 +355,95 @@ async function main(): Promise<void> {
       ),
     }),
   };
+
+  /**
+   * The chapter build's dependencies (ADR-0039), shared by the literature review build (ADR-0124):
+   * the same retrieval, snapshot, search and budget guard; only the action each call is logged
+   * and refunded under, and the snapshot's reason, differ.
+   */
+  const buildDeps = (
+    job: Job<ChapterBuildJob>,
+    action: 'CHAPTER_BUILD' | 'LIT_REVIEW_BUILD',
+    snapshotReason: 'PRE_CHAPTER_BUILD' | 'PRE_LIT_REVIEW_BUILD',
+  ): ChapterBuildDeps => ({
+    prisma,
+    llm: providers.llm,
+    embeddings: providers.embeddings,
+    memoryBlock: async (chapter: ContextChapter) =>
+      (await buildChapterMemory(prisma as unknown as ContextClient, chapter)).text,
+    retrieve: (chapter: ContextChapter, query: string) =>
+      retrievePassages(
+        prisma as unknown as ContextClient,
+        (texts) => providers.embeddings.embed(texts),
+        chapter,
+        query,
+        'DRAFT',
+      ),
+    // B.7: the chapter as it was before the build appended to it, one click from restored.
+    snapshot: async ({ documentId, chapterId, content }) => {
+      const key = `snapshots/${documentId}/${chapterId}/${Date.now()}-${snapshotReason.toLowerCase()}.json.gz`;
+      const body = gzipSync(Buffer.from(JSON.stringify(content), 'utf8'));
+      await storage.putSnapshot(key, body);
+      const row = await prisma.documentVersion.create({
+        data: { documentId, chapterId, snapshotKey: key, reason: snapshotReason },
+        select: { createdAt: true },
+      });
+      await prisma.chapter.update({
+        where: { id: chapterId },
+        data: { snapshotAt: row.createdAt },
+      });
+    },
+    logCall: async (call) => {
+      const cost =
+        call.ok && call.usage && env.AI_PROVIDER !== 'mock'
+          ? computeCallCost({ tier: call.tier, modelId: call.modelId, usage: call.usage })
+          : 0;
+      await prisma.aiCallLog.create({
+        data: {
+          userId: call.userId,
+          documentId: call.documentId,
+          action,
+          model: call.modelId,
+          inputTokens: call.usage?.inputTokens ?? 0,
+          cachedInputTokens: call.usage?.cachedInputTokens ?? 0,
+          cacheWriteTokens: call.usage?.cacheWriteTokens ?? 0,
+          outputTokens: call.usage?.outputTokens ?? 0,
+          costMicroInr: BigInt(cost),
+          latencyMs: call.latencyMs,
+          ok: call.ok,
+          error: call.error ?? null,
+        },
+      });
+      return cost;
+    },
+    // The same statement `UsageService.refund` runs: a build that delivered nothing costs
+    // no unit (§11.5). The worker cannot reach the API's service, so it says it here.
+    refund: async (userId) => {
+      const now = new Date();
+      const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      await prisma.$executeRawUnsafe(
+        `UPDATE "UsageLedger" SET "count" = "count" - 1
+         WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = $3::"AiAction" AND "count" > 0`,
+        userId,
+        period,
+        action,
+      );
+    },
+    assertBudget: assertPlatformBudget(prisma, env),
+    // Spec stage 4: the library first, then the databases — ADR-0037's search, under its
+    // flag, its allowance and its cooldown.
+    findSources: ({ chapterId, query, section }) =>
+      startFindSources(
+        {
+          prisma,
+          enqueue: (payload, id) => findSourcesQueue.add('find-sources', payload, { jobId: id }),
+        },
+        { documentId: job.data.documentId, userId: job.data.userId, chapterId, query },
+        new Date(),
+        section ?? null,
+      ),
+    log: (event) => log({ jobId: job.id, ...event }),
+  });
 
   const workers = [
     new Worker(
@@ -634,88 +725,32 @@ async function main(): Promise<void> {
     new Worker(
       QUEUE_CHAPTER_BUILD,
       async (job: Job<ChapterBuildJob>) => {
-        const result = await runChapterBuild(job.data, {
-          prisma,
-          llm: providers.llm,
-          embeddings: providers.embeddings,
-          memoryBlock: async (chapter: ContextChapter) =>
-            (await buildChapterMemory(prisma as unknown as ContextClient, chapter)).text,
-          retrieve: (chapter: ContextChapter, query: string) =>
-            retrievePassages(
-              prisma as unknown as ContextClient,
-              (texts) => providers.embeddings.embed(texts),
-              chapter,
-              query,
-              'DRAFT',
-            ),
-          // B.7: the chapter as it was before the build appended to it, one click from restored.
-          snapshot: async ({ documentId, chapterId, content }) => {
-            const key = `snapshots/${documentId}/${chapterId}/${Date.now()}-pre_chapter_build.json.gz`;
-            const body = gzipSync(Buffer.from(JSON.stringify(content), 'utf8'));
-            await storage.putSnapshot(key, body);
-            const row = await prisma.documentVersion.create({
-              data: { documentId, chapterId, snapshotKey: key, reason: 'PRE_CHAPTER_BUILD' },
-              select: { createdAt: true },
-            });
-            await prisma.chapter.update({
-              where: { id: chapterId },
-              data: { snapshotAt: row.createdAt },
-            });
-          },
-          logCall: async (call) => {
-            const cost =
-              call.ok && call.usage && env.AI_PROVIDER !== 'mock'
-                ? computeCallCost({ tier: call.tier, modelId: call.modelId, usage: call.usage })
-                : 0;
-            await prisma.aiCallLog.create({
-              data: {
-                userId: call.userId,
-                documentId: call.documentId,
-                action: 'CHAPTER_BUILD',
-                model: call.modelId,
-                inputTokens: call.usage?.inputTokens ?? 0,
-                cachedInputTokens: call.usage?.cachedInputTokens ?? 0,
-                cacheWriteTokens: call.usage?.cacheWriteTokens ?? 0,
-                outputTokens: call.usage?.outputTokens ?? 0,
-                costMicroInr: BigInt(cost),
-                latencyMs: call.latencyMs,
-                ok: call.ok,
-                error: call.error ?? null,
-              },
-            });
-            return cost;
-          },
-          // The same statement `UsageService.refund` runs: a build that delivered nothing costs
-          // no unit (§11.5). The worker cannot reach the API's service, so it says it here.
-          refund: async (userId) => {
-            const now = new Date();
-            const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-            await prisma.$executeRawUnsafe(
-              `UPDATE "UsageLedger" SET "count" = "count" - 1
-               WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = 'CHAPTER_BUILD'::"AiAction" AND "count" > 0`,
-              userId,
-              period,
-            );
-          },
-          assertBudget: assertPlatformBudget(prisma, env),
-          // Spec stage 4: the library first, then the databases — ADR-0037's search, under its
-          // flag, its allowance and its cooldown.
-          findSources: ({ chapterId, query }) =>
-            startFindSources(
-              {
-                prisma,
-                enqueue: (payload, id) =>
-                  findSourcesQueue.add('find-sources', payload, { jobId: id }),
-              },
-              { documentId: job.data.documentId, userId: job.data.userId, chapterId, query },
-            ),
-          log: (event) => log({ jobId: job.id, ...event }),
-        });
+        const result = await runChapterBuild(
+          job.data,
+          buildDeps(job, 'CHAPTER_BUILD', 'PRE_CHAPTER_BUILD'),
+        );
         log({ msg: 'chapter build finished', jobId: job.id, ...result });
         await notify(chapterBuildFinished(job.data, result, job.timestamp));
         return result;
       },
       // One build at a time: up to thirty strong-tier calls, each holding a section and its passages.
+      { connection: connection.duplicate(), concurrency: 1 },
+    ),
+    // ADR-0124: the whole literature review — the same run over every confirmed theme, metered,
+    // logged and refunded as LIT_REVIEW_BUILD. Its own queue, so a twenty-section review does not
+    // hold up the chapter builds behind it.
+    new Worker(
+      QUEUE_LIT_REVIEW_BUILD,
+      async (job: Job<ChapterBuildJob>) => {
+        const result = await runChapterBuild(
+          { ...job.data, kind: 'LIT_REVIEW' },
+          buildDeps(job, 'LIT_REVIEW_BUILD', 'PRE_LIT_REVIEW_BUILD'),
+        );
+        log({ msg: 'literature review build finished', jobId: job.id, ...result });
+        await notify(litReviewBuildFinished(job.data, result, job.timestamp));
+        return result;
+      },
+      // Up to fifty strong-tier calls; one at a time per worker process.
       { connection: connection.duplicate(), concurrency: 1 },
     ),
     // ADR-0056: a strict examiner reads each section of a chapter the student wrote.

@@ -34,6 +34,9 @@ export const AI_ACTIONS = [
   // ADR-0080: deep research in chat — a planned, searched, part-by-part answer the student asks
   // for by name; a planner call and a longer answer on the strong tier.
   'RESEARCH',
+  // ADR-0124: the whole literature-review chapter from one press — the chapter build's pipeline
+  // run over every theme of the review, delivered as drafts the student accepts.
+  'LIT_REVIEW_BUILD',
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -57,6 +60,9 @@ export const METERED_ACTIONS = [
   'EXAMINER_REVIEW',
   // ADR-0080. One unit is one deep research question: the plan, every search, and the answer.
   'RESEARCH',
+  // ADR-0124. One unit is one whole literature review (up to 20 sections). Its cap is 0 on every
+  // plan until the owner sets one, and the build screen offers it only behind its flag.
+  'LIT_REVIEW_BUILD',
 ] as const satisfies readonly AiAction[];
 
 /** The six §11.3 rows — what the PRD's own budget table (§11.4) prices. */
@@ -119,6 +125,7 @@ export const ALLOWANCE_NAMES: Readonly<Record<string, string>> = {
   CHAPTER_BUILD: 'Chapter builds',
   EXAMINER_REVIEW: 'Examiner reviews',
   RESEARCH: 'Deep research questions',
+  LIT_REVIEW_BUILD: 'Literature review builds',
   // ADR-0072: not a metered action, but bounded per month, and refused in these words.
   OUTLINE_FROM_TITLE: 'Chapter plans from a title',
 };

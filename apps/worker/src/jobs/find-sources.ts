@@ -342,7 +342,10 @@ export async function runFindSources(
 /**
  * Whether to start a search for this chapter, and starts it if so (ADR-0037). The same three
  * checks the API makes for autocomplete: the site switch is on, the student has not turned it
- * off in settings, and the month's searches are not used up. The cooldown is the job id.
+ * off in settings, and the month's searches are not used up. The cooldown is the job id: one per
+ * chapter per window, or — given `section` — one per section of it per window, as the API's own
+ * searches have been since ADR-0087 (ADR-0124: each theme of a literature review searches for
+ * itself; without it every theme after the first was the same BullMQ job and searched nothing).
  */
 export async function startFindSources(
   deps: {
@@ -351,6 +354,7 @@ export async function startFindSources(
   },
   job: FindSourcesJob,
   now: Date = new Date(),
+  section?: string | null,
 ): Promise<boolean> {
   const [flag, user] = await Promise.all([
     deps.prisma.featureFlag.findUnique({
@@ -369,7 +373,7 @@ export async function startFindSources(
   ) {
     return false;
   }
-  await deps.enqueue(job, autoSourcesJobKey(job.chapterId, now));
+  await deps.enqueue(job, autoSourcesJobKey(job.chapterId, now, section));
   return true;
 }
 

@@ -29,6 +29,8 @@ export const QUEUE_NAMES = [
   'chapter-build',
   // ADR-0056: a strict examiner reads each section of a chapter the student wrote.
   'examiner-review',
+  // ADR-0124: a whole literature review — the chapter build's pipeline over every theme.
+  'lit-review-build',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -179,6 +181,7 @@ export type JobPayloads = {
   'find-sources': FindSourcesJob;
   'chapter-build': ChapterBuildJob;
   'examiner-review': ExaminerReviewJob;
+  'lit-review-build': ChapterBuildJob & { kind: 'LIT_REVIEW' };
 };
 
 /**

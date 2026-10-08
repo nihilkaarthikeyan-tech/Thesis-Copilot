@@ -52,8 +52,54 @@ export const planSectionSchema = z.object({
   noEvidence: z.boolean(),
   /** The existing outline node this section maps to, when the outline already had it. */
   outlineNodeId: z.string().nullable(),
+  /**
+   * ADR-0124: the outline's own subheadings under a review theme, passed to the A.2 draft as its
+   * `children`, exactly as Draft mode passes them for that outline section.
+   */
+  children: z.array(z.object({ title: z.string(), scopeNote: z.string() })).optional(),
 });
 export type PlanSection = z.infer<typeof planSectionSchema>;
+
+/**
+ * ADR-0124: one theme of a whole literature review — one section of the review chapter. Planned
+ * in code from the literature chapter's outline (its subsections) and the literature search's
+ * themes (`DocumentMemory.gapMap`), then edited by the student before the unit is taken.
+ */
+export const litReviewThemeSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  /** What the section covers: the outline's scope note, or the student's words; may be empty. */
+  note: z.string(),
+  /** The outline node it came from, so the delivered section keeps its place in the outline. */
+  outlineNodeId: z.string().nullable(),
+  /** The outline's subheadings under it (A.2 `children`). */
+  children: z.array(z.object({ title: z.string(), scopeNote: z.string() })),
+  /** Where it came from, for the plan screen. */
+  from: z.enum(['outline', 'library', 'student']),
+});
+export type LitReviewTheme = z.infer<typeof litReviewThemeSchema>;
+
+/** The most themes one literature review build writes; with the five fixed elements, 20 sections. */
+export const LIT_REVIEW_MAX_THEMES = 15;
+
+/** What the student may change on the review's plan screen before it starts. */
+export const litReviewPlanEditSchema = z.object({
+  themes: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(120),
+        note: z.string().trim().max(400),
+        /** Kept when the theme is one of the planned ones, so its outline place and subheadings stay. */
+        id: z.string().max(20).optional(),
+      }),
+    )
+    .max(LIT_REVIEW_MAX_THEMES),
+});
+export type LitReviewPlanEdit = z.infer<typeof litReviewPlanEditSchema>;
+
+/** ADR-0124: a chapter build (one chapter, ADR-0039) or a whole literature review. */
+export const BUILD_KINDS = ['CHAPTER', 'LIT_REVIEW'] as const;
+export type BuildKind = (typeof BUILD_KINDS)[number];
 
 /**
  * Spec stage 1: one clarifying question per ambiguous term, asked in code before the build and
@@ -81,6 +127,8 @@ export const chapterBuildPlanSchema = z.object({
   coverage: z.record(z.string(), z.array(z.string())),
   /** Entities nothing introduces before the objectives; the build adds a section for them. */
   uncovered: z.array(z.string()),
+  /** ADR-0124: a literature review build's themes, as the student confirmed them. */
+  themes: z.array(litReviewThemeSchema).optional(),
 });
 export type ChapterBuildPlan = z.infer<typeof chapterBuildPlanSchema>;
 
@@ -249,6 +297,11 @@ export type ChapterBuildJob = {
   chapterId: string;
   userId: string;
   profile: ChapterProfile;
+  /**
+   * ADR-0124: `LIT_REVIEW` plans the chapter as a whole literature review from the confirmed
+   * themes (`plan.themes`) and caps at `LIT_REVIEW_BUILD_MAX_SECTIONS`; absent is a chapter build.
+   */
+  kind?: BuildKind;
 };
 
 /** The most sections one build writes; the CHAPTER_BUILD price profile is computed for it. */
