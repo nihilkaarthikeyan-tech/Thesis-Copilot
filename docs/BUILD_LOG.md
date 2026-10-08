@@ -5646,3 +5646,20 @@ strings were never added to the generated Hindi review sheet (`docs/i18n/hi-revi
 regenerated with `UPDATE_I18N_REVIEW=1`). Lesson: run the package's whole suite, not only the new
 spec, before each commit.
 
+R24 (ADR-0111): examiner points tagged Major / Minor and opened in the text (review mode) when a
+review finishes; a real review on the test chapter took 10 s and opened "Examiner: major" on its
+sentence. The score card (soundness / presentation / contribution / overall) was built and
+evaluated in four rounds on four real chapters (`apps/worker/scripts/eval-examiner-scores.ts`):
+stable, but presentation and contribution did not reliably fall when the order was destroyed or
+half the chapter cut (best 11/16; the criterion set before round 4 failed at 10/16). Not shown,
+not called; kept unwired for a next candidate. Found: the examiner prompt failed its schema on one
+section in a round, and its issue lists vary widely run to run (4 vs 15 on one chapter).
+
+The owner's screenshot (2026-10-08): the chapter rail's word counts cut off under the editor. A
+layout audit of every student screen at 1440/1280/1024/768/390 (`e2e/_measure/layout-audit`,
+150 screens) then found the side panel's tabs running off the screen, the thesis cards and top bar
+scrolling a phone sideways, the outline's buttons pushed out of their rows and a note out of its
+box; all fixed (f26dbb3), and the audit now finds none. `e2e/layout.spec.ts` guards these screens
+in CI. A screenshot then showed what a measuring script cannot: "Not checked yet" squeezed into a
+one-word column and "uses one coherence check from your plan" on a plan without them — fixed.
+

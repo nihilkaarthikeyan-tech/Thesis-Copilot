@@ -90,6 +90,8 @@ export const PROMPT_NAMES = [
   'claims',
   // "What changed and why" under an edit, likewise — docs/ADR/0095.
   'edit_reasons',
+  // The examiner's score card, likewise — docs/ADR/0111.
+  'examiner_scores',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

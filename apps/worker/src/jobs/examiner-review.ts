@@ -416,7 +416,8 @@ export async function runExaminerReview(
  * (ADR-0023), otherwise the source's first chunks, otherwise its abstract. Only sources in this
  * thesis's own library are read.
  */
-async function loadPassages(
+/** Exported for the score card's evaluation script (ADR-0111). */
+export async function loadPassages(
   prisma: PrismaClient,
   documentId: string,
   citations: readonly ReviewCitation[],

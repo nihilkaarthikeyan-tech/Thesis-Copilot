@@ -261,6 +261,21 @@ export {
   sectionInput,
 } from './builder/examiner-review.js';
 export {
+  buildExaminerScoresRequest,
+  cleanExaminerScores,
+  EXAMINER_SCORES,
+  type ExaminerScores,
+  type ExaminerScoresInput,
+  examinerScoresSchema,
+  examinerScoresUserMessage,
+  mockExaminerScoresResponse,
+  SCORE_NAMES,
+  type ScoreIssue,
+  type ScoreName,
+  SOUNDNESS_TYPES,
+  soundnessBlocking,
+} from './builder/examiner-scores.js';
+export {
   buildMemoryBlock,
   type GlossaryEntry,
   MEMORY_BUDGET_TOKENS,

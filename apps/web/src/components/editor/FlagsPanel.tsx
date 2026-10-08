@@ -95,6 +95,8 @@ export function FlagsPanel({
   onFindPapers?: (text: string) => void;
 }) {
   const [data, setData] = useState<FlagsResponse | null>(null);
+  /** R24: set when an examiner review finishes, so its points open in the text once loaded. */
+  const [openExaminer, setOpenExaminer] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
@@ -253,12 +255,12 @@ export function FlagsPanel({
   );
 
   /** Walks through this chapter's flags in the text: Y resolves, N ignores (no reason asked). */
-  function reviewInText() {
-    if (!editor || inText.length === 0) return;
-    const byId = new Map(inText.map((f) => [f.id, f]));
+  function reviewInText(list: Flag[] = inText, title = 'Flags') {
+    if (!editor || list.length === 0) return;
+    const byId = new Map(list.map((f) => [f.id, f]));
     startReview({
-      title: 'Flags',
-      items: inText.map((f) => ({
+      title,
+      items: list.map((f) => ({
         id: f.id,
         from: f.from,
         to: f.to,
@@ -275,6 +277,24 @@ export function FlagsPanel({
       next: { label: 'Spelling and grammar', open: () => openCheck('proofread-run') },
     });
   }
+
+  // R24 (ADR-0111): a review that has just finished opens in the text, each point tagged Major or
+  // Minor on its sentence, as Jenni's peer review leaves its comments in the document.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the reloaded list arrives
+  useEffect(() => {
+    if (!openExaminer || !data) return;
+    setOpenExaminer(false);
+    const points = data.flags.filter(
+      (f) =>
+        f.type === 'EXAMINER' &&
+        f.chapterId === chapterId &&
+        f.status === 'OPEN' &&
+        f.positionTrusted &&
+        f.to > f.from,
+    );
+    reviewInText(points, 'Examiner review');
+  }, [openExaminer, data]);
+
   const byChapter = new Map<string, Flag[]>();
   for (const flag of flags) {
     byChapter.set(flag.chapterTitle, [...(byChapter.get(flag.chapterTitle) ?? []), flag]);
@@ -285,46 +305,61 @@ export function FlagsPanel({
 
   return (
     <section data-testid="flags-panel">
-      <ExaminerReview chapterId={chapterId} onFinished={load} />
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs text-muted">
-          {data?.lastRunAt
-            ? `Last checked ${new Date(data.lastRunAt).toLocaleString()}`
-            : 'Not checked yet'}
+      <ExaminerReview
+        chapterId={chapterId}
+        onFinished={async () => {
+          await load();
+          setOpenExaminer(true);
+        }}
+      />
+      {/* A plan without coherence checks says that once, across the panel. It used to share the
+          row with "Not checked yet", which was squeezed into a one-word column, and the line below
+          still said "uses one coherence check from your plan" (2026-10-08, seen in a screenshot). */}
+      {included === false ? (
+        <p className="text-xs text-muted" data-testid="coherence-not-included">
+          Coherence checks are not included in your plan.{' '}
+          <a href="/pricing" className="underline">
+            See plans
+          </a>
         </p>
-        {included !== false ? null : (
-          <p className="text-xs text-muted" data-testid="coherence-not-included">
-            Coherence checks are not included in your plan.{' '}
-            <a href="/pricing" className="underline">
-              See plans
-            </a>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-xs text-muted">
+              {data?.lastRunAt
+                ? `Last checked ${new Date(data.lastRunAt).toLocaleString()}`
+                : 'Not checked yet'}
+            </p>
+            <button
+              type="button"
+              disabled={running || included === null}
+              onClick={() => void run()}
+              data-testid="run-coherence"
+              className="rounded-md px-3 py-1 text-xs disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
+            >
+              {running
+                ? stage
+                  ? `Checking ${stage.toLowerCase()}…`
+                  : 'Checking…'
+                : 'Check coherence'}
+            </button>
+          </div>
+          {running && emailOn ? (
+            <p className="mt-1 text-xs text-muted" data-testid="job-email-note">
+              {JOB_EMAIL_NOTE}
+            </p>
+          ) : null}
+          {/* ADR-0071: the line's space is held while the estimate loads, so nothing below it
+              moves; and the student is told what it uses from their plan, not what it costs us. */}
+          <p className="mt-1 min-h-[1rem] text-xs text-muted">
+            {estimate && !running
+              ? estimate.changedChapters === 0
+                ? 'Nothing has changed since the last check.'
+                : `${estimate.changedChapters} chapter${estimate.changedChapters === 1 ? '' : 's'} changed · uses one coherence check from your plan${estimate.willReduceScope ? ' · large run, some checks will be narrowed' : ''}`
+              : null}
           </p>
-        )}
-        <button
-          type="button"
-          disabled={running || included === null}
-          hidden={included === false}
-          onClick={() => void run()}
-          data-testid="run-coherence"
-          className="rounded-md px-3 py-1 text-xs disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
-        >
-          {running ? (stage ? `Checking ${stage.toLowerCase()}…` : 'Checking…') : 'Check coherence'}
-        </button>
-      </div>
-      {running && emailOn ? (
-        <p className="mt-1 text-xs text-muted" data-testid="job-email-note">
-          {JOB_EMAIL_NOTE}
-        </p>
-      ) : null}
-      {/* ADR-0071: the line's space is held while the estimate loads, so nothing below it moves;
-          and the student is told what it uses from their plan, not what it costs us. */}
-      <p className="mt-1 min-h-[1rem] text-xs text-muted">
-        {estimate && !running
-          ? estimate.changedChapters === 0
-            ? 'Nothing has changed since the last check.'
-            : `${estimate.changedChapters} chapter${estimate.changedChapters === 1 ? '' : 's'} changed · uses one coherence check from your plan${estimate.willReduceScope ? ' · large run, some checks will be narrowed' : ''}`
-          : null}
-      </p>
+        </>
+      )}
 
       {error ? (
         <p role="alert" className="mt-2 text-xs text-warn">
@@ -368,7 +403,7 @@ export function FlagsPanel({
         <button
           type="button"
           data-testid="flags-review-in-text"
-          onClick={reviewInText}
+          onClick={() => reviewInText()}
           className="mt-3 block text-xs font-semibold text-accent underline"
         >
           Review in the text ({inText.length})

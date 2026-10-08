@@ -302,6 +302,11 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       ADR-0101) and `0042_comment_replies` (R22, ADR-0109). Nothing to configure for either.
 - [ ] **Optional: an email when someone replies to a comment** (ADR-0109, "Not done"). New comments
       do not email today either; decide both together if you want them.
+- [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
+      shown because presentation and contribution did not track the text. A next attempt could
+      run that one call at a higher reasoning effort (priced first: about ₹0.36 a review before
+      reasoning). Say if you want it tried; `apps/worker/scripts/eval-examiner-scores.ts` is the
+      test it must pass.
 
 ## Attachments in chat (ADR-0083, 2026-10-05)
 

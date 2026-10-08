@@ -38,9 +38,9 @@ describe('resultLine', () => {
     expect(resultLine(done({}))).toBe('The examiner found nothing to flag.');
   });
 
-  it('counts the issues and the blocking ones', () => {
+  it('counts the issues and the major ones', () => {
     expect(resultLine(done({ issues: 4, blocking: 1 }))).toBe(
-      'The examiner found 4 issues, 1 blocking — see the flags below.',
+      'The examiner found 4 issues, 1 major — see the flags below.',
     );
   });
 
@@ -52,9 +52,9 @@ describe('resultLine', () => {
 });
 
 describe('labels', () => {
-  it('names an examiner flag by its severity', () => {
-    expect(examinerLabel('ERROR')).toBe('Examiner: blocking');
-    expect(examinerLabel('WARN')).toBe('Examiner: warning');
+  it('names an examiner flag by its severity, as a report would (ADR-0111)', () => {
+    expect(examinerLabel('ERROR')).toBe('Examiner: major');
+    expect(examinerLabel('WARN')).toBe('Examiner: minor');
   });
 
   it('a queued or running review is running', () => {

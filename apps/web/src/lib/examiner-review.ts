@@ -35,7 +35,7 @@ export function resultLine(s: ExaminerReviewState): string {
     issues === 0
       ? 'The examiner found nothing to flag.'
       : `The examiner found ${issues} issue${issues === 1 ? '' : 's'}${
-          s.blocking ? `, ${s.blocking} blocking` : ''
+          s.blocking ? `, ${s.blocking} major` : ''
         } — see the flags below.`;
   const n = s.failedSections.length;
   const failed = n
@@ -45,6 +45,10 @@ export function resultLine(s: ExaminerReviewState): string {
   return `${found}${failed}${changed}`;
 }
 
-/** An examiner flag's heading: its severity in words. */
+/**
+ * An examiner flag's heading: its severity in words. Major and Minor since R24 (ADR-0111), the
+ * words an examiner's report uses and Jenni's peer review shows; they were "blocking" and
+ * "warning", the prompt's own terms.
+ */
 export const examinerLabel = (severity: string): string =>
-  severity === 'ERROR' ? 'Examiner: blocking' : 'Examiner: warning';
+  severity === 'ERROR' ? 'Examiner: major' : 'Examiner: minor';
