@@ -307,4 +307,5 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R34 | Done 2026-10-08 — Word import says why its citations were not linked | ADR-0113 |
 | R38 | Done 2026-10-08 — the gap analysis opens as an editable chapter of pending drafts | ADR-0123 |
 | R37 | Done 2026-10-08 — whole literature review from one press, behind an off flag at a cap of 0 (owner sets the price) | ADR-0124 |
+| R30 | Done 2026-10-08 — chat threads, a chat on one collection, web search asked inline (a chat across theses waits) | ADR-0116 |
 | R25–R40 | in order, one at a time (owner: "start to build them one by one"; report after each — 2026-10-07) | — |

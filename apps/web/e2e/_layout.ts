@@ -83,7 +83,12 @@ export function measureLayout(detail: boolean): LayoutFault[] {
     if (fs.overflowX !== 'visible' && fs.textOverflow === 'ellipsis') continue;
     const f = frame.getBoundingClientRect();
     const over = Math.max(r.right - f.right, f.left - r.left);
-    if (over > 1.5) {
+    // A run of text that wraps lets the space at each line break hang past the margin; nothing
+    // visible sticks out, so an overshoot of up to a space's width by a run that holds a space is
+    // not a fault (a visible character would be wider).
+    const hangingSpace =
+      s.display.startsWith('inline') && /\s/.test(el.textContent ?? '') && over <= 6;
+    if (over > 1.5 && !hangingSpace) {
       out.push({
         kind: fs.overflowX === 'visible' ? 'sticks out of its box' : 'cut off by its box',
         by: Math.round(over),

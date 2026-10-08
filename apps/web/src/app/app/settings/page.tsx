@@ -255,11 +255,12 @@ export default function SettingsPage() {
               with an Add button.
             </p>
             <p className="mt-2 text-sm text-muted">
-              <strong>Ask first</strong> (the default) offers the search under a refused question,
-              and searches by itself when your library has little on a question; <strong>On</strong>{' '}
-              searches on every library question and combines what it finds with your library’s
-              passages; <strong>Off</strong> never searches. It counts as the same one chat
-              question, and costs nothing if the search finds nothing to read.
+              <strong>Ask first</strong> (the default) asks in the chat under a refused question —
+              Allow this time, Always allow (which sets this to On) or Skip — and searches by itself
+              when your library has little on a question; <strong>On</strong> searches on every
+              library question and combines what it finds with your library’s passages;{' '}
+              <strong>Off</strong> never searches. It counts as the same one chat question, and
+              costs nothing if the search finds nothing to read.
             </p>
           </div>
           <fieldset

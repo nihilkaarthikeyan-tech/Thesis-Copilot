@@ -129,8 +129,12 @@ test('a refused question offers the search; the answer shows its steps, its pape
   await page.locator('#chat-message').fill('What limits rooftop solar adoption?');
   await page.getByRole('button', { name: 'Ask', exact: true }).click();
 
+  // ADR-0116: asked in the conversation — Allow this time / Always allow / Skip.
+  await expect(page.getByTestId('chat-search-beyond-ask')).toContainText(
+    'Search beyond your library?',
+  );
   const offer = page.getByTestId('chat-search-beyond');
-  await expect(offer).toHaveText('Search beyond your library for this?');
+  await expect(offer).toHaveText('Allow this time');
   await offer.click();
 
   const answer = page.locator('[data-role=assistant]').last();

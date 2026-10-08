@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { inThreadCollection } from '@/lib/chat-threads';
 import { mentionLabel } from '@/lib/mentions';
 
 type LibrarySource = {
@@ -26,11 +27,20 @@ type LibrarySource = {
   groundingLevel: string;
   doi?: string | null;
   rawReference?: string | null;
+  collectionIds?: string[];
 };
 
 export type Mention = { id: string; label: string; readable: boolean };
 
-export function useChatMentions(documentId: string, enabled: boolean) {
+/**
+ * `withinCollection` (ADR-0116): a chat on one collection offers only that collection's papers,
+ * since the server refuses any other.
+ */
+export function useChatMentions(
+  documentId: string,
+  enabled: boolean,
+  withinCollection: string | null = null,
+) {
   const [library, setLibrary] = useState<LibrarySource[]>([]);
   const [mentions, setMentions] = useState<Mention[]>([]);
 
@@ -52,7 +62,7 @@ export function useChatMentions(documentId: string, enabled: boolean) {
   const candidates = useCallback(
     (query: string): Mention[] => {
       const needle = query.toLowerCase();
-      return library
+      return inThreadCollection(library, withinCollection)
         .filter((source) => !mentions.some((m) => m.id === source.id))
         .map((source) => ({
           source,
@@ -67,7 +77,7 @@ export function useChatMentions(documentId: string, enabled: boolean) {
           readable: c.source.groundingLevel !== 'NONE',
         }));
     },
-    [library, mentions],
+    [library, mentions, withinCollection],
   );
 
   return { mentions, add, remove, clear, candidates, library, hasLibrary: library.length > 0 };

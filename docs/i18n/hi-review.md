@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**552** strings are translated; **2** are deliberately
+**560** strings are translated; **19** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -664,8 +664,33 @@ English. Write corrections in the last column.
 | `chat.deep.on` | Deep research is on for the next question | अगले सवाल के लिए गहरा शोध चालू है | |
 | `chat.deep.hint` | Plans the question in parts, searches the literature for each, and answers at length. About a minute. Uses one deep research question, not a chat question. | सवाल को हिस्सों में बाँटता है, हर हिस्से के लिए literature खोजता है, और विस्तार से जवाब देता है। लगभग एक मिनट। एक गहरे शोध का सवाल खर्च होता है, chat का सवाल नहीं। | |
 | `chat.research.plan` | Parts: {titles} | हिस्से: {titles} | |
+| `chat.threads.list` | Chats | चैट | |
+| `chat.threads.new` | New chat | नई चैट | |
+| `chat.threads.newButton` | New | नई | |
+| `chat.threads.wholeLibrary` | Your whole library | आपकी पूरी library | |
+| `chat.web.ask` | Search beyond your library? | अपनी library से आगे खोजें? | |
+| `chat.web.once` | Allow this time | इस बार अनुमति दें | |
+| `chat.web.always` | Always allow | हमेशा अनुमति दें | |
+| `chat.web.skip` | Skip | छोड़ें | |
 
 ## Left in English on purpose
 
 - `editor.usage` — Assist {assist} · Draft {draft}
 - `editor.suggest` — Suggest
+- `chat.threads.heading` — Your chats in this thesis
+- `chat.threads.newOn` — Start a new chat on
+- `chat.threads.emptyCollection` — empty
+- `chat.threads.loading` — Loading your chats…
+- `chat.threads.none` — No chats yet. Ask a question and the chat is kept here.
+- `chat.threads.delete` — Delete the chat “{title}”
+- `chat.threads.deleteYes` — Delete
+- `chat.threads.deleteNo` — Keep
+- `chat.collection.chip` — Collection: {name}
+- `chat.collection.blurb` — Answers come only from the papers in this collection, and cite the passage they came from. This chat never searches beyond them.
+- `chat.collection.empty` — Ask about the papers in “{name}” — what they found, where they disagree, what is missing.
+- `chat.collection.notEnough` — Add papers to this collection in Sources, then ask again.
+- `chat.collection.deleted` — This chat answered only from the collection “{name}”, which has been deleted. You can read it here; start a new chat to ask again.
+- `chat.web.why` — Nothing in your library is on this. The scholarly indexes can be searched and the answer written from the abstracts found, each marked “Not in your library”.
+- `chat.web.skipped` — Not searched.
+- `chat.web.alwaysNote` — Search beyond my library is now On: every library question also searches the literature.
+- `chat.web.settings` — Change it in Settings

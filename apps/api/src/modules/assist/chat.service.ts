@@ -3,8 +3,10 @@
  *
  * Streams like Assist (SSE over POST, Appendix B.8) and is metered as `CHAT`. The answer may cite
  * only the passages sent with the request; anything else is stripped and counted as
- * `HALLUCINATED_CITE` (§10.6). The conversation lives on `Document.meta.chat` — the last four
- * turns, which is all A.4 sends back — so a reload keeps the thread without a new table.
+ * `HALLUCINATED_CITE` (§10.6). The conversation lives on a `ChatThread` (ADR-0116): a thesis has
+ * any number, and a question goes to the one the panel has open (`chat-threads.service.ts`). A.4
+ * still sends the model only the last four turns; the thread keeps more for the student to read.
+ * A thread on one collection answers only from that collection's papers.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -15,7 +17,6 @@ import {
   buildResearchPlanRequest,
   CHAT,
   type ChatFilters,
-  type ChatTurn,
   cleanResearchPlan,
   DEEP_RESEARCH,
   type DeepPart,
@@ -38,7 +39,7 @@ import {
   researchEmbedText,
 } from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
-import { ForbiddenError, NotFoundError } from '../../common/errors.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../common/errors.js';
 import {
   aiCallLatency,
   aiCostMicroInr,
@@ -93,6 +94,14 @@ import {
   shouldResearch,
   thinStep,
 } from './chat-research.js';
+import {
+  type BeyondSummary,
+  type ChatCitation,
+  collectionEmptyReply,
+  collectionOffTopicReply,
+  type StoredTurn,
+} from './chat-threads.js';
+import { ChatThreadsService, type OpenThread } from './chat-threads.service.js';
 import { ContextService } from './context.service.js';
 import { passagesFromChapters } from './document-scope.js';
 import { type WebResult, WebScopeService } from './web-scope.service.js';
@@ -124,24 +133,16 @@ export type ChatInput = {
   deep?: boolean;
   /** ADR-0083: files uploaded to `POST /chat/attachments` for this question, at most three. */
   attachmentIds?: string[];
+  /**
+   * ADR-0116: the chat the question belongs to. None continues the thesis's latest whole-library
+   * chat (what "the chat" was before threads); `newThread` starts one, on `collectionId` if given.
+   */
+  threadId?: string;
+  newThread?: boolean;
+  collectionId?: string;
 };
 
-/**
- * A citation in an answer. A library one opens its passage; a `beyond` one (ADR-0060) is a paper
- * the search found, with an empty `sourceId` — not citable in the thesis until it is added.
- */
-export type ChatCitation = {
-  key: string;
-  sourceId: string;
-  chunkId: string;
-  label: string;
-  beyond?: BeyondPaper;
-  /** ADR-0083: the passage was a file attached to the question; not a source, not citable. */
-  attachment?: { name: string };
-};
-
-/** What a beyond-library answer read, for the line under it. */
-export type BeyondSummary = { papers: number; outsideLibrary: number; note: string };
+export type { BeyondSummary, ChatCitation, StoredTurn };
 
 export type ChatEvent =
   | { event: 'start'; data: { turn: number } }
@@ -173,6 +174,11 @@ export type ChatEvent =
         beyond?: BeyondSummary;
         /** ADR-0074: present on a library answer that also read abstracts a search found. */
         research?: ResearchSummary | DeepSummary;
+        /**
+         * ADR-0116: the chat this answer is stored in — new when the question started one. Absent
+         * on a refusal in a chat that has not been stored yet.
+         */
+        threadId?: string;
       };
     };
 
@@ -181,24 +187,6 @@ type Retrieved = Awaited<ReturnType<ContextService['retrieve']>>;
 
 /** The unit a question is metered and logged as: a chat question, or deep research (ADR-0080). */
 type ChatAction = 'CHAT' | 'RESEARCH';
-
-/** How many turns are kept on the document; A.4 sends the last four back to the model. */
-const KEEP_TURNS = CHAT.keepTurns * 2;
-
-/**
- * A turn as stored on the document. The thread is trimmed from the front (KEEP_TURNS), so an
- * index is not an identity; the id is what the panel keys its list on.
- */
-/** `rating`: the student's thumbs on an answer (2026-10-04); absent when not rated. */
-export type StoredTurn = ChatTurn & {
-  id: string;
-  rating?: 1 | -1;
-  citations?: ChatCitation[];
-  /** ADR-0060: the answer was written from search abstracts, not the library. */
-  beyond?: BeyondSummary;
-  /** ADR-0074: the library's passages and abstracts a search found; ADR-0080 with the plan. */
-  research?: ResearchSummary | DeepSummary;
-};
 
 type ChapterForChat = Parameters<ContextService['memoryBlock']>[0];
 
@@ -212,25 +200,10 @@ export class ChatService {
     private readonly context: ContextService,
     private readonly web: WebScopeService,
     private readonly attachments: ChatAttachmentsService,
+    private readonly threads: ChatThreadsService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
   ) {}
-
-  /** The stored thread, for the panel to render on open. */
-  async history(ownerId: string, documentId: string): Promise<{ turns: StoredTurn[] }> {
-    const document = await this.owned(ownerId, documentId);
-    return { turns: readTurns(document.meta) };
-  }
-
-  async clear(ownerId: string, documentId: string): Promise<{ cleared: true }> {
-    const document = await this.owned(ownerId, documentId);
-    const meta = (document.meta as Record<string, unknown> | null) ?? {};
-    await this.prisma.document.update({
-      where: { id: documentId },
-      data: { meta: { ...meta, chat: { turns: [] } } },
-    });
-    return { cleared: true };
-  }
 
   async *ask(
     user: { id: string; plan: string },
@@ -258,7 +231,34 @@ export class ChatService {
     if (!chapter) throw new NotFoundError('That document has no chapters yet');
 
     const scope: ChatScope = input.scope ?? 'library';
-    const beyondSetting = scope === 'document' ? 'off' : await this.beyondSetting(user.id);
+    // ADR-0116: the chat this question belongs to, and on a collection, the papers it may use.
+    // Every refusal here comes before the unit is taken, so it is JSON and costs nothing.
+    const thread = await this.threads.open(user.id, input.documentId, {
+      threadId: input.threadId,
+      newThread: input.newThread,
+      collectionId: input.collectionId,
+    });
+    const collection = thread.collection;
+    if (collection) {
+      if (scope !== 'library') {
+        throw new ValidationError(
+          `This chat answers only from the collection “${collection.name}”. Start a new chat to ask about your whole library, your own chapters or beyond it.`,
+        );
+      }
+      if (collection.sourceIds.length === 0) {
+        throw new ValidationError(
+          `The collection “${collection.name}” has no papers yet. Add papers to it in the library, then ask.`,
+        );
+      }
+      if ((input.sourceIds ?? []).some((id) => !collection.sourceIds.includes(id))) {
+        throw new ValidationError(
+          `This chat answers only from the collection “${collection.name}”: name only papers in it.`,
+        );
+      }
+    }
+    // A chat on one collection never searches beyond it: the student chose those papers only.
+    const beyondSetting: BeyondSetting =
+      scope === 'document' || collection ? 'off' : await this.beyondSetting(user.id);
     // ADR-0083: before any unit is taken, so a stale attachment id is a 400 that costs nothing.
     const attached = await this.attachments.load(
       user.id,
@@ -274,15 +274,21 @@ export class ChatService {
       );
     }
 
-    // ADR-0080: the deep mode is its own unit and its own path. Asked with `@` papers or in another
-    // scope it is an ordinary question: the panel offers it only where it applies.
-    if (input.deep === true && scope === 'library' && (input.sourceIds?.length ?? 0) === 0) {
+    // ADR-0080: the deep mode is its own unit and its own path. Asked with `@` papers, in another
+    // scope or in a chat on one collection (ADR-0116) it is an ordinary question: the panel offers
+    // it only where it applies.
+    if (
+      input.deep === true &&
+      scope === 'library' &&
+      (input.sourceIds?.length ?? 0) === 0 &&
+      !collection
+    ) {
       if (beyondSetting === 'off') {
         throw new ForbiddenError(
           'Deep research searches the literature, which is turned off in Settings. Turn "Search beyond my library" on to use it.',
         );
       }
-      yield* this.askDeep(user, input, document, chapter, attached, signal);
+      yield* this.askDeep(user, input, document, thread, chapter, attached, signal);
       return;
     }
 
@@ -296,13 +302,13 @@ export class ChatService {
       throw refusal('CHAT', cap);
     }
 
-    const history = readTurns(document.meta);
+    const history = thread.turns;
     yield { event: 'start', data: { turn: history.length / 2 + 1 } };
 
     const startedAt = Date.now();
 
     if (scope === 'beyond') {
-      yield* this.answerBeyond(user, input, document, chapter, history, startedAt, signal);
+      yield* this.answerBeyond(user, input, thread, chapter, startedAt, signal);
       return;
     }
 
@@ -337,7 +343,11 @@ export class ChatService {
             candidates: ownChapters.length,
           })
         : this.context.retrieve(chapter, input.message, 'CHAT', {
-            sourceIds: input.sourceIds ?? [],
+            // ADR-0116: a chat on one collection searches its papers alone (`@` narrows further).
+            sourceIds:
+              collection && (input.sourceIds?.length ?? 0) === 0
+                ? collection.sourceIds
+                : (input.sourceIds ?? []),
           }),
     ]);
     const filters = input.filters ?? {};
@@ -377,8 +387,11 @@ export class ChatService {
       // on this screen; anything else means the question is not about their library.
       const filteredOut = passages.length === 0 && retrieved.passages.length > 0;
       // Named papers with no text at all: neither off-topic nor filtered, and the fix is different.
+      // ADR-0116: a chat on one collection named its papers too.
       const namedEmpty =
-        scope === 'library' && (input.sourceIds?.length ?? 0) > 0 && retrieved.candidates === 0;
+        scope === 'library' &&
+        ((input.sourceIds?.length ?? 0) > 0 || collection !== null) &&
+        retrieved.candidates === 0;
       // ADR-0060. Only the off-topic refusal is offered beyond the library: a filtered-out or a
       // named-empty question is about the library, and its fix is on this screen.
       const offTopic = scope === 'library' && !filteredOut && !namedEmpty;
@@ -386,7 +399,7 @@ export class ChatService {
         // "On": the same question goes to the search, on the unit already taken — still one CHAT
         // unit a question, refunded there if the search has nothing to read.
         chatOffTopic.inc();
-        yield* this.answerBeyond(user, input, document, chapter, history, startedAt, signal);
+        yield* this.answerBeyond(user, input, thread, chapter, startedAt, signal);
         return;
       }
       await this.usage.refund(user.id, 'CHAT');
@@ -413,10 +426,14 @@ export class ChatService {
                 // not nothing relevant.
                 'There is nothing written in this thesis yet for me to read. Write something first, or switch to Library to ask about your sources.'
               : namedEmpty
-                ? NAMED_EMPTY_REPLY
+                ? collection && (input.sourceIds?.length ?? 0) === 0
+                  ? collectionEmptyReply(collection.name)
+                  : NAMED_EMPTY_REPLY
                 : filteredOut
                   ? FILTERED_OUT_REPLY
-                  : OFF_TOPIC_REPLY,
+                  : collection
+                    ? collectionOffTopicReply(collection.name)
+                    : OFF_TOPIC_REPLY,
           outcome: namedEmpty
             ? ('named-empty' as const)
             : filteredOut
@@ -426,6 +443,7 @@ export class ChatService {
           passagesUsed: 0,
           latencyMs,
           ...(offTopic && beyondSetting === 'ask' ? { offerBeyond: true } : {}),
+          ...(thread.id ? { threadId: thread.id } : {}),
         },
       };
       return;
@@ -532,12 +550,8 @@ export class ChatService {
         citations,
         ...(summary ? { research: summary } : {}),
       },
-    ].slice(-KEEP_TURNS);
-    const meta = (document.meta as Record<string, unknown> | null) ?? {};
-    await this.prisma.document.update({
-      where: { id: input.documentId },
-      data: { meta: { ...meta, chat: { turns } } },
-    });
+    ];
+    const threadId = await this.threads.save(input.documentId, thread, turns, input.message);
 
     yield {
       event: 'done',
@@ -549,6 +563,7 @@ export class ChatService {
         passagesUsed: allPassages.length,
         latencyMs,
         ...(summary ? { research: summary } : {}),
+        threadId,
       },
     };
   }
@@ -568,7 +583,8 @@ export class ChatService {
   private async *askDeep(
     user: { id: string; plan: string },
     input: ChatInput,
-    document: { meta: unknown; title: string },
+    document: { title: string },
+    thread: OpenThread,
     chapter: ChapterForChat,
     attached: LoadedAttachments,
     signal: AbortSignal,
@@ -583,7 +599,7 @@ export class ChatService {
       throw refusal('RESEARCH', cap);
     }
 
-    const history = readTurns(document.meta);
+    const history = thread.turns;
     yield { event: 'start', data: { turn: history.length / 2 + 1 } };
     const startedAt = Date.now();
     const filters = input.filters ?? {};
@@ -693,6 +709,7 @@ export class ChatService {
           citations: [],
           passagesUsed: 0,
           latencyMs: Date.now() - startedAt,
+          ...(thread.id ? { threadId: thread.id } : {}),
         },
       };
       return;
@@ -766,12 +783,8 @@ export class ChatService {
         citations,
         research: summary,
       },
-    ].slice(-KEEP_TURNS);
-    const meta = (document.meta as Record<string, unknown> | null) ?? {};
-    await this.prisma.document.update({
-      where: { id: input.documentId },
-      data: { meta: { ...meta, chat: { turns } } },
-    });
+    ];
+    const threadId = await this.threads.save(input.documentId, thread, turns, input.message);
 
     yield {
       event: 'done',
@@ -783,6 +796,7 @@ export class ChatService {
         passagesUsed: allPassages.length,
         latencyMs,
         research: summary,
+        threadId,
       },
     };
   }
@@ -1002,12 +1016,12 @@ export class ChatService {
   private async *answerBeyond(
     user: { id: string },
     input: ChatInput,
-    document: { meta: unknown },
+    thread: OpenThread,
     chapter: ChapterForChat,
-    history: StoredTurn[],
     startedAt: number,
     signal: AbortSignal,
   ): AsyncGenerator<ChatEvent> {
+    const history = thread.turns;
     yield { event: 'step', data: { id: 'search', text: searchingStep(this.web.indexNames()) } };
 
     const filters = beyondFilters(input.filters ?? {});
@@ -1037,6 +1051,7 @@ export class ChatService {
           citations: [],
           passagesUsed: 0,
           latencyMs: Date.now() - startedAt,
+          ...(thread.id ? { threadId: thread.id } : {}),
         },
       };
       return;
@@ -1103,12 +1118,8 @@ export class ChatService {
         citations,
         ...(notEnough ? {} : { beyond }),
       },
-    ].slice(-KEEP_TURNS);
-    const meta = (document.meta as Record<string, unknown> | null) ?? {};
-    await this.prisma.document.update({
-      where: { id: input.documentId },
-      data: { meta: { ...meta, chat: { turns } } },
-    });
+    ];
+    const threadId = await this.threads.save(input.documentId, thread, turns, input.message);
 
     yield {
       event: 'done',
@@ -1120,6 +1131,7 @@ export class ChatService {
         passagesUsed: built.passages.length,
         latencyMs,
         ...(notEnough ? {} : { beyond }),
+        threadId,
       },
     };
   }
@@ -1239,35 +1251,25 @@ export class ChatService {
   private async owned(ownerId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, ownerId },
-      select: { id: true, meta: true, title: true },
+      select: { id: true, title: true },
     });
     if (!document) throw new NotFoundError('That document');
     return document;
   }
 
   /**
-   * Thumbs on an answer (2026-10-04, from the Jenni study). Kept on the turn in the stored
-   * conversation, and logged, because the turn itself rolls off after four. No model call.
+   * Thumbs on an answer (2026-10-04, from the Jenni study). Kept on the turn in its chat
+   * (`ChatThreadsService.rate`), and logged. No model call.
    */
   async rate(
     ownerId: string,
     documentId: string,
     turnId: string,
     rating: 1 | -1 | 0,
+    threadId?: string,
   ): Promise<{ ok: true }> {
-    const document = await this.owned(ownerId, documentId);
-    const turns = readTurns(document.meta);
-    const turn = turns.find((t) => t.id === turnId && t.role === 'assistant');
-    if (!turn) throw new NotFoundError('That answer');
-    const next = turns.map((t) =>
-      t.id === turnId ? { ...t, rating: rating === 0 ? undefined : rating } : t,
-    );
-    const meta = (document.meta as Record<string, unknown> | null) ?? {};
-    await this.prisma.document.update({
-      where: { id: documentId },
-      data: { meta: { ...meta, chat: { turns: next } } },
-    });
-    this.logger.log({ documentId, turnId, rating }, 'chat answer rated');
+    const rated = await this.threads.rate(ownerId, documentId, turnId, rating, threadId);
+    this.logger.log({ documentId, threadId: rated.threadId, turnId, rating }, 'chat answer rated');
     return { ok: true };
   }
 
@@ -1308,20 +1310,4 @@ export class ChatService {
       },
     });
   }
-}
-
-function readTurns(meta: unknown): StoredTurn[] {
-  const turns = (meta as { chat?: { turns?: unknown } } | null)?.chat?.turns;
-  if (!Array.isArray(turns)) return [];
-  return turns
-    .filter(
-      (t): t is StoredTurn =>
-        typeof t === 'object' &&
-        t !== null &&
-        (('role' in t && (t as ChatTurn).role === 'user') ||
-          (t as ChatTurn).role === 'assistant') &&
-        typeof (t as ChatTurn).text === 'string',
-    )
-    .map((t) => ({ ...t, id: t.id ?? randomUUID() }))
-    .slice(-KEEP_TURNS);
 }

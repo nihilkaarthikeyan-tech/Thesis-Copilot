@@ -665,4 +665,13 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'chat.deep.hint':
     'सवाल को हिस्सों में बाँटता है, हर हिस्से के लिए literature खोजता है, और विस्तार से जवाब देता है। लगभग एक मिनट। एक गहरे शोध का सवाल खर्च होता है, chat का सवाल नहीं।',
   'chat.research.plan': 'हिस्से: {titles}',
+  // ADR-0116: the agent's translation, as ADR-0061's were; a native reader has not checked it.
+  'chat.threads.list': 'चैट',
+  'chat.threads.new': 'नई चैट',
+  'chat.threads.newButton': 'नई',
+  'chat.threads.wholeLibrary': 'आपकी पूरी library',
+  'chat.web.ask': 'अपनी library से आगे खोजें?',
+  'chat.web.once': 'इस बार अनुमति दें',
+  'chat.web.always': 'हमेशा अनुमति दें',
+  'chat.web.skip': 'छोड़ें',
 };

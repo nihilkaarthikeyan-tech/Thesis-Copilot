@@ -5,8 +5,9 @@
  * thesis: the chapters, the outline and memory, the settings (citation style, language,
  * template), the library — every source with its metadata, its chunks and their embeddings, and
  * the student's collections of them — the seed papers, the pins and the citations. Never copied: shares, the read link, comments, usage,
- * exports, version history, coherence flags, viva questions, chapter builds, search runs and
- * suggestion telemetry. Those belong to the original's history or its people, not to its text.
+ * exports, version history, coherence flags, viva questions, chapter builds, search runs,
+ * suggestion telemetry and the chats (ADR-0116; before it the one chat rode along inside `meta`).
+ * Those belong to the original's history or its people, not to its text.
  *
  * **Nothing is shared afterwards.** Every row gets a fresh id and every file a fresh key; the ids
  * inside the chapter JSON and the memory are rewritten to the copy's own (`copy-ids.ts`). So an

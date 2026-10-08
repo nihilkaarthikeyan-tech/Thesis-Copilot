@@ -10,12 +10,24 @@
 
 import { tokenizeAiText } from '@tc/ui';
 import katex from 'katex';
-import { ThumbsDown, ThumbsUp } from 'lucide-react';
+import { History, Plus, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import type { MessageKey, Vars } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
 import { ApiError, api, type ProblemDetails } from '@/lib/api';
 import { answerPlainText } from '@/lib/chat-copy';
+import {
+  type ChatThreadSummary,
+  NEW_CHAT,
+  type OpenChat,
+  recallChat,
+  rememberChat,
+  type ThreadCollection,
+  threadFields,
+  threadLine,
+} from '@/lib/chat-threads';
+import type { Collection } from '@/lib/collections';
 import { dropMentionQuery, mentionQuery } from '@/lib/mentions';
 import { matchPrompts, promptQuery, type SavedPrompt, suggestPromptTitle } from '@/lib/prompts';
 import { findInLibrary, readerHref } from '@/lib/reader';
@@ -78,7 +90,30 @@ type Turn = {
   /** The student's thumbs; only answers the server stored (it sent their id) can be rated. */
   rating?: 1 | -1;
   stored?: boolean;
+  /** ADR-0116: the inline ask under this refusal was answered "Always allow" or "Skip". */
+  alwaysAllowed?: boolean;
+  skipped?: boolean;
 };
+
+/** ADR-0116: one chat as `GET /chat/:documentId` returns it. */
+type ChatView = {
+  threadId: string | null;
+  title: string;
+  collection: ThreadCollection | null;
+  collectionDeleted: boolean;
+  collectionName: string | null;
+  turns: Turn[];
+};
+
+function fetchChat(documentId: string, threadId?: string): Promise<ChatView> {
+  return api<ChatView>(
+    `/chat/${documentId}${threadId ? `?threadId=${encodeURIComponent(threadId)}` : ''}`,
+  );
+}
+
+function problemText(e: unknown): string {
+  return e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : (e as Error).message;
+}
 
 /** One line of "what it is doing" (ADR-0060, ADR-0074), as the server sent it. */
 type Step = { id: string; text: string; params?: Record<string, string | number> };
@@ -229,13 +264,60 @@ export function ChatPanel({
     });
   }, [prefill]);
 
+  /**
+   * ADR-0116: the chat open in the panel. A thesis has any number; a new one (`id` null) is stored
+   * and named by the server with its first answer.
+   */
+  const [chat, setChat] = useState<OpenChat>(NEW_CHAT);
+  const [showThreads, setShowThreads] = useState(false);
+  const [threadList, setThreadList] = useState<ChatThreadSummary[] | null>(null);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [newMenu, setNewMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** Set once the student picks a chat, so a slow first load cannot replace their choice. */
+  const chosenRef = useRef(false);
+
+  // The chat this tab had open (the panel is rebuilt each time the Chat tab opens), else the one
+  // used last. A chat that has gone (deleted in another tab) falls back to the one used last.
   useEffect(() => {
-    api<{ turns: Turn[] }>(`/chat/${documentId}`)
-      .then((h) => setTurns(h.turns.map((t) => ({ ...t, stored: true }))))
-      .catch(() => undefined);
+    let cancelled = false;
+    chosenRef.current = false;
+    const remembered = recallChat(documentId);
+    void (async () => {
+      const shelves = await api<Collection[]>(`/documents/${documentId}/collections`).catch(
+        () => [] as Collection[],
+      );
+      if (cancelled) return;
+      setCollections(shelves);
+      if (chosenRef.current) return;
+      if (remembered?.kind === 'new') {
+        const shelf = shelves.find((c) => c.id === remembered.collectionId);
+        setChat({ ...NEW_CHAT, collection: shelf ? { id: shelf.id, name: shelf.name } : null });
+        setTurns([]);
+        return;
+      }
+      const view = await fetchChat(
+        documentId,
+        remembered?.kind === 'thread' ? remembered.id : undefined,
+      )
+        .catch(() => (remembered ? fetchChat(documentId) : null))
+        .catch(() => null);
+      if (cancelled || !view || chosenRef.current) return;
+      setTurns(view.turns.map((t) => ({ ...t, stored: true })));
+      setChat({
+        id: view.threadId,
+        title: view.title,
+        collection: view.collection,
+        collectionDeleted: view.collectionDeleted,
+        collectionName: view.collectionName,
+      });
+    })();
     api<{ chatFilters?: Filters }>('/settings')
       .then((s) => setFilters(s.chatFilters ?? {}))
       .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [documentId]);
 
   // ADR-0016. 'library' is the grounded default and what this panel has always done; 'document'
@@ -243,7 +325,10 @@ export function ChatPanel({
   const [scope, setScope] = useState<Scope>('library');
   // `@` names the papers a question is about. Library scope only: the draft and the web search
   // have no papers of their own to name.
-  const mentions = useChatMentions(documentId, scope === 'library');
+  // ADR-0116: in a chat on one collection, only that collection's papers can be named.
+  const mentions = useChatMentions(documentId, scope === 'library', chat.collection?.id ?? null);
+  /** A chat on one collection (or one whose collection was deleted): no other scope, no search. */
+  const onCollection = chat.collection !== null || chat.collectionDeleted;
   // ADR-0068: a passage sent from the paper reader names its paper, so the answer is drawn from it.
   const addMention = mentions.add;
   useEffect(() => {
@@ -306,7 +391,7 @@ export function ChatPanel({
     try {
       await api(`/chat/${documentId}/turns/${turn.id}/rating`, {
         method: 'POST',
-        body: JSON.stringify({ rating: next }),
+        body: JSON.stringify({ rating: next, ...(chat.id ? { threadId: chat.id } : {}) }),
       });
     } catch {
       set(turn.rating);
@@ -333,7 +418,7 @@ export function ChatPanel({
    * at length, on its own allowance. Switched off again once asked: each one is a deliberate spend.
    */
   const [deep, setDeep] = useState(false);
-  const deepOffered = scope === 'library' && mentions.mentions.length === 0;
+  const deepOffered = scope === 'library' && mentions.mentions.length === 0 && !onCollection;
   /** ADR-0083: files for the next question, uploaded as they are chosen; cleared once asked. */
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -377,17 +462,147 @@ export function ChatPanel({
     if (!message || busy) return;
     setDraft('');
     setSavingPrompt(null);
+    // ADR-0116: the question goes to the chat on screen; the menus above it close.
+    chosenRef.current = true;
+    setShowThreads(false);
+    setNewMenu(false);
     await send(message, scope);
   }
 
   /**
-   * ADR-0060: the offer under a refused library question. The question is already in the thread,
-   * so it is not added again; the server stores it with the answer.
+   * ADR-0060: the offer under a refused library question, asked in the conversation since
+   * ADR-0116 as Jenni asks it: Allow this time, Always allow, Skip. The question is already in the
+   * thread, so it is not added again; the server stores it with the answer. "Always allow" is the
+   * Settings choice "On" (`searchBeyondLibrary`), saved before the search, and the panel says what
+   * it means: every library question then searches the literature too (ADR-0081).
    */
-  async function searchBeyond(turn: Turn) {
+  async function searchBeyond(turn: Turn, always = false) {
     if (!turn.question || busy) return;
-    setTurns((list) => list.map((t) => (t.id === turn.id ? { ...t, offerBeyond: false } : t)));
+    if (always) {
+      try {
+        await api('/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ searchBeyondLibrary: 'on' }),
+        });
+      } catch (e) {
+        setError(problemText(e));
+        return;
+      }
+    }
+    setTurns((list) =>
+      list.map((t) =>
+        t.id === turn.id
+          ? { ...t, offerBeyond: false, ...(always ? { alwaysAllowed: true } : {}) }
+          : t,
+      ),
+    );
     await send(turn.question, 'beyond', { repeat: true });
+  }
+
+  /** "Skip": the refusal stands, nothing is searched, nothing is charged. */
+  function skipBeyond(turn: Turn) {
+    setTurns((list) =>
+      list.map((t) => (t.id === turn.id ? { ...t, offerBeyond: false, skipped: true } : t)),
+    );
+  }
+
+  /** ADR-0116: shows a chat that was stored, and remembers it for this tab. */
+  function showChat(view: ChatView) {
+    const next: OpenChat = {
+      id: view.threadId,
+      title: view.title,
+      collection: view.collection,
+      collectionDeleted: view.collectionDeleted,
+      collectionName: view.collectionName,
+    };
+    setTurns(view.turns.map((t) => ({ ...t, stored: true })));
+    setChat(next);
+    rememberChat(documentId, next);
+    afterSwitch(next);
+  }
+
+  /**
+   * What changes with the chat: the steps and search results of the old one go, and a chat on a
+   * collection asks its own papers only. The draft and its attachments stay, so a question typed
+   * and then moved to a new chat is not lost.
+   */
+  function afterSwitch(next: OpenChat) {
+    chosenRef.current = true;
+    setSteps([]);
+    setStreaming('');
+    setWebResults(null);
+    setError(null);
+    setShowThreads(false);
+    setNewMenu(false);
+    setConfirmDelete(null);
+    if (next.collection || next.collectionDeleted) {
+      setScope('library');
+      setDeep(false);
+      mentions.clear();
+    }
+  }
+
+  /** ADR-0116: a new chat, on the whole library or on one collection. Stored with its first answer. */
+  function startNew(collection: ThreadCollection | null) {
+    const next: OpenChat = { ...NEW_CHAT, collection };
+    setTurns([]);
+    setChat(next);
+    rememberChat(documentId, next);
+    afterSwitch(next);
+    requestAnimationFrame(() => boxRef.current?.focus());
+  }
+
+  async function openThread(id: string) {
+    try {
+      showChat(await fetchChat(documentId, id));
+    } catch (e) {
+      setError(problemText(e));
+    }
+  }
+
+  async function openThreadList() {
+    setShowThreads(true);
+    setNewMenu(false);
+    setConfirmDelete(null);
+    setError(null);
+    try {
+      const listed = await api<{ threads: ChatThreadSummary[] }>(`/chat/${documentId}/threads`);
+      setThreadList(listed.threads);
+    } catch (e) {
+      setThreadList([]);
+      setError(problemText(e));
+    }
+  }
+
+  /** "New": straight to a new chat, or first a choice of where, when the library has collections. */
+  async function pressNew() {
+    const shelves = await api<Collection[]>(`/documents/${documentId}/collections`).catch(
+      () => collections,
+    );
+    setCollections(shelves);
+    if (shelves.length === 0) {
+      startNew(null);
+      return;
+    }
+    setShowThreads(false);
+    setConfirmDelete(null);
+    setNewMenu((open) => !open);
+  }
+
+  /** Deletes one chat, after the row's own confirm. The open chat, if it was that one, becomes new. */
+  async function deleteThread(id: string) {
+    try {
+      await api(`/chat/${documentId}/threads/${id}`, { method: 'DELETE' });
+      setThreadList((list) => list?.filter((t) => t.id !== id) ?? null);
+      setConfirmDelete(null);
+      if (chat.id === id) {
+        setTurns([]);
+        setChat(NEW_CHAT);
+        rememberChat(documentId, NEW_CHAT);
+      }
+    } catch (e) {
+      setError(problemText(e));
+    }
   }
 
   async function send(
@@ -436,6 +651,8 @@ export function ChatPanel({
           message,
           filters,
           scope: askScope,
+          // ADR-0116: the open chat, or a new one (on its collection, if it has one).
+          ...threadFields(chat),
           ...(askScope === 'library' && mentions.mentions.length > 0
             ? { sourceIds: mentions.mentions.map((m) => m.id) }
             : {}),
@@ -493,6 +710,16 @@ export function ChatPanel({
           } else if (eventName === 'done') {
             const beyond = data.beyond as Turn['beyond'] | undefined;
             const research = data.research as Turn['research'] | undefined;
+            // ADR-0116: a new chat has become a stored one; later questions continue it.
+            if (typeof data.threadId === 'string' && data.threadId !== chat.id) {
+              const next: OpenChat = {
+                ...chat,
+                id: data.threadId,
+                title: chat.title || message.replace(/\s+/g, ' ').trim(),
+              };
+              setChat(next);
+              rememberChat(documentId, next);
+            }
             setTurns((list) => [
               ...list,
               {
@@ -693,38 +920,157 @@ export function ChatPanel({
 
   return (
     <div data-testid="chat-panel" className="flex h-full flex-col">
-      <div className="px-1 pb-2">
-        <div className="flex items-center justify-between gap-2">
-          {/* A real fieldset rather than role="group": the native element already carries the
-              grouping semantics, and the legend names it without a duplicate aria-label. */}
-          <fieldset className="inline-flex rounded-md border border-line bg-surface p-0.5">
-            <legend className="sr-only">What to answer from</legend>
-            {SCOPES.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={scope === option}
-                data-testid={`chat-scope-${option}`}
-                onClick={() => setScope(option)}
-                className={cn(
-                  'rounded-sm px-2 py-0.5 text-[11px] font-semibold transition-colors',
-                  scope === option ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink',
-                )}
-              >
-                {SCOPE_LABEL[option]}
-              </button>
-            ))}
-          </fieldset>
-          <button
-            type="button"
-            className="text-xs text-muted underline"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            Filters
-          </button>
-        </div>
-        <p className="mt-1.5 text-xs text-muted">{SCOPE_BLURB[scope]}</p>
+      {/* ADR-0116: which chat is open, the list of the thesis's chats, and a new one. One row
+          that fits 288 px: the title is the part that gives way. */}
+      <div data-testid="chat-thread-bar" className="flex min-w-0 items-center gap-1.5 px-1 pb-2">
+        <button
+          type="button"
+          data-testid="chat-threads-toggle"
+          aria-expanded={showThreads}
+          disabled={busy}
+          onClick={() => (showThreads ? setShowThreads(false) : void openThreadList())}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold transition-colors disabled:opacity-50',
+            showThreads
+              ? 'border-accent bg-accent text-accent-ink'
+              : 'border-line text-muted hover:text-ink',
+          )}
+        >
+          <History size={12} aria-hidden />
+          {t('chat.threads.list')}
+        </button>
+        <span
+          data-testid="chat-thread-title"
+          title={chat.title || undefined}
+          className="min-w-0 flex-1 truncate text-xs text-ink"
+        >
+          {chat.title || t('chat.threads.new')}
+        </span>
+        <button
+          type="button"
+          data-testid="chat-new"
+          aria-expanded={collections.length > 0 ? newMenu : undefined}
+          disabled={busy}
+          onClick={() => void pressNew()}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line px-2 py-0.5 text-[11px] font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+        >
+          <Plus size={12} aria-hidden />
+          {t('chat.threads.newButton')}
+        </button>
       </div>
+      {newMenu && !busy ? (
+        <div
+          data-testid="chat-new-menu"
+          className="mx-1 mb-2 rounded-md border border-line bg-surface p-1.5"
+        >
+          <p className="px-1 pb-1 text-[11px] text-muted">{t('chat.threads.newOn')}</p>
+          <ul className="grid grid-cols-1 gap-0.5">
+            <li className="min-w-0">
+              <button
+                type="button"
+                data-testid="chat-new-library"
+                onClick={() => startNew(null)}
+                className="block w-full truncate rounded px-2 py-1 text-left text-xs text-ink hover:bg-sunk"
+              >
+                {t('chat.threads.wholeLibrary')}
+              </button>
+            </li>
+            {collections.map((shelf) => (
+              <li key={shelf.id} className="min-w-0">
+                <button
+                  type="button"
+                  data-testid="chat-new-collection"
+                  disabled={shelf.count === 0}
+                  onClick={() => startNew({ id: shelf.id, name: shelf.name })}
+                  className="flex w-full min-w-0 items-center gap-2 rounded px-2 py-1 text-left text-xs text-ink hover:bg-sunk disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <span className="min-w-0 flex-1 truncate">{shelf.name}</span>
+                  <span className="shrink-0 text-[11px] text-faint">
+                    {shelf.count === 0 ? t('chat.threads.emptyCollection') : shelf.count}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {/* The list opens under the bar, as a menu does, and closes when a chat is chosen. Not
+          while an answer is coming: it belongs to the chat on screen. */}
+      {showThreads && !busy ? (
+        <ThreadList
+          threads={threadList}
+          currentId={chat.id}
+          confirming={confirmDelete}
+          onOpen={(id) => void openThread(id)}
+          onAskDelete={setConfirmDelete}
+          onDelete={(id) => void deleteThread(id)}
+          onCancel={() => setConfirmDelete(null)}
+          t={t}
+        />
+      ) : null}
+      {chat.collectionDeleted ? (
+        <p
+          data-testid="chat-collection-deleted"
+          role="status"
+          className="mx-1 mb-2 rounded-md border border-line px-2 py-1.5 text-xs text-muted"
+        >
+          {t('chat.collection.deleted', { name: chat.collectionName ?? '' })}
+        </p>
+      ) : null}
+      {chat.collection ? (
+        <div className="px-1 pb-2">
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <p
+              data-testid="chat-collection-scope"
+              title={chat.collection.name}
+              className="min-w-0 truncate rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-[11px] text-ink"
+            >
+              {t('chat.collection.chip', { name: chat.collection.name })}
+            </p>
+            <button
+              type="button"
+              className="shrink-0 text-xs text-muted underline"
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              Filters
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-muted">{t('chat.collection.blurb')}</p>
+        </div>
+      ) : chat.collectionDeleted ? null : (
+        <div className="px-1 pb-2">
+          <div className="flex items-center justify-between gap-2">
+            {/* A real fieldset rather than role="group": the native element already carries the
+              grouping semantics, and the legend names it without a duplicate aria-label. */}
+            <fieldset className="inline-flex rounded-md border border-line bg-surface p-0.5">
+              <legend className="sr-only">What to answer from</legend>
+              {SCOPES.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={scope === option}
+                  data-testid={`chat-scope-${option}`}
+                  onClick={() => setScope(option)}
+                  className={cn(
+                    'rounded-sm px-2 py-0.5 text-[11px] font-semibold transition-colors',
+                    scope === option ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink',
+                  )}
+                >
+                  {SCOPE_LABEL[option]}
+                </button>
+              ))}
+            </fieldset>
+            <button
+              type="button"
+              className="text-xs text-muted underline"
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              Filters
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-muted">{SCOPE_BLURB[scope]}</p>
+        </div>
+      )}
 
       {scope === 'web' && webResults ? (
         <div data-testid="web-results" className="mb-2 grid gap-2">
@@ -873,9 +1219,11 @@ export function ChatPanel({
       <div className="flex-1 space-y-3 overflow-y-auto px-1" aria-live="polite">
         {turns.length === 0 && !streaming && scope !== 'web' ? (
           <p className="text-sm text-muted">
-            {scope === 'library'
-              ? 'Ask about the papers you have pinned or added — what they found, where they disagree, what is missing. For writing, use Assist or Draft in the editor.'
-              : 'Ask about what you have already written — what a chapter argues, where you covered something, whether you have said it twice.'}
+            {chat.collection
+              ? t('chat.collection.empty', { name: chat.collection.name })
+              : scope === 'library'
+                ? 'Ask about the papers you have pinned or added — what they found, where they disagree, what is missing. For writing, use Assist or Draft in the editor.'
+                : 'Ask about what you have already written — what a chapter argues, where you covered something, whether you have said it twice.'}
           </p>
         ) : null}
         {turns.map((turn) => (
@@ -900,20 +1248,67 @@ export function ChatPanel({
                 draft — see `docs/PENDING.md`, "A.4 refuses in the wrong words". */}
             {turn.outcome === 'not-enough' && turn.scope !== 'document' ? (
               <p className="mt-2 text-xs text-muted">
-                Add sources from the Discover tab, then ask again.
+                {onCollection
+                  ? t('chat.collection.notEnough')
+                  : 'Add sources from the Discover tab, then ask again.'}
               </p>
             ) : null}
-            {/* ADR-0060, "Ask first": one press sends the same question to the search. */}
+            {/* ADR-0060, "Ask first", asked in the conversation since ADR-0116: Allow this time
+                sends the same question to the search, Always allow also sets "On", Skip leaves
+                the refusal. The buttons wrap, so the row fits the 288 px panel in any language. */}
             {turn.offerBeyond && turn.question ? (
-              <button
-                type="button"
-                data-testid="chat-search-beyond"
-                disabled={busy}
-                onClick={() => void searchBeyond(turn)}
-                className="mt-2 rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+              <div
+                data-testid="chat-search-beyond-ask"
+                className="mt-2 rounded-md border border-line-strong p-2"
               >
-                Search beyond your library for this?
-              </button>
+                <p className="text-xs font-semibold text-ink">{t('chat.web.ask')}</p>
+                <p className="mt-0.5 text-[11px] text-muted">{t('chat.web.why')}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    data-testid="chat-search-beyond"
+                    disabled={busy}
+                    onClick={() => void searchBeyond(turn)}
+                    className="rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {t('chat.web.once')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="chat-search-beyond-always"
+                    disabled={busy}
+                    onClick={() => void searchBeyond(turn, true)}
+                    className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+                  >
+                    {t('chat.web.always')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="chat-search-beyond-skip"
+                    disabled={busy}
+                    onClick={() => skipBeyond(turn)}
+                    className="rounded-md px-2.5 py-1 text-xs text-muted underline hover:text-ink disabled:opacity-50"
+                  >
+                    {t('chat.web.skip')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {turn.alwaysAllowed ? (
+              <p
+                data-testid="chat-search-beyond-always-note"
+                className="mt-1.5 text-[11px] text-muted"
+              >
+                {t('chat.web.alwaysNote')}{' '}
+                <Link href="/app/settings" className="underline hover:text-ink">
+                  {t('chat.web.settings')}
+                </Link>
+              </p>
+            ) : null}
+            {turn.skipped ? (
+              <p data-testid="chat-search-beyond-skipped" className="mt-1.5 text-[11px] text-faint">
+                {t('chat.web.skipped')}
+              </p>
             ) : null}
             {turn.beyond ? (
               <BeyondPapers
@@ -1109,7 +1504,8 @@ export function ChatPanel({
           id="chat-message"
           ref={boxRef}
           value={draft}
-          disabled={busy}
+          // ADR-0116: a chat whose collection was deleted can be read, not asked.
+          disabled={busy || chat.collectionDeleted}
           maxLength={2000}
           autoComplete="off"
           onChange={(e) => {
@@ -1122,7 +1518,7 @@ export function ChatPanel({
         />
         <button
           type="submit"
-          disabled={busy || draft.trim().length === 0}
+          disabled={busy || draft.trim().length === 0 || chat.collectionDeleted}
           className="rounded-md px-3 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
         >
           {busy ? '…' : 'Ask'}
@@ -1176,6 +1572,135 @@ export function ChatPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * ADR-0116: the thesis's chats, the one used last first. A row is the chat's title (its first
+ * question) and a line under it — when, how many questions, which collection — both truncated in
+ * one grid column so nothing sticks out of the 288 px panel. Delete asks on the row itself.
+ */
+function ThreadList({
+  threads,
+  currentId,
+  confirming,
+  onOpen,
+  onAskDelete,
+  onDelete,
+  onCancel,
+  t,
+}: {
+  threads: ChatThreadSummary[] | null;
+  currentId: string | null;
+  confirming: string | null;
+  onOpen: (id: string) => void;
+  onAskDelete: (id: string) => void;
+  onDelete: (id: string) => void;
+  onCancel: () => void;
+  t: (key: MessageKey, vars?: Vars) => string;
+}) {
+  return (
+    <section
+      aria-label={t('chat.threads.heading')}
+      data-testid="chat-threads-panel"
+      className="mx-1 mb-2 rounded-md border border-line bg-surface p-1.5"
+    >
+      <p className="px-1 pb-1 text-[11px] text-muted">{t('chat.threads.heading')}</p>
+      {threads === null ? (
+        <p className="px-1 py-1 text-xs text-muted">{t('chat.threads.loading')}</p>
+      ) : threads.length === 0 ? (
+        <p data-testid="chat-threads-empty" className="px-1 py-1 text-xs text-muted">
+          {t('chat.threads.none')}
+        </p>
+      ) : (
+        <ThreadRows
+          threads={threads}
+          currentId={currentId}
+          confirming={confirming}
+          onOpen={onOpen}
+          onAskDelete={onAskDelete}
+          onDelete={onDelete}
+          onCancel={onCancel}
+          t={t}
+        />
+      )}
+    </section>
+  );
+}
+
+function ThreadRows({
+  threads,
+  currentId,
+  confirming,
+  onOpen,
+  onAskDelete,
+  onDelete,
+  onCancel,
+  t,
+}: {
+  threads: ChatThreadSummary[];
+  currentId: string | null;
+  confirming: string | null;
+  onOpen: (id: string) => void;
+  onAskDelete: (id: string) => void;
+  onDelete: (id: string) => void;
+  onCancel: () => void;
+  t: (key: MessageKey, vars?: Vars) => string;
+}) {
+  return (
+    <ul
+      data-testid="chat-threads"
+      className="grid max-h-[45vh] grid-cols-1 content-start gap-1 overflow-y-auto"
+    >
+      {threads.map((thread) => (
+        <li
+          key={thread.id}
+          data-testid="chat-thread"
+          aria-current={thread.id === currentId ? 'true' : undefined}
+          className={cn(
+            'flex min-w-0 items-start gap-1 rounded-md border',
+            thread.id === currentId ? 'border-accent/50 bg-accent-soft' : 'border-line bg-surface',
+          )}
+        >
+          <button
+            type="button"
+            data-testid="chat-thread-open"
+            onClick={() => onOpen(thread.id)}
+            className="min-w-0 flex-1 px-2 py-1.5 text-left"
+          >
+            <span className="block truncate text-sm text-ink" title={thread.title}>
+              {thread.title}
+            </span>
+            <span className="block truncate text-[11px] text-muted">{threadLine(thread)}</span>
+          </button>
+          {confirming === thread.id ? (
+            <span className="flex shrink-0 items-center gap-2 py-2 pr-2 text-[11px]">
+              <button
+                type="button"
+                data-testid="chat-thread-delete-confirm"
+                onClick={() => onDelete(thread.id)}
+                className="font-semibold text-warn underline"
+              >
+                {t('chat.threads.deleteYes')}
+              </button>
+              <button type="button" onClick={onCancel} className="text-muted underline">
+                {t('chat.threads.deleteNo')}
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-testid="chat-thread-delete"
+              aria-label={t('chat.threads.delete', { title: thread.title })}
+              onClick={() => onAskDelete(thread.id)}
+              className="shrink-0 rounded p-2 text-faint transition-colors hover:text-warn"
+            >
+              <Trash2 size={13} aria-hidden />
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

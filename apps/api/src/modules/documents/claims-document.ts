@@ -306,8 +306,10 @@ export function claimsDocument(input: ClaimsDocumentInput): ClaimsDocument {
           body.push(
             list(
               withDirection.map((c) => [
-                text(`On “${shortClaim(c.claim)}”: `, true),
-                text(c.direction),
+                // The space after the bold lead-in is plain text: a bold run ending in a space let
+                // that space hang past the line at a wrap (2026-10-08 layout check).
+                text(`On “${shortClaim(c.claim)}”:`, true),
+                text(` ${c.direction}`),
               ]),
             ),
           );
@@ -335,7 +337,10 @@ export function claimsDocument(input: ClaimsDocumentInput): ClaimsDocument {
           body.push(paragraph(text('What the papers’ evidence cannot say, claim by claim:')));
           body.push(
             list(
-              withLimits.map((c) => [text(`On “${shortClaim(c.claim)}”: `, true), text(c.limits)]),
+              withLimits.map((c) => [
+                text(`On “${shortClaim(c.claim)}”:`, true),
+                text(` ${c.limits}`),
+              ]),
             ),
           );
         }

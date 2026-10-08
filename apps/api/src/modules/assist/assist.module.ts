@@ -12,6 +12,7 @@ import { AutoSourcesService } from './auto-sources.service.js';
 import { ChatController } from './chat.controller.js';
 import { ChatService } from './chat.service.js';
 import { ChatAttachmentsService } from './chat-attachments.service.js';
+import { ChatThreadsService } from './chat-threads.service.js';
 import { CitationsController } from './citations.controller.js';
 import { CiteService } from './cite.service.js';
 import { CiteRoleService } from './cite-role.service.js';
@@ -32,6 +33,7 @@ import { WebScopeService } from './web-scope.service.js';
     AutoSourcesService,
     ChatService,
     ChatAttachmentsService,
+    ChatThreadsService,
     WebScopeService,
     CiteRoleService,
     EquationService,

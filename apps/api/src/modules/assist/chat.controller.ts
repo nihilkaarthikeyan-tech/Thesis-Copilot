@@ -5,6 +5,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -29,6 +30,7 @@ import { FlagsService } from '../flags/flags.service.js';
 import { BEYOND_SETTINGS, beyondSettingOf } from './beyond-library.js';
 import { ChatService } from './chat.service.js';
 import { ChatAttachmentsService } from './chat-attachments.service.js';
+import { ChatThreadsService } from './chat-threads.service.js';
 import { checkRangeSchema } from './check-range.js';
 import { CiteRoleService } from './cite-role.service.js';
 import { CommandService } from './command.service.js';
@@ -61,7 +63,29 @@ const chatBody = z.object({
       excludePreprints: z.boolean().optional(),
     })
     .optional(),
+  /**
+   * ADR-0116: the chat this question belongs to. Absent continues the thesis's latest
+   * whole-library chat; `newThread` starts one, on `collectionId` (a collection of this thesis)
+   * if given.
+   */
+  threadId: z.string().uuid().optional(),
+  newThread: z.boolean().optional(),
+  collectionId: z.string().uuid().optional(),
 });
+
+/** ADR-0116: a chat is named, or started, not both; a collection is chosen as it starts. */
+const chatRequest = chatBody
+  .refine((b) => !(b.threadId && b.newThread), {
+    message: 'Ask in a chat, or start a new one, not both.',
+    path: ['newThread'],
+  })
+  .refine((b) => !b.collectionId || b.newThread === true, {
+    message: 'A chat is put on a collection when it starts.',
+    path: ['collectionId'],
+  });
+
+/** ADR-0116: which chat, where a route takes one. */
+const threadIdParam = z.string().uuid();
 
 const webBody = z.object({
   documentId: z.string().uuid(),
@@ -164,6 +188,7 @@ export class ChatController {
     private readonly equations: EquationService,
     private readonly web: WebScopeService,
     private readonly attachments: ChatAttachmentsService,
+    private readonly threads: ChatThreadsService,
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
     private readonly flags: FlagsService,
@@ -201,7 +226,7 @@ export class ChatController {
     @Req() request: FastifyRequest,
     @Res() reply: FastifyReply,
   ): Promise<void> {
-    const parsed = chatBody.safeParse(body);
+    const parsed = chatRequest.safeParse(body);
     if (!parsed.success) throw new ValidationError('Ask a question first', parsed.error.issues);
     await streamSse(request, reply, this.env, (signal) => this.chat.ask(user, parsed.data, signal));
   }
@@ -220,15 +245,48 @@ export class ChatController {
     return this.web.search(user.id, parsed.data.documentId, parsed.data.message);
   }
 
+  /**
+   * One chat of the thesis for the panel: `?threadId=`, or the one used last (ADR-0116). Its
+   * turns, title and collection; `threadId` is null when the thesis has no chat yet.
+   */
   @Get('chat/:documentId')
-  history(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
-    return this.chat.history(user.id, documentId);
+  history(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Query('threadId') threadId: string | undefined,
+  ) {
+    return this.threads.history(user.id, documentId, optionalThreadId(threadId));
   }
 
+  /** ADR-0116: the thesis's chats, the one used last first. */
+  @Get('chat/:documentId/threads')
+  listThreads(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
+    return this.threads.list(user.id, documentId);
+  }
+
+  /** ADR-0116: deletes one chat, on the student's press. Nothing else of the thesis changes. */
+  @Delete('chat/:documentId/threads/:threadId')
+  removeThread(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Param('threadId') threadId: string,
+  ) {
+    const parsed = threadIdParam.safeParse(threadId);
+    if (!parsed.success) throw new ValidationError('Which chat?');
+    return this.threads.remove(user.id, documentId, parsed.data);
+  }
+
+  /** Empties a chat: `{ threadId }`, or the one used last. */
   @Post('chat/:documentId/clear')
   @HttpCode(200)
-  clear(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
-    return this.chat.clear(user.id, documentId);
+  clear(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = z.object({ threadId: threadIdParam.optional() }).safeParse(body ?? {});
+    if (!parsed.success) throw new ValidationError('Which chat?', parsed.error.issues);
+    return this.threads.clear(user.id, documentId, parsed.data.threadId);
   }
 
   /**
@@ -354,10 +412,14 @@ export class ChatController {
     @Body() body: unknown,
   ) {
     const parsed = z
-      .object({ rating: z.union([z.literal(1), z.literal(-1), z.literal(0)]) })
+      .object({
+        rating: z.union([z.literal(1), z.literal(-1), z.literal(0)]),
+        // ADR-0116: the chat the answer is in; found by the answer's id when absent.
+        threadId: threadIdParam.optional(),
+      })
       .safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid rating', parsed.error.issues);
-    return this.chat.rate(user.id, documentId, turnId, parsed.data.rating);
+    return this.chat.rate(user.id, documentId, turnId, parsed.data.rating, parsed.data.threadId);
   }
 
   @Get('settings')
@@ -396,4 +458,12 @@ export class ChatController {
     await this.prisma.user.update({ where: { id: user.id }, data: { settings } });
     return settings;
   }
+}
+
+/** `?threadId=` when given: a uuid, or a 400 rather than a lookup that can only miss. */
+function optionalThreadId(value: string | undefined): string | undefined {
+  if (value === undefined || value === '') return undefined;
+  const parsed = threadIdParam.safeParse(value);
+  if (!parsed.success) throw new ValidationError('Which chat?');
+  return parsed.data;
 }

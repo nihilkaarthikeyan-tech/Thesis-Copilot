@@ -320,6 +320,8 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       review is ₹97.00; examiner reviews 6→2 plus one review is ₹98.60. One fits the trial. Then
       Admin → Settings → "Whole literature review build", and run one real review to compare
       `totals.spentInr` with ₹12.92. About 8,700 words, no tables.
+- [ ] **Release with migration 0045 (R30): backup first.** Once 0045 runs, a code-only rollback would
+      show empty chats; the data stays in `ChatThread`.
 - [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
       shown because presentation and contribution did not track the text. A next attempt could
       run that one call at a higher reasoning effort (priced first: about ₹0.36 a review before

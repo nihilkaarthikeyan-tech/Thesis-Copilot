@@ -59,6 +59,8 @@ export class DocumentEraser {
     if (sourceIds.length > 0) {
       await tx.sourceChunk.deleteMany({ where: { sourceId: { in: sourceIds } } });
     }
+    // ADR-0116 (0045): the chats, before the collections some of them answer from.
+    await tx.chatThread.deleteMany({ where: inDocs });
     // Collections (0036): the memberships first, then the folders themselves.
     await tx.sourceCollectionItem.deleteMany({ where: { collection: inDocs } });
     await tx.sourceCollection.deleteMany({ where: inDocs });

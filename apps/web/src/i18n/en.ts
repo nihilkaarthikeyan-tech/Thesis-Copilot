@@ -680,6 +680,37 @@ export const en = {
   'chat.deep.hint':
     'Plans the question in parts, searches the literature for each, and answers at length. About a minute. Uses one deep research question, not a chat question.',
   'chat.research.plan': 'Parts: {titles}',
+  // ADR-0116 (R30): more than one chat per thesis, a chat on one collection, and the inline ask.
+  'chat.threads.list': 'Chats',
+  'chat.threads.heading': 'Your chats in this thesis',
+  'chat.threads.new': 'New chat',
+  'chat.threads.newButton': 'New',
+  'chat.threads.newOn': 'Start a new chat on',
+  'chat.threads.wholeLibrary': 'Your whole library',
+  'chat.threads.emptyCollection': 'empty',
+  'chat.threads.loading': 'Loading your chats…',
+  'chat.threads.none': 'No chats yet. Ask a question and the chat is kept here.',
+  'chat.threads.delete': 'Delete the chat “{title}”',
+  'chat.threads.deleteYes': 'Delete',
+  'chat.threads.deleteNo': 'Keep',
+  'chat.collection.chip': 'Collection: {name}',
+  'chat.collection.blurb':
+    'Answers come only from the papers in this collection, and cite the passage they came from. This chat never searches beyond them.',
+  'chat.collection.empty':
+    'Ask about the papers in “{name}” — what they found, where they disagree, what is missing.',
+  'chat.collection.notEnough': 'Add papers to this collection in Sources, then ask again.',
+  'chat.collection.deleted':
+    'This chat answered only from the collection “{name}”, which has been deleted. You can read it here; start a new chat to ask again.',
+  'chat.web.ask': 'Search beyond your library?',
+  'chat.web.why':
+    'Nothing in your library is on this. The scholarly indexes can be searched and the answer written from the abstracts found, each marked “Not in your library”.',
+  'chat.web.once': 'Allow this time',
+  'chat.web.always': 'Always allow',
+  'chat.web.skip': 'Skip',
+  'chat.web.skipped': 'Not searched.',
+  'chat.web.alwaysNote':
+    'Search beyond my library is now On: every library question also searches the literature.',
+  'chat.web.settings': 'Change it in Settings',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

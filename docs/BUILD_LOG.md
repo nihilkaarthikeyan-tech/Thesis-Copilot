@@ -5730,3 +5730,13 @@ map, delivered as pending drafts with the QA report and the email. Its own LIT_R
 /draft accept knows the review's sections, and each theme searches on its own key. On main: config
 84, worker 222, web 221 and four API files (28) pass, after Docker Desktop had to be restarted.
 
+R30 (ADR-0116): a thesis has any number of chats (`ChatThread`, migration 0045; each existing
+`meta.chat` became the first thread, turn for turn — 40 local chats moved), listed, reopened and
+deleted from a bar above the panel; a chat can be started on one collection and answers only from
+it; under "Ask first", a refused question asks Allow this time / Always allow / Skip in the
+conversation. No prompt change, no new allowance; a chat across theses waits. On main: web 227 and
+ten chat API files (79, including the four the agent could not run and the migration test) and the
+chat-threads browser spec pass. R38's browser spec, first run here, found its bold "On “…”: " lead-ins
+ending in a space that hung past the line at a wrap; the space is now plain text, and the layout
+measurer ignores an overshoot of up to 6 px by a run that holds a space (a hanging space).
+

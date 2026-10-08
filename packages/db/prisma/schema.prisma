@@ -255,6 +255,8 @@ model Document {
   shareLink   ShareLink?
   /// 2026-10-04: the student's folders in the library ("Methods", "Chapter 2").
   sourceCollections SourceCollection[]
+  /// ADR-0116: the thesis's chat conversations, any number of them.
+  chatThreads ChatThread[]
   versions    DocumentVersion[]
   exportArtifacts ExportArtifact[]
   /// R36 (ADR-0115): "How was this?" on what was generated for this thesis.
@@ -397,6 +399,8 @@ model SourceCollection {
   name       String
   order      Int      @default(0)
   items      SourceCollectionItem[]
+  /// ADR-0116: chats that answer only from this collection's papers.
+  chatThreads ChatThread[]
   createdAt  DateTime @default(now())
   @@index([documentId, order])
 }
@@ -687,6 +691,33 @@ model CommentReply {
   createdAt   DateTime @default(now())
   editedAt    DateTime?
   @@index([commentId, createdAt])
+}
+
+/**
+ * ADR-0116: one conversation in a thesis's chat. A thesis has any number; the panel lists them,
+ * the one used last first. Until 0045 a thesis had a single conversation on `Document.meta.chat`;
+ * the migration made each of those the first thread of its thesis.
+ *
+ * `turns` is the conversation as the panel shows it (the last `THREAD_KEEP_TURNS`); A.4 still
+ * sends the model only the last four. A thread with a `collectionId` answers only from that
+ * collection's papers. `collectionName` keeps the name it was started with, so a thread whose
+ * collection was deleted (the id goes to null) says so instead of quietly answering from the
+ * whole library.
+ */
+model ChatThread {
+  id             String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  documentId     String   @db.Uuid
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  title          String
+  collectionId   String?  @db.Uuid
+  collection     SourceCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  collectionName String?
+  /// How many questions `turns` holds, so the list need not read every conversation.
+  questions      Int      @default(0)
+  turns          Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([documentId, updatedAt])
 }
 
 model CoherenceFlag {
