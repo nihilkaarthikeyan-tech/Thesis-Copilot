@@ -337,6 +337,35 @@
   border-bottom-color: var(--color-accent);
 }
 
+/* R23 (ADR-0110): a check's fixes in the text while review mode is open. The old words struck,
+   the new ones beside them; a flag is a highlight. The one being decided gets a background. */
+.thesis-editor .tc-change-del {
+  color: var(--color-warn);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  cursor: pointer;
+}
+.thesis-editor .tc-change-ins {
+  margin-left: 0.15em;
+  color: var(--color-ok);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--color-ok) 55%, transparent);
+  cursor: pointer;
+}
+.thesis-editor .tc-change-note {
+  border-bottom: 2px solid color-mix(in srgb, var(--color-warn) 55%, transparent);
+  cursor: pointer;
+}
+.thesis-editor .tc-change-del.is-active,
+.thesis-editor .tc-change-note.is-active {
+  background: var(--color-warn-soft);
+}
+body.tc-reviewing [data-testid="suggest-floating"] {
+  display: none;
+}
+.thesis-editor .tc-change-ins.is-active {
+  background: var(--color-ok-soft, var(--color-accent-soft));
+}
+
 /* ADR-0028: everyone else's caret and name in a live chapter. TipTap ships the class names and
    no styles; without these the label is an unbounded coloured block across the line. */
 .thesis-editor .collaboration-cursor__caret {

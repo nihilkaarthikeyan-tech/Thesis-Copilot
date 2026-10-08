@@ -171,3 +171,12 @@ export {
   documentText,
   sectionUnderCursor,
 } from './editor/text.js';
+export {
+  type TrackedChange,
+  type TrackedChangeState,
+  TrackedChanges,
+  type TrackedChangesStorage,
+  trackedChangeRange,
+  trackedChangesKey,
+  wordsAt,
+} from './editor/tracked-changes.js';

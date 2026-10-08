@@ -465,6 +465,13 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           it. It corrects mistakes; it does not swap your words for different ones. One section
           command per run.
         </P>
+        <P>
+          The corrections open in the text as tracked changes: the old words struck through, the new
+          ones beside them. Press <L>Y</L> to accept one, <L>N</L> to reject it, the arrow keys to
+          move, or <L>Accept all</L> (one Undo takes it back). The tone review opens the same way,
+          and <L>Review in the text</L> on the Check tab walks through your flags: Y resolves, N
+          ignores. <L>Esc</L> returns to writing; anything left stays in the list.
+        </P>
         <H2>Too close to a source</H2>
         <P>
           <L>Check this chapter</L> finds sentences that reuse a cited paper&rsquo;s wording. If

@@ -131,6 +131,7 @@ import { PasteMenu } from './PasteMenu';
 import { ProofreadPanel } from './ProofreadPanel';
 import { ReadBesidePane } from './ReadBesidePane';
 import { ReaderHandoffBar } from './ReaderHandoff';
+import { ReviewMode } from './ReviewMode';
 import { ReviewPanel } from './ReviewPanel';
 import { SectionGuide } from './SectionGuide';
 import { ShareButton } from './ShareButton';
@@ -2046,6 +2047,15 @@ function ChapterEditor({
       />
 
       <PasteMenu editor={editor} onFindPapers={findPapersFor} />
+      {/* R23 (ADR-0110): a check's results walked through in the text. */}
+      <ReviewMode
+        editor={editor}
+        onStart={() => setDrawer(null)}
+        onShowChecks={() => {
+          setTab('flags');
+          setDrawer('panel');
+        }}
+      />
       <BlockMenu
         editor={editor}
         request={blockMenu}

@@ -83,6 +83,12 @@ test('the student proofreads a chapter and accepts one correction at a time', as
   const environment = corrections.filter({ hasText: 'enviroment' });
   await expect(received).toHaveCount(1);
   await expect(environment).toHaveCount(1);
+  // R23 (ADR-0110): the run opens in the text as a review; Esc returns to writing, and the
+  // corrections stay listed.
+  await expect(page.getByTestId('review-mode')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('review-mode')).toHaveCount(0);
+  await expect(received).toHaveCount(1);
   // Nothing has changed yet: a correction is a suggestion until the student takes it.
   await expect(editor).toContainText('The farmers recieved the subsidy');
 
@@ -143,6 +149,9 @@ test('Accept all takes every correction in one step that one Undo reverses; Y ac
   const panel = page.getByTestId('proofread-panel');
   await panel.getByTestId('proofread-run').click();
   await expect(panel.getByTestId('proofread-summary')).toBeVisible({ timeout: 90_000 });
+  // The list's own Accept all, with the review in the text closed (Esc).
+  await expect(page.getByTestId('review-mode')).toBeVisible();
+  await page.keyboard.press('Escape');
 
   await panel.getByTestId('proofread-accept-all').click();
   await expect(editor).toContainText('The farmers received the subsidy');
@@ -159,8 +168,68 @@ test('Accept all takes every correction in one step that one Undo reverses; Y ac
   await panel.getByTestId('proofread-run').click();
   const received = panel.getByTestId('proofread-correction').filter({ hasText: 'recieved' });
   await expect(received).toHaveCount(1, { timeout: 90_000 });
+  await page.keyboard.press('Escape');
   await received.focus();
   await page.keyboard.press('y');
   await expect(editor).toContainText('The farmers received the subsidy');
   await expect(received).toHaveCount(0);
+});
+
+test('review mode: the corrections in the text, N and Y, then Try next', async ({
+  page,
+  request,
+}) => {
+  // R23 (ADR-0110).
+  test.setTimeout(180_000);
+  const session = await establishSession(request, freshEmail('proofread-review'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Review mode ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+  const chapter = (await (
+    await request.get(`${API_URL}/api/v1/chapters/${doc.firstChapterId}`, { headers: { cookie } })
+  ).json()) as { version: number };
+  await request.put(`${API_URL}/api/v1/chapters/${doc.firstChapterId}`, {
+    headers: { cookie },
+    data: { content: CHAPTER, baseVersion: chapter.version },
+  });
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  const editor = page.locator('.thesis-editor');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('tab', { name: 'check' }).click();
+  const panel = page.getByTestId('proofread-panel');
+  await panel.getByTestId('proofread-run').click();
+
+  const bar = page.getByTestId('review-mode');
+  await expect(bar).toBeVisible({ timeout: 90_000 });
+  // In the text: the old word struck, the new one beside it; the chapter itself unchanged.
+  await expect(editor.locator('.tc-change-del', { hasText: 'recieved' })).toBeVisible();
+  await expect(editor.locator('.tc-change-ins', { hasText: 'received' })).toBeVisible();
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(bar.getByTestId('review-mode-current')).toContainText('recieved');
+
+  // N leaves the first word as written; the next one becomes current.
+  await page.keyboard.press('n');
+  await expect(bar.getByTestId('review-mode-current')).toContainText('enviroment');
+  await expect(editor.locator('.tc-change-del', { hasText: 'recieved' })).toHaveCount(0);
+  // Y takes it, marked as the proofreader's.
+  await page.keyboard.press('y');
+  await expect(bar.getByTestId('review-mode-done')).toBeVisible();
+  await expect(editor.locator('[data-provenance="COMMAND"]')).toContainText('environment');
+  await expect(editor).toContainText('The farmers recieved the subsidy');
+  await expect(panel.getByTestId('proofread-correction')).toHaveCount(0);
+
+  // Try next: the tone review's button, ready; the chapter can be typed in again.
+  await bar.getByTestId('review-mode-next').click();
+  await expect(bar).toHaveCount(0);
+  await expect(page.getByTestId('tone-run')).toBeFocused();
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
 });

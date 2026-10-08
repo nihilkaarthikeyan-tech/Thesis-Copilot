@@ -13,11 +13,13 @@
  * instead of scrolling somewhere wrong.
  */
 
+import { wordsAt } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { examinerLabel } from '@/lib/examiner-review';
 import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
+import { openCheck, startReview } from '@/lib/review-mode';
 import { ExaminerReview } from './ExaminerReview';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -205,9 +207,9 @@ export function FlagsPanel({
     }
   }
 
-  async function act(flag: Flag, action: 'RESOLVE' | 'IGNORE') {
+  async function act(flag: Flag, action: 'RESOLVE' | 'IGNORE', quiet = false) {
     const reason =
-      action === 'IGNORE'
+      action === 'IGNORE' && !quiet
         ? (window.prompt('Why is this not a problem? (optional — it is kept with the flag)') ?? '')
         : undefined;
     try {
@@ -245,6 +247,34 @@ export function FlagsPanel({
   }
 
   const flags = (data?.flags ?? []).filter((f) => !filter || f.type === filter);
+  /** R23 (ADR-0110): the flags on this chapter that can be shown on their words. */
+  const inText = flags.filter(
+    (f) => f.chapterId === chapterId && f.positionTrusted && f.to > f.from,
+  );
+
+  /** Walks through this chapter's flags in the text: Y resolves, N ignores (no reason asked). */
+  function reviewInText() {
+    if (!editor || inText.length === 0) return;
+    const byId = new Map(inText.map((f) => [f.id, f]));
+    startReview({
+      title: 'Flags',
+      items: inText.map((f) => ({
+        id: f.id,
+        from: f.from,
+        to: f.to,
+        original: wordsAt(editor.state.doc, f.from, f.to),
+        replacement: null,
+        label:
+          f.type === 'EXAMINER' ? flagLabel(f) : `${flagLabel(f)} · ${f.severity.toLowerCase()}`,
+        why: f.suggestion ? `${f.description} Suggested: ${f.suggestion}` : f.description,
+      })),
+      decide: async (id, accepted) => {
+        const flag = byId.get(id);
+        if (flag) await act(flag, accepted ? 'RESOLVE' : 'IGNORE', true);
+      },
+      next: { label: 'Spelling and grammar', open: () => openCheck('proofread-run') },
+    });
+  }
   const byChapter = new Map<string, Flag[]>();
   for (const flag of flags) {
     byChapter.set(flag.chapterTitle, [...(byChapter.get(flag.chapterTitle) ?? []), flag]);
@@ -332,6 +362,17 @@ export function FlagsPanel({
             ? 'No open flags. A coherence check looks for contradictions between chapters, terms used against your own glossary, claims with no citation, and scope drift; an examiner review reads one chapter against its sources.'
             : 'Nothing of that type.'}
         </p>
+      ) : null}
+
+      {inText.length > 0 && editor ? (
+        <button
+          type="button"
+          data-testid="flags-review-in-text"
+          onClick={reviewInText}
+          className="mt-3 block text-xs font-semibold text-accent underline"
+        >
+          Review in the text ({inText.length})
+        </button>
       ) : null}
 
       {flags.length > 1 ? (

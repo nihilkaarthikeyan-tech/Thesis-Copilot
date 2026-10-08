@@ -43,6 +43,7 @@ import { Provenance } from './provenance.js';
 import { TableWithRef } from './ref-ids.js';
 import { ReviewHighlights, type ReviewHighlightsOptions } from './review.js';
 import { SlashMenu } from './slash-menu.js';
+import { TrackedChanges } from './tracked-changes.js';
 
 export type ThesisEditorOptions = {
   ghostText: Partial<GhostTextOptions> & Pick<GhostTextOptions, 'chapterId' | 'request'>;
@@ -125,6 +126,8 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     Provenance,
     CommentAnchor,
     ReviewHighlights.configure(options.review ?? {}),
+    // R23 (ADR-0110): a check's fixes drawn in the text for review mode.
+    TrackedChanges,
     Placeholder.configure({
       placeholder: options.placeholder ?? 'Start writing. Ctrl+/ asks for a suggestion.',
     }),

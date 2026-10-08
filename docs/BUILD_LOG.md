@@ -5632,3 +5632,17 @@ the share token from the response, which has none, so the guide's accept went to
 `/guide/accept/undefined` and the test passed without it; it now reads the row, as guide-cycle does.
 Proven as both people on the real stack.
 
+R23 (ADR-0110): review mode — proofreading, tone and the Check tab's flags walked through in the
+text as tracked changes (struck words, new words beside them; flags as highlights), with Y / N,
+↑ ↓, Accept all / Reject all, Esc, and "Try next". Proven with a real proofread (6 s, 5 fixes).
+Found in the browser: on a phone the Check drawer covered the text it was reviewing, and "Try
+next" could not focus a button inside the closed drawer. The review now closes the drawer and
+"Try next" opens it again. Also found: Y on a focused row of the proofreading list was taken twice
+(by the review and by the row); the review now stops the keys it handles.
+
+Two checks of mine were stale, found by running the full unit suites for R23: R21 sends the passage
+with Read beside, but `citation-read-beside.spec.ts` still expected no `quote`; and R3's eight new
+strings were never added to the generated Hindi review sheet (`docs/i18n/hi-review.md`,
+regenerated with `UPDATE_I18N_REVIEW=1`). Lesson: run the package's whole suite, not only the new
+spec, before each commit.
+

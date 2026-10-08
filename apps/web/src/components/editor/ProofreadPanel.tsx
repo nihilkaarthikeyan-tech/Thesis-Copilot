@@ -22,6 +22,7 @@ import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { locateSpan, type TextRun } from '@/lib/proofread';
+import { openCheck, type ReviewItem, startReview } from '@/lib/review-mode';
 
 type Correction = {
   sentenceId: string;
@@ -113,6 +114,8 @@ export function ProofreadPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moved, setMoved] = useState<Set<string>>(new Set());
+  /** R23 (ADR-0110): set after a run that found something, so the review opens in the text. */
+  const [reviewAfterRun, setReviewAfterRun] = useState(0);
   /** ADR-0084: the tone mode's model — the student's own profile, or a library paper by id. */
   const [sampleSourceId, setSampleSourceId] = useState<string>('');
   const [samples, setSamples] = useState<SampleOption[]>([]);
@@ -172,6 +175,7 @@ export function ProofreadPanel({
           nextSentence: result.nextSentence,
         });
         if (fromSentence === 0) setMoved(new Set());
+        if (fresh.length > 0) setReviewAfterRun((n) => n + 1);
       } catch (e) {
         setError(
           e instanceof ApiError
@@ -212,7 +216,8 @@ export function ProofreadPanel({
     if (end > span.from) {
       chain = chain.setProvenance(span.from, end, { kind: 'COMMAND', actionId: null });
     }
-    chain.run();
+    // R23: taken from the list, so no longer shown in the text if a review is open.
+    chain.removeTrackedChange(idOf(c)).run();
     setItems((list) => list.filter((x) => idOf(x) !== idOf(c)));
   }
 
@@ -252,6 +257,7 @@ export function ProofreadPanel({
         });
       }
     }
+    for (const { c } of applied) chain = chain.removeTrackedChange(idOf(c));
     chain.run();
     const done = new Set(applied.map((p) => idOf(p.c)));
     setItems((list) => list.filter((x) => !done.has(idOf(x))));
@@ -261,8 +267,59 @@ export function ProofreadPanel({
     const dismissed = readDismissed(chapterId);
     dismissed.add(keyOf(c));
     writeDismissed(chapterId, dismissed);
+    for (const x of items) {
+      if (keyOf(x) === keyOf(c)) editor?.commands.removeTrackedChange(idOf(x));
+    }
     setItems((list) => list.filter((x) => keyOf(x) !== keyOf(c)));
   }
+
+  /**
+   * R23 (ADR-0110): the corrections as tracked changes in the chapter, walked through with Y and
+   * N. Accepting there changes the text as Accept here does; this list follows each decision.
+   */
+  function reviewInText(list: Correction[]) {
+    if (!editor) return;
+    const byId = new Map(list.map((c) => [idOf(c), c]));
+    const placed: ReviewItem[] = [];
+    for (const c of list) {
+      const span = place(c);
+      if (!span) continue;
+      placed.push({
+        id: idOf(c),
+        ...span,
+        original: c.original,
+        replacement: c.replacement,
+        label: KIND_LABEL[c.kind] ?? c.kind,
+        why: c.why,
+      });
+    }
+    if (placed.length === 0) return;
+    startReview({
+      title: mode === 'tone' ? 'Tone of voice' : 'Spelling and grammar',
+      items: placed,
+      decide: (id, accepted) => {
+        const c = byId.get(id);
+        if (!c) return;
+        // Accepted: the text is already changed. Rejected: remembered, as Dismiss is.
+        if (accepted) setItems((current) => current.filter((x) => idOf(x) !== id));
+        else dismiss(c);
+      },
+      rerun: {
+        label: mode === 'tone' ? 'Review the tone again' : 'Proofread again',
+        run: () => void run(0),
+      },
+      next:
+        mode === 'tone'
+          ? { label: 'Coherence check', open: () => openCheck('run-coherence') }
+          : { label: 'Tone of voice', open: () => openCheck('tone-run') },
+    });
+  }
+
+  // After a run that found something, straight into the text, as Jenni opens its reviews.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new run opens it
+  useEffect(() => {
+    if (reviewAfterRun > 0) reviewInText(items);
+  }, [reviewAfterRun]);
 
   function show(c: Correction) {
     const span = place(c);
@@ -354,6 +411,18 @@ export function ProofreadPanel({
             </>
           ) : null}
         </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <button
+          type="button"
+          disabled={!editor}
+          data-testid={mode === 'tone' ? 'tone-review-in-text' : 'proofread-review-in-text'}
+          onClick={() => reviewInText(items)}
+          className="mt-2 block text-xs font-semibold text-accent underline disabled:opacity-50"
+        >
+          Review in the text ({items.length})
+        </button>
       ) : null}
 
       {items.length > 1 ? (
