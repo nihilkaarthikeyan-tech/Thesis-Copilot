@@ -87,6 +87,8 @@ export class ExportService {
     const docx = await chapterToDocx(chapter.content, {
       title: chapter.title,
       renderedMap,
+      // R40 (ADR-0117): citations side by side print once, as the one citation citeproc made.
+      citationClusters: rendered.clusters,
       bibliography,
       // Without this every figure the student inserted exports as the placeholder '[image]'.
       images: await loadFigures(this.storage, chapter.content, chapter.documentId, this.logger),

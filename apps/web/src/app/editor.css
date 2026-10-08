@@ -135,8 +135,22 @@
   cursor: default;
   white-space: nowrap;
 }
-.thesis-editor .citation--selected {
+.thesis-editor .citation--selected,
+.thesis-editor .citation--cluster-selected {
   outline: 2px solid var(--color-accent);
+}
+/* R40 (ADR-0117): citations side by side read as one bracket, drawn by the first node. A long
+   bracket wraps with the line, like the sentence around it, and keeps its tint on both lines. */
+.thesis-editor .citation--cluster {
+  white-space: normal;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* The other nodes of the bracket: still in the document, drawn as nothing. */
+.thesis-editor .citation.citation--member {
+  padding: 0;
+  background: none;
+  outline: none;
 }
 .thesis-editor .citation--removed {
   background: transparent;
@@ -300,6 +314,51 @@
   margin-left: 0;
   display: block;
 }
+/* R40 (ADR-0117): the card of a bracket of several sources — a tab per source, then its card. */
+.thesis-editor .citation-popover--cluster {
+  max-width: calc(100vw - 2rem);
+}
+.thesis-editor .citation-popover__member {
+  overflow-wrap: anywhere;
+}
+.thesis-editor .citation-popover__members {
+  padding-bottom: 0.375rem;
+  margin-bottom: 0.375rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.thesis-editor .citation-popover__tab {
+  max-width: 100%;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.thesis-editor .citation-popover__tab--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.thesis-editor .citation-popover__remove {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--color-danger);
+  text-decoration: underline;
+  cursor: pointer;
+}
 /* "Read beside" (2026-10-04): the PDF in a pane next to the chapter, beside "Open PDF". */
 .thesis-editor .citation-popover__beside {
   display: inline-block;
@@ -428,6 +487,13 @@ body.tc-reviewing [data-testid="suggest-floating"] {
 }
 .thesis-editor .citation.citation--note::after {
   content: counter(footnote);
+}
+/* ADR-0117: citations side by side are one footnote, numbered on the first node only. */
+.thesis-editor .citation.citation--note.citation--member {
+  counter-increment: none;
+}
+.thesis-editor .citation.citation--note.citation--member::after {
+  content: none;
 }
 
 /* ADR-0090 (Jenni build plan R41): in dark, Jenni's type — Inter 15/24, headings 30 and 20 px

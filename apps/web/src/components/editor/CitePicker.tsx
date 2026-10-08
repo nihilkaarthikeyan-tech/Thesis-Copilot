@@ -18,10 +18,11 @@
  * only pick a source they have already added.
  */
 
-import { newCitationKey } from '@tc/ui';
+import { newCitationKey, spaceAfterCitation } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
+import { activeMention, MAX_QUERY } from '@/lib/cite-mention';
 
 type Pickable = {
   sourceId: string;
@@ -30,25 +31,6 @@ type Pickable = {
   title: string | null;
   year: number | null;
 };
-
-/** How far back from the caret an `@query` may run before it stops being one. */
-const MAX_QUERY = 40;
-
-/**
- * The `@…` the caret currently sits at the end of, if any.
- *
- * Requires whitespace (or the start of the block) before the `@`, so an email address in the
- * student's own prose does not open a citation picker halfway through it.
- */
-export function activeMention(textBefore: string): string | null {
-  const at = textBefore.lastIndexOf('@');
-  if (at === -1) return null;
-  const query = textBefore.slice(at + 1);
-  if (query.length > MAX_QUERY || /[\n\r]/.test(query)) return null;
-  const before = at === 0 ? '' : textBefore[at - 1];
-  if (before !== '' && before !== undefined && !/\s|[([]/.test(before)) return null;
-  return query;
-}
 
 export function CitePicker({
   editor,
@@ -84,8 +66,11 @@ export function CitePicker({
       const typed = stateRef.current.query ?? '';
       // +1 for the `@` itself. Deleting the trigger text is what makes this feel like a mention
       // rather than an insertion that leaves debris behind.
-      const start = from - (typed.length + 1);
-      if (start < 0) return;
+      const typedAt = from - (typed.length + 1);
+      if (typedAt < 0) return;
+      // R40 (ADR-0117): "(Kumar, 2021) @rao" puts Rao beside Kumar — the lone space goes with
+      // the `@`, so the two citations sit side by side and read as one bracket.
+      const start = spaceAfterCitation(editor.state.doc, typedAt) ?? typedAt;
 
       const key = newCitationKey();
       // The editor renders labels from its own storage; seeding it here means the new citation

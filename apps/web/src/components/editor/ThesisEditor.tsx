@@ -125,6 +125,7 @@ import { FirstSessionGuide, markSuggestionKept } from './FirstSessionGuide';
 import { type Flag, FlagsPanel } from './FlagsPanel';
 import { type FormatActions, FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { LibraryFilling, PAPERS_AWAITED } from './LibraryFilling';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { PasteMenu } from './PasteMenu';
@@ -416,6 +417,8 @@ function ChapterEditor({
       .catch(() => undefined);
   }, []);
   const [howOpen, setHowOpen] = useState(false);
+  // R35 (ADR-0118): the keys and the Markdown the editor understands.
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   /**
@@ -1102,6 +1105,8 @@ function ChapterEditor({
       rendered.labels,
       rendered.noteStyle === true,
       rendered.styleFamily === 'numeric',
+      // R40 (ADR-0117): citations side by side read as one bracket.
+      rendered.clusters ?? [],
     );
     // A citation whose source left the library is drawn red (B.5); before ADR-0045 nothing in
     // the app ever told the editor which those were.
@@ -1740,6 +1745,16 @@ function ChapterEditor({
             >
               {allKeys ? t('editor.key.fewer') : t('editor.key.more')}
             </button>
+            {/* R35 (ADR-0118): every key and the Markdown shortcuts. Shown at every width: the
+                Markdown works from a phone's keyboard too. */}
+            <button
+              type="button"
+              data-testid="keyboard-shortcuts-button"
+              className="underline"
+              onClick={() => setShortcutsOpen(true)}
+            >
+              {t('editor.key.all')}
+            </button>
             <WordCount editor={editor} className="ml-auto" />
           </div>
         </main>
@@ -1959,6 +1974,7 @@ function ChapterEditor({
         resolvePassage={resolvePassage}
       />
       <HowSuggestionsWork open={howOpen} onClose={() => setHowOpen(false)} documentId={doc.id} />
+      <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <ChartDialog
         open={chart !== null}
         initial={chart?.initial ?? null}

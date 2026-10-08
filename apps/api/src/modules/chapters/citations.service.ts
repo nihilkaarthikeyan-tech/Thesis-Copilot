@@ -15,6 +15,7 @@ import { Injectable } from '@nestjs/common';
 import {
   type BibliographyEntry,
   CITATION_LOCALES,
+  type CitationCluster,
   type CitationFinding,
   citationLocaleFor,
   citationNodesIn,
@@ -47,6 +48,11 @@ export type RenderedCitations = {
   styles: ReadonlyArray<{ id: string; label: string; family: string; note?: string }>;
   /** `nodeKey` → the label the editor renders; in a note style, the note's text. */
   labels: Record<string, string>;
+  /**
+   * R40 (ADR-0117): citations side by side, rendered by citeproc as one — "(Kumar, 2021; Rao,
+   * 2020)". The editor and every export print a cluster's label once, at its first key.
+   */
+  clusters: CitationCluster[];
   /** ADR-0029: citations are footnotes — the editor shows a note number, exports write notes. */
   noteStyle: boolean;
   bibliography: BibliographyEntry[];
@@ -144,6 +150,8 @@ export class CitationsService {
         key: node.nodeKey,
         sourceId: node.sourceId,
         noteIndex: notesBefore + node.noteOrdinal,
+        // R40 (ADR-0117): citations side by side are rendered as one.
+        run: node.run,
         // The node's own attributes: the role the student chose (FR-5.6), the page, the affixes.
         role: node.role,
         locator: node.locator,
@@ -186,6 +194,7 @@ export class CitationsService {
         ...(s.note ? { note: s.note } : {}),
       })),
       labels: rendered.labels,
+      clusters: rendered.clusters,
       noteStyle: rendered.noteStyle,
       bibliography: rendered.bibliography,
       missingSourceIds: rendered.missingSourceIds,

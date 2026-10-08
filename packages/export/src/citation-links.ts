@@ -123,37 +123,62 @@ const attr = (node: CitationNode, name: string): string => {
 /** A field argument: Word's field grammar quotes with `"` and has no escape we can rely on. */
 const fieldArg = (text: string): string => `"${text.replace(/"/g, "'")}"`;
 
+/** One node, or every node of a cluster of citations side by side (ADR-0117). */
+type CitationNodes = CitationNode | readonly CitationNode[];
+
+const listOf = (nodes: CitationNodes): readonly CitationNode[] =>
+  Array.isArray(nodes) ? nodes : [nodes as CitationNode];
+
 /**
- * Word's `CITATION` field instruction for one citation node, or null when its source has no tag.
- * The page/locator, prefix and suffix go in as switches so Word keeps them when it re-renders.
+ * Word's `CITATION` field instruction for a citation, or null when a source has no tag. The
+ * page/locator, prefix and suffix go in as switches so Word keeps them when it re-renders.
+ *
+ * A cluster (ADR-0117) is one field with every source in it: `\m <tag>` adds a source to the
+ * citation (ECMA-376 Part 1 §17.16.5.8), and in Word each switch after it belongs to that source
+ * — "other switches affect the previously defined source, defined either by the initial tag in
+ * the field or the last tag specified with the \m switch" (MS-OI29500 §2.1.464). A source with
+ * no tag means no field at all, rather than a field that would drop it when Word refreshes.
  */
-export function citationInstruction(node: CitationNode, links: CitationLinks): string | null {
-  const tag = links.tags.get(attr(node, 'sourceId'));
-  if (!tag) return null;
-  const switches = [
-    attr(node, 'locator') && `\\p ${fieldArg(attr(node, 'locator'))}`,
-    attr(node, 'prefix') && `\\f ${fieldArg(attr(node, 'prefix'))}`,
-    attr(node, 'suffix') && `\\s ${fieldArg(attr(node, 'suffix'))}`,
-  ].filter(Boolean);
-  return ` ${['CITATION', tag, ...switches].join(' ')} `;
+export function citationInstruction(nodes: CitationNodes, links: CitationLinks): string | null {
+  const parts: string[] = [];
+  for (const [index, node] of listOf(nodes).entries()) {
+    const tag = links.tags.get(attr(node, 'sourceId'));
+    if (!tag) return null;
+    const switches = [
+      attr(node, 'locator') && `\\p ${fieldArg(attr(node, 'locator'))}`,
+      attr(node, 'prefix') && `\\f ${fieldArg(attr(node, 'prefix'))}`,
+      attr(node, 'suffix') && `\\s ${fieldArg(attr(node, 'suffix'))}`,
+    ].filter(Boolean);
+    parts.push(index === 0 ? 'CITATION' : '\\m', tag, ...switches);
+  }
+  return parts.length > 0 ? ` ${parts.join(' ')} ` : null;
 }
+
+/** The bookmark a citation links to: its first source's entry (a cluster has one label). */
+const anchorOf = (nodes: CitationNodes, links: CitationLinks): string | undefined => {
+  for (const node of listOf(nodes)) {
+    const anchor = links.anchors.get(attr(node, 'sourceId'));
+    if (anchor) return anchor;
+  }
+  return undefined;
+};
 
 /**
  * An in-text citation in the chosen mode. `run` builds the visible text run the exporter would
  * have written anyway, so the label, font and size are identical in all three modes.
  */
 export function citationChild(
-  node: CitationNode,
+  nodes: CitationNodes,
   label: string,
   links: CitationLinks,
   run: (text: string) => TextRun,
 ): ParagraphChild {
   if (links.mode === 'word') {
-    const instruction = citationInstruction(node, links);
+    const instruction = citationInstruction(nodes, links);
     // `SimpleField`'s result run takes the document's default font, which both exporters set.
     if (instruction) return new SimpleField(instruction, label);
   }
-  const anchor = links.anchors.get(attr(node, 'sourceId'));
+  const anchor = anchorOf(nodes, links);
   if (links.mode === 'linked' && anchor) {
     return new InternalHyperlink({ anchor, children: [run(label)] });
   }
@@ -162,12 +187,12 @@ export function citationChild(
 
 /** A note-style citation's note, linked to its entry when the mode links. */
 export function noteChildren(
-  node: CitationNode,
+  nodes: CitationNodes,
   note: string,
   links: CitationLinks,
   run: (text: string) => TextRun,
 ): ParagraphChild[] {
-  const anchor = links.anchors.get(attr(node, 'sourceId'));
+  const anchor = anchorOf(nodes, links);
   return links.mode === 'linked' && anchor
     ? [new InternalHyperlink({ anchor, children: [run(note)] })]
     : [run(note)];

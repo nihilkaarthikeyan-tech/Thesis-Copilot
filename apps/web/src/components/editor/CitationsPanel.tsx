@@ -26,6 +26,11 @@ export type Rendered = {
   styleFamily: 'numeric' | 'author-date' | 'note';
   styles: Array<{ id: string; label: string; family: string; note?: string }>;
   labels: Record<string, string>;
+  /**
+   * R40 (ADR-0117): citations side by side, rendered as one — "(Kumar, 2021; Rao, 2020)". The
+   * editor shows the label once, on the first of the keys.
+   */
+  clusters?: Array<{ keys: string[]; label: string }>;
   /** ADR-0029: citations are footnotes in this style. */
   noteStyle?: boolean;
   bibliography: Array<{ sourceId: string; text: string }>;

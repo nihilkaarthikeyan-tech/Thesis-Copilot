@@ -356,6 +356,8 @@ export class ThesisExportService {
       order: chapter.order,
       content: chapter.content,
       renderedMap: rendered.labels,
+      // R40 (ADR-0117): citations side by side print once, as the one citation citeproc made.
+      citationClusters: rendered.clusters,
     }));
 
     // Every chapter's figures in one map, keyed by storage path. Before this, a submitted thesis

@@ -24,9 +24,10 @@
 import { numberingMap, type TemplateSpec } from '@tc/types';
 import JSZip from 'jszip';
 import { captionOf, withCaptionsResolved } from './captions.js';
+import { printCitation } from './clusters.js';
 import { footnoteText } from './footnotes.js';
 import { gridOf, ruleUnder } from './table-grid.js';
-import { type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
+import { type ThesisChapter, type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
 
 type Node = {
   type?: string;
@@ -149,6 +150,8 @@ function safeUrl(href: unknown): string | null {
 type ChapterContext = {
   input: LatexExportInput;
   chapter: number;
+  /** R40 (ADR-0117): citations side by side, written as one command. */
+  clusters: ThesisChapter['citationClusters'];
   /** refId → its number within the chapter, from the same walk the editor numbers with. */
   numbers: ReturnType<typeof numberingMap>;
   figures: LatexFile[];
@@ -161,9 +164,39 @@ type ChapterContext = {
   fileCount: { n: number };
 };
 
+/**
+ * R40 (ADR-0117): citations side by side as one biblatex command — `\parencite{a,b}`, or the
+ * multicite `\parencites[3]{a}{b}` when one carries a page — so biblatex prints one bracket in
+ * its own order. The same paper twice is one key with both pages, as in the other exports.
+ */
+function clusterCite(nodes: readonly Node[], ctx: ChapterContext): string | null {
+  const cites: Array<{ bibKey: string; pages: string[] }> = [];
+  for (const node of nodes) {
+    const key = String(node.attrs?.key ?? '');
+    const bibKey = ctx.input.citeKeys[key];
+    if (!bibKey) return null;
+    const locator = ctx.input.locators?.[key];
+    const same = cites.find((cite) => cite.bibKey === bibKey);
+    const cite = same ?? { bibKey, pages: [] };
+    if (locator && !cite.pages.includes(locator)) cite.pages.push(locator);
+    if (!same) cites.push(cite);
+  }
+  const notes = ctx.input.bibStyle === 'verbose-ibid';
+  if (cites.every((cite) => cite.pages.length === 0)) {
+    const command = notes ? 'footcite' : 'parencite';
+    return `\\${command}{${cites.map((cite) => cite.bibKey).join(',')}}`;
+  }
+  const command = notes ? 'footcites' : 'parencites';
+  const each = cites.map(
+    (cite) =>
+      `${cite.pages.length > 0 ? `[${escapeLatex(cite.pages.join(', '))}]` : ''}{${cite.bibKey}}`,
+  );
+  return `\\${command}${each.join('')}`;
+}
+
 function inline(nodes: readonly Node[], ctx: ChapterContext): string {
   let out = '';
-  for (const node of nodes) {
+  for (const [index, node] of nodes.entries()) {
     switch (node.type) {
       case 'text': {
         let text = escapeLatex(node.text ?? '');
@@ -185,6 +218,14 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
         break;
       }
       case 'citation': {
+        // R40 (ADR-0117): a cluster is written once, at its first node.
+        const print = printCitation(nodes, index, {}, ctx.clusters);
+        if (print.kind === 'skip') break;
+        const together = print.cluster ? clusterCite(print.nodes, ctx) : null;
+        if (together) {
+          out += together;
+          break;
+        }
         const key = String(node.attrs?.key ?? '');
         const bibKey = ctx.input.citeKeys[key];
         if (!bibKey) {
@@ -629,6 +670,7 @@ export function thesisToLatexFiles(input: LatexExportInput): LatexFile[] {
     const ctx: ChapterContext = {
       input,
       chapter: chapter.order,
+      clusters: chapter.citationClusters,
       numbers: numberingMap(chapter.content),
       figures,
       figureCount: { n: 0 },

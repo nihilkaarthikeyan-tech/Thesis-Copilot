@@ -233,6 +233,7 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'editor.key.snapshot': 'स्नैपशॉट',
   'editor.key.more': 'और कुंजियाँ',
   'editor.key.fewer': 'कम कुंजियाँ',
+  'editor.key.all': 'कीबोर्ड शॉर्टकट',
   'editor.draftButton': 'एक खंड का ड्राफ़्ट',
   'guide.howItWorks': 'सुझाव कैसे काम करते हैं (90 सेकंड)',
   'editor.tools': 'टूल',

@@ -235,6 +235,7 @@ export const en = {
   'editor.key.snapshot': 'snapshot',
   'editor.key.more': 'More keys',
   'editor.key.fewer': 'Fewer keys',
+  'editor.key.all': 'Keyboard shortcuts',
   'editor.draftButton': 'Draft a section',
   'guide.howItWorks': 'How suggestions work (90 seconds)',
   'editor.tools': 'Tools',

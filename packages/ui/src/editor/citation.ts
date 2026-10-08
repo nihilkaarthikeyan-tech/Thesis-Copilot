@@ -10,7 +10,14 @@
 
 import { mergeAttributes, Node } from '@tiptap/core';
 import { DOMSerializer, Fragment, type Node as PmNode, Slice } from '@tiptap/pm/model';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import {
+  type EditorState,
+  NodeSelection,
+  Plugin,
+  PluginKey,
+  TextSelection,
+} from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { nanoid } from 'nanoid';
 import { sourceMetricBadges } from './source-metrics.js';
 
@@ -110,7 +117,17 @@ export type CitationStorage = {
    * catalogue style the bundled list does not know is placed right too.
    */
   numeric: boolean;
+  /**
+   * R40 (ADR-0117): citations side by side that the server rendered as one — "(Kumar, 2021; Rao,
+   * 2020)" — by their node keys joined with a space, each with that one label. While the nodes
+   * are still side by side in that order, the first shows the label and the others nothing;
+   * once an edit parts them, each shows its own label until the next render.
+   */
+  clusters: Map<string, string>;
 };
+
+/** One cluster as the server sends it (`clusters` of `GET /documents/:id/citations`). */
+export type CitationClusterLabel = { keys: readonly string[]; label: string };
 
 export const CITATIONS_RERENDER = 'citationsRerender';
 
@@ -118,12 +135,17 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     citation: {
       insertCitation: (attrs: Partial<CitationAttrs> & { sourceId: string | null }) => ReturnType;
-      /** Swap style / labels and re-render every citation without touching the document. */
+      /**
+       * Swap style / labels and re-render every citation without touching the document.
+       * `clusters` (ADR-0117) are the runs of citations side by side rendered as one; omitted,
+       * there are none.
+       */
       setCitationStyle: (
         style: string,
         renderedMap: Record<string, string>,
         noteStyle?: boolean,
         numeric?: boolean,
+        clusters?: readonly CitationClusterLabel[],
       ) => ReturnType;
       markSourceRemoved: (sourceId: string) => ReturnType;
       /** Gives every citation after the first with the same key a fresh key (ADR-0045). */
@@ -191,6 +213,149 @@ function copiedLabel(node: PmNode, storage: CitationStorage): string {
   return labelFor(node, storage);
 }
 
+// ---------------------------------------------------------------------------------------------
+// R40 (ADR-0117): citations side by side
+// ---------------------------------------------------------------------------------------------
+
+/** A cluster from the server whose nodes are still side by side, in order, in this document. */
+export type LiveCitationCluster = {
+  /** The node keys, joined with a space: the key of `CitationStorage.clusters`. */
+  id: string;
+  keys: string[];
+  /** Each node's position, in document order. */
+  positions: number[];
+};
+
+/**
+ * The server's clusters that still hold in `doc`: every key present, side by side in one
+ * paragraph in the server's order, with nothing between, and no source removed from the library
+ * (a removed one is drawn red on its own, B.5). Anything else — a citation typed between, one
+ * deleted, one added at the end — and the nodes show their own labels until the next render.
+ */
+export function liveCitationClusters(
+  doc: PmNode,
+  storage: Pick<CitationStorage, 'clusters' | 'removedSourceIds'>,
+): LiveCitationCluster[] {
+  if (storage.clusters.size === 0) return [];
+  const where = new Map<string, { parent: number; index: number; pos: number; ok: boolean }>();
+  let parent = 0;
+  doc.descendants((node, pos) => {
+    if (!node.inlineContent) return true;
+    parent++;
+    node.forEach((child, offset, index) => {
+      if (child.type.name !== 'citation') return;
+      const sourceId = child.attrs.sourceId as string | null;
+      where.set(String(child.attrs.key), {
+        parent,
+        index,
+        pos: pos + 1 + offset,
+        ok: sourceId !== null && !storage.removedSourceIds.has(sourceId),
+      });
+    });
+    return false;
+  });
+  const live: LiveCitationCluster[] = [];
+  for (const id of storage.clusters.keys()) {
+    const keys = id.split(' ');
+    const first = where.get(keys[0] ?? '');
+    if (!first || keys.length < 2) continue;
+    const found = keys.map((key) => where.get(key));
+    const holds = found.every(
+      (at, j) => at?.ok && at.parent === first.parent && at.index === first.index + j,
+    );
+    if (holds) live.push({ id, keys, positions: found.map((at) => at?.pos ?? 0) });
+  }
+  return live;
+}
+
+type ClusterState = { live: LiveCitationCluster[]; decorations: DecorationSet };
+
+export const citationClustersKey = new PluginKey<ClusterState>('citationClusters');
+
+/** What a citation's node decoration says about its place in a cluster. */
+type ClusterSpec = { citationCluster: string; clusterIndex: number };
+
+/**
+ * One node decoration per clustered citation: the NodeView reads its place from the spec (a
+ * string and a number, so an unchanged cluster compares equal and redraws nothing). The first
+ * node of a cluster takes the selected look while any of its nodes is selected, since only the
+ * first one shows anything.
+ */
+function clusterDecorations(state: EditorState, live: LiveCitationCluster[]): DecorationSet {
+  if (live.length === 0) return DecorationSet.empty;
+  const selection = state.selection;
+  const selected =
+    selection instanceof NodeSelection && selection.node.type.name === 'citation'
+      ? selection.from
+      : null;
+  const decorations: Decoration[] = [];
+  for (const cluster of live) {
+    const chosen = selected !== null && cluster.positions.includes(selected);
+    cluster.positions.forEach((pos, index) => {
+      const spec: ClusterSpec = { citationCluster: cluster.id, clusterIndex: index };
+      decorations.push(
+        Decoration.node(
+          pos,
+          pos + 1,
+          index === 0 && chosen ? { class: 'citation--cluster-selected' } : {},
+          spec,
+        ),
+      );
+    });
+  }
+  return DecorationSet.create(state.doc, decorations);
+}
+
+/** A node view's place in a cluster, from the decorations ProseMirror hands it. */
+function clusterSpecOf(decorations: readonly Decoration[]): ClusterSpec | null {
+  for (const decoration of decorations) {
+    const spec = decoration.spec as Partial<ClusterSpec> | undefined;
+    if (typeof spec?.citationCluster === 'string' && typeof spec.clusterIndex === 'number') {
+      return { citationCluster: spec.citationCluster, clusterIndex: spec.clusterIndex };
+    }
+  }
+  return null;
+}
+
+/**
+ * What each citation in a copied fragment reads as outside the app: a cluster that is whole in
+ * the fragment reads as its one label ("(Kumar, 2021; Rao, 2020)"), at its first node, and its
+ * other nodes as nothing. Keys not in the map read as their own label.
+ */
+function clusterCopyLabels(fragment: Fragment, storage: CitationStorage): Map<string, string> {
+  const out = new Map<string, string>();
+  if (storage.clusters.size === 0) return out;
+  const match = (run: PmNode[]) => {
+    const keys = run.map((node) => String(node.attrs.key));
+    for (const [id, label] of storage.clusters) {
+      const cluster = id.split(' ');
+      const start = keys.indexOf(cluster[0] ?? '');
+      if (start === -1 || !cluster.every((key, j) => keys[start + j] === key)) continue;
+      cluster.forEach((key, j) => {
+        out.set(key, j > 0 ? '' : storage.noteStyle ? ` [${label}]` : label);
+      });
+    }
+  };
+  const visit = (content: Fragment) => {
+    let run: PmNode[] = [];
+    const flush = () => {
+      if (run.length > 1) match(run);
+      run = [];
+    };
+    content.forEach((child) => {
+      if (child.type.name === 'citation') {
+        run.push(child);
+        return;
+      }
+      flush();
+      if (!child.isLeaf) visit(child.content);
+    });
+    flush();
+  };
+  visit(fragment);
+  return out;
+}
+
 export const Citation = Node.create<CitationOptions, CitationStorage>({
   name: 'citation',
 
@@ -211,6 +376,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       meta: {},
       noteStyle: false,
       numeric: false,
+      clusters: new Map(),
     };
   },
 
@@ -282,13 +448,33 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
   addProseMirrorPlugins() {
     const storage = this.storage;
     const base = DOMSerializer.fromSchema(this.editor.schema);
-    const serializer = new DOMSerializer(
+    // ADR-0117: a cluster copied whole reads as its one label. The labels are worked out once
+    // per copy, at the outermost fragment (the serializer recurses into every node's content).
+    let copying: Map<string, string> | null = null;
+    let depth = 0;
+    class CitationCopySerializer extends DOMSerializer {
+      override serializeFragment(
+        fragment: Fragment,
+        options?: { document?: Document },
+        target?: HTMLElement | DocumentFragment,
+      ): DocumentFragment | HTMLElement {
+        if (depth === 0) copying = clusterCopyLabels(fragment, storage);
+        depth++;
+        try {
+          return super.serializeFragment(fragment, options, target);
+        } finally {
+          depth--;
+          if (depth === 0) copying = null;
+        }
+      }
+    }
+    const serializer = new CitationCopySerializer(
       {
         ...base.nodes,
         citation: (node: PmNode) => [
           'span',
           citationDomAttrs(node.attrs as CitationAttrs),
-          copiedLabel(node, storage),
+          copying?.get(String(node.attrs.key)) ?? copiedLabel(node, storage),
         ],
       },
       base.marks,
@@ -298,12 +484,14 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         key: new PluginKey('citationClipboard'),
         props: {
           clipboardSerializer: serializer,
-          clipboardTextSerializer: (slice) =>
-            slice.content.textBetween(0, slice.content.size, '\n\n', (leaf) =>
+          clipboardTextSerializer: (slice) => {
+            const clustered = clusterCopyLabels(slice.content, storage);
+            return slice.content.textBetween(0, slice.content.size, '\n\n', (leaf) =>
               leaf.type.name === 'citation'
-                ? copiedLabel(leaf, storage)
+                ? (clustered.get(String(leaf.attrs.key)) ?? copiedLabel(leaf, storage))
                 : (leaf.type.spec.leafText?.(leaf) ?? ''),
-            ),
+            );
+          },
           /**
            * Jenni build plan R9: the paper reader's "Copy with citation" puts the label on the
            * citation it copies (`data-label`), so a paste shows the real label at once rather
@@ -353,6 +541,50 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           },
         },
       }),
+      /**
+       * R40 (ADR-0117): which citations are drawn as one. Recomputed when the document changes or
+       * new labels arrive (`citationsRerender`), and the decorations again when the selection
+       * moves, so the visible first node can show that a hidden one is selected.
+       */
+      new Plugin<ClusterState>({
+        key: citationClustersKey,
+        state: {
+          init: (_, state) => {
+            const live = liveCitationClusters(state.doc, storage);
+            return { live, decorations: clusterDecorations(state, live) };
+          },
+          apply: (tr, value, _old, state) => {
+            if (tr.docChanged || tr.getMeta(CITATIONS_RERENDER)) {
+              const live = liveCitationClusters(state.doc, storage);
+              return { live, decorations: clusterDecorations(state, live) };
+            }
+            if (tr.selectionSet && value.live.length > 0) {
+              return { live: value.live, decorations: clusterDecorations(state, value.live) };
+            }
+            return value;
+          },
+        },
+        props: {
+          decorations: (state) => citationClustersKey.getState(state)?.decorations,
+          /**
+           * A click on a cluster selects all of it: the student sees one bracket, so Delete or
+           * typing over it acts on the whole bracket. One source is removed from the hover card.
+           */
+          handleClickOn: (view, _pos, node, nodePos) => {
+            if (node.type.name !== 'citation') return false;
+            const cluster = citationClustersKey
+              .getState(view.state)
+              ?.live.find((c) => c.positions.includes(nodePos));
+            const from = cluster?.positions[0];
+            const last = cluster?.positions[cluster.positions.length - 1];
+            if (from === undefined || last === undefined) return false;
+            view.dispatch(
+              view.state.tr.setSelection(TextSelection.create(view.state.doc, from, last + 1)),
+            );
+            return true;
+          },
+        },
+      }),
     ];
   },
 
@@ -361,8 +593,10 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
     const storage = this.storage;
     const options = this.options;
 
-    return ({ node }) => {
+    return ({ node, getPos, decorations }) => {
       let current = node;
+      // R40 (ADR-0117): the node's place in a cluster comes in its decorations.
+      let place = clusterSpecOf(decorations);
       const dom = document.createElement('span');
       dom.className = 'citation';
       dom.setAttribute('data-citation', '');
@@ -379,6 +613,18 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       let hoverTimer: ReturnType<typeof setTimeout> | null = null;
       let hoverToken = 0;
 
+      /** The cluster this node shows, when it is the first node of one the server rendered. */
+      const shownCluster = (): { id: string; keys: string[]; label: string } | null => {
+        if (place?.clusterIndex !== 0) return null;
+        const label = storage.clusters.get(place.citationCluster);
+        return label === undefined
+          ? null
+          : { id: place.citationCluster, keys: place.citationCluster.split(' '), label };
+      };
+      /** A later node of a cluster: the first node shows the label for all of them. */
+      const hiddenInCluster = (): boolean =>
+        place !== null && place.clusterIndex > 0 && storage.clusters.has(place.citationCluster);
+
       const closePopover = () => {
         if (hoverTimer) clearTimeout(hoverTimer);
         hoverTimer = null;
@@ -387,8 +633,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         popover = null;
       };
 
-      const showPopover = (passage: CitationPassage) => {
-        closePopover();
+      const popoverShell = (): HTMLElement => {
         const el = document.createElement('span');
         el.className = 'citation-popover';
         el.setAttribute('role', 'tooltip');
@@ -401,7 +646,11 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         el.style.display = 'block';
         el.style.whiteSpace = 'normal';
         el.style.width = '22rem';
+        return el;
+      };
 
+      /** The card for one citation: its paper, its passage, and the ways to open them. */
+      const fillPassage = (el: HTMLElement, passage: CitationPassage, attrs: CitationAttrs) => {
         const head = document.createElement('span');
         head.className = 'citation-popover__ref';
         head.textContent = [
@@ -484,7 +733,7 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
             passage.page !== null ? `Open PDF at page ${passage.page}` : 'Open PDF';
           el.appendChild(link);
 
-          const sourceId = (current.attrs as CitationAttrs).sourceId;
+          const sourceId = attrs.sourceId;
           if (options.readBeside && sourceId && (options.canReadBeside?.() ?? true)) {
             const beside = document.createElement('button');
             beside.type = 'button';
@@ -508,16 +757,12 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           }
         }
 
-        const readerFor = (current.attrs as CitationAttrs).sourceId;
+        const readerFor = attrs.sourceId;
         if (options.readerHref && readerFor) {
           const reader = document.createElement('a');
           reader.className = 'citation-popover__reader';
           reader.setAttribute('data-testid', 'citation-open-reader');
-          reader.href = options.readerHref(
-            readerFor,
-            passage.page,
-            (current.attrs as CitationAttrs).chunkId,
-          );
+          reader.href = options.readerHref(readerFor, passage.page, attrs.chunkId);
           // A new tab: the chapter stays where it was, unsaved caret and all.
           reader.target = '_blank';
           reader.rel = 'noopener';
@@ -525,18 +770,160 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           reader.addEventListener('mousedown', (event) => event.stopPropagation());
           el.appendChild(reader);
         }
+      };
 
+      const showPopover = (passage: CitationPassage) => {
+        closePopover();
+        const el = popoverShell();
+        fillPassage(el, passage, current.attrs as CitationAttrs);
+        dom.appendChild(el);
+        popover = el;
+      };
+
+      /**
+       * The nodes of the cluster this node heads, read from the document now: each with its key
+       * and attributes. Null when they are no longer side by side behind it.
+       */
+      const clusterNodes = (
+        keys: readonly string[],
+      ): Array<{ key: string; attrs: CitationAttrs }> | null => {
+        let start: number;
+        try {
+          start = getPos();
+        } catch {
+          return null;
+        }
+        if (typeof start !== 'number') return null;
+        const nodes: Array<{ key: string; attrs: CitationAttrs }> = [];
+        for (const [j, key] of keys.entries()) {
+          const found = editor.state.doc.nodeAt(start + j);
+          if (found?.type.name !== 'citation' || String(found.attrs.key) !== key) return null;
+          nodes.push({ key, attrs: found.attrs as CitationAttrs });
+        }
+        return nodes;
+      };
+
+      /** Takes one citation out of the cluster: the student's own act, from the card. */
+      const removeFromCluster = (key: string, keys: readonly string[]) => {
+        let start: number;
+        try {
+          start = getPos();
+        } catch {
+          return;
+        }
+        const offset = keys.indexOf(key);
+        const found = offset >= 0 ? editor.state.doc.nodeAt(start + offset) : null;
+        if (found?.type.name !== 'citation' || String(found.attrs.key) !== key) return;
+        closePopover();
+        editor.view.dispatch(editor.state.tr.delete(start + offset, start + offset + 1));
+      };
+
+      /**
+       * R40 (ADR-0117): the card for a cluster. One tab per source, in the order they were
+       * written; under it, that source's card as a single citation has it, and — while the
+       * chapter can be edited — a button that takes that one source out of the bracket.
+       */
+      const showClusterPopover = (
+        nodes: Array<{ key: string; attrs: CitationAttrs }>,
+        passages: Array<CitationPassage | null>,
+      ) => {
+        closePopover();
+        const el = popoverShell();
+        el.classList.add('citation-popover--cluster');
+        el.setAttribute('data-testid', 'citation-cluster-card');
+        const tabs = document.createElement('span');
+        tabs.className = 'citation-popover__members';
+        tabs.setAttribute('role', 'tablist');
+        tabs.style.display = 'flex';
+        tabs.style.flexWrap = 'wrap';
+        tabs.style.gap = '0.25rem';
+        const body = document.createElement('span');
+        body.className = 'citation-popover__member';
+        body.style.display = 'block';
+        const keys = nodes.map((n) => n.key);
+        const buttons: HTMLButtonElement[] = [];
+
+        const select = (index: number) => {
+          const chosen = nodes[index];
+          if (!chosen) return;
+          buttons.forEach((button, i) => {
+            button.setAttribute('aria-selected', String(i === index));
+            button.classList.toggle('citation-popover__tab--active', i === index);
+          });
+          body.replaceChildren();
+          const passage = passages[index];
+          if (passage) fillPassage(body, passage, chosen.attrs);
+          else {
+            const none = document.createElement('span');
+            none.className = 'citation-popover__ref';
+            none.textContent = 'Cited from the library, with no passage attached.';
+            body.appendChild(none);
+          }
+          if (editor.isEditable) {
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'citation-popover__remove';
+            remove.setAttribute('data-testid', 'citation-cluster-remove');
+            remove.textContent = 'Remove this source from the citation';
+            remove.addEventListener('mousedown', (event) => event.preventDefault());
+            remove.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              removeFromCluster(chosen.key, keys);
+            });
+            body.appendChild(remove);
+          }
+        };
+
+        nodes.forEach((n, index) => {
+          const tab = document.createElement('button');
+          tab.type = 'button';
+          tab.className = 'citation-popover__tab';
+          tab.setAttribute('role', 'tab');
+          tab.setAttribute('data-testid', 'citation-cluster-tab');
+          tab.textContent = passages[index]?.shortRef ?? storage.renderedMap[n.key] ?? 'Source';
+          tab.addEventListener('mousedown', (event) => event.preventDefault());
+          tab.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            select(index);
+          });
+          buttons.push(tab);
+          tabs.appendChild(tab);
+        });
+        el.appendChild(tabs);
+        el.appendChild(body);
+        select(0);
         dom.appendChild(el);
         popover = el;
       };
 
       const onEnter = () => {
+        if (!options.resolvePassage) return;
+        if (hiddenInCluster()) return;
+        const cluster = shownCluster();
+        const nodes = cluster ? clusterNodes(cluster.keys) : null;
         const a = current.attrs as CitationAttrs;
-        if (!options.resolvePassage || !a.sourceId) return;
+        if (!nodes && !a.sourceId) return;
         if (hoverTimer) clearTimeout(hoverTimer);
         const token = ++hoverToken;
         hoverTimer = setTimeout(() => {
           hoverTimer = null;
+          if (nodes) {
+            void Promise.all(
+              nodes.map((n) =>
+                n.attrs.sourceId
+                  ? (options.resolvePassage?.(n.attrs.sourceId, n.attrs.chunkId) ?? null)
+                  : null,
+              ),
+            )
+              .then((passages) => {
+                if (token !== hoverToken) return;
+                showClusterPopover(nodes, passages);
+              })
+              .catch(() => undefined);
+            return;
+          }
           void options
             .resolvePassage?.(a.sourceId as string, a.chunkId)
             .then((passage) => {
@@ -562,6 +949,29 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         // A note style shows a footnote number (a CSS counter shared with the student's own
         // footnotes, editor.css) and keeps the note itself for the hover.
         dom.classList.toggle('citation--note', storage.noteStyle);
+
+        // R40 (ADR-0117): a cluster shows once, on its first node; the others show nothing (and
+        // take no footnote number), while they stay separate nodes in the document.
+        const cluster = shownCluster();
+        const hidden = hiddenInCluster();
+        dom.classList.toggle('citation--cluster', cluster !== null);
+        dom.classList.toggle('citation--member', hidden);
+        if (hidden) {
+          closePopover();
+          dom.textContent = '';
+          dom.title = '';
+          dom.setAttribute('aria-hidden', 'true');
+          dom.classList.remove('citation--removed');
+          return;
+        }
+        dom.removeAttribute('aria-hidden');
+        if (cluster) {
+          dom.textContent = storage.noteStyle ? '' : cluster.label;
+          dom.classList.remove('citation--removed');
+          dom.title = storage.noteStyle ? cluster.label : `${cluster.keys.length} sources`;
+          return;
+        }
+
         dom.textContent = storage.noteStyle ? '' : labelFor(current, storage);
         const removed = a.sourceId === null || storage.removedSourceIds.has(a.sourceId);
         dom.classList.toggle('citation--removed', removed);
@@ -586,9 +996,10 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
 
       return {
         dom,
-        update(updated) {
+        update(updated, nextDecorations) {
           if (updated.type.name !== 'citation') return false;
           current = updated;
+          place = clusterSpecOf(nextDecorations);
           render();
           return true;
         },
@@ -597,6 +1008,12 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         },
         deselectNode() {
           dom.classList.remove('citation--selected');
+        },
+        // The card's own buttons and tabs are not clicks on the citation: ProseMirror leaves
+        // them alone, so pressing one never selects the atom or moves the caret.
+        stopEvent(event) {
+          const target = event.target as HTMLElement | null;
+          return Boolean(popover && target && popover.contains(target));
         },
         ignoreMutation() {
           return true;
@@ -630,12 +1047,17 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           }),
 
       setCitationStyle:
-        (style, renderedMap, noteStyle = false, numeric) =>
+        (style, renderedMap, noteStyle = false, numeric, clusters = []) =>
         ({ tr, dispatch }) => {
           this.storage.style = style;
           this.storage.renderedMap = renderedMap;
           this.storage.noteStyle = noteStyle;
           if (numeric !== undefined) this.storage.numeric = numeric;
+          this.storage.clusters = new Map(
+            clusters
+              .filter((cluster) => cluster.keys.length > 1)
+              .map((cluster) => [cluster.keys.join(' '), cluster.label] as const),
+          );
           if (dispatch) tr.setMeta(CITATIONS_RERENDER, true);
           return true;
         },

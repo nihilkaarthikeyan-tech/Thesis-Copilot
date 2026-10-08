@@ -5670,3 +5670,13 @@ access and PDF shown only when stated. Built by a parallel agent; on main: 112 a
 the 6 paper-id API tests and the 6 in-page browser tests (fixtures, 390 and 1440 px) pass. Not
 tried on the live sites. The 0.3.0 zip waits for 0.2.1's store approval (PENDING).
 
+R40 (ADR-0117): adjacent citation nodes render as one citeproc citation with several cites ("(A;
+B)", IEEE "[2], [3]", Vancouver "(1–3)", one footnote) in the editor and every export (.docx/PDF,
+a multi-source Word `\m` field, HTML, LaTeX `\parencite{a,b}`); the nodes stay separate, with a
+tab and Remove per source in the hover card. Fixed on the way: an end-of-sentence citation was
+inserted after the full stop, or in the next sentence. R35 (ADR-0118): a Keyboard shortcuts window
+(keys and Markdown, from one list a test types into a real editor) and a `$$…$$` equation rule.
+Built in a parallel worktree; on main the citations (131), export (141), ui (215), web (175) and
+six citation API files (41) pass, and the 5 new browser tests pass after one fix: the shortcuts
+spec looked for `.thesis-editor .ProseMirror`, but both classes are on one element.
+

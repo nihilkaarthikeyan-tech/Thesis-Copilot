@@ -56,19 +56,37 @@ export type FoundCitationNode = {
    * Its place among the chapter's notes — the student's own footnotes and its citations, counted
    * together in document order, from 1. In a note style every citation is a footnote, so this is
    * the footnote it becomes (plus the notes of the chapters before, which the caller adds).
+   * Citations side by side (one `run`) are one note, so they share it (R40, ADR-0117).
    */
   noteOrdinal: number;
+  /**
+   * R40 (ADR-0117): the run of citations this one sits in — citation nodes side by side in one
+   * paragraph with nothing at all between them, not even a space. Unique through the document
+   * (it starts with the chapter id). `renderCitations` renders a run as one citation, "(Kumar,
+   * 2021; Rao, 2020)", where the editor used to show "(Kumar, 2021)(Rao, 2020)".
+   */
+  run: string;
 };
 
-/** How many notes a chapter holds in a note style: its footnotes plus its citations. */
+const isKeyedCitation = (node: Node | undefined): boolean =>
+  node?.type === 'citation' && Boolean(node.attrs?.key);
+
+/**
+ * How many notes a chapter holds in a note style: its footnotes plus its citations, where
+ * citations side by side are one note (ADR-0117) — citeproc writes them as one footnote.
+ */
 export function notesIn(chapter: ChapterDoc): number {
   let n = 0;
-  const walk = (node: Node | undefined): void => {
-    if (!node) return;
-    if (node.type === 'footnote' || (node.type === 'citation' && node.attrs?.key)) n++;
-    for (const child of node.content ?? []) walk(child);
+  const walk = (children: readonly Node[] | undefined): void => {
+    let previous: Node | undefined;
+    for (const node of children ?? []) {
+      if (node.type === 'footnote') n++;
+      else if (isKeyedCitation(node) && !isKeyedCitation(previous)) n++;
+      walk(node.content);
+      previous = node;
+    }
   };
-  for (const child of (chapter.content as Node | undefined)?.content ?? []) walk(child);
+  walk((chapter.content as Node | undefined)?.content);
   return n;
 }
 
@@ -106,8 +124,24 @@ const attr = (node: Node, name: string): string | null => {
 export function citationNodesIn(chapter: ChapterDoc): FoundCitationNode[] {
   const out: FoundCitationNode[] = [];
   let notes = 0;
-  const walk = (node: Node | undefined, pos: number): number => {
-    if (!node) return pos;
+  let runs = 0;
+  // Every child list is walked here, so a citation knows whether the sibling before it was one.
+  const walkChildren = (children: readonly Node[] | undefined, start: number): number => {
+    let pos = start;
+    let run: string | null = null;
+    for (const child of children ?? []) {
+      if (isKeyedCitation(child)) {
+        if (run === null) {
+          runs++;
+          notes++;
+          run = `${chapter.id}#${runs}`;
+        }
+      } else run = null;
+      pos = walk(child, pos, run);
+    }
+    return pos;
+  };
+  const walk = (node: Node, pos: number, run: string | null): number => {
     if (node.type === 'text') return pos + (node.text?.length ?? 0);
     if (node.type === 'footnote') {
       notes++;
@@ -116,8 +150,7 @@ export function citationNodesIn(chapter: ChapterDoc): FoundCitationNode[] {
     if (node.type === 'citation') {
       const key = String(node.attrs?.key ?? '');
       const sourceId = String(node.attrs?.sourceId ?? '');
-      if (key) {
-        notes++;
+      if (key && run) {
         out.push({
           noteOrdinal: notes,
           chapterId: chapter.id,
@@ -130,18 +163,16 @@ export function citationNodesIn(chapter: ChapterDoc): FoundCitationNode[] {
           locator: attr(node, 'locator'),
           prefix: attr(node, 'prefix'),
           suffix: attr(node, 'suffix'),
+          run,
         });
       }
       return pos + 1;
     }
     if (node.type && LEAF_NODES.has(node.type)) return pos + 1;
-    let inner = pos + 1;
-    for (const child of node.content ?? []) inner = walk(child, inner);
-    return inner + 1;
+    return walkChildren(node.content, pos + 1) + 1;
   };
   // The doc node itself occupies no position; its children start at 0.
-  let pos = 0;
-  for (const child of (chapter.content as Node | undefined)?.content ?? []) pos = walk(child, pos);
+  walkChildren((chapter.content as Node | undefined)?.content, 0);
   return out;
 }
 

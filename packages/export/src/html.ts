@@ -15,9 +15,15 @@
 import { formatRef, numberingMap } from '@tc/types';
 import katex from 'katex';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
+import { printCitation } from './clusters.js';
 import { footnoteText } from './footnotes.js';
 import { spanOf } from './table-grid.js';
-import { renderLabel, type ThesisExportInput, withoutPendingDrafts } from './thesis.js';
+import {
+  renderLabel,
+  type ThesisChapter,
+  type ThesisExportInput,
+  withoutPendingDrafts,
+} from './thesis.js';
 
 type Node = {
   type?: string;
@@ -70,6 +76,8 @@ type ChapterContext = {
   chapter: number;
   /** Citation node key → the label the editor shows. */
   renderedMap: Readonly<Record<string, string>>;
+  /** R40 (ADR-0117): citations side by side, printed once as one citation. */
+  clusters: ThesisChapter['citationClusters'];
   numbers: ReturnType<typeof numberingMap>;
   /** Numbered as `numberTargets` numbers them: document order, not inside tables. */
   figureCount: { n: number };
@@ -85,7 +93,7 @@ type ChapterContext = {
 
 function inline(nodes: readonly Node[], ctx: ChapterContext): string {
   let out = '';
-  for (const node of nodes) {
+  for (const [index, node] of nodes.entries()) {
     switch (node.type) {
       case 'text': {
         let text = escapeHtml(node.text ?? '');
@@ -106,8 +114,11 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
         break;
       }
       case 'citation': {
+        // R40 (ADR-0117): a cluster prints once, at its first node; its other nodes print nothing.
+        const print = printCitation(nodes, index, ctx.renderedMap, ctx.clusters);
+        if (print.kind === 'skip') break;
         const key = String(node.attrs?.key ?? '');
-        const label = ctx.renderedMap[key];
+        const label = print.label;
         if (ctx.input.noteStyle) {
           // ADR-0029: a note style's citation is a footnote holding its note.
           ctx.noteCount.n += 1;
@@ -120,6 +131,7 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
           out += '<strong class="missing">(source missing)</strong>';
           break;
         }
+        // A cluster has one label, so it links to its first source's entry, as the .docx does.
         const sourceId = ctx.input.citeSources?.[key];
         out += sourceId
           ? `<a class="citation" href="#ref-${escapeHtml(sourceId)}">${escapeHtml(label)}</a>`
@@ -428,6 +440,7 @@ export function thesisToHtml(input: HtmlExportInput): string {
       input,
       chapter: chapter.order,
       renderedMap: chapter.renderedMap,
+      clusters: chapter.citationClusters,
       numbers: numberingMap(chapter.content),
       figureCount: { n: 0 },
       tableCount: { n: 0 },

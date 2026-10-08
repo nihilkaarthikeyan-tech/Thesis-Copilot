@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**537** strings are translated; **2** are deliberately
+**538** strings are translated; **2** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -240,6 +240,7 @@ English. Write corrections in the last column.
 | `editor.key.snapshot` | snapshot | स्नैपशॉट | |
 | `editor.key.more` | More keys | और कुंजियाँ | |
 | `editor.key.fewer` | Fewer keys | कम कुंजियाँ | |
+| `editor.key.all` | Keyboard shortcuts | कीबोर्ड शॉर्टकट | |
 | `editor.draftButton` | Draft a section | एक खंड का ड्राफ़्ट | |
 
 ## guide

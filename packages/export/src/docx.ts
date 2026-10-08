@@ -9,6 +9,7 @@
  * same rendered map the editor shows — the exported file says exactly what the student saw.
  */
 
+import type { CitationCluster } from '@tc/citations';
 import { formatRef, type NumberedTarget } from '@tc/types';
 import {
   AlignmentType,
@@ -33,6 +34,7 @@ import {
   finishCitationLinks,
   noteChildren,
 } from './citation-links.js';
+import { printCitation } from './clusters.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
 import { latexToWordMath } from './word-math.js';
@@ -51,6 +53,11 @@ export type ExportOptions = {
   title: string;
   /** Citation node key → rendered label, e.g. "(Kumar et al., 2021)". */
   renderedMap?: Record<string, string>;
+  /**
+   * R40 (ADR-0117): citations side by side, rendered as one — printed once, at the first node:
+   * "(Kumar, 2021; Rao, 2020)" where the file used to read "(Kumar, 2021)(Rao, 2020)".
+   */
+  citationClusters?: readonly CitationCluster[];
   /** Bibliography lines, already formatted and sorted by the citation layer. */
   bibliography?: readonly string[];
   /**
@@ -118,48 +125,39 @@ function mathRun(node: PmNode, display = false): TextRun | WordMath {
   return math ? new WordMath({ children: math }) : new TextRun({ text: latex, font: 'Consolas' });
 }
 
-/** A citation renders as its label; an unresolved one is marked rather than silently dropped. */
-function citationLabel(node: PmNode, renderedMap: Record<string, string>): string {
-  const key = typeof node.attrs?.key === 'string' ? node.attrs.key : '';
-  return renderedMap[key] ?? '(source missing)';
-}
-
 function runsFrom(nodes: readonly PmNode[], options: ExportOptions): ParagraphChild[] {
   const runs: ParagraphChild[] = [];
   const renderedMap = options.renderedMap ?? {};
 
-  for (const node of nodes) {
+  for (const [index, node] of nodes.entries()) {
     if (node.type === 'footnote') {
       runs.push(footnoteRun(options, node));
       continue;
     }
-    if (node.type === 'citation' && options.noteStyle) {
-      // ADR-0029: in a note style the citation is a footnote holding its note.
-      const note = citationLabel(node, renderedMap);
-      const links = citationLinksFor(options);
-      runs.push(
-        footnoteRun(
-          options,
-          { attrs: { text: note } },
-          undefined,
-          // ADR-0055: in a linked export the note links to its bibliography entry.
-          links.mode === 'plain'
-            ? undefined
-            : noteChildren(node, note, links, (text) => new TextRun({ text })),
-        ),
-      );
-      continue;
-    }
     if (node.type === 'citation') {
+      // R40 (ADR-0117): a cluster prints once, at its first node; its other nodes print nothing.
+      const print = printCitation(nodes, index, renderedMap, options.citationClusters);
+      if (print.kind === 'skip') continue;
+      // An unresolved citation is marked rather than silently dropped.
+      const label = print.label ?? '(source missing)';
+      const links = citationLinksFor(options);
+      if (options.noteStyle) {
+        // ADR-0029: in a note style the citation is a footnote holding its note.
+        runs.push(
+          footnoteRun(
+            options,
+            { attrs: { text: label } },
+            undefined,
+            // ADR-0055: in a linked export the note links to its bibliography entry.
+            links.mode === 'plain'
+              ? undefined
+              : noteChildren(print.nodes, label, links, (text) => new TextRun({ text })),
+          ),
+        );
+        continue;
+      }
       // ADR-0055: plain text, a link to the entry, or a Word `CITATION` field — the same label.
-      runs.push(
-        citationChild(
-          node,
-          citationLabel(node, renderedMap),
-          citationLinksFor(options),
-          (text) => new TextRun({ text }),
-        ),
-      );
+      runs.push(citationChild(print.nodes, label, links, (text) => new TextRun({ text })));
       continue;
     }
     if (node.type === 'needsSourceNote') {

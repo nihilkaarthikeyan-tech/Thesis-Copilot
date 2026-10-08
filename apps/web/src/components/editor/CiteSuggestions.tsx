@@ -11,8 +11,9 @@
  * source supports the claim; the model only narrows the field.
  */
 
-import { newCitationKey } from '@tc/ui';
+import { citationPointForSentence, newCitationKey } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
+import type { Transaction } from '@tiptap/pm/state';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 
@@ -60,6 +61,8 @@ export function CiteSuggestions({
   // Sentences already asked about, so finishing one never asks twice (FR-4.5).
   const askedRef = useRef<Set<string>>(new Set());
   const inFlightRef = useRef(false);
+  // Where the sentence asked about ends, kept in step with every edit since (ADR-0117).
+  const endRef = useRef<number | null>(null);
 
   const dismiss = useCallback(() => {
     setSuggestions([]);
@@ -68,10 +71,11 @@ export function CiteSuggestions({
   }, []);
 
   const ask = useCallback(
-    async (text: string) => {
+    async (text: string, end: number) => {
       if (inFlightRef.current || askedRef.current.has(text)) return;
       inFlightRef.current = true;
       askedRef.current.add(text);
+      endRef.current = end;
       try {
         const result = await api<Result>('/citations/suggest', {
           method: 'POST',
@@ -104,12 +108,23 @@ export function CiteSuggestions({
       // Only the keys that can finish a sentence, so this is not a per-keystroke call.
       if (event.key !== '.' && event.key !== '!' && event.key !== '?') return;
       const text = lastSentence(textBeforeCursor(editor));
-      if (text) void ask(text);
+      if (text) void ask(text, editor.state.selection.from);
+    };
+    // The student may type on while the suggestions load: the sentence's end moves with the
+    // text, and stays before anything typed right after it.
+    const onTransaction = ({ transaction }: { transaction: Transaction }) => {
+      if (endRef.current !== null && transaction.docChanged) {
+        endRef.current = transaction.mapping.map(endRef.current, -1);
+      }
     };
 
     const dom = editor.view.dom;
     dom.addEventListener('keyup', onKeyUp);
-    return () => dom.removeEventListener('keyup', onKeyUp);
+    editor.on('transaction', onTransaction);
+    return () => {
+      dom.removeEventListener('keyup', onKeyUp);
+      editor.off('transaction', onTransaction);
+    };
   }, [editor, ask]);
 
   function insert(suggestion: Suggestion) {
@@ -121,14 +136,41 @@ export function CiteSuggestions({
       .citation;
     if (store?.renderedMap) store.renderedMap[key] = suggestion.rendered;
 
+    // R40 (ADR-0117): at the end of the sentence it was suggested for — before its full stop in
+    // an in-text style, beside a citation already there — not at the caret. At the caret it went
+    // after the full stop the student had just typed, or into the next sentence if they had typed
+    // on: two of the faults the Jenni study found in Jenni's citations.
+    const noteStyle = Boolean(
+      (editor.storage as { citation?: { noteStyle?: boolean } }).citation?.noteStyle,
+    );
+    const { pos, space } = citationPointForSentence(
+      editor.state.doc,
+      endRef.current ?? editor.state.selection.from,
+      noteStyle,
+    );
     editor
       .chain()
       .focus()
-      .insertCitation({
-        key,
-        sourceId: suggestion.sourceId,
-        chunkId: suggestion.chunkId,
-      })
+      .insertContentAt(
+        pos,
+        [
+          ...(space ? [{ type: 'text', text: ' ' }] : []),
+          {
+            type: 'citation',
+            attrs: {
+              key,
+              sourceId: suggestion.sourceId,
+              chunkId: suggestion.chunkId,
+              role: 'parenthetical',
+              locator: null,
+              prefix: null,
+              suffix: null,
+            },
+          },
+        ],
+        // The caret stays where the student is writing.
+        { updateSelection: false },
+      )
       .run();
     dismiss();
   }

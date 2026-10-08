@@ -307,6 +307,9 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       `thesis-copilot-chrome-0.3.0.zip` as an update, paste the new "Content script on …"
       justification and the STORE.md wording marked "new in 0.3.0", submit. Existing users accept the
       wider permission once. Try it on the live Scholar/PubMed/arXiv/MDPI pages first.
+- [ ] **Word citations with several sources (R40, ADR-0117)** — open a "Word citations" .docx whose
+      field holds two sources in Microsoft Word (Windows, Mac, web), change the style in
+      References and update fields. No Word on the build machine.
 - [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
       shown because presentation and contribution did not track the text. A next attempt could
       run that one call at a higher reasoning effort (priced first: about ₹0.36 a review before

@@ -51,8 +51,12 @@ export {
   CITATIONS_RERENDER,
   Citation,
   type CitationAttrs,
+  type CitationClusterLabel,
   type CitationStorage,
+  citationClustersKey,
   citationKeysInOrder,
+  type LiveCitationCluster,
+  liveCitationClusters,
   newCitationKey,
 } from './editor/citation.js';
 export {
@@ -62,6 +66,12 @@ export {
   sentenceAroundCitation,
   sentenceToFragment,
 } from './editor/citation-role.js';
+export {
+  type CitationPoint,
+  citationPointForSentence,
+  needsSpaceBefore,
+  spaceAfterCitation,
+} from './editor/cite-point.js';
 export { CrossRef, type CrossRefOptions } from './editor/cross-ref.js';
 export {
   DraftBlock,
@@ -142,6 +152,14 @@ export {
   reviewHighlightsKey,
   textIndexOf,
 } from './editor/review.js';
+export {
+  KEY_SHORTCUTS,
+  type KeyShortcut,
+  MARKDOWN_SHORTCUTS,
+  type MarkdownShortcut,
+  macKeys,
+  type ShortcutGroup,
+} from './editor/shortcuts.js';
 export {
   attachSlashMenu,
   chooseSlashItem,

@@ -15,6 +15,7 @@
  *     which is the only way they can be right.
  */
 
+import type { CitationCluster } from '@tc/citations';
 import { formatRef, numberingMap, type TemplateSpec, type ThesisDetails } from '@tc/types';
 import {
   AlignmentType,
@@ -48,6 +49,7 @@ import {
   finishCitationLinks,
   noteChildren,
 } from './citation-links.js';
+import { printCitation } from './clusters.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
 import { latexToWordMath } from './word-math.js';
@@ -60,6 +62,11 @@ export type ThesisChapter = {
   content: unknown;
   /** Citation node key → the label citeproc rendered. */
   renderedMap: Record<string, string>;
+  /**
+   * R40 (ADR-0117): citations side by side, rendered as one. Printed once, at the first node;
+   * absent, every citation prints on its own as before.
+   */
+  citationClusters?: readonly CitationCluster[];
 };
 
 export type ThesisExportInput = {
@@ -151,7 +158,7 @@ function runsFrom(
 ): ParagraphChild[] {
   const { spec } = input;
   const out: ParagraphChild[] = [];
-  for (const node of nodes) {
+  for (const [index, node] of nodes.entries()) {
     // A pending AI draft is not part of the thesis, however deep it sits (see `chapterBlocks`).
     if (node.type === 'draftBlock') continue;
     if (node.type === 'footnote') {
@@ -190,38 +197,39 @@ function runsFrom(
       out.push(mathOrSource(node, spec, false));
       continue;
     }
-    if (node.type === 'citation' && input.noteStyle) {
-      // A note style: the citation is a Word footnote holding the note citeproc wrote.
-      const key = String(node.attrs?.key ?? '');
-      const note = chapter.renderedMap[key] ?? '(source missing)';
-      const noteFont = { name: spec.font.body, size: pt(spec.font.sizePt - 2) };
-      const links = citationLinksFor(input);
-      out.push(
-        footnoteRun(
-          input,
-          { attrs: { text: note } },
-          noteFont,
-          // ADR-0055: in a linked export the note links to its bibliography entry.
-          links.mode === 'plain'
-            ? undefined
-            : noteChildren(
-                node,
-                note,
-                links,
-                (text) => new TextRun({ text, font: noteFont.name, size: noteFont.size }),
-              ),
-        ),
-      );
-      continue;
-    }
     if (node.type === 'citation') {
-      const key = String(node.attrs?.key ?? '');
+      // R40 (ADR-0117): a cluster prints once, at its first node; its other nodes print nothing.
+      const print = printCitation(nodes, index, chapter.renderedMap, chapter.citationClusters);
+      if (print.kind === 'skip') continue;
+      const label = print.label ?? '(source missing)';
+      const links = citationLinksFor(input);
+      if (input.noteStyle) {
+        // A note style: the citation is a Word footnote holding the note citeproc wrote.
+        const noteFont = { name: spec.font.body, size: pt(spec.font.sizePt - 2) };
+        out.push(
+          footnoteRun(
+            input,
+            { attrs: { text: label } },
+            noteFont,
+            // ADR-0055: in a linked export the note links to its bibliography entry.
+            links.mode === 'plain'
+              ? undefined
+              : noteChildren(
+                  print.nodes,
+                  label,
+                  links,
+                  (text) => new TextRun({ text, font: noteFont.name, size: noteFont.size }),
+                ),
+          ),
+        );
+        continue;
+      }
       // ADR-0055: plain text, a link to the entry, or a Word `CITATION` field — the same label.
       out.push(
         citationChild(
-          node,
-          chapter.renderedMap[key] ?? '(source missing)',
-          citationLinksFor(input),
+          print.nodes,
+          label,
+          links,
           (text) => new TextRun({ text, font: spec.font.body, size: pt(spec.font.sizePt) }),
         ),
       );

@@ -63,7 +63,10 @@ export {
 } from './reference-health.js';
 export {
   type BibliographyEntry,
+  type CitationCluster,
   type CitationRef,
+  type ClusterPlace,
+  clusterPlaces,
   isNoteStyle,
   type RenderInput,
   type RenderResult,

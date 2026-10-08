@@ -3,8 +3,9 @@
  * Deterministic render, exportable. The node stores only the source; KaTeX draws it in a NodeView.
  */
 
-import { mergeAttributes, Node } from '@tiptap/core';
+import { InputRule, mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
+import { TextSelection } from '@tiptap/pm/state';
 import katex from 'katex';
 import { insertBlockWithCaretAfter } from './insert-block.js';
 
@@ -119,6 +120,12 @@ const latexAttribute = {
   },
 };
 
+/**
+ * R35 (ADR-0118): `$$…$$` typed in a sentence. Double dollars only: a single `$` is money far
+ * more often than mathematics ("$5 and $10"), and nobody writes `$$` for money.
+ */
+export const MATH_INPUT_RE = /(?:^|[^$\\])(\$\$([^$\n]+)\$\$)$/;
+
 export const MathInline = Node.create({
   name: 'mathInline',
   group: 'inline',
@@ -126,6 +133,40 @@ export const MathInline = Node.create({
   atom: true,
   selectable: true,
   addAttributes: () => latexAttribute,
+  /**
+   * `$$x^2$$` becomes an equation as the closing dollars are typed — inline in a sentence, a
+   * displayed equation when it is all the paragraph holds. Only LaTeX KaTeX can draw is turned
+   * into one; anything else stays as the text the student typed, as the equation field refuses
+   * it (ADR-0045). Undo gives the dollars back.
+   */
+  addInputRules() {
+    return [
+      new InputRule({
+        find: MATH_INPUT_RE,
+        handler: ({ state, range, match }) => {
+          const whole = match[1] ?? '';
+          const latex = (match[2] ?? '').trim();
+          if (!latex || latexError(latex) !== null) return null;
+          const start = range.from + ((match[0] ?? '').length - whole.length);
+          const { tr } = state;
+          const $start = tr.doc.resolve(start);
+          const block = state.schema.nodes.mathBlock;
+          const paragraph = state.schema.nodes.paragraph;
+          const alone =
+            $start.parent.type.name === 'paragraph' &&
+            start === $start.start() &&
+            range.to === $start.end();
+          if (alone && block && paragraph && $start.depth > 0) {
+            const before = $start.before();
+            tr.replaceWith(before, $start.after(), [block.create({ latex }), paragraph.create()]);
+            tr.setSelection(TextSelection.create(tr.doc, before + 2));
+            return;
+          }
+          tr.replaceWith(start, range.to, this.type.create({ latex }));
+        },
+      }),
+    ];
+  },
   parseHTML: () => [{ tag: 'span[data-math-inline]' }],
   renderHTML({ node, HTMLAttributes }) {
     return [

@@ -43,6 +43,25 @@ export type CitationRef = {
    * for a source the previous note already cited. Absent, each citation is its own next note.
    */
   noteIndex?: number;
+  /**
+   * R40 (ADR-0117): the run of citations this one sits in (`citationNodesIn`'s `run`) —
+   * citations side by side in the text with nothing between them. Consecutive citations with the
+   * same run are rendered by citeproc as **one** citation: "(Kumar, 2021; Rao, 2020)", "[3], [7]"
+   * in IEEE, "(3–5)" in Vancouver, one footnote in a note style. Absent, a citation stands alone.
+   */
+  run?: string | null;
+};
+
+/** R40 (ADR-0117): citations side by side, rendered as one. */
+export type CitationCluster = {
+  /** The citation nodes' keys, in document order. Always two or more. */
+  keys: string[];
+  /**
+   * citeproc's rendering of them as one citation, in the style's own order, delimiter and
+   * collapsing. Printed once, where the first key is; the other keys print nothing. In a note
+   * style, the note.
+   */
+  label: string;
 };
 
 export type RenderInput = {
@@ -64,8 +83,15 @@ export type BibliographyEntry = { sourceId: string; text: string };
 
 export type RenderResult = {
   style: StyleEntry;
-  /** `nodeKey` → the label the NodeView shows, e.g. `(Kumar, 2021)` or `[7]`. */
+  /**
+   * `nodeKey` → the label the NodeView shows, e.g. `(Kumar, 2021)` or `[7]`. For a citation in a
+   * cluster, the label it would have standing alone: what the editor shows for the moment between
+   * an edit that splits the cluster and the next render (ADR-0117). Print a cluster through
+   * `clusters`, never by joining these.
+   */
   labels: Record<string, string>;
+  /** R40 (ADR-0117): every run of two or more citations, rendered as one citation. */
+  clusters: CitationCluster[];
   /** In the order the style puts them: citation order for numeric, alphabetical otherwise. */
   bibliography: BibliographyEntry[];
   /** Cited sources that are not in `sources` — an orphaned citation node (B.5). */
@@ -118,15 +144,12 @@ const clean = (text: string): string => text.replace(/\s+/g, ' ').trim();
 export function renderCitations(input: RenderInput, stylesDir?: string): RenderResult {
   const style = resolveStyle(input.style ?? DEFAULT_STYLE);
   const known = new Map(input.sources.map((s) => [s.id, s]));
-  const missing = new Set<string>();
-  const used: CitationRef[] = [];
-  for (const citation of input.citations) {
-    if (known.has(citation.sourceId)) used.push(citation);
-    else missing.add(citation.sourceId);
-  }
-
   const styleId = ensureRegistered(style, stylesDir);
   const noteStyle = isNoteStyle(style, stylesDir);
+
+  const missing = new Set<string>();
+  const used: CitationRef[] = [];
+  const groups = groupCitations(input.citations, known, noteStyle, missing, used);
   // A journal style can declare its own locale (a German journal's "Hrsg."); the caller's wins.
   // One citeproc cannot load (a catalogue journal's pt-BR or de-CH) is not passed on: the plugin
   // drops an unknown id and citeproc then throws reading the missing locale's terms, so those
@@ -137,6 +160,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
   const empty: RenderResult = {
     style,
     labels: {},
+    clusters: [],
     bibliography: [],
     missingSourceIds: [...missing],
     noteStyle,
@@ -149,33 +173,35 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
   const data = [...citedIds].map((id) => toCslItem(known.get(id) as SourceLike));
 
   const format = input.format ?? 'text';
+  // citation-js keeps one engine per style and locale (`fetchEngine` in plugin-csl's
+  // `engines.js`), so the second pass below reuses this object: everything this pass yields —
+  // the labels and the bibliography — is read before that pass starts.
   const engine = config().engine(data, styleId, locale, format);
 
-  const clusters = used.map((citation, index) => ({
-    citationID: `c${index}`,
-    citationItems: [
-      {
-        id: citation.sourceId,
-        ...(citation.locator ? { locator: citation.locator } : {}),
-        ...(citation.prefix ? { prefix: citation.prefix } : {}),
-        ...(citation.suffix ? { suffix: citation.suffix } : {}),
+  // One citeproc citation per group: a citation standing alone, or a run of them side by side.
+  const rendered = engine.rebuildProcessorState(
+    groups.map((group, index) => ({
+      citationID: `c${index}`,
+      citationItems: itemsOf(group),
+      properties: {
+        // In-text styles ignore it; a note style needs each citation's own footnote number.
+        noteIndex: noteStyle ? (group[0]?.noteIndex ?? index + 1) : 0,
+        // A narrative citation in an in-text style: author in the running text, year in
+        // brackets. It never shares a group (`groupCitations`). A note style has no in-text form
+        // to vary, so the role is left alone there.
+        ...(group[0]?.role === 'narrative' && !noteStyle ? { mode: 'composite' } : {}),
       },
-    ],
-    properties: {
-      // In-text styles ignore it; a note style needs each citation's own footnote number.
-      noteIndex: noteStyle ? (citation.noteIndex ?? index + 1) : 0,
-      // A narrative citation in an in-text style: author in the running text, year in brackets.
-      // A note style has no in-text form to vary, so the role is left alone there.
-      ...(citation.role === 'narrative' && !noteStyle ? { mode: 'composite' } : {}),
-    },
-  }));
-
-  const rendered = engine.rebuildProcessorState(clusters, format, []);
+    })),
+    format,
+    [],
+  );
   const labels: Record<string, string> = {};
+  const clusters: CitationCluster[] = [];
   for (const [citationID, , text] of rendered) {
-    const index = Number(citationID.slice(1));
-    const key = used[index]?.key;
-    if (key) labels[key] = clean(text);
+    const group = groups[Number(citationID.slice(1))];
+    if (!group?.[0]) continue;
+    if (group.length === 1) labels[group[0].key] = clean(text);
+    else clusters.push({ keys: group.map((c) => c.key), label: clean(text) });
   }
 
   const [meta, entries] = engine.makeBibliography();
@@ -184,7 +210,130 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     text: clean(text),
   }));
 
-  return { style, labels, bibliography, missingSourceIds: [...missing], noteStyle, locale };
+  // The second pass, only when there is a cluster: every citation alone, as before ADR-0117, for
+  // the label a clustered citation shows if an edit takes its neighbour away before the next
+  // render. Never printed: the export prints `clusters`.
+  if (clusters.length > 0) {
+    const alone = engine.rebuildProcessorState(
+      used.map((citation, index) => ({
+        citationID: `a${index}`,
+        citationItems: itemsOf([citation]),
+        properties: {
+          noteIndex: noteStyle ? (citation.noteIndex ?? index + 1) : 0,
+          ...(citation.role === 'narrative' && !noteStyle ? { mode: 'composite' } : {}),
+        },
+      })),
+      format,
+      [],
+    );
+    for (const [citationID, , text] of alone) {
+      const key = used[Number(citationID.slice(1))]?.key;
+      if (key && !(key in labels)) labels[key] = clean(text);
+    }
+  }
+
+  return {
+    style,
+    labels,
+    clusters,
+    bibliography,
+    missingSourceIds: [...missing],
+    noteStyle,
+    locale,
+  };
+}
+
+/**
+ * Document order → the citations citeproc renders, each a list of one or more.
+ *
+ * Consecutive citations with the same `run` share a group, except that a group never takes:
+ *  - a citation whose source is not in the library. It is left out of the engine (citeproc throws
+ *    on an unknown id) and the editor draws it red on its own, so it ends the group before it;
+ *  - in an in-text style, a narrative citation. "Kumar (2021)" is part of the sentence, not a
+ *    bracket that another citation could join.
+ *
+ * Fills `missing` and `used` (every renderable citation, in order) on the way.
+ */
+function groupCitations(
+  citations: readonly CitationRef[],
+  known: ReadonlyMap<string, SourceLike>,
+  noteStyle: boolean,
+  missing: Set<string>,
+  used: CitationRef[],
+): CitationRef[][] {
+  const groups: CitationRef[][] = [];
+  // The citation before, when another may join its group.
+  let open: CitationRef | null = null;
+  for (const citation of citations) {
+    if (!known.has(citation.sourceId)) {
+      missing.add(citation.sourceId);
+      open = null;
+      continue;
+    }
+    used.push(citation);
+    const alone = !noteStyle && citation.role === 'narrative';
+    const group = groups[groups.length - 1];
+    if (open && group && !alone && citation.run && citation.run === open.run) group.push(citation);
+    else groups.push([citation]);
+    open = alone ? null : citation;
+  }
+  return groups;
+}
+
+type CiteItem = { id: string; locator?: string; prefix?: string; suffix?: string };
+
+/**
+ * One citeproc item per source in a group. The same paper twice in one bracket — "Cite here"
+ * pressed twice, or two passages of one paper — is one item, with both pages: citeproc would
+ * otherwise print "(Kumar, 2021, 2021)" or "(2,2)". An affix the student typed on either keeps
+ * them apart, since it says something about each.
+ */
+function itemsOf(group: readonly CitationRef[]): CiteItem[] {
+  const items: CiteItem[] = [];
+  const pages = new Map<CiteItem, string[]>();
+  for (const citation of group) {
+    const plain = !citation.prefix && !citation.suffix;
+    const same = plain
+      ? items.find((item) => item.id === citation.sourceId && !item.prefix && !item.suffix)
+      : undefined;
+    if (same) {
+      const list = pages.get(same) ?? [];
+      if (citation.locator && !list.includes(citation.locator)) list.push(citation.locator);
+      pages.set(same, list);
+      continue;
+    }
+    const item: CiteItem = {
+      id: citation.sourceId,
+      ...(citation.prefix ? { prefix: citation.prefix } : {}),
+      ...(citation.suffix ? { suffix: citation.suffix } : {}),
+    };
+    pages.set(item, citation.locator ? [citation.locator] : []);
+    items.push(item);
+  }
+  return items.map((item) => {
+    const locator = (pages.get(item) ?? []).join(', ');
+    return locator ? { ...item, locator } : item;
+  });
+}
+
+/** Where a clustered citation stands in its cluster (ADR-0117). */
+export type ClusterPlace = {
+  cluster: CitationCluster;
+  /** The first key prints the cluster's label; every other key prints nothing. */
+  first: boolean;
+};
+
+/** Every clustered key → its cluster, for a walker that meets the keys one node at a time. */
+export function clusterPlaces(
+  clusters: readonly CitationCluster[] | undefined,
+): ReadonlyMap<string, ClusterPlace> {
+  const places = new Map<string, ClusterPlace>();
+  for (const cluster of clusters ?? []) {
+    cluster.keys.forEach((key, index) => {
+      places.set(key, { cluster, first: index === 0 });
+    });
+  }
+  return places;
 }
 
 const noteStyles = new Map<string, boolean>();
