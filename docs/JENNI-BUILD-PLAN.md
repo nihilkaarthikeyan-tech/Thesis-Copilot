@@ -41,7 +41,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 | The thesis lands with an outline (all chapters) after the proposal, cursor in the first | Done 2026-10-04 |
 | Suggestion bar: Accept / Refine / thumbs on screen (works on a phone) | Done 2026-10-04 |
 | Evidence card on a suggested citation before accepting | Done 2026-10-04 |
-| Refine presets (validate evidence, cite from my library, simplify, stay on topic, complete paragraph) | Partly: 2026-10-07 code check found only stay on topic and complete paragraph (plus shorter, formal, contrasting) — the rest is Round 2, R3 |
+| Refine presets (validate evidence, cite from my library, simplify, stay on topic, complete paragraph) | Partly: 2026-10-07 code check found only stay on topic and complete paragraph (plus shorter, formal, contrasting) — the rest is Round 2, R3. **Done 2026-10-07 (R3, ADR-0089)** |
 | Find papers as a panel beside the text with Cite on each result | Done 2026-10-04 |
 | "/" insert menu: table, equation, chart, diagram, table of contents, AI declaration, placeholder citation | Done 2026-10-04 (no table of contents: the export builds a real one) |
 | Equations: examples, a cheat sheet, describe-in-words | Done 2026-10-04 — examples, live preview, cheat sheet; describe-in-words waits for the owner (new prompt) |
@@ -55,9 +55,9 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Item | Status |
 |---|---|
 | One-button peer review of any text: scores, weaknesses, strengths, questions, anchored comments | Done 2026-10-04 — Examiner review of a chapter, flags on each sentence (ADR-0056; the chapter build's examiner, no new prompt) |
-| Gap analysis by claim (supported / contested / under-explored) on top of the theme map | |
+| Gap analysis by claim (supported / contested / under-explored) on top of the theme map | Done 2026-10-05 (ADR-0086, the claims map on the Discover tab); opened as an editable chapter 2026-10-08 (R38, ADR-0123) |
 | Chat that can search beyond the library (asks first), shows its steps | Done 2026-10-04 — ADR-0060: the off-topic refusal offers the search (or runs it, setting On); answers from up to 8 abstracts through the existing A.4 prompt, steps shown, each paper "Not in your library" with Add. Playwright spec written, not run; real-model check in PENDING |
-| More selection actions (counter-argument, hedge/strengthen a claim, tense, to table, translate) | |
+| More selection actions (counter-argument, hedge/strengthen a claim, tense, to table, translate) | Done 2026-10-05 (ADR-0066, ADR-0081: thirteen actions incl. translate and as-a-table) and 2026-10-07 (R8, ADR-0095: the rest, 22 in one panel) |
 | Library: duplicate detection, missing-PDF view | Done 2026-10-04 — possible duplicates with Merge (snapshots first), "Without full text" with Add the PDF |
 | Interface language (Hindi, Tamil…) | Done 2026-10-05 — Hindi (beta) on the student's main screens, English fallback (ADR-0061); Tamil after the Hindi review (PENDING) |
 
@@ -82,7 +82,7 @@ Items that change cost or need a decision only the owner can take are listed at 
 | Matching passage on each Find papers result (row 23): the abstract's best-matching sentence(s), verbatim, labelled "From the abstract", searched words in bold | Done 2026-10-04; browser spec extended, not run |
 | Import from Zotero by API key: user ID + read-only key, collections dropdown, whole library or one collection, up to 500 items, into the .bib import's resolve pipeline; key never stored or logged (coverage-map row 36, ADR-0059 row 36) | Done 2026-10-04 (ADR-0062); no live Zotero call yet (no key); Mendeley in `docs/PENDING.md` |
 | "Start writing now" on the thesis list and /app/new: thesis made ("Untitled thesis" if no title), first chapter opens; "Add a proposal" on the list and in the editor (coverage-map row 2, ADR-0059 row 2) | Done 2026-10-04 (ADR-0062) |
-| Chat scoped to a collection | Not done: chat takes at most ten `sourceIds` (the `@` mentions); a collection needs its own server-side scope |
+| Chat scoped to a collection | Not done on 2026-10-04: chat takes at most ten `sourceIds` (the `@` mentions); a collection needs its own server-side scope. **Done 2026-10-08 (R30, ADR-0116)** |
 
 ## Also fixed on the way (found while building)
 
@@ -313,3 +313,135 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R33 | Done 2026-10-08 — paper light/dark themes and a font style | ADR-0120 |
 | R27 | Done 2026-10-08 — one export dialog with presets, options and a live preview | ADR-0121 |
 | R25–R40 | all built and merged 2026-10-08 (R37 behind an off flag) | — | (owner: "start to build them one by one"; report after each — 2026-10-07) | — |
+
+---
+
+# Where Round 2 stands (2026-10-08)
+
+Audited against the code on `main` after v0.1.32, row by row, not against the progress table
+above. "Done" means the row's "Done when" holds in the code. "Partly" names exactly what is
+missing. Nothing is "Not done".
+
+| # | Item | State | ADR | What is left, if anything |
+|---|---|---|---|---|
+| R1 | Suggestions mid-sentence | Done | 0088 | — |
+| R2 | Accept chains straight on | Done | 0088 | — |
+| R3 | Refine presets (five more) | Done | 0089 | — |
+| R4 | Start questions with suggested answers | Done | 0091 | — |
+| R5 | Faster, fuller start | **Partly** | 0092 + addendum | The opening sentence, the title from the topic (with R4) and H3 layout are done. **Open:** first cited sentence ≤ 20 s (the outline call alone is 21–24 s); an outline prompt that writes sub-sections lost its evaluation 0–2 (two candidates), so A.9 is unchanged |
+| R6 | Source settings in the editor | Done | 0093 | — |
+| R7 | Block handle | Done | 0094 | — |
+| R8 | AI Edit as one panel | **Partly** | 0095 | Panel, Ctrl+J, 22 presets, What changed and why, follow-up, citation checks: done. **Not built, by decision:** the web switch on an edit ("revisit on evidence"); Paraphrase with tones is refused under §12.3 |
+| R9 | Paste with a choice | Done | 0096 | — |
+| R10 | Sections panel | Done | 0097 | — |
+| R11 | Feature hints | Done | 0098 | — |
+| R12 | Usage one click away | Done | 0099 | — |
+| R13 | Explain selection | Done | 0100 | — |
+| R14 | Fetch PDF | Done | 0101 | Publishers that refuse automated downloads are not got round (right) |
+| R15 | Edit a paper's details | Done | 0102 | — |
+| R16 | Add by ID | Done | 0103 | — |
+| R17 | Library filters and drawer | Done | 0104 | — |
+| R18 | Save into a collection while adding | **Partly** | 0105 | Every add on the library screen files in. **Open:** papers added from Discover and from the editor (chat's Add, Find papers, Cite here) are not filed into the chosen collection |
+| R19 | Sources in this thesis | Done | 0106 | — |
+| R20 | PDF upload quality | Done | 0107 | — |
+| R21 | Open quote beside | Done | 0108 | — |
+| R22 | Replies on comments | Done | 0109 | No email on a reply (comments never emailed either) — owner's optional, `docs/PENDING.md` |
+| R23 | Review mode in the text | Done | 0110 | — |
+| R24 | Examiner points Major / Minor and scores | **Partly** | 0111 | Points in the text, tagged: done. **The score card is built, evaluated (four rounds) and not shown** — presentation and contribution did not track the text. A next attempt must pass `apps/worker/scripts/eval-examiner-scores.ts` |
+| R25 | Source-quality notes | Done | 0112 | — |
+| R26 | A check on one paragraph | Done | 0126 | — |
+| R27 | One export dialog | Done | 0121 | — |
+| R28 | Contents block, colours, rule | Done | 0119 | — |
+| R29 | Archive and restore | Done | 0114 | — |
+| R30 | Chat threads, collection, inline ask | **Partly** | 0116 | Threads, a chat on one collection, Allow this time / Always allow / Skip: done. **Not built:** a chat across theses — every chat is grounded in one thesis's library (§10.6); it needs a student-owned thread and grounding that switches with the open thesis |
+| R31 | Limit message on every screen | Done | 0122 | English only (Hindi in PENDING) |
+| R32 | Theses beside, one New menu | **Partly** | 0127 | The side panel and New ▾ (thesis, Start writing now, Word import, upload): done. **Not built:** New ▸ AI chat with no thesis (same reason as R30) |
+| R33 | Font style and paper themes | Done | 0120 | — |
+| R34 | Word import says why | Done | 0113 | — |
+| R35 | Shortcuts listed | Done | 0118 | — |
+| R36 | "How was this?" thumbs | Done | 0115 | After a chapter build and a viva set; a /privacy line is the owner's optional |
+| R37 | Whole literature review | Done, **not on** | 0124 | Built behind an off `literatureReviewBuild` flag at a cap of 0. The owner sets the allowance (₹12.92 a build; one a month on a paid plan makes ₹106.05 against the ₹100 ceiling unless chapter builds or examiner reviews give) and turns it on |
+| R38 | Gap analysis as a document | Done | 0123 | — |
+| R39 | Add-on buttons in the page | Done, **not published** | 0125 | Add-on 0.3.0 built; submitted by the owner after 0.2.1 is approved (`apps/extension/PUBLISHING.md` §7a) |
+| R40 | Citations side by side | Done | 0117 | A two-source Word field opened in real Word is the owner's check |
+| R41 | Dark mode and typography | Done | 0090 | Dark is B (warm Flexoki, Inter, our blue); light kept as it was, by the owner's choice |
+
+**Totals: 35 done, 6 partly (R5, R8, R18, R24, R30, R32), 0 not done.** Two of the 35 are built
+but wait on the owner to be used (R37 flag and price, R39 store submission). Of the three owner
+decisions: **D3** answered (R37 built, priced, left off); **D2** taken by the agent under
+ADR-0059 — "What changed and why" built (ADR-0095), region explanations built without a new prompt
+(ADR-0100), examiner scores evaluated and withheld (ADR-0111); **D1** still the owner's.
+
+## What remains, across this file and `docs/research/coverage-map.md`
+
+The coverage map after this audit: **76 MATCH, 8 PARTIAL, 2 MISSING, 15 OURS BETTER**. Its ten
+open rows and the six partly rows above overlap (45 ↔ R30/R32, 49 ↔ R8, 55 ↔ R24); fix list A's
+three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
+
+**(a) Buildable by the agent**
+
+1. R5: the first cited sentence within 20 s on Start writing now — start the first sentence
+   before the whole outline is written, or a shorter outline call; measure with
+   `apps/web/e2e/_measure`.
+2. R5b: an outline prompt (A.9 candidate) that writes H3 sub-sections *and* wins its evaluation
+   (`packages/ai/eval/candidates/outline-h3*.md` both lost 0–2).
+3. R18: file papers added from Discover and from the editor (chat's Add, Find papers, Cite here)
+   into the collection chosen in "Add into".
+4. Row 55: strengths and questions for the author on the examiner review — a change to
+   `examiner.md`, so an ADR and an eval round (rule 6).
+5. R8: the web switch on an edit (passages from the indexes behind a rewrite, on the chat's search
+   path) — ADR-0095 left it for evidence of need; buildable without a new prompt.
+6. Row 34: highlights and notes saved on a paper in the reader (noted "not built" since
+   ADR-0068; never an R row).
+7. ADR-0116's small leftovers: rename a chat, search the chat list.
+8. Fix list A29: confirm figure and table numbering with cross-references survives every export
+   (ADR-0049 built them; the export was not re-checked in this audit).
+9. Hindi for Round 2's new strings (the limit message, the chat bar) — the agent's own
+   translation now, the native review stays (b).
+
+**(b) Needs the owner — keys, accounts, decisions, nginx**
+
+1. **D1** (fix list 37): count only *kept* suggestions against the allowance — conflicts with the
+   cap-before-call rule (§10.2); re-run `docs/COSTING.md` first.
+2. **R37**: set the `LIT_REVIEW_BUILD` allowance and turn `literatureReviewBuild` on; run one real
+   review against ₹12.92.
+3. **R39**: submit add-on 0.3.0 after 0.2.1 is approved; try the live Scholar / PubMed / arXiv /
+   MDPI pages first.
+4. **Row 80**: the host nginx `/collab/` block and the `collaboration` flag for co-editing in
+   production (the owner said leave it).
+5. **Row 36**: a live Zotero / Mendeley connection — changes PRD FR-2.9 (file upload, not OAuth);
+   Mendeley needs an app registered with Elsevier.
+6. **Row 38** (fix list 18): the Springer Nature Open Access API key.
+7. **Row 89**: the Hindi native review (`docs/i18n/hi-review.md`) and the next language (Tamil).
+8. **Rows 94, 95, 98**: live chat support, video tutorials, a community — who answers, where.
+9. **Row 45 / R30 / R32**: a chat across theses or without a thesis — a decision, because every
+   chat is grounded in one thesis's library (§10.6); not a code gap.
+10. **R24 / row 55**: whether to try the score card again at a higher reasoning effort (about
+    ₹0.36 a review before reasoning); it must pass `eval-examiner-scores.ts`.
+11. **R40 and ADR-0055**: open a Word citation field (one source, and two) in real Word and
+    update the fields — no Word on the build machine.
+12. **R22**: whether a comment, and a reply, should email.
+13. **R36**: a /privacy line saying build and viva ratings reach the team (optional).
+14. **The COMMAND allowance** for the edit panel (`docs/PENDING.md`, ADR-0095): Ctrl+J puts edits
+    one key away.
+15. **Fix list A30**: billing clarity (renewal, cancel, refund) before Razorpay goes live.
+16. **ADR-0087**: Scopus / Web of Science / UGC-CARE list files for the indexing filter.
+17. Jenni items the owner kept for themselves on 2026-10-07 (study, not build): Jenni on a phone,
+    Jenni's Tone of Voice and Proofread results, its error and offline screens.
+
+**(c) Deliberately not built**
+
+1. Paraphrase with tones, "improve fluency" rewording of sourced text, and anything aimed at a
+   detector — §12.3 (row 49, R8; `asksToEvadeDetection` refuses it in code).
+2. Jenni's faults (inventory §13.7): a citation written twice, a citation moved to another claim,
+   a citation after the full stop, silent failures with no retry, an MDPI *issue* saved instead of
+   the article, a paid wall that hides the references — each is prevented in code or by design.
+3. Citing papers the student never added (Jenni does; ours cites only the library — row 18).
+4. Impact factor and cited-by as filters at the start — replaced by indexing at the owner's word
+   (ADR-0087, row 4).
+5. ResearchGate uploads counted as open access (a licensing grey area; fix list C).
+6. The examiner score card on screen — built, evaluated and withheld because the numbers did not
+   measure what they claim (ADR-0111); see (b) 10 for a retry.
+7. A chat with no thesis — today, by the grounding rule; see (b) 9 if the owner wants it.
+8. A "Table of contents" that is only a "/" item: ours is a live contents block that survives
+   export (ADR-0119), and the thesis export builds Word's own.
