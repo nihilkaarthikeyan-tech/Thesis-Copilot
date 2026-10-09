@@ -16,6 +16,7 @@ import {
   pickHighlights,
   postProcessHighlights,
   questionFault,
+  sameQuestion,
 } from '../src/index.js';
 
 const input: HighlightsInput = {
@@ -154,6 +155,29 @@ describe('the chapter', () => {
     expect(picked.questions).toEqual(['q1', 'r1', 'q2', 'r2', 'q3']);
     expect(EXAMINER_HIGHLIGHTS.strengths).toBe(4);
   });
+
+  it('skips a question on the same point as one already taken (round 1 asked one twice)', () => {
+    const a = {
+      question:
+        "Which specific 'financial inclusion indicators' will the study measure, and why are those indicators appropriate for rural women in Virudhunagar?",
+    };
+    const b = {
+      question:
+        "Which precise financial inclusion indicators will you use to operationalize 'access' and 'meaningful engagement' with mobile banking?",
+    };
+    const c = {
+      question:
+        'Which specific datasets, spatial resolution and downscaling method will you use to translate ERA5 outputs to city-level hazard estimates?',
+    };
+    expect(sameQuestion(a.question, b.question)).toBe(true);
+    expect(sameQuestion(a.question, c.question)).toBe(false);
+    expect(
+      pickHighlights([
+        { strengths: [], questions: [a, c] },
+        { strengths: [], questions: [b] },
+      ]).questions,
+    ).toEqual([a, b].slice(0, 1).concat([c]));
+  });
 });
 
 describe('the request', () => {
@@ -180,7 +204,7 @@ describe('the request', () => {
     const user = request.messages[0]?.content ?? '';
     expect(user).toMatch(/<ask strengths="2" questions="3"\/>\n<\/review>$/);
     expect(request.action).toBe('EXAMINER_REVIEW');
-    expect(request.maxTokens).toBe(2_000);
+    expect(request.maxTokens).toBe(2_600);
     expect(request.tier).toBe('strong');
   });
 

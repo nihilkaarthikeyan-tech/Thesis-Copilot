@@ -266,6 +266,7 @@ export {
   reviewWords,
   type SectionAsk,
   type Strength,
+  sameQuestion,
 } from './builder/examiner-highlights.js';
 export {
   buildExaminerReviewRequest,

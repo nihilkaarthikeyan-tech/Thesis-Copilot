@@ -79,6 +79,21 @@ let calls = 0;
 const outTokens = { old: 0, new: 0, oldCalls: 0, newCalls: 0 };
 
 const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+/**
+ * `--old-runs=1` (round 2 on, to stay inside the round budget): one fresh run of the old prompt
+ * per chapter, pooled with the two round 1 recorded below — the old prompt has not changed, so
+ * its round 1 runs are still samples of it. Self recall then cannot be measured afresh and is
+ * round 1's 0.59.
+ */
+const oldRuns = process.argv.includes('--old-runs=1') ? 1 : 2;
+const ROUND1_OLD: Record<string, { issues: [number, number]; blocking: [number, number] }> = {
+  '01a0f41c-7d03-70c3-b66f-e1e80713d0b9': { issues: [8, 12], blocking: [4, 7] },
+  '01a10bb1-76c5-7e63-a5a7-0838a93ecf8d': { issues: [4, 3], blocking: [4, 3] },
+  '01a10c1d-edd6-7da7-945d-f3f4e234f5f0': { issues: [6, 10], blocking: [4, 9] },
+  '01a11503-cd92-75a2-a2d2-735c3b08a82a': { issues: [15, 18], blocking: [7, 10] },
+  '01a11ca5-515f-75e3-9293-910f6f902171': { issues: [35, 35], blocking: [26, 29] },
+};
+const ROUND1_SELF_RECALL = 0.59;
 if (ids.length < 4) {
   console.log('Give at least four chapter ids.');
   process.exit(1);
@@ -126,7 +141,10 @@ async function call<T>(
       });
       return result.value as T;
     } catch (error) {
-      console.log(`    (call failed, attempt ${attempt}: ${String(error).slice(0, 140)})`);
+      const raw = (error as { raw?: unknown }).raw;
+      console.log(
+        `    (call failed, attempt ${attempt}: ${String(error).slice(0, 140)}${typeof raw === 'string' ? ` — ${raw.length} chars, ends "${raw.slice(-60)}"` : ''})`,
+      );
     }
   }
   return null;
@@ -300,24 +318,35 @@ for (const chapter of rows) {
 
   const [oldA, oldB, newA, newB] = await Promise.all([
     review(chapter, sections, review0.citations, false),
-    review(chapter, sections, review0.citations, false),
+    oldRuns === 2 ? review(chapter, sections, review0.citations, false) : Promise.resolve(null),
     review(chapter, sections, review0.citations, true),
     review(chapter, sections, review0.citations, true),
   ]);
-  const runs = { oldA, oldB, newA, newB } as Record<string, Run>;
+  const runs = (oldB ? { oldA, oldB, newA, newB } : { oldA, newA, newB }) as Record<string, Run>;
   for (const [name, run] of Object.entries(runs)) {
     const blocking = run.issues.filter((i) => i.severity === 'blocking').length;
     console.log(
       `  ${name}: ${run.issues.length} issues, ${blocking} blocking${run.faults.length ? ` (${run.faults.join('; ')})` : ''}`,
     );
   }
-  pooled.oldIssues += (oldA.issues.length + oldB.issues.length) / 2;
-  pooled.newIssues += (newA.issues.length + newB.issues.length) / 2;
   const blockingOf = (r: Run) => r.issues.filter((i) => i.severity === 'blocking').length;
-  pooled.oldBlocking += (blockingOf(oldA) + blockingOf(oldB)) / 2;
+  pooled.newIssues += (newA.issues.length + newB.issues.length) / 2;
   pooled.newBlocking += (blockingOf(newA) + blockingOf(newB)) / 2;
-  selfPairs.push([oldA, oldB], [oldB, oldA]);
-  crossPairs.push([oldA, newA], [oldA, newB], [oldB, newA], [oldB, newB]);
+  if (oldB) {
+    pooled.oldIssues += (oldA.issues.length + oldB.issues.length) / 2;
+    pooled.oldBlocking += (blockingOf(oldA) + blockingOf(oldB)) / 2;
+    selfPairs.push([oldA, oldB], [oldB, oldA]);
+    crossPairs.push([oldA, newA], [oldA, newB], [oldB, newA], [oldB, newB]);
+  } else {
+    const before = ROUND1_OLD[chapter.id];
+    if (!before) throw new Error(`no round 1 baseline for ${chapter.id}`);
+    console.log(
+      `  round 1 old runs: ${before.issues.join(', ')} issues, ${before.blocking.join(', ')} blocking`,
+    );
+    pooled.oldIssues += (oldA.issues.length + before.issues[0] + before.issues[1]) / 3;
+    pooled.oldBlocking += (blockingOf(oldA) + before.blocking[0] + before.blocking[1]) / 3;
+    crossPairs.push([oldA, newA], [oldA, newB]);
+  }
 
   for (const [name, run] of [
     ['newA', newA],
@@ -355,7 +384,7 @@ for (const chapter of rows) {
 }
 
 console.log('\n=== Pooled');
-const self = recall(selfPairs);
+const self = oldRuns === 2 ? recall(selfPairs) : { value: ROUND1_SELF_RECALL, pairs: 0 };
 const cross = recall(crossPairs);
 console.log(
   `  issues per run: old ${pooled.oldIssues.toFixed(1)}, new ${pooled.newIssues.toFixed(1)}; blocking: old ${pooled.oldBlocking.toFixed(1)}, new ${pooled.newBlocking.toFixed(1)}`,
@@ -383,6 +412,9 @@ console.log(
 check(sRate >= 0.7, '(b) at least 70% of the raw strengths anchor to the chapter');
 check(qRate >= 0.7, '(c) at least 70% of the raw questions pass the checks');
 console.log(`\n${rows.length} chapters, ${calls} calls, ₹${microToInr(micro).toFixed(2)} spent`);
+console.log(
+  `  output tokens per call (reasoning included): old ${Math.round(outTokens.old / Math.max(1, outTokens.oldCalls))}, new ${Math.round(outTokens.new / Math.max(1, outTokens.newCalls))}`,
+);
 console.log(failures.length === 0 ? 'ALL CHECKS PASSED' : `${failures.length} FAILED:`);
 for (const f of failures) console.log(`  - ${f}`);
 await prisma.$disconnect();

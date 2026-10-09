@@ -38,8 +38,11 @@ export const EXAMINER_HIGHLIGHTS = {
   questions: 5,
   /** Asked for beyond those, over the chapter, so a dropped one can be replaced. */
   spare: 1,
-  /** The examiner's 1,500 plus room for the two new lists (the prompt's header says the same). */
-  maxTokens: 2_000,
+  /**
+   * The examiner's 1,500 plus room for the two new lists (the prompt's header says the same).
+   * Round 1 asked for 2,000 and a 50-sentence section's answer twice failed its schema, cut off.
+   */
+  maxTokens: 2_600,
   /** Words a strength's quote must have to pin it to one sentence. */
   quoteMinWords: 3,
   questionMaxWords: 60,
@@ -145,7 +148,8 @@ const GENERIC = new Set(
   sections study studies paper papers literature review result results argument approach method
   methods analysis would should whether where what when your yours rather since still argue
   support supports supported suggest suggests particular specific specifically example examples
-  current present future reader readers state states stated work works point points account`
+  current present future reader readers state states stated work works point points account
+  precise precisely exact exactly`
     .split(/\s+/)
     .filter(Boolean),
 );
@@ -249,11 +253,27 @@ export function postProcessHighlights(
   };
 }
 
-/** The chapter's lists: its sections' strengths and questions taken in turn, up to the limits. */
-export function pickHighlights<S, Q>(
+/** Two questions on the same point: three content words or more shared, and over a third. */
+export function sameQuestion(a: string, b: string): boolean {
+  const x = contentWords(a);
+  const y = contentWords(b);
+  if (x.size === 0 || y.size === 0) return false;
+  const shared = [...x].filter((w) => y.has(w)).length;
+  return shared >= 3 && shared / Math.min(x.size, y.size) >= 0.35;
+}
+
+/**
+ * The chapter's lists: its sections' strengths and questions taken in turn, up to the limits. A
+ * question on the same point as one already taken (two sections often ask the same) is skipped.
+ */
+export function pickHighlights<S, Q extends { question: string } | string>(
   sections: ReadonlyArray<{ strengths: readonly S[]; questions: readonly Q[] }>,
 ): { strengths: S[]; questions: Q[] } {
-  const take = <T>(lists: ReadonlyArray<readonly T[]>, limit: number): T[] => {
+  const take = <T>(
+    lists: ReadonlyArray<readonly T[]>,
+    limit: number,
+    same: (a: T, b: T) => boolean = () => false,
+  ): T[] => {
     const out: T[] = [];
     for (let round = 0; out.length < limit; round++) {
       let any = false;
@@ -261,12 +281,13 @@ export function pickHighlights<S, Q>(
         const item = list[round];
         if (item === undefined) continue;
         any = true;
-        if (out.length < limit) out.push(item);
+        if (out.length < limit && !out.some((o) => same(o, item))) out.push(item);
       }
       if (!any) break;
     }
     return out;
   };
+  const text = (q: Q) => (typeof q === 'string' ? q : q.question);
   return {
     strengths: take(
       sections.map((s) => s.strengths),
@@ -275,6 +296,7 @@ export function pickHighlights<S, Q>(
     questions: take(
       sections.map((s) => s.questions),
       EXAMINER_HIGHLIGHTS.questions,
+      (a, b) => sameQuestion(text(a), text(b)),
     ),
   };
 }
