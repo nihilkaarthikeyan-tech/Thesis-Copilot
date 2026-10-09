@@ -724,4 +724,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'chat.web.once': 'इस बार अनुमति दें',
   'chat.web.always': 'हमेशा अनुमति दें',
   'chat.web.skip': 'छोड़ें',
+  // ADR-0116 amendment: the agent's translation; a native reader has not checked it.
+  'chat.research.ask': 'Literature में भी खोजें?',
+  'chat.research.askWhy':
+    'आपकी library में इस पर कम है। Scholarly indexes में खोजकर जवाब आपकी library और मिले abstracts से लिखा जा सकता है, हर एक पर “आपकी library में नहीं” लिखा होगा। छोड़ें चुनने पर जवाब सिर्फ़ आपकी library से आएगा।',
 };

@@ -188,3 +188,98 @@ test('a thin library: the steps show while it works, the answer comes in parts, 
   expect(resolved).toEqual([{ references: PAPERS.map((p) => p.reference) }]);
   await expect(answer.getByTestId('chat-research-add-all')).toHaveCount(0);
 });
+
+// ADR-0116 amendment (QA 2026-10-08): under "Ask first" a thin library is offered, not searched.
+// Written against the routed stream, as the test above is; the API side is
+// `apps/api/test/chat-research-api.spec.ts` ("Ask first" and a thin library).
+test('"Ask first" asks before searching a thin library; Skip answers from the library alone', async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(120_000);
+  const origin = new URL(baseURL ?? 'http://localhost:3000').origin;
+  const headers = {
+    'content-type': 'text/event-stream',
+    'access-control-allow-origin': origin,
+    'access-control-allow-credentials': 'true',
+  };
+  const session = await establishSession(request, freshEmail('chat-research-ask'));
+  const cookie = `${session.cookieName}=${session.cookieValue}`;
+  await page
+    .context()
+    .addCookies([
+      { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+    ]);
+  const created = await request.post(`${API_URL}/api/v1/documents`, {
+    headers: { cookie },
+    data: { title: `Chat research ask ${Date.now()}`, entryPath: 'A_TOPIC' },
+  });
+  const doc = (await created.json()) as { id: string; firstChapterId: string };
+
+  const bodies: Array<Record<string, unknown>> = [];
+  await page.route(`${API_URL}/api/v1/chat`, (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    bodies.push(body);
+    if (!body.research) {
+      return route.fulfill({
+        status: 200,
+        headers,
+        body: [
+          frame('start', { turn: 1 }),
+          frame('step', { id: 'search', text: 'Searching your library…' }),
+          frame('step', { id: 'read', text: 'Reading 2 passages from 1 source' }),
+          frame('done', {
+            text: 'Your library has 1 paper on this. I can search the literature too before answering, or answer from your library alone.',
+            outcome: 'research-offer',
+            citations: [],
+            passagesUsed: 0,
+            latencyMs: 5,
+            offerResearch: true,
+          }),
+        ].join(''),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      headers,
+      body: [
+        frame('start', { turn: 1 }),
+        frame('done', {
+          turnId: '01a10000-0000-7000-8000-00000000c2b1',
+          text: 'Your library does not contain enough on this. Try adding sources on: chocolate cake.',
+          outcome: 'not-enough',
+          citations: [],
+          passagesUsed: 2,
+          latencyMs: 5,
+          threadId: '01a10000-0000-7000-8000-00000000c2b2',
+        }),
+      ].join(''),
+    });
+  });
+
+  await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+  await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('tab', { name: 'chat', exact: true }).click();
+  await page.locator('#chat-message').fill('What is a good recipe for a chocolate cake?');
+  await page.getByRole('button', { name: 'Ask', exact: true }).click();
+
+  const ask = page.getByTestId('chat-research-ask');
+  await expect(ask).toBeVisible();
+  await expect(ask.getByTestId('chat-research-once')).toBeVisible();
+  await expect(ask.getByTestId('chat-research-always')).toBeVisible();
+  // The offer is not an answer: no Add to document, no Copy.
+  const offer = page.locator('[data-role=assistant]').last();
+  await expect(offer.getByTestId('chat-add-to-document')).toHaveCount(0);
+  await expect(offer.getByTestId('chat-copy')).toHaveCount(0);
+
+  await ask.getByTestId('chat-research-skip').click();
+  await expect(page.getByTestId('chat-research-ask')).toHaveCount(0);
+  expect(bodies.map((b) => b.research ?? null)).toEqual([null, 'skip']);
+  expect(bodies[1]?.message).toBe('What is a good recipe for a chocolate cake?');
+  // A refusal goes nowhere near the thesis: Copy, but no Add to document.
+  const refusal = page.locator('[data-role=assistant]').last();
+  await expect(refusal).toContainText('Your library does not contain enough on this.');
+  await expect(refusal.getByTestId('chat-copy')).toBeVisible();
+  await expect(refusal.getByTestId('chat-add-to-document')).toHaveCount(0);
+});

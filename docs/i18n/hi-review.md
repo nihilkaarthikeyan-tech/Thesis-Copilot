@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**605** strings are translated; **19** are deliberately
+**607** strings are translated; **19** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -732,6 +732,8 @@ English. Write corrections in the last column.
 | `chat.web.once` | Allow this time | इस बार अनुमति दें | |
 | `chat.web.always` | Always allow | हमेशा अनुमति दें | |
 | `chat.web.skip` | Skip | छोड़ें | |
+| `chat.research.ask` | Search the literature too? | Literature में भी खोजें? | |
+| `chat.research.askWhy` | Your library has little on this. The scholarly indexes can be searched and the answer written from your library and the abstracts found, each marked “Not in your library”. Skip answers from your library alone. | आपकी library में इस पर कम है। Scholarly indexes में खोजकर जवाब आपकी library और मिले abstracts से लिखा जा सकता है, हर एक पर “आपकी library में नहीं” लिखा होगा। छोड़ें चुनने पर जवाब सिर्फ़ आपकी library से आएगा। | |
 
 ## Left in English on purpose
 

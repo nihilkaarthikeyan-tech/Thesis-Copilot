@@ -111,3 +111,10 @@ for the strong tier on main. What to account for:
 - The note under an answer is English in every language (it comes from the server).
 - The off-topic → beyond path (ADR-0060) still runs its single search; it now answers on the chat
   tier and with the new A.4, but not with this plan.
+
+## Amended 2026-10-08
+
+Under "Ask first" the top-up no longer runs without asking: a thin library is offered the search
+(Allow this time / Always allow / Skip) before the model is called, free, and searches only on
+Allow. ADR-0116, "Amendment 2026-10-08", item 2. "On" is unchanged.
+

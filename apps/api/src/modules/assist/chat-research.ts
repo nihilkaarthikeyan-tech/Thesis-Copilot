@@ -87,6 +87,45 @@ export function shouldResearch(
   return setting === 'on' || coverage.thin;
 }
 
+/** The student's answer to "Ask first"'s offer for a thin library (ADR-0116 amendment). */
+export type ResearchAnswer = 'allow' | 'skip';
+
+/**
+ * What a library question does about the literature (ADR-0116 amendment, QA 2026-10-08):
+ *
+ * - **"On"**: searches, as `shouldResearch` decides (every question).
+ * - **"Ask first"**, a thin library: nothing beyond the library runs without the student's press.
+ *   Without an answer the question stops before the model with the offer (Allow this time, Always
+ *   allow, Skip), free; 'allow' searches this once, 'skip' answers from the library alone. A
+ *   question with a file attached is about the file, so it is answered without searching or asking.
+ * - **"Off"**, `@` papers, a full library under "Ask first": no search, no offer.
+ */
+export function researchDecision(
+  coverage: LibraryCoverage | null,
+  setting: 'off' | 'ask' | 'on',
+  namedPapers: number,
+  answer: ResearchAnswer | undefined,
+  hasAttachments: boolean,
+): 'research' | 'offer' | 'none' {
+  if (!shouldResearch(coverage, setting, namedPapers)) return 'none';
+  if (setting === 'on') return 'research';
+  if (answer === 'allow') return 'research';
+  if (answer === 'skip' || hasAttachments) return 'none';
+  return 'offer';
+}
+
+/**
+ * The words of the offer, said before anything is searched or charged. The library's count is the
+ * papers its on-topic passages came from (`LibraryCoverage.sources`).
+ */
+export function researchOfferReply(papers: number): string {
+  const has =
+    papers === 0
+      ? 'Your library has little on this.'
+      : `Your library has ${papers} paper${papers === 1 ? '' : 's'} on this.`;
+  return `${has} I can search the literature too before answering, or answer from your library alone.`;
+}
+
 export function queryStep(indexes: readonly string[], query: string): ResearchStep {
   const list =
     indexes.length <= 1

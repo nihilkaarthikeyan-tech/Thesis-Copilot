@@ -761,6 +761,10 @@ export const en = {
   'chat.web.alwaysNote':
     'Search beyond my library is now On: every library question also searches the literature.',
   'chat.web.settings': 'Change it in Settings',
+  // ADR-0116 amendment (QA 2026-10-08): "Ask first" asks before searching for a thin library too.
+  'chat.research.ask': 'Search the literature too?',
+  'chat.research.askWhy':
+    'Your library has little on this. The scholarly indexes can be searched and the answer written from your library and the abstracts found, each marked “Not in your library”. Skip answers from your library alone.',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

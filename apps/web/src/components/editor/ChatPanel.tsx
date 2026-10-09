@@ -73,6 +73,11 @@ type Turn = {
   scope?: Scope | 'beyond';
   /** ADR-0060, "Ask first": the refusal may be searched beyond the library. */
   offerBeyond?: boolean;
+  /**
+   * ADR-0116 amendment (QA 2026-10-08): "Ask first" and a library thin on the question. Nothing
+   * was searched or charged; the student chooses to search this once, always, or to skip.
+   */
+  offerResearch?: boolean;
   /** The question a refusal answered, so the offer can send it again. */
   question?: string;
   /** ADR-0060: written from search abstracts; the line under the answer says so. */
@@ -510,6 +515,42 @@ export function ChatPanel({
     await send(turn.question, 'beyond', { repeat: true });
   }
 
+  /**
+   * ADR-0116 amendment: the offer for a thin library under "Ask first". Allow this time asks the
+   * same question again with the search allowed once; Always allow first sets "On"; Skip asks it
+   * again answered from the library alone. Each is one CHAT unit, for the answer the student chose.
+   */
+  async function answerResearchOffer(turn: Turn, choice: 'once' | 'always' | 'skip') {
+    if (!turn.question || busy) return;
+    if (choice === 'always') {
+      try {
+        await api('/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ searchBeyondLibrary: 'on' }),
+        });
+      } catch (e) {
+        setError(problemText(e));
+        return;
+      }
+    }
+    setTurns((list) =>
+      list.map((t) =>
+        t.id === turn.id
+          ? {
+              ...t,
+              offerResearch: false,
+              ...(choice === 'always' ? { alwaysAllowed: true } : {}),
+              ...(choice === 'skip' ? { skipped: true } : {}),
+            }
+          : t,
+      ),
+    );
+    await send(turn.question, 'library', {
+      repeat: true,
+      research: choice === 'skip' ? 'skip' : 'allow',
+    });
+  }
+
   /** "Skip": the refusal stands, nothing is searched, nothing is charged. */
   function skipBeyond(turn: Turn) {
     setTurns((list) =>
@@ -620,7 +661,7 @@ export function ChatPanel({
   async function send(
     message: string,
     askScope: Scope | 'beyond',
-    options: { repeat?: boolean } = {},
+    options: { repeat?: boolean; research?: 'allow' | 'skip' } = {},
   ) {
     setBusy(true);
     setError(null);
@@ -671,6 +712,7 @@ export function ChatPanel({
           ...(askScope === 'library' && deep && mentions.mentions.length === 0
             ? { deep: true }
             : {}),
+          ...(askScope === 'library' && options.research ? { research: options.research } : {}),
           ...(attachments.length > 0 && (askScope === 'library' || askScope === 'document')
             ? { attachmentIds: attachments.map((a) => a.id) }
             : {}),
@@ -746,6 +788,7 @@ export function ChatPanel({
                 ...(beyond ? { beyond } : {}),
                 ...(research ? { research } : {}),
                 ...(data.offerBeyond === true ? { offerBeyond: true, question: message } : {}),
+                ...(data.offerResearch === true ? { offerResearch: true, question: message } : {}),
               },
             ]);
             setStreaming('');
@@ -1320,6 +1363,44 @@ export function ChatPanel({
                 </div>
               </div>
             ) : null}
+            {turn.offerResearch && turn.question ? (
+              <div
+                data-testid="chat-research-ask"
+                className="mt-2 rounded-md border border-line-strong p-2"
+              >
+                <p className="text-xs font-semibold text-ink">{t('chat.research.ask')}</p>
+                <p className="mt-0.5 text-[11px] text-muted">{t('chat.research.askWhy')}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    data-testid="chat-research-once"
+                    disabled={busy}
+                    onClick={() => void answerResearchOffer(turn, 'once')}
+                    className="rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {t('chat.web.once')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="chat-research-always"
+                    disabled={busy}
+                    onClick={() => void answerResearchOffer(turn, 'always')}
+                    className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+                  >
+                    {t('chat.web.always')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="chat-research-skip"
+                    disabled={busy}
+                    onClick={() => void answerResearchOffer(turn, 'skip')}
+                    className="rounded-md px-2.5 py-1 text-xs text-muted underline hover:text-ink disabled:opacity-50"
+                  >
+                    {t('chat.web.skip')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {turn.alwaysAllowed ? (
               <p
                 data-testid="chat-search-beyond-always-note"
@@ -1354,7 +1435,7 @@ export function ChatPanel({
                 t={t}
               />
             ) : null}
-            {turn.role === 'assistant' && turn.text.trim() ? (
+            {turn.role === 'assistant' && turn.text.trim() && turn.outcome !== 'research-offer' ? (
               <div className="mt-2 flex items-center gap-3 text-xs">
                 {/* An answer from abstracts cites papers that are not sources yet; it goes into
                     the thesis only once they are added and asked about on Library. ADR-0074: the

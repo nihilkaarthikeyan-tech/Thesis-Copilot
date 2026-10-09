@@ -151,11 +151,11 @@ afterAll(async () => {
   await h?.stop();
 });
 
-describe('a thin library', () => {
+describe('a thin library, the student having pressed Allow this time', () => {
   it('searches, reads, keeps what is on the question, and answers from both, for one CHAT unit', async () => {
     const before = await chatUnits();
     const embedRows = await h.prisma.aiCallLog.count({ where: { action: 'EMBED' } });
-    const sse = await ask();
+    const sse = await ask({ research: 'allow' });
     expect(sse.status).toBe(200);
 
     expect(stepIds(sse)).toEqual([
@@ -233,7 +233,7 @@ describe('a thin library', () => {
   it('when nothing found is on the question, it answers from the library and says so', async () => {
     embedAs(() => false);
     const before = await chatUnits();
-    const sse = await ask();
+    const sse = await ask({ research: 'allow' });
     expect(stepTexts(sse)).toContain(
       'None of them is close enough to your question; answering from your library',
     );
@@ -245,7 +245,7 @@ describe('a thin library', () => {
   it('a failed search does not fail the question: the library answers, on one unit', async () => {
     searchPlan.mockRejectedValue(new Error('every index down'));
     const before = await chatUnits();
-    const sse = await ask();
+    const sse = await ask({ research: 'allow' });
     expect(sse.events.some((e) => e.event === 'error')).toBe(false);
     expect(stepTexts(sse)).toContain(
       'The search did not answer in time; answering from your library',
@@ -259,9 +259,73 @@ describe('a thin library', () => {
       throw new Error('provider down');
     });
     const before = await chatUnits();
-    const sse = await ask();
+    const sse = await ask({ research: 'allow' });
     expect(sse.events.some((e) => e.event === 'error')).toBe(true);
     expect(await chatUnits()).toBe(before);
+  });
+});
+
+// ADR-0116 amendment (QA 2026-10-08): under "Ask first" a thin library is offered, never searched
+// unasked. The QA case: "What is a good recipe for a chocolate cake?" cleared the relevance floor
+// on a thin heat-stress library, searched the web on its own and was charged.
+describe('"Ask first" and a thin library', () => {
+  it('stops before the model with the offer: nothing searched, nothing charged, nothing stored', async () => {
+    const before = await chatUnits();
+    const llm = vi.spyOn(providers.llm, 'stream');
+    const sse = await ask({ newThread: true });
+    expect(sse.status).toBe(200);
+    expect(searchPlan).not.toHaveBeenCalled();
+    expect(llm).not.toHaveBeenCalled();
+    expect(stepIds(sse)).not.toContain('research');
+    expect(stepIds(sse)).not.toContain('query');
+    const offer = done(sse);
+    expect(offer.outcome).toBe('research-offer');
+    expect(offer.offerResearch).toBe(true);
+    expect(offer.text).toBe(
+      'Your library has 1 paper on this. I can search the literature too before answering, or answer from your library alone.',
+    );
+    expect(offer.threadId).toBeUndefined();
+    expect(await chatUnits()).toBe(before);
+  });
+
+  it('Skip answers from the library alone, for one unit, and searches nothing', async () => {
+    const before = await chatUnits();
+    const sse = await ask({ research: 'skip' });
+    expect(searchPlan).not.toHaveBeenCalled();
+    expect(stepIds(sse)).not.toContain('research');
+    expect(done(sse).outcome).toBe('answered');
+    expect(done(sse).offerResearch).toBeUndefined();
+    expect(done(sse).research).toBeUndefined();
+    expect(await chatUnits()).toBe(before + 1);
+  });
+
+  it('"On" searches a thin library without asking', async () => {
+    await h.api('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ searchBeyondLibrary: 'on' }),
+    });
+    const sse = await ask();
+    expect(searchPlan).toHaveBeenCalledOnce();
+    expect(done(sse).offerResearch).toBeUndefined();
+    expect(stepIds(sse)).toContain('research');
+  });
+
+  it('a question with a file attached is answered without searching or asking', async () => {
+    const upload = new FormData();
+    upload.append(
+      'file',
+      new Blob(['Upfront cost limits rooftop solar in rural households.'], { type: 'text/plain' }),
+      'notes.txt',
+    );
+    const res = await fetch(
+      `${h.baseUrl}/api/v1/chat/attachments?documentId=${encodeURIComponent(documentId)}`,
+      { method: 'POST', headers: { cookie: h.cookie }, body: upload },
+    );
+    expect(res.status).toBeLessThan(300);
+    const { id } = (await res.json()) as { id: string };
+    const sse = await ask({ attachmentIds: [id] });
+    expect(searchPlan).not.toHaveBeenCalled();
+    expect(done(sse).offerResearch).toBeUndefined();
   });
 });
 

@@ -11,7 +11,9 @@ import {
   queryStep,
   readStep,
   researchCandidates,
+  researchDecision,
   researchNote,
+  researchOfferReply,
   researchPassages,
   shouldResearch,
   thinStep,
@@ -186,5 +188,44 @@ describe('shouldResearch (row 39, 2026-10-05)', () => {
     );
     expect(thinStep(full).params).toEqual({ papers: 5, always: 1 });
     expect(thinStep(thin).params).toEqual({ papers: 1 });
+  });
+});
+
+describe('"Ask first" asks before searching a thin library (ADR-0116 amendment, QA 2026-10-08)', () => {
+  const thin = { best: 0.4, onTopic: 1, sources: 1, thin: true, reason: 'few-sources' as const };
+  const full = { best: 0.8, onTopic: 8, sources: 5, thin: false, reason: null };
+
+  it('offers instead of searching when the student has not answered', () => {
+    // The QA case: an off-topic question that cleared the floor on a thin library searched the
+    // web unasked ("Searched for: good recipe chocolate cake").
+    expect(researchDecision(thin, 'ask', 0, undefined, false)).toBe('offer');
+  });
+
+  it('searches only on Allow, and answers from the library alone on Skip', () => {
+    expect(researchDecision(thin, 'ask', 0, 'allow', false)).toBe('research');
+    expect(researchDecision(thin, 'ask', 0, 'skip', false)).toBe('none');
+  });
+
+  it('"On" searches without asking; "Off", @ papers and a full library neither search nor ask', () => {
+    expect(researchDecision(thin, 'on', 0, undefined, false)).toBe('research');
+    expect(researchDecision(full, 'on', 0, undefined, false)).toBe('research');
+    expect(researchDecision(thin, 'off', 0, undefined, false)).toBe('none');
+    expect(researchDecision(thin, 'off', 0, 'allow', false)).toBe('none');
+    expect(researchDecision(thin, 'ask', 2, undefined, false)).toBe('none');
+    expect(researchDecision(full, 'ask', 0, undefined, false)).toBe('none');
+    expect(researchDecision(null, 'ask', 0, undefined, false)).toBe('none');
+  });
+
+  it('a question with a file attached is answered without searching or asking', () => {
+    expect(researchDecision(thin, 'ask', 0, undefined, true)).toBe('none');
+    expect(researchDecision(thin, 'ask', 0, 'allow', true)).toBe('research');
+  });
+
+  it('says what the library has, and both choices', () => {
+    expect(researchOfferReply(1)).toBe(
+      'Your library has 1 paper on this. I can search the literature too before answering, or answer from your library alone.',
+    );
+    expect(researchOfferReply(3)).toContain('3 papers on this.');
+    expect(researchOfferReply(0)).toContain('Your library has little on this.');
   });
 });
