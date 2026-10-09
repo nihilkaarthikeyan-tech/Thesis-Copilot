@@ -1576,7 +1576,7 @@ export function ChatPanel({
                     title={SCOPE_BLURB[option]}
                     onClick={() => setScope(option)}
                     className={cn(
-                      'rounded-full border px-2 py-0.5 text-[11px] transition-colors',
+                      'whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] transition-colors',
                       scope === option
                         ? 'border-accent bg-accent-soft font-semibold text-ink'
                         : 'border-line text-muted hover:text-ink',
@@ -1816,15 +1816,15 @@ function FiltersChip({ open, onToggle }: { open: boolean; onToggle: () => void }
       type="button"
       data-testid="chat-filters-toggle"
       aria-expanded={open}
-      title="Filter the papers answers draw on: year, citations, journal, preprints"
+      aria-label="Filters"
+      title="Filters: year, citations, journal, preprints"
       onClick={onToggle}
       className={cn(
-        'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors',
+        'ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors',
         open ? 'border-accent text-ink' : 'border-line text-muted hover:text-ink',
       )}
     >
-      <SlidersHorizontal size={11} aria-hidden />
-      Filters
+      <SlidersHorizontal size={12} aria-hidden />
     </button>
   );
 }
