@@ -136,7 +136,7 @@ test.describe('Stage 1 proposal and Stage 2 library', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Skeleton E2E ${Date.now()}`);
+    const id = await createThesis(page, `Skeleton-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await expect(
@@ -205,7 +205,7 @@ test.describe('Stage 1 proposal and Stage 2 library', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Library E2E ${Date.now()}`);
+    const id = await createThesis(page, `Library-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await page.locator('input[type=file]').setInputFiles({
@@ -247,7 +247,7 @@ test.describe('Stage 1 proposal and Stage 2 library', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Unresolved E2E ${Date.now()}`);
+    const id = await createThesis(page, `Unresolved-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await page.locator('input[type=file]').setInputFiles({
@@ -290,7 +290,7 @@ test.describe('Stage 4 chapter setup', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Pins E2E ${Date.now()}`);
+    const id = await createThesis(page, `Pins-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await page.locator('input[type=file]').setInputFiles({
@@ -345,7 +345,7 @@ test.describe('Stage 4 citations', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Cite E2E ${Date.now()}`);
+    const id = await createThesis(page, `Cite-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await page.locator('input[type=file]').setInputFiles({
@@ -429,7 +429,7 @@ test.describe('Stage 4 citations', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Picker E2E ${Date.now()}`);
+    const id = await createThesis(page, `Picker-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await page.locator('input[type=file]').setInputFiles({
@@ -500,7 +500,7 @@ test.describe('Stage 4 draft mode', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Draft E2E ${Date.now()}`);
+    const id = await createThesis(page, `Draft-E2E ${Date.now()}`);
 
     await page.goto(`/app/d/${id}/proposal`);
     await page.locator('input[type=file]').setInputFiles({
@@ -558,7 +558,7 @@ test.describe('Stage 4 draft mode', () => {
     request,
   }) => {
     await signIn(page, request);
-    const id = await createThesis(page, `Draft refusal E2E ${Date.now()}`);
+    const id = await createThesis(page, `Draft-refusal-E2E ${Date.now()}`);
 
     // No paper, so no sources at all.
     await page.goto(`/app/d/${id}/proposal`);
