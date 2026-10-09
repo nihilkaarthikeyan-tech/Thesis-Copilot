@@ -3,7 +3,8 @@
   addendum 4). outline-h3c won its judged round but, planned from the title alone (no gap map),
   left the Literature Review with 0, 5 and 1 sections. This one says what to do when <gap_map> is
   empty, and gives sub-sections to Methodology always but to the Literature Review only where the
-  gap map has named its themes.
+  gap map has named its themes. Revised once before the judged round: the first draft, measured
+  on the title-only cases without a judge, gave Methodology sub-sections in only 2 of 5 plans.
 -->
 
 ### A.9 Outline generation — `outline.md`
@@ -25,7 +26,7 @@ Rules:
 - Tie the chapters together: the methodology chapter says how each objective in <scope> will be addressed, and the results and discussion chapters say which objective each part answers.
 - Write section titles as a reader would scan them: short, concrete, no numbering, no colons unless needed.
 - Write every section's own scopeNote first, as full and specific as the rules above ask; sub-sections never replace or shorten it.
-- Then add sub-sections in two places only. In the Methodology chapter, give each section that has two or three parts a reader would look for separately those parts as children. In the Literature Review, do the same only when <gap_map> is present, for a theme that has such parts. A child has a short title and one sentence saying what that part covers that its siblings do not. Every other section has no children. Never go deeper than this.
+- Then add sub-sections in two places only. In the Methodology chapter, find the section or sections that combine two or three separate procedures a reader would look for separately (for example two different tests, or sampling and fieldwork, or the quantitative and the qualitative analysis) and give them those procedures as children; at least one Methodology section has children. In the Literature Review, do the same only when <gap_map> is present, for a theme that has such parts. A child has a short title and one sentence saying what that part covers that its siblings do not. Every other section has no children. Never go deeper than this.
 - Ids are stable slugs like "ch2-literature-review", "ch2-sec3-adoption-barriers".
 ```
 
