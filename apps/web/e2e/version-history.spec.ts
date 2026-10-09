@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openHeaderMenu } from './_editor.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -48,6 +49,7 @@ test('an old version can be read, restored, and the restore undone', async ({ pa
   await expect(editor).not.toContainText(FIRST);
 
   // Open History and find the version that still says the first thing.
+  await openHeaderMenu(page);
   await page.getByTestId('open-history').click();
   const history = page.getByTestId('version-history');
   await expect(history).toBeVisible();

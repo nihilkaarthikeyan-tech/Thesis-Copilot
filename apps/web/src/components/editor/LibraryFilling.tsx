@@ -18,7 +18,13 @@ import { useT } from '@/i18n/react';
 import { api } from '@/lib/api';
 import { LIBRARY_CHANGED } from './SourcePins';
 
-type Progress = { searching: boolean; found: number; ready: number; reading: number };
+export type LibraryProgress = {
+  searching: boolean;
+  found: number;
+  ready: number;
+  reading: number;
+};
+type Progress = LibraryProgress;
 
 /** Fired by the editor when a suggestion came back "papers still loading". */
 export const PAPERS_AWAITED = 'tc:papers-awaited';
@@ -30,10 +36,13 @@ const READY_MS = 8_000;
 export function LibraryFilling({
   documentId,
   onFirstReady,
+  onProgress,
 }: {
   documentId: string;
   /** The student asked for a suggestion while nothing could be cited, and now something can. */
   onFirstReady: () => void;
+  /** ADR-0137: every reading, for the editor's one-line status above the text. */
+  onProgress?: (progress: LibraryProgress) => void;
 }) {
   const { t } = useT();
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -46,6 +55,8 @@ export function LibraryFilling({
   const [poll, setPoll] = useState(0);
   const onReadyRef = useRef(onFirstReady);
   onReadyRef.current = onFirstReady;
+  const onProgressRef = useRef(onProgress);
+  onProgressRef.current = onProgress;
 
   useEffect(() => {
     const wake = () => {
@@ -72,6 +83,7 @@ export function LibraryFilling({
       );
       if (stopped || !next) return;
       setProgress(next);
+      onProgressRef.current?.(next);
       const before = lastReady.current;
       lastReady.current = next.ready;
       if (before !== null && next.ready > before) {

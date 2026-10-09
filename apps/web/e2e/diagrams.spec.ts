@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openFormatMore } from './_editor.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -46,6 +47,7 @@ test('a diagram is drawn from typed steps, inserted as a figure, and can be edit
     return chapter.content.content.filter((n) => n.type === 'image');
   };
 
+  await openFormatMore(page);
   await page.getByTestId('fmt-diagram').click();
   const dialog = page.getByTestId('diagram-dialog');
   await expect(dialog).toBeVisible();
@@ -90,6 +92,7 @@ test('a diagram is drawn from typed steps, inserted as a figure, and can be edit
 
   // Selecting it offers to edit it; the text comes back and the change is redrawn.
   await img.click();
+  await openFormatMore(page);
   const button = page.getByTestId('fmt-diagram');
   await expect(button).toHaveAccessibleName('Edit diagram');
   await button.click();

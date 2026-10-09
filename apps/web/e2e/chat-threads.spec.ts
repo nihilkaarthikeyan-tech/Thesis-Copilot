@@ -273,7 +273,8 @@ test('the chats of a thesis: listed, reopened, and a new one on a collection', a
 
   // Leaving the Chat tab and coming back keeps the chat that was open, collection and all.
   const tabs = page.getByTestId('tool-panel').locator('[role="tablist"] [role="tab"]');
-  await tabs.first().click();
+  // ADR-0137: Chat is the first tab now; the second is Sources.
+  await tabs.nth(1).click();
   await page.getByRole('tab', { name: 'chat', exact: true }).click();
   await expect(page.getByTestId('chat-thread-title')).toHaveText(
     'What did the installer survey measure?',

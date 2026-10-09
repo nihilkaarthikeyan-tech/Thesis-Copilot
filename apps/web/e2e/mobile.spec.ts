@@ -70,6 +70,7 @@ test.describe('on a phone', () => {
     await expect(rail).toBeHidden();
   });
 
+  // ADR-0137: at every width now; the header is Saved, Share, Export and ⋯.
   test('the header actions that do not fit are under More', async ({ page, request }) => {
     await openEditor(page, request);
     await expect(

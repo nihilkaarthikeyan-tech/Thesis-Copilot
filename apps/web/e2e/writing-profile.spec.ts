@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openHeaderMenu } from './_editor.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -62,6 +63,7 @@ test('the student sees what the AI learned about their writing, and guides it', 
 
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
+  await openHeaderMenu(page);
   await page.getByRole('button', { name: 'How suggestions work', exact: true }).click();
   const profile = page.getByTestId('writing-profile');
   await expect(profile).toBeVisible();
@@ -90,6 +92,7 @@ test('the student sees what the AI learned about their writing, and guides it', 
   await profile.getByTestId('writing-guidance-save').click();
   await expect(profile.getByRole('status')).toContainText('Saved');
   await page.getByTestId('how-suggestions-work').getByRole('button', { name: 'Close' }).click();
+  await openHeaderMenu(page);
   await page.getByRole('button', { name: 'How suggestions work', exact: true }).click();
   await expect(page.getByTestId('writing-guidance')).toHaveValue(
     'British spelling. Call them farmers, not respondents.',

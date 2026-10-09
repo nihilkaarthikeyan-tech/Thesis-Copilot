@@ -117,6 +117,8 @@ test('a fresh account is walked from first sign-in to a first suggestion', async
 
   // ADR-0073: the next-step guide is the one card above a new chapter; its suggestion step links
   // the walkthrough, and the first-run hint waits until the guide is put away.
+  // ADR-0137: it sits behind the status line's Show.
+  await page.getByTestId('status-line-toggle').click();
   const guide = page.getByTestId('first-session-guide');
   await expect(guide).toBeVisible();
   await expect(page.getByTestId('hint-editor')).toHaveCount(0);

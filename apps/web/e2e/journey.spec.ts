@@ -54,6 +54,8 @@ test('a new thesis opens its proposal; a new chapter is ready to write and says 
   await expect(page.getByTestId('notice')).toContainText('not headings');
 
   // An empty library offers Find papers, which opens Discover; Sources links back to writing.
+  // ADR-0137: the panel opens on Chat; the empty library's Find papers is under Sources.
+  await page.getByRole('tab', { name: 'sources', exact: true }).click();
   await page.getByTestId('find-papers').click();
   await expect(page).toHaveURL(/\/sources\?tab=discover$/);
   await expect(page.getByRole('button', { name: /discover literature/i })).toBeVisible({

@@ -1,5 +1,6 @@
 import { inflateRawSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
+import { openFormatMore } from './_editor.js';
 import { tinyPng } from './_images.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
@@ -70,6 +71,7 @@ test('the whole thesis exports with its figure, table and equation intact', asyn
   await page.keyboard.type('Adoption rose sharply after the subsidy was announced. ');
 
   // A display equation, through the toolbar's own inline prompt.
+  await openFormatMore(page);
   await page.getByRole('button', { name: 'Display equation' }).click();
   await page.locator('#inline-prompt-field').fill('E = mc^2');
   await page.getByTestId('inline-prompt-apply').click();
@@ -173,6 +175,7 @@ test('a JPEG and a GIF survive the real upload and export path', async ({ page, 
   // The caption is the student's words, written through the toolbar. Before this existed the
   // submitted thesis read "Figure 1.1: scan.jpg", and a test here said that was right.
   await page.locator('.thesis-editor img').first().click();
+  await openFormatMore(page);
   await page.getByTestId('fmt-caption').click();
   await page.locator('#inline-prompt-field').fill('Scanned survey form');
   await page.getByTestId('inline-prompt-apply').click();
@@ -186,6 +189,7 @@ test('a JPEG and a GIF survive the real upload and export path', async ({ page, 
   });
   await expect(page.locator('.thesis-editor img')).toHaveCount(2, { timeout: 60_000 });
   await page.locator('.thesis-editor img').nth(1).click();
+  await openFormatMore(page);
   await page.getByTestId('fmt-caption').click();
   await page.locator('#inline-prompt-field').fill('Adoption by district');
   await page.getByTestId('inline-prompt-apply').click();
