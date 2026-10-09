@@ -165,6 +165,11 @@ export type ReaderHandoff =
       label: string;
       /** The paper's title, to find its label among the library's (`/citations/pick`). */
       title: string | null;
+      /**
+       * ADR-0130: the student's own note on a highlight, put in before the citation. Only ever
+       * set by the student's "Put note in chapter" press, and inserted only by "Put here".
+       */
+      text?: string;
       at: number;
     }
   | {
@@ -179,6 +184,8 @@ export type ReaderHandoff =
       attachment?: { id: string; kind: 'image'; name: string };
       /** R13: questions to offer with it, about this paper. */
       questions?: string[];
+      /** ADR-0130: the student's own note on a highlight, set only by their "Put in chat". */
+      note?: string;
       at: number;
     };
 

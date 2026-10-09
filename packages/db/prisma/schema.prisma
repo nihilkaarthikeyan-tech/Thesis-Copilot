@@ -141,6 +141,8 @@ model User {
   subscription  Subscription?
   guideShares   GuideShare[]
   savedPrompts  SavedPrompt[]
+  /// ADR-0130: the student's own highlights and notes on papers in the reader.
+  sourceHighlights SourceHighlight[]
   // --- PRD §12.2 account deletion ---
   /**
    * When the student asked for their account to be erased, or null if they have not.
@@ -381,9 +383,45 @@ model Source {
   chunks         SourceChunk[]
   citations      Citation[]
   collectionItems SourceCollectionItem[]
+  /// ADR-0130: highlights and notes made on this paper in the reader.
+  highlights     SourceHighlight[]
   createdAt      DateTime @default(now())
   @@index([documentId])
   @@index([doi])
+}
+
+/**
+ * A highlight, with an optional note, that a student made on a paper in the reader (2026-10-09,
+ * ADR-0130). One student's, on one source: nobody else sees it, no model reads it, and it enters
+ * the chat or the thesis only by the student's own press.
+ *
+ * The anchor survives a redraw at another zoom: `start`/`end` are offsets into the reader's
+ * normalised text (lower case, whitespace collapsed) of the PDF page (`view` PDF, `page`) or of
+ * the Text view's passage (`chunkId`) or whole text; `exact` is that slice, and `prefix`/`suffix`
+ * the text either side, so a highlight whose offsets no longer fit is found again by its words.
+ */
+model SourceHighlight {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  sourceId  String   @db.Uuid
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  view      String   // 'PDF' | 'TEXT'
+  page      Int?
+  chunkId   String?  @db.Uuid // a Text-view passage; no FK, a re-read replaces chunks
+  start     Int
+  end       Int
+  exact     String
+  prefix    String   @default("")
+  suffix    String   @default("")
+  /// The passage as the student selected it, for the list and for "Put in chat".
+  quote     String
+  colour    String   // 'yellow' | 'green' | 'blue' | 'pink'
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([sourceId, userId])
+  @@index([userId])
 }
 
 /**

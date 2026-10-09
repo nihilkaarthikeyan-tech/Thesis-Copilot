@@ -184,6 +184,8 @@ export class DeletionService {
       await tx.account.deleteMany({ where: { userId } });
       // The student's own words (ADR-0019), not a billing record.
       await tx.savedPrompt.deleteMany({ where: { userId } });
+      // ADR-0130: highlights and notes, by person — any left on a thesis that is no longer theirs.
+      await tx.sourceHighlight.deleteMany({ where: { userId } });
 
       // Kept: Subscription and AuditEvent. §12.2's "billing records as required by law", and the
       // proof that this erasure was asked for and carried out.

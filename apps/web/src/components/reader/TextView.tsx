@@ -78,6 +78,7 @@ export function TextView({
     >
       <div
         ref={body}
+        data-text-body=""
         className="mx-auto max-w-[72ch] px-4 py-6 font-serif text-[17px] leading-[1.7] text-ink sm:px-6"
       >
         {passages.map((passage) => {

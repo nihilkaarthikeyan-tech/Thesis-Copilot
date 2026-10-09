@@ -436,6 +436,8 @@ function ChapterEditor({
     /** R13 (ADR-0100): a part of a page from the reader, and questions to offer with it. */
     attachment?: { id: string; kind: 'image'; name: string };
     questions?: string[];
+    /** ADR-0130: the student's own note on a highlight, put after the passage. */
+    note?: string;
   } | null>(null);
   /** A selected sentence the student asked papers for; the Papers tab searches it. */
   const [papersQuery, setPapersQuery] = useState<{ text: string; nonce: number } | null>(null);

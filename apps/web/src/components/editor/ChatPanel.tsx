@@ -239,6 +239,8 @@ export function ChatPanel({
     attachment?: Attachment;
     /** R13: questions to offer with it; pressing one puts it in the box. */
     questions?: string[];
+    /** ADR-0130: the student's own note on a highlighted passage, put after it. */
+    note?: string;
   } | null;
   onUsageChange: () => void;
   onOpenPassage: (sourceId: string, chunkId: string) => void;
@@ -264,7 +266,12 @@ export function ChatPanel({
 
   useEffect(() => {
     if (!prefill?.text) return;
-    setDraft(`About this passage: "${prefill.text.slice(0, 1_500)}" — `);
+    const note = prefill.note?.replace(/\s+/g, ' ').trim();
+    setDraft(
+      `About this passage: "${prefill.text.slice(0, 1_500)}"${
+        note ? ` — my note: ${note.slice(0, 1_000)}` : ''
+      } — `,
+    );
     // After the panel has rendered the new value.
     requestAnimationFrame(() => {
       const box = boxRef.current;

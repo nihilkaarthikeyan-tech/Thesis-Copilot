@@ -80,8 +80,10 @@ function registry(): {
 export function paintMatches(ranges: readonly Range[], current: Range | null): void {
   const api = registry();
   if (!api) return;
-  api.highlights.set('reader-match', new api.Highlight(...ranges));
-  if (current) api.highlights.set('reader-current', new api.Highlight(current));
+  // Above the student's own highlights (ADR-0130), so a search match on a yellow passage shows.
+  const raise = <T>(highlight: T): T => Object.assign(highlight as object, { priority: 2 }) as T;
+  api.highlights.set('reader-match', raise(new api.Highlight(...ranges)));
+  if (current) api.highlights.set('reader-current', raise(new api.Highlight(current)));
   else api.highlights.delete('reader-current');
 }
 
@@ -103,4 +105,87 @@ export function scrollRangeIntoView(scroller: HTMLElement, range: Range): void {
   if (left < 0 || left > frame.width - 40) {
     scroller.scrollTo({ left: Math.max(0, scroller.scrollLeft + left - 40) });
   }
+}
+
+// ---- Highlights the student keeps (ADR-0130) -----------------------------------------------------
+
+/**
+ * Where `range` sits in `root`'s searchable text: the offsets of its first and last characters in
+ * `indexElement(root).text`, which is what a saved highlight is anchored to.
+ */
+export function rangeOffsets(
+  root: Element,
+  range: Range,
+): { text: string; start: number; end: number } | null {
+  const index = indexElement(root);
+  let start = -1;
+  let end = -1;
+  for (let i = 0; i < index.origins.length; i++) {
+    const origin = index.origins[i];
+    if (!origin) continue;
+    let at: number;
+    try {
+      at = range.comparePoint(origin.node, origin.offset);
+    } catch {
+      continue;
+    }
+    if (at === 1) break; // past the end of the selection
+    if (at === 0 && range.comparePoint(origin.node, origin.offset + 1) === 0) {
+      if (start < 0) start = i;
+      end = i + 1;
+    }
+  }
+  if (start < 0) return null;
+  return { text: index.text, start, end };
+}
+
+/** A DOM range over `start`..`end` of `root`'s searchable text, or null when it has no text there. */
+export function rangeAt(root: Element, start: number, end: number): Range | null {
+  const index = indexElement(root);
+  const first = firstOrigin(index.origins, start, end);
+  const last = lastOrigin(index.origins, start, end);
+  if (!first || !last) return null;
+  const range = document.createRange();
+  try {
+    range.setStart(first.node, first.offset);
+    range.setEnd(last.node, last.offset + 1);
+  } catch {
+    return null;
+  }
+  return range;
+}
+
+/** The searchable text of `root`, as anchors are written against it. */
+export function searchableText(root: Element): string {
+  return indexElement(root).text;
+}
+
+export const HIGHLIGHT_NAMES = ['yellow', 'green', 'blue', 'pink'] as const;
+
+/**
+ * Draws the student's highlights, one CSS highlight per colour (`::highlight(reader-hl-yellow)`
+ * and so on), and the one being looked at more strongly. Ranges into a page that has since been
+ * redrawn or scrolled away are dropped: they would draw nothing anyway.
+ */
+export function paintHighlights(
+  byColour: ReadonlyMap<string, readonly Range[]>,
+  active: Range | null,
+): void {
+  const api = registry();
+  if (!api) return;
+  for (const colour of HIGHLIGHT_NAMES) {
+    const ranges = (byColour.get(colour) ?? []).filter((r) => r.startContainer.isConnected);
+    if (ranges.length > 0) api.highlights.set(`reader-hl-${colour}`, new api.Highlight(...ranges));
+    else api.highlights.delete(`reader-hl-${colour}`);
+  }
+  if (active?.startContainer.isConnected) {
+    api.highlights.set('reader-hl-active', new api.Highlight(active));
+  } else api.highlights.delete('reader-hl-active');
+}
+
+export function clearHighlights(): void {
+  const api = registry();
+  if (!api) return;
+  for (const colour of HIGHLIGHT_NAMES) api.highlights.delete(`reader-hl-${colour}`);
+  api.highlights.delete('reader-hl-active');
 }
