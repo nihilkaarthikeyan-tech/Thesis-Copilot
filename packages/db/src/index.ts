@@ -23,3 +23,11 @@ export {
 } from '@prisma/client';
 
 export { AI_ACTION_VALUES } from './enums.js';
+export {
+  type AddedSource,
+  addSourcesOnce,
+  lockDocumentSources,
+  normaliseTitle,
+  removeStrandedDuplicateSources,
+  type SourceIdentity,
+} from './sources.js';

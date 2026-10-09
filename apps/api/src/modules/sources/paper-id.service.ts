@@ -11,7 +11,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import type { Env } from '@tc/config';
-import type { Prisma } from '@tc/db';
+import { addSourcesOnce, type Prisma } from '@tc/db';
 import {
   arxivDoi,
   CrossrefClient,
@@ -263,21 +263,32 @@ export class PaperIdService {
       ...(preview.kind === 'pmid' ? { PMID: preview.id } : {}),
       ...(preview.abstract ? { abstract: preview.abstract } : {}),
     };
-    const created = await this.prisma.source.create({
-      data: {
-        documentId,
-        status: 'RESOLVED',
-        rawReference: raw,
-        title: preview.title,
-        authors: preview.authors as unknown as Prisma.InputJsonValue,
-        year: preview.year,
-        venue: preview.venue,
-        type: preview.type,
-        cslJson: csl as Prisma.InputJsonValue,
-        groundingLevel: 'NONE',
-      },
-      select: { id: true },
-    });
+    // ADR-0139: the check above is repeated under the thesis's lock, so two presses at once add
+    // the record once.
+    const [row] = await addSourcesOnce(
+      this.prisma,
+      documentId,
+      [{ rawReference: raw, title: preview.title }],
+      (tx) =>
+        tx.source.create({
+          data: {
+            documentId,
+            status: 'RESOLVED',
+            rawReference: raw,
+            title: preview.title,
+            authors: preview.authors as unknown as Prisma.InputJsonValue,
+            year: preview.year,
+            venue: preview.venue,
+            type: preview.type,
+            cslJson: csl as Prisma.InputJsonValue,
+            groundingLevel: 'NONE',
+          },
+          select: { id: true },
+        }),
+    );
+    if (!row) throw new ValidationError('The paper could not be added.');
+    if (!row.created) return { sourceId: row.id, alreadyPresent: true, preview };
+    const created = { id: row.id };
     // An abstract (PubMed) is made citable as any paper's is.
     if (preview.abstract) {
       await this.queue.enqueue(

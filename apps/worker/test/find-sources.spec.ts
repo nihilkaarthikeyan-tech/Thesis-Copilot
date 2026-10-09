@@ -85,8 +85,15 @@ function fakes(
     },
     source: {
       findMany: async () => options.library ?? [],
-      create: async ({ data }: { data: Record<string, unknown> }) => sources.push(data),
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        sources.push(data);
+        return { id: `source-${sources.length}` };
+      },
     },
+    // ADR-0139: the insert runs in a transaction under a lock; the cleanup is one statement.
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    $queryRaw: async () => [],
+    $executeRaw: async () => 0,
   } as unknown as PrismaClient;
   const found = options.found ?? [work(1), work(2)];
   const searchedWith: unknown[] = [];
@@ -184,6 +191,21 @@ describe('find-sources', () => {
     const f = fakes({ found: [] });
     expect((await runFindSources(JOB, f.deps)).status).toBe('none-relevant');
     expect(f.audits).toHaveLength(1);
+  });
+
+  it('skips and does not resolve a paper another run added after the library was read (ADR-0139)', async () => {
+    const f = fakes();
+    // The first read (choosing candidates) sees an empty library; the read under the lock sees
+    // the paper a concurrent run has just added.
+    let reads = 0;
+    const meanwhile = { id: 'other-run', doi: '10.1000/W1', title: null, rawReference: null };
+    (
+      f.deps.prisma as unknown as { source: { findMany: () => Promise<unknown[]> } }
+    ).source.findMany = async () => (reads++ === 0 ? [] : [meanwhile]);
+    const result = await runFindSources(JOB, f.deps);
+    expect(result).toMatchObject({ status: 'added', added: 1 });
+    expect(f.sources.map((s) => s.doi)).toEqual(['10.1000/w2']);
+    expect(f.resolves.map((r) => r.printedDoi)).toEqual(['10.1000/w2']);
   });
 });
 

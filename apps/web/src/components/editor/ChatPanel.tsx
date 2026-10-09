@@ -207,16 +207,16 @@ const SCOPE_BLURB: Record<Scope, string> = {
  * Calm editor (2026-10-09): the blurb above is the chip's tooltip; under the chips only these
  * short words stay, and only where the scope behaves unlike an ordinary answer.
  */
-const SCOPE_NOTE: Record<Scope, string | null> = {
+const SCOPE_NOTE: Record<Scope, MessageKey | null> = {
   library: null,
-  document: 'Your draft · not citable',
-  web: 'Finds papers · no answer',
+  document: 'chat.scope.note.document',
+  web: 'chat.scope.note.web',
 };
 
 // The prompt has to change with the scope. "What do my sources say about…" in Find-papers mode
 // invites the question this scope deliberately does not answer.
-const SCOPE_PLACEHOLDER: Record<Scope, string> = {
-  library: 'Ask about your papers — @ to name one',
+// The library's is translated (`chat.placeholder.library`); the other two are older English.
+const SCOPE_PLACEHOLDER: Record<Exclude<Scope, 'library'>, string> = {
   document: 'What have I already written about…',
   web: 'A topic, method or population to search for…',
 };
@@ -1243,7 +1243,7 @@ export function ChatPanel({
             className="px-1 text-xs text-faint"
             title="Adding fetches the paper and indexes it. Once it is in, ask the same question on Library and the answer will cite it."
           >
-            Added papers are cited on Library.
+            {t('chat.research.citedOnLibrary')}
           </p>
         </div>
       ) : null}
@@ -1588,13 +1588,13 @@ export function ChatPanel({
               </fieldset>
               <FiltersChip open={showFilters} onToggle={() => setShowFilters((v) => !v)} />
             </div>
-            {SCOPE_NOTE[scope] ? (
+            {SCOPE_NOTE[scope] !== null ? (
               <p
                 data-testid="chat-scope-note"
                 title={SCOPE_BLURB[scope]}
                 className="mt-1 truncate text-[11px] text-faint"
               >
-                {SCOPE_NOTE[scope]}
+                {t(SCOPE_NOTE[scope])}
               </p>
             ) : null}
           </div>
@@ -1685,7 +1685,9 @@ export function ChatPanel({
               setDismissed(false);
             }}
             onKeyDown={onBoxKeyDown}
-            placeholder={SCOPE_PLACEHOLDER[scope]}
+            placeholder={
+              scope === 'library' ? t('chat.placeholder.library') : SCOPE_PLACEHOLDER[scope]
+            }
             className="block max-h-48 min-h-[4.5rem] w-full min-w-0 resize-none rounded-t-lg bg-transparent px-2.5 pt-2 text-sm text-ink placeholder:text-faint focus:outline-none disabled:opacity-60"
           />
           {/* The box's tools, small and inside it: attach, name a paper, a saved prompt, deep
@@ -1724,8 +1726,8 @@ export function ChatPanel({
               <button
                 type="button"
                 data-testid="chat-mention-button"
-                title="Name a paper to answer from (or type @)"
-                aria-label="Name a paper"
+                title={t('chat.box.mentionTitle')}
+                aria-label={t('chat.box.mention')}
                 disabled={busy || chat.collectionDeleted}
                 onClick={() => typeIntoBox('@')}
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-sunk hover:text-ink disabled:opacity-50"
@@ -1736,12 +1738,8 @@ export function ChatPanel({
             <button
               type="button"
               data-testid="chat-prompts-button"
-              title={
-                draft.trim()
-                  ? 'Saved prompts — empty the box first (or type / in an empty box)'
-                  : 'Use a saved prompt (or type /)'
-              }
-              aria-label="Use a saved prompt"
+              title={draft.trim() ? t('chat.box.promptsBlocked') : t('chat.box.promptsTitle')}
+              aria-label={t('chat.box.prompts')}
               disabled={busy || chat.collectionDeleted || draft.trim().length > 0}
               onClick={() => typeIntoBox('/')}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-sunk hover:text-ink disabled:opacity-50"
@@ -1811,13 +1809,14 @@ export function ChatPanel({
 
 /** The year, citation and preprint filters, as one more small chip at the end of the scope row. */
 function FiltersChip({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       data-testid="chat-filters-toggle"
       aria-expanded={open}
-      aria-label="Filters"
-      title="Filters: year, citations, journal, preprints"
+      aria-label={t('chat.filters')}
+      title={t('chat.filters.title')}
       onClick={onToggle}
       className={cn(
         'ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors',
@@ -1840,6 +1839,7 @@ function AnswerSources({
   citations: Citation[];
   onOpen: (sourceId: string, chunkId: string) => void;
 }) {
+  const { t } = useT();
   const bySource = new Map<string, Citation>();
   for (const c of citations) {
     const key = c.attachment
@@ -1854,7 +1854,7 @@ function AnswerSources({
   return (
     <details data-testid="chat-sources" className="group mt-2 rounded-md border border-line">
       <summary className="flex cursor-pointer list-none items-center gap-1 px-2 py-1 text-xs text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
-        {count === 1 ? '1 source' : `${count} sources`}
+        {t(count === 1 ? 'chat.sources.one' : 'chat.sources.many', { count })}
         <ChevronDown size={12} aria-hidden className="transition-transform group-open:rotate-180" />
       </summary>
       <ul className="grid gap-0.5 border-t border-line px-2 py-1.5">

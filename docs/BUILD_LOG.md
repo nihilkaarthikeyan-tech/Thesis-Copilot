@@ -6137,3 +6137,33 @@ unchanged. Tests: `packages/ai/test/subsections.spec.ts` (39) and one in
 The real-model run on five new title-only plans was not made in this change (declined at the
 tool prompt); run it before release (about ₹0.5 a title):
 `pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx scripts/probe-outline-from-title.ts "<title>" …`
+## Hindi for the calm editor (2026-10-09, ADR-0137)
+
+The 22 strings ADR-0137 added (status line, ⋯ menu, More menu, Cite) are in `hi.ts`, in the
+house style. The calm chat composer had hard-coded thirteen new English strings (the two scope
+notes, the library placeholder, "Added papers are cited on Library.", the @ and / buttons' titles,
+Filters, and the folded "N sources"); they are keys now (`chat.scope.note.*`,
+`chat.placeholder.library`, `chat.research.citedOnLibrary`, `chat.box.*`, `chat.filters*`,
+`chat.sources.*`), English unchanged, with Hindi. Older hard-coded English in `ChatPanel.tsx` is
+left as it was. Review sheet regenerated; `test/i18n.spec.ts` and `i18n-review.spec.ts` pass.
+
+## A paper is added once (2026-10-09, ADR-0139)
+
+ADR-0136's leftover: two `find-sources` runs 3.6 s apart added the same five papers twice, and
+each second copy sat at "Looking it up…" for good because its resolve job had the first copy's
+id. Every add was read-check-insert with nothing between the read and the insert.
+- `addSourcesOnce` (`@tc/db`): the check (DOI, reference line, normalised title) and the insert in
+  one transaction behind a per-thesis advisory lock; jobs queued after it, for created rows only.
+  Used by `find-sources`, Find papers' select, `resolveReferences`, the edit's Search the
+  literature add and the paper-id add.
+- Migration 0053, and the same rule at the start of each `find-sources` run: a PENDING copy of a
+  RESOLVED source, older than ten minutes, is removed; never one cited, pinned, filed,
+  highlighted, read, or named in a chapter.
+- No unique index: the library keeps duplicates until the student merges them, and a DOI arrives
+  after the insert.
+
+Tests: `apps/api/test/source-dedupe-race.spec.ts` (8, real Postgres: two and five concurrent adds
+give five rows, ten with the lock commented out; the cleanup's removals and every kept case), one
+in `apps/worker/test/find-sources.spec.ts` (a paper added after the read is neither inserted nor
+resolved). Touched API specs pass: edit-literature(-api), paper-id, papers-filed-where-added,
+resolve-source-ids, chat-beyond.

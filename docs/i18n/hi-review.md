@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**653** strings are translated; **23** are deliberately
+**688** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -304,6 +304,22 @@ English. Write corrections in the last column.
 | `editor.tab.flags` | check | जाँच | |
 | `editor.tab.review` | comments | टिप्पणियाँ | |
 | `editor.chapterAndTools` | Chapter and tools | अध्याय और टूल | |
+| `editor.menu` | More options | और विकल्प | |
+| `editor.menu.usage` | Usage | इस्तेमाल | |
+| `editor.menu.theme` | Theme | थीम | |
+| `editor.menu.firstSteps` | First steps | पहले कदम | |
+| `editor.line.label` | This chapter at a glance | इस अध्याय की एक झलक | |
+| `editor.line.searching` | Finding papers… | पेपर खोजे जा रहे हैं… | |
+| `editor.line.found` | {found} papers found | {found} पेपर मिले | |
+| `editor.line.reading` | reading {reading}… | {reading} पढ़े जा रहे हैं… | |
+| `editor.line.ready` | {ready} ready to cite | {ready} साइट करने के लिए तैयार | |
+| `editor.line.planned` | chapters planned | अध्यायों की योजना बन गई | |
+| `editor.line.planning` | planning chapters… | अध्यायों की योजना बन रही है… | |
+| `editor.line.notPlanned` | chapters not planned | अध्यायों की योजना अभी नहीं बनी | |
+| `editor.line.next` | next: {step} | आगे: {step} | |
+| `editor.line.empty` | Chapter plan, papers and first steps | अध्याय योजना, पेपर और पहले कदम | |
+| `editor.line.show` | Show | दिखाएँ | |
+| `editor.line.hide` | Hide | छिपाएँ | |
 | `editor.feedbackLabel` | What happened? The admin gets this note, this document’s id and your last five suggestion events — not your text. | क्या हुआ? एडमिन को यह नोट, इस दस्तावेज़ की id और आपके पिछले पाँच सुझावों का ब्योरा मिलता है — आपका लिखा हुआ नहीं। | |
 | `editor.feedbackSent` | Thanks — your note is on its way, with the ids of your last few suggestions. | धन्यवाद — आपका नोट आपके पिछले कुछ सुझावों की ids के साथ भेज दिया गया है। | |
 | `editor.feedbackFailed` | The note did not send. Try again in a minute. | नोट नहीं गया। एक मिनट बाद फिर कोशिश करें। | |
@@ -377,6 +393,12 @@ English. Write corrections in the last column.
 | Key | English | हिन्दी | Correction |
 |---|---|---|---|
 | `fmt.toolbar` | Formatting | फ़ॉर्मेटिंग | |
+| `fmt.more` | More | और | |
+| `fmt.moreTitle` | More formatting and things to insert | और फ़ॉर्मेटिंग, और जोड़ने की चीज़ें | |
+| `fmt.moreFormat` | Format | फ़ॉर्मेट | |
+| `fmt.moreInsert` | Insert | जोड़ें | |
+| `fmt.cite` | Cite | साइट करें | |
+| `fmt.citeTitle` | Cite a paper from your library (or type @) | अपनी लाइब्रेरी से किसी पेपर को साइट करें (या @ टाइप करें) | |
 | `fmt.undo` | Undo | पूर्ववत करें | |
 | `fmt.redo` | Redo | फिर से करें | |
 | `fmt.bold` | Bold (Ctrl+B) | बोल्ड (Ctrl+B) | |
@@ -790,29 +812,20 @@ English. Write corrections in the last column.
 |---|---|---|---|
 | `chat.research.ask` | Search the literature too? | Literature में भी खोजें? | |
 | `chat.research.askWhy` | Your library has little on this. The scholarly indexes can be searched and the answer written from your library and the abstracts found, each marked “Not in your library”. Skip answers from your library alone. | आपकी library में इस पर कम है। Scholarly indexes में खोजकर जवाब आपकी library और मिले abstracts से लिखा जा सकता है, हर एक पर “आपकी library में नहीं” लिखा होगा। छोड़ें चुनने पर जवाब सिर्फ़ आपकी library से आएगा। | |
+| `chat.scope.note.document` | Your draft · not citable | आपका ड्राफ़्ट · साइट नहीं हो सकता | |
+| `chat.scope.note.web` | Finds papers · no answer | पेपर खोजता है · जवाब नहीं देता | |
+| `chat.placeholder.library` | Ask about your papers — @ to name one | अपने पेपर के बारे में पूछें — किसी एक को चुनने के लिए @ | |
+| `chat.research.citedOnLibrary` | Added papers are cited on Library. | जोड़े गए पेपर Library पर पूछने से साइट होते हैं। | |
+| `chat.box.mention` | Name a paper | एक पेपर चुनें | |
+| `chat.box.mentionTitle` | Name a paper to answer from (or type @) | जवाब के लिए एक पेपर चुनें (या @ टाइप करें) | |
+| `chat.box.prompts` | Use a saved prompt | सेव किया हुआ prompt इस्तेमाल करें | |
+| `chat.box.promptsTitle` | Use a saved prompt (or type /) | सेव किया हुआ prompt इस्तेमाल करें (या / टाइप करें) | |
+| `chat.box.promptsBlocked` | Saved prompts — empty the box first (or type / in an empty box) | सेव किए हुए prompts — पहले बॉक्स खाली करें (या खाली बॉक्स में / टाइप करें) | |
+| `chat.filters` | Filters | फ़िल्टर | |
+| `chat.filters.title` | Filters: year, citations, journal, preprints | फ़िल्टर: साल, साइटेशन, journal, preprints | |
+| `chat.sources.one` | {count} source | {count} स्रोत | |
+| `chat.sources.many` | {count} sources | {count} स्रोत | |
 
 ## Left in English on purpose
 
 - `editor.usage` — Assist {assist} · Draft {draft}
-- `editor.menu` — More options
-- `editor.menu.usage` — Usage
-- `editor.menu.theme` — Theme
-- `editor.menu.firstSteps` — First steps
-- `editor.line.label` — This chapter at a glance
-- `editor.line.searching` — Finding papers…
-- `editor.line.found` — {found} papers found
-- `editor.line.reading` — reading {reading}…
-- `editor.line.ready` — {ready} ready to cite
-- `editor.line.planned` — chapters planned
-- `editor.line.planning` — planning chapters…
-- `editor.line.notPlanned` — chapters not planned
-- `editor.line.next` — next: {step}
-- `editor.line.empty` — Chapter plan, papers and first steps
-- `editor.line.show` — Show
-- `editor.line.hide` — Hide
-- `fmt.more` — More
-- `fmt.moreTitle` — More formatting and things to insert
-- `fmt.moreFormat` — Format
-- `fmt.moreInsert` — Insert
-- `fmt.cite` — Cite
-- `fmt.citeTitle` — Cite a paper from your library (or type @)

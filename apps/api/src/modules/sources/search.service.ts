@@ -10,6 +10,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { addSourcesOnce } from '@tc/db';
 import {
   type BibEntry,
   type GapSignal,
@@ -310,49 +311,45 @@ export class SearchService {
     });
     if (candidates.length === 0) throw new NotFoundError('Those candidates');
 
-    const existing = await this.prisma.source.findMany({
-      where: { documentId },
-      select: { id: true, doi: true, rawReference: true },
-    });
-    const byDoi = new Map(existing.filter((s) => s.doi).map((s) => [s.doi?.toLowerCase(), s.id]));
-    const byRaw = new Map(
-      existing.filter((s) => s.rawReference).map((s) => [s.rawReference, s.id]),
+    // ADR-0139: checked and inserted under the thesis's lock, so a find-sources run adding the
+    // same papers at the same moment cannot make a second copy that never resolves.
+    const rows = await addSourcesOnce(
+      this.prisma,
+      documentId,
+      candidates.map((c) => ({ ...c, rawReference: referenceLine(c) })),
+      (tx, c) =>
+        tx.source.create({
+          data: {
+            documentId,
+            status: 'PENDING',
+            rawReference: c.rawReference,
+            doi: c.doi,
+            openalexId: c.openalexId,
+            title: c.title,
+            year: c.year,
+            venue: c.venue,
+            citationCount: c.citationCount,
+            isPreprint: c.isPreprint,
+            oaStatus: c.oaStatus,
+            subTheme: c.theme,
+            // The search already read the abstract; keep it, so the paper is citable even when
+            // the resolver finds none (2026-09-30).
+            ...(c.abstract ? { cslJson: { abstract: c.abstract } } : {}),
+          },
+          select: { id: true },
+        }),
     );
 
     let added = 0;
     let alreadyPresent = 0;
     const sourceIds: string[] = [];
-    for (const c of candidates) {
-      const raw = referenceLine(c);
-      const found = (c.doi && byDoi.get(c.doi.toLowerCase())) || byRaw.get(raw);
-      if (found) {
+    for (const { item: c, id, created } of rows) {
+      sourceIds.push(id);
+      if (!created) {
         alreadyPresent++;
-        sourceIds.push(found);
         continue;
       }
-      const source = await this.prisma.source.create({
-        data: {
-          documentId,
-          status: 'PENDING',
-          rawReference: raw,
-          doi: c.doi,
-          openalexId: c.openalexId,
-          title: c.title,
-          year: c.year,
-          venue: c.venue,
-          citationCount: c.citationCount,
-          isPreprint: c.isPreprint,
-          oaStatus: c.oaStatus,
-          subTheme: c.theme,
-          // The search already read the abstract; keep it, so the paper is citable even when the
-          // resolver finds none (2026-09-30).
-          ...(c.abstract ? { cslJson: { abstract: c.abstract } } : {}),
-        },
-        select: { id: true },
-      });
-      sourceIds.push(source.id);
-      byRaw.set(raw, source.id);
-      if (c.doi) byDoi.set(c.doi.toLowerCase(), source.id);
+      const raw = c.rawReference;
       await this.queue.enqueue(
         'resolve-reference',
         {
