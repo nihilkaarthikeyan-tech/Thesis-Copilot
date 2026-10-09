@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   askPlan,
   buildExaminerReviewHighlightsRequest,
+  cleanWhy,
   EXAMINER_HIGHLIGHTS,
   examinerReviewSchema,
   type HighlightsInput,
@@ -84,6 +85,23 @@ describe('strengths', () => {
     );
     expect(out.strengths.map((s) => s.quote)).toEqual(['falls exponentially with drying time']);
     expect(out.dropped.strengths).toBe(4);
+  });
+});
+
+describe('a strength’s reason (round 2)', () => {
+  it('loses the request’s passage ids and citation markers', () => {
+    expect(cleanWhy('Cites the empirical Udupi study (P5) that tests these constructs.')).toBe(
+      'Cites the empirical Udupi study that tests these constructs.',
+    );
+    expect(cleanWhy('Directly supported by the cited problem statement. {{cite:P1}}')).toBe(
+      'Directly supported by the cited problem statement.',
+    );
+    expect(cleanWhy('Links it to empirical studies (P1 and P2).')).toBe(
+      'Links it to empirical studies.',
+    );
+    expect(cleanWhy('Links the sentence to P4’s pilot study methods.')).toBe(
+      'Links the sentence to the cited source’s pilot study methods.',
+    );
   });
 });
 

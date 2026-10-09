@@ -209,6 +209,20 @@ export function anchorStrength(quote: string, sentenceId: string, input: Highlig
   return input.sentences.find((s) => containsWords(reviewWords(s.text), needle))?.id ?? null;
 }
 
+/**
+ * A strength's reason without the request's own ids, which mean nothing to the student. Round 2
+ * wrote "…cites the empirical Udupi study (P5)" and once ended a reason with "{{cite:P1}}".
+ */
+export function cleanWhy(why: string): string {
+  return why
+    .replace(/\{\{cite:[^}]*\}\}/g, '')
+    .replace(/\s*\((?:P\d+(?:\s*(?:,|and)\s*)?)+\)/g, '')
+    .replace(/\bP\d+\b/g, 'the cited source')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([.,;:])/g, '$1')
+    .trim();
+}
+
 export function postProcessHighlights(
   result: Pick<ExaminerReviewAnswer, 'strengths' | 'questions'>,
   input: HighlightsInput,
@@ -222,7 +236,7 @@ export function postProcessHighlights(
   let droppedStrengths = 0;
   for (const raw of result.strengths ?? []) {
     const id = anchorStrength(raw.quote, raw.sentenceId, input);
-    const why = raw.why.trim().slice(0, EXAMINER_HIGHLIGHTS.whyChars);
+    const why = cleanWhy(raw.why).slice(0, EXAMINER_HIGHLIGHTS.whyChars);
     if (!id || !why || input.blockingIds.has(id) || pinned.has(id)) {
       droppedStrengths++;
       continue;

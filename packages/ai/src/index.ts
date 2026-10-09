@@ -252,6 +252,7 @@ export {
   anchorStrength,
   askPlan,
   buildExaminerReviewHighlightsRequest,
+  cleanWhy,
   contentWords,
   EXAMINER_HIGHLIGHTS,
   type ExaminerReviewAnswer,
