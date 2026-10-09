@@ -48,6 +48,7 @@ import { ReviewHighlights, type ReviewHighlightsOptions } from './review.js';
 import { SlashMenu } from './slash-menu.js';
 import { TableOfContents } from './table-of-contents.js';
 import { TrackedChanges } from './tracked-changes.js';
+import { UndoInputRule } from './undo-input-rule.js';
 
 export type ThesisEditorOptions = {
   ghostText: Partial<GhostTextOptions> & Pick<GhostTextOptions, 'chapterId' | 'request'>;
@@ -89,6 +90,8 @@ export function thesisExtensions(options: ThesisEditorOptions): Extensions {
     PasteMenu,
     // Before everything else: keymap precedence (B.3).
     GhostText.configure(options.ghostText),
+    // Ctrl+Z straight after a Markdown shortcut gives back what was typed (ADR-0118).
+    UndoInputRule,
 
     StarterKit.configure({
       heading: false,

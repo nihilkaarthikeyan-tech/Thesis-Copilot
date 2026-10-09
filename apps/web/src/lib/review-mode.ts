@@ -53,6 +53,32 @@ export function applicableInOrder<T extends { from: number; to: number }>(items:
   return out;
 }
 
+/** The review bar at its widest (46rem). */
+export const REVIEW_BAR_MAX = 736;
+
+/**
+ * Where the floating review bar goes: centred over the writing column, a gutter in from each of
+ * its edges, never wider than `REVIEW_BAR_MAX` and never outside the window. QA 2026-10-09: it was
+ * centred on the window, so at 1280 px it ran 16 px over the tool panel and covered the left edge
+ * of the correction card the student was reading.
+ */
+export function reviewBarPlacement(
+  column: { left: number; right: number },
+  viewportWidth: number,
+  gutter = 16,
+): { left: number; width: number } {
+  const left = Math.max(column.left, 0) + gutter;
+  const right = Math.min(column.right, viewportWidth) - gutter;
+  // A column narrower than the bar's least useful width (a phone with a drawer half open, say)
+  // gets the window's width instead, as before.
+  if (right - left < 280) {
+    const width = Math.min(REVIEW_BAR_MAX, viewportWidth - 2 * gutter);
+    return { left: (viewportWidth - width) / 2, width };
+  }
+  const width = Math.min(REVIEW_BAR_MAX, right - left);
+  return { left: left + (right - left - width) / 2, width };
+}
+
 /** Scrolls the next check's panel into view and puts the keyboard on its run button. */
 export function openCheck(testId: string): void {
   const button = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);

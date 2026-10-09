@@ -101,7 +101,8 @@ export function KeyboardShortcuts({ open, onClose }: { open: boolean; onClose: (
           <>
             <p className="mt-4 text-muted">
               Type these at the start of a line, or around a word, and they turn into formatting as
-              you type. Undo (Ctrl+Z) turns one back into the characters you typed.
+              you type. Undo (Ctrl+Z) or Backspace straight afterwards turns one back into the
+              characters you typed.
             </p>
             <dl
               className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5"

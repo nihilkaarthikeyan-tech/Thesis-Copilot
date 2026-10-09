@@ -84,3 +84,51 @@ describe('equations from $$…$$', () => {
     expect(editor.state.doc.textContent).toBe('It cost $5 and $10.');
   });
 });
+
+/** Ctrl+Z as the keyboard sends it, through the editor's keymaps. */
+function pressUndo(): boolean {
+  const view = editor.view;
+  const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true });
+  return view.someProp('handleKeyDown', (f) => f(view, event)) ?? false;
+}
+
+describe('Ctrl+Z straight after a shortcut (QA 2026-10-09, ADR-0118)', () => {
+  for (const shortcut of MARKDOWN_SHORTCUTS) {
+    it(`gives back "${shortcut.sample}" as typed`, () => {
+      editor = createTestEditor('<p></p>');
+      editor.commands.focus('end');
+      type(shortcut.sample);
+      expect(pressUndo()).toBe(true);
+      expect(editor.state.doc.textContent).toBe(shortcut.sample);
+      const kinds = types();
+      for (const kind of [
+        'heading',
+        'bulletList',
+        'orderedList',
+        'blockquote',
+        'codeBlock',
+        'horizontalRule',
+        'mathInline',
+      ]) {
+        expect(kinds).not.toContain(kind);
+      }
+      // Provenance marks who typed it; only formatting marks would mean the rule stuck.
+      const formatting = new Set<string>();
+      editor.state.doc.descendants((node) => {
+        for (const mark of node.marks) {
+          if (mark.type.name !== 'provenance') formatting.add(mark.type.name);
+        }
+      });
+      expect([...formatting]).toEqual([]);
+    });
+  }
+
+  it('is the ordinary undo once anything else has been typed', () => {
+    editor = createTestEditor('<p></p>');
+    editor.commands.focus('end');
+    type('**bold**');
+    type(' and more');
+    pressUndo();
+    expect(editor.state.doc.textContent).not.toContain('**');
+  });
+});

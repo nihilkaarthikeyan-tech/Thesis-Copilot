@@ -55,8 +55,11 @@ const FIGURE = [
  * that says "studies show" and carries no citation is exactly what a supervisor circles.
  */
 const ATTRIBUTION = [
-  /\bstudies\s+(?:show|suggest|indicate|find|found|report)\b/i,
-  /\bresearch\s+(?:shows|suggests|indicates|finds|found)\b/i,
+  // "Studies show", "Studies have shown", "Earlier research has demonstrated", "Researchers
+  // found": a body of other people's work as the subject, in the present, past or perfect.
+  // The subject is required — "We found" and "Participants reported" are the student's own
+  // results, not claims about prior work — and "our/my/this research" is the student's too.
+  /(?<!\b(?:our|my|this|the\s+present|the\s+current)\s+)\b(?:studies|research|researchers|scholars|scholarship|authors|investigators|meta-analyses|reviews)\s+(?:(?:have|has|had)\s+)?(?:(?:also|consistently|repeatedly|previously|long|already|generally|widely)\s+)?(?:show|shows|showed|shown|suggest|suggests|suggested|indicate|indicates|indicated|find|finds|found|report|reports|reported|demonstrate|demonstrates|demonstrated|establish|establishes|established|reveal|reveals|revealed)\b/i,
   /\bhas\s+been\s+(?:shown|demonstrated|found|reported|observed|argued|established)\b/i,
   /\b(?:it\s+is|it\s+has\s+been)\s+(?:widely\s+)?(?:accepted|argued|reported|recognised|recognized)\b/i,
   /\baccording\s+to\b/i,

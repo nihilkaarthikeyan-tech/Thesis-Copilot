@@ -19,6 +19,7 @@ import { useT } from '@/i18n/react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/auth-client';
+import { formatResetDate } from '@/lib/limit';
 import { passwordProblem } from '@/lib/password';
 
 type Billing = {
@@ -437,7 +438,7 @@ export default function AccountPage() {
               </p>
             ) : null}
             <p className="mt-3 text-xs text-muted">
-              {t('account.resets', { date: date(usage.resetsAt) })}
+              {t('account.resets', { date: formatResetDate(usage.resetsAt) })}
             </p>
           </>
         ) : (

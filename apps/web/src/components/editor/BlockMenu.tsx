@@ -29,7 +29,7 @@ import {
 import type { Editor } from '@tiptap/core';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BlockCheck } from '@/lib/block-check';
-import { placeMenu } from '@/lib/place-menu';
+import { type MenuPlace, placeBlockMenu, placeMenu } from '@/lib/place-menu';
 import { AI_EDIT_FOCUS } from './CommandToolbar';
 
 const TURN_INTO: Array<{ kind: TurnInto; label: string }> = [
@@ -57,6 +57,19 @@ const CHECKS: Array<{ check: BlockCheck; label: string }> = [
   { check: 'examiner', label: 'As an examiner' },
 ];
 
+/** The block's box on screen, so the menu can keep off the words it acts on. */
+function blockBox(editor: Editor | null, pos: number): DOMRect | null {
+  if (!editor) return null;
+  try {
+    const block = topLevelBlock(editor.state.doc, pos);
+    if (!block) return null;
+    const dom = editor.view.nodeDOM(block.pos);
+    return dom instanceof HTMLElement ? dom.getBoundingClientRect() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function BlockMenu(props: {
   editor: Editor | null;
   request: BlockMenuRequest | null;
@@ -69,7 +82,7 @@ export function BlockMenu(props: {
   const { editor, request, onClose } = props;
   const [open, setOpen] = useState<Open>(null);
   const ref = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
+  const [place, setPlace] = useState<MenuPlace | null>(null);
 
   // A menu opened on a new block starts with every submenu closed, before it is first painted
   // (it used to close the last one after painting it open for a frame).
@@ -86,18 +99,23 @@ export function BlockMenu(props: {
     const measure = () => {
       const menu = ref.current;
       if (!menu) return;
+      // The menu's whole height, even while a max height is making it scroll.
+      const size = {
+        width: menu.offsetWidth,
+        height: Math.max(menu.offsetHeight, menu.scrollHeight + 2),
+      };
+      const view = { width: window.innerWidth, height: window.innerHeight };
+      const block = blockBox(editor, request.pos);
       setPlace(
-        placeMenu(
-          request.rect,
-          { width: menu.offsetWidth, height: menu.offsetHeight },
-          { width: window.innerWidth, height: window.innerHeight },
-        ),
+        block
+          ? placeBlockMenu(request.rect, block, size, view)
+          : placeMenu(request.rect, size, view),
       );
     };
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, [request, open]);
+  }, [request, open, editor]);
 
   useEffect(() => {
     if (!request) return;
@@ -162,7 +180,7 @@ export function BlockMenu(props: {
       aria-label="Block menu"
       data-testid="block-menu"
       className="fixed z-50 max-h-[calc(100dvh-16px)] w-60 max-w-[calc(100vw-16px)] overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-lg"
-      style={{ top: at.top, left: at.left }}
+      style={{ top: at.top, left: at.left, ...(at.maxHeight ? { maxHeight: at.maxHeight } : {}) }}
     >
       <button
         type="button"

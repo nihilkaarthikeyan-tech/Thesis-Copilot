@@ -21,6 +21,7 @@ import { LANGUAGES, type Language, type MessageKey, tNow } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { ApiError, api } from '@/lib/api';
+import { formatResetDate } from '@/lib/limit';
 
 type Usage = {
   plan: string;
@@ -177,7 +178,7 @@ export default function SettingsPage() {
                   used: assist.used,
                   cap: assist.cap,
                   remaining: assist.remaining,
-                  date: usage ? new Date(usage.resetsAt).toLocaleDateString() : '—',
+                  date: usage ? formatResetDate(usage.resetsAt) : '—',
                 })}
               </p>
             ) : null}

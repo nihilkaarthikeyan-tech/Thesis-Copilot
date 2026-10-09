@@ -39,13 +39,23 @@ of them at all.
   entry of `MARKDOWN_SHORTCUTS` into a real editor one character at a time, through the same
   input-rule hook a keypress uses, and checks the node or mark it promises. Adding a line to the
   list without the rule fails it.
+- **Undo straight after a rule gives back the characters typed (amended 2026-10-09).** The
+  window said "Undo (Ctrl+Z) turns one back into the characters you typed", but only Backspace
+  did that (TipTap's `undoInputRule` in its core keymap); Ctrl+Z went to the history, whose last
+  step was the typing and the rule together, so the formatting *and* the words vanished (QA
+  2026-10-09). `editor/undo-input-rule.ts` binds Mod-z to `undoInputRule` above the history's
+  keymap. The command only acts in the transaction straight after a rule fired, so everywhere
+  else Ctrl+Z is the ordinary undo (or Yjs's, live). The window now names both keys.
 
 No new prompt, no allowance, no migration.
 
 ## Evidence
 
 - `packages/ui/test/markdown-shortcuts.spec.ts` (15): each listed shortcut; `$$…$$` alone as a
-  displayed equation; LaTeX KaTeX cannot draw left as text; "$5 and $10" left alone.
+  displayed equation; LaTeX KaTeX cannot draw left as text; "$5 and $10" left alone. Since
+  2026-10-09 also Ctrl+Z through the keymap straight after each listed shortcut gives back the
+  sample as typed with no node or mark left (fails without `UndoInputRule`), and is the ordinary
+  undo once more has been typed.
 - `apps/web/e2e/keyboard-shortcuts.spec.ts`, written, **not yet run**: the window at 1280 and
   390 px (inside the viewport, no sideways scroll, Esc closes), and `## `, `**…**`, `- ` typed in
   the browser.
