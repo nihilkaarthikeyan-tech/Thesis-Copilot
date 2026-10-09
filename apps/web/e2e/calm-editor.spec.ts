@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
+import { openHeaderMenu } from './_editor.js';
 import { measureLayout, settle } from './_layout.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
@@ -186,6 +187,14 @@ test.describe('at 1280', () => {
     await expect(details).toBeVisible();
     await expect(details.getByTestId('first-session-guide')).toBeVisible();
     await shot(page, '1280-status');
+    // Put away with Hide, the guide's steps are still reachable: ⋯ → First steps.
+    await details.getByTestId('first-session-guide').getByRole('button', { name: 'Hide' }).click();
+    await expect(details.getByTestId('first-session-guide')).toHaveCount(0);
+    await line.getByTestId('status-line-toggle').click();
+    await expect(details).toBeHidden();
+    await openHeaderMenu(page);
+    await page.getByTestId('open-first-steps').click();
+    await expect(details.getByTestId('first-session-guide')).toBeVisible();
     await line.getByTestId('status-line-toggle').click();
     await expect(details).toBeHidden();
 

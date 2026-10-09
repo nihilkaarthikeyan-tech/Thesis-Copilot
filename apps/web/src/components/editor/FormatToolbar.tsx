@@ -788,6 +788,26 @@ export function FormatToolbar({
   }, []);
   const closeMore = useCallback(() => setMore(null), []);
   const moreOpen = more !== null;
+  /**
+   * The bar's own width, not the window's, decides what stays on it: the text column is narrowed
+   * by the chapter list, the tool panel and the "read beside" pane in every combination, and a
+   * row that ran past its column slid under the pane's resize handle (2026-10-09).
+   */
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [rowWidth, setRowWidth] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the row exists once the editor does
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setRowWidth(Math.round(entry.contentRect.width));
+    });
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [editor]);
+  // Lists, table and equation need about 120 px more than the rest; undo/redo about 60.
+  const showBlocks = rowWidth === 0 || rowWidth >= 500;
+  const showHistory = rowWidth === 0 || rowWidth >= 380;
   useEffect(() => {
     if (!moreOpen) return;
     const onDown = (event: MouseEvent) => {
@@ -863,8 +883,9 @@ export function FormatToolbar({
     >
       {/* ADR-0137: one row. What a thesis needs every few minutes stays on the bar; the rest is
           under More, named. Below `sm` the lists, table, equation and undo/redo join it. */}
-      <div className="mx-auto flex max-w-[72ch] flex-nowrap items-center gap-0.5">
-        <span className="hidden items-center gap-0.5 sm:flex">
+      {/* Wraps only as a last resort, in a column too narrow even for the short row. */}
+      <div ref={rowRef} className="mx-auto flex max-w-[72ch] flex-wrap items-center gap-0.5">
+        <span className={cn('items-center gap-0.5', showHistory ? 'flex' : 'hidden')}>
           <Tool
             label={t('fmt.undo')}
             disabled={!editor.can().undo()}
@@ -937,7 +958,8 @@ export function FormatToolbar({
           {t('fmt.cite')}
         </button>
 
-        <span className="hidden items-center gap-0.5 sm:flex">
+        {/* In More when the bar is too narrow for them. */}
+        <span className={cn('items-center gap-0.5', showBlocks ? 'flex' : 'hidden')}>
           <Divider />
           <Tool
             label={t('fmt.bulletList')}
@@ -1024,7 +1046,7 @@ export function FormatToolbar({
               className="fixed z-50 overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-lg"
             >
               {/* On a phone the bar keeps only the everyday marks; the rest of its row is here. */}
-              <div className="sm:hidden">
+              <div className={showHistory ? 'hidden' : undefined}>
                 <MenuTool
                   label={t('fmt.undo')}
                   disabled={!editor.can().undo()}
@@ -1039,6 +1061,10 @@ export function FormatToolbar({
                 >
                   <Redo2 className={icon} strokeWidth={1.75} />
                 </MenuTool>
+              </div>
+              {/* The same below `sm`, and between `md` and `xl`, where the side columns leave
+                  the text column too narrow for the whole row (768 px: 496 px of bar). */}
+              <div className={showBlocks ? 'hidden' : undefined}>
                 <MenuTool
                   label={t('fmt.bulletList')}
                   active={editor.isActive('bulletList')}

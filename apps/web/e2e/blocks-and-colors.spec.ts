@@ -68,6 +68,7 @@ test('colours, a contents block and a rule insert, fit every width, and reach th
       ['fmt-text-color', 'text-color-picker'],
       ['fmt-highlight', 'highlight-picker'],
     ] as const) {
+      await openFormatMore(page);
       await page.getByTestId(button).click();
       const box = await page.getByTestId(panel).boundingBox();
       expect(box, `${width} ${panel}`).not.toBeNull();
