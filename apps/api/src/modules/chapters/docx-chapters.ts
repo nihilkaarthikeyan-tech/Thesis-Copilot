@@ -24,6 +24,7 @@
 
 import { FOOTNOTE_MAX } from '@tc/ui';
 import { type DefaultTreeAdapterMap, parseFragment } from 'parse5';
+import { totalWords, wordCountsOf } from './word-counts.js';
 
 type Element = DefaultTreeAdapterMap['element'];
 type ChildNode = DefaultTreeAdapterMap['childNode'];
@@ -43,7 +44,10 @@ export type ImportedChapter = {
   blocks: PmNode[];
   /** Heading 2 titles, in order — they become the outline node's sections. */
   sections: string[];
-  /** Words in the body (the title is not counted). */
+  /**
+   * Words in the body (the title is not counted): only for "is this chapter empty". The count a
+   * student is shown is `chapterWords`, the chapter rail's.
+   */
   words: number;
   /** Text that came before the first Heading 1. */
   preamble: boolean;
@@ -550,6 +554,16 @@ export function chapterDoc(chapter: Pick<ImportedChapter, 'title' | 'blocks'>): 
       ...(chapter.blocks.length > 0 ? chapter.blocks : [{ type: 'paragraph' }]),
     ],
   };
+}
+
+/**
+ * The words the chapter rail will show once the chapter is imported: the stored `wordCount`,
+ * counted by `wordCountsOf` over the whole document, its level-1 title included. The import's
+ * preview and result say this number, so the two never differ (they differed by the title's
+ * words, 14 against 15, before 2026-10-09).
+ */
+export function chapterWords(chapter: Pick<ImportedChapter, 'title' | 'blocks'>): number {
+  return totalWords(wordCountsOf(chapterDoc(chapter)));
 }
 
 /** Words in a stored chapter's body, leaving out its level-1 title — zero means "empty". */

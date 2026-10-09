@@ -10,11 +10,13 @@ import { describe, expect, it } from 'vitest';
 import {
   bodyWords,
   chapterDoc,
+  chapterWords,
   countCitationLike,
   htmlToChapters,
   isReferencesHeading,
   type PmNode,
 } from '../src/modules/chapters/docx-chapters.js';
+import { totalWords, wordCountsOf } from '../src/modules/chapters/word-counts.js';
 import { buildWord, heading2, para, thesisWord } from './_word.js';
 
 const schema = getSchema(
@@ -227,5 +229,28 @@ describe('bodyWords', () => {
         ],
       }),
     ).toBe(0);
+  });
+});
+
+describe('chapterWords (ADR-0113: the preview counts what the chapter rail will show)', () => {
+  it('counts the chapter as the rail does, its title included, so the two never differ', () => {
+    // The fault was 14 in the preview against 15 on the rail: the preview left the title out.
+    const result = htmlToChapters(
+      '<h1>Introduction</h1><p>Groundwater recharge in hard-rock aquifers is <strong>slow</strong> and uneven across the plateau.</p>' +
+        '<h1>Methods and data</h1><p>We used <em>thirty</em> wells.</p>',
+      'thesis',
+    );
+    const [intro, methods] = result.chapters;
+    if (!intro || !methods) throw new Error('expected two chapters');
+    // The body alone, as before.
+    expect(intro.words).toBe(12);
+    expect(methods.words).toBe(4);
+    // What the import now says: the rail's count, title words included.
+    expect(chapterWords(intro)).toBe(13);
+    expect(chapterWords(methods)).toBe(7);
+    // And the rail's count is the stored one: `wordCountsOf` over the document that is saved.
+    for (const chapter of result.chapters) {
+      expect(chapterWords(chapter)).toBe(totalWords(wordCountsOf(chapterDoc(chapter))));
+    }
   });
 });
