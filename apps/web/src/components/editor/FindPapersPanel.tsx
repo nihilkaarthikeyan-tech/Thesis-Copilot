@@ -261,13 +261,16 @@ export function FindPapersPanel({
       {results === null && !busy ? (
         <div className="grid grid-cols-1 gap-1 text-xs">
           <p className="text-muted">Suggested from your thesis</p>
-          <button
-            type="button"
-            onClick={() => void run(documentTitle)}
-            className="rounded-md border border-line px-2 py-1.5 text-left hover:bg-sunk"
-          >
-            {documentTitle}
-          </button>
+          {/* QA 2026-10-09: a placeholder title ("Untitled thesis") is not a search. */}
+          {isPlaceholderTitle(documentTitle) ? null : (
+            <button
+              type="button"
+              onClick={() => void run(documentTitle)}
+              className="rounded-md border border-line px-2 py-1.5 text-left hover:bg-sunk"
+            >
+              {documentTitle}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -441,4 +444,10 @@ export function FindPapersPanel({
       })}
     </div>
   );
+}
+
+/** The titles a student leaves in until they name the thesis (as the API's `namesATopic`). */
+export function isPlaceholderTitle(title: string): boolean {
+  const t = title.trim();
+  return t.length === 0 || /^(untitled|new|my)\s+(thesis|dissertation|document)$/i.test(t);
 }
