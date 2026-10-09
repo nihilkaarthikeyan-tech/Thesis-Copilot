@@ -211,6 +211,29 @@ describe('addSubsections', () => {
     expect(out[1]?.children[0]?.children).toEqual([]);
   });
 
+  it('divides at most three sections of a chapter: those naming the most parts, then the earliest', () => {
+    const nodes = [
+      chapter('ch3-methodology', 'Methodology', [
+        section('Sample frame and data collection'),
+        section('Survey instruments and interview guides'),
+        section('Population, setting and sampling'),
+        section('Qualitative fieldwork and stakeholder interviews'),
+        section('Ethics and data management'),
+      ]),
+    ];
+    const divided = addSubsections(nodes, 'STEM_EMPIRICAL')[0]?.children.map(
+      (s) => s.children.length,
+    );
+    expect(divided).toEqual([2, 2, 3, 0, 0]);
+  });
+
+  it('drops a leading "the" from a part', () => {
+    expect(splitSectionTitle('Self-help groups and the limits of credit alone')).toEqual([
+      'Self-help groups',
+      'Limits of credit alone',
+    ]);
+  });
+
   it('does not change its input', () => {
     const before = plan();
     const copy = structuredClone(before);

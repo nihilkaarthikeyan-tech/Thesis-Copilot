@@ -30,6 +30,13 @@ import type { OutlineNode } from '@tc/types';
 const MAX_PARTS = 4;
 /** The longest part, in words, that still reads as a heading. */
 const MAX_PART_WORDS = 6;
+/**
+ * The most sections one chapter has divided: those naming the most parts, then the earliest.
+ * Measured on the ten title-only and gap-map plans of the outline rounds, splitting every "X and
+ * Y" gave a Methodology up to six divided sections (23 sub-headings in one plan) — a chapter of
+ * headings. Jenni divides a few.
+ */
+const MAX_DIVIDED_PER_CHAPTER = 3;
 
 /** Sections that sum up or frame the others are not divided. */
 const WHOLE_SECTION =
@@ -57,7 +64,7 @@ const FIXED_PAIRS = [
 ];
 /** A part that is a reason for the section, not a part of its work: "design and rationale". */
 const WEAK_PART =
-  /^(rationale|justification|significance|scope|overview|context|background|approach|strategy|purpose|aims?|motivation|delimitations?|definitions?|introduction)$/i;
+  /^(rationale|justification|significance|scope|overview|context|background|approach|strategy|plan|purpose|aims?|motivation|delimitations?|definitions?|introduction)$/i;
 /** Looks like an adjective: Economic, Institutional, Behavioural, Solar, Regulatory… */
 const ADJECTIVE = /^[a-z][a-z-]*(al|ic|ive|ous|ary|ory|ible|able|ful|less|ar|ian)$/i;
 /** Plural kind-nouns that one modifier word can share: "Policy and institutional barriers". */
@@ -83,7 +90,7 @@ export function splitSectionTitle(title: string): string[] | null {
 
   const parts = text
     .split(/\s*,\s*(?:and\s+)?|\s+and\s+/i)
-    .map((p) => p.trim())
+    .map((p) => p.trim().replace(/^the\s+/i, ''))
     .filter(Boolean);
   if (parts.length < 2 || parts.length > MAX_PARTS) return null;
   const leading = parts.slice(0, -1);
@@ -179,16 +186,25 @@ export function addSubsections(nodes: readonly OutlineNode[], template?: Templat
       template ?? null,
     );
     const divisible = role === 'LITERATURE' || role === 'METHOD';
+    const splits = chapter.children.map((section) => {
+      if (section.children.length > 0) return null;
+      if (METHOD_SECTION.test(section.title.trim()) && parts.length > 0) return parts;
+      return divisible ? splitSectionTitle(section.title) : null;
+    });
+    // The sections naming the most parts, then the earliest, up to the chapter's limit.
+    const chosen = new Set(
+      splits
+        .map((split, i) => ({ i, n: split?.length ?? 0 }))
+        .filter((s) => s.n > 0)
+        .sort((a, b) => b.n - a.n || a.i - b.i)
+        .slice(0, MAX_DIVIDED_PER_CHAPTER)
+        .map((s) => s.i),
+    );
     return {
       ...chapter,
-      children: chapter.children.map((section) => {
-        if (section.children.length > 0) return section;
-        if (METHOD_SECTION.test(section.title.trim()) && parts.length > 0) {
-          return withChildren(section, parts, used);
-        }
-        if (!divisible) return section;
-        const split = splitSectionTitle(section.title);
-        return split ? withChildren(section, split, used) : section;
+      children: chapter.children.map((section, i) => {
+        const split = splits[i];
+        return split && chosen.has(i) ? withChildren(section, split, used) : section;
       }),
     };
   });
