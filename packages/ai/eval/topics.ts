@@ -274,3 +274,66 @@ export const TAMILNADU: Topic = {
     'Trust and social norms',
   ],
 };
+
+/**
+ * ADR-0135: Start writing now, the product's commonest first path. A thesis created from its title
+ * alone, an empty "Chapter 1" with no scope note, and a library of 15 papers found for it, read as
+ * abstracts first (ADR-0070). Each title names a place, because the fault this set looks for is a
+ * suggestion framed in another place's setting (Kerala for a Karnataka thesis, 2026-10-09). The
+ * papers come from `eval/fetch-fresh.ts` (OpenAlex, ranked as the paper pool ranks them); the
+ * search strings drop the place for a second query, as the product's angle queries do, so papers
+ * from neighbouring settings come in as they do in production.
+ */
+function fresh(
+  id: string,
+  thesisTitle: string,
+  search: string,
+  broad: string,
+): Topic & { broad: string } {
+  return {
+    id,
+    thesisTitle,
+    search,
+    broad,
+    chapter: { title: 'Chapter 1', scopeNote: '' },
+    befores: [],
+    section: { title: 'Chapter 1', scopeNote: '' },
+    questions: [],
+    informal: '',
+    idea: thesisTitle,
+    themes: [],
+  };
+}
+
+export const FRESH = [
+  fresh(
+    'fresh-karnataka-solar',
+    'Barriers to rooftop solar adoption among rural households in Karnataka',
+    'rooftop solar adoption rural households Karnataka',
+    'rooftop solar adoption barriers households India',
+  ),
+  fresh(
+    'fresh-kerala-fish-drying',
+    'Solar drying of fish among small-scale fisherfolk in Kerala',
+    'solar drying fish Kerala fisherfolk',
+    'solar fish drying small-scale fisheries',
+  ),
+  fresh(
+    'fresh-tamilnadu-microfinance',
+    "Microfinance self-help groups and rural women's livelihoods in Tamil Nadu",
+    'microfinance self-help groups rural women Tamil Nadu',
+    'self-help groups microfinance women empowerment India',
+  ),
+  fresh(
+    'fresh-punjab-stubble',
+    "Farmers' adoption of alternatives to crop residue burning in Punjab",
+    'crop residue burning alternatives farmers Punjab',
+    'crop residue management adoption farmers India',
+  ),
+  fresh(
+    'fresh-kenya-mobile-money',
+    'Mobile money and the incomes of smallholder farmers in Kenya',
+    'mobile money smallholder farmers Kenya income',
+    'mobile money smallholder farmers income Africa',
+  ),
+];

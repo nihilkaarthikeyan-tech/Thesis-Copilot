@@ -1,0 +1,191 @@
+{
+  "topic": "fresh-karnataka-solar",
+  "queries": {
+    "chapter1": "Chapter 1",
+    "titled": "Chapter 1 Barriers to rooftop solar adoption among rural households in Karnataka"
+  },
+  "papers": [
+    {
+      "openalexId": "https://openalex.org/W7213288468",
+      "doi": "10.46609/ijsser.2026.v11i08.043",
+      "title": "The Last Mile of a Subsidy: Household Frictions in Rooftop Solar Adoption in Karnataka, India: A Qualitative Study",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": ["Anusha Bagla"],
+      "venue": "International Journal of Social Science and Economic Research",
+      "abstract": "Despite one of India’s most progressive distributed solar policy environments and the substantial capital subsidies available under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY), residential rooftop solar adoption in Karnataka remains well below its technical potential. This study examines why adoption stalls between policy and people by analysing the “household friction” that willing consumers encounter across the adoption journey. Using a qualitative exploratory design, semi-structured interviews and questionnaires were administered to 70 households in Karnataka, predominantly in the Bengaluru metropolitan region, comprising 24 adopters and 46 non-adopters, between June and July 2026. Responses were examined through thematic analysis and triangulated with national evidence, principally the CEEW pan-India survey of 17,094 households and a qualitative study of Kerala households. Findings reveal that anticipated complexity substantially exceeds experienced complexity: adopters rated expected complexity at a mean of 5.1 out of 10 before installation but actual complexity at only 2.2 after installation, a 57 per cent reduction. Space and roof-ownership constraints ranked as the leading barrier among non-adopters, followed by information gaps and upfront cost. Environmental concern ranked as the leading motivation among adopters, and 45.8 per cent of adopters reported they would have adopted even without the subsidy, while others described a “subsidy paradox” in which panel restrictions, vendor empanelment, and paperwork diluted the subsidy’s value. The paper proposes testable policy interventions to reduce procedural, informational, structural, and perception-related friction in the last mile of subsidy delivery",
+      "toTitle": 0.8055894449390759
+    },
+    {
+      "openalexId": "https://openalex.org/W4415113658",
+      "doi": "10.51584/ijrias.2025.100900041",
+      "title": "Power on the Roof: Reviewing Rooftop Solar Adoption in India",
+      "year": 2025,
+      "citationCount": 2,
+      "authors": ["Saithu Mohammed.", "P. Maheswari"],
+      "venue": "International Journal of Research and Innovation in Applied Science",
+      "abstract": "Rooftop solar (RTS) represents a critical component of India’s clean energy transition, offering decentralized generation, reduced transmission losses, and potential resilience benefits. Yet, despite ambitious national targets and substantial technical potential, RTS adoption has lagged behind expectations. This narrative review synthesizes peer-reviewed literature (2019–2025), government program documents, and policy reports to examine the trends, barriers, enablers, economics, regional signals, stakeholder outcomes, and policy implications shaping rooftop solar adoption in India. Findings indicate that commercial and industrial consumers have historically dominated the sector due to favorable tariffs and access to credit, while residential uptake accelerated only after the launch of flagship initiatives such as PM Surya Ghar. Persistent barriers include high upfront costs, affordability gaps, regulatory uncertainty, procedural delays, information asymmetries, and built environment constraints. At the same time, innovations such as simplified subsidy pipelines, digitalized approval portals, DISCOM performance incentives, vendor certification, and emerging business models including RESCO/OPEX and group or virtual net metering demonstrate viable pathways to expand adoption. The review identifies future research needs in program evaluation, financial innovation, grid integration, apartment governance, and quality assurance, and emphasizes the importance of stable regulatory frameworks, inclusive finance, and community-oriented models.",
+      "toTitle": 0.7838787817988345
+    },
+    {
+      "openalexId": "https://openalex.org/W7125239207",
+      "doi": "10.36948/ijfmr.2026.v08i01.66369",
+      "title": "Understanding Consumer Awareness, Benefits, and Barriers in Rooftop Solar Energy Adoption in Meerut City",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": ["Nidhi Panwar", "Aishwarya Yadav"],
+      "venue": "International Journal For Multidisciplinary Research",
+      "abstract": "This paper tries to understand the perception levels of households in Meerut District, Uttar Pradesh regarding rooftop solar systems. The purpose of solar panels is to use the photovoltaic (PV) effect to turn sunlight into electrical power. They are utilized in commercial, industrial, and residential settings and are essential to the capture of renewable energy. This study investigates consumer views of solar panels, concentrating on aspects that influence their adoption, such as cost, environmental consciousness, government incentives, and technological reliability. A wide range of demographics were surveyed in order to gather data. It also looks at possible adoption barriers and how consumer behavior is affected by public consciousness and trust. Solar energy is still a major challenge, though, because adoption has not increased to a level that can be considered sufficient. The outcomes have the intention to give producers, marketers, and policymakers helpful data for creating strategies that meet consumer demands and facilitate the shift to sustainable energy systems. The ultimate goal of this research is to help solar panels become more widely accepted. The study employs a simple random sampling method to gather comprehensive data.",
+      "toTitle": 0.7694269428162338
+    },
+    {
+      "openalexId": "https://openalex.org/W7167089503",
+      "doi": "10.62656/sijss.v24i3.2443",
+      "title": "Testing Rogers’ Diffusion of Innovation Theory: A Study of Household Solar Adoption under the PM Suryaghar Muft Bijli Yojana in Assam",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": ["Jyotshnakshi Nath", "Daisy Das"],
+      "venue": "South India Journal of Social Sciences",
+      "abstract": "Rooftop solar is a key component of India’s renewable energy transition and its broader commitments to mitigate climate change. To accelerate its adoption, the government of India has launched PM Surya Ghar Muft Bijli Yojana (PMSGY), which provides subsidised rooftop solar PV installations. However, the uneven uptake of rooftop solar across regions highlights the need for a deeper understanding of household adoption patterns, supporting factors, and barriers, particularly in states lagging behind in adoption. In this context, Assam presents an important case for analysing adoption dynamics, as despite having the highest installed solar capacity in northeastern India, rooftop solar adoption at the household level remains relatively low. Drawing on the framework of Rogers’s Diffusion of Innovations, this study examines households’ rooftop solar adoption patterns using a qualitative case study. The findings indicate that adoption of rooftop solar under PMSGY in Guwahati, Assam, is limited and at an early stage, with adoption predominantly concentrated among late adopters. This can be attributed to the small size of the early adopter and the prolonged innovation–decision phase among late adopters. Theoretically, laggards delay adoption due to their traditional and risk-averse tendencies, but this study indicates that their adoption decision is constrained by awareness, structural, financial, utility, and environmental barriers. Therefore, targeted policy interventions to address these barriers are needed. Furthermore, financial incentives such as subsidised installation can facilitate adoption, raising awareness, and communicating adopters' experiences are essential for accelerating rooftop solar diffusion.",
+      "toTitle": 0.7638242475397145
+    },
+    {
+      "openalexId": "https://openalex.org/W4417027054",
+      "doi": "10.56578/cis130408",
+      "title": "Toward Sustainable Energy Consumption: Identifying Barriers to Household Adoption of Photovoltaic Solar Technology",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Tuan Duong Vu", "Phuong Thao Vu", "Hoang Nam Nguyen", "Nguyễn Thu Hà"],
+      "venue": "Challenges in Sustainability",
+      "abstract": "The key target of developing renewable energy systems is critical for countries to combat the impact of climate change and bolster energy security.Among the many available green powers, solar energy generation has been developed worldwide.The exponential acceleration of this technology has stimulated household customers in particular, to switch from the role of consumers to suppliers by selling electricity generated from their home panels.It is anticipated that this change would form a new business model for electricity sales and promote a sustainable energy supply chain, yet the change is still confined to a certain extent in developing markets.In this light, this study identified and evaluated the impact of seven barriers on the household intention to adopt photovoltaic (PV) solar systems.The results of the structural equation modeling (SEM) analysis, based on the data from 288 households in Vietnam, revealed that six barriers, namely uncertain government policies, financial barriers, brand trust barriers, product knowledge barriers, location-based barriers and technical barriers had significant negative impacts on PV adoption intention, while the hypothesized influence of environmental knowledge barriers on this intention was insignificant.Among the validated barriers, uncertain government policies and financial barriers were the most critical factors hindering the household intention to adopt PV solar systems.Notably, while rural surveyed households had the higher means in adoption intentions, technical barriers and financial barriers, their results in location-based barriers and brand trust barriers were lower than the urban ones.Theoretically, this study contributed to expansion of pro-environmental behavior theory and barriers to adoption intention of household consumers.Besides, the findings of this study suggested policy makers, enterprises and technology providers how to promote household adoption thanks to the raised awareness of which barriers are concerned in Vietnam market.",
+      "toTitle": 0.7620288869817222
+    },
+    {
+      "openalexId": "https://openalex.org/W4416269639",
+      "doi": "10.70388/sm250155",
+      "title": "Economic Viability and Policy-Driven Adoption of Rooftop Solar Systems in India: A State-Level Comparative Analysis",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Avirup Mukherjee", "Sidharth Raja Halder"],
+      "venue": "Shodh Manjusha An International Multidisciplinary Journal",
+      "abstract": "The economic viability and policy-driven adoption of rooftop solar systems represent a critical axis in India’s quest for sustainable energy security. This research investigates inter-state differences in rooftop solar adoption across Ten Indian States using secondary data on installations, average electricity tariffs, subsidy percentages, urbanization rates, and household income levels. Descriptive statistics, correlation analysis, multivariate regression, and ANOVA were used to assess how economic and policy variables influence adoption patterns. The results reveal significant state-level variation in rooftop solar installations, not necessarily correlated with income or subsidy levels. Regression analysis suggests that subsidy percentage has a counterintuitive negative association with adoption, while income, tariff, and urbanization rates have minimal influence. ANOVA results further confirm that the difference in installations between high- and low-subsidy states is not statistically significant. These findings point to underlying structural and implementation inefficiencies in India’s rooftop solar policy landscape. The study concludes that financial incentives alone are insufficient to drive adoption. Instead, factors such as policy execution, administrative transparency, consumer awareness, and innovative financing mechanisms are more crucial. The paper recommends moving toward decentralized, performance-based, and consumer-centric policies that go beyond subsidy-centric approaches. A reorientation of India’s rooftop solar strategy toward holistic and context-sensitive planning will be essential for realizing its renewable energy potential. Keywords: Green Energy, Rooftop Solar Photovoltaic, Financial Viability of Renewable Energy, Regression analysis in Energy policy formulation",
+      "toTitle": 0.7599411945441547
+    },
+    {
+      "openalexId": "https://openalex.org/W4411114239",
+      "doi": "10.34218/ijarm_14_01_006",
+      "title": "ECONOMIC EVALUATION AND ADOPTION DYNAMICS OF RESIDENTIAL SOLAR ROOFTOP SYSTEMS IN KERALA",
+      "year": 2023,
+      "citationCount": 0,
+      "authors": ["Suresh Kumar K", "G Vinod"],
+      "venue": "INTERNATIONAL JOURNAL OF ADVANCED RESEARCH IN MANAGEMENT",
+      "abstract": "This study titled \"Economic Evaluation and Adoption Dynamics of Residential SolarRooftop Systems in Kerala\" investigates the financial viability, adoption trends, and challenges of solar rooftop systems among households in the state.Drawing on data from 50 solar-installed homes, the research uses descriptive and analytical methods to assess installation costs, return on investment (ROI), subsidy access, energy savings, and consumer satisfaction.Findings reveal that 3 kW systems are the most commonly adopted, with significant reductions in electricity bills and high user satisfaction.While financial benefits and environmental concerns motivate adoption, high initial costs and limited awareness remain major barriers.The literature review underscores the influence of policy frameworks, socio-economic disparities, technological advancements, and grid integration issues on solar adoption.Importantly, the role of",
+      "toTitle": 0.7533348564002041
+    },
+    {
+      "openalexId": "https://openalex.org/W4396792567",
+      "doi": "10.1016/j.heliyon.2024.e30937",
+      "title": "Adoption of residential rooftop solar PV systems in South Africa: A scoping review of barriers",
+      "year": 2024,
+      "citationCount": 19,
+      "authors": ["Uzziah Mutumbi", "Gladman Thondhlana", "Sheunesu Ruwanza"],
+      "venue": "Heliyon",
+      "abstract": "Global sustainability challenges such as climate change are linked to carbon emissions from fossil fuel powered energy needed for commercial and household consumption. South Africa is highly depended on coal for energy production hence the transition to renewable energy sources such as solar PV is seen as a pathway towards emissions reduction and a sustainable future. Yet, despite the huge potential for solar PV technologies adoption remains very low. This scoping review examines the barriers to household solar PV adoption in South Africa to advance our understanding beyond case study level studies. We analysed all published literature on household solar PV in South Africa as a basis for finding themes, gaps, and trends on solar PV research. Review results show that key barriers can be grouped into financial, personal, institutional, technical and societal barriers, however there were no studies on barriers across an income gradient, a glaring omission given debates on just transitions. Given the complexity of the barriers ranging from personal, societal, to technical barriers, it is not reasonable to expect the government to facilitate transition to solar PV alone. Rather, collective approaches are needed to create enabling conditions for solar PV adoption such as the financial means and information availability. The private sector has a key role to play either in supporting state-initiated programmes or creating the means for solar PV adoption such as power purchase agreements. That said, the state remains a central player in facilitating an enabling economic and political environment to leverage responsiveness from other actors. Without an integrated approach to addressing barriers to solar PV adoption, solar adoption will remain a source of energy for the economically privileged, and the imperative to just transition to renewable energy a pipe dream, in a country characterised by large inequalities among households.",
+      "toTitle": 0.7530141355354476
+    },
+    {
+      "openalexId": "https://openalex.org/W7117150494",
+      "doi": "10.21275/sr251220081015",
+      "title": "Gujarat's Solar Revolution: A Comprehensive Analysis of the Implementation of Solar Roof Top System Under PM Surya Ghar Muft Bijali Yojna",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Utpal D Patel", "Rajiv Patel", "Satish Patel"],
+      "venue": "International Journal of Science and Research (IJSR)",
+      "abstract": "Gujarat has emerged as a frontrunner in India's renewable energy transition, especially in the realm of rooftop solar (RTS) adoption. This paper delves into the intricate ecosystem of RTS in Gujarat with a special focus on the PM-Surya Ghar: Muft Bijli Yojana, the challenges that have surfaced after its implementation, and the prospects brought forth by the new PM-Surya Ghar: Muft Bijli Yojana. Employing a mixed-methods approach that includes policy analysis in the different States of India, the study focused on the effectiveness of State's Policies. It further identifies key barriers to widespread adoption and provides a comparative assessment of state and central government schemes. The research finds that, though Gujarat's initiatives have significantly advanced solar capacity in the state, ongoing impediments such as protracted subsidy disbursal, financing challenges, and grid integration issues remain. The recently launched PM-Surya Ghar Scheme offers a promising alternative, but its success depends on improved alignment with existing state policies to ensure smooth implementation. The study concludes with strategic recommendations, emphasizing the need for expedited subsidy processes, enhanced public awareness, and stronger policy coordination across governance levels.",
+      "toTitle": 0.7433299067039665
+    },
+    {
+      "openalexId": "https://openalex.org/W4409295830",
+      "doi": "10.52783/jisem.v10i31s.5045",
+      "title": "Investigating and Overcoming the Barriers in adoption of Rooftop Solar PV Adoption with Information Systems",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Ashutosh Kumar"],
+      "venue": "Journal of Information Systems Engineering & Management",
+      "abstract": "The installation of rooftop solar panels is a vital aspect of smart city development, promoting the shift to affordable and clean energy. However, achieving widespread public participation in this effort faces significant challenges. This research examines the hindrances in adopting rooftop solar PV systems by residents of Patna, the capital city of Bihar, India. Understanding these barriers is crucial to encouraging public involvement and accelerating the integration of renewable energy solutions. If Patna can overcome these obstacles, it will greatly enhance sustainable urban development, reduce fossil fuel consumption, and improve energy security. Furthermore, the adoption of rooftop solar will contribute to pollution reduction and support the natural ecosystem. This research focuses on resident-driven insights, which are key to the future success of smart cities. The methodology involves identifying barriers to public participation through a questionnaire survey conducted among 200 residents of Patna. Data adequacy was established using statistical tools, and factor analysis was utilized to evaluate the identified variables, supplemented by a correlation matrix for further examination. The study highlights the necessity of collaboration among government agencies, energy providers, and the public to foster a cooperative and supportive environment. The findings reveal three primary barriers relevant to Patna that could be addressed through public participation. This research aims to drive sustainable urban transformation by tackling the challenges to public engagement in rooftop solar PV adoption. By identifying and mitigating these obstacles through information systems, the study will offer valuable insights applicable not only in Patna but also in other cities, facilitating the accelerated integration of renewable energy solutions.",
+      "toTitle": 0.7427151879538598
+    },
+    {
+      "openalexId": "https://openalex.org/W3214010150",
+      "doi": "10.1016/j.jclepro.2021.129619",
+      "title": "Adoption of solar photovoltaic systems in households: Evidence from Uganda",
+      "year": 2021,
+      "citationCount": 54,
+      "authors": [
+        "Sylvia Manjeri Aarakit",
+        "Joseph Mpeera Ntayi",
+        "Francis Wasswa",
+        "Muyiwa  Samuel Adaramola",
+        "Vincent Fred Ssennono"
+      ],
+      "venue": "Journal of Cleaner Production",
+      "abstract": "With over 70% of households without access to clean energy, Uganda presents a huge potential for increased adoption of solar photovoltaic (PV) technologies. However, their uptake is relatively low. This study employs a nationally representative data set from Uganda's National Electrification Survey of 2018 to analyze factors influencing households' choice of solar PV system. Conditional mixed process model was estimated for quantification of associations between flexible payment mechanism, influential persons, access to grid electricity and solar PV adoption in the first stage, then type of solar PV adopted in the second stage. We find that, the determinants of adoption as well as type of solar PV adopted are heterogeneous. Specifically, flexible payment mechanism is positive for uptake of solar home systems and solar kit; Influential people were insignificant in all cases, while grid access was negatively associated with uptake of both solar kits and solar home systems. We further find that, rural residence, income, type of house are significant drivers of solar PV type adopted. Conversely, education attainment was positive and significantly associated with adoption but insignificant for type of solar PV adopted. Sex of household head was significant for uptake of solar kit. Our findings suggest that, solar PV uptake is a rural phenomenon and affordability is the main driver of solar PV type adopted. Flexible payment mechanism enhances the ability of income constrained households to afford relatively expensive solar PV systems. Hence, any policy interventions geared at scaling uptake of solar home systems should address affordability. Solar companies should continue to offer flexible payment modalities and target rural household.",
+      "toTitle": 0.7417086289402428
+    },
+    {
+      "openalexId": "https://openalex.org/W4386980445",
+      "doi": "10.1016/j.esr.2023.101178",
+      "title": "Solar PV adoption at household level: Insights based on a systematic literature review",
+      "year": 2023,
+      "citationCount": 117,
+      "authors": ["Shah Rukh Shakeel", "Hassan Yousaf", "Muhammad Faisal Irfan", "Arto Rajala"],
+      "venue": "Energy Strategy Reviews",
+      "abstract": "The conventional model of energy production and consumption has come under severe scrutiny. Concerns related to climate change, increased energy needs and issues surrounding conventional sources of energy generation have highlighted a need to adopt sustainable means of energy generation. Renewable energy sources are believed to have the potential to meet rising energy needs in a sustainable and environmentally friendly manner. Solar energy is particularly interesting in this respect as it has the potential to be used at commercial as well as household level; however, to this end, its contribution to global energy supply has remained limited. A number of studies have explored factors influencing the adoption of solar photovoltaics (PV) at the household level and proposed measures to foster its development. This paper aims to systematically review and analyse the state of solar PV adoption by exploring “What are the key factors influencing the adoption of solar PV at household level?”. From 146 studies published in peer-reviewed scientific journals, the study identifies 127 unique factors influencing adoption behaviour, and groups these into eight categories, namely economic, environmental, social, personal, demographic, technical, regulatory and market-related factors. Based on the findings, this paper proposes guidelines for practitioners, identifies knowledge gaps and suggests directions for future research to strengthen the scholarship in this domain.",
+      "toTitle": 0.7401747448828189
+    },
+    {
+      "openalexId": "https://openalex.org/W3202099599",
+      "doi": "10.21275/sr21924134637",
+      "title": "Impact and Pathways of Transitioning to Solar Energy in Rural India",
+      "year": 2021,
+      "citationCount": 0,
+      "authors": ["Rohan Ray"],
+      "venue": "International Journal of Science and Research (IJSR)",
+      "abstract": "Although India has almost reached the historic goal of universal electrification, the challenge of supplying 24x7 power for all remains. Due to the low and distributed electricity demand in rural areas and the prevailing poverty, delivering uninterrupted power to every household is a drawn-out process. Despite its growing economy, India has low conventional energy resources compared to its required energy, and can harness the huge potential of solar energy as it lies in the tropical belt. This paper analyses the impact and pathways of the transition towards solar energy in rural India. By analysing data from a successful project-named Solar Mamas-of Barefoot College International, it highlights the benefits in climate change mitigation, rural employment creation and income generation for women, and democratisation of access to energy for hundreds of communities, all while helping India meets its 2030 SDG targets.",
+      "toTitle": 0.7342955782654373
+    },
+    {
+      "openalexId": "https://openalex.org/W7152979717",
+      "doi": "10.33545/26180723.2026.v9.i4c.3472",
+      "title": "Barriers and drivers: Understanding the rural households and farmers knowledge on solar technology and its adoption",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": [
+        "Swetha Kodali",
+        "R Neela Rani",
+        "Nomula Prathyusha",
+        "Jesse W Sunitha",
+        "Lakshmi Challa",
+        "G Swaroopa Rani"
+      ],
+      "venue": "International Journal of Agriculture Extension and Social Development",
+      "abstract": "The knowledge levels of rural farm women and households on solar technology was studied to evaluate the role of solar technology in farm and household activities. Exploratory research design and Random sampling technique was used for the study. The results revealed that education level has a significant influence on awareness of solar technology. Farmers with higher levels of education were more aware of solar-based irrigation systems, government subsidies, and operational benefits compared to illiterate and primary-educated farmers. Farmers with secondary and higher education levels expressed greater satisfaction due to better understanding of system operation, maintenance, and long-term benefits. The findings emphasize the importance of educational interventions and capacity-building programs to enhance effective adoption of solar technologies among farmers. As the training programs can be extended in duration and customized to the specific needs of rural women, focusing on maintenance and practical applications of solar technology in agriculture and households. The study emphasizes the role of woman, who can make her community adopt solar technology as a logical step for economic and environmental longevity focusing on Gender specific knowledge and gaps on solar technology. The study suggest that, there is a need for progress solar technology awareness, launch of public awareness campaigns, offer government incentives like subsidies and tax benefits, and promote rooftop and community solar installations.",
+      "toTitle": 0.7309202090703022
+    },
+    {
+      "openalexId": "https://openalex.org/W7130515264",
+      "doi": "10.33545/26646021.2025.v7.i12b.894",
+      "title": "An empirical study of consumer adoption and satisfaction of grid-connected rooftop solar among households in Rohtak division",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Sunny Hooda", "Rajesh Kumar"],
+      "venue": "International Journal of Political Science and Governance",
+      "abstract": "This study examines consumer adoption and satisfaction with grid-connected rooftop solar systems among households in the Rohtak Division of Haryana. With increasing energy demand and growing emphasis on renewable energy, rooftop solar has emerged as a viable and sustainable alternative to conventional power sources. The study is based on primary data collected from 350 household consumers through a structured questionnaire using random and systematic sampling techniques. It analyses factors influencing adoption, installation costs, return on investment, subsidy support, difficulties faced during installation, and overall consumer satisfaction. The findings reveal that most households prefer medium-capacity solar systems (3-6 kilo Watt) and have benefited from government subsidies, with a majority achieving return on investment within five years. Reduction in electricity bills emerged as the primary motivation for installation, while overall satisfaction with the system was found to be high. However, concerns regarding high upfront costs, technical issues, vendor service quality, and policy changes continue to affect consumer experience. The study concludes that while the rooftop solar scheme has been effective in promoting clean energy and financial savings, greater financial support, improved service quality, and enhanced awareness are essential to accelerate adoption and ensure long-term consumer satisfaction.",
+      "toTitle": 0.7275048909889787
+    }
+  ],
+  "rankings": {
+    "chapter1": [11, 10, 4, 2, 3, 1, 14, 7, 0, 13, 9, 6, 8, 12, 5],
+    "titled": [0, 1, 11, 10, 2, 3, 4, 7, 5, 8, 9, 14, 13, 6, 12]
+  }
+}
