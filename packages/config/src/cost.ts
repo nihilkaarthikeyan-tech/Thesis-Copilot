@@ -141,12 +141,16 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
    * worst case: `EXAMINER_REVIEW_MAX_SECTIONS` sections, each examined once with the chapter
    * build's examiner shape (section + cited passages + pitfalls: 5.5k in, 600 out, the 4k cached
    * block counted once per call). No writing, no fix, no proofread.
+   *
+   * ADR-0131: the two largest sections are also asked for strengths and questions for the author
+   * (`examiner_review.md`): a system block about 600 tokens longer (cached) and, measured in
+   * round 3, about 600 more output tokens each (1,700 against 1,099, reasoning included).
    */
   EXAMINER_REVIEW: {
     tier: 'strong',
-    inputTokens: 8 * 5_500,
-    cachedInputTokens: 8 * 4_000,
-    outputTokens: 8 * 600,
+    inputTokens: 8 * 5_500 + 2 * 600,
+    cachedInputTokens: 8 * 4_000 + 2 * 600,
+    outputTokens: 8 * 600 + 2 * 600,
   },
   /**
    * ADR-0080. One unit is one deep research question, two strong-tier calls priced at their

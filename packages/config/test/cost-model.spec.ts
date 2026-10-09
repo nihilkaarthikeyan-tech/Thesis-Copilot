@@ -62,18 +62,20 @@ describe('Appendix E.2 — cost self-check', () => {
     const budget = computeMonthlyBudget('STUDENT_MONTHLY', { models: PRODUCTION_MODELS });
     const line = budget.lines.find((l) => l.label === 'Examiner reviews');
     expect(line?.count).toBe(6);
-    // Eight sections, each one examiner call of the chapter build's shape, on gpt-5-mini.
-    expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(1.8618, 4);
+    // Eight sections, each one examiner call of the chapter build's shape, on gpt-5-mini; ADR-0131
+    // adds strengths and questions to the two largest (₹1.8618 → ₹2.0993).
+    expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(2.0993, 4);
     // ADR-0077 + ADR-0074: chat on the strong tier, researching a thin library (₹0.4850 a
-    // question) took this from ₹63.89 to ₹70.73; ADR-0080's deep research adds ₹3.27.
-    expect(budget.totalInr).toBeCloseTo(74.0, 2);
+    // question) took this from ₹63.89 to ₹70.73; ADR-0080's deep research adds ₹3.27; ADR-0131
+    // ₹1.43 more.
+    expect(budget.totalInr).toBeCloseTo(75.43, 2);
     // ADR-0051 moved the fast tier to gpt-4.1-mini for Assist; the ceiling holds there too.
     const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
     });
     // ADR-0077 + ADR-0074: from ₹85.82; ADR-0080's three deep research questions (₹1.09 each)
-    // from ₹89.85 to ₹93.13.
-    expect(assistModel.totalInr).toBeCloseTo(93.13, 2);
+    // from ₹89.85 to ₹93.13; ADR-0131's strengths and questions to ₹94.55.
+    expect(assistModel.totalInr).toBeCloseTo(94.55, 2);
     expect(assistModel.withinCeiling).toBe(true);
   });
 
