@@ -64,3 +64,17 @@ sub-section an outline does have as a level-3 heading with its own line under it
 later prompt that wins, or a student's own sub-sections, need no further code. The ≤ 20 s first
 sentence stays open: the outline call's median was 21–24 s in these rounds.
 
+
+## Addendum 2026-10-09: the first cited sentence in under 20 s
+
+Measured with `apps/web/e2e/_measure/first-session.spec.ts` (Start writing now, defaults, the
+questions skipped; real models): 28.8 s and 39.9 s to the first cited sentence. The editor opened
+in 3 s with the cursor under "Chapter 1", but no suggestion was asked for until the planned
+headings landed (~25 s, the outline call). The cause: the student's automatic-suggest setting
+arrives a moment after the editor is built; the opener had already looked with it off, and
+nothing looked again. `setAutoSuggest` turning it on now asks the opener to look once more
+(`pokeOpener`). When the plan lands, a chapter holding only that one opening sentence still takes
+its headings: the first section's heading goes above the sentence, the others after it.
+
+After: 15.6 s, 18.1 s and 20.3 s on three runs; the rest is the library becoming readable. With
+ACCEPT=1 the spec accepts the sentence and checks the headings are laid around it.

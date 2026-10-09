@@ -380,7 +380,7 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
 
 **(a) Buildable by the agent**
 
-1. R5: the first cited sentence within 20 s on Start writing now — start the first sentence
+1. ~~R5~~ **done 2026-10-09** (15.6–20.3 s measured; ADR-0092 addendum): the first cited sentence within 20 s on Start writing now — start the first sentence
    before the whole outline is written, or a shorter outline call; measure with
    `apps/web/e2e/_measure`.
 2. R5b: an outline prompt (A.9 candidate) that writes H3 sub-sections *and* wins its evaluation

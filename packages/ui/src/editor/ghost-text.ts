@@ -503,9 +503,22 @@ export function midSentencePoint(state: EditorState): { key: string; words: numb
  * suggestions never fired in the web app.
  */
 export function setAutoSuggest(editor: Editor, on: boolean): void {
-  const storage = (editor.storage as unknown as Record<string, { autoSuggest?: boolean | null }>)
-    .ghostText;
-  if (storage) storage.autoSuggest = on;
+  const storage = (
+    editor.storage as unknown as Record<
+      string,
+      { autoSuggest?: boolean | null; pokeOpener?: boolean }
+    >
+  ).ghostText;
+  if (!storage) return;
+  const was = storage.autoSuggest;
+  storage.autoSuggest = on;
+  // R5 (2026-10-09): the setting arrives a moment after a new chapter opens with the cursor under
+  // its title, and the opener had already looked (setting off) and given up; the first sentence
+  // then waited ~30 s for the planned headings. Turning it on looks again, once.
+  if (on && was !== true && !editor.isDestroyed) {
+    storage.pokeOpener = true;
+    editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false));
+  }
 }
 
 export const GhostText = Extension.create<GhostTextOptions>({
@@ -531,6 +544,8 @@ export const GhostText = Extension.create<GhostTextOptions>({
       lastTiming: null as { ttfbMs: number; latencyMs: number } | null,
       /** The live automatic-suggest choice; see `setAutoSuggest`. Null: `options.autoSuggest`. */
       autoSuggest: null as boolean | null,
+      /** Set by `setAutoSuggest` when it turns on: the next view update looks for an opener. */
+      pokeOpener: false,
     };
   },
 
@@ -746,10 +761,12 @@ export const GhostText = Extension.create<GhostTextOptions>({
             update: (currentView, previous) => {
               if (!autoOn()) return clear();
               const opener = emptySectionUnderHeading(currentView.state);
+              const poked = storage.pokeOpener === true;
+              storage.pokeOpener = false;
               if (
                 opener &&
                 !offered.has(opener) &&
-                !currentView.state.selection.eq(previous.selection)
+                (poked || !currentView.state.selection.eq(previous.selection))
               ) {
                 scheduleOpener(currentView, opener);
                 return;

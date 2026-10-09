@@ -5847,3 +5847,12 @@ inserted only on "Put here"). No model, no metering. Erased with the paper (casc
 (`DocumentEraser`) and the account (by user); a merge moves them, a copy copies them.
 `apps/api/test/reader-highlights.spec.ts` (11) and `apps/web/test/reader-highlights.spec.ts`
 pin it; the browser checks are in the ADR's hand-off.
+
+## R5: the first cited sentence in under 20 s (2026-10-09, ADR-0092 addendum)
+
+The opener never fired on a new chapter: the automatic-suggest setting arrives after the editor
+is built, and turning it on did not make the opener look again, so the first sentence waited for
+the planned headings (28.8 s and 39.9 s measured). Now 15.6 / 18.1 / 20.3 s on the real models.
+A chapter holding only that sentence when the plan lands gets its headings around it. The
+`first-session` measurement spec was brought up to date with the start screens (ADR-0087/0091)
+and logs every suggestion request on the same clock.

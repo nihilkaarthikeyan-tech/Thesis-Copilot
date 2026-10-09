@@ -46,9 +46,21 @@ async function untilCitedSuggestion(
   limitS: number,
 ) {
   const editor = page.locator('.thesis-editor');
-  await editor.locator('p').last().click();
-  await page.keyboard.type('Rooftop solar adoption in rural Karnataka remains low. ');
-  c.mark('typed the first sentence');
+  // ADR-0078/0087: the opener offers a first sentence under the first heading without typing.
+  // Wait for it as a student would; type only if nothing comes within 45 s.
+  const quiet = Date.now() + 45_000;
+  let typed = false;
+  while (Date.now() < quiet) {
+    if (await page.locator('.thesis-editor span.ghost[data-status="shown"]').count()) break;
+    await page.waitForTimeout(500);
+  }
+  if (!(await page.locator('.thesis-editor span.ghost[data-status="shown"]').count())) {
+    await editor.locator('p').last().click();
+    await page.keyboard.type('Rooftop solar adoption in rural Karnataka remains low. ');
+    c.mark('nothing offered in 45 s; typed the first sentence');
+    typed = true;
+  }
+  if (!typed) c.mark('opener offered without typing');
   const end = Date.now() + limitS * 1000;
   let firstAny = false;
   let lastCount = '';
@@ -156,11 +168,61 @@ test('first session, Start writing now', async ({ page, request }) => {
     ]);
   await page.goto('/app');
   await page.getByLabel('Working title').fill(TOPIC);
-  const c = clock();
   await page.getByTestId('start-writing-now').click();
-  await page.waitForURL(/\/write\//);
+  // ADR-0087 / ADR-0091: the preference and structure steps with their defaults, then Skip.
+  await page.getByTestId('setup-next').click();
+  const c = clock();
+  // Every suggestion request and how it ended, on the same clock.
+  page.on('request', (r) => {
+    if (r.url().includes('/assist/suggest')) {
+      const body = r.postData() ?? '';
+      c.mark(
+        `suggest asked (before: ${JSON.stringify(JSON.parse(body || '{}').before ?? '').slice(0, 60)})`,
+      );
+    }
+  });
+  page.on('response', async (r) => {
+    if (r.url().includes('/assist/suggest')) {
+      const text = await r.text().catch(() => '');
+      const done = /event: done\s*\ndata: (.*)/.exec(text)?.[1] ?? '';
+      const err = /event: error\s*\ndata: (.*)/.exec(text)?.[1] ?? '';
+      c.mark(`suggest answered ${r.status()} ${(done || err).slice(0, 160)}`);
+    }
+  });
+  await page.getByTestId('setup-start').click();
+  await page
+    .getByTestId('start-questions-skip')
+    .click({ timeout: 20_000 })
+    .catch(() => undefined);
+  c.mark('pressed Start (questions skipped)');
+  await page.waitForURL(/\/write\//, { timeout: 60_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 60_000 });
   c.mark('IN THE EDITOR');
   const documentId = /\/app\/d\/([0-9a-f-]{36})\//.exec(page.url())?.[1] ?? '';
   await untilCitedSuggestion(page, c, cookie, documentId, 8 * 60);
+  if (!process.env.ACCEPT) return;
+  // R5: accept the opening sentence before the plan lands; the headings go around it.
+  await page.keyboard.press('Tab');
+  c.mark('accepted the first sentence');
+  const editor = page.locator('.thesis-editor');
+  // The layout waits while a suggestion is on screen (it is the student's to take or leave);
+  // a student reading on dismisses the follow-on one.
+  const until = Date.now() + 90_000;
+  while (Date.now() < until && (await editor.locator('h2').count()) === 0) {
+    if (await page.locator('.thesis-editor span.ghost[data-status="shown"]').count()) {
+      await page.keyboard.press('Escape');
+    }
+    await page.waitForTimeout(1_000);
+  }
+  await expect(editor.locator('h2').first()).toBeVisible({ timeout: 5_000 });
+  c.mark('planned headings laid out');
+  const shape = await editor.evaluate((el) =>
+    Array.from(el.children)
+      .slice(0, 6)
+      .map((n) => `${n.tagName}:${(n.textContent ?? '').slice(0, 50)}`),
+  );
+  console.log(shape.join('\n'));
+  await page.screenshot({ path: '../../qa-shots/r5-headings-around-opener.png' });
+  expect(shape[1]).toMatch(/^H2:/);
+  expect(shape[2]).toMatch(/^P:.{20,}/);
 });

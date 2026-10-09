@@ -326,3 +326,30 @@ describe('the opening sentence, when nothing comes back', () => {
     expect(fake.calls).toHaveLength(1);
   });
 });
+
+describe('the setting arriving after the chapter opened (R5, 2026-10-09)', () => {
+  it('asks once it turns on, with the cursor already under the title', () => {
+    vi.useFakeTimers();
+    const fake = fakeRequest({ events: [] });
+    // A new chapter: its title and an empty line, the cursor placed before the setting is known.
+    const editor = createTestEditor('<h1>Chapter 1</h1><p></p>', {
+      request: fake.request,
+      autoSuggest: false,
+      autoSuggestIdleMs: 50,
+    });
+    editor.commands.focus();
+    vi.spyOn(editor.view, 'hasFocus').mockReturnValue(true);
+    moveTo(editor, endOf(editor));
+    vi.advanceTimersByTime(60);
+    expect(fake.calls).toHaveLength(0);
+
+    setAutoSuggest(editor, true);
+    vi.advanceTimersByTime(60);
+    expect(fake.calls).toHaveLength(1);
+
+    // Turning it on again does not ask again for the same place.
+    setAutoSuggest(editor, true);
+    vi.advanceTimersByTime(60);
+    expect(fake.calls).toHaveLength(1);
+  });
+});

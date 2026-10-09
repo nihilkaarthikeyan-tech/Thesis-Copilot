@@ -207,8 +207,8 @@ export function SectionGuide({
   }, [editor, row]);
 
   // ADR-0087: Jenni lays the planned headings out in the document. A chapter that is still blank
-  // (its title and empty lines, nothing written) takes its planned sections as headings when the
-  // plan lands, with the cursor on the line under the first, so the opener (ADR-0078) offers a
+  // (its title and empty lines, nothing written but the one opening sentence) takes its planned
+  // sections as headings when the plan lands, with the cursor on the line under the first, so the opener (ADR-0078) offers a
   // first sentence there. Anything the student has written means it is left alone. The worker
   // does the same for chapters nobody has open; this covers the one on screen, which its save
   // would otherwise overwrite.
@@ -219,36 +219,42 @@ export function SectionGuide({
     if (!editor || sectionTitles.length === 0) return;
     const lay = (): boolean => {
       const doc = editor.state.doc;
-      let writing = false;
       let headings = 0;
+      let other = false;
+      const written: number[] = [];
       doc.forEach((child, _offset, index) => {
         if (child.type.name === 'heading') {
           if (index > 0) headings++;
-        } else if (child.textContent.trim().length > 0 || child.type.name !== 'paragraph') {
-          writing = true;
-        }
+        } else if (child.type.name !== 'paragraph') other = true;
+        else if (child.textContent.trim().length > 0) written.push(index);
       });
-      if (writing || headings > 0) return true;
+      // R5 (2026-10-09): the opener now offers a first sentence under the chapter's title before
+      // the plan lands. One such paragraph (accepted, or typed) does not stop the layout: it goes
+      // under the first section's heading. More writing than that, or anything else, does.
+      if (other || headings > 0 || written.length > 1) return true;
       if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return false;
       const { schema } = editor.state;
       const heading = schema.nodes.heading;
       const paragraph = schema.nodes.paragraph;
       const first = doc.firstChild;
       if (!heading || !paragraph || first?.type.name !== 'heading') return true;
-      const nodes = sectionTitles.flatMap((title) => [
+      const sentence = written.length === 1 ? doc.child(written[0] as number) : null;
+      const nodes = sectionTitles.flatMap((title, i) => [
         heading.create({ level: 2 }, schema.text(title)),
-        paragraph.create(),
+        i === 0 && sentence ? sentence : paragraph.create(),
       ]);
       const from = first.nodeSize;
+      // The line under the first section: into its empty paragraph, or at the end of the
+      // sentence already there, where the next suggestion follows on.
+      const underFirst = from + (nodes[0]?.nodeSize ?? 0) + 1;
+      const cursor = sentence ? underFirst + sentence.content.size : underFirst;
       editor
         .chain()
         .command(({ tr }) => {
           tr.replaceWith(from, doc.content.size, nodes);
           return true;
         })
-        // The empty line under the first section: after the title, the first heading and into
-        // its paragraph.
-        .setTextSelection(from + (nodes[0]?.nodeSize ?? 0) + 1)
+        .setTextSelection(cursor)
         .focus()
         .run();
       setOpen(false);
