@@ -1,5 +1,6 @@
-# Release — PRD §13.5 step 2: on tag, build + push images to GHCR, SSH to the VPS, deploy the tag,
-# migrate, health-check, roll back on failure (infra/scripts/deploy.sh does the VPS half).
+# Release — PRD §13.5 step 2: on tag, run the full CI (ci.yml, Playwright included; ADR-0141), then
+# build + push images to GHCR, SSH to the VPS, deploy the tag, migrate, health-check, roll back on
+# failure (infra/scripts/deploy.sh does the VPS half). A tag whose CI is red deploys nothing.
 #
 # Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (private key), DOMAIN, NEXT_PUBLIC_API_URL.
 name: release
@@ -17,9 +18,27 @@ env:
   ORG: ${{ github.repository_owner }}
 
 jobs:
+  # The full CI — every vitest suite and the Playwright smoke — on the tagged commit itself, before
+  # anything is built or pushed (ADR-0141). An ordinary push to main no longer runs Playwright, so
+  # this is the gate that does. Called rather than looked up (`gh api .../check-runs`) because a
+  # lookup can only find a result if someone remembered to produce one for that exact commit; a
+  # call produces it, and a red one stops the release by `needs:` with nothing else to get right.
+  ci:
+    name: full ci on ${{ github.ref_name }}
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: true
+    # What ci.yml asks for; a called workflow cannot have more than its caller grants.
+    permissions:
+      contents: read
+      actions: read
+
   images:
     name: build + push ${{ matrix.image }}
     runs-on: ubuntu-latest
+    # Not in parallel with ci: the images are tagged `latest` as well as the version, and a release
+    # that fails its tests must not have moved `latest`.
+    needs: ci
     strategy:
       matrix:
         include:
@@ -53,7 +72,8 @@ jobs:
   deploy:
     name: deploy ${{ github.ref_name }} to the VPS
     runs-on: ubuntu-latest
-    needs: images
+    # `ci` is listed as well as `images` so the gate is explicit here, not only inherited.
+    needs: [ci, images]
     environment: production
     steps:
       # A release is images *and* files, and only the images were ever shipped.

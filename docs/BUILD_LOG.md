@@ -6193,3 +6193,17 @@ Cost ₹14.90 (₹8.18 the round, ₹6.72 a run lost to PowerShell 5.1 dropping 
 
 
 The candidate's code (`isSectionOpener`, `OPENER_INSTRUCTION`, `maxSentences`, the harness's `--opener-mode`) stays on branch `worktree-agent-a4111c5e444d5e7f7` (commit 338fa95), not on main, until the owner decides whether a short opener is wanted at a lower examiner score.
+
+## CI minutes (2026-10-09, ADR-0141)
+
+The repo goes private again, so Actions minutes will be paid. A push to main now runs a quick
+check: lint, typecheck, migrate-diff, audit and the vitest suites of the packages changed since
+the last green main run plus their dependents (`turbo run test --filter=...[sha]`, checked with
+`--dry=json` on turbo 2.10.12; any change outside `apps/` and `packages/` runs every suite). The
+Playwright smoke and every suite run on a pull request, on "Run workflow", and on every release:
+`release.yml` now calls `ci.yml` with `full: true` and builds images and deploys only after it
+passes (before this, a tag on a red commit deployed). Docs-only pushes (`docs/**` except
+`docs/i18n/`, root `*.md`, READMEs) skip CI; tags are never filtered. Playwright browsers are
+cached. No test removed. From recent runs: ≈29 runner-minutes per push before, ≈11 on average
+after (0 docs-only, ≈4 web-only, ≈17 otherwise); a release ≈16 before, ≈45 after, and ≈30 min
+longer from tag to deploy. Validated with `@action-validator/cli`; not yet run on GitHub.
