@@ -24,6 +24,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: 'v0.1.34',
+    date: '2026-10-09',
+    title: 'Writing that draws on more of your papers, and research questions anywhere',
+    changes: [
+      'Suggestions and drafts now read from across your whole library, not the few papers nearest the sentence: a drafted section cites about twice as many different papers.',
+      'A new thesis offers its first cited sentence in about 20 seconds, and the planned headings arrive around it.',
+      'Ask a research question from your theses page, with no thesis open: answered from the literature, or from all your theses at once, each source labelled with its thesis.',
+      'The examiner review now also names the chapter’s strengths and the questions an examiner might ask you in a viva.',
+      '"Search the literature" in the AI edit panel: papers on your text are added to your library first, then cited.',
+      'Highlight and note passages in the paper reader; your highlights come back when you reopen the paper.',
+      'Papers you add from Discover, the Papers tab, chat or a pasted reference go into the collection chosen in "Add into".',
+      'Rename and search your chats. Figure and table numbers in every export match their cross-references.',
+      'Many fixes: the formatting toolbar stays at the top, menus and dialogs stay on screen on a phone, citation brackets can be clicked and tapped, Chicago notes styles work, and Hindi covers the newest screens.',
+    ],
+  },
+  {
     version: 'v0.1.32',
     date: '2026-10-08',
     title: 'Replies, reviews in the text, and more of what Jenni has',
