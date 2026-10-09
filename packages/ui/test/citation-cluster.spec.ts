@@ -184,7 +184,9 @@ describe('selecting and removing a cluster', () => {
     // What a mousedown leaves behind: ProseMirror's note that the next selection is the pointer's.
     const input = (view as unknown as { input: Record<string, unknown> }).input;
     input.lastSelectionOrigin = 'pointer';
-    input.lastSelectionTime = Date.now();
+    // ProseMirror reads the origin only within 50 ms of it; a slow CI runner took longer, so the
+    // stamp is put ahead of the read rather than racing it.
+    input.lastSelectionTime = Date.now() + 60_000;
     document.getSelection()?.collapse(label, 5);
     readDomSelection();
 
