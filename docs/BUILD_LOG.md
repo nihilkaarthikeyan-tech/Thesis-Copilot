@@ -6366,3 +6366,44 @@ Cost model, `STUDENT_MONTHLY` worst case (`computeMonthlyBudget` with the model 
 
 Kept both tiers. The one real gain, Assist mid-paragraph, sits on the highest-volume action.
 A prompt candidate asking the mini for what the judge rewarded is the cheap next step (ADR-0146).
+
+## Academic punctuation and style, ADR-0147 (2026-10-10)
+
+The owner found generated text full of em dashes and asked that it read like a careful human
+academic, Jenni's recorded output the reference for tone. Writing quality only; nothing here
+touches or targets any detector (§12.3).
+
+**The backstop, shipped.** `academicPunctuation` (`packages/ai/src/builder/academic-style.ts`)
+turns a dash used as punctuation into the sentence's own punctuation (commas, parentheses, a
+colon before a list, a semicolon between clauses, an en dash between two numbers) and changes
+nothing else: it checks that the letters, digits and citation markers are the same and that
+every citation stays in its sentence, or returns the input. Ranges, compounds, minus signs,
+quotations, code, LaTeX, tables, bullets and URLs are left alone; Devanagari takes the comma.
+Wired on every path that puts generated text before the student: Assist, drafts (and so the
+chapter build, the literature review and their fix pass), edit commands and the ADR-0066 edit
+actions, chat and deep research, guide-comment revisions, tone rewrites; proofreading refuses a
+correction that adds a dash. A rewrite of a selection the student wrote with dashes keeps them.
+80 unit cases, Hindi among them, and a property test over the 1,496 outputs the real models
+wrote in `eval/results`.
+
+**Before, measured** (`eval/style-measure.ts`, on the stored raw outputs): dashes per output
+Assist 0.03, chat 0.13, deep research 0.55, edit commands 1.14, **drafts 2.02**; stock phrases
+per 1k words Assist **7.86** (126 of 214 hits the "Furthermore/Moreover/Additionally," opener),
+every other path under 1. After the backstop: 0 dashes on every path.
+
+**One prompt candidate, not adopted.** `eval/candidates/assist-academic.md` and
+`draft-academic.md`: the current prompts plus one style block (no dash, the stock-phrase list,
+no padded opener, varied sentences, plain verbs) and ADR-0146's lessons (a citation in every
+sentence, in that sentence; a specific figure from the passage; no intensifiers). The criterion
+was committed before the runs (ADR-0147 §4). ₹17.28 spent, no refusal, no failed call.
+
+- Assist, typed sentence (15): candidate **8–1–6**, mean 7.30 → 8.23, cited sentences 63% →
+  **86%** (criterion 90%), shared citations 11 → 4; but stock phrases **up** (6.8 → 11.3 per
+  1k: "Additionally," opened 7 of 15 outputs against 5, despite the rule naming it) and six-word
+  copied runs **up** (3 → 6). Fails on criteria 1, 3 and 5.
+- Assist, opener (10): 3–4–3, mean +0.4, stock up 5.6 → 8.4.
+- Draft (5 × 2): current prompt **4–1–5**, mean 8.55 → 8.30; dashes 13 → 7 (criterion 0),
+  stock 0.95 → 0. Fails on criteria 2 and 4.
+
+Lesson for the next round: a negative rule that names the word does not stop the mini writing
+it; say what to write instead. The citation-per-sentence rule is the part that worked.

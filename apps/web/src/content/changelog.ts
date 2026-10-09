@@ -24,6 +24,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-10',
+    title: 'No more dashes in what the assistant writes',
+    changes: [
+      'Suggestions, drafts, chapter builds, edit actions, chat answers and revisions no longer come with dashes ("—") as punctuation: an aside is set off with commas or brackets, a list follows a colon, two clauses meet at a semicolon. Only the punctuation changes; the words, the figures and the citations stay exactly where they were.',
+      'Your own dashes are yours: an edit or a tone rewrite of text you wrote with dashes keeps them, and proofreading never suggests one.',
+      'Number ranges (2015–2020), hyphenated words, minus signs, quotations, equations, code and tables are left as they are.',
+    ],
+  },
+  {
     version: 'v0.1.40',
     date: '2026-10-09',
     title: 'Set up inside the editor, a whole literature review, and only kept suggestions count',

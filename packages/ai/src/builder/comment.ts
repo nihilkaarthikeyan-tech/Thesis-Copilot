@@ -14,6 +14,7 @@
 import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
 import type { LlmRequest } from '../types.js';
+import { academicPunctuationUnlessStudents } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
 
 export const COMMENT = {
@@ -167,14 +168,19 @@ export function postProcessRevision(
 
   const allowed = new Set([...allowedIds, ...citeKeys(original)]);
   const hallucinated: string[] = [];
-  const text = raw
-    .replace(CITE_RE, (whole, key: string) => {
-      if (allowed.has(key)) return whole;
-      hallucinated.push(key);
-      return '';
-    })
-    .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+  // ADR-0147: the model's dashes become a thesis's punctuation, unless the student's paragraph
+  // used dashes itself.
+  const text = academicPunctuationUnlessStudents(
+    raw
+      .replace(CITE_RE, (whole, key: string) => {
+        if (allowed.has(key)) return whole;
+        hallucinated.push(key);
+        return '';
+      })
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim(),
+    original,
+  );
 
   const originalKeys = new Set(citeKeys(original));
   const revisedKeys = new Set(citeKeys(text));
