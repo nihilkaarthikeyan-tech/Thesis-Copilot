@@ -164,3 +164,9 @@ export function createMailer(env: Env, options: { log?: MailLog } = {}): MailerC
   }
   return { mailer: new ConsoleMailer(options.log), provider: 'console' };
 }
+
+export {
+  type UnsubscribePurpose,
+  unsubscribeToken,
+  verifyUnsubscribeToken,
+} from './unsubscribe.js';

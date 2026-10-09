@@ -55,6 +55,7 @@ import {
 import {
   type ChapterBuildJob,
   type CoherenceRunJob,
+  type CommentEmailJob,
   type DraftSectionJob,
   type ExaminerReviewJob,
   type ExtractPaperJob,
@@ -70,6 +71,7 @@ import {
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { Client as MinioClient } from 'minio';
+import { fanOutCommentEvent, sendCommentEmail } from './comment-email.js';
 import {
   chapterBuildFinished,
   coherenceFinished,
@@ -104,6 +106,7 @@ import {
   INDEX_SOURCE_CONCURRENCY,
   QUEUE_CHAPTER_BUILD,
   QUEUE_COHERENCE,
+  QUEUE_COMMENT_EMAIL,
   QUEUE_DRAFT_SECTION,
   QUEUE_EXAMINER_REVIEW,
   QUEUE_EXTRACT_PAPER,
@@ -298,6 +301,29 @@ async function main(): Promise<void> {
     connection,
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   });
+  // ADR-0142: the event step queues one delayed send per person on the same queue. A finished
+  // send is removed at once, so its id (thread, person, slot) is free again for the next event.
+  const commentEmailQueue = new Queue(QUEUE_COMMENT_EMAIL, {
+    connection,
+    defaultJobOptions: DEFAULT_JOB_OPTIONS,
+  });
+  const commentEmailDeps = {
+    prisma,
+    mailer: mail.mailer,
+    appUrl: env.APP_URL,
+    secret: env.AUTH_SECRET,
+    log,
+    enqueue: async (
+      payload: Extract<CommentEmailJob, { kind: 'send' }>,
+      options: { jobId: string; delayMs: number },
+    ) => {
+      await commentEmailQueue.add(QUEUE_COMMENT_EMAIL, payload, {
+        jobId: options.jobId,
+        delay: options.delayMs,
+        removeOnComplete: true,
+      });
+    },
+  };
   const findSourcesQueue = new Queue(QUEUE_FIND_SOURCES, {
     connection,
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
@@ -658,6 +684,18 @@ async function main(): Promise<void> {
       { connection: connection.duplicate(), concurrency: 1 },
     ),
 
+    new Worker(
+      QUEUE_COMMENT_EMAIL,
+      async (job: Job<CommentEmailJob>) => {
+        const deps = {
+          ...commentEmailDeps,
+          log: (e: Record<string, unknown>) => log({ jobId: job.id, ...e }),
+        };
+        if (job.data.kind === 'event') return fanOutCommentEvent(deps, job.data);
+        return sendCommentEmail(deps, job.data);
+      },
+      { connection: connection.duplicate(), concurrency: 2 },
+    ),
     new Worker(QUEUE_NOOP, async (job) => ({ ok: true, id: job.id }), {
       connection: connection.duplicate(),
       concurrency: 4,
@@ -954,6 +992,7 @@ async function main(): Promise<void> {
     await resolveQueue.close();
     await indexQueue.close();
     await abstractQueue.close();
+    await commentEmailQueue.close();
     await prisma.$disconnect();
     await connection.quit();
     process.exit(0);

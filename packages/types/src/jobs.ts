@@ -34,6 +34,8 @@ export const QUEUE_NAMES = [
   'examiner-review',
   // ADR-0124: a whole literature review — the chapter build's pipeline over every theme.
   'lit-review-build',
+  // ADR-0142: a comment or reply emails the others who can see the thesis's comments.
+  'comment-email',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -216,7 +218,35 @@ export type JobPayloads = {
   'chapter-build': ChapterBuildJob;
   'examiner-review': ExaminerReviewJob;
   'lit-review-build': ChapterBuildJob & { kind: 'LIT_REVIEW' };
+  'comment-email': CommentEmailJob;
 };
+
+/**
+ * `comment-email` — ADR-0142. Two steps on one queue:
+ *
+ * - `event`: the API saw a new comment or reply (`eventId` is that row). The worker works out who
+ *   else can see the thesis's comments and queues a `send` for each. Job id `comment-event__<id>`.
+ * - `send`: one email to one person about one thread, folding in everything since they were last
+ *   told. Delayed to the end of the hour's throttle; its id keys on the thread, the person and the
+ *   throttle slot it will read (`commentSendJobId`), so every event inside one hour is one job.
+ */
+export type CommentEmailJob =
+  | { kind: 'event'; documentId: string; commentId: string; eventId: string }
+  | { kind: 'send'; commentId: string; userId: string; slot: number };
+
+/** The id of the `event` step: one per comment or reply, so a retried request queues it once. */
+export function commentEventJobId(eventId: string): string {
+  return jobId('comment-event', eventId);
+}
+
+/**
+ * The id of a `send`: the thread, the person, and the slot — the moment the hour's throttle opens,
+ * i.e. their last email about this thread plus an hour (0 when never mailed). Everything the job
+ * reads is fixed by those three: the events after the cursor that last email left.
+ */
+export function commentSendJobId(commentId: string, userId: string, slot: number): string {
+  return jobId('comment-email', commentId, userId, String(slot));
+}
 
 /**
  * Retry policy for every queue — PHASES 0.7: three attempts with exponential backoff from 1s.

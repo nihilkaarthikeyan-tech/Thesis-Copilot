@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**688** strings are translated; **1** are deliberately
+**698** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -613,6 +613,26 @@ English. Write corrections in the last column.
 | `account.invoices` | Invoices | इनवॉइस | |
 | `account.invoiceError` | That invoice could not be produced. | वह इनवॉइस नहीं बन सका। | |
 | `account.emailTitle` | Email address | ईमेल पता | |
+| `account.commentEmail.title` | Email me about comments and replies | टिप्पणियों और जवाबों के बारे में मुझे ईमेल करें | |
+| `account.commentEmail.body` | On by default. When someone else comments or replies on a thesis you can see the comments of, we email you the first few lines and a link to it. At most one email per comment thread an hour; anything more in that hour comes in the next one. | शुरू से चालू। जब कोई और ऐसी थीसिस पर टिप्पणी या जवाब लिखता है जिसकी टिप्पणियाँ आप देख सकते हैं, तो हम उसकी शुरुआती पंक्तियाँ और उसका लिंक ईमेल करते हैं। एक टिप्पणी पर घंटे में ज़्यादा से ज़्यादा एक ईमेल; उस घंटे में आया बाकी सब अगले ईमेल में। | |
+
+## unsubscribe
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `unsubscribe.title` | Comment emails | टिप्पणी ईमेल | |
+| `unsubscribe.working` | Turning comment emails off… | टिप्पणी ईमेल बंद किए जा रहे हैं… | |
+| `unsubscribe.off` | Comment emails are off. You will not be emailed about comments and replies any more. | टिप्पणी ईमेल बंद हैं। अब आपको टिप्पणियों और जवाबों के बारे में ईमेल नहीं मिलेंगे। | |
+| `unsubscribe.on` | Comment emails are on again. | टिप्पणी ईमेल फिर से चालू हैं। | |
+| `unsubscribe.undo` | Turn them back on | फिर से चालू करें | |
+| `unsubscribe.again` | Turn them off | बंद करें | |
+| `unsubscribe.account` | You can change this at any time under Account. | आप इसे कभी भी Account में बदल सकते हैं। | |
+| `unsubscribe.invalid` | That link is not valid. Sign in and turn these emails off under Account. | यह लिंक मान्य नहीं है। साइन इन करें और Account में ये ईमेल बंद करें। | |
+
+## Account
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
 | `account.signInWith` | You sign in with {email}. | आप {email} से साइन इन करते हैं। | |
 | `account.emailWithPassword` | The code we email you and your password both belong to this address, so changing it changes how you sign in. Move it before you lose access to a university mailbox. | हम जो कोड ईमेल करते हैं और आपका पासवर्ड, दोनों इसी पते से जुड़े हैं, इसलिए इसे बदलने से साइन इन का तरीका बदल जाता है। यूनिवर्सिटी का मेलबॉक्स बंद होने से पहले पता बदल लें। | |
 | `account.emailNoPassword` | There is no password on this account — the code we email you is how you get in. So changing this address changes how you sign in. Move it before you lose access to a university mailbox. | इस अकाउंट पर कोई पासवर्ड नहीं है — हम जो कोड ईमेल करते हैं, उसी से आप अंदर आते हैं। इसलिए यह पता बदलने से साइन इन का तरीका बदल जाता है। यूनिवर्सिटी का मेलबॉक्स बंद होने से पहले पता बदल लें। | |

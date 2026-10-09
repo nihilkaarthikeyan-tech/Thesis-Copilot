@@ -94,6 +94,15 @@ export default function PrivacyPage() {
         can also open your thesis to read it, never to change it. Every time that happens it is
         recorded, and we email you straight away to say so.
       </p>
+      <p className="mt-2 text-muted">
+        When someone comments or replies on a thesis, we email the others who can see its comments
+        (never a reader) the commenter&rsquo;s name, the thesis title and the first few lines of the
+        comment — never the thesis text — at most once an hour per comment. Turn this off under{' '}
+        <Link href="/app/account" className="underline">
+          Account
+        </Link>{' '}
+        or with the link in any of those emails.
+      </p>
 
       <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">
         Where it lives
