@@ -24,6 +24,7 @@ import { ENV } from '../../common/env.token.js';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { RESEARCH_CHAT_SOURCES } from './research-chat.js';
 import { ResearchChatService } from './research-chat.service.js';
 import { streamSse } from './sse.js';
 
@@ -31,6 +32,8 @@ const askBody = z.object({
   message: z.string().trim().min(1).max(2_000),
   /** The chat to continue; absent starts a new one. */
   chatId: z.string().uuid().optional(),
+  /** The literature (the default) or "All my theses". */
+  source: z.enum(RESEARCH_CHAT_SOURCES).optional(),
   /** The chat filters a search result can answer (ADR-0060 §9). */
   filters: z
     .object({

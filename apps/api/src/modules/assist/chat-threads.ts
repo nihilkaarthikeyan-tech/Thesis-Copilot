@@ -43,6 +43,12 @@ export type ChatCitation = {
   beyond?: BeyondPaper;
   /** ADR-0083: the passage was a file attached to the question; not a source, not citable. */
   attachment?: { name: string };
+  /**
+   * ADR-0132, "All my theses": the thesis whose library the passage is from. Opens in that
+   * thesis's reader; `paper` is what "Add to a thesis…" sends to another thesis.
+   */
+  thesis?: { id: string; title: string };
+  paper?: BeyondPaper;
 };
 
 /** What a beyond-library answer read, for the line under it. */
@@ -67,6 +73,8 @@ export type StoredTurn = ChatTurn & {
   beyond?: BeyondSummary;
   /** ADR-0074: the library's passages and abstracts a search found; ADR-0080 with the plan. */
   research?: ResearchSummary | DeepSummary;
+  /** ADR-0132: answered from the libraries of all the student's theses. */
+  across?: true;
 };
 
 /** A collection a thread answers from (its live name). */

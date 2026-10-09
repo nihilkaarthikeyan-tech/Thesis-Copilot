@@ -184,6 +184,8 @@ export type ChatEvent =
         offerResearch?: boolean;
         /** Present on an answer written from search abstracts. */
         beyond?: BeyondSummary;
+        /** ADR-0132: answered from the libraries of all the student's theses. */
+        across?: true;
         /** ADR-0074: present on a library answer that also read abstracts a search found. */
         research?: ResearchSummary | DeepSummary;
         /**

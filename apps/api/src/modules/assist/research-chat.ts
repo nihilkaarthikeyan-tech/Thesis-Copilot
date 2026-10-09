@@ -18,7 +18,53 @@ export const RESEARCH_CHAT = {
   keepTurns: 60,
   /** A thesis title is at most 300 characters (`POST /documents`). */
   maxThesisTitle: 300,
+  /**
+   * "All my theses" asks at most this many, the most recently worked on first. Each is one exact
+   * ranking of a few thousand chunks (ADR-0128), run together.
+   */
+  maxTheses: 20,
 } as const;
+
+/**
+ * Where a research question is answered from: the scholarly indexes' abstracts (`web`, ADR-0060's
+ * path), or the passages of every one of the student's own theses (`theses`, "All my theses").
+ */
+export type ResearchChatSource = 'web' | 'theses';
+export const RESEARCH_CHAT_SOURCES = ['web', 'theses'] as const;
+
+/** The first step of a question across theses. */
+export function acrossStep(theses: number): string {
+  return theses === 1 ? 'Searching your thesis…' : `Searching your ${theses} theses…`;
+}
+
+/** What the answer reads, across theses. */
+export function readingPassagesStep(passages: number, theses: number): string {
+  return `Reading ${passages} passage${passages === 1 ? '' : 's'} from ${theses} ${
+    theses === 1 ? 'thesis' : 'theses'
+  }`;
+}
+
+/** The line under an answer across theses. */
+export function acrossNote(passages: number, theses: number): string {
+  const where =
+    theses === 1
+      ? 'the library of one of your theses'
+      : `the libraries of ${theses} of your theses`;
+  return `From ${passages} passage${passages === 1 ? '' : 's'} in ${where}. Each citation names its thesis.`;
+}
+
+/**
+ * The relevance floor's refusal across theses: nothing in any of the student's libraries is near
+ * the question. Written by the server; no model call, no charge.
+ */
+export const ACROSS_OFF_TOPIC_REPLY =
+  'Nothing in the libraries of your theses relates to that, so there is nothing for me to answer ' +
+  'from. Ask about the papers in your theses, or search the literature instead.';
+
+/** A.4's "not enough" reply names one library; across theses it is all of them. */
+export const ACROSS_NOT_ENOUGH_REPLY =
+  'The papers in your theses do not say enough about this to answer it. Search the literature ' +
+  'instead, or add papers on it to a thesis.';
 
 /**
  * The memory block a question with no thesis is asked under: A.0.1's own template with nothing
@@ -64,7 +110,7 @@ export function papersOfChat(turns: readonly StoredTurn[]): BeyondPaper[] {
   for (const turn of turns) {
     if (turn.role !== 'assistant') continue;
     for (const citation of turn.citations ?? []) {
-      const paper = citation.beyond;
+      const paper = citation.beyond ?? citation.paper;
       if (!paper) continue;
       const key = (paper.doi ?? paper.title).toLowerCase();
       if (!seen.has(key)) seen.set(key, paper);
