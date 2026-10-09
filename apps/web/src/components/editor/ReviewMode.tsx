@@ -24,6 +24,7 @@ import {
   REVIEW_START,
   type ReviewItem,
   type ReviewSession,
+  reviewBarPlacement,
 } from '@/lib/review-mode';
 
 function storageOf(editor: Editor): TrackedChangesStorage | undefined {
@@ -68,6 +69,31 @@ export function ReviewMode({
   const wasEditable = useRef(true);
   // The plugin's state changes with every transaction (a change mapped, marked gone).
   const [, redraw] = useReducer((n: number) => n + 1, 0);
+  // QA 2026-10-09: the bar sits over the writing column, not the middle of the window, so it
+  // stays off the tool panel and the "read beside" pane at every width (`reviewBarPlacement`).
+  const [placement, setPlacement] = useState<{ left: number; width: number } | null>(null);
+  useEffect(() => {
+    if (!session || !editor) return;
+    let column: HTMLElement | null = null;
+    try {
+      column = editor.view.dom.closest('main');
+    } catch {
+      // The view is not mounted yet: the CSS placement stands.
+    }
+    if (!column) return;
+    const place = () => {
+      const box = column.getBoundingClientRect();
+      setPlacement(reviewBarPlacement(box, document.documentElement.clientWidth));
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(column);
+    window.addEventListener('resize', place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [session, editor]);
 
   /** The items still drawn in the text: not decided, and their words still there. */
   const live = useCallback((): ReviewItem[] => {
@@ -311,12 +337,16 @@ export function ReviewMode({
   if (!session) return null;
 
   const isNote = current?.replacement === null;
+  const barStyle = placement
+    ? { left: placement.left, width: placement.width, right: 'auto', marginInline: 0 }
+    : undefined;
   const allDone = items.length === 0;
 
   return (
     <section
       data-testid="review-mode"
       aria-label={`Review mode: ${session.title}`}
+      style={barStyle}
       className="fixed inset-x-0 bottom-16 z-40 mx-auto lg:bottom-3 w-[min(46rem,calc(100vw-2rem))] rounded-lg border border-line-strong bg-surface px-3 py-2 text-xs shadow-lg"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">

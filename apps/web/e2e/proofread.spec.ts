@@ -215,6 +215,12 @@ test('review mode: the corrections in the text, N and Y, then Try next', async (
   await expect(editor.locator('.tc-change-ins', { hasText: 'received' })).toBeVisible();
   await expect(editor).toHaveAttribute('contenteditable', 'false');
   await expect(bar.getByTestId('review-mode-current')).toContainText('recieved');
+  // QA 2026-10-09: the bar sits over the writing column, clear of the tool panel beside it.
+  const barBox = await bar.boundingBox();
+  const panelBox = await page.getByTestId('tool-panel').boundingBox();
+  if (barBox && panelBox && panelBox.width > 0) {
+    expect(barBox.x + barBox.width).toBeLessThanOrEqual(panelBox.x);
+  }
 
   // N leaves the first word as written; the next one becomes current.
   await page.keyboard.press('n');
