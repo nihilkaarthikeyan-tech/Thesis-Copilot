@@ -26,6 +26,7 @@ import { PLANS } from '@tc/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
+import { LibraryFilingService } from '../../common/library-filing.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { PaperIdService } from './paper-id.service.js';
@@ -43,6 +44,8 @@ const resolveBody = z.object({
   references: z
     .array(z.object({ raw: z.string().trim().min(1), doi: z.string().trim().optional() }))
     .max(500),
+  /** R18 (ADR-0129): the collection to file the papers into; absent or null, the library only. */
+  collectionId: z.string().uuid().nullable().optional(),
 });
 
 /**
@@ -132,6 +135,7 @@ export class SourcesController {
     private readonly search: SearchService,
     private readonly zotero: ZoteroImportService,
     private readonly paperIds: PaperIdService,
+    private readonly filing: LibraryFilingService,
   ) {}
 
   /**
@@ -302,7 +306,15 @@ export class SourcesController {
   ) {
     const parsed = resolveBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid reference list', parsed.error.issues);
-    return this.sources.resolveReferences(user.id, documentId, parsed.data.references);
+    // Checked before the add, so a collection that is not this thesis's adds nothing.
+    const target = await this.filing.target(user.id, documentId, parsed.data.collectionId);
+    const result = await this.sources.resolveReferences(
+      user.id,
+      documentId,
+      parsed.data.references,
+    );
+    const filedIn = await this.filing.file(documentId, target, result.sourceIds);
+    return { ...result, filedIn };
   }
 
   @Post('documents/:id/sources/upload')
