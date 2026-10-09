@@ -48,7 +48,7 @@ export const CHAPTER_BUILD = {
 // --------------------------------------------------------------------------------------------
 
 const OWN_TAGS =
-  /<\/?(?:entity_types|type|thesis|objective|question|hypothesis|review|section|s|entities|entity|passages|passage|terminology|term|pitfalls|pitfall|focus|item|chapter|fix|issues|issue)\b[^>]*>/gi;
+  /<\/?(?:entity_types|type|thesis|objective|question|hypothesis|review|section|s|entities|entity|passages|passage|terminology|term|pitfalls|pitfall|focus|item|chapter|fix|issues|issue|ask)\b[^>]*>/gi;
 export const cleanBuildText = (text: string): string => text.replace(OWN_TAGS, '').trim();
 const attr = (text: string): string => cleanBuildText(text).replace(/"/g, '”');
 

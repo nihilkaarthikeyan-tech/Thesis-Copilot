@@ -5880,3 +5880,17 @@ alone. One COMMAND unit, taken first; the relevance embedding is an EMBED row. C
 `apps/api/test/edit-literature.spec.ts` (9), `apps/api/test/edit-literature-api.spec.ts` (10),
 `apps/web/test/edit-literature.spec.ts` (7) pass; `apps/web/e2e/edit-literature.spec.ts` (2)
 lists but was not run here (the dev stack serves main's code).
+## Row 55: strengths and questions for the author — evaluated, not shown (2026-10-09, ADR-0131)
+
+A candidate examiner prompt (`examiner_review.md`: `examiner.md`'s issues part word for word,
+plus strengths pinned to quoted sentences and viva questions, inside the same per-section call
+and the same `EXAMINER_REVIEW` unit) with every strength and question checked in code
+(`examiner-highlights.ts`). Two rounds on five real chapters
+(`apps/worker/scripts/eval-examiner-highlights.ts`, ₹26.99 in all). Round 1 lost blocking issues
+(76% of the old prompt's, bar 80%); round 2 held them (94%, recall 0.53 against the old prompt's
+own 0.59) and anchored 37 of 47 raw strengths and 56 of 60 questions, but one run of ten gave the
+10-sentence rooftop-solar introduction a single strength against the two set before the round.
+Not wired: the worker / API / Flags-tab wiring is commit `485a472`, reverted by `fd8e404`.
+Had it shipped: ₹2.53 a review instead of ₹1.86, ₹97.16 a month for a fully active student.
+Found on the way: the examiner's own blocking issues agree with themselves only 59% of the time
+from run to run, so any single comparison between two prompts is noisy.

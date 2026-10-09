@@ -388,7 +388,10 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
 3. ~~R18~~ **done 2026-10-09** (ADR-0129): file papers added from Discover and from the editor (chat's Add, Find papers, Cite here)
    into the collection chosen in "Add into".
 4. Row 55: strengths and questions for the author on the examiner review — a change to
-   `examiner.md`, so an ADR and an eval round (rule 6).
+   `examiner.md`, so an ADR and an eval round (rule 6). **Tried 2026-10-09, not shown**
+   (ADR-0131): built as `examiner_review.md` with code checks; two evaluation rounds, the second
+   held the issues but failed one of 45 checks (a chapter with one strength); the wiring is
+   reverted. A round 3 candidate is described in the ADR.
 5. ~~R8: the web switch on an edit~~ **done 2026-10-09** (ADR-0133): "Search the literature"
    beside "Use my library" adds the few papers on topic to the library (into "Add into") before
    the edit cites them; same prompt, same COMMAND unit.
