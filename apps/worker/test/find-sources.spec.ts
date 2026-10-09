@@ -85,8 +85,15 @@ function fakes(
     },
     source: {
       findMany: async () => options.library ?? [],
-      create: async ({ data }: { data: Record<string, unknown> }) => sources.push(data),
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        sources.push(data);
+        return { id: `source-${sources.length}` };
+      },
     },
+    // ADR-0138: the insert runs in a transaction under a lock; the cleanup is one statement.
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    $queryRaw: async () => [],
+    $executeRaw: async () => 0,
   } as unknown as PrismaClient;
   const found = options.found ?? [work(1), work(2)];
   const searchedWith: unknown[] = [];

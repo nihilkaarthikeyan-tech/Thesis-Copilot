@@ -27,7 +27,12 @@ import {
   autoSourcesJobKey,
   monthlyAutoSearches,
 } from '@tc/config';
-import type { PrismaClient } from '@tc/db';
+import {
+  addSourcesOnce,
+  normaliseTitle,
+  type PrismaClient,
+  removeStrandedDuplicateSources,
+} from '@tc/db';
 import {
   cosine,
   credibility,
@@ -106,12 +111,6 @@ export async function autoSearchesThisMonth(
  */
 export const SEARCH_BUDGET = { perCallMs: 8_000, perIndexMs: 12_000 } as const;
 
-const norm = (t: string) =>
-  t
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-
 /** The line a Source carries as `rawReference`, the same shape a search pick gets. */
 export function referenceLine(w: {
   title: string;
@@ -148,6 +147,15 @@ export async function runFindSources(
     }),
   ]);
   if (!user || !chapter || !document) return { status: 'gone', added: 0, searched: 0 };
+  // ADR-0138: a copy an earlier race left PENDING for good ("Looking it up…") goes, once its
+  // resolved twin is there. Idempotent and cheap; it never fails the search.
+  await removeStrandedDuplicateSources(deps.prisma, { documentId: job.documentId }).then(
+    (removed) => {
+      if (removed > 0) log({ msg: 'stranded duplicate sources removed', removed });
+    },
+    (error: unknown) =>
+      log({ level: 40, msg: 'stranded duplicate cleanup failed', error: String(error) }),
+  );
   // ADR-0087: the student's choices when starting the thesis. Web search off means no papers are
   // found for them at all; the rest narrow what is found.
   const prefs = readSourcePrefs(document.meta);
@@ -243,14 +251,16 @@ export async function runFindSources(
     select: { doi: true, title: true },
   });
   const dois = new Set(library.map((s) => s.doi?.toLowerCase()).filter(Boolean));
-  const titles = new Set(library.map((s) => (s.title ? norm(s.title) : '')).filter(Boolean));
+  const titles = new Set(
+    library.map((s) => (s.title ? normaliseTitle(s.title) : '')).filter(Boolean),
+  );
   const fresh = mergeWorks(lists).filter(
     (w) =>
       meetsSourcePrefs(w, prefs) &&
       w.abstract &&
       w.abstract.trim().length > 200 &&
       !(w.doi && dois.has(w.doi.toLowerCase())) &&
-      !titles.has(norm(w.title)),
+      !titles.has(normaliseTitle(w.title)),
   );
 
   // 3. On topic, by the same measure retrieval uses. No LLM.
@@ -284,30 +294,47 @@ export async function runFindSources(
   }
 
   // 4. Into the library, then the path every picked paper takes: resolve, then read.
-  for (const w of added) {
-    const raw = referenceLine(w);
-    await deps.prisma.source.create({
-      data: {
-        documentId: job.documentId,
-        status: 'PENDING',
-        rawReference: raw,
-        doi: w.doi,
-        openalexId: w.openalexId,
-        title: w.title,
-        year: w.year,
-        venue: w.venue,
-        citationCount: w.citationCount,
-        isPreprint: w.isPreprint,
-        oaStatus: w.oaStatus,
-        subTheme: chapter.title,
-        autoAddedAt: now,
-        ...(w.abstract ? { cslJson: { abstract: w.abstract } } : {}),
-      },
+  // ADR-0138: the library was read above, seconds ago, and another run (or a student's add) may
+  // have added the same papers since. The insert checks again under a per-thesis lock, so two runs
+  // at once add each paper once, and only the rows this run created are resolved by it.
+  const chosen = added;
+  const rows = await addSourcesOnce(
+    deps.prisma,
+    job.documentId,
+    chosen.map((w) => ({ ...w, rawReference: referenceLine(w) })),
+    (tx, w) =>
+      tx.source.create({
+        data: {
+          documentId: job.documentId,
+          status: 'PENDING',
+          rawReference: w.rawReference,
+          doi: w.doi,
+          openalexId: w.openalexId,
+          title: w.title,
+          year: w.year,
+          venue: w.venue,
+          citationCount: w.citationCount,
+          isPreprint: w.isPreprint,
+          oaStatus: w.oaStatus,
+          subTheme: chapter.title,
+          autoAddedAt: now,
+          ...(w.abstract ? { cslJson: { abstract: w.abstract } } : {}),
+        },
+        select: { id: true },
+      }),
+  );
+  added = rows.filter((row) => row.created).map((row) => row.item);
+  if (added.length < chosen.length) {
+    log({
+      msg: 'find-sources skipped papers added meanwhile',
+      skipped: chosen.length - added.length,
     });
+  }
+  for (const w of added) {
     await deps.enqueueResolve({
       documentId: job.documentId,
       userId: job.userId,
-      rawReference: raw,
+      rawReference: referenceLine(w),
       ...(w.doi ? { printedDoi: w.doi } : {}),
     });
   }

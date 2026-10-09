@@ -16,7 +16,7 @@ import {
   withDetails,
 } from '@tc/citations';
 import type { Plan } from '@tc/config';
-import type { Prisma } from '@tc/db';
+import { addSourcesOnce, type Prisma } from '@tc/db';
 import { openAccessFromStatus } from '@tc/retrieval';
 import { jobId, jobKeyDigest } from '@tc/types';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
@@ -441,49 +441,48 @@ export class SourcesService {
   }> {
     await this.ownedDocument(ownerId, documentId);
 
-    const existing = await this.prisma.source.findMany({
-      where: { documentId },
-      select: { id: true, rawReference: true },
-    });
-    const seen = new Map<string, string>();
-    for (const row of existing) if (row.rawReference) seen.set(row.rawReference, row.id);
+    // ADR-0138: checked and inserted under the thesis's lock (same reference line, or the same
+    // printed DOI), so a concurrent add cannot leave a second copy that never resolves.
+    const wanted = references
+      .map((reference) => ({ rawReference: reference.raw.trim(), doi: reference.doi ?? null }))
+      .filter((reference) => reference.rawReference.length > 0);
+    const rows = await addSourcesOnce(this.prisma, documentId, wanted, (tx, reference) =>
+      tx.source.create({
+        data: {
+          documentId,
+          status: 'PENDING',
+          rawReference: reference.rawReference,
+          ...(reference.doi ? { doi: reference.doi } : {}),
+        },
+        select: { id: true },
+      }),
+    );
 
     let queued = 0;
     let alreadyPresent = 0;
     const sourceIds: Array<string | null> = [];
 
+    let next = 0;
     for (const reference of references) {
-      const raw = reference.raw.trim();
-      if (!raw) {
+      if (!reference.raw.trim()) {
         sourceIds.push(null);
         continue;
       }
-      const known = seen.get(raw);
-      if (known) {
+      const row = rows[next++];
+      if (!row) continue;
+      sourceIds.push(row.id);
+      if (!row.created) {
         alreadyPresent++;
-        sourceIds.push(known);
         continue;
       }
-
-      const created = await this.prisma.source.create({
-        data: {
-          documentId,
-          status: 'PENDING',
-          rawReference: raw,
-          ...(reference.doi ? { doi: reference.doi } : {}),
-        },
-        select: { id: true },
-      });
-      seen.set(raw, created.id);
-      sourceIds.push(created.id);
-
+      const raw = row.item.rawReference;
       await this.queue.enqueue(
         'resolve-reference',
         {
           documentId,
           userId: ownerId,
           rawReference: raw,
-          ...(reference.doi ? { printedDoi: reference.doi } : {}),
+          ...(row.item.doi ? { printedDoi: row.item.doi } : {}),
         },
         { jobId: jobId('resolve-reference', documentId, jobKeyDigest(raw)) },
       );

@@ -22,7 +22,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Providers } from '@tc/ai';
 import { computeEmbeddingCost, type Env } from '@tc/config';
-import type { Prisma } from '@tc/db';
+import { addSourcesOnce, type Prisma } from '@tc/db';
 import type { RetrievedPassage } from '@tc/retrieval';
 import {
   cosine,
@@ -229,38 +229,39 @@ export class EditLiteratureService {
     works: readonly WebResult[],
   ): Promise<string[]> {
     const now = new Date();
+    // ADR-0138: checked and inserted under the thesis's lock, as find-sources does, so the two
+    // running at once add each paper once. The reference line is the text a chat Add would send,
+    // so pressing Add there later finds this row.
+    const rows = await addSourcesOnce(
+      this.prisma,
+      documentId,
+      works.map((w) => ({ ...w, rawReference: w.reference.raw.trim() })),
+      (tx, w) =>
+        tx.source.create({
+          data: {
+            documentId,
+            status: 'PENDING',
+            rawReference: w.rawReference,
+            doi: w.doi,
+            title: w.title,
+            year: w.year,
+            venue: w.venue,
+            citationCount: w.citationCount,
+            isPreprint: w.isPreprint,
+            subTheme: chapterTitle,
+            // Found for the student, not chosen by them paper by paper: shown "Added
+            // automatically" with the rest, and citable under either library-search setting.
+            autoAddedAt: now,
+            ...(w.abstract ? { cslJson: { abstract: w.abstract } as Prisma.InputJsonValue } : {}),
+          },
+          select: { id: true },
+        }),
+    );
     const ids: string[] = [];
-    for (const w of works) {
-      const raw = w.reference.raw.trim();
-      // The same text a chat Add would send, so pressing Add there later finds this row.
-      const existing = await this.prisma.source.findFirst({
-        where: { documentId, rawReference: raw },
-        select: { id: true },
-      });
-      if (existing) {
-        ids.push(existing.id);
-        continue;
-      }
-      const created = await this.prisma.source.create({
-        data: {
-          documentId,
-          status: 'PENDING',
-          rawReference: raw,
-          doi: w.doi,
-          title: w.title,
-          year: w.year,
-          venue: w.venue,
-          citationCount: w.citationCount,
-          isPreprint: w.isPreprint,
-          subTheme: chapterTitle,
-          // Found for the student, not chosen by them paper by paper: shown "Added
-          // automatically" with the rest, and citable under either library-search setting.
-          autoAddedAt: now,
-          ...(w.abstract ? { cslJson: { abstract: w.abstract } as Prisma.InputJsonValue } : {}),
-        },
-        select: { id: true },
-      });
-      ids.push(created.id);
+    for (const { item: w, id, created } of rows) {
+      ids.push(id);
+      if (!created) continue;
+      const raw = w.rawReference;
       await this.queue.enqueue(
         'resolve-reference',
         {
