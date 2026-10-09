@@ -61,4 +61,33 @@ The eval runner and `scripts/probe-outline-from-title.ts` apply it too, as the w
   honest limit of a no-model approach.
 - Real-model measurement on five new title-only plans was not run in this change (see
   BUILD_LOG); the post-processing is deterministic, so the stored-plan check stands for it until
-  then.
+  then. It was run the same day; see below.
+
+## Real-model check (2026-10-09)
+
+`scripts/probe-outline-from-title.ts` on five new title-only plans (STEM_EMPIRICAL, gpt-5-mini,
+the tree as the worker stores it): rooftop solar in rural Karnataka, ML for diabetic retinopathy
+in primary care, mobile banking for Kenyan smallholders, nano-silica and HPC durability, teacher
+attitudes to inclusive education in Tamil Nadu. ₹3.18 for the five (₹0.55–0.75 a plan, 22–33 s).
+
+| Rule | Result |
+|---|---|
+| Sub-sections only in Literature Review and Methodology | 5/5 (none elsewhere) |
+| At most three divided sections a chapter | 5/5 (LR 3/3/2/2/3, Method 3/3/2/3/3) |
+| Literature Review count unchanged (sections never removed) | 5/5 (6, 6, 6, 5, 5 sections) |
+| Every plan gets sub-sections | 5/5 (13, 13, 9, 10, 13) |
+| No nonsense split | 4/5 before the fix, 5/5 after |
+
+The one wrong split: "Policy and regulatory context for rooftop solar" gave a bare **"Policy"**
+and "Regulatory context for rooftop solar", because the shared noun was only passed on when it
+was a plural kind-noun (barriers, factors…) and "context" is not one. Fixed in
+`subsections.ts`: a small list of setting nouns (context, environment, landscape, framework,
+setting) is shared the same way, so it now gives "Policy context for rooftop solar" /
+"Regulatory context for rooftop solar". A process noun before any other head is still left
+alone ("Sampling and statistical analysis" → Sampling / Statistical analysis, not "Sampling
+analysis"). Both are pinned in `packages/ai/test/subsections.spec.ts` (41 pass).
+
+Flat but not wrong, left as they are (a student edits headings freely): "Properties" (from
+"Nano-silica materials and properties"), "Rigor considerations", "Technology", "Setting". Every
+sub-section of the 58 is words of its parent's title. Scope notes are the parent's sentences;
+where the parent has one sentence covering every part, siblings share it.

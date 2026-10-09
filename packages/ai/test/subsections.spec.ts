@@ -29,6 +29,15 @@ describe('splitSectionTitle', () => {
       ['Behavioural determinants of adherence', 'Psychosocial determinants of adherence'],
     ],
     ['Policy and institutional barriers', ['Policy barriers', 'Institutional barriers']],
+    // The real-model check of 2026-10-09 (ADR-0138): this gave a bare "Policy" heading.
+    [
+      'Policy and regulatory context for rooftop solar',
+      ['Policy context for rooftop solar', 'Regulatory context for rooftop solar'],
+    ],
+    [
+      'Regulatory and market context in Kenya',
+      ['Regulatory context in Kenya', 'Market context in Kenya'],
+    ],
     [
       'Safety, environmental and ethical considerations',
       ['Safety considerations', 'Environmental considerations', 'Ethical considerations'],
@@ -51,6 +60,11 @@ describe('splitSectionTitle', () => {
       'Information',
       'Perceptions',
       'Social influence',
+    ]);
+    // "Sampling analysis" would be nonsense: "analysis" names no setting and no kind.
+    expect(splitSectionTitle('Sampling and statistical analysis')).toEqual([
+      'Sampling',
+      'Statistical analysis',
     ]);
   });
 

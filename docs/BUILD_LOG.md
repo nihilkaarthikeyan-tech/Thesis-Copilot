@@ -6137,6 +6137,16 @@ unchanged. Tests: `packages/ai/test/subsections.spec.ts` (39) and one in
 The real-model run on five new title-only plans was not made in this change (declined at the
 tool prompt); run it before release (about ₹0.5 a title):
 `pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx scripts/probe-outline-from-title.ts "<title>" …`
+
+Real-model check, run the same day (ADR-0138 → "Real-model check"): five new title-only plans
+(solar in Karnataka, diabetic retinopathy ML, Kenyan mobile banking, nano-silica concrete,
+inclusive education in Tamil Nadu), ₹3.18. Sub-sections only in the Literature Review and
+Methodology (5/5), at most three divided sections a chapter (5/5), Literature Review counts
+untouched (6, 6, 6, 5, 5), 9–13 sub-sections a plan. One nonsense split: "Policy and regulatory
+context for rooftop solar" → a bare "Policy". Fixed: setting nouns (context, environment,
+landscape, framework, setting) share the way kind-nouns do, giving "Policy context for rooftop
+solar"; "Sampling and statistical analysis" still gives Sampling / Statistical analysis. Two
+cases added to `subsections.spec.ts` (41 pass).
 ## Hindi for the calm editor (2026-10-09, ADR-0137)
 
 The 22 strings ADR-0137 added (status line, ⋯ menu, More menu, Cite) are in `hi.ts`, in the
