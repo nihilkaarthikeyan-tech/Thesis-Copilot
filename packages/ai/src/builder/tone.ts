@@ -14,6 +14,7 @@
 import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
 import type { LlmRequest } from '../types.js';
+import { academicPunctuationUnlessStudents } from './academic-style.js';
 import type { StyleProfile } from './memory.js';
 import type { ProofreadSentence } from './proofread.js';
 
@@ -117,8 +118,9 @@ export function postProcessTone(
   for (const item of result.items) {
     const sentence = byId.get(item.sentenceId);
     if (!sentence || seen.has(item.sentenceId)) continue;
-    const rewrite = norm(item.rewrite);
     const original = norm(sentence.text);
+    // ADR-0147: no dash the student did not write.
+    const rewrite = norm(academicPunctuationUnlessStudents(item.rewrite, original));
     if (!rewrite || rewrite === original) continue;
     const ratio = words(rewrite).length / Math.max(1, words(original).length);
     const sameCites = JSON.stringify(citeKeys(rewrite)) === JSON.stringify(citeKeys(original));

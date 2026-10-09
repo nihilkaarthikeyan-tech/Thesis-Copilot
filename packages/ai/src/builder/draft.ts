@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
+import { academicPunctuation } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
 import { displayEquationOf, tokenizeNotation } from './notation.js';
 import { nameTheSource } from './own-study.js';
@@ -270,13 +271,16 @@ export function postProcessDraft(
     .filter(([, count]) => count > DRAFT.maxUsesPerPassage)
     .map(([id]) => id);
 
-  const cleaned = filterDraftParagraphs(
-    stripped.text
-      .replace(NEEDS_SOURCE_RE, '')
-      // A removed marker leaves a blank line where a paragraph break already was.
-      .replace(/\n{3,}/g, '\n\n')
-      .trim(),
-    existingText,
+  // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
+  const cleaned = academicPunctuation(
+    filterDraftParagraphs(
+      stripped.text
+        .replace(NEEDS_SOURCE_RE, '')
+        // A removed marker leaves a blank line where a paragraph break already was.
+        .replace(/\n{3,}/g, '\n\n')
+        .trim(),
+      existingText,
+    ),
   );
 
   const words = countDraftWords(cleaned);

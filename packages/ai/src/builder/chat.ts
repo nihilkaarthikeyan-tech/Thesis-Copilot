@@ -11,6 +11,7 @@
 import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest, Message } from '../types.js';
+import { academicPunctuation } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
 import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
@@ -229,8 +230,10 @@ export function postProcessChat(raw: string, allowedIds: readonly string[]): Cha
     // words as a label ("Direct answer: …", ADR-0074's round and ADR-0080's proof). The label is
     // not an answer, so it goes; the sentence after it stays.
     .replace(/^\**\s*direct answer\s*:\**\s*/i, '');
-  // One paper's passages side by side print as one label repeated (2026-10-04).
-  const text = collapseSameSourceRuns(marked);
+  // One paper's passages side by side print as one label repeated (2026-10-04). ADR-0147: dashes
+  // used as punctuation become a thesis's punctuation, since an answer's sentences are often
+  // carried into the chapter (Add).
+  const text = academicPunctuation(collapseSameSourceRuns(marked));
   const cited = seen.filter((key) => text.includes(`{{cite:${key}}}`));
 
   const outcome: ChatOutcome = text.startsWith(NOT_ENOUGH_PREFIX)

@@ -17,6 +17,7 @@
 import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
 import type { LlmRequest } from '../types.js';
+import { countDashes } from './academic-style.js';
 
 export const PROOFREAD = {
   tier: 'fast',
@@ -491,7 +492,9 @@ export function postProcessProofread(
         words(original).length > PROOFREAD.maxSpanWords ||
         words(replacement).length > PROOFREAD.maxSpanWords ||
         size === null ||
-        size > PROOFREAD.maxChangedWords
+        size > PROOFREAD.maxChangedWords ||
+        // ADR-0147: a dash used as punctuation is never a correction a thesis needs.
+        countDashes(replacement) > countDashes(original)
       ) {
         refused += 1;
         continue;

@@ -13,6 +13,7 @@
  * output that was nothing but a bad citation must end up EMPTY, not charged.
  */
 
+import { academicPunctuation } from './academic-style.js';
 import {
   filterSentences,
   isAbbreviationStop,
@@ -279,7 +280,8 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   // An answer that only repeated `before` loses its words to step (2) but keeps its markers, and
   // a row of citations with no sentence is not a suggestion (prompt evaluation, 2026-09-30).
   const hasWords = /[\p{L}\p{N}]/u.test(filtered.text.replace(CITE_RE, ''));
-  const text = hasWords ? filtered.text.trim() : '';
+  // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
+  const text = hasWords ? academicPunctuation(filtered.text).trim() : '';
   const empty = text.length === 0;
 
   return {

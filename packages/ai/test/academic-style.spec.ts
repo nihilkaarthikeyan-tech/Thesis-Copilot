@@ -11,7 +11,13 @@ import {
   countDashes,
   stockPhrases,
 } from '../src/builder/academic-style.js';
-import { citationMoved } from '../src/builder/command.js';
+import { postProcessChat } from '../src/builder/chat.js';
+import { citationMoved, postProcessCommand } from '../src/builder/command.js';
+import { postProcessRevision } from '../src/builder/comment.js';
+import { postProcessDraft } from '../src/builder/draft.js';
+import { postProcessAssist } from '../src/builder/postprocess.js';
+import { postProcessProofread } from '../src/builder/proofread.js';
+import { postProcessTone } from '../src/builder/tone.js';
 
 const letters = (t: string) => t.replace(/[^\p{L}\p{N}]/gu, '');
 const markers = (t: string) => [...t.matchAll(/\{\{[^}]*\}\}/g)].map((m) => m[0]);
@@ -319,5 +325,92 @@ describe('academicPunctuationUnlessStudents', () => {
     expect(academicPunctuationUnlessStudents('Costs fell — sharply.', 'costs fell sharply')).toBe(
       'Costs fell: sharply.',
     );
+  });
+});
+
+describe('ADR-0147: the backstop on every path that puts generated text in front of the student', () => {
+  const passages = [{ id: 'S1#c1', shortRef: 'Rao 2021', page: null, text: 'Cost limits uptake.' }];
+
+  it('Assist (ghost text)', () => {
+    const out = postProcessAssist({
+      output: 'Cost is the main barrier — especially in rural Karnataka {{cite:S1#c1}}.',
+      passageIds: ['S1#c1'],
+      before: 'Rooftop solar adoption remains low.',
+    });
+    expect(out.text).toBe(
+      'Cost is the main barrier, especially in rural Karnataka {{cite:S1#c1}}.',
+    );
+    expect(out.cited).toEqual(['S1#c1']);
+  });
+
+  it('Draft a section (also the chapter and literature review builds and their fixes)', () => {
+    const out = postProcessDraft(
+      '### Cost\n\nUpfront cost—the price of panels and inverters—limits uptake among rural households in the state {{cite:S1#c1}}.',
+      passages,
+      30,
+    );
+    expect(out.result.markdown).toContain(
+      'Upfront cost (the price of panels and inverters) limits uptake',
+    );
+    expect(countDashes(out.result.markdown)).toBe(0);
+  });
+
+  it('Edit commands: corrected when the selection had no dash, kept when it did', () => {
+    const plain = postProcessCommand(
+      'Costs fell — sharply.',
+      'Costs fell sharply.',
+      [],
+      'formalise',
+    );
+    expect(plain.text).toBe('Costs fell: sharply.');
+    const own = postProcessCommand(
+      'Costs fell — sharply.',
+      'Costs fell — sharply.',
+      [],
+      'formalise',
+    );
+    expect(own.text).toBe('Costs fell — sharply.');
+  });
+
+  it('Chat answers', () => {
+    const out = postProcessChat('Yes — subsidies raise uptake {{cite:S1#c1}}.', ['S1#c1']);
+    expect(out.text).toBe('Yes, subsidies raise uptake {{cite:S1#c1}}.');
+  });
+
+  it('A guide-comment revision', () => {
+    const out = postProcessRevision(
+      'Costs fell — the panels became affordable.',
+      'Costs fell.',
+      [],
+    );
+    expect(out.text).toBe('Costs fell; the panels became affordable.');
+  });
+
+  it('Tone rewrites', () => {
+    const { items } = postProcessTone(
+      {
+        items: [{ sentenceId: 's1', why: 'register', rewrite: 'Costs fell — sharply — in 2020.' }],
+      },
+      [{ id: 's1', text: 'Costs fell a lot in 2020.' }],
+    );
+    expect(items[0]?.replacement).toBe('Costs fell, sharply, in 2020.');
+  });
+
+  it('Proofreading never offers a dash as a correction', () => {
+    const { corrections } = postProcessProofread(
+      {
+        corrections: [
+          {
+            sentenceId: 's1',
+            original: 'fell, sharply',
+            replacement: 'fell — sharply',
+            kind: 'punctuation',
+            why: '',
+          },
+        ],
+      },
+      [{ id: 's1', text: 'Costs fell, sharply in 2020.' }],
+    );
+    expect(corrections).toHaveLength(0);
   });
 });

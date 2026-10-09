@@ -1,4 +1,11 @@
 export {
+  academicPunctuation,
+  academicPunctuationUnlessStudents,
+  countDashes,
+  STOCK_PHRASES,
+  stockPhrases,
+} from './builder/academic-style.js';
+export {
   type AnchorMatch,
   type AnchorSentence,
   findAnchor,

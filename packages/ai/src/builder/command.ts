@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
+import { academicPunctuationUnlessStudents } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
 import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
@@ -458,14 +459,19 @@ export function postProcessCommand(
       if (fixed.stayed) repeated.push(key);
     }
   }
-  const kept = new Set(keysIn(deduped));
+  // ADR-0147: the model's dashes become a thesis's punctuation, unless the student's own
+  // selection used dashes (then they are the student's style, and the rewrite keeps them).
+  const punctuated = academicPunctuationUnlessStudents(deduped, selection);
+  const kept = new Set(keysIn(punctuated));
   const dropped = [...inSelection].filter((k) => !kept.has(k));
   // A translation has no words in common with its source; a table puts a citation in a column.
   const moved =
     command === 'translate' || command === 'table'
       ? []
-      : [...inSelection].filter((key) => kept.has(key) && citationMoved(selection, deduped, key));
-  const fitted = fitToSelection(deduped, selection);
+      : [...inSelection].filter(
+          (key) => kept.has(key) && citationMoved(selection, punctuated, key),
+        );
+  const fitted = fitToSelection(punctuated, selection);
 
   return {
     text: fitted,

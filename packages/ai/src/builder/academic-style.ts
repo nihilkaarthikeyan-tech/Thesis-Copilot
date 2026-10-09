@@ -23,12 +23,12 @@
  * source's punctuation), code, LaTeX, Markdown tables, rules and list bullets.
  *
  * The function checks its own work: the letters and digits, and the citation markers in order,
- * must be the same before and after, and no citation may move to another claim (`citationMoved`).
+ * must be the same before and after, and every citation must stay in its sentence (`splitSentences`,
+ * as the quality filters split; the tests also hold every case to `citationMoved`).
  * Anything else and it returns the text unchanged.
  */
 
-import { citationMoved } from './command.js';
-import { isAbbreviationStop } from './quality.js';
+import { isAbbreviationStop, splitSentences } from './quality.js';
 
 // ---------------------------------------------------------------------------------------------
 // Counting (used by the evaluation and by the rewrite paths' "did the student write dashes" test)
@@ -472,19 +472,18 @@ export function academicPunctuation(text: string): string {
   const before = markers(text);
   const after = markers(restored);
   if (before.join('\u0000') !== after.join('\u0000')) return text;
-  for (const m of new Set(before)) {
-    const key = /^\{\{cite:([^}]+)\}\}$/.exec(m)?.[1];
-    // Measured against the text itself: a citation the check already reads as far from its claim
-    // in the original has not been moved by a change of punctuation.
-    if (
-      key &&
-      citationMoved(text, restored, key.trim()) &&
-      !citationMoved(text, text, key.trim())
-    ) {
-      return text;
-    }
-  }
+  // Every citation stays in the sentence it was in (the same splitter the quality filters use).
+  if (citationSentences(restored).join(',') !== citationSentences(text).join(',')) return text;
   return restored;
+}
+
+/** For each citation marker in order, the index of the sentence that carries it. */
+function citationSentences(text: string): number[] {
+  const out: number[] = [];
+  splitSentences(text).forEach((sentence, i) => {
+    for (const _ of sentence.matchAll(/\{\{cite:[^}]+\}\}/g)) out.push(i);
+  });
+  return out;
 }
 
 /**
