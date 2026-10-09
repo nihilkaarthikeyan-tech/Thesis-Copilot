@@ -16,7 +16,7 @@
 
 import { useCallback, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
-import type { BibliographyNotes } from '@/lib/bibliography-notes';
+import { type BibliographyNotes, checkedPhrase, citedTimes } from '@/lib/bibliography-notes';
 import { readerHref } from '@/lib/reader';
 import { BibliographyNotesView } from './BibliographyNotes';
 
@@ -104,7 +104,7 @@ export function SourceQualityPanel({
       {report ? (
         report.sources.length === 0 ? (
           <p className="mt-2 text-xs text-ok" data-testid="source-quality-clean">
-            Nothing to flag. {report.checked} papers checked.
+            Nothing to flag. {checkedPhrase(report.checked)}
           </p>
         ) : (
           <ul
@@ -125,7 +125,7 @@ export function SourceQualityPanel({
                 </a>
                 <p className="mt-0.5 text-faint">
                   {source.citedInThesis > 0
-                    ? `Cited ${source.citedInThesis} time${source.citedInThesis === 1 ? '' : 's'} in your thesis`
+                    ? citedTimes(source.citedInThesis)
                     : 'Not cited in your thesis yet'}
                 </p>
                 {source.issues.map((issue) => (

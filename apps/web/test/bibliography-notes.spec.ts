@@ -3,7 +3,11 @@ import {
   type BibliographyNotes,
   binIsOld,
   binLabel,
+  checkedPhrase,
+  citedHeading,
+  citedTimes,
   venueSentence,
+  worksPhrase,
   yearSentence,
 } from '../src/lib/bibliography-notes';
 
@@ -32,7 +36,7 @@ function notes(over: Partial<BibliographyNotes> = {}): BibliographyNotes {
 describe('bibliography notes, in words (Jenni build plan R25)', () => {
   it('says the median year and how many works are over a decade old, as Jenni does', () => {
     expect(yearSentence(notes())).toBe(
-      'Median year 2021. 1 of 3 works is over a decade old (2015 or earlier).',
+      'Median year 2021. One of 3 works is over a decade old (2015 or earlier).',
     );
     expect(venueSentence(notes())).toBe('3 unique venues across 3 works.');
   });
@@ -43,10 +47,10 @@ describe('bibliography notes, in words (Jenni build plan R25)', () => {
       venues: { known: 4, unique: 2, top: [], otherWorks: 0 },
     });
     expect(yearSentence(n)).toBe(
-      'Median year 2021. 1 of 3 works is over a decade old (2015 or earlier). 2 papers with no year on record are not charted.',
+      'Median year 2021. One of 3 works is over a decade old (2015 or earlier). 2 papers with no year on record are not charted.',
     );
     expect(venueSentence(n)).toBe(
-      '2 unique venues across 4 works. 1 paper with no venue on record.',
+      '2 unique venues across 4 works. One paper with no venue on record.',
     );
   });
 
@@ -67,10 +71,26 @@ describe('bibliography notes, in words (Jenni build plan R25)', () => {
       venues: { known: 1, unique: 1, top: [], otherWorks: 0 },
     });
     expect(yearSentence(one)).toBe('Published in 2012, over a decade ago.');
-    expect(venueSentence(one)).toBe('1 unique venue across 1 work.');
+    expect(venueSentence(one)).toBe('One venue on record.');
     expect(
       yearSentence({ ...one, works: 3, years: { ...one.years, overDecade: 0, median: 2022 } }),
-    ).toBe('Only 1 of 3 papers has a year on record: 2022. The others are not charted.');
+    ).toBe('Only one of 3 papers has a year on record: 2022. The others are not charted.');
+  });
+
+  it('writes one as a word in every count phrase, never "1 work" or "1 papers"', () => {
+    expect(citedHeading(1)).toBe('The one work this chapter cites');
+    expect(citedHeading(4)).toBe('The 4 works this chapter cites');
+    expect(worksPhrase(1)).toBe('one work');
+    expect(worksPhrase(2)).toBe('2 works');
+    expect(checkedPhrase(1)).toBe('One paper checked.');
+    expect(checkedPhrase(0)).toBe('0 papers checked.');
+    expect(checkedPhrase(7)).toBe('7 papers checked.');
+    expect(citedTimes(1)).toBe('Cited once in your thesis');
+    expect(citedTimes(2)).toBe('Cited twice in your thesis');
+    expect(citedTimes(5)).toBe('Cited 5 times in your thesis');
+    expect(venueSentence(notes({ venues: { known: 3, unique: 1, top: [], otherWorks: 0 } }))).toBe(
+      'All 3 works in one venue.',
+    );
   });
 
   it('says when no work is over a decade old', () => {
