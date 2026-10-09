@@ -38,6 +38,7 @@ import {
 import { buildDraftRequest, postProcessDraft } from '../src/builder/draft.js';
 import {
   buildOutlineRequest,
+  dropPlaceholderSections,
   enforceTemplateShape,
   normaliseOutline,
   outlineRequestSchema,
@@ -93,7 +94,39 @@ type Output = {
   m?: Measures;
   /** Citations to passages not in the request, before the whitelist removed them. */
   hallucinated?: number;
+  /** Outline only (ADR-0092 addendum 4): the plan's shape, counted in code. */
+  shape?: OutlineShape;
 };
+
+type OutlineShape = {
+  /** Sections of the Literature Review chapter. */
+  lrSections: number;
+  /** Sub-sections (third level) anywhere, and those outside Literature Review and Methodology. */
+  subSections: number;
+  subSectionsElsewhere: number;
+};
+
+/** Counts the plan's shape: the Literature Review's sections and where the sub-sections sit. */
+function outlineShape(nodes: readonly OutlineNode[]): OutlineShape {
+  let subSections = 0;
+  let subSectionsElsewhere = 0;
+  let lrSections = 0;
+  for (const chapter of nodes) {
+    const isLr = /literature/i.test(chapter.title);
+    const isMethod = /method/i.test(chapter.title);
+    if (isLr) lrSections += chapter.children.length;
+    for (const section of chapter.children) {
+      const below = countNodes(section.children);
+      subSections += below;
+      if (!isLr && !isMethod) subSectionsElsewhere += below;
+    }
+  }
+  return { lrSections, subSections, subSectionsElsewhere };
+}
+
+function countNodes(nodes: readonly OutlineNode[]): number {
+  return nodes.reduce((sum, n) => sum + 1 + countNodes(n.children), 0);
+}
 
 type ChatMeasures = {
   /** Citations of a passage not in the request, before the whitelist stripped them. */
@@ -142,6 +175,12 @@ type Case = {
    * line, as the editor sends it, and the scope note carries the section's own note.
    */
   emptySection?: boolean;
+  /**
+   * ADR-0092 addendum 4: an outline planned from the title alone, as Start writing now asks for
+   * it (`fromTitle`, generate-outline.ts): the working title, an empty problem statement, no
+   * objectives and no gap map.
+   */
+  titleOnly?: boolean;
   kind:
     | 'assist'
     | 'draft'
@@ -374,6 +413,15 @@ function casesFor(name: string): Case[] {
         passages: [],
         kind: 'outline',
       });
+      // ADR-0092 addendum 4: the same thesis planned from its title alone (Start writing now).
+      cases.push({
+        id: `${topic.id}-title`,
+        topic,
+        context: topic.thesisTitle,
+        passages: [],
+        kind: 'outline',
+        titleOnly: true,
+      });
     } else if (name === 'proposal') {
       cases.push({ id: topic.id, topic, context: topic.idea, passages: [], kind: 'proposal' });
     } else if (name === 'queries') {
@@ -587,21 +635,38 @@ async function produce(
   }
   if (c.kind === 'outline') {
     const template = 'STEM_EMPIRICAL' as const;
+    // A title-only plan is the request generate-outline.ts sends for `fromTitle`: the scope its
+    // `readScope({ workingTitle })` makes, and no gap map (none exists yet).
     const request = buildOutlineRequest({
       template,
-      scope: {
-        workingTitle: c.topic.thesisTitle,
-        problemStatement: c.topic.chapter.scopeNote,
-        objectives: [c.topic.section.scopeNote],
-      },
-      gapMap: c.topic.themes.map((name, i) => ({ name, count: i === 2 ? 2 : 3, thin: i === 2 })),
+      scope: c.titleOnly
+        ? { workingTitle: c.topic.thesisTitle, problemStatement: '', objectives: [] }
+        : {
+            workingTitle: c.topic.thesisTitle,
+            problemStatement: c.topic.chapter.scopeNote,
+            objectives: [c.topic.section.scopeNote],
+          },
+      gapMap: c.titleOnly
+        ? []
+        : c.topic.themes.map((name, i) => ({ name, count: i === 2 ? 2 : 3, thin: i === 2 })),
       userId: 'eval',
       documentId: 'eval',
     });
     const result = await llm.complete({ ...request, schema: outlineRequestSchema });
-    const nodes = enforceTemplateShape(normaliseOutline(readOutlineResult(result.value)), template);
+    // As the worker keeps it: the template's shape, then any slot sections dropped.
+    const nodes = dropPlaceholderSections(
+      enforceTemplateShape(normaliseOutline(readOutlineResult(result.value)), template),
+    );
     const text = outlineText(nodes);
-    return { raw: text, text, shown: text, cited: 0, empty: nodes.length === 0, dropped: 0 };
+    return {
+      raw: text,
+      text,
+      shown: text,
+      cited: 0,
+      empty: nodes.length === 0,
+      dropped: 0,
+      shape: outlineShape(nodes),
+    };
   }
   if (c.kind === 'assist') {
     // As production builds it under a section heading (`scopeWithSection`, assist.service.ts).
@@ -789,6 +854,9 @@ const judgeSchema = z.object({
 
 async function judge(llm: LlmProvider, c: Case, first: string, second: string) {
   const sources = c.passages.map((p) => `[${p.shortRef}] ${p.text}`).join('\n\n');
+  const outlineTask = c.titleOnly
+    ? "Each candidate is a thesis outline planned from the working title alone, before any literature was searched (chapters and sections, each with a scope note telling the writer what to establish and what not to cover). A better outline fits this specific thesis: its sections and scope notes name the thesis's likely material, method, population and questions rather than generic headings; the literature review is divided into the themes a reviewer of this topic would expect, so the student has sections to write under; each scope note is a clear, specific instruction; nothing important for this thesis is missing and nothing is padding."
+    : "Each candidate is a thesis outline (chapters and sections, each with a scope note telling the writer what to establish and what not to cover). A better outline fits this specific thesis: its sections and scope notes name the thesis's actual material, method, population and questions rather than generic headings; the literature review follows the themes given, and says where sources are thin; each scope note is a clear, specific instruction; nothing important for this thesis is missing and nothing is padding.";
   const task = {
     assist:
       'Each candidate is the next one or two sentences the writing assistant offers after the student text. An empty candidate means the assistant offered nothing.',
@@ -800,8 +868,7 @@ async function judge(llm: LlmProvider, c: Case, first: string, second: string) {
       "Each candidate is the student's paragraph expanded by the assistant. A better expansion keeps the student's meaning, adds real depth from the sources with correct citations, and adds no unsupported claims or filler.",
     formalise:
       "Each candidate is the student's paragraph rewritten in formal academic English. A better rewrite keeps the meaning and every point, keeps about the same length, adds no new claims, and reads like a finished thesis.",
-    outline:
-      "Each candidate is a thesis outline (chapters and sections, each with a scope note telling the writer what to establish and what not to cover). A better outline fits this specific thesis: its sections and scope notes name the thesis's actual material, method, population and questions rather than generic headings; the literature review follows the themes given, and says where sources are thin; each scope note is a clear, specific instruction; nothing important for this thesis is missing and nothing is padding.",
+    outline: outlineTask,
     proposal:
       "Each candidate is a short conversation that turns a student's rough idea into a proposal skeleton (working title, problem statement, objectives, why the question is open). A better one asks few, sharp questions that offer concrete options relevant to the idea, and ends with a skeleton that is specific (names the material, method, population or setting), feasible for a master's thesis, has objectives a student can actually carry out and measure, and explains why the question is open using only the related works listed, without inventing any.",
     queries:
@@ -825,7 +892,9 @@ ${c.context}`,
 ${c.context}`,
     formalise: `Student's paragraph:
 ${c.context}`,
-    outline: `Themes found in the literature (the last has only two sources): ${c.topic.themes.join('; ')}`,
+    outline: c.titleOnly
+      ? 'The student has given only the working title: no problem statement, no objectives, and no literature has been searched yet.'
+      : `Themes found in the literature (the last has only two sources): ${c.topic.themes.join('; ')}`,
     queries: `Scope: ${c.topic.chapter.scopeNote} Objective: ${c.topic.section.scopeNote}`,
     themes: 'Candidate papers found by the search are listed under Sources, by title and abstract.',
     viva_questions: `The thesis passage the examiner questions:\n${c.context}`,
@@ -858,7 +927,10 @@ ${papersFor(c.topic)
         role: 'user',
         content: [
           `Thesis: ${c.topic.thesisTitle}`,
-          `Chapter: ${c.topic.chapter.title}. ${c.topic.chapter.scopeNote}`,
+          // A title-only plan's model saw no more than the title; neither does its judge.
+          ...(c.titleOnly
+            ? []
+            : [`Chapter: ${c.topic.chapter.title}. ${c.topic.chapter.scopeNote}`]),
           studentText,
           `Sources available:\n${sources || '(none: this task uses no sources)'}`,
           task,
@@ -933,6 +1005,39 @@ async function main(): Promise<void> {
     distinctCited: 0,
   });
   const chatTotals = { a: zero(), b: zero() };
+  const outlineRuns: Array<{
+    set: 'gapMap' | 'titleOnly';
+    verdict: string;
+    ms: { a: number; b: number };
+    a?: OutlineShape;
+    b?: OutlineShape;
+  }> = [];
+  /** ADR-0092 addendum 4: each set's verdicts, times and shapes, run by run. */
+  const outlineSets = () =>
+    Object.fromEntries(
+      (['gapMap', 'titleOnly'] as const).map((set) => {
+        const runs = outlineRuns.filter((r) => r.set === set);
+        const side = (k: 'a' | 'b') => ({
+          medianMs: median(runs.map((r) => r.ms[k])),
+          lrSections: runs.map((r) => r[k]?.lrSections ?? 0),
+          subSections: runs.map((r) => r[k]?.subSections ?? 0),
+          subSectionsElsewhere: runs.map((r) => r[k]?.subSectionsElsewhere ?? 0),
+        });
+        return [
+          set,
+          {
+            runs: runs.length,
+            wins: {
+              current: runs.filter((r) => r.verdict === 'A').length,
+              candidate: runs.filter((r) => r.verdict === 'B').length,
+              tie: runs.filter((r) => r.verdict === '=').length,
+            },
+            current: side('a'),
+            candidate: side('b'),
+          },
+        ];
+      }),
+    );
   if (name === 'chat' || name === 'chat_deep') console.log(`chat tier: ${chatTier}`);
 
   for (const c of cases) {
@@ -985,10 +1090,20 @@ async function main(): Promise<void> {
         }
       }
       n++;
+      if (c.kind === 'outline') {
+        outlineRuns.push({
+          set: c.titleOnly ? 'titleOnly' : 'gapMap',
+          verdict,
+          ms: { a: timing.a.at(-1) ?? 0, b: timing.b.at(-1) ?? 0 },
+          a: a.shape,
+          b: b.shape,
+        });
+      }
       rows.push({
         case: c.id,
         sample: s,
         verdict,
+        ...(a.shape || b.shape ? { aShape: a.shape, bShape: b.shape } : {}),
         a: a.shown,
         b: b.shown,
         aRaw: a.raw,
@@ -1026,6 +1141,7 @@ async function main(): Promise<void> {
         }
       : {}),
     medianMs: { current: median(timing.a), candidate: median(timing.b) },
+    ...(name === 'outline' ? { candidateFile: candidateName, outlineSets: outlineSets() } : {}),
     ...(modelB ? { models: { current: env.AI_FAST_MODEL, candidate: modelB } } : {}),
     ...(name === 'chat' || name === 'chat_deep'
       ? {

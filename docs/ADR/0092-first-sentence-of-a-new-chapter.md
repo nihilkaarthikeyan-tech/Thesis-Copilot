@@ -95,3 +95,23 @@ with no gap map the model declined to name themes. So A.9 is unchanged. The edit
 any sub-sections an outline has as level-3 headings in the open chapter too (as the worker
 already did), ready for a candidate that also holds the title-only path; the next round must
 include title-only cases.
+
+## Addendum 4 (2026-10-09) — R5b, a fourth sub-section candidate, title-only cases first
+
+The outline round (`eval/run.ts outline`) now carries a title-only case beside each of its five
+gap-map cases (`<id>-title`): the request generate-outline.ts sends for `fromTitle` — the working
+title, an empty problem statement, no objectives, no gap map, `STEM_EMPIRICAL` — kept as the worker
+keeps it (`dropPlaceholderSections` too). Its judge sees only the title. The run counts each plan's
+shape in code: the Literature Review's sections, the sub-sections, and any sub-section outside the
+Literature Review and Methodology.
+
+**Pass criterion, written before any candidate ran.** `outline-h3d` replaces A.9 only if all four
+hold:
+
+1. **Title-only plans keep the Literature Review.** Every title-only run of the candidate (the
+   judged round and any extra samples) has at least 4 Literature Review sections.
+2. **Sub-sections where they belong.** Every candidate outline, in both sets, has at least one
+   sub-section, and none sits outside the Literature Review and Methodology chapters.
+3. **The judged round does not lose.** Over all ten cases, candidate wins ≥ current wins.
+4. **No slower.** The candidate's median time over the judged round is at most the current
+   prompt's + 2 s.
