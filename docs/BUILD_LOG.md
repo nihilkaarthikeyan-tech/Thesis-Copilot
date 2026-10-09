@@ -5856,3 +5856,11 @@ the planned headings (28.8 s and 39.9 s measured). Now 15.6 / 18.1 / 20.3 s on t
 A chapter holding only that sentence when the plan lands gets its headings around it. The
 `first-session` measurement spec was brought up to date with the start screens (ADR-0087/0091)
 and logs every suggestion request on the same clock.
+
+## R5b, third try: won the judged round, lost on the title path (2026-10-09)
+
+`outline-h3c` won its round (1–0, 4 ties; sub-sections in all five) but, on Start writing now's
+title-only plan, gave the Literature Review 0/5/1 sections where the current prompt gives 6 every
+time. Not adopted; ADR-0092 addendum 3. The open chapter now lays out sub-sections as H3 when an
+outline has them. Lesson: an evaluation set must include the commonest real path (here, no gap
+map), or a winner can regress it.

@@ -76,5 +76,22 @@ nothing looked again. `setAutoSuggest` turning it on now asks the opener to look
 (`pokeOpener`). When the plan lands, a chapter holding only that one opening sentence still takes
 its headings: the first section's heading goes above the sentence, the others after it.
 
-After: 15.6 s, 18.1 s and 20.3 s on three runs; the rest is the library becoming readable. With
+After, six runs: 15.6, 18.1, 19.6, 20.3, 22.4 and 38.3 s (median about 20 s). The slow one is the
+library, not the editor: 29 s after Start only one of twenty found papers had a stored passage,
+so the first asks had nothing to cite. Papers are read three at a time (`index-source`
+concurrency) and a slow full-text download holds up the abstracts behind it: the next lever,
+not yet measured. With
 ACCEPT=1 the spec accepts the sentence and checks the headings are laid around it.
+
+## Addendum 3 (2026-10-09) — R5b, a third sub-section candidate, not adopted
+
+`outline-h3c` keeps each section's note as full as before and adds two or three sub-sections only
+where a Literature Review or Methodology section has separable parts. On the evaluation cases
+(each with a gap map) it won: current 0, candidate 1, ties 4; mean 8.6 vs 8.3; sub-sections in all
+five outlines (6–12 each); median 18.2 s vs 16.8 s; ₹7.07. But on the product's commonest start —
+Start writing now, planned from the title alone before any gap map exists — it cut the Literature
+Review from six sections (five of five runs with the current prompt) to 0, 5 and 1 in three runs:
+with no gap map the model declined to name themes. So A.9 is unchanged. The editor now lays out
+any sub-sections an outline has as level-3 headings in the open chapter too (as the worker
+already did), ready for a candidate that also holds the title-only path; the next round must
+include title-only cases.

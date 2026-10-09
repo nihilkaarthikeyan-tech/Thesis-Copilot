@@ -213,7 +213,14 @@ export function SectionGuide({
   // does the same for chapters nobody has open; this covers the one on screen, which its save
   // would otherwise overwrite.
   const sectionTitles = (node?.children ?? []).map((c) => c.title.trim()).filter(Boolean);
-  const sectionsKey = sectionTitles.join('|');
+  // R5b (2026-10-09): a section's sub-sections are laid out under it as level-3 headings, as the
+  // worker's `chapterBody` does for chapters nobody has open.
+  const subTitles = (node?.children ?? [])
+    .filter((c) => c.title.trim())
+    .map((c) => (c.children ?? []).map((g) => g.title.trim()).filter(Boolean));
+  const sectionsKey = (node?.children ?? [])
+    .map((c) => [c.title, ...(c.children ?? []).map((g) => g.title)].join('>'))
+    .join('|');
   // biome-ignore lint/correctness/useExhaustiveDependencies: `sectionsKey` stands for `sectionTitles`.
   useEffect(() => {
     if (!editor || sectionTitles.length === 0) return;
@@ -242,6 +249,10 @@ export function SectionGuide({
       const nodes = sectionTitles.flatMap((title, i) => [
         heading.create({ level: 2 }, schema.text(title)),
         i === 0 && sentence ? sentence : paragraph.create(),
+        ...(subTitles[i] ?? []).flatMap((sub) => [
+          heading.create({ level: 3 }, schema.text(sub)),
+          paragraph.create(),
+        ]),
       ]);
       const from = first.nodeSize;
       // The line under the first section: into its empty paragraph, or at the end of the
