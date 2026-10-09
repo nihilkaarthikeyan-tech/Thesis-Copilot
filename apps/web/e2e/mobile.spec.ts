@@ -81,6 +81,41 @@ test.describe('on a phone', () => {
   });
 });
 
+// QA 2026-10-09: at 390 px the bar was 407 px of buttons and its last tab read "Commen".
+for (const width of [360, 375, 390, 414, 430]) {
+  test.describe(`the bottom bar at ${width} px`, () => {
+    test.use({ viewport: { width, height: 800 } });
+
+    test('fits the screen with every label whole', async ({ page, request }) => {
+      await openEditor(page, request);
+      const bar = page.getByTestId('mobile-bar');
+      await expect(bar).toBeVisible();
+      const fit = await bar.evaluate((nav) => {
+        const navBox = nav.getBoundingClientRect();
+        return {
+          overflow: nav.scrollWidth - nav.clientWidth,
+          right: navBox.right,
+          buttons: [...nav.querySelectorAll('button')].map((b) => {
+            const box = b.getBoundingClientRect();
+            return {
+              label: b.textContent || b.getAttribute('aria-label'),
+              clipped: b.scrollWidth - b.clientWidth,
+              outside: box.right - navBox.right,
+            };
+          }),
+        };
+      });
+      expect(fit.overflow).toBeLessThanOrEqual(0);
+      expect(fit.right).toBeLessThanOrEqual(width);
+      for (const button of fit.buttons) {
+        expect(button.clipped, button.label ?? '').toBeLessThanOrEqual(0);
+        expect(button.outside, button.label ?? '').toBeLessThanOrEqual(0);
+      }
+      await expect(bar.getByTestId('mobile-review')).toHaveText(/comments/i);
+    });
+  });
+}
+
 test.describe('on a small tablet', () => {
   test.use({ viewport: { width: 820, height: 1180 } });
 

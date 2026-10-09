@@ -32,6 +32,7 @@ import {
 } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
+import { ListTree } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1965,7 +1966,11 @@ function ChapterEditor({
         />
       ) : null}
 
-      {/* Where the side panels are, on a screen too narrow to show them beside the text. */}
+      {/* Where the side panels are, on a screen too narrow to show them beside the text.
+          QA 2026-10-09: seven words at 12 px were 407 px on a 390 px phone and "Comments" was
+          cut off. Chapters is now an icon (its name stays as the accessible name and tooltip),
+          the tabs share the width with narrow padding, and below 400 px they drop to 11 px —
+          every label whole from 360 px up, with room to spare for a wider font. */}
       <nav
         aria-label={t('editor.chapterAndTools')}
         data-testid="mobile-bar"
@@ -1973,18 +1978,21 @@ function ChapterEditor({
       >
         <button
           type="button"
-          className="shrink-0 px-2.5 py-3 text-[12px] font-semibold text-ink md:hidden"
+          data-testid="mobile-chapters"
+          aria-label={t('editor.chapters')}
+          title={t('editor.chapters')}
+          className="grid shrink-0 place-items-center px-2.5 py-3 text-ink md:hidden"
           aria-expanded={drawer === 'chapters'}
           onClick={() => setDrawer((open) => (open === 'chapters' ? null : 'chapters'))}
         >
-          {t('editor.chapters')}
+          <ListTree aria-hidden="true" className="h-[18px] w-[18px]" />
         </button>
         {TABS.map((id) => (
           <button
             key={id}
             type="button"
             data-testid={`mobile-${id}`}
-            className={`flex-1 shrink-0 px-2 py-3 text-[12px] capitalize ${
+            className={`flex-1 shrink-0 whitespace-nowrap px-1 py-3 text-[11px] capitalize min-[400px]:text-[12px] ${
               drawer === 'panel' && tab === id ? 'font-semibold text-accent' : 'text-muted'
             }`}
             onClick={() => {
