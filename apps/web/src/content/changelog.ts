@@ -24,6 +24,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: 'v0.1.36',
+    date: '2026-10-09',
+    title: 'A calmer editor, with chat open from the start',
+    changes: [
+      'The editor is calmer: chat opens beside your chapter, every other tool is one click away on the icon rail, the formatting bar is one row with More, and Usage, History and Help sit under ⋯. Nothing was removed.',
+      'Your thesis status is one short line above the page; Show opens the full detail.',
+      'Chat puts its scope choices above a taller box, so you see where an answer will come from before you ask.',
+      'Papers are read faster: abstracts are indexed ahead of full texts, and a new thesis offers its first cited sentence in about 15 seconds.',
+      'Springer Nature papers you add are read in full, not just their abstract.',
+      'A new chapter in a thesis about one place no longer drifts to another place in its first suggestion.',
+      'The sign-in and sign-up pages no longer jump when a code is sent; the AI edit bar no longer covers the side panel.',
+    ],
+  },
+  {
     version: 'v0.1.34',
     date: '2026-10-09',
     title: 'Writing that draws on more of your papers, and research questions anywhere',
