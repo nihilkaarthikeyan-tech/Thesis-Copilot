@@ -5894,6 +5894,19 @@ Not wired: the worker / API / Flags-tab wiring is commit `485a472`, reverted by 
 Had it shipped: ₹2.53 a review instead of ₹1.86, ₹97.16 a month for a fully active student.
 Found on the way: the examiner's own blocking issues agree with themselves only 59% of the time
 from run to run, so any single comparison between two prompts is noisy.
+
+**Round 3 passed and the feature is wired (same day).** Design and criterion committed before the
+run (`563ed66`): only the chapter's two largest sections are asked (the rest keep `examiner.md`),
+and a chapter under 15 sentences needs one strength instead of two; the issue bars and the
+anchoring rule unchanged. Result, ₹11.68: 45/45 — blocking issues 92% of the old prompt's,
+cross recall 0.62 (floor 0.49), raw strengths kept 40/45, questions 54/60, every run 3–4
+strengths and 4–5 questions. The scaled bar turned out not to be needed (the 10-sentence chapter
+kept 3 both times). One question named a sentence id ("placed at s33"); the code now drops
+those too (`5523d3a`). The wiring is back (`697f308`, revert of `fd8e404`, plus the two-section
+rule and a worker test); cost `5b4de5b`: ₹2.0993 a review, a fully active student ₹93.13 →
+₹94.55 (≤ ₹96.74 with COSTING.md's notes). Tests: `packages/ai` examiner-highlights (15) and
+prompts, `apps/worker` examiner-review (16), `apps/api` examiner-review (8), `apps/web`
+examiner-review (9), `packages/config` cost-model (31). Not yet seen in a browser.
 ## A research question with no thesis, and across all theses (2026-10-09, ADR-0132)
 
 Jenni build plan R30/R32's last gap. "Ask a research question" on the thesis list and in New ▾

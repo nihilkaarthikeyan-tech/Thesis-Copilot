@@ -1,7 +1,8 @@
-# 0131 — Strengths and questions for the author on the examiner review: built, evaluated, not shown
+# 0131 — Strengths and questions for the author on the examiner review
 
 Date: 2026-10-09
-Status: accepted — the candidate is **not wired**; it failed its evaluation round (below).
+Status: accepted — **wired after round 3 passed** (2026-10-09; rounds 1 and 2 failed, below).
+Round 3 asks only the chapter's two largest sections.
 Jenni build plan "What remains" (a) item 4; coverage map row 55. Extends ADR-0056 (examiner
 review of a chapter), follows ADR-0111 (the score card, also evaluated and withheld).
 
@@ -65,6 +66,7 @@ first run:
 |---|---|---|---|---|---|---|---|
 | 1 | 73.0 → 71.5 | 51.5 → **39.0 (76%)** | 0.59 → 0.53 | 42/44 | 45/57 | questions 9/10 runs ≥ 3 | no |
 | 2 | 71.3 → 77.0 | 48.0 → 45.0 (94%) | 0.59 → 0.53 | 37/47 | 56/60 | **strengths 9/10 runs ≥ 2** | no |
+| 3 | 72.7 → 80.0 | 51.0 → 47.0 (92%) | 0.59 → 0.62 | 40/45 (89%) | 54/60 (90%) | strengths 10/10 ≥ bar (fewest 3), questions 10/10 ≥ 3 (fewest 4) | **yes, 45/45** |
 
 Round 1 failed on blocking issues (the candidate marked more as warnings) and on one run whose
 100-sentence chapter lost a section to an answer cut off twice (schema mismatch). Round 2's
@@ -91,13 +93,13 @@ same chapter (blocking 4 then 7 on the EDM review; self recall of blocking sente
 so a single run of either prompt is a weak judge of the other. One candidate run gave 15 issues
 and none blocking on the EDM review where the other gave 8.
 
-**Verdict: FAIL.** The review does not ask for strengths or questions, and nothing is shown or
+**Verdict after round 2: FAIL.** The review did not ask for strengths or questions, and nothing is shown or
 spent. The prompt, its builder and tests, and the evaluation script stay for the next candidate,
 which must pass the same script (`--old-runs=1` reuses round 1's old baseline).
 
 ## Cost
 
-Nothing, unwired. Had it shipped: measured output per section call 1,126 → 1,530 tokens
+As round 2 would have shipped: measured output per section call 1,126 → 1,530 tokens
 (reasoning included, +404), and a system block about 600 tokens longer (cached). Priced on the
 existing profile plus that margin — 8 × (6,100 in, 4,600 cached, 1,000 out) on `gpt-5-mini` —
 ₹1.8618 → **₹2.5334 a review**, ₹4.03 a month at the cap of 6: a fully active student
@@ -153,6 +155,50 @@ chapter pooled with round 1's two, self recall round 1's 0.59, as round 2):
 All 45 checks must pass; same five chapters; spend under ₹20 (the script stops at ₹19). A pass
 restores the wiring (`git revert fd8e404`, with the worker sending `examiner.md` to the
 sections `asksHighlights` refuses); a fail leaves it unwired.
+
+## Round 3 — the result (2026-10-09)
+
+`--old-runs=1`, the same five chapters, 42 calls, **₹11.68** (all three rounds ₹38.67).
+**ALL CHECKS PASSED (45/45):** issues per run old 72.7 → candidate 80.0; blocking 51.0 → 47.0
+(92%, bar 80%); cross recall of the old prompt's blocking sentences 0.62 against the floor 0.49
+(self recall round 1's 0.59; no fresh pairs this round); raw strengths kept 40/45 (89%), raw
+questions 54/60 (90%); every chapter, every run: strengths 3–4, questions 4–5. All five dropped
+strengths were on sentences with a blocking issue; none was dropped for not quoting the text.
+
+Said plainly, so the pass is not read as more than it is:
+
+- **The scaled bar was not needed.** The 10-sentence rooftop-solar introduction kept 3
+  strengths in both runs, so round 3 would also have passed round 2's bar of two everywhere.
+  Round 2's single strength was run-to-run variance; round 3 drew two good runs.
+- **"Two largest sections" changed one chapter's requests.** Four of the five chapters have two
+  sections, so their calls were the same as round 2's; only the six-section urban-heat gap
+  analysis was asked differently (two sections asked, four on `examiner.md`). The change is
+  mainly the cost cut, and it is what (a) measured for that chapter.
+- **Found in the output and fixed after the round:** one question asked why a definition was
+  "placed at s33" — a sentence id. The code now drops a question naming a sentence id as it
+  drops passage ids (`5523d3a`, tested). It only drops; re-scored, that run keeps five
+  questions and the pooled rate is 53/60 (88%): still a pass.
+- **Seen and not ours:** the rooftop chapter's second heading is a sentence fragment in the
+  student's text, so its strengths show that as their section.
+- What a reader sees: strengths such as "reduced TWR of a copper electrode by 37.9%" — "Reports a
+  precise, cited experimental result"; questions such as "Why restrict the study to Virudhunagar
+  district rather than sampling multiple rural districts in Tamil Nadu to improve
+  generalisability?". Weakest strength seen: "Mobile banking has the potential", anchored but
+  thin.
+
+**Verdict: PASS. Wired:** `git revert fd8e404` (the worker, API view and Flags tab of `485a472`),
+with the worker sending `examiner_review.md` only to the sections `asksHighlights` accepts and
+`examiner.md` to the rest (`697f308`, a third-section test in
+`apps/worker/test/examiner-review.spec.ts`).
+
+**Cost as shipped** (`5b4de5b`): two of eight sections carry the longer system block (+600
+cached) and the measured extra output (1,700 against 1,099 tokens a call, +600):
+`EXAMINER_REVIEW` = 8 × (5,500 in, 4,000 cached, 600 out) + 2 × (600, 600, 600) on `gpt-5-mini`,
+**₹1.8618 → ₹2.0993 a review**, ₹12.60 a month at the cap of 6 (+₹1.43). A fully active student
+at the production configuration (Assist on `gpt-4.1-mini`) goes **₹93.13 → ₹94.55** in
+`pnpm ai:verify`'s table, ₹5.45 under the ₹100 ceiling; with COSTING.md's notes outside the table
+(research embedding, ADR-0133's ≤ ₹2.16) **≤ ₹96.74**, ₹3.26 under it. Round 2's design would
+have been ₹97.16 before those notes.
 
 ## Evidence
 
