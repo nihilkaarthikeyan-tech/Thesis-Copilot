@@ -312,6 +312,10 @@ for (const chapter of picked) {
 }
 
 console.log(`\n${picked.length} chapters, ${calls} calls, ${tokens.toLocaleString()} tokens`);
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+console.log(
+  `spent ₹${spentInr.toFixed(2)}; score calls ${scoreCalls.length}, mean ₹${mean(scoreCalls.map((c) => c.inr)).toFixed(4)}, mean tokens in ${Math.round(mean(scoreCalls.map((c) => c.usage.inputTokens)))} / cached ${Math.round(mean(scoreCalls.map((c) => c.usage.cachedInputTokens ?? 0)))} / out ${Math.round(mean(scoreCalls.map((c) => c.usage.outputTokens)))} (max out ${Math.max(0, ...scoreCalls.map((c) => c.usage.outputTokens))})`,
+);
 console.log(failures.length === 0 ? 'ALL CHECKS PASSED' : `${failures.length} FAILED:`);
 for (const f of failures) console.log(`  - ${f}`);
 await prisma.$disconnect();

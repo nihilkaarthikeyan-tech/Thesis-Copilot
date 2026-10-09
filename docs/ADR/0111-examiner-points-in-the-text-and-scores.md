@@ -108,3 +108,43 @@ round; budget for it about ₹30 of the day's ₹40).
   `EXAMINER_REVIEW` unit, as built) and the card is shown with its reasons; the price is recorded
   here. **If it fails**, nothing is wired, nothing is shown or spent in production, and the round
   is recorded below. One round only: no prompt changes, no second effort tried in this run.
+
+### Round 5 result: failed; the card stays withheld
+
+| Round | Prompt | Stable | Presentation | Soundness | Contribution | Passed |
+|---|---|---|---|---|---|---|
+| 5 | v3, score call at `'high'` effort | 3/4 | 1/4 | 4/4 | 1/4 | 9/16 |
+
+Criterion 2, 3 and 5 failed. Every run gave a full card (criterion 1). The chapters the script
+picked this time were not the round-4 set: the urban heat stress gap analysis
+(`01a11ca5-…6f902171`, 6 sections, 684 words) and three "Writing profile" e2e-fixture chapters
+(`01a0d3ae…`, `01a0e861…`, `01a105d2…`), the same 1,704 words of verbatim-repeated findings
+under different thesis titles, which the script's one-chapter-per-thesis rule did not catch.
+Those three scored S2 P3 C2 O2 on every variant: stable, but already at the floor, so
+presentation and contribution had nowhere to fall. That weakens the round as a test, but not the
+verdict, because the one real chapter shows the problem the card has always had:
+
+- **Not stable on the real chapter.** Round 5: P6 C5 then P8 C4 on the same text and issues. A
+  pricing run of the same chapter straight after (fresh examiner pass, 39 issues against 38)
+  gave **P3 C2** twice. Three points of presentation between runs at near-identical input.
+- In round 5 that chapter did pass all three falls (P6→5 scrambled, S2 at the floor, C5→2 first
+  section only); in the pricing run, scrambled went P3→P3 and first-only C2→C3. The falls are
+  not reproducible either.
+- The reasons still mostly restate the issue list ("multiple blocking 'unsupported' issues…"),
+  as in rounds 2–4. More thinking did not make presentation or contribution read the text.
+
+**Price at `'high'`, measured** (5 score calls on the real chapter, gpt-5-mini): mean 1,743
+uncached + 1,894 cached input, **5,188 output** tokens (mostly reasoning; max 6,158, inside the
+700 + 8,000 budget), **₹0.94 a call** against ≈₹0.36 at `'low'`. A review would go ₹1.86 →
+≈₹2.80 (a 24,000-character chapter adds ≈₹0.13 of input), and a fully active student ₹93.13 →
+≈₹98.8, inside the ceiling but with almost nothing left (criterion 6 would have held, barely).
+
+**Decision unchanged:** no score card; the review does not make the call; nothing is shown or
+spent in production. Kept: `LlmRequest.reasoningEffort` (the OpenAI adapter sends it to a
+reasoning model with `REASONING_HEADROOM_BY_EFFORT`, pinned in `openai.spec.ts`) and the builder
+at `'high'`, unwired. The eval script now prints the chapter ids and the spend. A next candidate
+should pin real chapters by id (the round-2–4 set was not recorded) and exclude e2e fixtures,
+and should probably not be a grade at all: four prompts and two efforts have not made these two
+numbers track the text. Cost of this round: ≈₹21 for the round (35 calls, 186,393 tokens; estimated from the pricing
+run's per-call costs, 20 score calls at ≈₹0.94 and 15 examiner calls at ≈₹0.19, because the
+round's own spend line did not print) and ₹5.83 measured for the pricing run.

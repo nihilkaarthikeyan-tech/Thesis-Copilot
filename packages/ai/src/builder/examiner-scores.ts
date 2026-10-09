@@ -26,6 +26,8 @@ export const EXAMINER_SCORES = {
   /**
    * Round 5 (ADR-0111 addendum, 2026-10-09): the strong tier's default `'low'` gave a card that
    * echoed the issue list; this one call thinks harder. Ignored by a model that does not reason.
+   * Round 5 failed too (the builder stays unwired), and 'high' costs ≈₹0.94 a call against
+   * ≈₹0.36 at 'low'; kept as the last candidate evaluated, not as a recommendation.
    */
   reasoningEffort: 'high',
   /** Characters of the chapter sent; a longer chapter is cut, each section keeping its share. */

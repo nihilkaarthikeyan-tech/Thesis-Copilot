@@ -6203,3 +6203,22 @@ Cost ₹14.90 (₹8.18 the round, ₹6.72 a run lost to PowerShell 5.1 dropping 
 
 
 The candidate's code (`isSectionOpener`, `OPENER_INSTRUCTION`, `maxSentences`, the harness's `--opener-mode`) stays on branch `worktree-agent-a4111c5e444d5e7f7` (commit 338fa95), not on main, until the owner decides whether a short opener is wanted at a lower examiner score.
+
+## The examiner score card at high reasoning effort, round 5: withheld again (2026-10-09, ADR-0111 addendum)
+
+Criterion written into ADR-0111 and committed before the run: the round-4 bar (full cards;
+stable on all four; presentation, soundness and contribution each fall on at least three of four)
+plus a price that keeps a fully active student under ₹100. The candidate changed one thing: the
+score call asks for `'high'` reasoning effort (new `LlmRequest.reasoningEffort`, sent by the
+OpenAI adapter to a reasoning model with headroom 8,000 for high / 4,000 for medium; two cases
+in `packages/ai/test/openai.spec.ts`, 27 pass with `examiner-scores.spec.ts`).
+
+Result 9/16: stable 3/4, presentation 1/4, soundness 4/4, contribution 1/4. **Failed; the card
+stays unwired and unshown.** Three of the four chapters the script picked were the same e2e
+"Writing profile" fixture under different thesis titles, stuck at the floor (S2 P3 C2 O2) on every
+variant; the one real chapter (urban heat stress gap analysis) scored P6 C5, then P8 C4, then in
+a pricing run straight after P3 C2 twice: a grade that moves three points on the same text.
+Measured price at `'high'`: ₹0.94 a score call (5,188 output tokens, mostly thinking) against
+≈₹0.36 at `'low'`; a review would be ≈₹2.80 and a fully active student ≈₹98.8. Spend ≈₹21 for
+the round (estimated; its spend line did not print) and ₹5.83 for the pricing run. The eval
+script now prints chapter ids and spend; a next candidate should pin real chapters by id.
