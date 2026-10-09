@@ -308,6 +308,39 @@ describe('provider errors', () => {
       }
     }).rejects.toThrow(LlmProviderError);
   });
+
+  it('say what OpenAI said when the refusal arrives inside the stream (ADR-0145 addendum)', async () => {
+    // Seen on 2026-10-09: an HTTP 200 stream whose event is a quota refusal. The SDK ends the
+    // text stream quietly and reports only "No output generated", which is what the call log
+    // recorded for every one of them. The event below is the one OpenAI sent, verbatim.
+    const refusal = {
+      type: 'error',
+      sequence_number: 2,
+      error: {
+        type: 'insufficient_quota',
+        code: 'credit_balance_exhausted',
+        message:
+          'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+        param: null,
+      },
+    };
+    const provider = new OpenAiLlmProvider({
+      apiKey: 'test-key',
+      fastModel: 'gpt-5-nano',
+      strongModel: 'gpt-5-mini',
+      fetch: (async () =>
+        new Response(`event: error\ndata: ${JSON.stringify(refusal)}\n\n`, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        })) as typeof globalThis.fetch,
+    });
+
+    await expect(async () => {
+      for await (const _chunk of provider.stream(request())) {
+        // drained
+      }
+    }).rejects.toThrow(/OpenAI stream failed: .*no credits remaining/);
+  });
 });
 
 describe('an answer cut off by the output budget (ADR-0048)', () => {
