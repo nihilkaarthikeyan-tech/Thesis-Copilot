@@ -18,7 +18,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type FormEvent, Suspense, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { AnswerText } from '@/components/editor/ChatPanel';
 import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,8 @@ function Ask() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const limit = useLimit();
+  /** The chat this page stored a moment ago, whose address it has just put in the bar. */
+  const justStored = useRef<string | null>(null);
 
   const loadChats = useCallback(() => {
     api<{ chats: ResearchChatSummary[] }>('/research-chats')
@@ -102,8 +104,11 @@ function Ask() {
       .catch(() => setTheses([]));
   }, [loadChats]);
 
-  // Open the chat named in the address, or start empty.
+  // Open the chat named in the address, or start empty. A chat this page has just stored is
+  // already on screen: its address changes, and nothing is read again.
   useEffect(() => {
+    if (openId && openId === justStored.current) return;
+    justStored.current = null;
     setChatId(openId);
     setError(null);
     limit.clear();
@@ -181,6 +186,7 @@ function Ask() {
             if (typeof data.threadId === 'string' && data.threadId !== chatId) {
               setChatId(data.threadId);
               if (!suggestedTitle) setSuggestedTitle(question);
+              justStored.current = data.threadId;
               router.replace(`/app/ask?chat=${data.threadId}`, { scroll: false });
               loadChats();
             }
