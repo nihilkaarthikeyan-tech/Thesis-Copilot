@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { citationNotice } from '../src/lib/word-import-notice';
 
+// The citation count itself is `countCitationLike` in apps/api (docx-chapters.spec.ts): since QA
+// 2026-10-08 it counts papers, so "(Rao & Singh, 2019; Patel et al., 2020)" is 2 and "[1-3]" is 3.
 describe('why a Word import’s citations were not linked (Jenni build plan R34)', () => {
   it('says the file has no references section, and what to do instead', () => {
     const notice = citationNotice({ citationLike: 3, references: [] });
@@ -9,7 +11,7 @@ describe('why a Word import’s citations were not linked (Jenni build plan R34)
     expect(notice.lines[0]).toBe(
       'The file has no references section — a heading such as “References” or “Bibliography” — so nothing in it says which paper each citation means. They stay as text.',
     );
-    expect(notice.lines[1]).toContain('Citations tab → Paste a reference');
+    expect(notice.lines[1]).toContain('in the Citations tab, Paste a reference takes a whole list');
   });
 
   it('speaks of one citation as one', () => {
@@ -36,7 +38,7 @@ describe('why a Word import’s citations were not linked (Jenni build plan R34)
       'A citation in your thesis points at a paper in your library, and an import adds no papers, so the citations stay as text.',
     );
     expect(notice.lines[1]).toBe(
-      'Your reference list — the chapter “References” (24 entries) — came in as text. Paste it into Citations tab → Paste a reference to add those papers to your library, then cite each one.',
+      'Your reference list — the chapter “References” (24 entries) — came in as text. In the Citations tab, use Paste a reference to add those papers to your library, then cite each one.',
     );
     expect(notice.lines[2]).toContain('builds its own reference list');
   });
@@ -67,5 +69,8 @@ describe('why a Word import’s citations were not linked (Jenni build plan R34)
     expect(notice.tone).toBe('info');
     expect(notice.title).toBe('No citations found in the text');
     expect(notice.lines[0]).toContain('“References” in “Chapter 5” (nothing under it)');
+    expect(notice.lines[1]).toBe(
+      'To cite those papers, open the Citations tab and use Paste a reference with the list: each one is looked up and added to your library.',
+    );
   });
 });

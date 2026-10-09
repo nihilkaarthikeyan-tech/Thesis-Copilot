@@ -14,7 +14,7 @@
 import type { SourcePrefs } from '@tc/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AddProposalPrompt } from '@/components/AddProposalPrompt';
 import { LogoMark } from '@/components/LogoMark';
 import { NewMenu } from '@/components/NewMenu';
@@ -55,6 +55,7 @@ import {
   markEnteredThisSession,
   readLastChapter,
 } from '@/lib/last-chapter';
+import { useStayInWindow } from '@/lib/stay-in-window';
 import { thesisWriteHref } from '@/lib/thesis-href';
 
 type DocumentSummary = {
@@ -73,6 +74,34 @@ const ENTRY_PATHS = [
   { value: 'B_PAPER', label: 'list.entry.paper', hint: 'list.entry.paperHint' },
   { value: 'A_TOPIC', label: 'list.entry.topic', hint: 'list.entry.topicHint' },
 ] as const;
+
+/**
+ * A thesis card's "More" menu. Measured once open (QA 2026-10-08): on a phone the card's links
+ * wrap and "More" can land on the left of the second row, where a menu lined up with its right
+ * edge ran 41 px off the left of the screen.
+ */
+function CardMore({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const { ref, style } = useStayInWindow<HTMLDivElement>(open);
+  return (
+    <details className="relative" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary
+        className="cursor-pointer list-none text-muted hover:text-accent"
+        data-testid="thesis-more"
+      >
+        {label}
+      </summary>
+      <div
+        ref={ref}
+        style={style}
+        className="absolute right-0 z-10 mt-1 flex w-40 max-w-[calc(100vw-1rem)] flex-col gap-1 rounded-md border border-line bg-surface p-2 shadow-lg"
+        data-testid="thesis-more-items"
+      >
+        {children}
+      </div>
+    </details>
+  );
+}
 
 export default function DocumentListPage() {
   const router = useRouter();
@@ -647,42 +676,37 @@ export default function DocumentListPage() {
                               {stage.label}
                             </Link>
                           ))}
-                          <details className="relative">
-                            <summary className="cursor-pointer list-none text-muted hover:text-accent">
-                              {t('common.more')}
-                            </summary>
-                            <div className="absolute right-0 z-10 mt-1 flex w-40 flex-col gap-1 rounded-md border border-line bg-surface p-2 shadow-lg">
-                              {moreStages(d.id).map((stage) => (
-                                <Link
-                                  key={stage.label}
-                                  href={stage.href}
-                                  className="text-muted hover:text-accent"
-                                >
-                                  {stage.label}
-                                </Link>
-                              ))}
-                              <button
-                                type="button"
-                                disabled={copying !== null}
-                                onClick={() => void copy(d)}
-                                data-testid="copy-thesis"
-                                className="text-left text-muted hover:text-accent disabled:opacity-50"
+                          <CardMore label={t('common.more')}>
+                            {moreStages(d.id).map((stage) => (
+                              <Link
+                                key={stage.label}
+                                href={stage.href}
+                                className="text-muted hover:text-accent"
                               >
-                                {copying === d.id ? t('list.copying') : t('list.makeCopy')}
-                              </button>
-                              {/* In More rather than on the row (R29): the row already wraps on a
+                                {stage.label}
+                              </Link>
+                            ))}
+                            <button
+                              type="button"
+                              disabled={copying !== null}
+                              onClick={() => void copy(d)}
+                              data-testid="copy-thesis"
+                              className="text-left text-muted hover:text-accent disabled:opacity-50"
+                            >
+                              {copying === d.id ? t('list.copying') : t('list.makeCopy')}
+                            </button>
+                            {/* In More rather than on the row (R29): the row already wraps on a
                                   phone, and archiving is occasional. */}
-                              <button
-                                type="button"
-                                disabled={moving !== null}
-                                onClick={() => void archive(d)}
-                                data-testid="archive-thesis"
-                                className="text-left text-muted hover:text-accent disabled:opacity-50"
-                              >
-                                {moving === d.id ? t('list.archiving') : t('list.archive')}
-                              </button>
-                            </div>
-                          </details>
+                            <button
+                              type="button"
+                              disabled={moving !== null}
+                              onClick={() => void archive(d)}
+                              data-testid="archive-thesis"
+                              className="text-left text-muted hover:text-accent disabled:opacity-50"
+                            >
+                              {moving === d.id ? t('list.archiving') : t('list.archive')}
+                            </button>
+                          </CardMore>
                           <button
                             type="button"
                             onClick={() => setDeleting(d)}

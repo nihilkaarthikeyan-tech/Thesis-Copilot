@@ -126,6 +126,20 @@ test('the editor, the thesis list and the outline fit their boxes on a laptop an
     await page.goto('/app');
     await settle(page);
     await check(`${width} thesis list`);
+    // QA 2026-10-08: the card's "More" menu opened 41 px past the left edge at 390, where the
+    // card's links wrap and "More" lands on the left; the guard skipped positioned menus then.
+    const more = page.getByTestId('thesis-more').first();
+    await more.click();
+    await expect(page.getByTestId('thesis-more-items').first()).toBeVisible();
+    await page.waitForTimeout(300);
+    await check(`${width} thesis list [More open]`);
+    const menu = await page.getByTestId('thesis-more-items').first().boundingBox();
+    expect(menu, 'the More menu is laid out').not.toBeNull();
+    if (menu) {
+      expect(menu.x, `${width}: More menu left edge`).toBeGreaterThanOrEqual(0);
+      expect(menu.x + menu.width, `${width}: More menu right edge`).toBeLessThanOrEqual(width);
+    }
+    await more.click();
 
     await page.goto(`/app/d/${doc.id}/outline`);
     await settle(page);

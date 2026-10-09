@@ -194,10 +194,25 @@ describe('references sections (R34, ADR-0113)', () => {
 
 describe('countCitationLike', () => {
   it('counts the shapes a typed citation takes, and not ordinary brackets', () => {
-    expect(countCitationLike('as shown (Kumar, 2021; Sen et al., 2020a).')).toBe(1);
+    expect(countCitationLike('as shown (Kumar, 2021).')).toBe(1);
     expect(countCitationLike('Kumar et al. (2021) found')).toBe(1);
-    expect(countCitationLike('see [1, 4–6] and [12]')).toBe(2);
+    expect(countCitationLike('see [12]')).toBe(1);
     expect(countCitationLike('in (2021) and (n = 40) and [a]')).toBe(0);
+  });
+
+  // QA 2026-10-08: the notice said "1 citation not linked" for two papers in one parenthesis.
+  // The count is papers cited — what the student will have to link — not brackets typed.
+  it('counts each paper in a grouped citation as its own citation', () => {
+    expect(countCitationLike('as found (Rao & Singh, 2019; Patel et al., 2020).')).toBe(2);
+    expect(countCitationLike('as shown (Kumar, 2021; Sen et al., 2020a; Iyer 2018).')).toBe(3);
+    // A ';' that does not separate a name and a year does not make a second citation.
+    expect(countCitationLike('(see Kumar, 2021; also the appendix)')).toBe(1);
+    // IEEE: one per number, a range one per number in it.
+    expect(countCitationLike('see [1], [2]')).toBe(2);
+    expect(countCitationLike('see [1-3]')).toBe(3);
+    expect(countCitationLike('see [1, 4–6] and [12]')).toBe(5);
+    // A range that runs backwards or absurdly far is a typo: one citation, not hundreds.
+    expect(countCitationLike('see [9-2] and [1-5000]')).toBe(2);
   });
 });
 

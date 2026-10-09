@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { useStayInWindow } from '@/lib/stay-in-window';
 
 type Role = 'GUIDE' | 'COAUTHOR' | 'READER';
 
@@ -66,6 +67,8 @@ function problemText(e: unknown, fallback: string): string {
 export function ShareButton({ documentId }: { documentId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Measured once open: on a phone the header wraps and "Share" may sit far from the right edge.
+  const panel = useStayInWindow<HTMLDivElement>(open);
   const [shares, setShares] = useState<Share[]>([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('GUIDE');
@@ -238,6 +241,8 @@ export function ShareButton({ documentId }: { documentId: string }) {
       {open ? (
         <div
           data-testid="share-panel"
+          ref={panel.ref}
+          style={panel.style}
           className="absolute right-0 top-full z-40 mt-1 w-[min(26rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-left shadow-lg"
         >
           <p className="text-xs text-muted">

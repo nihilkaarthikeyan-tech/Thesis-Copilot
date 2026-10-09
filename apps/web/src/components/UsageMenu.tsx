@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { allowanceName, includedAllowances, notIncluded } from '@/lib/action-names';
 import { api } from '@/lib/api';
 import { formatResetDate } from '@/lib/limit';
+import { useStayInWindow } from '@/lib/stay-in-window';
 import { barTone } from '@/lib/usage';
 
 type Usage = {
@@ -34,6 +35,8 @@ export function UsageMenu(props: {
   testId?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // Measured once open: where the button sits depends on how its bar wrapped.
+  const panel = useStayInWindow<HTMLDivElement>(open);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [failed, setFailed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -77,7 +80,9 @@ export function UsageMenu(props: {
         <div
           role="dialog"
           aria-label="Your usage this month"
-          className="absolute top-full right-0 z-50 mt-1 w-72 rounded-md border border-line bg-surface p-3 text-left text-[12.5px] text-ink shadow-lg"
+          ref={panel.ref}
+          style={panel.style}
+          className="absolute top-full right-0 z-50 mt-1 w-72 max-w-[calc(100vw-1rem)] rounded-md border border-line bg-surface p-3 text-left text-[12.5px] text-ink shadow-lg"
           data-testid="usage-panel"
         >
           <p className="font-semibold">This month</p>

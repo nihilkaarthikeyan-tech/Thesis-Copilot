@@ -21,7 +21,8 @@ export type CitationNotice = {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-const PASTE = 'Citations tab → Paste a reference';
+/** Where a pasted reference list becomes library papers; said as a sentence would say it. */
+const PASTE = 'Paste a reference';
 
 /** Where the reference list came in: "the chapter “References” (24 entries)". */
 function where(found: readonly ReferencesFound[]): string {
@@ -58,7 +59,7 @@ export function citationNotice(input: {
       title: unlinked,
       lines: [
         `The file has no references section — a heading such as “References” or “Bibliography” — so nothing in it says which paper ${n === 1 ? 'the citation means' : 'each citation means'}. ${n === 1 ? 'It stays' : 'They stay'} as text.`,
-        `To link ${n === 1 ? 'it' : 'them'}, add the papers to your library (${PASTE} takes a whole list), then cite each one from there.`,
+        `To link ${n === 1 ? 'it' : 'them'}, add the papers to your library — in the Citations tab, ${PASTE} takes a whole list — then cite each one from there.`,
       ],
     };
   }
@@ -70,7 +71,7 @@ export function citationNotice(input: {
       title: 'No citations found in the text',
       lines: [
         `Your reference list — ${list} — came in as text, but no citation such as “(Kumar, 2021)” or “[3]” was found in the text to go with it.`,
-        `To cite those papers, paste the list into ${PASTE}: each one is looked up and added to your library.`,
+        `To cite those papers, open the Citations tab and use ${PASTE} with the list: each one is looked up and added to your library.`,
       ],
     };
   }
@@ -79,7 +80,7 @@ export function citationNotice(input: {
     title: unlinked,
     lines: [
       `A citation in your thesis points at a paper in your library, and an import adds no papers, so ${n === 1 ? 'the citation stays' : 'the citations stay'} as text.`,
-      `Your reference list — ${list} — came in as text. Paste it into ${PASTE} to add those papers to your library, then cite each one.`,
+      `Your reference list — ${list} — came in as text. In the Citations tab, use ${PASTE} to add those papers to your library, then cite each one.`,
       'Your thesis builds its own reference list from what you cite, so the typed one can go once the citations are linked.',
     ],
   };

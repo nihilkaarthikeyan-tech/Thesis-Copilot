@@ -156,22 +156,36 @@ const NOTE_HREF = /^#(footnote|endnote)-(.+)$/;
 const NOTE_ID = /^(footnote|endnote)-(.+)$/;
 
 /**
- * Counts the citations a student typed as text. Three shapes, each counted once:
- *   - a parenthesis holding a capitalised name and a year: "(Kumar, 2021)", "(Rao & Iyer 2019; Sen
- *     et al., 2020a)"
- *   - a name followed by a bracketed year: "Kumar (2021)"
- *   - a bracketed number list: "[3]", "[1, 4–6]"
+ * Counts the citations a student typed as text — one per paper cited, which is what the student
+ * will have to link (QA 2026-10-08: "(Rao & Singh, 2019; Patel et al., 2020)" is two, not one).
+ * Three shapes:
+ *   - a parenthesis holding a capitalised name and a year: "(Kumar, 2021)" is one, "(Rao & Iyer
+ *     2019; Sen et al., 2020a)" two — each ';'-separated name-and-year is its own citation
+ *   - a name followed by a bracketed year: "Kumar (2021)" is one
+ *   - a bracketed number list, one per number: "[3]" is one, "[1], [2]" two, "[1-3]" three,
+ *     "[1, 4–6]" four. A range that runs backwards or past 99 numbers is a typo, counted once.
  */
 export function countCitationLike(text: string): number {
+  const year = /\b(?:1[89]|20)\d{2}[a-z]?\b/u;
+  const name = /\p{Lu}\p{L}+/u;
   const parenthetical = /\(([^()]*\b(?:1[89]|20)\d{2}[a-z]?\b[^()]*)\)/gu;
   const narrative = /\p{Lu}[\p{L}'’-]+(?:\s+et\s+al\.?)?\s+\((?:1[89]|20)\d{2}[a-z]?\)/gu;
-  const numeric = /\[\d+(?:\s*[-–,]\s*\d+)*\]/g;
+  const numeric = /\[(\d+(?:\s*[-–,]\s*\d+)*)\]/g;
   let count = 0;
   for (const match of text.matchAll(parenthetical)) {
-    if (/\p{Lu}\p{L}+/u.test(match[1] ?? '')) count++;
+    const inner = match[1] ?? '';
+    if (!name.test(inner)) continue;
+    const parts = inner.split(';').filter((part) => name.test(part) && year.test(part)).length;
+    count += Math.max(1, parts);
   }
   count += [...text.matchAll(narrative)].length;
-  count += [...text.matchAll(numeric)].length;
+  for (const match of text.matchAll(numeric)) {
+    for (const item of (match[1] ?? '').split(',')) {
+      const [from, to] = item.split(/[-–]/).map((n) => Number.parseInt(n.trim(), 10));
+      const span = to === undefined || from === undefined ? 1 : to - from + 1;
+      count += span >= 1 && span <= 100 ? span : 1;
+    }
+  }
   return count;
 }
 

@@ -41,7 +41,7 @@ export function RateThis({
   const id = useId();
   const [rating, setRating] = useState<RunRating>(initial);
   const [note, setNote] = useState(initial?.note ?? '');
-  /** The note box: offered once a thumb is pressed, and again by "Edit". */
+  /** The note box: offered once a thumb is pressed, and again by "Edit" or "Add a note". */
   const [writing, setWriting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,12 +70,21 @@ export function RateThis({
   async function press(value: 1 | -1) {
     // Pressed again, it is taken back — note and all — as the chat and suggestion thumbs do.
     const next = rating?.value === value ? 0 : value;
-    const saved = await send(next, next === 0 ? null : (rating?.note ?? null));
+    // A note belongs to the rating it was written for: "what went wrong" must not stay attached
+    // to a Useful (QA 2026-10-08). Switching thumbs clears it, and the status says so.
+    const dropped = next !== 0 && Boolean(rating?.note);
+    const saved = await send(next, null);
     if (saved === undefined) return;
     setRating(saved);
     setNote(saved?.note ?? '');
     setWriting(saved !== null && !saved.note);
-    setStatus(saved ? 'Thanks — saved.' : 'Taken back.');
+    setStatus(
+      saved === null
+        ? 'Taken back.'
+        : dropped
+          ? 'Saved. Your note was for the other rating, so it was cleared.'
+          : 'Thanks — saved.',
+    );
   }
 
   async function saveNote(event: FormEvent) {
@@ -96,7 +105,11 @@ export function RateThis({
       disabled={busy}
       onClick={() => void press(value)}
       data-testid={value === 1 ? 'rate-up' : 'rate-down'}
-      className={`rounded p-1.5 hover:bg-sunk disabled:opacity-50 ${rating?.value === value ? 'text-accent' : 'text-muted'}`}
+      className={`rounded border p-1.5 disabled:opacity-50 ${
+        rating?.value === value
+          ? 'border-accent bg-accent-soft text-accent'
+          : 'border-transparent text-muted hover:bg-sunk'
+      }`}
     >
       {value === 1 ? <ThumbsUp size={15} aria-hidden /> : <ThumbsDown size={15} aria-hidden />}
     </button>
@@ -146,6 +159,18 @@ export function RateThis({
           “{rating.note}”{' '}
           <button type="button" onClick={() => setWriting(true)} className="underline">
             Edit
+          </button>
+        </p>
+      ) : rating ? (
+        // Rated without a note, or the note was cleared: one can still be added, after a reload too.
+        <p className="mt-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setWriting(true)}
+            className="text-muted underline"
+            data-testid="rate-add-note"
+          >
+            Add a note
           </button>
         </p>
       ) : null}
