@@ -1029,10 +1029,13 @@ export class ChatService {
     return typeof title === 'string' && title.trim() ? title.trim() : null;
   }
 
-  /** The research path's embedding call, as the worker logs its own (`EMBED`, real tokens). */
-  private async logEmbed(
+  /**
+   * The research path's embedding call, as the worker logs its own (`EMBED`, real tokens). Also
+   * used by a research question asked with no thesis (ADR-0132), whose `documentId` is null.
+   */
+  async logEmbed(
     userId: string,
-    documentId: string,
+    documentId: string | null,
     tokens: number,
     latencyMs: number,
   ): Promise<void> {
@@ -1189,10 +1192,13 @@ export class ChatService {
     };
   }
 
-  /** The model call and its logging, shared by the library and beyond paths. */
-  private async *stream(
+  /**
+   * The model call and its logging, shared by the library and beyond paths, and by a research
+   * question asked with no thesis (ADR-0132, `documentId` null). Refunds the unit on a failure.
+   */
+  async *stream(
     userId: string,
-    documentId: string,
+    documentId: string | null,
     request: ReturnType<typeof buildChatRequest>,
     startedAt: number,
     signal: AbortSignal,
@@ -1328,7 +1334,7 @@ export class ChatService {
 
   private async log(
     userId: string,
-    documentId: string,
+    documentId: string | null,
     model: string,
     usage: {
       inputTokens: number;

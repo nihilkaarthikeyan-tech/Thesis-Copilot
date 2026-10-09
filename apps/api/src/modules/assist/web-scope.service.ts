@@ -131,19 +131,25 @@ export class WebScopeService {
     ];
   }
 
+  /**
+   * `documentId` null (ADR-0132): a research question asked with no thesis. There is no library
+   * to mark results against, so every result is "not in your library".
+   */
   async search(
     ownerId: string,
-    documentId: string,
+    documentId: string | null,
     question: string,
     signal?: AbortSignal,
     /** ADR-0060 asks for more, so eight with abstracts usually survive its filter. */
     limit: number = WEB_SCOPE.maxResults,
   ): Promise<{ results: WebResult[]; query: string }> {
-    const document = await this.prisma.document.findFirst({
-      where: { id: documentId, ownerId },
-      select: { id: true },
-    });
-    if (!document) throw new NotFoundError('That document');
+    if (documentId !== null) {
+      const document = await this.prisma.document.findFirst({
+        where: { id: documentId, ownerId },
+        select: { id: true },
+      });
+      if (!document) throw new NotFoundError('That document');
+    }
 
     const options = {
       mailto: this.env.OPENALEX_MAILTO ?? this.env.CROSSREF_MAILTO ?? '',
@@ -189,7 +195,10 @@ export class WebScopeService {
     // Taken in turn, so each index that answered is on the page — eight results would otherwise
     // be eight of OpenAlex's.
     const works = mergeWorks([interleave(lists)]).slice(0, limit);
-    const have = await this.libraryKeys(documentId);
+    const have: LibraryKeys =
+      documentId === null
+        ? { dois: new Set(), titles: new Set() }
+        : await this.libraryKeys(documentId);
     return {
       query: question,
       results: works.map((work) => webResultOf(work, question, have)),
