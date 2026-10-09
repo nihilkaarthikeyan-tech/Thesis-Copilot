@@ -3,6 +3,9 @@
  *
  *   pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx eval/run.ts assist [--samples 2]
  *
+ * Model against model, same prompt (ADR-0146): `--model <id>` puts side B's fast tier on another
+ * model, `--strong-model <id>` its strong tier; `--max-rupees <n>` stops the run at a spend.
+ *
  * For every case, the request is built exactly as production builds it, once with the prompt on
  * disk (A) and once with `eval/candidates/<name>.md` (B). Both answers pass through production's
  * own post-processing (the citation whitelist and the quality filters), because that is what a
@@ -1061,9 +1064,16 @@ async function main(): Promise<void> {
   const samples = Number(process.argv[process.argv.indexOf('--samples') + 1] || 1) || 1;
   // --model <id>: B is the *current* prompt on another fast-tier model (2026-10-04, choosing the
   // Assist model). Without it, B is `eval/candidates/<name>.md` on the same model, as before.
-  const modelB = process.argv.includes('--model')
+  const fastModelB = process.argv.includes('--model')
     ? process.argv[process.argv.indexOf('--model') + 1]
     : undefined;
+  // ADR-0146: --strong-model <id> does the same for the strong tier (outlines, edit commands), so
+  // a path that runs on the strong tier can be compared model against model. The judge stays on
+  // the configured strong model either way.
+  const strongModelB = process.argv.includes('--strong-model')
+    ? process.argv[process.argv.indexOf('--strong-model') + 1]
+    : undefined;
+  const modelB = strongModelB ?? fastModelB;
   // ADR-0075: --candidate <file> picks one of several candidates for the same prompt
   // (`eval/candidates/<file>.md`); --set copying runs that round's cases; --no-judge measures
   // without the judge, which is most of the cost.
@@ -1078,12 +1088,24 @@ async function main(): Promise<void> {
   const candidate = modelB ? null : readFileSync(candidatePath, 'utf8');
 
   const env = loadEnv();
-  const meter = metered(createProviders(env).llm);
+  const providers = createProviders(env).llm;
+  const meter = metered(providers);
   const llm = meter.llm;
+  // Side A on its own meter, so a model comparison can report each side's cost per call.
+  const meterA = metered(providers);
   // The judge and side A stay on the configured models; only side B's fast tier changes.
-  const meterB = modelB ? metered(createProviders({ ...env, AI_FAST_MODEL: modelB }).llm) : meter;
+  const meterB = modelB
+    ? metered(
+        createProviders({
+          ...env,
+          ...(fastModelB ? { AI_FAST_MODEL: fastModelB } : {}),
+          ...(strongModelB ? { AI_STRONG_MODEL: strongModelB } : {}),
+        }).llm,
+      )
+    : meter;
   const llmB = meterB.llm;
-  if (modelB) console.log(`A: ${env.AI_FAST_MODEL}   B: ${modelB}   judge: ${env.AI_STRONG_MODEL}`);
+  const modelA = strongModelB ? env.AI_STRONG_MODEL : env.AI_FAST_MODEL;
+  if (modelB) console.log(`A: ${modelA}   B: ${modelB}   judge: ${env.AI_STRONG_MODEL}`);
   const only = process.argv.includes('--only')
     ? process.argv[process.argv.indexOf('--only') + 1]
     : undefined;
@@ -1161,7 +1183,9 @@ async function main(): Promise<void> {
     );
   if (name === 'chat' || name === 'chat_deep') console.log(`chat tier: ${chatTier}`);
 
-  for (const c of cases) {
+  // ADR-0146: a spend ceiling for a run on dearer models; the run stops after the case that hits it.
+  const maxRupees = arg('--max-rupees') !== undefined ? Number(arg('--max-rupees')) : undefined;
+  everyCase: for (const c of cases) {
     for (let s = 0; s < samples; s++) {
       overridePrompt(name, null);
       const startA = Date.now();
@@ -1169,7 +1193,7 @@ async function main(): Promise<void> {
       // again; its numbers come from the run that measured it. Never combined with the judge.
       const a = bOnly
         ? { text: '', shown: '', cited: 0, empty: true, dropped: 0, raw: '' }
-        : await safely(llm, c, 'current');
+        : await safely(meterA.llm, c, 'current');
       timing.a.push(Date.now() - startA);
       overridePrompt(name, candidate);
       const startB = Date.now();
@@ -1244,9 +1268,14 @@ async function main(): Promise<void> {
         reason1: j1.reason,
         reason2: j2.reason,
       });
+      const spent = meter.rupees() + meterA.rupees() + (modelB ? meterB.rupees() : 0);
       console.log(
-        `${c.id}#${s}: ${verdict}  A ${((j1.firstScore + j2.secondScore) / 2).toFixed(1)}  B ${((j1.secondScore + j2.firstScore) / 2).toFixed(1)}`,
+        `${c.id}#${s}: ${verdict}  A ${((j1.firstScore + j2.secondScore) / 2).toFixed(1)}  B ${((j1.secondScore + j2.firstScore) / 2).toFixed(1)}  (₹${spent.toFixed(2)} so far)`,
       );
+      if (maxRupees !== undefined && spent >= maxRupees) {
+        console.log(`Stopping: ₹${spent.toFixed(2)} reached --max-rupees ${maxRupees}.`);
+        break everyCase;
+      }
     }
   }
 
@@ -1271,7 +1300,20 @@ async function main(): Promise<void> {
       : {}),
     medianMs: { current: median(timing.a), candidate: median(timing.b) },
     ...(name === 'outline' ? { candidateFile: candidateName, outlineSets: outlineSets() } : {}),
-    ...(modelB ? { models: { current: env.AI_FAST_MODEL, candidate: modelB } } : {}),
+    ...(modelB
+      ? {
+          models: { current: modelA, candidate: modelB, judge: env.AI_STRONG_MODEL },
+          spentRupeesBySide: {
+            current: meterA.rupees(),
+            candidate: meterB.rupees(),
+            judge: meter.rupees(),
+          },
+          rupeesPerCase: {
+            current: +(meterA.rupees() / Math.max(1, n)).toFixed(4),
+            candidate: +(meterB.rupees() / Math.max(1, n)).toFixed(4),
+          },
+        }
+      : {}),
     ...(name === 'chat' || name === 'chat_deep'
       ? {
           chatTier,
@@ -1281,7 +1323,7 @@ async function main(): Promise<void> {
           },
         }
       : {}),
-    spentRupees: +(meter.rupees() + (modelB ? meterB.rupees() : 0)).toFixed(2),
+    spentRupees: +(meter.rupees() + meterA.rupees() + (modelB ? meterB.rupees() : 0)).toFixed(2),
   };
   console.log(JSON.stringify(summary, null, 2));
   mkdirSync(join(here, 'results'), { recursive: true });

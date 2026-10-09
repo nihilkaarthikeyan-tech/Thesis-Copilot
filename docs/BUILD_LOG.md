@@ -6327,3 +6327,42 @@ states.spec 5/6 — the cap and call-ceiling tests pass; "empty grounding" fails
 papers are still being read", because the initial paper search is still running when the
 suggestion arrives. The mock's change is not involved, since nothing has been kept at that
 point. API: cap-concurrency, week1, lit-review-build, assist-context 45/45; ui ghost-text 23/23.
+
+## Model-size test, ADR-0146 (2026-10-09)
+
+The owner asked whether Jenni reads better because of a bigger model. The harness gained
+`--strong-model <id>` (side B's strong tier; `--model` already swapped the fast tier), a separate
+meter for side A so each side's cost per case is reported, a running ₹ total per case, and
+`--max-rupees`. `gpt-4.1` and `gpt-5` were priced from OpenAI's pricing page (2026-10-09) into
+`pricing.ts`; the two mini models' table entries matched the page.
+
+All four ids answered a one-word call. Two probe calls were refused with
+`credit_balance_exhausted`; the run waited until the credit was restored, and no call in the
+judged runs was refused. Blind and judged, by the harness's `gpt-5-mini` judge, in both orders:
+
+- **Assist, typed sentence (15 cases):** `gpt-4.1` won 10–3–2, mean 7.27 → 8.30.
+  - It cited every sentence (29/29 against 18/28).
+  - Hallucinated cites before the whitelist: 0 against 1.
+  - Six-word copied runs: 4 against 2.
+- **Assist, opener (10 cases):** 4–4–2, mean 7.20 → 7.80.
+- **Edit commands on `gpt-5` (10 cases):** 3–1–6, mean 7.70 → 7.95.
+  - Each side had one COMMAND schema failure, and that failure decided its pair.
+  - Without those two pairs it is 2–0–6.
+  - Median latency 12.7 s against 4.4 s.
+
+Cost per call in the runs: Assist ₹0.13 against ₹0.41 (opener ₹0.65), commands ₹0.11 against ₹0.77.
+Spent ₹31.38 in all.
+
+Cost model, `STUDENT_MONTHLY` worst case (`computeMonthlyBudget` with the model ids):
+
+| Configuration | ₹/student/month | Extra |
+|---|---|---|
+| Today | 145.62 | — |
+| Assist only on `gpt-4.1` | 347.69 | +202.07 |
+| Fast tier on `gpt-4.1` | 366.04 | +220.42 |
+| Strong tier on `gpt-5` | 478.10 | +332.48 |
+| Both | 698.52 | +552.90 |
+| Draft alone on `gpt-5` | 156.76 | +11.14 |
+
+Kept both tiers. The one real gain, Assist mid-paragraph, sits on the highest-volume action.
+A prompt candidate asking the mini for what the judge rewarded is the cheap next step (ADR-0146).
