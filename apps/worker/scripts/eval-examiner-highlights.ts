@@ -18,8 +18,13 @@
  *     prompt's own second run (cross recall ≥ self recall − 0.10).
  * (b) **Every strength points at the chapter.** Each kept strength's quote is found, as words, in
  *     the plain text of the chapter sentence it is pinned to (checked again here, apart from the
- *     code that kept it); each chapter gets at least two in every candidate run; and at least 70%
- *     of the model's raw strengths survive the code.
+ *     code that kept it); each chapter gets at least two in every candidate run — at least one
+ *     for a chapter under 15 sentences (round 3, fixed before its run: ADR-0131); and at least
+ *     70% of the model's raw strengths survive the code.
+ *
+ * Round 3 asks only the chapter's two largest sections (`askPlan`); in a candidate run every other
+ * section is reviewed by `examiner.md`, exactly as the worker would send it, so (a) measures what
+ * would ship.
  * (c) **Questions are about the chapter.** Each kept question names a content word of the chapter
  *     and no year or "et al." from outside it; each chapter gets at least three in every candidate
  *     run; and at least 70% of the model's raw questions survive the code.
@@ -29,7 +34,9 @@
  */
 
 import {
+  anchorStrength,
   askPlan,
+  asksHighlights,
   buildExaminerReviewHighlightsRequest,
   buildExaminerReviewRequest,
   contentWords,
@@ -71,12 +78,15 @@ function unwrapDrafts(node: PmNode): PmNode {
   return { ...node, content };
 }
 
-const BUDGET_INR = 25;
+/** Round 3's limit is ₹20 in all; the check runs before each call. */
+const BUDGET_INR = 19;
 const prisma = new PrismaClient();
 const llm = createProviders(loadEnv()).llm;
 let micro = 0;
 let calls = 0;
+/** Output tokens per call by prompt: `examiner.md` (old runs and the unasked sections) and the candidate. */
 const outTokens = { old: 0, new: 0, oldCalls: 0, newCalls: 0 };
+const inTokens = { old: 0, new: 0 };
 
 const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 /**
@@ -129,9 +139,11 @@ async function call<T>(
       const result = await llm.complete({ ...request, signal: AbortSignal.timeout(180_000) });
       if (candidate) {
         outTokens.new += result.usage.outputTokens;
+        inTokens.new += result.usage.inputTokens;
         outTokens.newCalls += 1;
       } else {
         outTokens.old += result.usage.outputTokens;
+        inTokens.old += result.usage.inputTokens;
         outTokens.oldCalls += 1;
       }
       micro += computeCallCost({
@@ -197,27 +209,23 @@ async function review(
         userId: 'eval',
         documentId: 'eval',
       };
-      const value = candidate
-        ? await call<import('@tc/ai').ExaminerReviewAnswer>(
-            {
-              ...buildExaminerReviewHighlightsRequest(
-                examinerInput,
-                plan[index] ?? {
-                  strengths: 0,
-                  questions: 0,
-                },
-              ),
-              schema: examinerReviewSchema,
-            },
-            true,
-          )
-        : await call<ExaminerResult>(
-            {
-              ...buildExaminerReviewRequest(examinerInput),
-              schema: examinerSchema,
-            },
-            false,
-          );
+      const ask = plan[index];
+      const value =
+        candidate && asksHighlights(ask)
+          ? await call<import('@tc/ai').ExaminerReviewAnswer>(
+              {
+                ...buildExaminerReviewHighlightsRequest(examinerInput, ask),
+                schema: examinerReviewSchema,
+              },
+              true,
+            )
+          : await call<ExaminerResult>(
+              {
+                ...buildExaminerReviewRequest(examinerInput),
+                schema: examinerSchema,
+              },
+              false,
+            );
       return { section, input, value, examinerInput };
     }),
   );
@@ -241,7 +249,10 @@ async function review(
         type: issue.issueType,
       });
     }
-    if (!candidate) continue;
+    if (!candidate || !('strengths' in value)) {
+      perSection.push({ strengths: [], questions: [] });
+      continue;
+    }
     const answer = value as import('@tc/ai').ExaminerReviewAnswer;
     const highlightsInput: HighlightsInput = {
       sentences: input.sentences.map(({ id, text }) => ({ id, text })),
@@ -258,7 +269,13 @@ async function review(
     run.raw.questionsKept += kept.questions.length;
     for (const s of answer.strengths) {
       if (!kept.strengths.some((k) => k.quote === s.quote.trim().replace(/^["“]|["”]$/g, ''))) {
-        console.log(`      dropped strength [${s.sentenceId}] "${s.quote}"`);
+        const at = anchorStrength(s.quote, s.sentenceId, highlightsInput);
+        const why = !at
+          ? 'not in the section'
+          : highlightsInput.blockingIds.has(at)
+            ? 'blocking sentence'
+            : 'second on its sentence';
+        console.log(`      dropped strength (${why}) [${s.sentenceId}] "${s.quote}"`);
       }
     }
     for (const q of answer.questions) {
@@ -373,7 +390,11 @@ for (const chapter of rows) {
       ),
     );
     check(anchored, `${chapter.title} ${name}: every strength's quote is in its sentence`);
-    check(run.strengths.length >= 2, `${chapter.title} ${name}: at least two strengths`);
+    const strengthBar = sentencesCount < 15 ? 1 : 2;
+    check(
+      run.strengths.length >= strengthBar,
+      `${chapter.title} ${name}: at least ${strengthBar === 1 ? 'one strength (under 15 sentences)' : 'two strengths'}`,
+    );
     const specific = run.questions.every((q) =>
       reviewWords(q.question).some((w) => chapterTerms.has(w)),
     );
@@ -413,7 +434,7 @@ check(sRate >= 0.7, '(b) at least 70% of the raw strengths anchor to the chapter
 check(qRate >= 0.7, '(c) at least 70% of the raw questions pass the checks');
 console.log(`\n${rows.length} chapters, ${calls} calls, ₹${microToInr(micro).toFixed(2)} spent`);
 console.log(
-  `  output tokens per call (reasoning included): old ${Math.round(outTokens.old / Math.max(1, outTokens.oldCalls))}, new ${Math.round(outTokens.new / Math.max(1, outTokens.newCalls))}`,
+  `  per call (reasoning included): examiner.md ${Math.round(inTokens.old / Math.max(1, outTokens.oldCalls))} in, ${Math.round(outTokens.old / Math.max(1, outTokens.oldCalls))} out (${outTokens.oldCalls} calls); examiner_review.md ${Math.round(inTokens.new / Math.max(1, outTokens.newCalls))} in, ${Math.round(outTokens.new / Math.max(1, outTokens.newCalls))} out (${outTokens.newCalls} calls)`,
 );
 console.log(failures.length === 0 ? 'ALL CHECKS PASSED' : `${failures.length} FAILED:`);
 for (const f of failures) console.log(`  - ${f}`);

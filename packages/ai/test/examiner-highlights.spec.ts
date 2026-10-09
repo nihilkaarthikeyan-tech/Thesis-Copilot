@@ -8,6 +8,7 @@ import { disciplineProfile } from '@tc/config';
 import { describe, expect, it } from 'vitest';
 import {
   askPlan,
+  asksHighlights,
   buildExaminerReviewHighlightsRequest,
   cleanWhy,
   EXAMINER_HIGHLIGHTS,
@@ -162,6 +163,20 @@ describe('the chapter', () => {
     expect(eight.reduce((n, s) => n + s.strengths, 0)).toBe(5);
     expect(eight.reduce((n, s) => n + s.questions, 0)).toBe(6);
     expect(askPlan([])).toEqual([]);
+  });
+
+  it('asks only the two largest sections (round 3); the rest keep examiner.md', () => {
+    const plan = askPlan([4, 12, 3, 9, 12]);
+    expect(plan).toEqual([
+      { strengths: 0, questions: 0 },
+      { strengths: 3, questions: 3 },
+      { strengths: 0, questions: 0 },
+      { strengths: 0, questions: 0 },
+      { strengths: 2, questions: 3 },
+    ]);
+    expect(plan.map(asksHighlights)).toEqual([false, true, false, false, true]);
+    expect(asksHighlights(undefined)).toBe(false);
+    expect(asksHighlights(null)).toBe(false);
   });
 
   it('keeps at most four strengths and five questions, taken from the sections in turn', () => {

@@ -112,6 +112,48 @@ two largest) to bring it down. The two rounds cost ₹15.28 and ₹11.71 (₹26.
 - Or a separate call after the issues (as ADR-0111's card was): the issues cannot change, but it
   is a new strong call per review (about ₹0.36, ADR-0111's figure).
 
+## Round 3 — the design and the criterion (written before the run, 2026-10-09)
+
+**What changes.**
+
+- **Only the two largest sections are asked** (`EXAMINER_HIGHLIGHTS.sections = 2`, `askPlan`):
+  four strengths and five questions plus a spare of each are dealt over them (3/3 and 2/3); a
+  one-section chapter asks its one call for all. Every other section is reviewed by
+  `examiner.md` exactly as today (`asksHighlights` false: no `<ask>` line, the old system block,
+  1,500 tokens). This is the cost cut the section above asked for: an eight-section review pays
+  for the longer answer twice, not eight times. It also means most of a long chapter's issues
+  come from the unchanged prompt.
+- **The strength bar scales with the chapter.** A chapter under 15 sentences (about two
+  paragraphs) must show at least one strength; a chapter of 15 or more, two, as before. Why an
+  examiner would do this: an examiner's report on a passage that short names what it does well in
+  a line, if at all, and the prompt itself says "fewer, or none, when the section does not earn
+  them"; on such a passage most sentences carry the blocking issues the code rightly refuses to
+  praise. Said plainly: round 2's one failing run (one strength on the 10-sentence rooftop-solar
+  introduction) would have passed this bar. The bar is changed *before* round 3 and round 3 is
+  judged on fresh runs; nothing from round 2 is re-scored.
+- **Anchoring unchanged.** A strength must still quote, as words, real text of one sentence.
+  `reviewWords` already folds case, curly and straight quotes, apostrophes, dashes, trailing
+  punctuation and citation markers (tested: "re-pins a quote … ignoring case and curly quotes");
+  an elided quote ("…") is not tolerated and will not be. The script now prints why each
+  strength was dropped (not in the section / blocking sentence / second on its sentence).
+- **The prompt is unchanged** (only the note under its fence, which describes the spreading).
+
+**The criterion, fixed in the script before the run** (`--old-runs=1`: one fresh old run per
+chapter pooled with round 1's two, self recall round 1's 0.59, as round 2):
+
+- **(a) issues no fewer, no worse — unchanged:** pooled, the candidate configuration's issues
+  and blocking issues each ≥ 80% of the old prompt's; cross recall of the old prompt's blocking
+  sentences ≥ self recall − 0.10 (≥ 0.49).
+- **(b) strengths:** every kept quote re-checked against its sentence's plain text; at least
+  two strengths per chapter in every candidate run, **one for a chapter under 15 sentences**;
+  at least 70% of raw strengths survive the code.
+- **(c) questions — unchanged:** every kept question names a content word of the chapter; at
+  least three per chapter in every candidate run; at least 70% of raw questions survive.
+
+All 45 checks must pass; same five chapters; spend under ₹20 (the script stops at ₹19). A pass
+restores the wiring (`git revert fd8e404`, with the worker sending `examiner.md` to the
+sections `asksHighlights` refuses); a fail leaves it unwired.
+
 ## Evidence
 
 `packages/ai/test/examiner-highlights.spec.ts` (13): the ask plan, the request, anchoring,

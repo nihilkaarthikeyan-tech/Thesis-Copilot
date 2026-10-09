@@ -56,6 +56,6 @@ Questions for the author (at most the number in <ask questions>):
 - A question may name only the studies, authors, figures and findings that appear in the section or the passages. Never state as fact anything about a paper or a result that is not in this request.
 ```
 
-User message: as `examiner.md`'s, with one more line inside `<review>`: `<ask strengths="N" questions="M"/>`, the most of each this section's answer may give (the code spreads four strengths and five questions, plus one spare of each, over a chapter's sections, larger sections first; a section may be asked for none).
+User message: as `examiner.md`'s, with one more line inside `<review>`: `<ask strengths="N" questions="M"/>`, the most of each this section's answer may give (the code spreads four strengths and five questions, plus one spare of each, over the chapter's two largest sections; every other section is reviewed by `examiner.md` and has no `<ask>` line).
 
 Post-processing: as `examiner.md`'s for the issues. A strength is kept only if its `quote` is found, as words, in a sentence of the section (it is pinned to that sentence, the one named when it holds there), it is not on a sentence with a blocking issue, and its sentence has no other strength. A question is kept only if it ends with "?", is at most 60 words, names no passage id, shares a content word with the section, and every year and every "Name et al." it mentions also appears in the section or its passages. The chapter keeps at most four strengths and five questions, taken from its sections in turn.
