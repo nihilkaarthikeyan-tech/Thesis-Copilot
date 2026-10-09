@@ -25,6 +25,9 @@ import { citationNotice, type ReferencesFound } from '@/lib/word-import-notice';
 
 export const IMPORT_PARAM = 'import';
 
+/** ADR-0145: the setup card's "import chapters from Word" opens this dialog. */
+export const OPEN_WORD_IMPORT = 'tc:open-word-import';
+
 type Summary = {
   chapters: Array<{ title: string; words: number; sections: number; preamble: boolean }>;
   words: number;
@@ -98,6 +101,11 @@ export function WordImport({ documentId }: { documentId: string }) {
     setOpen(true);
     url.searchParams.delete(IMPORT_PARAM);
     window.history.replaceState(null, '', url.toString());
+  }, []);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_WORD_IMPORT, show);
+    return () => window.removeEventListener(OPEN_WORD_IMPORT, show);
   }, []);
 
   function reset() {

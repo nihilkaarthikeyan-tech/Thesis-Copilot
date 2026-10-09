@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**688** strings are translated; **1** are deliberately
+**768** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -112,7 +112,7 @@ English. Write corrections in the last column.
 | `newMenu.button` | New | नया | |
 | `newMenu.label` | Start something new | कुछ नया शुरू करें | |
 | `newMenu.thesis` | New thesis | नई थीसिस | |
-| `newMenu.thesisHint` | Start writing now, or plan it with a proposal first | अभी लिखना शुरू करें, या पहले प्रस्ताव से योजना बनाएँ | |
+| `newMenu.thesisHint` | Opens the editor now; set it up there, step by step | Editor अभी खुलता है; वहीं क़दम-दर-क़दम सेट अप करें | |
 | `newMenu.paper` | Upload a paper | पेपर अपलोड करें | |
 | `newMenu.paperHint` | A thesis that grows from a paper you have written | ऐसी थीसिस जो आपके लिखे पेपर से निकलती है | |
 | `newMenu.word` | Import from Word | Word से इम्पोर्ट करें | |
@@ -320,6 +320,96 @@ English. Write corrections in the last column.
 | `editor.line.empty` | Chapter plan, papers and first steps | अध्याय योजना, पेपर और पहले कदम | |
 | `editor.line.show` | Show | दिखाएँ | |
 | `editor.line.hide` | Hide | छिपाएँ | |
+
+## setup
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `setup.title` | Set up this thesis | इस थीसिस को सेट अप करें | |
+| `setup.titleDone` | Set up | सेट अप हो गया | |
+| `setup.count` | {n} of 5 | 5 में से {n} | |
+| `setup.finishLater` | Finish later | बाद में पूरा करें | |
+| `setup.continue` | Continue setting up | सेट अप जारी रखें | |
+| `setup.next` | Next | आगे | |
+| `setup.skip` | Skip | छोड़ें | |
+| `setup.save` | Save | सेव करें | |
+| `setup.saving` | Saving… | सेव हो रहा है… | |
+| `setup.change` | Change | बदलें | |
+| `setup.error` | That could not be saved. Try again. | यह सेव नहीं हो सका। फिर से कोशिश करें। | |
+| `setup.row.title` | Title | शीर्षक | |
+| `setup.row.sources` | Sources | स्रोत | |
+| `setup.row.field` | Field | विषय | |
+| `setup.row.aim` | Aim | लक्ष्य | |
+| `setup.row.chapters` | Chapters | अध्याय | |
+| `setup.row.first` | First line | पहली पंक्ति | |
+| `setup.title.question` | What is your thesis about? | आपकी थीसिस किस बारे में है? | |
+| `setup.title.placeholder` | e.g. Barriers to rooftop solar adoption among rural households in Karnataka | जैसे: कर्नाटक के ग्रामीण परिवारों में रूफटॉप सोलर अपनाने की बाधाएँ | |
+| `setup.title.hint` | A working title is enough. Papers on it start being found when you press Next. | एक कामचलाऊ शीर्षक काफ़ी है। आगे दबाते ही इस पर पेपर खोजे जाने लगते हैं। | |
+| `setup.title.short` | Add a few more words — a place, a group or a method — so papers can be found on it. | कुछ और शब्द जोड़ें — कोई जगह, समूह या तरीका — ताकि इस पर पेपर मिल सकें। | |
+| `setup.sources.label` | Sources: | स्रोत: | |
+| `setup.sources.done` | Done | हो गया | |
+| `setup.src.webAndLibrary` | web and library | वेब और library | |
+| `setup.src.web` | web only | केवल वेब | |
+| `setup.src.library` | library only | केवल library | |
+| `setup.src.allYears` | all years | सभी वर्ष | |
+| `setup.src.years` | {from}–{to} | {from}–{to} | |
+| `setup.src.now` | now | अब तक | |
+| `setup.src.anyJournal` | any journal | कोई भी journal | |
+| `setup.src.preprints` | preprints | preprints | |
+| `setup.src.noPreprints` | no preprints | preprints नहीं | |
+| `setup.or` | Or | या | |
+| `setup.link.paper` | start from a paper I wrote | मेरे लिखे paper से शुरू करें | |
+| `setup.link.word` | import chapters from Word | Word से अध्याय import करें | |
+| `setup.link.proposal` | plan with a full proposal | पूरे proposal के साथ योजना बनाएँ | |
+| `setup.field.question` | Your field and university | आपका विषय और विश्वविद्यालय | |
+| `setup.field.hint` | Both are optional. They set the chapter pattern and, later, the formatting rules. | दोनों वैकल्पिक हैं। इनसे अध्यायों का ढाँचा और बाद में formatting के नियम तय होते हैं। | |
+| `setup.field.label` | Field | विषय | |
+| `setup.field.guessed` | Guessed from your title. | आपके शीर्षक से अनुमान लगाया गया। | |
+| `setup.field.none` | Not listed or not sure | सूची में नहीं है या पक्का नहीं | |
+| `setup.field.notSet` | field not set | विषय तय नहीं | |
+| `setup.university.label` | University | विश्वविद्यालय | |
+| `setup.university.notSet` | university not set | विश्वविद्यालय तय नहीं | |
+| `setup.aim.count` | Question {n} of {max} | {max} में से सवाल {n} | |
+| `setup.aim.thinking` | Thinking of the first question… | पहला सवाल सोचा जा रहा है… | |
+| `setup.aim.own` | Or type your own answer | या अपना जवाब लिखें | |
+| `setup.aim.skip` | Skip — plan my chapters from the title | छोड़ें — शीर्षक से मेरे अध्यायों की योजना बनाएँ | |
+| `setup.aim.result` | From your answers | आपके जवाबों से | |
+| `setup.aim.objectives` | {n} objectives | {n} उद्देश्य | |
+| `setup.aim.use` | Plan my chapters from this | इससे मेरे अध्यायों की योजना बनाएँ | |
+| `setup.aim.fromTitle` | chapters planned from the title | अध्यायों की योजना शीर्षक से बनी | |
+| `setup.aim.noPlan` | Start without a plan | बिना योजना के शुरू करें | |
+| `setup.aim.noPlanHint` | You can still answer the questions, or start with one chapter and plan it later. | आप अब भी सवालों के जवाब दे सकते हैं, या एक अध्याय से शुरू करके बाद में योजना बना सकते हैं। | |
+| `setup.aim.error` | Your answers could not be saved. Try again, or skip. | आपके जवाब सेव नहीं हो सके। फिर से कोशिश करें, या छोड़ दें। | |
+| `setup.chapters.planningAnswers` | Planning your chapters from your answers… | आपके जवाबों से अध्यायों की योजना बन रही है… | |
+| `setup.chapters.planningTitle` | Planning your chapters from your title… | आपके शीर्षक से अध्यायों की योजना बन रही है… | |
+| `setup.chapters.planningDetail` | They appear in the chapter list and on the page below as soon as they arrive, in about half a minute. | लगभग आधे मिनट में ये अध्याय-सूची में और नीचे पन्ने पर दिखने लगेंगे। | |
+| `setup.chapters.plannedAnswers` | {n} chapters with sections, planned from your answers: in the list on the left, and this chapter’s on the page below. | आपके जवाबों से {n} अध्याय, उनके खंडों के साथ: बाईं सूची में, और इस अध्याय के खंड नीचे पन्ने पर। | |
+| `setup.chapters.plannedTitle` | {n} chapters with sections, planned from your title: in the list on the left, and this chapter’s on the page below. | आपके शीर्षक से {n} अध्याय, उनके खंडों के साथ: बाईं सूची में, और इस अध्याय के खंड नीचे पन्ने पर। | |
+| `setup.chapters.failed` | Your chapters could not be planned this time. | इस बार आपके अध्यायों की योजना नहीं बन सकी। | |
+| `setup.chapters.retry` | Try again | फिर से कोशिश करें | |
+| `setup.chapters.keep` | Keep these chapters | यही अध्याय रखें | |
+| `setup.chapters.standard` | Standard chapters | मानक अध्याय | |
+| `setup.chapters.none` | No headings | कोई शीर्षक नहीं | |
+| `setup.chapters.edit` | Edit the outline | रूपरेखा बदलें | |
+| `setup.chapters.folded` | {n} planned | {n} की योजना बनी | |
+| `setup.chapters.foldedStandard` | standard thesis chapters | थीसिस के मानक अध्याय | |
+| `setup.chapters.foldedNone` | one chapter, no headings | एक अध्याय, कोई शीर्षक नहीं | |
+| `setup.first.waiting` | A cited first sentence is waiting under the first heading. | पहले शीर्षक के नीचे साइटेशन के साथ पहला वाक्य तैयार है। | |
+| `setup.first.hint` | Accept it, or write your own first sentence. | इसे स्वीकार करें, या अपना पहला वाक्य ख़ुद लिखें। | |
+| `setup.first.suggest` | Suggest one | एक सुझाएँ | |
+| `setup.first.written` | written | लिखा गया | |
+| `setup.line.done` | set up | सेट अप हो गया | |
+| `setup.line.later` | set up {n} of 5 | सेट अप 5 में से {n} | |
+| `setup.next.title` | name your thesis | थीसिस का नाम दें | |
+| `setup.next.field` | your field | आपका विषय | |
+| `setup.next.aim` | a few questions | कुछ सवाल | |
+| `setup.next.chapters` | keep your chapters | अपने अध्याय रखें | |
+| `setup.next.first` | your first sentence | आपका पहला वाक्य | |
+
+## The editor
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
 | `editor.feedbackLabel` | What happened? The admin gets this note, this document’s id and your last five suggestion events — not your text. | क्या हुआ? एडमिन को यह नोट, इस दस्तावेज़ की id और आपके पिछले पाँच सुझावों का ब्योरा मिलता है — आपका लिखा हुआ नहीं। | |
 | `editor.feedbackSent` | Thanks — your note is on its way, with the ids of your last few suggestions. | धन्यवाद — आपका नोट आपके पिछले कुछ सुझावों की ids के साथ भेज दिया गया है। | |
 | `editor.feedbackFailed` | The note did not send. Try again in a minute. | नोट नहीं गया। एक मिनट बाद फिर कोशिश करें। | |

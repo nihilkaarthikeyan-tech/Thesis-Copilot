@@ -72,6 +72,7 @@ export function FirstSessionGuide({
   onVisibleChange,
   onStepChange,
   forceVisible = false,
+  waiting = false,
   className,
 }: {
   documentId: string;
@@ -90,6 +91,11 @@ export function FirstSessionGuide({
    * so nothing else waits on it.
    */
   forceVisible?: boolean;
+  /**
+   * ADR-0145: the setup card is not finished, so this guide waits (one guide at a time, as
+   * ADR-0073 has the proposal prompt wait for this one). First steps still draws it.
+   */
+  waiting?: boolean;
   className?: string;
 }) {
   const { t } = useT();
@@ -202,7 +208,7 @@ export function FirstSessionGuide({
   ];
 
   const current = steps.find((s) => !s.done) ?? null;
-  const visible = !hidden && current !== null;
+  const visible = !hidden && !waiting && current !== null;
   useEffect(() => {
     onVisibleChange?.(visible);
   }, [visible, onVisibleChange]);

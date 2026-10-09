@@ -111,11 +111,14 @@ export function SectionGuide({
   chapterId,
   editor,
   onState,
+  watch = 0,
 }: {
   documentId: string;
   chapterId: string;
   editor: Editor | null;
   onState?: (state: PlanState) => void;
+  /** ADR-0145: bumped when the setup card asks for a plan, so this looks again until it lands. */
+  watch?: number;
 }) {
   const { t } = useT();
   const [view, setView] = useState<OutlineView | null>(null);
@@ -140,7 +143,7 @@ export function SectionGuide({
   );
 
   // Look again every few seconds while the plan is being made; stop when it lands.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `polls` restarts the loop after the student asks for a plan.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `polls` and `watch` restart the loop after a plan is asked for.
   useEffect(() => {
     let live = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -153,7 +156,7 @@ export function SectionGuide({
       live = false;
       if (timer) clearTimeout(timer);
     };
-  }, [load, polls]);
+  }, [load, polls, watch]);
 
   useEffect(() => {
     if (!editor) return;

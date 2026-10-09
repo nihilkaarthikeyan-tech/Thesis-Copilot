@@ -24,6 +24,8 @@ export function statusParts(
   plan: PlanState,
   step: string | null,
   t: ReturnType<typeof useT>['t'],
+  /** ADR-0145: the setup card, folded into the line ("set up", or "set up 2 of 5"). */
+  setup: string | null = null,
 ): string[] {
   const parts: string[] = [];
   if (progress) {
@@ -37,6 +39,7 @@ export function statusParts(
   if (plan === 'planned') parts.push(t('editor.line.planned'));
   else if (plan === 'planning') parts.push(t('editor.line.planning'));
   else if (plan === 'notPlanned') parts.push(t('editor.line.notPlanned'));
+  if (setup) parts.push(setup);
   if (step) parts.push(t('editor.line.next', { step }));
   return parts;
 }
@@ -45,6 +48,7 @@ export function StatusLine({
   progress,
   plan,
   step,
+  setup = null,
   open,
   onToggle,
   children,
@@ -53,13 +57,15 @@ export function StatusLine({
   plan: PlanState;
   /** The first-session guide's current step, while it is showing. */
   step: string | null;
+  /** ADR-0145: the folded setup card's part of the line. */
+  setup?: string | null;
   open: boolean;
   onToggle: () => void;
   /** The details: the same section guide, first-session guide and library line as before. */
   children: ReactNode;
 }) {
   const { t } = useT();
-  const parts = statusParts(progress, plan, step, t);
+  const parts = statusParts(progress, plan, step, t, setup);
   const text = parts.length > 0 ? parts.join(' · ') : t('editor.line.empty');
   const busy =
     plan === 'planning' || (progress !== null && (progress.searching || progress.reading > 0));

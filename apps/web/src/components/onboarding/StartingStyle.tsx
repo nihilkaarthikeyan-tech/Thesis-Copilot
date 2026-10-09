@@ -82,9 +82,12 @@ export function useDefaultStartingStyle(
 export function StartingStyle({
   value,
   onChange,
+  compact = false,
 }: {
   value: StartingStyleChoice;
   onChange: (next: StartingStyleChoice) => void;
+  /** ADR-0145: the setup card's row — the chips only, no preview or hint under them. */
+  compact?: boolean;
 }) {
   const { t } = useT();
   const options: Array<{ id: Exclude<StartingStyleChoice, ''>; label: string }> = [
@@ -125,8 +128,10 @@ export function StartingStyle({
           );
         })}
       </div>
-      <StylePreview styleId={previewed} />
-      <Hint>{value === 'other' ? t('style.hintOther') : t('style.hintDefault')}</Hint>
+      {compact ? null : <StylePreview styleId={previewed} />}
+      {compact && value !== 'other' ? null : (
+        <Hint>{value === 'other' ? t('style.hintOther') : t('style.hintDefault')}</Hint>
+      )}
     </fieldset>
   );
 }

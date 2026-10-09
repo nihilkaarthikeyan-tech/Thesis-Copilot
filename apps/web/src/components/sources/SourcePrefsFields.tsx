@@ -2,7 +2,7 @@
 
 /**
  * The source settings (ADR-0087): web and library search, publish years, indexing, preprints.
- * One set of fields for the start of a thesis (`StartSetup`) and for the editor's Sources tab
+ * One set of fields for the start of a thesis (the setup card, ADR-0145) and for the editor's Sources tab
  * (Jenni build plan R6), so the two can never offer different choices.
  *
  * Controlled: the parent holds the `SourcePrefs`. Custom years are typed as text and reach the

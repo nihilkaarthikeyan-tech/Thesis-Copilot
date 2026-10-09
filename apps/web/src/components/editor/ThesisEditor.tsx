@@ -11,7 +11,15 @@
  * freezes saving and shows the reload banner. Ctrl/Cmd+S forces a save and a MANUAL snapshot.
  */
 
-import { type ChartSpec, chartSpecSchema, type DiagramSpec, diagramSpecSchema } from '@tc/types';
+import {
+  type ChartSpec,
+  chartSpecSchema,
+  type DiagramSpec,
+  diagramSpecSchema,
+  readSetupCard,
+  type SetupCard as SetupState,
+  setupStepNumber,
+} from '@tc/types';
 import {
   type Autosave,
   type AutosaveStatus,
@@ -110,6 +118,7 @@ import { LimitNotice } from '../LimitNotice';
 import { FeatureDot, noteFeatureUsed } from '../onboarding/FeatureDot';
 import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
+import { SetupCard } from '../onboarding/SetupCard';
 import { applyFontStyle, ThemeToggle } from '../theme';
 import { UsageMenu } from '../UsageMenu';
 import { Kbd } from '../ui/primitives';
@@ -167,8 +176,11 @@ type DocumentDetail = {
   /** ADR-0028: a co-author has been invited and live editing is on. */
   liveEditing?: boolean;
   ownerEmail?: string;
-  /** R6: read for the source settings (`meta.sourcePrefs`). */
+  /** R6: read for the source settings (`meta.sourcePrefs`). ADR-0145: and the setup card. */
   meta?: unknown;
+  /** ADR-0145: the setup card's field row and folded Sources line. */
+  field?: string | null;
+  citationStyle?: string;
 };
 type ChapterView = {
   id: string;
@@ -330,6 +342,16 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
    * list says so; when it finishes, the list fills in without a reload.
    */
   const [outlineBuilding, setOutlineBuilding] = useState(false);
+  /** ADR-0145: bumped when the setup card asks for a plan, so the list watches for it again. */
+  const [outlineWatch, setOutlineWatch] = useState(0);
+  const watchOutline = useCallback(() => setOutlineWatch((n) => n + 1), []);
+  /** ADR-0145: the setup card renamed the thesis or replaced its chapters. */
+  const reloadDoc = useCallback(() => {
+    void api<DocumentDetail>(`/documents/${documentId}`)
+      .then(setDoc)
+      .catch(() => undefined);
+  }, [documentId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `outlineWatch` restarts the watch.
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -356,7 +378,7 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [documentId]);
+  }, [documentId, outlineWatch]);
 
   if (error) {
     return (
@@ -383,6 +405,9 @@ export function ThesisEditor({ documentId, chapterId }: { documentId: string; ch
       onUsageChange={refreshUsage}
       liveEmail={liveEmail}
       outlineBuilding={outlineBuilding}
+      onPlanStarted={watchOutline}
+      onDocChanged={reloadDoc}
+      outlineWatch={outlineWatch}
     />
   );
 }
@@ -394,6 +419,9 @@ function ChapterEditor({
   onUsageChange,
   liveEmail,
   outlineBuilding,
+  onPlanStarted,
+  onDocChanged,
+  outlineWatch,
 }: {
   doc: DocumentDetail;
   chapter: ChapterView;
@@ -403,6 +431,11 @@ function ChapterEditor({
   liveEmail: string | null;
   /** The outline is being built from the proposal; the chapter list fills in when it is done. */
   outlineBuilding: boolean;
+  /** ADR-0145: the setup card asked for a plan. */
+  onPlanStarted: () => void;
+  /** ADR-0145: the setup card changed the thesis's title, field or chapters. */
+  onDocChanged: () => void;
+  outlineWatch: number;
 }) {
   const { t, rich } = useT();
   const [live] = useState<LiveDoc | null>(() => (liveEmail ? createLiveDoc(liveEmail) : null));
@@ -460,6 +493,17 @@ function ChapterEditor({
   const [autoSuggest, setAutoSuggest] = useState(false);
   /** ADR-0073: the next-step guide is on screen, so the other first-run cards wait. */
   const [guideShown, setGuideShown] = useState(false);
+  /**
+   * ADR-0145: the "Set up this thesis" card, for a thesis New made (`meta.setup`); null for any
+   * other. While it is unfinished the four-step guide, the proposal prompt and the first-run hint
+   * wait, and until the aim row is answered the opener does not offer a sentence on its own (the
+   * thesis has no title or plan to write from yet).
+   */
+  const [setup, setSetup] = useState<SetupState | null>(() => readSetupCard(doc.meta));
+  const setupWaiting = setup !== null && !setup.done;
+  const setupOnTop = setupWaiting && setup?.dismissedAt === null;
+  const holdOpener =
+    setupOnTop && (setup?.step === 'title' || setup?.step === 'field' || setup?.step === 'aim');
   const [allKeys, setAllKeys] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
@@ -865,8 +909,24 @@ function ChapterEditor({
   );
   // ADR-0078: the setting arrives after the editor is built; the extension reads it live.
   useEffect(() => {
-    if (editor) setEditorAutoSuggest(editor, autoSuggest);
-  }, [editor, autoSuggest]);
+    if (editor) setEditorAutoSuggest(editor, autoSuggest && !holdOpener);
+  }, [editor, autoSuggest, holdOpener]);
+  /** ADR-0145: the setup card, above the toolbar or inside the status line once folded. */
+  const setupCardFor = (placement: 'top' | 'line') =>
+    setup ? (
+      <SetupCard
+        doc={doc}
+        chapterId={chapter.id}
+        editor={editor}
+        card={setup}
+        onCard={setSetup}
+        onDocChanged={onDocChanged}
+        onPlanStarted={onPlanStarted}
+        plan={planState}
+        autoSuggest={autoSuggest}
+        placement={placement}
+      />
+    ) : null;
   // R28 (ADR-0119): the contents block's words in the interface language, read live.
   useEffect(() => {
     if (!editor) return;
@@ -1486,6 +1546,15 @@ function ChapterEditor({
                   setLine(true);
                   setFirstStepsAsked(true);
                   window.scrollTo({ top: 0 });
+                  // ADR-0145: an unfinished setup card comes back to the top, too.
+                  if (setup && !setup.done && setup.dismissedAt !== null) {
+                    void api<{ setup: SetupState }>(`/documents/${doc.id}/setup`, {
+                      method: 'PUT',
+                      body: JSON.stringify({ dismissed: false }),
+                    })
+                      .then((view) => setSetup(view.setup))
+                      .catch(() => undefined);
+                  }
                 }}
               >
                 {t('editor.menu.firstSteps')}
@@ -1684,19 +1753,37 @@ function ChapterEditor({
           <StatusLine
             progress={libraryProgress}
             plan={planState}
-            step={guideStep}
+            step={
+              setupOnTop && setup
+                ? t(`setup.next.${setup.step}` as MessageKey)
+                : setupWaiting
+                  ? null
+                  : guideStep
+            }
+            setup={
+              !setup
+                ? null
+                : setup.done
+                  ? t('setup.line.done')
+                  : setup.dismissedAt !== null
+                    ? t('setup.line.later', { n: setupStepNumber(setup.step) })
+                    : null
+            }
             open={lineOpen}
             onToggle={() => {
               if (lineOpen) setFirstStepsAsked(false);
               setLine(!lineOpen);
             }}
           >
+            {/* ADR-0145: once folded (Finish later, or finished), the setup card is here. */}
+            {setup && !setupOnTop ? setupCardFor('line') : null}
             {/* ADR-0072: the chapter's plan, with Add heading and Draft for each section. */}
             <SectionGuide
               documentId={doc.id}
               chapterId={chapter.id}
               editor={editor}
               onState={setPlanState}
+              watch={outlineWatch}
             />
             {/* ADR-0070: the next-step guide. ADR-0073: while it shows, it is the only card above
                 the page — its last step is planning (the proposal), its second links the
@@ -1710,9 +1797,10 @@ function ChapterEditor({
               onVisibleChange={setGuideShown}
               onStepChange={setGuideStep}
               forceVisible={lineOpen && firstStepsAsked}
+              waiting={setupWaiting}
               className="mx-auto mb-4 max-w-[72ch]"
             />
-            {guideShown ? null : (
+            {guideShown || setupWaiting ? null : (
               /* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */
               <AddProposalPrompt
                 documentId={doc.id}
@@ -1720,7 +1808,7 @@ function ChapterEditor({
                 className="mx-auto mb-4 max-w-[72ch]"
               />
             )}
-            {guideShown ? null : (
+            {guideShown || setupWaiting ? null : (
               <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
                 {t('editor.hint.intro')}{' '}
                 {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
@@ -1762,6 +1850,8 @@ function ChapterEditor({
               }}
             />
           </StatusLine>
+          {/* ADR-0145: a new thesis is set up here, at the top of its empty chapter. */}
+          {setupOnTop ? setupCardFor('top') : null}
           {noticeState ? (
             <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center px-4 lg:bottom-20">
               <div className="pointer-events-auto flex min-w-0 max-w-xl items-start gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm shadow-lg">

@@ -128,6 +128,9 @@ export type DocumentDetail = DocumentSummary & {
   liveEditing: boolean;
   /** The owner's address, for the name on their cursor when the chapter is live. */
   ownerEmail: string;
+  /** ADR-0145: the setup card's field row and its folded Sources line. */
+  field: string | null;
+  citationStyle: string;
 };
 
 const summarySelect = {
@@ -430,6 +433,8 @@ export class DocumentsController {
         ...summarySelect,
         memory: { select: { scope: true, outline: true, glossary: true } },
         meta: true,
+        field: true,
+        citationStyle: true,
         chapters: {
           orderBy: { order: 'asc' },
           select: { id: true, title: true, order: true, outlineNodeId: true, wordCount: true },
@@ -445,6 +450,8 @@ export class DocumentsController {
       chapters: document.chapters,
       memory: document.memory,
       meta: document.meta,
+      field: document.field,
+      citationStyle: document.citationStyle,
       liveEditing: document.shares.length > 0 && (await this.flags.isEnabled('collaboration')),
       ownerEmail: user.email,
     };
