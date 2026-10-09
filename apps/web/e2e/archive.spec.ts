@@ -79,4 +79,11 @@ test('archive a thesis, undo, archive again, and restore it from the archive', a
   await page.getByTestId('restore-thesis').click();
   await expect(page.locator('li', { hasText: shelve })).toHaveCount(1);
   await expect(page.getByTestId('archived-theses')).toHaveCount(0);
+
+  // Restoring the last one emptied the archive, so it folded: the next archive starts folded.
+  const third = page.locator('li', { hasText: shelve }).first();
+  await third.getByText('More', { exact: true }).click();
+  await third.getByTestId('archive-thesis').click();
+  await expect(page.getByTestId('archived-toggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByTestId('archived-list')).toHaveCount(0);
 });

@@ -21,11 +21,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   type ButtonControl,
   type CardDeps,
+  clearOf,
   createCard,
   factRows,
   findSpots,
   type InpageItem,
   mountButton,
+  SHEET_BELOW_PX,
+  scrollToClear,
   shadowOf,
   startInpage,
 } from '../src/inpage.js';
@@ -475,6 +478,60 @@ describe('the card', () => {
     // properties; Chrome keeps it for all of them).
     expect(host.style.getPropertyPriority('width')).toBe('important');
     expect(host.style.getPropertyPriority('top')).toBe('important');
+  });
+
+  it('on a narrow window is a sheet along the bottom, and becomes a card again when it widens', async () => {
+    const wide = window.innerWidth;
+    const resize = (width: number) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      window.dispatchEvent(new Event('resize'));
+    };
+    try {
+      resize(390);
+      const { card } = openArticle(signedIn);
+      await settle();
+      const host = card.host as HTMLElement;
+      const panel = q(cardRoot(host), 'tc-card');
+      expect(host.style.getPropertyValue('bottom')).toBe('0px');
+      expect(host.style.getPropertyValue('left')).toBe('0px');
+      expect(host.style.getPropertyValue('top')).toBe('auto');
+      expect(host.style.getPropertyValue('width')).toBe('100%');
+      expect(panel?.classList.contains('sheet')).toBe(true);
+      resize(SHEET_BELOW_PX);
+      expect(host.style.getPropertyValue('top')).toBe('16px');
+      expect(host.style.getPropertyValue('width')).toBe('360px');
+      expect(panel?.classList.contains('sheet')).toBe(false);
+      card.close();
+    } finally {
+      resize(wide);
+    }
+  });
+});
+
+describe('keeping the result being saved in sight beside the sheet', () => {
+  // A 844 px window; a bottom sheet from 500 down, or a top sheet down to 344.
+  const below = clearOf('bottom', { top: 500, bottom: 844 }, 844);
+  const above = clearOf('top', { top: 0, bottom: 344 }, 844);
+
+  it('on the bottom edge, leaves free what is above the sheet, with room to spare', () => {
+    expect(below).toEqual({ from: 12, to: 488 });
+    expect(above).toEqual({ from: 356, to: 832 });
+  });
+
+  it('scrolls a result under the sheet up until it is clear', () => {
+    expect(scrollToClear({ top: 480, bottom: 504 }, below)).toBe(16);
+    expect(scrollToClear({ top: 700, bottom: 724 }, below)).toBe(236);
+  });
+
+  it('scrolls a result above the window, or under a top sheet, down into the free part', () => {
+    expect(scrollToClear({ top: -40, bottom: -16 }, below)).toBe(-52);
+    expect(scrollToClear({ top: 300, bottom: 324 }, above)).toBe(-56);
+  });
+
+  it('leaves a result that is already in sight where it is', () => {
+    expect(scrollToClear({ top: 200, bottom: 224 }, below)).toBe(0);
+    expect(scrollToClear({ top: 12, bottom: 36 }, below)).toBe(0);
+    expect(scrollToClear({ top: 700, bottom: 724 }, above)).toBe(0);
   });
 });
 

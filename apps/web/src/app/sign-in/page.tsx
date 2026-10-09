@@ -66,7 +66,9 @@ export default function SignInPage() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [google, setGoogle] = useState(false);
+  // Null until `/auth/methods` answers. While unknown, the Google block keeps its place (hidden),
+  // so it never appears late and pushes the form about under a pointer (2026-10-09).
+  const [google, setGoogle] = useState<boolean | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [mode, setMode] = useState<Mode>('code');
   const [password, setPassword] = useState('');
@@ -315,8 +317,13 @@ export default function SignInPage() {
         </p>
       ) : null}
 
-      {google && step === 'email' ? (
-        <>
+      {google !== false && step === 'email' ? (
+        <div
+          className={google ? undefined : 'invisible'}
+          aria-hidden={google ? undefined : true}
+          inert={google ? undefined : true}
+          data-testid="google-block"
+        >
           <div className="my-6 flex items-center gap-3">
             <hr className="flex-1 border-line" />
             <span className="eyebrow">{t('signin.or')}</span>
@@ -326,7 +333,7 @@ export default function SignInPage() {
             variant="secondary"
             size="lg"
             className="w-full"
-            disabled={googleBusy}
+            disabled={googleBusy || !google}
             aria-busy={googleBusy}
             data-testid="google-sign-in"
             onClick={() => void continueWithGoogle()}
@@ -334,7 +341,7 @@ export default function SignInPage() {
             <GoogleMark />
             {googleBusy ? t('signin.openingGoogle') : t('signin.google')}
           </Button>
-        </>
+        </div>
       ) : null}
 
       <p className="mt-8 border-t border-line pt-4 text-[13px] text-muted">

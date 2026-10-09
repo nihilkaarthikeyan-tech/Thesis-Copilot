@@ -196,6 +196,12 @@ export default function DocumentListPage() {
     }
   }, [router]);
 
+  // Restoring (or deleting) the last archived thesis empties the archive: fold it, so the next
+  // archive starts folded like the first. While it still holds theses, it keeps its state.
+  useEffect(() => {
+    if (archived.length === 0) setArchiveOpen(false);
+  }, [archived.length]);
+
   useEffect(() => {
     void load();
   }, [load]);

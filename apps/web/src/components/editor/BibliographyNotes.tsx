@@ -14,14 +14,14 @@ import {
   type BibliographyNotes,
   binIsOld,
   binLabel,
+  citedHeading,
   venueSentence,
+  worksPhrase as works,
   yearSentence,
 } from '@/lib/bibliography-notes';
 
 /** A bar's slot is at most this wide, so three bars do not stretch across the whole panel. */
 const SLOT_PX = 40;
-
-const works = (n: number) => `${n} work${n === 1 ? '' : 's'}`;
 
 export function BibliographyNotesView({ notes }: { notes: BibliographyNotes }) {
   if (notes.works === 0) {
@@ -41,9 +41,7 @@ export function BibliographyNotesView({ notes }: { notes: BibliographyNotes }) {
 
   return (
     <div className="mt-3 grid min-w-0 grid-cols-1 gap-3" data-testid="bibliography-notes">
-      <p className="text-[11px] font-semibold text-ink">
-        The {works(notes.works)} this chapter cites
-      </p>
+      <p className="text-[11px] font-semibold text-ink">{citedHeading(notes.works)}</p>
 
       <figure className="m-0 min-w-0" data-testid="bibliography-years">
         <figcaption className="text-xs text-muted">
@@ -108,8 +106,11 @@ export function BibliographyNotesView({ notes }: { notes: BibliographyNotes }) {
         ) : null}
         {venues.otherWorks > 0 ? (
           <p className="mt-1 text-[11px] text-muted">
-            And {works(venues.otherWorks)} in {venues.unique - venues.top.length} other venue
-            {venues.unique - venues.top.length === 1 ? '' : 's'}.
+            And {works(venues.otherWorks)} in{' '}
+            {venues.unique - venues.top.length === 1
+              ? 'one other venue'
+              : `${venues.unique - venues.top.length} other venues`}
+            .
           </p>
         ) : null}
       </figure>

@@ -91,10 +91,10 @@ test('the source quality panel charts the years and venues of the chapter’s ci
     const notes = panel.getByTestId('bibliography-notes');
     await expect(notes).toContainText('The 4 works this chapter cites', { timeout: 20_000 });
     await expect(panel.getByTestId('bibliography-years')).toContainText(
-      `Median year ${thisYear - 6}. 1 of 3 works is over a decade old (${thisYear - 11} or earlier). 1 paper with no year on record is not charted.`,
+      `Median year ${thisYear - 6}. One of 3 works is over a decade old (${thisYear - 11} or earlier). One paper with no year on record is not charted.`,
     );
     await expect(panel.getByTestId('bibliography-venues')).toContainText(
-      '2 unique venues across 3 works. 1 paper with no venue on record.',
+      '2 unique venues across 3 works. One paper with no venue on record.',
     );
     // The long journal name is cut with an ellipsis and kept whole in its tooltip.
     await expect(panel.getByTitle(long)).toBeVisible();

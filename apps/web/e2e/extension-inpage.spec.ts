@@ -220,6 +220,45 @@ test.describe
         }
       }
     });
+
+    test('at 390 px the card is a sheet along the bottom and the result being saved stays in sight', async () => {
+      test.setTimeout(120_000);
+      for (const url of [SCHOLAR, MDPI_ARTICLE]) {
+        const count = url === SCHOLAR ? 4 : 1;
+        for (let i = 0; i < count; i += 1) {
+          const page = await open(url, 390);
+          await page.setViewportSize({ width: 390, height: 844 });
+          const button = buttons(page).nth(i);
+          await button.scrollIntoViewIfNeeded();
+          await button.click();
+          const card = page.getByTestId('tc-card');
+          await expect(card).toBeVisible();
+          // Let it fill in: the sheet grows as the theses and the lookup come back.
+          await expect(page.getByTestId('tc-save')).toBeVisible({ timeout: 30_000 });
+          await page.waitForTimeout(300);
+          const sheet = await card.boundingBox();
+          const pressed = await button.boundingBox();
+          expect(sheet).not.toBeNull();
+          expect(pressed).not.toBeNull();
+          if (!sheet || !pressed) continue;
+          // Full width along one edge (the bottom, or the top when the page cannot scroll the
+          // result clear of the bottom), at most half the window.
+          const atTop = Math.round(sheet.y) === 0;
+          expect(Math.round(sheet.x)).toBe(0);
+          expect(Math.round(sheet.width)).toBe(390);
+          if (!atTop) expect(Math.round(sheet.y + sheet.height)).toBe(844);
+          expect(sheet.height).toBeLessThanOrEqual(844 / 2 + 1);
+          // The button pressed is in the window and clear of the sheet, not under it.
+          const where = `${url} result ${i}, sheet at the ${atTop ? 'top' : 'bottom'}`;
+          expect(pressed.y, where).toBeGreaterThanOrEqual(0);
+          expect(pressed.y + pressed.height, where).toBeLessThanOrEqual(844);
+          if (atTop) expect(pressed.y, where).toBeGreaterThanOrEqual(sheet.y + sheet.height);
+          else expect(pressed.y + pressed.height, where).toBeLessThanOrEqual(sheet.y);
+          await expectNoOverflow(page);
+          await page.close();
+        }
+      }
+    });
   });
 
 test('signed out, the card says to sign in', async () => {

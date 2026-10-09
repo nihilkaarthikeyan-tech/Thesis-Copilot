@@ -45,6 +45,7 @@ import { checkUpload } from '../sources/upload-rules.js';
 import {
   bodyWords,
   chapterDoc,
+  chapterWords,
   type DocxChapters,
   htmlToChapters,
   type ImportedChapter,
@@ -222,7 +223,7 @@ export class WordImportService {
                 data: { documentId, outlineNodeId: nodeId, ...data, order: index + 1 },
                 select: { id: true },
               });
-          out.push({ id: row.id, title: chapter.title, words: chapter.words });
+          out.push({ id: row.id, title: chapter.title, words: chapterWords(chapter) });
         }
         await tx.documentMemory.update({
           where: { documentId },
@@ -272,7 +273,7 @@ export class WordImportService {
             },
             select: { id: true },
           });
-          out.push({ id: row.id, title: chapter.title, words: chapter.words });
+          out.push({ id: row.id, title: chapter.title, words: chapterWords(chapter) });
         }
         await tx.documentMemory.update({
           where: { documentId },
@@ -405,11 +406,11 @@ function summary(read: DocxChapters & { images: number }): ImportSummary {
   return {
     chapters: read.chapters.map((c) => ({
       title: c.title,
-      words: c.words,
+      words: chapterWords(c),
       sections: c.sections.length,
       preamble: c.preamble,
     })),
-    words: read.chapters.reduce((n, c) => n + c.words, 0),
+    words: read.chapters.reduce((n, c) => n + chapterWords(c), 0),
     images: read.images,
     footnotes: read.footnotes,
     tables: read.tables,
