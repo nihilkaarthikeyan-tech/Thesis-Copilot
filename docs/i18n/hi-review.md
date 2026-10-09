@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**651** strings are translated; **1** are deliberately
+**653** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -117,6 +117,8 @@ English. Write corrections in the last column.
 | `newMenu.paperHint` | A thesis that grows from a paper you have written | ऐसी थीसिस जो आपके लिखे पेपर से निकलती है | |
 | `newMenu.word` | Import from Word | Word से इम्पोर्ट करें | |
 | `newMenu.wordHint` | A new thesis from the chapters in a .docx | .docx के अध्यायों से एक नई थीसिस | |
+| `newMenu.ask` | Ask a research question | शोध प्रश्न पूछें | |
+| `newMenu.askHint` | No thesis needed: ask the literature, or all your theses | थीसिस की ज़रूरत नहीं: साहित्य से, या अपनी सभी थीसिस से पूछें | |
 
 ## switcher
 

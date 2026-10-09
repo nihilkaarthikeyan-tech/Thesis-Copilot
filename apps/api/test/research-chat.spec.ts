@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { BeyondPaper } from '../src/modules/assist/beyond-library.js';
 import type { StoredTurn } from '../src/modules/assist/chat-threads.js';
 import {
   acrossNote,
@@ -14,18 +15,19 @@ import {
   thesisTitleFrom,
 } from '../src/modules/assist/research-chat.js';
 
-const paper = (doi: string | null, title = `Paper ${doi}`) => ({
+const paper = (doi: string | null, title = `Paper ${doi}`): BeyondPaper => ({
   title,
   year: 2021,
   venue: null,
   doi,
   inLibrary: false,
-  reference: { raw: title, ...(doi ? { doi } : {}) },
+  reference: doi ? { raw: title, doi } : { raw: title },
 });
 
 describe('research chat helpers', () => {
   it('collects every cited paper once, from the web and from the theses, in first-cited order', () => {
-    const turns: StoredTurn[] = [
+    // Cast: `ChatTurn`'s citation type (key, label) and ChatCitation are intersected on StoredTurn.
+    const turns = [
       { id: '1', role: 'user', text: 'q' },
       {
         id: '2',
@@ -65,7 +67,7 @@ describe('research chat helpers', () => {
           },
         ],
       },
-    ];
+    ] as StoredTurn[];
     expect(papersOfChat(turns).map((p) => p.doi ?? p.title)).toEqual(['10.1/a', 'B', '10.1/c']);
   });
 

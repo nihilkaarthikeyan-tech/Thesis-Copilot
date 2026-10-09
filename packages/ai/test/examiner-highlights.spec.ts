@@ -227,9 +227,7 @@ describe('the request', () => {
   });
 
   it("the mock answers within the ask and passes the code's own checks", () => {
-    const answer = examinerReviewSchema.parse(
-      mockExaminerReviewFor({ ...request, schema: examinerReviewSchema }),
-    );
+    const answer = examinerReviewSchema.parse(mockExaminerReviewFor(request));
     expect(answer.strengths.length).toBeLessThanOrEqual(2);
     expect(answer.questions.length).toBeLessThanOrEqual(3);
     const out = postProcessHighlights(answer, { ...input, blockingIds: new Set() });
