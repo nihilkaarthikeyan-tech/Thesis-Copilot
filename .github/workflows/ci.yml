@@ -1,20 +1,63 @@
 # CI — PRD §13.5 step 1: install, biome check, tsc --noEmit, vitest (Testcontainers), Playwright
 # smoke, prisma migrate diff check, and the dependency audit from PRD §12.1.
+#
+# Two depths (ADR-0141), to spend fewer Actions minutes once the repo is private again:
+# - quick, on an ordinary push to main: lint, typecheck, migrate-diff, audit, and the vitest suites
+#   of the packages changed since the last green main run plus every package that depends on them.
+# - full, everywhere else: every vitest suite and the Playwright smoke. That is a pull request, a
+#   manual run (workflow_dispatch), and every release: release.yml calls this file with
+#   `full: true` and deploys only if it passes, so no tag reaches the VPS without Playwright.
+# No test is dropped (§0.3 rule 7): a suite a quick push does not run, the release runs.
 name: ci
 
 on:
   pull_request:
+    # The same list as `push`. Kept written out twice rather than as a YAML anchor: boring.
+    paths:
+      - '**'
+      - '!docs/**'
+      # apps/web/test/i18n-review.spec.ts reads docs/i18n/hi-review.md.
+      - 'docs/i18n/**'
+      # Root Markdown (README.md, CLAUDE.md) and READMEs. Not `**/*.md`: packages/ai/prompts/*.md
+      # and packages/ai/eval/candidates/*.md are product content that tests read.
+      - '!*.md'
+      - '!**/README.md'
   push:
     branches: [main]
+    # A tag never comes through here: release.yml runs this workflow for a tag, unfiltered.
+    paths:
+      - '**'
+      - '!docs/**'
+      - 'docs/i18n/**'
+      - '!*.md'
+      - '!**/README.md'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      full:
+        description: Run every vitest suite and the Playwright smoke.
+        type: boolean
+        default: true
+
+# `actions: read` lets the quick mode find the last green run (`gh run list`).
+permissions:
+  contents: read
+  actions: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # A newer push to main cancels the older run. That is safe for the quick mode because it diffs
+  # against the last *green* run, not the previous push, so a cancelled push is tested next time.
+  # `github.workflow` keeps a release's call (named "release") apart from a push's run.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   # Matches the runtime image (node:22-alpine) rather than whatever a laptop runs.
   NODE_VERSION: 22
   PNPM_VERSION: 9.15.9
+  # 'true' unless this is an ordinary push to main. Jobs cannot read `env` in `if:`, so the e2e
+  # job repeats this expression; keep the two the same.
+  FULL: ${{ github.event_name != 'push' || inputs.full == true || startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   checks:
@@ -30,12 +73,45 @@ jobs:
           --health-cmd "pg_isready -U tc -d tc" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The quick mode diffs against the last green run, which can be any number of commits back.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: '${{ env.PNPM_VERSION }}' }
+      # `cache: pnpm` caches the pnpm store, keyed on pnpm-lock.yaml.
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
 
       - run: pnpm install --frozen-lockfile
+
+      # Decides which vitest suites run. Any doubt means all of them: no green run to diff from, a
+      # history rewritten under it, or a change outside apps/ and packages/ (the lockfile, root
+      # config, turbo.json, fixtures/, .github/), which Turborepo cannot place in one package.
+      # Otherwise the changed packages and their dependents (`...[sha]`), so a change to
+      # packages/db still runs apps/api's suites; docs/i18n/ adds @tc/web, whose test reads it.
+      # `turbo run test --filter=...[sha] --dry=json` was checked against turbo 2.10.12; a selection
+      # of no packages runs nothing and exits 0.
+      - name: which suites to run
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          full() { echo "every suite: $1"; echo "filter=" >> "$GITHUB_OUTPUT"; exit 0; }
+          [ "$FULL" = "true" ] && full "full run (${GITHUB_EVENT_NAME} ${GITHUB_REF})"
+          BASE="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main \
+            --status success --limit 1 --json headSha --jq '.[0].headSha // ""' || true)"
+          [ -n "$BASE" ] || full "no green ci run on main to diff from"
+          git cat-file -e "${BASE}^{commit}" 2>/dev/null || full "last green ${BASE} is not in this clone"
+          git merge-base --is-ancestor "$BASE" HEAD || full "last green ${BASE} is not an ancestor of HEAD"
+          CHANGED="$(git diff --name-only "$BASE" HEAD)"
+          echo "changed since last green ${BASE}:"; echo "$CHANGED" | sed 's/^/  /'
+          OUTSIDE="$(echo "$CHANGED" | grep -vE '^(apps|packages)/' | grep -vE '^[^/]+\.md$' \
+            | grep -vE '^docs/' || true)"
+          [ -z "$(echo "$OUTSIDE" | tr -d '[:space:]')" ] || full "changed outside apps/ and packages/: $(echo $OUTSIDE)"
+          FILTER="--filter=...[${BASE}]"
+          if echo "$CHANGED" | grep -qE '^docs/i18n/'; then FILTER="${FILTER} --filter=@tc/web"; fi
+          echo "changed packages and their dependents only: ${FILTER}"
+          echo "filter=${FILTER}" >> "$GITHUB_OUTPUT"
 
       - name: biome check
         run: pnpm biome check .
@@ -59,8 +135,14 @@ jobs:
           node packages/db/scripts/migrate-diff-check.mjs
 
       - name: vitest (unit + integration via Testcontainers)
-        # Testcontainers uses the runner's Docker daemon for Postgres and Redis.
-        run: pnpm turbo run test
+        # Testcontainers uses the runner's Docker daemon for Postgres and Redis. TEST_FILTER is empty
+        # (every suite) except on a quick push. `set -f` because `[sha]` is a shell glob, and the
+        # variable is split on purpose: it can hold two `--filter`s.
+        env:
+          TEST_FILTER: ${{ steps.scope.outputs.filter }}
+        run: |
+          set -f
+          pnpm turbo run test $TEST_FILTER
 
       - name: dependency audit (PRD §12.1)
         run: pnpm audit --audit-level=high
@@ -73,6 +155,9 @@ jobs:
     # than a good one. Twenty-five was not enough to reach the end of a bad run and report it.
     timeout-minutes: 40
     needs: checks
+    # Not on an ordinary push to main (ADR-0141): on a pull request, a manual run and every release.
+    # The same expression as `env.FULL`, which `if:` cannot read.
+    if: ${{ github.event_name != 'push' || inputs.full == true || startsWith(github.ref, 'refs/tags/') }}
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -139,10 +224,29 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://localhost:3001/api/v1/health && break; sleep 2; done
           for i in $(seq 1 30); do curl -fsS http://localhost:3000/ >/dev/null && break; sleep 2; done
 
-      - name: playwright
+      # The browser download is cached by Playwright version; the system libraries are not (they are
+      # apt packages, and `install-deps` puts them back in well under a minute).
+      - name: playwright version
+        id: pw
+        run: echo "version=$(node -p "require('./apps/web/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: cache the Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: playwright browsers
+        env:
+          PW_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
         run: |
-          pnpm --filter @tc/web exec playwright install --with-deps chromium
-          pnpm --filter @tc/web e2e
+          if [ "$PW_CACHE_HIT" = "true" ]; then
+            pnpm --filter @tc/web exec playwright install-deps chromium
+          else
+            pnpm --filter @tc/web exec playwright install --with-deps chromium
+          fi
+
+      - name: playwright
+        run: pnpm --filter @tc/web e2e
 
       - name: logs on failure
         if: failure()
