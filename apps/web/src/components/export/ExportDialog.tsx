@@ -32,6 +32,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import { ApiError, api } from '@/lib/api';
+import { templateName } from '@/lib/template-name';
 import { cn } from '@/lib/utils';
 import { LayoutPreview } from './LayoutPreview';
 
@@ -353,7 +354,7 @@ export function ExportDialog({
                     </span>
                     <span className="block text-xs text-muted">
                       {preset === 'thesis' && data
-                        ? `${data.template.name}${data.template.isExample ? ' (example)' : ''}: title page, contents, its fonts.`
+                        ? `${templateName(data.template)}: title page, contents, its fonts.`
                         : PRESET_LABEL[preset].hint}
                     </span>
                   </span>

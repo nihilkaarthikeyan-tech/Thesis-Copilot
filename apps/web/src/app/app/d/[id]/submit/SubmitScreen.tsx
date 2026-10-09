@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { ApiError, api } from '@/lib/api';
+import { templateName } from '@/lib/template-name';
 import { LifecycleBar } from './LifecycleBar';
 import { ReadinessBanner } from './ReadinessBanner';
 
@@ -186,8 +187,7 @@ export function SubmitScreen({ documentId }: { documentId: string }) {
         >
           {data.templates.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.name}
-              {t.isExample ? ' (example)' : ''}
+              {templateName(t)}
             </option>
           ))}
         </select>

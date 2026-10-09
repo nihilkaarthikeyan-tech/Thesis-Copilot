@@ -43,9 +43,25 @@ export function Dialog({
     >
       {open ? (
         <div className="p-4 sm:p-5">
-          <h2 id={testId ? `${testId}-title` : undefined} className="text-[17px] font-bold">
-            {title}
-          </h2>
+          {/* QA 2026-10-09: on a phone a long dialog's only way out was a button at the bottom of
+              the scroll. The × stays in reach at the top as the dialog scrolls. */}
+          <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex items-start gap-2 bg-surface px-4 pb-1 pt-4 sm:-top-5 sm:-mx-5 sm:-mt-5 sm:px-5 sm:pt-5">
+            <h2
+              id={testId ? `${testId}-title` : undefined}
+              className="min-w-0 flex-1 text-[17px] font-bold"
+            >
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Leave this dialog"
+              data-testid={testId ? `${testId}-x` : undefined}
+              className="-mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-md text-[20px] leading-none text-muted hover:bg-sunk hover:text-ink"
+            >
+              ×
+            </button>
+          </div>
           <div className="mt-2 text-sm">{children}</div>
         </div>
       ) : null}
