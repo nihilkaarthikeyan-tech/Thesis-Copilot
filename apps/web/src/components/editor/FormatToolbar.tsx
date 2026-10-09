@@ -700,8 +700,8 @@ export function FormatToolbar({
         // The negative margin cancels the page's own padding so the bar runs edge to edge; it has
         // to match that padding at every width, or on a phone the bar is wider than the screen.
         'sticky top-0 z-20 -mx-4 mb-4 border-b border-line bg-paper/95 px-4 py-1.5 backdrop-blur sm:-mx-6 sm:px-6',
-        // `relative` so the inline prompt below anchors to this bar.
-        'relative',
+        // QA 2026-10-09: a separate `relative` here made tailwind-merge drop `sticky`, so the bar
+        // scrolled away with the page. `sticky` already anchors the inline prompt below to it.
         className,
       )}
     >

@@ -21,3 +21,4 @@ Thumbs.db
 
 # Agent worktrees (Claude Code)
 .claude/worktrees/
+qa-shots/
