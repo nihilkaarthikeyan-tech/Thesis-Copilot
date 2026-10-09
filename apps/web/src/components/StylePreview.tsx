@@ -19,6 +19,8 @@ export type StylePreviewData = {
   noteStyle: boolean;
   inText: string;
   bibliography: string;
+  /** False for a "notes without bibliography" style: the footnote is the whole reference. */
+  hasBibliography?: boolean;
   sampleLabel: string;
   /** The CSL locale it was rendered in (ADR-0065). */
   locale?: string;
@@ -106,10 +108,16 @@ export function StylePreview({
             </span>
             <span data-testid="style-preview-intext">{current.data.inText}</span>
           </p>
-          <p className="mt-1 text-ink">
-            <span className="text-muted">In the bibliography: </span>
-            <span data-testid="style-preview-bibliography">{current.data.bibliography}</span>
-          </p>
+          {current.data.hasBibliography === false ? (
+            <p className="mt-1 text-muted" data-testid="style-preview-no-bibliography">
+              No bibliography in this style: each footnote gives the full reference.
+            </p>
+          ) : (
+            <p className="mt-1 text-ink">
+              <span className="text-muted">In the bibliography: </span>
+              <span data-testid="style-preview-bibliography">{current.data.bibliography}</span>
+            </p>
+          )}
         </>
       ) : current?.failed ? (
         <p className="text-muted">The preview for this style could not be loaded.</p>

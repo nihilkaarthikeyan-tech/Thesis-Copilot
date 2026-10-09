@@ -42,8 +42,10 @@ export type StylePreview = {
   noteStyle: boolean;
   /** How the sample is cited in the running text (or in its footnote). */
   inText: string;
-  /** The sample as the bibliography prints it. */
+  /** The sample as the bibliography prints it; empty for a style with no bibliography. */
   bibliography: string;
+  /** False for a "notes without bibliography" style: the footnote is the whole reference. */
+  hasBibliography: boolean;
   sampleLabel: string;
   /** The CSL locale the preview was rendered in (ADR-0065). */
   locale: string;
@@ -76,6 +78,7 @@ export function previewStyle(
     noteStyle: result.noteStyle,
     inText: result.labels.example ?? '',
     bibliography: result.bibliography[0]?.text ?? '',
+    hasBibliography: result.hasBibliography,
     sampleLabel: SAMPLE_LABEL,
     locale: result.locale,
   };

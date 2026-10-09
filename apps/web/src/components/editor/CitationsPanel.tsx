@@ -34,6 +34,8 @@ export type Rendered = {
   /** ADR-0029: citations are footnotes in this style. */
   noteStyle?: boolean;
   bibliography: Array<{ sourceId: string; text: string }>;
+  /** False for a "notes without bibliography" style: each note gives the full reference. */
+  hasBibliography?: boolean;
   /** Sources cited somewhere that are no longer in the library (ADR-0045). */
   missingSourceIds?: string[];
   findings: Array<{
@@ -232,6 +234,10 @@ export function CitationsPanel({
                 </li>
               ))}
             </ol>
+          ) : data?.hasBibliography === false ? (
+            <p className="mt-3 text-xs text-muted" data-testid="bibliography-none">
+              This style has no bibliography: each footnote gives the full reference.
+            </p>
           ) : (
             <p className="mt-3 text-xs text-muted">
               Nothing is cited yet. The bibliography lists what your chapters actually cite, never

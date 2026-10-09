@@ -56,6 +56,8 @@ export type RenderedCitations = {
   /** ADR-0029: citations are footnotes — the editor shows a note number, exports write notes. */
   noteStyle: boolean;
   bibliography: BibliographyEntry[];
+  /** False for a "notes without bibliography" style (Chicago 18th `chicago-notes`). */
+  hasBibliography: boolean;
   /** Sources a citation points at that are no longer in the library: the editor draws them red. */
   missingSourceIds: string[];
   findings: CitationFinding[];
@@ -197,6 +199,8 @@ export class CitationsService {
       clusters: rendered.clusters,
       noteStyle: rendered.noteStyle,
       bibliography: rendered.bibliography,
+      // False for a "notes without bibliography" style: the empty list is the style, not a gap.
+      hasBibliography: rendered.hasBibliography,
       missingSourceIds: rendered.missingSourceIds,
       findings,
       counts: {

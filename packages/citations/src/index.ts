@@ -67,6 +67,7 @@ export {
   type CitationRef,
   type ClusterPlace,
   clusterPlaces,
+  declaresBibliography,
   isNoteStyle,
   type RenderInput,
   type RenderResult,
