@@ -17,7 +17,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   type ButtonControl,
   type CardDeps,
@@ -286,8 +286,8 @@ describe('the button', () => {
     more.innerHTML =
       '<div class="docsum-content"><a class="docsum-title" href="/55555555/" data-article-id="55555555">Added later.</a><div class="docsum-citation full-citation"><span class="docsum-journal-citation full-journal-citation">J Test. 2020.</span></div></div>';
     list?.append(more);
-    await new Promise((done) => setTimeout(done, 500));
-    expect(count()).toBe(first + 1);
+    // Waits for the observer rather than a fixed 500 ms: a loaded CI runner took longer (2026-10-09).
+    await vi.waitFor(() => expect(count()).toBe(first + 1), { timeout: 3000, interval: 50 });
     expect(more.querySelector('[data-tc-addon="button"]')).not.toBeNull();
     run.stop();
   });
