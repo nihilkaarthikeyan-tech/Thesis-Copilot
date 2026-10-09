@@ -733,6 +733,7 @@ export const en = {
   'chat.threads.list': 'Chats',
   'chat.threads.heading': 'Your chats in this thesis',
   'chat.threads.new': 'New chat',
+  'chat.threads.opening': 'Opening chat…',
   'chat.threads.newButton': 'New',
   'chat.threads.newOn': 'Start a new chat on',
   'chat.threads.wholeLibrary': 'Your whole library',
@@ -784,6 +785,10 @@ export const en = {
   'limit.platform.returnsOn': 'AI features return on {date}.',
   'limit.platform.returnsNextMonth': 'AI features return on the 1st of next month.',
   'limit.platform.notYours': 'This is not your allowance, and the administrator has been told.',
+  // ADR-0116 amendment (QA 2026-10-08): "Ask first" asks before searching for a thin library too.
+  'chat.research.ask': 'Search the literature too?',
+  'chat.research.askWhy':
+    'Your library has little on this. The scholarly indexes can be searched and the answer written from your library and the abstracts found, each marked “Not in your library”. Skip answers from your library alone.',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

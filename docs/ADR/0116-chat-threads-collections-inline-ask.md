@@ -114,3 +114,47 @@ could not be asked on its own.
   the three buttons.
 - `prisma migrate diff` against a database migrated from the files (the CI check,
   `packages/db/scripts/migrate-diff-check.mjs`): migrations and schema agree.
+
+## Amendment 2026-10-08 (QA audit of the chat)
+
+1. **A chat's title is its whole first question** (spaces collapsed; at most 2,000 characters, the
+   longest question `POST /chat` takes), not the first 80 characters cut at a word with "…". The
+   cut title was all the row's tooltip and the bar could show, so after reopening a chat the
+   student read a cut question. The list's row cuts the title on screen (CSS ellipsis); its tooltip
+   and the bar's show it whole. A title stored cut before this (by the service, or by migration
+   0045) is made whole when read, from the thread's first question when that question is still
+   among the kept turns and is the one it was cut from (`fullTitle`); the list reads turns only
+   for those rows. No migration. Tests: `chat-threads.spec.ts` ("is the whole question…", "is made
+   whole again…"), `chat-threads-api.spec.ts` ("a chat's title").
+2. **"Ask first" asks before the thin-library top-up too.** Decision 5 above (and ADR-0074 §1) let
+   the top-up search the literature under "Ask first" without asking, because it rode on a library
+   answer the student was already getting. The QA audit showed what that allows: "What is a good
+   recipe for a chocolate cake?" on a 14-paper heat-stress library cleared the relevance floor
+   (`RELEVANCE_FLOOR`, unchanged: it is measured), the library was thin for it, the chat searched
+   the web on its own ("Searched for: good recipe chocolate cake") and charged a CHAT unit for
+   A.4's "Your library does not contain enough on this…". "Ask first" now means what it says:
+   nothing beyond the library is searched without the student's press. A library question the
+   library is thin on stops after retrieval, before the model, with Jenni's three choices
+   (`offerResearch`, outcome `research-offer`, `researchOfferReply`): the unit is refunded as the
+   off-topic refusal's is, nothing is searched, and a new chat is not stored. **Allow this time**
+   sends the same question with `research: 'allow'` (the top-up runs, ADR-0074 unchanged);
+   **Always allow** first saves "On", as for the off-topic offer; **Skip** sends it with
+   `research: 'skip'` and gets the library's own answer. Each is one CHAT unit, for the answer the
+   student chose. "On" still searches every question without asking (ADR-0081); "Off", `@`
+   papers, the document scope and a chat on a collection neither search nor ask; a question with a
+   file attached is about the file and is answered without searching or asking
+   (`researchDecision`, `chat-research.ts`).
+   **Charging is unchanged and by design:** A.4's "does not contain enough" after a model call is
+   a provider call made and is charged, as ADR-0116's Cost section and ADR-0074 say; what changed
+   is that no search runs unasked to get there. Tests: `chat-research.spec.ts` ("Ask first" asks
+   before searching a thin library), `chat-research-api.spec.ts` ("Ask first" and a thin library:
+   no search, no model call, no unit, no row; Skip, one unit, no search; On searches; an attached
+   file neither), `apps/web/e2e/chat-research.spec.ts` (the offer and Skip; written, not run here,
+   the dev stack being in use).
+3. **No "Add to document" under a refusal.** The panel offered it under the off-topic, collection
+   and search refusals, and after a reload under A.4's "not enough" (a stored turn had no
+   outcome), which would put the refusal into the thesis. The panel now tells a refusal by its
+   outcome, or by its words for a turn stored before (`isRefusalAnswer`, `lib/chat-copy.ts`), and
+   a stored scripted reply keeps its outcome. Copy stays.
+4. While the stored chat loads, the bar says "Opening chat…", not "New chat".
+

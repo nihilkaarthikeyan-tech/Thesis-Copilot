@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { COLLECTION_NAME_MAX as SHARED_NAME_MAX } from '@tc/types';
 import { describe, expect, it } from 'vitest';
 import {
   addedSummary,
+  COLLECTION_NAME_MAX,
   checkCollectionName,
   collectionCounts,
   inCollection,
@@ -90,5 +94,21 @@ describe('selecting rows', () => {
     expect(addedSummary(3, 3, 'Methods')).toBe('Added 3 papers to Methods.');
     expect(addedSummary(1, 3, 'Methods')).toBe('Added 1 paper to Methods. 2 already there.');
     expect(addedSummary(0, 2, 'Methods')).toBe('Already in Methods.');
+  });
+});
+
+describe('the name box and the API agree on the length (QA 2026-10-08)', () => {
+  it('stops typing at the length the API accepts, from the one shared constant', () => {
+    // The box allowed 80 characters while the API refused anything over 60.
+    expect(COLLECTION_NAME_MAX).toBe(SHARED_NAME_MAX);
+    expect(COLLECTION_NAME_MAX).toBe(60);
+    const strip = readFileSync(
+      resolve(__dirname, '../src/app/app/d/[id]/sources/CollectionsStrip.tsx'),
+      'utf8',
+    );
+    expect(strip).toContain('maxLength={COLLECTION_NAME_MAX}');
+    expect(strip).not.toMatch(/maxLength=\{\d+\}/);
+    expect(checkCollectionName('x'.repeat(COLLECTION_NAME_MAX), []).ok).toBe(true);
+    expect(checkCollectionName('x'.repeat(COLLECTION_NAME_MAX + 1), []).ok).toBe(false);
   });
 });

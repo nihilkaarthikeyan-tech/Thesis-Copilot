@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { answerPlainText } from '../src/lib/chat-copy';
+import { answerPlainText, isRefusalAnswer } from '../src/lib/chat-copy';
+
+describe('isRefusalAnswer — no "Add to document" under a refusal (QA 2026-10-08)', () => {
+  it('knows a refusal by its outcome', () => {
+    for (const outcome of [
+      'not-enough',
+      'off-topic',
+      'filtered-out',
+      'named-empty',
+      'beyond-empty',
+      'beyond-not-enough',
+      'deep-empty',
+      'writing-redirect',
+    ]) {
+      expect(isRefusalAnswer({ outcome, text: 'anything' })).toBe(true);
+    }
+    expect(isRefusalAnswer({ outcome: 'answered', text: 'Cost is the barrier.' })).toBe(false);
+  });
+
+  it('knows a stored refusal by its words when it has no outcome', () => {
+    for (const text of [
+      'Your library does not contain enough on this. Try adding sources on: chocolate cake.',
+      'This chat only answers questions about the sources in your library. Nothing in your library relates to that, so there is nothing for me to answer from.',
+      'This chat answers only from the papers in the collection “Methods”. Nothing in them relates to that.',
+      'The papers in the collection “Methods” have no readable text yet, so there is nothing in them to answer from.',
+      'The abstracts the search found do not answer this. Try naming the method.',
+    ]) {
+      expect(isRefusalAnswer({ text })).toBe(true);
+    }
+    expect(isRefusalAnswer({ text: 'Heat stress lowers milk yield {{cite:S1#c1}}.' })).toBe(false);
+  });
+});
 
 const citations = [
   { key: 'a1', label: '(Kumar et al., 2021)' },

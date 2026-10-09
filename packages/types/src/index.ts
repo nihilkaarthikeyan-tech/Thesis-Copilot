@@ -6,6 +6,7 @@ export {
   type ChartType,
   chartSpecSchema,
 } from './chart.js';
+export { COLLECTION_NAME_MAX } from './collections.js';
 export {
   formatRef,
   kindOfNode,

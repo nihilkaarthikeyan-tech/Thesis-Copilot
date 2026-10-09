@@ -55,6 +55,12 @@ const chatBody = z.object({
   deep: z.boolean().optional(),
   /** ADR-0083: files uploaded to `POST /chat/attachments` for this question. */
   attachmentIds: z.array(z.string().uuid()).max(3).optional(),
+  /**
+   * ADR-0116 amendment (2026-10-08): the student's answer to "Ask first"'s offer to search the
+   * literature for a question the library is thin on. 'allow' searches this once; 'skip' answers
+   * from the library alone. Absent under "Ask first", a thin library is offered, not searched.
+   */
+  research: z.enum(['allow', 'skip']).optional(),
   filters: z
     .object({
       yearFrom: z.number().int().min(1800).max(2100).nullish(),

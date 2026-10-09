@@ -85,13 +85,15 @@ import {
   keptStep,
   queryStep,
   RESEARCH_WRITING_STEP,
+  type ResearchAnswer,
   type ResearchStep,
   type ResearchSummary,
   readStep,
   researchCandidates,
+  researchDecision,
   researchNote,
+  researchOfferReply,
   researchPassages,
-  shouldResearch,
   thinStep,
 } from './chat-research.js';
 import {
@@ -140,6 +142,11 @@ export type ChatInput = {
   threadId?: string;
   newThread?: boolean;
   collectionId?: string;
+  /**
+   * ADR-0116 amendment (2026-10-08): the student's answer to the "Ask first" offer for a thin
+   * library — search the literature this once, or answer from the library alone.
+   */
+  research?: ResearchAnswer;
 };
 
 export type { BeyondSummary, ChatCitation, StoredTurn };
@@ -170,6 +177,11 @@ export type ChatEvent =
          * the library, on the student's press.
          */
         offerBeyond?: boolean;
+        /**
+         * ADR-0116 amendment: "Ask first", and the library is thin on the question. Nothing was
+         * searched or charged; the student chooses: search this once, always, or the library alone.
+         */
+        offerResearch?: boolean;
         /** Present on an answer written from search abstracts. */
         beyond?: BeyondSummary;
         /** ADR-0074: present on a library answer that also read abstracts a search found. */
@@ -181,6 +193,14 @@ export type ChatEvent =
         threadId?: string;
       };
     };
+
+/**
+ * QA 2026-10-08: a stored answer keeps its outcome when it is a scripted reply, so the panel can
+ * tell a refusal from an answer after a reload (no "Add to document" under a refusal).
+ */
+function scripted(outcome: string): { outcome?: string } {
+  return outcome === 'answered' ? {} : { outcome };
+}
 
 /** What `ContextService.retrieve` returns, so the filter keeps the passage shape. */
 type Retrieved = Awaited<ReturnType<ContextService['retrieve']>>;
@@ -465,8 +485,38 @@ export class ChatService {
       scope === 'library'
         ? libraryCoverage(passages.map((p) => ({ cosine: p.cosine, sourceId: p.sourceId })))
         : null;
+    // ADR-0116 amendment (QA 2026-10-08): under "Ask first" nothing beyond the library runs
+    // without the student's press, the thin-library top-up included. Without their answer the
+    // question stops here, before the model, with the offer — free, as the off-topic refusal is.
+    const decision = researchDecision(
+      coverage,
+      beyondSetting,
+      input.sourceIds?.length ?? 0,
+      input.research,
+      hasAttachments,
+    );
+    if (decision === 'offer' && coverage) {
+      await this.usage.refund(user.id, 'CHAT');
+      this.logger.log(
+        { documentId: input.documentId, coverage },
+        'chat: a thin library under "Ask first"; offered a search, nothing searched',
+      );
+      yield {
+        event: 'done',
+        data: {
+          text: researchOfferReply(coverage.sources),
+          outcome: 'research-offer',
+          citations: [],
+          passagesUsed: 0,
+          latencyMs: Date.now() - startedAt,
+          offerResearch: true,
+          ...(thread.id ? { threadId: thread.id } : {}),
+        },
+      };
+      return;
+    }
     const research =
-      coverage && shouldResearch(coverage, beyondSetting, input.sourceIds?.length ?? 0)
+      coverage && decision === 'research'
         ? yield* this.research(user.id, input, document.title, chapter, coverage, filters, signal)
         : null;
     const found = research?.found ?? { passages: [], papers: new Map<string, BeyondPaper>() };
@@ -548,6 +598,7 @@ export class ChatService {
         role: 'assistant' as const,
         text: processed.text,
         citations,
+        ...scripted(processed.outcome),
         ...(summary ? { research: summary } : {}),
       },
     ];
@@ -781,6 +832,7 @@ export class ChatService {
         role: 'assistant' as const,
         text: processed.text,
         citations,
+        ...scripted(processed.outcome),
         research: summary,
       },
     ];
@@ -1116,6 +1168,7 @@ export class ChatService {
         role: 'assistant' as const,
         text,
         citations,
+        ...scripted(notEnough ? 'beyond-not-enough' : processed.outcome),
         ...(notEnough ? {} : { beyond }),
       },
     ];

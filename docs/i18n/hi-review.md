@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**644** strings are translated; **1** are deliberately
+**647** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -727,6 +727,7 @@ English. Write corrections in the last column.
 | `chat.threads.list` | Chats | चैट | |
 | `chat.threads.heading` | Your chats in this thesis | इस थीसिस में आपकी चैट | |
 | `chat.threads.new` | New chat | नई चैट | |
+| `chat.threads.opening` | Opening chat… | चैट खुल रही है… | |
 | `chat.threads.newButton` | New | नई | |
 | `chat.threads.newOn` | Start a new chat on | नई चैट शुरू करें: | |
 | `chat.threads.wholeLibrary` | Your whole library | आपकी पूरी library | |
@@ -776,6 +777,13 @@ English. Write corrections in the last column.
 | `limit.platform.returnsOn` | AI features return on {date}. | AI सुविधाएँ {date} को वापस आएँगी। | |
 | `limit.platform.returnsNextMonth` | AI features return on the 1st of next month. | AI सुविधाएँ अगले महीने की 1 तारीख़ को वापस आएँगी। | |
 | `limit.platform.notYours` | This is not your allowance, and the administrator has been told. | यह आपका हिस्सा नहीं है, और administrator को बता दिया गया है। | |
+
+## Chat (searching beyond a thin library)
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `chat.research.ask` | Search the literature too? | Literature में भी खोजें? | |
+| `chat.research.askWhy` | Your library has little on this. The scholarly indexes can be searched and the answer written from your library and the abstracts found, each marked “Not in your library”. Skip answers from your library alone. | आपकी library में इस पर कम है। Scholarly indexes में खोजकर जवाब आपकी library और मिले abstracts से लिखा जा सकता है, हर एक पर “आपकी library में नहीं” लिखा होगा। छोड़ें चुनने पर जवाब सिर्फ़ आपकी library से आएगा। | |
 
 ## Left in English on purpose
 

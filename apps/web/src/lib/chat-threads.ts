@@ -42,6 +42,16 @@ export const NEW_CHAT: OpenChat = {
   collectionName: null,
 };
 
+/**
+ * What the bar above the chat shows (QA 2026-10-08): while the stored chat is still loading, a
+ * neutral "Opening chat…" rather than "New chat" (which read for up to ~4 s as if the student's
+ * conversation had gone); then the chat's title, or "New chat" for one not stored yet.
+ */
+export function threadBarState(loading: boolean, title: string): 'loading' | 'new' | 'title' {
+  if (loading) return 'loading';
+  return title ? 'title' : 'new';
+}
+
 /** What a question sends to say which chat it belongs to. */
 export function threadFields(
   chat: OpenChat,

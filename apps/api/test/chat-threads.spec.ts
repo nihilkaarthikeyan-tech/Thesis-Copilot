@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   collectionEmptyReply,
   collectionOffTopicReply,
+  fullTitle,
   questionCount,
   readTurns,
   THREAD_KEEP_TURNS,
@@ -21,20 +22,29 @@ describe('a thread’s title', () => {
     );
   });
 
-  it('is cut at a word, with an ellipsis, when the question is long', () => {
+  it('is the whole question, however long (QA 2026-10-08: the cut one hid it)', () => {
     const long =
       'What do the studies in my library say about the financial barriers to rooftop solar adoption among rural households in Karnataka?';
-    const title = threadTitle(long);
-    expect(title.length).toBeLessThanOrEqual(THREAD_TITLE_MAX);
-    expect(title.endsWith('…')).toBe(true);
-    expect(long.startsWith(title.slice(0, -1))).toBe(true);
-    // At a word: the character after the cut in the question is a space.
-    expect(long[title.length - 1]).toBe(' ');
+    expect(threadTitle(long)).toBe(long);
+    expect(threadTitle('x'.repeat(200))).toBe('x'.repeat(200));
   });
 
-  it('is cut anyway when there is no word to cut at', () => {
-    const title = threadTitle('x'.repeat(200));
-    expect(title).toBe(`${'x'.repeat(THREAD_TITLE_MAX - 1)}…`);
+  it('is made whole again from the first question when it was stored cut', () => {
+    const long =
+      'What do the studies in my library say about the financial barriers to rooftop solar adoption among rural households in Karnataka?';
+    const cut = `${long.slice(0, THREAD_TITLE_MAX - 1).trimEnd()}…`;
+    const turns = readTurns([
+      { id: 'q1', role: 'user', text: long },
+      { id: 'a1', role: 'assistant', text: 'They name cost.' },
+    ]);
+    expect(fullTitle(cut, turns)).toBe(long);
+    // Cut at a word, as the service did.
+    const atWord = `${long.slice(0, long.lastIndexOf(' ', THREAD_TITLE_MAX - 1))}…`;
+    expect(fullTitle(atWord, turns)).toBe(long);
+    // Not cut, or cut from a question no longer kept: left as it is.
+    expect(fullTitle('Heat stress?', turns)).toBe('Heat stress?');
+    expect(fullTitle('Something else entirely…', turns)).toBe('Something else entirely…');
+    expect(fullTitle(cut, [])).toBe(cut);
   });
 
   it('is never empty', () => {

@@ -16,7 +16,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 import type { MessageKey, Vars } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
 import { ApiError, api, type ProblemDetails } from '@/lib/api';
-import { answerPlainText } from '@/lib/chat-copy';
+import { answerPlainText, isRefusalAnswer } from '@/lib/chat-copy';
 import {
   type ChatThreadSummary,
   NEW_CHAT,
@@ -24,6 +24,7 @@ import {
   recallChat,
   rememberChat,
   type ThreadCollection,
+  threadBarState,
   threadFields,
   threadLine,
 } from '@/lib/chat-threads';
@@ -72,6 +73,11 @@ type Turn = {
   scope?: Scope | 'beyond';
   /** ADR-0060, "Ask first": the refusal may be searched beyond the library. */
   offerBeyond?: boolean;
+  /**
+   * ADR-0116 amendment (QA 2026-10-08): "Ask first" and a library thin on the question. Nothing
+   * was searched or charged; the student chooses to search this once, always, or to skip.
+   */
+  offerResearch?: boolean;
   /** The question a refusal answered, so the offer can send it again. */
   question?: string;
   /** ADR-0060: written from search abstracts; the line under the answer says so. */
@@ -276,14 +282,20 @@ export function ChatPanel({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   /** Set once the student picks a chat, so a slow first load cannot replace their choice. */
   const chosenRef = useRef(false);
+  /**
+   * QA 2026-10-08: until the stored chat has loaded the bar says so, rather than "New chat" for
+   * the few seconds before the student's own chat appears.
+   */
+  const [loadingChat, setLoadingChat] = useState(true);
 
   // The chat this tab had open (the panel is rebuilt each time the Chat tab opens), else the one
   // used last. A chat that has gone (deleted in another tab) falls back to the one used last.
   useEffect(() => {
     let cancelled = false;
     chosenRef.current = false;
+    setLoadingChat(true);
     const remembered = recallChat(documentId);
-    void (async () => {
+    const loadStored = async () => {
       const shelves = await api<Collection[]>(`/documents/${documentId}/collections`).catch(
         () => [] as Collection[],
       );
@@ -311,7 +323,10 @@ export function ChatPanel({
         collectionDeleted: view.collectionDeleted,
         collectionName: view.collectionName,
       });
-    })();
+    };
+    void loadStored().finally(() => {
+      if (!cancelled) setLoadingChat(false);
+    });
     api<{ chatFilters?: Filters }>('/settings')
       .then((s) => setFilters(s.chatFilters ?? {}))
       .catch(() => undefined);
@@ -464,6 +479,7 @@ export function ChatPanel({
     setSavingPrompt(null);
     // ADR-0116: the question goes to the chat on screen; the menus above it close.
     chosenRef.current = true;
+    setLoadingChat(false);
     setShowThreads(false);
     setNewMenu(false);
     await send(message, scope);
@@ -499,6 +515,42 @@ export function ChatPanel({
     await send(turn.question, 'beyond', { repeat: true });
   }
 
+  /**
+   * ADR-0116 amendment: the offer for a thin library under "Ask first". Allow this time asks the
+   * same question again with the search allowed once; Always allow first sets "On"; Skip asks it
+   * again answered from the library alone. Each is one CHAT unit, for the answer the student chose.
+   */
+  async function answerResearchOffer(turn: Turn, choice: 'once' | 'always' | 'skip') {
+    if (!turn.question || busy) return;
+    if (choice === 'always') {
+      try {
+        await api('/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ searchBeyondLibrary: 'on' }),
+        });
+      } catch (e) {
+        setError(problemText(e));
+        return;
+      }
+    }
+    setTurns((list) =>
+      list.map((t) =>
+        t.id === turn.id
+          ? {
+              ...t,
+              offerResearch: false,
+              ...(choice === 'always' ? { alwaysAllowed: true } : {}),
+              ...(choice === 'skip' ? { skipped: true } : {}),
+            }
+          : t,
+      ),
+    );
+    await send(turn.question, 'library', {
+      repeat: true,
+      research: choice === 'skip' ? 'skip' : 'allow',
+    });
+  }
+
   /** "Skip": the refusal stands, nothing is searched, nothing is charged. */
   function skipBeyond(turn: Turn) {
     setTurns((list) =>
@@ -528,6 +580,7 @@ export function ChatPanel({
    */
   function afterSwitch(next: OpenChat) {
     chosenRef.current = true;
+    setLoadingChat(false);
     setSteps([]);
     setStreaming('');
     setWebResults(null);
@@ -608,7 +661,7 @@ export function ChatPanel({
   async function send(
     message: string,
     askScope: Scope | 'beyond',
-    options: { repeat?: boolean } = {},
+    options: { repeat?: boolean; research?: 'allow' | 'skip' } = {},
   ) {
     setBusy(true);
     setError(null);
@@ -659,6 +712,7 @@ export function ChatPanel({
           ...(askScope === 'library' && deep && mentions.mentions.length === 0
             ? { deep: true }
             : {}),
+          ...(askScope === 'library' && options.research ? { research: options.research } : {}),
           ...(attachments.length > 0 && (askScope === 'library' || askScope === 'document')
             ? { attachmentIds: attachments.map((a) => a.id) }
             : {}),
@@ -734,6 +788,7 @@ export function ChatPanel({
                 ...(beyond ? { beyond } : {}),
                 ...(research ? { research } : {}),
                 ...(data.offerBeyond === true ? { offerBeyond: true, question: message } : {}),
+                ...(data.offerResearch === true ? { offerResearch: true, question: message } : {}),
               },
             ]);
             setStreaming('');
@@ -939,13 +994,27 @@ export function ChatPanel({
           <History size={12} aria-hidden />
           {t('chat.threads.list')}
         </button>
-        <span
-          data-testid="chat-thread-title"
-          title={chat.title || undefined}
-          className="min-w-0 flex-1 truncate text-xs text-ink"
-        >
-          {chat.title || t('chat.threads.new')}
-        </span>
+        {(() => {
+          const bar = threadBarState(loadingChat, chat.title);
+          return (
+            <span
+              data-testid="chat-thread-title"
+              data-state={bar}
+              aria-busy={bar === 'loading' || undefined}
+              title={bar === 'title' ? chat.title : undefined}
+              className={cn(
+                'min-w-0 flex-1 truncate text-xs',
+                bar === 'loading' ? 'text-faint' : 'text-ink',
+              )}
+            >
+              {bar === 'loading'
+                ? t('chat.threads.opening')
+                : bar === 'new'
+                  ? t('chat.threads.new')
+                  : chat.title}
+            </span>
+          );
+        })()}
         <button
           type="button"
           data-testid="chat-new"
@@ -1217,7 +1286,7 @@ export function ChatPanel({
       ) : null}
 
       <div className="flex-1 space-y-3 overflow-y-auto px-1" aria-live="polite">
-        {turns.length === 0 && !streaming && scope !== 'web' ? (
+        {turns.length === 0 && !streaming && scope !== 'web' && !loadingChat ? (
           <p className="text-sm text-muted">
             {chat.collection
               ? t('chat.collection.empty', { name: chat.collection.name })
@@ -1294,6 +1363,44 @@ export function ChatPanel({
                 </div>
               </div>
             ) : null}
+            {turn.offerResearch && turn.question ? (
+              <div
+                data-testid="chat-research-ask"
+                className="mt-2 rounded-md border border-line-strong p-2"
+              >
+                <p className="text-xs font-semibold text-ink">{t('chat.research.ask')}</p>
+                <p className="mt-0.5 text-[11px] text-muted">{t('chat.research.askWhy')}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    data-testid="chat-research-once"
+                    disabled={busy}
+                    onClick={() => void answerResearchOffer(turn, 'once')}
+                    className="rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {t('chat.web.once')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="chat-research-always"
+                    disabled={busy}
+                    onClick={() => void answerResearchOffer(turn, 'always')}
+                    className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-sunk disabled:opacity-50"
+                  >
+                    {t('chat.web.always')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="chat-research-skip"
+                    disabled={busy}
+                    onClick={() => void answerResearchOffer(turn, 'skip')}
+                    className="rounded-md px-2.5 py-1 text-xs text-muted underline hover:text-ink disabled:opacity-50"
+                  >
+                    {t('chat.web.skip')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {turn.alwaysAllowed ? (
               <p
                 data-testid="chat-search-beyond-always-note"
@@ -1328,13 +1435,13 @@ export function ChatPanel({
                 t={t}
               />
             ) : null}
-            {turn.role === 'assistant' && turn.text.trim() ? (
+            {turn.role === 'assistant' && turn.text.trim() && turn.outcome !== 'research-offer' ? (
               <div className="mt-2 flex items-center gap-3 text-xs">
                 {/* An answer from abstracts cites papers that are not sources yet; it goes into
                     the thesis only once they are added and asked about on Library. ADR-0074: the
                     same holds for a library answer that also cited a found paper. */}
                 {onAddToDocument &&
-                turn.outcome !== 'not-enough' &&
+                !isRefusalAnswer(turn) &&
                 !turn.beyond &&
                 !(turn.citations ?? []).some((c) => c.beyond || c.attachment) ? (
                   <button
