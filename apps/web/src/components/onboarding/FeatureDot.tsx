@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useStayInWindow } from '@/lib/stay-in-window';
 import { dismissHint, isHintDismissed } from './FirstRunHint';
 
 const key = (id: string) => `feature-${id}`;
@@ -40,6 +41,8 @@ export function FeatureDot(props: {
   const [show, setShow] = useState(false);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  // Measured once open: a dot on a feature near the left of a phone screen would push it off.
+  const hint = useStayInWindow<HTMLSpanElement>(open);
 
   // After mount, so the server's render and the first client render agree.
   useEffect(() => {
@@ -88,7 +91,9 @@ export function FeatureDot(props: {
       {open ? (
         <span
           role="dialog"
-          className="absolute top-4 right-0 z-30 block w-60 rounded-md border border-line bg-surface p-3 text-left text-[12.5px] font-normal normal-case text-ink shadow-lg"
+          ref={hint.ref}
+          style={hint.style}
+          className="absolute top-4 right-0 z-30 block w-60 max-w-[calc(100vw-1rem)] rounded-md border border-line bg-surface p-3 text-left text-[12.5px] font-normal normal-case text-ink shadow-lg"
           data-testid={`feature-hint-${props.id}`}
         >
           <span className="block">{props.line}</span>

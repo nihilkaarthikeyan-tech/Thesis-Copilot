@@ -46,6 +46,7 @@ import { type LimitRefusal, limitNotice, limitRefusal } from '@/lib/limit';
 import { canReadBeside, requestReadBeside } from '@/lib/read-beside';
 import { readerHref } from '@/lib/reader';
 import { assistRequest } from '@/lib/sse';
+import { useStayInWindow } from '@/lib/stay-in-window';
 
 /** `GET /sources/:id/chunks/:chunkId` (PHASES 3.5). */
 type PassageDto = {
@@ -456,6 +457,8 @@ function ChapterEditor({
   /** R7: the block the grip's menu is open on, and where to draw it. */
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Measured once open: the header wraps on a phone, so "More" may not sit at the window's edge.
+  const moreMenu = useStayInWindow<HTMLSpanElement>(moreOpen);
   useEffect(() => {
     if (!drawer && !moreOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -1364,7 +1367,11 @@ function ChapterEditor({
               {t('common.more')}
             </Button>
             {moreOpen ? (
-              <span className="absolute right-0 top-full z-40 mt-1 grid w-52 rounded-md border border-line bg-surface p-1 shadow-lg">
+              <span
+                ref={moreMenu.ref}
+                style={moreMenu.style}
+                className="absolute right-0 top-full z-40 mt-1 grid w-52 rounded-md border border-line bg-surface p-1 shadow-lg"
+              >
                 <button
                   type="button"
                   className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"

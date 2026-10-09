@@ -121,6 +121,47 @@ export function measureLayout(detail: boolean): LayoutFault[] {
       });
     }
   }
+  // A menu, popover or hint is positioned on its own (absolute or fixed), so the box check above
+  // skips it; QA 2026-10-08 found the thesis card's "More" menu running from -41 to 119 px at
+  // 390 px wide, its items cut to "a chapter", "als", "ve". Each one that is shown and partly on
+  // the screen must lie wholly inside the window. Not counted: what nobody sees (sr-only, hidden,
+  // transparent, clipped away by a scrolling box), decoration (aria-hidden, no pointer events),
+  // and anything wholly off the screen on purpose (a closed drawer slid out of view).
+  const shown = (el: Element) => {
+    const check = (el as { checkVisibility?: (o: object) => boolean }).checkVisibility;
+    if (check && !check.call(el, { opacityProperty: true, visibilityProperty: true })) return false;
+    return getComputedStyle(el).visibility !== 'hidden';
+  };
+  for (const el of document.body.querySelectorAll('*')) {
+    const s = getComputedStyle(el);
+    if (s.position !== 'absolute' && s.position !== 'fixed') continue;
+    if (srOnly(el) || folded(el) || !shown(el)) continue;
+    if (el.closest('[aria-hidden="true"]') || s.pointerEvents === 'none') continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) continue;
+    // What a scrolling or clipping box around it leaves visible (not the page itself).
+    let left = r.left;
+    let right = r.right;
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const ps = getComputedStyle(p);
+      if (ps.overflowX === 'visible') continue;
+      const pr = p.getBoundingClientRect();
+      left = Math.max(left, pr.left);
+      right = Math.min(right, pr.right);
+    }
+    if (right - left < 2) continue;
+    if (right <= 0 || left >= vw) continue;
+    const off = Math.max(-left, right - vw);
+    if (off > 1.5) {
+      out.push({
+        kind: 'menu or popover off the screen',
+        by: Math.round(off),
+        el: name(el),
+        box: `window 0..${vw}, it ${Math.round(left)}..${Math.round(right)}`,
+        ...(detail ? { html: el.outerHTML.slice(0, 300) } : {}),
+      });
+    }
+  }
   const seen = new Set<string>();
   return out.filter((f) => {
     const k = `${f.kind}|${f.el}|${f.box}`;
