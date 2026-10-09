@@ -6,7 +6,9 @@
  * - **Where a button goes.** On an article page, beside the link to the article's own DOI (or
  *   under its title when the page shows no DOI link); on a results page, on every result. The
  *   paper is the one the page's own metadata names (`refs.ts`) — never one guessed from links.
- * - **What it shows.** A card, fixed at the top right of the window, with the paper as the library
+ * - **What it shows.** A card, fixed at the top right of the window (on a narrow window a sheet
+ *   along the bottom, or the top when the page cannot scroll the result being saved clear of it),
+ *   with the paper as the library
  *   finds it for that identifier (`lookup-id`), what the page itself says about it (Google
  *   Scholar's "Cited by", a PDF the page links), the thesis and collection, and Save.
  * - **What it reads and sends.** It reads the page's meta tags and each result as `page.ts` does
@@ -344,6 +346,10 @@ select { width: 100%; min-width: 0; height: 32px; padding: 0 8px; border: 1px so
   vertical-align: -2px; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+.panel.sheet { max-height: 50vh; max-height: 50dvh; border-width: 1px 0 0;
+  border-radius: 14px 14px 0 0; box-shadow: 0 -12px 32px rgba(15, 23, 36, 0.2); }
+.panel.sheet.at-top { border-width: 0 0 1px; border-radius: 0 0 14px 14px;
+  box-shadow: 0 12px 32px rgba(15, 23, 36, 0.2); }
 `;
 
 // ---- Small DOM helpers ---------------------------------------------------------------------------
@@ -523,10 +529,47 @@ export function factRows(item: InpageItem, preview: Preview | null): Array<[stri
   return rows;
 }
 
+/**
+ * Below this window width the card is a sheet along the bottom, not a card at the top right: a
+ * 360 px card on a phone covers the first results, the one being saved among them (2026-10-09).
+ */
+export const SHEET_BELOW_PX = 640;
+
+/** Room kept between the result being saved and the sheet's top edge, in px. */
+const CLEARANCE_PX = 12;
+
+/** The part of the window the sheet leaves free, top and bottom in viewport px. */
+export type Clear = { from: number; to: number };
+
+/** What the sheet leaves free: above it on the bottom edge, below it on the top edge. */
+export function clearOf(
+  edge: 'bottom' | 'top',
+  sheet: { top: number; bottom: number },
+  windowHeight: number,
+): Clear {
+  return edge === 'bottom'
+    ? { from: CLEARANCE_PX, to: sheet.top - CLEARANCE_PX }
+    : { from: sheet.bottom + CLEARANCE_PX, to: windowHeight - CLEARANCE_PX };
+}
+
+/**
+ * How far to scroll the page (positive: down the page) so the result at `target` (its button's
+ * box) is inside `clear`; 0 when it already is.
+ */
+export function scrollToClear(target: { top: number; bottom: number }, clear: Clear): number {
+  if (target.bottom > clear.to) return target.bottom - clear.to;
+  if (target.top < clear.from) return target.top - clear.from;
+  return 0;
+}
+
 export function createCard(deps: CardDeps): Card {
   let host: HTMLElement | null = null;
   let root: ShadowRoot | null = null;
   let body: HTMLElement | null = null;
+  let panel: HTMLElement | null = null;
+  let sheet = false;
+  /** The sheet's edge; the top once the page could not scroll the result clear of the bottom. */
+  let edge: 'bottom' | 'top' = 'bottom';
   let view: CardView = cardInitial;
   let item: InpageItem | null = null;
   let from: ButtonControl | null = null;
@@ -559,12 +602,8 @@ export function createCard(deps: CardDeps): Card {
     pin(host, {
       all: 'initial',
       position: 'fixed',
-      top: '16px',
-      right: '16px',
       'z-index': '2147483647',
       display: 'block',
-      width: '360px',
-      'max-width': 'calc(100% - 32px)',
     });
     root = attach(host, deps.mode ?? 'closed', CARD_CSS);
     const close = el('button', { className: 'close', text: '×', testId: 'tc-close', fid: 'close' });
@@ -572,7 +611,7 @@ export function createCard(deps: CardDeps): Card {
     close.setAttribute('aria-label', 'Close');
     close.addEventListener('click', () => api.close());
     body = el('div', { className: 'body' });
-    const panel = el(
+    panel = el(
       'div',
       { className: 'panel', testId: 'tc-card' },
       el(
@@ -598,6 +637,71 @@ export function createCard(deps: CardDeps): Card {
     }
     root.append(panel);
     document.documentElement.append(host);
+    place();
+    window.addEventListener('resize', onResize);
+  }
+
+  /** A card at the top right, or on a narrow window a sheet along the bottom. */
+  function place(): void {
+    if (!host || !panel) return;
+    sheet = window.innerWidth < SHEET_BELOW_PX;
+    pin(
+      host,
+      sheet
+        ? {
+            top: edge === 'top' ? '0' : 'auto',
+            right: '0',
+            bottom: edge === 'top' ? 'auto' : '0',
+            left: '0',
+            width: '100%',
+            'max-width': '100%',
+          }
+        : {
+            top: '16px',
+            right: '16px',
+            bottom: 'auto',
+            left: 'auto',
+            width: '360px',
+            'max-width': 'calc(100% - 32px)',
+          },
+    );
+    panel.classList.toggle('sheet', sheet);
+    panel.classList.toggle('at-top', sheet && edge === 'top');
+  }
+
+  /**
+   * On a narrow window the sheet covers up to half of it: the page is scrolled so the result
+   * being saved stays in sight beside it. When the page cannot scroll that far (the last result
+   * on a short page), the sheet moves to the top edge for the rest of this opening. Run after
+   * every redraw, since the sheet grows as the card fills in; a result already clear of it is
+   * left where it is.
+   */
+  function keepResultInSight(): void {
+    if (!sheet || !host || !from?.host.isConnected) return;
+    // Not laid out (a hidden tab, or no layout at all): nothing to measure against.
+    if (host.getBoundingClientRect().height === 0) return;
+    const target = from.host;
+    const scrollClear = (): number => {
+      const by = scrollToClear(
+        target.getBoundingClientRect(),
+        clearOf(edge, (host as HTMLElement).getBoundingClientRect(), window.innerHeight),
+      );
+      if (by !== 0) window.scrollBy({ top: by, left: 0, behavior: 'instant' as ScrollBehavior });
+      return scrollToClear(
+        target.getBoundingClientRect(),
+        clearOf(edge, (host as HTMLElement).getBoundingClientRect(), window.innerHeight),
+      );
+    };
+    if (scrollClear() !== 0 && edge === 'bottom') {
+      edge = 'top';
+      place();
+      scrollClear();
+    }
+  }
+
+  function onResize(): void {
+    place();
+    keepResultInSight();
   }
 
   function focusFid(fid: string): void {
@@ -920,6 +1024,7 @@ export function createCard(deps: CardDeps): Card {
       String(view.kind === 'loading' || (view.kind === 'ready' && view.phase === 'saving')),
     );
     if (focused) focusFid(focused);
+    keepResultInSight();
   }
 
   const api: Card = {
@@ -930,17 +1035,22 @@ export function createCard(deps: CardDeps): Card {
       item = next;
       run += 1;
       view = cardInitial;
+      // Each opening starts on the bottom edge, for whichever result it is.
+      edge = 'bottom';
       ensureHost();
+      place();
       draw();
       focusFid('close');
       void load(run);
     },
     close() {
       run += 1;
+      window.removeEventListener('resize', onResize);
       host?.remove();
       host = null;
       root = null;
       body = null;
+      panel = null;
       item = null;
       view = cardInitial;
       const back = from;

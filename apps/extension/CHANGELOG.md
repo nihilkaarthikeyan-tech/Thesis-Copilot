@@ -8,7 +8,10 @@
 - **A card** at the top right: the paper as Thesis Copilot finds it for the page's DOI, arXiv id or
   PubMed id; "Cited by" (Google Scholar's count on a Scholar result, Crossref's elsewhere), open
   access (arXiv, PubMed Central) and "PDF found on this page" — each only when it is known; the
-  thesis and collection; Save; then "Open in Thesis Copilot". Escape closes it.
+  thesis and collection; Save; then "Open in Thesis Copilot". Escape closes it. On a window
+  narrower than 640 px it is a sheet along the bottom, at most half the window, and the page
+  scrolls so the result being saved stays in sight above it; when the page cannot scroll that far
+  (the last result on a short page) the sheet goes to the top edge instead (2026-10-09).
 - **The right paper, every time**: a button is tied to an identifier the page itself states; a
   page that names no article (an MDPI issue's contents) gets no button.
 - **Saved by its identifier** through the library's paste-an-ID import, so a PubMed record with
