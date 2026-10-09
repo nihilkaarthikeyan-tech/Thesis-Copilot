@@ -95,3 +95,55 @@ with no gap map the model declined to name themes. So A.9 is unchanged. The edit
 any sub-sections an outline has as level-3 headings in the open chapter too (as the worker
 already did), ready for a candidate that also holds the title-only path; the next round must
 include title-only cases.
+
+## Addendum 4 (2026-10-09) — R5b, a fourth sub-section candidate, title-only cases first
+
+The outline round (`eval/run.ts outline`) now carries a title-only case beside each of its five
+gap-map cases (`<id>-title`): the request generate-outline.ts sends for `fromTitle` — the working
+title, an empty problem statement, no objectives, no gap map, `STEM_EMPIRICAL` — kept as the worker
+keeps it (`dropPlaceholderSections` too). Its judge sees only the title. The run counts each plan's
+shape in code: the Literature Review's sections, the sub-sections, and any sub-section outside the
+Literature Review and Methodology.
+
+**Pass criterion, written before any candidate ran.** `outline-h3d` replaces A.9 only if all four
+hold:
+
+1. **Title-only plans keep the Literature Review.** Every title-only run of the candidate (the
+   judged round and any extra samples) has at least 4 Literature Review sections.
+2. **Sub-sections where they belong.** Every candidate outline, in both sets, has at least one
+   sub-section, and none sits outside the Literature Review and Methodology chapters.
+3. **The judged round does not lose.** Over all ten cases, candidate wins ≥ current wins.
+4. **No slower.** The candidate's median time over the judged round is at most the current
+   prompt's + 2 s.
+
+**The candidate.** `outline-h3d` is `outline-h3c` with two changes: when `<gap_map>` is missing
+or empty, the Literature Review still gets five or six sections, the themes this topic's
+literature would cover, never a placeholder; and sub-sections go in two places only — Methodology
+(at least one of its sections, where it combines two or three separate procedures) and the
+Literature Review only when a gap map named its themes. A first draft, measured on the title-only
+cases without a judge (₹2.21), kept the Literature Review (6, 6, 6, 5, 6 sections) but gave
+sub-sections in only 2 of 5 plans, so the Methodology rule was made firmer before the judged round.
+
+**The round** (`eval/results/outline-h3d-2026-10-09-11-13.json`, ten cases, judged):
+
+| | current | outline-h3d |
+|---|---|---|
+| Wins (both sets) | 1 | 1 (8 ties) |
+| Mean score | 8.5 | 8.4 |
+| Median time | 17.4 s | 13.7 s |
+| Gap-map set: verdicts | 0 | 0 (5 ties) |
+| Gap-map: LR sections | 4, 4, 4, 4, 4 | 3, 4, 3, 3, 4 |
+| Gap-map: sub-sections | 0 in all five | 3, 4, 2, 4, 2 (none outside LR/Methodology) |
+| Title-only set: verdicts | 1 | 1 (3 ties) |
+| Title-only: LR sections | 5, 6, 7, 6, 5 | 6, 6, 6, 6, 6 |
+| Title-only: sub-sections | 0 in all five | 2, 3, 2, 4, **0** (none outside LR/Methodology) |
+
+Against the criterion: 1 passes (6 Literature Review sections in every title-only plan — the fault
+that sank h3c is fixed); 3 passes (1–1); 4 passes (3.6 s faster); **2 fails** — the
+microfinance title-only plan has no sub-section at all (its Methodology came back as four flat
+sections: data collection and sampling, instruments, analysis, ethics), despite the rule that at
+least one Methodology section has children. **Not adopted: A.9 is unchanged.** The two rounds
+cost ₹14.82 together. What the round does show: the empty-gap-map rule holds the title path, and
+it is the sub-section rule, not the Literature Review, that is now unreliable; a fifth candidate
+would keep h3d's Literature Review rule and make the Methodology sub-sections a requirement the
+code can check (or add them in code), measured on the same ten cases.

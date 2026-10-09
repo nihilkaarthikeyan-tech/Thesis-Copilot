@@ -5864,6 +5864,20 @@ title-only plan, gave the Literature Review 0/5/1 sections where the current pro
 time. Not adopted; ADR-0092 addendum 3. The open chapter now lays out sub-sections as H3 when an
 outline has them. Lesson: an evaluation set must include the commonest real path (here, no gap
 map), or a winner can regress it.
+
+## R5b, fourth try: title path held, one plan without sub-sections (2026-10-09)
+
+The outline round now has a title-only case per topic (`<id>-title`, built as `fromTitle` builds
+it: title only, no gap map, `dropPlaceholderSections` applied, judge shown only the title) and
+counts each plan's shape in code. The criterion went into ADR-0092 addendum 4 first: title-only
+Literature Review >= 4 sections every run; sub-sections in every candidate outline and only under
+Literature Review or Methodology; the judged round not lost; median no more than +2 s.
+`outline-h3d` (h3c plus "with no gap map, still give the Literature Review five or six themed
+sections"; sub-sections in Methodology, and in the Literature Review only with a gap map): judged
+1-1 with 8 ties, mean 8.4 vs 8.5, median 13.7 s vs 17.4 s; title-only Literature Review 6/6/6/6/6
+(current 5-7); sub-sections in 9 of 10 outlines, none misplaced, but the microfinance title-only
+plan had none. Criterion 2 failed, so A.9 is unchanged. ₹14.82 (₹2.21 for an unjudged first draft,
+₹12.61 for the round).
 ## R8 (b): "Search the literature" on an AI edit (2026-10-09, ADR-0133)
 
 The owner's safe form of the web switch ADR-0095 left out. In the edit panel, beside "Use my

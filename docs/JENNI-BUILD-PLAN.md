@@ -384,7 +384,12 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
    before the whole outline is written, or a shorter outline call; measure with
    `apps/web/e2e/_measure`.
 2. R5b: an outline prompt (A.9 candidate) that writes H3 sub-sections *and* wins its evaluation
-   (`packages/ai/eval/candidates/outline-h3*.md` both lost 0–2).
+   (`packages/ai/eval/candidates/outline-h3*.md` both lost 0–2). Still open after four tries
+   (ADR-0092 addenda 3 and 4): h3c won but emptied the title-only Literature Review; h3d
+   (2026-10-09) held it (6 sections every run), tied 1–1 and was faster, but one title-only plan
+   of ten had no sub-section, so it failed its written criterion. The round now includes
+   title-only cases; next: keep h3d's Literature Review rule, make Methodology sub-sections
+   checkable in code.
 3. ~~R18~~ **done 2026-10-09** (ADR-0129): file papers added from Discover and from the editor (chat's Add, Find papers, Cite here)
    into the collection chosen in "Add into".
 4. ~~Row 55: strengths and questions for the author on the examiner review~~ **done
