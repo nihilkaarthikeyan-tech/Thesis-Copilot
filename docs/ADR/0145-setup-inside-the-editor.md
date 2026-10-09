@@ -65,7 +65,7 @@ heading stays on screen.
 
 ## Status (2026-10-09, end of day)
 
-**Built and committed** on branch `worktree-agent-acf9f680fc3a23b85`:
+**Built and committed** on branch `worktree-agent-a441528b7ff4f71d0` (main merged in, 2026-10-09):
 API route, restart route, list hiding, build prefill, `@tc/types` setup state; `SetupCard`,
 `SetupAim`, the editor wiring (opener hold, status line parts, guides waiting, First steps); New ▾,
 `/app/new` and the list's form opening the editor; en + hi strings and the regenerated
@@ -78,17 +78,20 @@ db 5) and web: the five rows end to end, Finish later / Show / First steps, Skip
 chapters, and the layout audit at 360/430/768/1024/1440 × 800 px with no layout faults and the
 chapter heading in view at every row. Screenshots: `docs/design/setup-in-editor/built/`.
 
+`start-writing-now.spec.ts` and `first-session.spec.ts` are rewritten to the card (helpers in
+`e2e/_setup.ts`) and pass with `setup-card.spec.ts` on the mock stack (11 tests).
+`e2e/_measure/first-session` now drives the card too (title Next → Skip field → Skip questions);
+it has not been run. Writing those specs found one fault, fixed: Skip on the questions row was
+disabled while the first question was still being written, and a press then could be lost; Skip
+no longer waits for the question.
+
 **Not done yet:**
-- The existing Playwright specs that drove the old start steps (`start-writing-now.spec.ts`,
-  `first-session.spec.ts`, and `e2e/_measure/first-session` plus the demo/side-by-side `_measure`
-  specs) still press `setup-next` / `setup-start` / `start-questions-skip`, which no longer exist;
-  they will fail until rewritten to the card.
 - Time to first cited suggestion was **not re-measured** (the OpenAI account was out of credit);
   ADR-0070's ~14 s is still the last real number.
 - Not checked on real models: the A.6 questions' option buttons in the compact row, and real
   sections laid as headings under the card (the mock plan has no sections).
 - `meta.universityId` is read by chapter build's suggestion only, not by the export template.
 
-**Next step:** rewrite those specs to New ▾ → card (title → Skip field → Skip questions → Keep), run
-the touched specs on the mock stack, then `MEASURE=1` `_measure/first-session` on real models once
-credit is back (budget ≤ ₹10) and record the time here and in the build log.
+**Next step:** once OpenAI credit is back, run `MEASURE=1` `_measure/first-session` (Start writing
+now) on real models (budget ≤ ₹10), record the time against ADR-0070's ~14 s here and in the build
+log, and look at the real questions and real section headings in the card; then release.

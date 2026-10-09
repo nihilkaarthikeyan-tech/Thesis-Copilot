@@ -46,6 +46,8 @@ export function SetupAim({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState(false);
+  /** Skip works while a question is still being written: it does not wait for it. */
+  const [skipping, setSkipping] = useState(false);
   const limit = useLimit();
   const started = useRef(false);
 
@@ -119,7 +121,8 @@ export function SetupAim({
   }
 
   async function skip() {
-    setBusy(true);
+    started.current = true;
+    setSkipping(true);
     setError(null);
     limit.clear();
     try {
@@ -131,7 +134,7 @@ export function SetupAim({
     } catch (e) {
       setRefused(true);
       if (!limit.take(e)) setError(problem(e, t('setup.chapters.failed')));
-      setBusy(false);
+      setSkipping(false);
     }
   }
 
@@ -230,7 +233,7 @@ export function SetupAim({
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
         <button
           type="button"
-          disabled={busy}
+          disabled={skipping}
           onClick={() => void skip()}
           data-testid="setup-aim-skip"
           className="text-[12.5px] text-muted underline underline-offset-2 hover:text-ink disabled:opacity-60"

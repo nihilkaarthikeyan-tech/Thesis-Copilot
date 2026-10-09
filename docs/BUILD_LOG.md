@@ -6227,8 +6227,10 @@ off the list after a day. No migration, no prompt, no metered action. Proved on 
 (new API, unit and Playwright specs; layout audit at five widths, 800 px tall, no faults);
 screenshots in `docs/design/setup-in-editor/built/`. Found on the way: the card hidden inside the
 folded status line still counts as present to `toHaveCount`, so the spec asserts visibility.
-Not done: the older start specs (`start-writing-now`, `first-session`, `_measure/*`) still drive the
-removed steps; time to first cited suggestion not re-measured (OpenAI credit out). ADR-0145 "Status".
+`start-writing-now` and `first-session` rewritten to the card and passing; `_measure/first-session`
+updated, not run. One fault found: Skip on the questions row waited for the first question, and a
+press could be lost; fixed. Not done: time to first cited suggestion not re-measured (OpenAI credit
+out). ADR-0145 "Status".
 
 ## Comments and replies send an email (2026-10-09, ADR-0142)
 
