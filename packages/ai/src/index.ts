@@ -424,6 +424,7 @@ export {
   styleProfileSchema,
   trimSample,
 } from './builder/style.js';
+export { addSubsections, splitSectionTitle } from './builder/subsections.js';
 export {
   buildThemesRequest,
   type GapTheme,

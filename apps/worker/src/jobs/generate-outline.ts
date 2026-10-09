@@ -13,6 +13,7 @@
  */
 
 import {
+  addSubsections,
   buildOutlineRequest,
   dropPlaceholderSections,
   enforceTemplateShape,
@@ -137,8 +138,10 @@ export async function runGenerateOutline(
   try {
     const answer = await deps.llm.complete({ ...request, schema: outlineRequestSchema });
     await logCall(deps, job, answer.modelId, answer.usage, Date.now() - startedAt, true);
-    nodes = dropPlaceholderSections(
-      enforceTemplateShape(readOutlineResult(answer.value), template),
+    // ADR-0138: sub-sections are added in code, from the plan's own titles; A.9 is unchanged.
+    nodes = addSubsections(
+      dropPlaceholderSections(enforceTemplateShape(readOutlineResult(answer.value), template)),
+      template,
     );
   } catch (error) {
     await logCall(

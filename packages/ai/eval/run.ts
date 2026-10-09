@@ -55,6 +55,7 @@ import {
 import { splitSentences } from '../src/builder/quality.js';
 import { buildQueriesRequest, cleanQueries, queriesSchema } from '../src/builder/queries.js';
 import { ownPlaces, placesIn, unmarkedOtherSettings } from '../src/builder/setting.js';
+import { addSubsections } from '../src/builder/subsections.js';
 import { buildThemesRequest, normaliseThemes, themesSchema } from '../src/builder/themes.js';
 import {
   buildVivaQuestionsRequest,
@@ -751,9 +752,13 @@ async function produce(
       documentId: 'eval',
     });
     const result = await llm.complete({ ...request, schema: outlineRequestSchema });
-    // As the worker keeps it: the template's shape, then any slot sections dropped.
-    const nodes = dropPlaceholderSections(
-      enforceTemplateShape(normaliseOutline(readOutlineResult(result.value)), template),
+    // As the worker keeps it: the template's shape, any slot sections dropped, then the
+    // sub-sections added in code (ADR-0138).
+    const nodes = addSubsections(
+      dropPlaceholderSections(
+        enforceTemplateShape(normaliseOutline(readOutlineResult(result.value)), template),
+      ),
+      template,
     );
     const text = outlineText(nodes);
     return {

@@ -539,3 +539,47 @@ describe('ADR-0087: chapter bodies', () => {
     expect(chapterBody('Chapter 1').content.map((b) => b.type)).toEqual(['heading', 'paragraph']);
   });
 });
+
+describe('ADR-0138: sub-sections added in code after A.9', () => {
+  it('divides a review theme that names its parts, and the new chapter lays them as H3', async () => {
+    const answer = {
+      outline: CHAPTERS.map((c) =>
+        c.role === 'LITERATURE'
+          ? {
+              ...node(c.title),
+              children: [
+                node('Adoption patterns in India'),
+                node('Policy and institutional barriers'),
+                node('Gap and how this thesis addresses it'),
+              ],
+            }
+          : c.role === 'RESULTS'
+            ? { ...node(c.title), children: [node('Findings on cost and finance')] }
+            : node(c.title),
+      ),
+    };
+    const f = fakes({ scope: {}, answer });
+    f.deps.emptyChapter = chapterBody;
+    await runGenerateOutline({ ...JOB, fromTitle: true }, f.deps);
+
+    const stored = f.outline() ?? [];
+    const review = stored.find((n) => n.title === 'Literature Review');
+    // Three sections still: the Literature Review gains sub-sections, never loses a section.
+    expect(review?.children.map((s) => [s.title, s.children.map((g) => g.title)])).toEqual([
+      ['Adoption patterns in India', []],
+      ['Policy and institutional barriers', ['Policy barriers', 'Institutional barriers']],
+      ['Gap and how this thesis addresses it', []],
+    ]);
+    const results = stored.find((n) => n.title === 'Results');
+    expect(results?.children[0]?.children).toEqual([]);
+
+    type Block = { type: string; attrs?: { level?: number }; content?: Array<{ text: string }> };
+    const body = f.created.find((c) => c.title === 'Literature Review')?.content as {
+      content: Block[];
+    };
+    const h3 = body.content
+      .filter((b) => b.type === 'heading' && b.attrs?.level === 3)
+      .map((b) => b.content?.[0]?.text);
+    expect(h3).toEqual(['Policy barriers', 'Institutional barriers']);
+  });
+});
