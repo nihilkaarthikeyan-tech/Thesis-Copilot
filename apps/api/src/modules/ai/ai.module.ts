@@ -56,9 +56,27 @@ export const MOCK_SUGGESTION =
 export function mockSuggestionFor(req: LlmRequest): string {
   const user = req.messages.find((m) => m.role === 'user')?.content ?? '';
   const firstPassage = /<passage id="([^"]+)"/.exec(user)?.[1];
+  const text = alreadyWritten(user) ? nextVariant() : MOCK_SUGGESTION;
   return firstPassage
-    ? MOCK_SUGGESTION.replace('{{cite:S1#c1}}', `{{cite:${firstPassage}}}`)
-    : MOCK_SUGGESTION.replace(' {{cite:S1#c1}}', '');
+    ? text.replace('{{cite:S1#c1}}', `{{cite:${firstPassage}}}`)
+    : text.replace(' {{cite:S1#c1}}', '');
+}
+
+/**
+ * ADR-0144: once the student has kept the mock's paragraph, the same paragraph would be cut as a
+ * repeat of the chapter (A.1) and nothing shown — so, as a real model would, the mock writes a new
+ * pair of sentences each time instead. Lets an E2E keep fifty suggestions in a row.
+ */
+const alreadyWritten = (user: string): boolean =>
+  user.includes('rural Karnataka indicates') || user.includes('households citing cost');
+let variant = 0;
+/**
+ * Three of its nine words are its own numbers, so A.1's near-duplicate filter (`nearDuplicate`)
+ * does not take one variant for another, and it credits no "research" (`isUncitedAttribution`).
+ */
+function nextVariant(): string {
+  variant += 1;
+  return `Village ${variant} recorded ${3 * variant + 7} households citing cost ${11 * variant + 5} times {{cite:S1#c1}}.`;
 }
 
 @Global()

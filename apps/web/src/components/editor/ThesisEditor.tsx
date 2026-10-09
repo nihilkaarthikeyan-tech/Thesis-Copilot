@@ -656,6 +656,10 @@ function ChapterEditor({
           request: assistRequest,
           fadeMs: reducedMotion ? 0 : 400,
           onOutcome: (e) => {
+            const kept = e.keptChars > 0;
+            // ADR-0144: a kept suggestion is what counts against the allowance, and the server
+            // counts it when it records the outcome — so the meter is read again only after that
+            // answer, or it shows the count from before the keep.
             void api('/assist/outcome', {
               method: 'POST',
               body: JSON.stringify({
@@ -663,11 +667,12 @@ function ChapterEditor({
                 outcome: e.outcome,
                 keptChars: e.keptChars,
               }),
-            }).catch(() => undefined);
-            if (e.outcome === 'ACCEPTED' || e.outcome === 'PARTIAL') {
-              onUsageChange();
-              markSuggestionKept(doc.id);
-            }
+            })
+              .catch(() => undefined)
+              .then(() => {
+                if (kept) onUsageChange();
+              });
+            if (kept) markSuggestionKept(doc.id);
           },
           onTiming: (t) => {
             setTiming(t);

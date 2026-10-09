@@ -88,6 +88,23 @@ costs at most 540 × ₹0.0935 = ₹50.51 in Assist calls.
 - Not checked in a browser in this change; the Playwright editor spec's "Assist 0/" before and
   "Assist 1/" after a Tab still describe the new behaviour (the counter moves on keeping).
 
+## Addendum (2026-10-09, after the v0.1.38 Playwright run)
+
+The release's mock-stack run failed two specs on this change; nothing was deployed.
+
+- **The meter read before the keep was recorded.** The editor fired `/assist/outcome` and
+  refetched `/usage/me` at the same moment, so after a Tab the meter still showed the count from
+  before the keep ("Assist 0/50"). It now refetches when the outcome call has answered.
+- **One word, then typing past the rest, was reported as REJECTED** (with the kept characters),
+  so a suggestion partly kept with "One word" never counted. The editor now reports it as
+  PARTIAL, and the API counts any report with kept characters, whatever it is called.
+- **`e2e/states.spec.ts`'s cap test** dismissed fifty suggestions to reach the cap; dismissals no
+  longer count. It now dismisses one (the meter stays at 0), keeps fifty with Tab, and asks for the
+  fifty-first: the same reset-date message. To keep fifty in a row the mock writes a new sentence
+  once its own paragraph is already before the cursor (`mockSuggestionFor`; a unit test runs fifty
+  through A.1's filters). A new test serves the API's call-ceiling refusal to the editor and checks
+  its message; 150 real calls would trip §12.1's burst guard first.
+
 ## Evidence
 
 `apps/api/test/cap-concurrency.spec.ts` (real Postgres, every migration): 20 parallel calls at the

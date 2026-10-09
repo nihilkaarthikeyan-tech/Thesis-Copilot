@@ -4,7 +4,7 @@
  * §10.6 whitelist.
  */
 
-import type { LlmRequest } from '@tc/ai';
+import { type LlmRequest, postProcessAssist } from '@tc/ai';
 import { describe, expect, it } from 'vitest';
 import { MOCK_SUGGESTION, mockSuggestionFor } from '../src/modules/ai/ai.module.js';
 import { docToText } from '../src/modules/assist/doc-text.js';
@@ -108,5 +108,29 @@ describe('mockSuggestionFor (the mock obeys A.0 rule 3)', () => {
 
   it('keeps a third sentence so the A.1 two-sentence cut has something to do', () => {
     expect(MOCK_SUGGESTION.split('. ').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('writes something new once its paragraph is already before the cursor (ADR-0144)', () => {
+    const kept = `<before>${MOCK_SUGGESTION}</before>\n<passages>\n</passages>`;
+    const first = mockSuggestionFor(request(kept));
+    const second = mockSuggestionFor(request(`<before>${first}</before>`));
+    expect(first).not.toContain('rural Karnataka indicates');
+    expect(first).not.toContain('{{cite:');
+    expect(second).not.toBe(first);
+
+    // Fifty kept in a row each survive A.1's filters against everything kept before them.
+    let chapter = MOCK_SUGGESTION.replace(' {{cite:S1#c1}}', '');
+    for (let i = 0; i < 50; i++) {
+      const next = mockSuggestionFor(request(`<before>${chapter}</before>`));
+      const processed = postProcessAssist({
+        output: next,
+        passageIds: [],
+        before: chapter,
+        autoCite: true,
+        existingText: chapter,
+      });
+      expect(processed.empty, `variant ${i}: ${next}`).toBe(false);
+      chapter = `${chapter} ${processed.text}`;
+    }
   });
 });

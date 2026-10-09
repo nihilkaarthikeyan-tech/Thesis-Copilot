@@ -6312,3 +6312,18 @@ the full suite and Playwright.
 On the way: a Python edit on Windows rewrote LF files as CRLF (text mode); `open(..., newline='')`
 keeps them. Parallel agents share the session scratchpad, so a log named `lint.log` was another
 agent's — name scratch files per agent.
+
+## ADR-0144 after the v0.1.38 Playwright run (2026-10-09)
+
+The release's mock-stack run failed `editor.spec.ts:9` and `states.spec.ts:99` on ADR-0144.
+Two product faults: the editor refetched the usage meter at the same moment it reported the keep,
+so the meter showed the count from before it; and "One word" followed by typing reported
+REJECTED, so a partly kept suggestion never counted (now PARTIAL, and the API counts any report
+with kept characters). The cap test keeps fifty instead of dismissing fifty (the mock now writes a
+new sentence once its own paragraph is before the cursor), and a new test checks the call-ceiling
+message. Run on an own mock stack (API :3011, web :3010, worker, Redis db 5): editor.spec 2/2,
+own-comments.spec 8/8 (the flaky edit-box test passed; ADR-0144 does not touch that path), and
+states.spec 5/6 — the cap and call-ceiling tests pass; "empty grounding" fails here with "your
+papers are still being read", because the initial paper search is still running when the
+suggestion arrives. The mock's change is not involved, since nothing has been kept at that
+point. API: cap-concurrency, week1, lit-review-build, assist-context 45/45; ui ghost-text 23/23.

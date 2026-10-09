@@ -228,6 +228,19 @@ describe('ghost text (Appendix B.3)', () => {
     expect(provenanceRuns(editor)[0]?.kind).toBe('ASSIST');
   });
 
+  it('one word kept, then typing past the rest, reports PARTIAL with the word (ADR-0144)', async () => {
+    const outcomes: Array<{ suggestionId: string; outcome: string; keptChars: number }> = [];
+    const fake = streamOf('alpha beta gamma');
+    editor = createTestEditor('<p></p>', { request: fake.request }, outcomes);
+    editor.commands.setTextSelection(1);
+    editor.commands.requestSuggestion();
+    await tick(20);
+    expect(pressKey(editor, 'ArrowRight', { alt: true })).toBe(true);
+    editor.commands.insertContent('z');
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]).toMatchObject({ outcome: 'PARTIAL', keptChars: 6 });
+  });
+
   it('only one in-flight request per editor; requests need an eligible cursor', async () => {
     const fake = streamOf('x y', true);
     editor = createTestEditor('<p>a</p><pre><code>code</code></pre>', { request: fake.request });
