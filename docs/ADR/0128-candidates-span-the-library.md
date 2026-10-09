@@ -56,3 +56,8 @@ Tests: `rank.spec.ts` (window and caps), `pgvector.spec.ts` (the SQL), and
 `apps/api/test/retrieval.spec.ts` against real pgvector — a paper with ten near chunks and three
 further papers: nearest-first gives six chunks of one paper, `perSource: 3` gives three of it and
 one of each other; one paper alone still fills six.
+
+**On the real models (2026-10-09),** `apps/web/e2e/_measure/draft-paper-spread.spec.ts`: a new
+thesis titled "Barriers to rooftop solar adoption among rural households in Karnataka" had 15
+papers ready 30 s after creation; one section draft ("Financial and institutional barriers to
+adoption", ~500 words) made 9 citations to **6 different papers**.
