@@ -9,6 +9,13 @@ The agent builds every phase it can (owner's instruction, 2026-09-04) and lists 
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
 
+## URGENT: OpenAI credit ran out (2026-10-09 evening)
+
+Every OpenAI call returns `credit_balance_exhausted`; production uses the same key, so every AI
+feature on the live site fails until the balance is topped up. Add credit at
+https://platform.openai.com/settings/organization/billing/ and turn on auto-recharge with a
+monthly limit above the site budget (₹2,000). Nothing to redeploy: calls work again at once.
+
 ## Scopus, Web of Science and UGC-CARE as indexing filters (ADR-0087, 2026-10-07)
 
 The start step's Indexing filter offers the journal lists OpenAlex records (core international
