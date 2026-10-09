@@ -1,7 +1,8 @@
 # 0124 — A whole literature review from one press
 
 Date: 2026-10-08
-Status: accepted — built behind an off flag with a cap of 0; the allowance is the owner's
+Status: accepted — built behind an off flag with a cap of 0; ADR-0143 (2026-10-09) set the
+allowance (one a month paid, none on the trial), turned the flag on and repriced it to ₹17.39
 (Jenni build plan R37, owner decision D3; inventory §6, §13.4)
 Builds on: ADR-0039 (chapter build), ADR-0037 (finding sources), ADR-0058 (email when a long job
 finishes), ADR-0035 (an admin's extra allowance)

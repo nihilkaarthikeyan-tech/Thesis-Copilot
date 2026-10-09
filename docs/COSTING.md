@@ -71,6 +71,28 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > (research embedding, ADR-0133's ≤ ₹2.16) from ≤ ₹95.32 to **≤ ₹96.74** — ₹3.26 under the ₹100
 > ceiling.
 >
+> **2026-10-09 — the literature review build is on (ADR-0143) and Assist counts only kept
+> suggestions (ADR-0144). The worst case is now over ₹100, at the owner's word.** The owner
+> (2026-10-09): "my aim is ₹100 per month — even if it's higher, no issue, just tell me the
+> amount." So, at the production configuration (`gpt-4.1-mini` fast, `gpt-5-mini` strong), a
+> fully active `STUDENT_MONTHLY` student, `pnpm ai:verify`'s table:
+>
+> | Step | Worst case / month | |
+> |---|---|---|
+> | Before (ADR-0131) | ₹94.55 | within ₹100 |
+> | + one whole literature review a month, ₹17.39 a build (repriced from a real ten-section run that cost ₹8.63) | **₹111.94** | over by ₹11.94 |
+> | + Assist priced at its call ceiling: 180 kept, 540 calls (₹16.84 → ₹50.51) | **₹145.62** | over by ₹45.62 |
+> | All-in, with the notes outside the table (≤ ₹96.74 before) and rewording at 3× the calls | **≤ ₹148.73** | |
+> | Free trial (no review; Assist 50 kept, 150 calls) | ₹30.55 → **₹39.90** | within |
+> | `gpt-5-nano` on the fast tier, for comparison | ₹75.43 → ₹92.81 → ₹96.32 | within |
+>
+> What holds the ₹100 in practice is unchanged: `UsageService.consume` refuses every metered call
+> once a student's real logged spend this month reaches ₹100. A student who used every allowance
+> in full would be stopped there, before the end of them — one literature review started just
+> under ₹100 runs to its end (up to ₹17.39 more). The projection check that `pnpm ai:verify` and
+> CI run now prints the over-₹100 figure and fails only above `PROJECTION_LIMIT_INR` (₹175), so a
+> runaway configuration is still caught. The tables further down predate these notes.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.
@@ -247,7 +269,8 @@ alone eats the whole ₹100 ceiling.
 Two separate mechanisms, and only the second is a guarantee.
 
 1. **The projection.** `pnpm ai:verify` recomputes the table above from the real configured models
-   and exits non-zero if it goes over ₹100. CI runs the same check. This catches a bad *plan* —
+   and exits non-zero if it goes over the projection limit (₹175 since ADR-0143; it says plainly
+   when it is over ₹100, which the owner accepted on 2026-10-09). CI runs the same check. This catches a bad *plan* —
    a cap raised too far, a model swapped for an expensive one, a price rise.
 
 2. **The runtime hard stop.** `UsageService.consume` sums the student's actual logged spend for the

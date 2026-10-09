@@ -6193,3 +6193,41 @@ Cost ₹14.90 (₹8.18 the round, ₹6.72 a run lost to PowerShell 5.1 dropping 
 
 
 The candidate's code (`isSectionOpener`, `OPENER_INSTRUCTION`, `maxSentences`, the harness's `--opener-mode`) stays on branch `worktree-agent-a4111c5e444d5e7f7` (commit 338fa95), not on main, until the owner decides whether a short opener is wanted at a lower examiner score.
+
+## The literature review on, and only kept suggestions count (2026-10-09, ADRs 0143–0144)
+
+The owner delegated both decisions (2026-10-09: "even if it's higher, no issue, just tell me the
+amount").
+
+**ADR-0143.** `LIT_REVIEW_BUILD` is 1 a month on the paid plans and 0 on the trial; migration 0055
+turns `literatureReviewBuild` on (the seed too). One real review against the dev stack (api-real,
+the real worker; `gpt-5-mini` strong, `gpt-4.1-mini` fast) on the rooftop-solar dev thesis (19
+papers, 360 passages, five outline themes): 10 sections, 40 calls, **₹8.63, 4 min 41 s**, 3,421
+words, 67 citations, 12 sentences fixed, 15 blocking and 35 warning issues left for the student.
+₹0.86 a section against the ₹0.65 profiled: the reasoning model's output (≈930 a draft, 1,540 an
+examiner reading, 970 a fix), no cache hits, and every section of a ten-section review fixed. The
+profile was repriced part by part to the larger of the old shape and the measurement: ₹12.92 →
+**₹17.39** a build. `PROJECTION_LIMIT_INR` (₹175) replaces ₹100 as what `pnpm ai:verify` and CI
+fail on; they print the over-₹100 figure. The runtime ₹100 stop is untouched. Note: the
+chapter-build worker does not re-check the ceiling between sections, so a review started just
+under ₹100 can end near ₹116.
+
+**ADR-0144.** `UsageLedger.kept` and `SuggestionEvent.countedAt` (migration 0056, which also
+backfills this month's accepted suggestions). `consume`'s one statement now refuses Assist at
+`count < (allowance + bonus) × 3 AND kept < allowance + bonus`; `keep` (one statement, from
+`/assist/outcome` on ACCEPTED/PARTIAL with kept characters) counts a suggestion once. `/usage/me`
+shows kept; the call ceiling has its own message (English and Hindi; `docs/i18n/hi-review.md`
+regenerated). Admin "reset caps" zeroes both. The budget prices Assist at 540 calls.
+
+Worst case, fully active paid student, production prices: ₹94.55 → ₹111.94 (review) → **₹145.62**
+(call ceiling); ≤ ₹148.73 all-in; trial ₹30.55 → ₹39.90. Real call spend for the run: ₹8.63 of the
+₹30 budget.
+
+Tests (touched only): `packages/config/test/cost-model.spec.ts` 33, `apps/api/test/lit-review-build.spec.ts` 7,
+`cap-concurrency.spec.ts` 19 (8 new), `week1.spec.ts` 11, `admin-users.spec.ts` 14,
+`apps/web/test/limit.spec.ts` 16, `i18n*.spec.ts` 13, `changelog.spec.ts` 6 — all pass. Not run:
+the full suite and Playwright.
+
+On the way: a Python edit on Windows rewrote LF files as CRLF (text mode); `open(..., newline='')`
+keeps them. Parallel agents share the session scratchpad, so a log named `lint.log` was another
+agent's — name scratch files per agent.
