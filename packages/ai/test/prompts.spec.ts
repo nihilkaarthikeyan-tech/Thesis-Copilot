@@ -12,7 +12,7 @@ import { listPromptFiles, loadAllPrompts, loadPrompt, PROMPT_NAMES } from '../sr
 
 describe('the prompt files', () => {
   it('there are 38, and the files on disk are exactly the ones named in code', () => {
-    expect(PROMPT_NAMES).toHaveLength(38);
+    expect(PROMPT_NAMES).toHaveLength(39);
     expect(listPromptFiles()).toEqual([...PROMPT_NAMES].sort());
   });
 
@@ -31,9 +31,9 @@ describe('the prompt files', () => {
 });
 
 describe('loadPrompt', () => {
-  it('loads all 38 without throwing', () => {
+  it('loads all 39 without throwing', () => {
     const all = loadAllPrompts();
-    expect(all.size).toBe(38);
+    expect(all.size).toBe(39);
   });
 
   it('gives _preamble the six shared rules from A.0 and the notation rule (ADR-0045)', () => {

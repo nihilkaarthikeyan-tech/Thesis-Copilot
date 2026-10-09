@@ -92,6 +92,8 @@ export const PROMPT_NAMES = [
   'edit_reasons',
   // The examiner's score card, likewise — docs/ADR/0111.
   'examiner_scores',
+  // The examiner review with strengths and questions for the author, likewise — docs/ADR/0131.
+  'examiner_review',
 ] as const;
 
 export type PromptName = (typeof PROMPT_NAMES)[number];

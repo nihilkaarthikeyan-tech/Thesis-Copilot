@@ -249,6 +249,25 @@ export {
 } from './builder/equation.js';
 export { asksToEvadeDetection, EVASION_REFUSAL } from './builder/evasion.js';
 export {
+  anchorStrength,
+  askPlan,
+  buildExaminerReviewHighlightsRequest,
+  contentWords,
+  EXAMINER_HIGHLIGHTS,
+  type ExaminerReviewAnswer,
+  examinerReviewSchema,
+  type HighlightsInput,
+  issuesOf,
+  mockExaminerReviewFor,
+  pickHighlights,
+  postProcessHighlights,
+  type Question,
+  questionFault,
+  reviewWords,
+  type SectionAsk,
+  type Strength,
+} from './builder/examiner-highlights.js';
+export {
   buildExaminerReviewRequest,
   EXAMINER_REVIEW,
   ownSentenceCount,
