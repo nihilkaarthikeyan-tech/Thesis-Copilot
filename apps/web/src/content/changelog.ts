@@ -24,6 +24,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: 'v0.1.37',
+    date: '2026-10-09',
+    title: 'Sub-headings in your plan, and no paper stuck at "Looking it up"',
+    changes: [
+      'A planned Literature Review or Methodology now comes with sub-headings where a section names its parts, for example "Policy and institutional barriers" becomes Policy barriers and Institutional barriers.',
+      'A paper is added to your library once, even when two searches find it at the same moment; copies left stuck at "Looking it up…" are cleared.',
+      'A reference file that lists the same paper twice adds it once.',
+      'The calm editor and its chat are in Hindi too.',
+    ],
+  },
+  {
     version: 'v0.1.36',
     date: '2026-10-09',
     title: 'A calmer editor, with chat open from the start',
