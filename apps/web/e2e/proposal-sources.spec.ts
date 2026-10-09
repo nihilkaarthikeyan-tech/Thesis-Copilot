@@ -567,7 +567,7 @@ test.describe('Stage 4 draft mode', () => {
     await page.goto('/app');
     await page
       .getByRole('listitem')
-      .filter({ hasText: 'Draft refusal E2E' })
+      .filter({ hasText: 'Draft-refusal-E2E' })
       .getByRole('link', { name: 'Write' })
       .click();
 
