@@ -93,6 +93,11 @@ export class AutoSourcesService {
       query: string;
       /** ADR-0087: the search made when the thesis is created, which adds more papers. */
       initial?: boolean;
+      /**
+       * ADR-0145: the initial search for a title given in the setup card, keyed on that title, so
+       * a thesis named again searches again.
+       */
+      named?: boolean;
       /** ADR-0087: the heading being written under; each section searches on its own. */
       section?: string | null;
     },
@@ -117,7 +122,7 @@ export class AutoSourcesService {
     });
     if (used >= monthlyAutoSearches(user.plan)) return false;
     const jobId = input.initial
-      ? initialSourcesJobKey(input.documentId)
+      ? initialSourcesJobKey(input.documentId, input.named ? input.query : null)
       : autoSourcesJobKey(input.chapterId, now, input.section);
     await this.queue.enqueue(
       'find-sources',

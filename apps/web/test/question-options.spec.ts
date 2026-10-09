@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { questionOptions } from '../src/lib/question-options';
+import { questionOptions, questionStem } from '../src/lib/question-options';
 
 const texts = (question: string) => questionOptions(question).map((o) => o.text);
 
@@ -84,5 +84,18 @@ describe('the options in a proposal question', () => {
       'scaling plot-level SOC estimates to the Pichavaram landscape using Sentinel-2',
     );
     expect(options[3]).toEqual({ text: 'something else', other: true });
+  });
+});
+
+describe('the question without its options (ADR-0145)', () => {
+  it('is the words before the first option, and the whole text when there are none', () => {
+    expect(
+      questionStem(
+        'Which comparison matters most? Choose one: 1) Restored versus natural stands, 2) Carbon by stand age, or 3) Something else.',
+      ),
+    ).toBe('Which comparison matters most? Choose one');
+    expect(questionStem('Who are the households you will survey?')).toBe(
+      'Who are the households you will survey?',
+    );
   });
 });

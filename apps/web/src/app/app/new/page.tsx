@@ -7,23 +7,20 @@
  * material comes from — a paper the student has written, or a topic they describe.
  */
 
-import type { SourcePrefs } from '@tc/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import {
-  STARTING_STYLES,
   StartingStyle,
   type StartingStyleChoice,
   saveStartingStyle,
   useDefaultStartingStyle,
 } from '@/components/onboarding/StartingStyle';
-import { StartQuestions } from '@/components/onboarding/StartQuestions';
-import { StartSetup, type Structure } from '@/components/onboarding/StartSetup';
 import { Button } from '@/components/ui/button';
 import type { MessageKey } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
+import { createThesisForSetup, setupHref } from '@/lib/setup-card';
 import { readNewStart } from '@/lib/thesis-href';
 
 type EntryPath = 'A_TOPIC' | 'B_PAPER';
@@ -42,10 +39,6 @@ export default function NewThesisPage() {
   useDefaultStartingStyle(citationStyle, setCitationStyle);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** ADR-0087: the preference and structure steps after the title. */
-  const [setupOpen, setSetupOpen] = useState(false);
-  /** ADR-0091: the thesis just made with Smart headings, while its start questions are open. */
-  const [questions, setQuestions] = useState<{ documentId: string; path: string } | null>(null);
   /**
    * R32 (ADR-0127): the New ▾ menu arrives with `?start=topic|paper|word`, the starting point
    * already chosen. `word` puts "Create and import from Word" first. Read from `window` after
@@ -90,36 +83,16 @@ export default function NewThesisPage() {
    * ADR-0062 (ADR-0059 row 2): "Start writing now" — no proposal, no title needed, straight into
    * a blank first chapter. `A_TOPIC` whatever is ticked above: there is no paper to read, and the
    * topic path's proposal can start from the student's own words when they come back to it.
+   * ADR-0145: the sources, structure and start questions (ADR-0087, ADR-0091) are no longer steps
+   * on this screen; the editor's "Set up this thesis" card asks them, with the title typed here.
    */
-  async function startWriting(sourcePrefs?: SourcePrefs, structure?: Structure) {
+  async function startWriting() {
     setBusy(true);
     setError(null);
     try {
-      const document = await api<{ id: string; firstChapterId: string | null }>('/documents', {
-        method: 'POST',
-        // ADR-0072: `start: 'writing'` plans the chapters from the title in the background.
-        // ADR-0087: with the preferences and structure from the setup steps.
-        body: JSON.stringify({
-          title: title.trim() || 'Untitled thesis',
-          entryPath: 'A_TOPIC',
-          start: 'writing',
-          ...(sourcePrefs ? { sourcePrefs } : {}),
-          ...(structure ? { structure } : {}),
-          // ADR-0091: Smart headings ask a few questions first; the chapters wait for them.
-          ...(structure === 'smart' ? { askFirst: true } : {}),
-        }),
-      });
+      const document = await createThesisForSetup(title);
       await saveStartingStyle(document.id, citationStyle);
-      const editorPath = document.firstChapterId
-        ? `/app/d/${document.id}/write/${document.firstChapterId}`
-        : `/app/d/${document.id}/outline`;
-      if (structure === 'smart') {
-        // ADR-0091: the questions, on this screen, before the editor.
-        setQuestions({ documentId: document.id, path: editorPath });
-        setBusy(false);
-        return;
-      }
-      router.push(editorPath);
+      router.push(setupHref(document));
     } catch (e) {
       setError(
         e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Could not create it.',
@@ -152,36 +125,7 @@ export default function NewThesisPage() {
         {t('new.heading')}
       </h1>
 
-      {setupOpen ? (
-        <div className="mt-6 flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => setSetupOpen(false)}
-            className="self-end rounded-md bg-sunk px-3 py-2 text-left text-[13px] text-ink"
-          >
-            {title.trim() || 'Untitled thesis'}
-            <span className="ml-2 text-muted underline">Edit</span>
-          </button>
-          {questions ? (
-            <StartQuestions
-              documentId={questions.documentId}
-              title={title.trim() || 'Untitled thesis'}
-              onDone={() => router.push(questions.path)}
-            />
-          ) : (
-            <StartSetup
-              stylePicker={<StartingStyle value={citationStyle} onChange={setCitationStyle} />}
-              styleName={
-                STARTING_STYLES.find((s) => s.id === citationStyle)?.label ?? 'Default style'
-              }
-              busy={busy}
-              error={error}
-              onBack={() => setSetupOpen(false)}
-              onStart={(prefs, structure) => void startWriting(prefs, structure)}
-            />
-          )}
-        </div>
-      ) : (
+      {
         <form onSubmit={create} className="mt-6 space-y-4">
           {wordFirst ? (
             <p
@@ -259,7 +203,7 @@ export default function NewThesisPage() {
               type="button"
               variant={wordFirst ? 'secondary' : undefined}
               disabled={busy}
-              onClick={() => setSetupOpen(true)}
+              onClick={() => void startWriting()}
               data-testid="start-writing-now"
             >
               {t('list.startWriting')}
@@ -272,7 +216,7 @@ export default function NewThesisPage() {
           <p className="text-xs text-muted">{t('new.wordHint')}</p>
           <p className="text-xs text-muted">{t('list.startWritingHint')}</p>
         </form>
-      )}
+      }
     </main>
   );
 }

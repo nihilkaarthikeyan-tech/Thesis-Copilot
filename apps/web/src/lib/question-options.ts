@@ -94,3 +94,19 @@ export function questionOptions(text: string): QuestionOption[] {
   }
   return options;
 }
+
+/**
+ * ADR-0145: the question without its options, for the setup card, which shows the options as
+ * buttons below it. The words before the first option; the whole text when it offers none.
+ */
+export function questionStem(text: string): string {
+  const run = longestRun(markersOf(text));
+  const first = run[0];
+  if (!first || run.length < MIN_OPTIONS || run.length > MAX_OPTIONS) return text.trim();
+  const stem = text
+    .slice(0, first.start)
+    .replace(/\*\*/g, '')
+    .trim()
+    .replace(/[\s:;,-]+$/, '');
+  return stem || text.trim();
+}

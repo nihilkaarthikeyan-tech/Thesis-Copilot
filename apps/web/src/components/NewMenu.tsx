@@ -4,22 +4,27 @@
  * "New ▾" (R32, ADR-0127): one menu, on the thesis list and in the editor's rail, for every way a
  * thesis begins — Jenni's New menu, with our three starts:
  *
- * - **New thesis** — the `/app/new` chooser on "a topic" (Start writing now is its first button);
+ * - **New thesis** — ADR-0145: made at once and opened in the editor, where the "Set up this
+ *   thesis" card asks for its title and the rest (`/app/new?start=topic` still works);
  * - **Upload a paper** — the same chooser on "a paper I have written", the B_PAPER path, whose
  *   proposal screen takes the upload;
  * - **Import from Word** — the same chooser with "Create and import from Word" first; the thesis
  *   opens with the existing Word import dialog up.
  *
- * Every item is a link: nothing is created until the student presses a button on `/app/new`. The
- * last item, "Ask a research question" (ADR-0132), opens a chat with no thesis at `/app/ask`.
+ * New thesis makes the thesis when pressed (an untouched one leaves the list after a day); the
+ * other two are links, and nothing is created until the student presses a button on `/app/new`.
+ * The last item, "Ask a research question" (ADR-0132), opens a chat with no thesis at `/app/ask`.
  *
  * The menu is measured when it opens and nudged back inside the window, so it never runs off a
  * phone's edge whichever side of the screen its button ends up on after wrapping.
  */
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useT } from '@/i18n/react';
+import { ApiError } from '@/lib/api';
+import { createThesisForSetup, setupHref } from '@/lib/setup-card';
 import { type NewStart, newThesisHref } from '@/lib/thesis-href';
 
 const ITEMS: Array<{
@@ -49,8 +54,26 @@ export function NewMenu({
   testId?: string;
 }) {
   const { t } = useT();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [shift, setShift] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function newThesis() {
+    setCreating(true);
+    setError(null);
+    try {
+      const created = await createThesisForSetup();
+      setOpen(false);
+      router.push(setupHref(created));
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : t('list.createError'),
+      );
+      setCreating(false);
+    }
+  }
   const root = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -117,19 +140,42 @@ export function NewMenu({
             align === 'end' ? 'right-0' : 'left-0'
           }`}
         >
-          {ITEMS.map((item) => (
-            <Link
-              key={item.start}
-              href={newThesisHref(item.start)}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              data-testid={`new-menu-${item.start}`}
-              className="block min-w-0 rounded px-2.5 py-1.5 text-left hover:bg-sunk"
-            >
-              <span className="block text-[13px] font-semibold text-ink">{t(item.label)}</span>
-              <span className="block text-[11.5px] leading-snug text-muted">{t(item.hint)}</span>
-            </Link>
-          ))}
+          {ITEMS.map((item) =>
+            item.start === 'topic' ? (
+              // ADR-0145: New thesis is made at once and opens in the editor, set up there.
+              <button
+                key={item.start}
+                type="button"
+                role="menuitem"
+                disabled={creating}
+                onClick={() => void newThesis()}
+                data-testid="new-menu-topic"
+                className="block min-w-0 rounded px-2.5 py-1.5 text-left hover:bg-sunk disabled:opacity-60"
+              >
+                <span className="block text-[13px] font-semibold text-ink">
+                  {creating ? t('common.creating') : t(item.label)}
+                </span>
+                <span className="block text-[11.5px] leading-snug text-muted">{t(item.hint)}</span>
+              </button>
+            ) : (
+              <Link
+                key={item.start}
+                href={newThesisHref(item.start)}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                data-testid={`new-menu-${item.start}`}
+                className="block min-w-0 rounded px-2.5 py-1.5 text-left hover:bg-sunk"
+              >
+                <span className="block text-[13px] font-semibold text-ink">{t(item.label)}</span>
+                <span className="block text-[11.5px] leading-snug text-muted">{t(item.hint)}</span>
+              </Link>
+            ),
+          )}
+          {error ? (
+            <p role="alert" className="px-2.5 py-1 text-[12px] text-warn">
+              {error}
+            </p>
+          ) : null}
           {/* ADR-0132: a chat with no thesis, or across all of them. */}
           <Link
             href="/app/ask"

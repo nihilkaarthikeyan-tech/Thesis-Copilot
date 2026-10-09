@@ -168,9 +168,9 @@ test('first session, Start writing now', async ({ page, request }) => {
     ]);
   await page.goto('/app');
   await page.getByLabel('Working title').fill(TOPIC);
-  await page.getByTestId('start-writing-now').click();
-  // ADR-0087 / ADR-0091: the preference and structure steps with their defaults, then Skip.
-  await page.getByTestId('setup-next').click();
+  // ADR-0145: the clock starts at the press; the editor opens with the setup card, whose rows
+  // are taken as a quick student would: title (typed already) Next, Skip the field, Skip the
+  // questions (chapters planned from the title), then the opener under the chapter's title.
   const c = clock();
   // Every suggestion request and how it ended, on the same clock.
   page.on('request', (r) => {
@@ -189,15 +189,14 @@ test('first session, Start writing now', async ({ page, request }) => {
       c.mark(`suggest answered ${r.status()} ${(done || err).slice(0, 160)}`);
     }
   });
-  await page.getByTestId('setup-start').click();
-  await page
-    .getByTestId('start-questions-skip')
-    .click({ timeout: 20_000 })
-    .catch(() => undefined);
-  c.mark('pressed Start (questions skipped)');
+  await page.getByTestId('start-writing-now').click();
   await page.waitForURL(/\/write\//, { timeout: 60_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 60_000 });
   c.mark('IN THE EDITOR');
+  await page.getByTestId('setup-title-next').click();
+  await page.getByTestId('setup-field-skip').click();
+  await page.getByTestId('setup-aim-skip').click();
+  c.mark('setup card: title, field skipped, questions skipped');
   const documentId = /\/app\/d\/([0-9a-f-]{36})\//.exec(page.url())?.[1] ?? '';
   await untilCitedSuggestion(page, c, cookie, documentId, 8 * 60);
   if (!process.env.ACCEPT) return;

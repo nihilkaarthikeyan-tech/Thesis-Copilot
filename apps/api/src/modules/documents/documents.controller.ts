@@ -24,7 +24,14 @@ import {
 } from '@nestjs/common';
 import { TEMPLATE_SPECS } from '@tc/config';
 import type { Prisma } from '@tc/db';
-import { type SourcePrefs, sourcePrefsSchema } from '@tc/types';
+import {
+  isUntouchedNewThesis,
+  newSetupCard,
+  type SourcePrefs,
+  sourcePrefsSchema,
+  UNTITLED_THESIS,
+  UNTOUCHED_HIDE_MS,
+} from '@tc/types';
 import { z } from 'zod';
 import { setMetaKey } from '../../common/document-meta.js';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
@@ -42,6 +49,7 @@ import { DocumentCopier } from './document-copier.service.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
 import { ProgressService } from './progress.service.js';
+import { SetupCardService, type SetupView } from './setup-card.service.js';
 import { namesATopic } from './topic.js';
 
 const languageBody = z.object({
@@ -83,6 +91,11 @@ const createDocument = z.object({
    * when the student skips (both by the existing outline routes).
    */
   askFirst: z.boolean().optional(),
+  /**
+   * ADR-0145: New opens the editor at once, and the "Set up this thesis" card takes the student
+   * through title, field, aim, chapters and first line there. Starts the card at its first row.
+   */
+  setup: z.boolean().optional(),
 });
 
 export type DocumentSummary = {
@@ -115,6 +128,9 @@ export type DocumentDetail = DocumentSummary & {
   liveEditing: boolean;
   /** The owner's address, for the name on their cursor when the chapter is live. */
   ownerEmail: string;
+  /** ADR-0145: the setup card's field row and its folded Sources line. */
+  field: string | null;
+  citationStyle: string;
 };
 
 const summarySelect = {
@@ -157,6 +173,7 @@ export class DocumentsController {
     private readonly outline: OutlineService,
     private readonly claimsMap: ClaimsService,
     private readonly claimsDocument: ClaimsDocumentService,
+    private readonly setupCard: SetupCardService,
   ) {}
 
   /**
@@ -177,7 +194,27 @@ export class DocumentsController {
       orderBy: onlyArchived ? { archivedAt: 'desc' } : { updatedAt: 'desc' },
       select: summarySelect,
     });
-    return documents.map(toSummary);
+    if (onlyArchived) return documents.map(toSummary);
+    // ADR-0145: New makes a thesis the moment it is pressed. One nobody named or wrote in is left
+    // off the list after a day — not deleted, and back as soon as it is named or written in.
+    const now = new Date();
+    const untitled = await this.prisma.document.findMany({
+      where: {
+        ownerId: user.id,
+        archivedAt: null,
+        title: UNTITLED_THESIS,
+        createdAt: { lt: new Date(now.getTime() - UNTOUCHED_HIDE_MS) },
+      },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        meta: true,
+        chapters: { select: { title: true, wordCount: true } },
+      },
+    });
+    const hidden = new Set(untitled.filter((d) => isUntouchedNewThesis(d, now)).map((d) => d.id));
+    return documents.filter((d) => !hidden.has(d.id)).map(toSummary);
   }
 
   @Post()
@@ -212,8 +249,13 @@ export class DocumentsController {
         ownerId: user.id,
         title: parsed.data.title,
         entryPath: parsed.data.entryPath,
-        ...(parsed.data.sourcePrefs
-          ? { meta: { sourcePrefs: parsed.data.sourcePrefs } as Prisma.InputJsonValue }
+        ...(parsed.data.sourcePrefs || parsed.data.setup
+          ? {
+              meta: {
+                ...(parsed.data.sourcePrefs ? { sourcePrefs: parsed.data.sourcePrefs } : {}),
+                ...(parsed.data.setup ? { setup: newSetupCard() } : {}),
+              } as Prisma.InputJsonValue,
+            }
           : {}),
         ...(parsed.data.field ? { field: parsed.data.field } : {}),
         ...(institutionTemplateId ? { institutionTemplateId } : {}),
@@ -356,6 +398,19 @@ export class DocumentsController {
     return this.setupProgress.forDocument(id, user.id);
   }
 
+  /**
+   * ADR-0145: the "Set up this thesis" card's answers — title (which starts the paper search),
+   * source settings, field, university and the card's own state. Free; no model call.
+   */
+  @Put(':id/setup')
+  updateSetup(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<SetupView> {
+    return this.setupCard.update(user.id, id, body);
+  }
+
   @Get(':id/next-action')
   async nextAction(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.nextActionService.forDocument(id, user.id);
@@ -378,6 +433,8 @@ export class DocumentsController {
         ...summarySelect,
         memory: { select: { scope: true, outline: true, glossary: true } },
         meta: true,
+        field: true,
+        citationStyle: true,
         chapters: {
           orderBy: { order: 'asc' },
           select: { id: true, title: true, order: true, outlineNodeId: true, wordCount: true },
@@ -393,6 +450,8 @@ export class DocumentsController {
       chapters: document.chapters,
       memory: document.memory,
       meta: document.meta,
+      field: document.field,
+      citationStyle: document.citationStyle,
       liveEditing: document.shares.length > 0 && (await this.flags.isEnabled('collaboration')),
       ownerEmail: user.email,
     };

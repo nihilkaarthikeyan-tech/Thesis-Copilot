@@ -124,6 +124,22 @@ export {
   readerHighlightUpdate,
 } from './reader-highlights.js';
 export {
+  applySetupUpdate,
+  isUntouchedNewThesis,
+  namesATopic,
+  newSetupCard,
+  readSetupCard,
+  SETUP_STEPS,
+  type SetupCard,
+  type SetupStep,
+  type SetupUpdate,
+  setupCardSchema,
+  setupStepNumber,
+  setupUpdateSchema,
+  UNTITLED_THESIS,
+  UNTOUCHED_HIDE_MS,
+} from './setup-card.js';
+export {
   DEFAULT_SOURCE_PREFS,
   INDEX_LIST_LABELS,
   INDEX_LISTS,
