@@ -389,25 +389,35 @@ function chapterBlocks(
   );
   const rawTitle = (ownHeading ? textOf(ownHeading).trim() : '') || chapter.title;
   const title = spec.headings.chapter.caps ? rawTitle.toUpperCase() : rawTitle;
+  // QA 2026-10-09: a new thesis's chapter is titled "Chapter 1", which printed under the label
+  // as "CHAPTER 1 / Chapter 1". When the title only repeats the label, the title line alone is
+  // printed (it is the Heading 1 the contents page needs) and takes the label's page break.
+  const repeatsLabel =
+    rawTitle.trim().replace(/\s+/g, ' ').toLowerCase() ===
+    label.trim().replace(/\s+/g, ' ').toLowerCase();
   out.push(
-    new Paragraph({
-      alignment:
-        spec.headings.chapter.align === 'center'
-          ? AlignmentType.CENTER
-          : spec.headings.chapter.align === 'right'
-            ? AlignmentType.RIGHT
-            : AlignmentType.LEFT,
-      pageBreakBefore: spec.headings.chapter.pageBreakBefore,
-      spacing: { after: 240 },
-      children: [
-        new TextRun({
-          text: label,
-          font: spec.font.body,
-          size: pt(spec.headings.chapter.sizePt),
-          bold: spec.headings.chapter.bold,
-        }),
-      ],
-    }),
+    ...(repeatsLabel
+      ? []
+      : [
+          new Paragraph({
+            alignment:
+              spec.headings.chapter.align === 'center'
+                ? AlignmentType.CENTER
+                : spec.headings.chapter.align === 'right'
+                  ? AlignmentType.RIGHT
+                  : AlignmentType.LEFT,
+            pageBreakBefore: spec.headings.chapter.pageBreakBefore,
+            spacing: { after: 240 },
+            children: [
+              new TextRun({
+                text: label,
+                font: spec.font.body,
+                size: pt(spec.headings.chapter.sizePt),
+                bold: spec.headings.chapter.bold,
+              }),
+            ],
+          }),
+        ]),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       // `TOC \o "1-3"` collects by outline level, not by style name, and the Heading styles the
@@ -415,6 +425,7 @@ function chapterBlocks(
       // to an empty index.
       outlineLevel: 0,
       alignment: AlignmentType.CENTER,
+      ...(repeatsLabel ? { pageBreakBefore: spec.headings.chapter.pageBreakBefore } : {}),
       spacing: { after: 360 },
       // R27: comments whose words are no longer in the chapter sit on its title line.
       children: withTitleComments(input, chapter.id, first, [
@@ -423,6 +434,8 @@ function chapterBlocks(
           font: spec.font.body,
           size: pt(spec.headings.chapter.sizePt),
           bold: spec.headings.chapter.bold,
+          // Word's Heading styles are blue; a thesis title is in the ink of its label.
+          color: '000000',
         }),
       ]),
     }),
@@ -459,6 +472,7 @@ function chapterBlocks(
                 size: pt(style.sizePt),
                 bold: style.bold,
                 italics: style.italic,
+                color: '000000',
               }),
             ]),
           }),

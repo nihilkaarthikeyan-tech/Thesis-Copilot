@@ -294,3 +294,41 @@ describe('the test’s own reading', () => {
     expect(refNumbers('see Figure 3.2 and Figure 3.1', 'Figure')).toEqual(['3.2', '3.1']);
   });
 });
+
+describe('a chapter titled only "Chapter 1" (QA 2026-10-09)', () => {
+  it('prints one title line, not the label and then the same words again', async () => {
+    const content = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Body.' }] }],
+    };
+    const xml = documentXml(
+      await thesisToDocx({
+        spec: SPEC,
+        details: DETAILS,
+        documentTitle: 'Untitled',
+        chapters: [{ id: 'c1', title: 'Chapter 1', order: 1, content, renderedMap: {} }],
+        bibliography: [],
+      }),
+    );
+    const lines = paragraphsOf(xml).filter((l) => /^chapter 1$/i.test(l.trim()));
+    expect(lines).toHaveLength(1);
+    // Black, not Word's blue Heading 1.
+    expect(xml).toContain('<w:color w:val="000000"/>');
+  });
+
+  it('still prints the label above a real title', async () => {
+    const xml = documentXml(
+      await thesisToDocx({
+        spec: SPEC,
+        details: DETAILS,
+        documentTitle: 'Titled',
+        chapters: [CHAPTER],
+        bibliography: [],
+        images: IMAGES as never,
+      }),
+    );
+    const lines = paragraphsOf(xml);
+    expect(lines.some((l) => /^chapter 3$/i.test(l.trim()))).toBe(true);
+    expect(lines.some((l) => /^results$/i.test(l.trim()))).toBe(true);
+  });
+});
