@@ -819,6 +819,20 @@ export const en = {
   'chat.research.ask': 'Search the literature too?',
   'chat.research.askWhy':
     'Your library has little on this. The scholarly indexes can be searched and the answer written from your library and the abstracts found, each marked “Not in your library”. Skip answers from your library alone.',
+  // ---- The calm chat panel (ADR-0137): the chips, the box's tools, the folded sources ---------
+  'chat.scope.note.document': 'Your draft · not citable',
+  'chat.scope.note.web': 'Finds papers · no answer',
+  'chat.placeholder.library': 'Ask about your papers — @ to name one',
+  'chat.research.citedOnLibrary': 'Added papers are cited on Library.',
+  'chat.box.mention': 'Name a paper',
+  'chat.box.mentionTitle': 'Name a paper to answer from (or type @)',
+  'chat.box.prompts': 'Use a saved prompt',
+  'chat.box.promptsTitle': 'Use a saved prompt (or type /)',
+  'chat.box.promptsBlocked': 'Saved prompts — empty the box first (or type / in an empty box)',
+  'chat.filters': 'Filters',
+  'chat.filters.title': 'Filters: year, citations, journal, preprints',
+  'chat.sources.one': '{count} source',
+  'chat.sources.many': '{count} sources',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
