@@ -117,6 +117,28 @@ export class QueueService implements OnModuleDestroy {
     return ids;
   }
 
+  /**
+   * ADR-0136: the sources still being read, by either step — the abstract (`index-abstract`) or
+   * the full text (`index-source`). A paper passes from one queue to the other inside the first
+   * job, so it is never in neither while it is still being read.
+   */
+  async unfinishedIndexing(): Promise<Set<string>> {
+    const [abstracts, fullTexts] = await Promise.all([
+      this.unfinishedSourceIds('index-abstract'),
+      this.unfinishedSourceIds('index-source'),
+    ]);
+    return new Set([...abstracts, ...fullTexts]);
+  }
+
+  /** Whether either indexing step has a job for this source not yet finished (ADR-0136). */
+  async indexingFor(sourceId: string): Promise<boolean> {
+    const [abstract, fullText] = await Promise.all([
+      this.hasUnfinishedFor('index-abstract', sourceId),
+      this.hasUnfinishedFor('index-source', sourceId),
+    ]);
+    return abstract || fullText;
+  }
+
   /** Puts one failed job back on its queue. False when it is not there or not failed. */
   async retry(name: QueueName, jobId: string): Promise<boolean> {
     const job = await this.queue(name).getJob(jobId);

@@ -15,6 +15,15 @@ export const QUEUE_NOOP = 'noop' satisfies QueueName;
 export const QUEUE_EXTRACT_PAPER = 'extract-paper' satisfies QueueName;
 export const QUEUE_RESOLVE_REFERENCE = 'resolve-reference' satisfies QueueName;
 export const QUEUE_INDEX_SOURCE = 'index-source' satisfies QueueName;
+export const QUEUE_INDEX_ABSTRACT = 'index-abstract' satisfies QueueName;
+
+/**
+ * ADR-0136: slots per worker process. The abstract step is one small embedding and a few rows,
+ * network-bound and light, so it gets four; the full-text step downloads and parses PDFs (CPU and
+ * a paper's text in memory per slot) on a VPS shared with other sites, so it keeps two.
+ */
+export const INDEX_ABSTRACT_CONCURRENCY = 4;
+export const INDEX_SOURCE_CONCURRENCY = 2;
 export const QUEUE_DRAFT_SECTION = 'draft-section' satisfies QueueName;
 export const QUEUE_SEARCH_LITERATURE = 'search-literature' satisfies QueueName;
 export const QUEUE_GENERATE_OUTLINE = 'generate-outline' satisfies QueueName;

@@ -17,6 +17,9 @@ export const QUEUE_NAMES = [
   'extract-paper',
   'resolve-reference',
   'index-source',
+  // ADR-0136: the abstract alone, made citable at once; it then queues `index-source` for the
+  // full text, so a slow download never stands between a new library and its first passage.
+  'index-abstract',
   'search-literature',
   'draft-section',
   // FR-3.2: outline generation is a Strong call, so it runs as a job (PRD 9.1).
@@ -77,6 +80,12 @@ export type IndexSourceJob = {
    * Keying on `sourceId` alone silently swallowed every re-index.
    */
   contentKey?: string;
+  /**
+   * ADR-0136: set by `index-abstract` when it has just stored the abstract's passages, so this
+   * job neither embeds the abstract again nor deletes it while it looks for the full text. Not
+   * part of the job id: it does not change what the job reads.
+   */
+  abstractStored?: boolean;
 };
 
 export type SearchLiteratureJob = {
@@ -198,6 +207,7 @@ export type JobPayloads = {
   'extract-paper': ExtractPaperJob;
   'resolve-reference': ResolveReferenceJob;
   'index-source': IndexSourceJob;
+  'index-abstract': IndexSourceJob;
   'search-literature': SearchLiteratureJob;
   'draft-section': DraftSectionJob;
   'generate-outline': GenerateOutlineJob;
@@ -262,4 +272,17 @@ export function jobKeyDigest(text: string): string {
     h = Math.imul(h, 16777619);
   }
   return (h >>> 0).toString(36);
+}
+
+/**
+ * The job id of a source's abstract job or full-text job (ADR-0136). Both key on what the job
+ * reads: the source and its `contentKey` (the DOI, or the key of an uploaded PDF). The same
+ * content queued twice is one job; a source that now points at something else is read again.
+ * The two queues share the shape, so the id of one says which id the other has.
+ */
+export function indexJobId(
+  queue: 'index-source' | 'index-abstract',
+  input: Pick<IndexSourceJob, 'sourceId' | 'contentKey'>,
+): string {
+  return jobId(queue, input.sourceId, jobKeyDigest(input.contentKey ?? 'none'));
 }

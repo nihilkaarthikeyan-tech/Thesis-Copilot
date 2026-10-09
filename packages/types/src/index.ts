@@ -77,6 +77,7 @@ export {
   type FindSourcesJob,
   type GenerateOutlineJob,
   type IndexSourceJob,
+  indexJobId,
   JOB_RETRY,
   JOB_WATCH,
   type JobPayloads,

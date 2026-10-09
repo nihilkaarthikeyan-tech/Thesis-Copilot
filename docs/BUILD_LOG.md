@@ -6041,3 +6041,36 @@ so", which the live sentence obeyed in the letter.
   on every fresh topic; it is now built only for a proposal case.
 
 Cost ₹6.81 on the models (₹5.28 + ₹1.53) and about ₹0.40 of embeddings, against ₹25.
+## The abstract on its own queue (2026-10-09, ADR-0136)
+
+The first cited sentence on a new thesis came at 15.6–22.4 s, and once at 38.3 s.
+`apps/worker/scripts/measure-first-passages.ts` (new; reads the dev database and BullMQ's job
+records in Redis, writes nothing) gave the reason for the eight measured theses:
+- Indexing waited for a slot, not for work. The abstract step takes under 2 s, but
+  `index-source` has two slots, and each was held 5–20 s by one paper's full-text attempts.
+- In the 38 s run the first index job waited 24 s **behind the previous thesis's 25 papers**: the
+  queue is first-in first-out across students. First / tenth passage: 34.0 / 55.0 s.
+- `resolve-reference` asked Unpaywall and OpenAlex before queuing the paper, for fields reading
+  does not use.
+- No time limit on the resolver, Unpaywall, CORE, journal citedness, or any Voyage request.
+
+What changed:
+- `resolve-reference` queues `index-abstract` (4 slots), before its Unpaywall and citedness
+  lookups. That job stores the abstract (one embedding), then queues `index-source` (still 2
+  slots) with `abstractStored`.
+- With `abstractStored`, `index-source` neither embeds the abstract again nor deletes it when no
+  full text is found. Full text still replaces it.
+- Both job ids are `indexJobId(queue, { sourceId, contentKey })`. The full-text id is unchanged.
+- Time limits: resolution 150 s, Unpaywall / citedness / CORE 15–20 s, Voyage 60 s.
+- The progress line and the reader count a paper as being read while either queue holds it.
+
+Tests: `apps/worker/test/index-abstract.spec.ts` (13: job ids, order, a passage present while the
+PDF is still downloading, no second embedding, the ADR-0070 path for other enqueues), one in
+`resolve-reference.spec.ts` (queued before Unpaywall is asked), one in `packages/ai/test/
+voyage.spec.ts` (a request that never answers is aborted). Worker suite 253 passed.
+
+Not yet measured on the real models: the main session re-runs `first-session.spec.ts` after the
+merge. Expected from the timings: first passage about a second after each paper resolves.
+
+Found while measuring, not fixed: two `find-sources` runs 3.6 s apart added the same five papers
+twice; each second copy stays PENDING for good, because its resolve job has the first copy's id.

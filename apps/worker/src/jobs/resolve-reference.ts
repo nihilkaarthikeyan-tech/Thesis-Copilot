@@ -55,16 +55,26 @@ export type ResolveReferenceResult = {
  * journal rather than once per paper is the difference between two requests and forty.
  */
 const CITEDNESS_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Time limits (ADR-0136; every one of these calls had none). The resolution itself is allowed past
+ * the scholarly client's longest polite `Retry-After` wait (two minutes), so a busy OpenAlex is
+ * still waited out rather than turned into an unresolved reference; the two lookups after it are
+ * extras and get a short limit.
+ */
+export const RESOLVE_TIMEOUT_MS = 150_000;
+export const LOOKUP_TIMEOUT_MS = 15_000;
 const citednessCache = new Map<string, { value: number | null; at: number }>();
 
 async function journalCitedness(
   openalex: Pick<OpenAlexClient, 'journalCitedness'>,
   venueId: string,
   now = Date.now(),
+  signal?: AbortSignal,
 ): Promise<number | null> {
   const cached = citednessCache.get(venueId);
   if (cached && now - cached.at < CITEDNESS_TTL_MS) return cached.value;
-  const value = (await openalex.journalCitedness([venueId])).get(venueId) ?? null;
+  const value = (await openalex.journalCitedness([venueId], signal)).get(venueId) ?? null;
   citednessCache.set(venueId, { value, at: now });
   return value;
 }
@@ -96,10 +106,16 @@ export async function runResolveReference(
   // A DOI printed in the entry, or typed in by the student on the "Fix this reference" form, is
   // the answer already. Re-running the bibliographic search that failed the first time would only
   // fail again, which is exactly what the manual fix exists to escape.
-  let resolved = job.printedDoi ? await resolveByDoi(job.printedDoi, resolver) : { ...UNRESOLVED };
+  let resolved = job.printedDoi
+    ? await resolveByDoi(job.printedDoi, resolver, AbortSignal.timeout(RESOLVE_TIMEOUT_MS))
+    : { ...UNRESOLVED };
 
   if (!resolved.via) {
-    resolved = await resolveReference(job.rawReference, resolver);
+    resolved = await resolveReference(
+      job.rawReference,
+      resolver,
+      AbortSignal.timeout(RESOLVE_TIMEOUT_MS),
+    );
   }
 
   if (!resolved.via || !resolved.title) {
@@ -116,31 +132,6 @@ export async function runResolveReference(
       score: resolved.score,
       openAccess: false,
     };
-  }
-
-  // FR-2.2: an open-access record can be read in full; everything else is abstract-only for now.
-  let openAccess = false;
-  let oaStatus = resolved.oaStatus;
-  if (resolved.doi) {
-    try {
-      const location = await deps.unpaywall.bestOpenAccess(resolved.doi);
-      openAccess = Boolean(location?.pdfUrl);
-      oaStatus = location?.oaStatus ?? oaStatus;
-    } catch (error) {
-      // Best effort: a failed Unpaywall lookup must not lose the resolution.
-      log({ msg: 'unpaywall lookup failed', sourceId: source.id, error: String(error) });
-    }
-  }
-
-  // ADR-0022: the journal's 2-year mean citedness, when OpenAlex knows the journal. Best effort,
-  // like Unpaywall: a failed lookup leaves it unknown and loses nothing else.
-  let venueCitedness: number | null = null;
-  if (resolved.venueOpenalexId) {
-    try {
-      venueCitedness = await journalCitedness(deps.openalex, resolved.venueOpenalexId);
-    } catch (error) {
-      log({ msg: 'journal citedness lookup failed', sourceId: source.id, error: String(error) });
-    }
   }
 
   // An abstract the source already carries (from a search result, 2026-09-30) is kept when the
@@ -169,12 +160,11 @@ export async function runResolveReference(
       // The abstract is stored as plain text on the CSL record so `index-source` can chunk it
       // without a second round trip. Crossref ships it as JATS XML, which no reader wants.
       ...(cslJson ? { cslJson: cslJson as never } : {}),
-      ...(oaStatus ? { oaStatus } : {}),
+      ...(resolved.oaStatus ? { oaStatus: resolved.oaStatus } : {}),
       ...(resolved.citationCount !== null ? { citationCount: resolved.citationCount } : {}),
       isPreprint: resolved.isPreprint,
       isRetracted: resolved.isRetracted,
       venueOpenalexId: resolved.venueOpenalexId ?? null,
-      venueCitedness,
       // Full text is only claimed once it has actually been fetched, by `index-source`; and
       // ABSTRACT only when there really is an abstract, not merely because a match was found.
       groundingLevel: groundingLevelFor(false, Boolean(abstract)),
@@ -191,6 +181,8 @@ export async function runResolveReference(
     hasAbstract: Boolean(abstract),
   });
 
+  // ADR-0136: queued before the two lookups below, which only add to the record and have nothing
+  // to do with reading it; a paper should not wait on them to become citable.
   await deps.enqueueIndex({
     sourceId: source.id,
     documentId: job.documentId,
@@ -198,6 +190,46 @@ export async function runResolveReference(
     // The DOI decides what `index-source` will fetch, so it decides whether this is the same work.
     ...(resolved.doi ? { contentKey: resolved.doi } : {}),
   });
+
+  // FR-2.2: an open-access record can be read in full; everything else is abstract-only for now.
+  // ADR-0022: the journal's 2-year mean citedness, when OpenAlex knows the journal. Both best
+  // effort, both bounded: a failed or slow lookup leaves the field unknown and loses nothing else.
+  const [location, venueCitedness] = await Promise.all([
+    resolved.doi
+      ? deps.unpaywall
+          .bestOpenAccess(resolved.doi, AbortSignal.timeout(LOOKUP_TIMEOUT_MS))
+          .catch((error: unknown) => {
+            log({ msg: 'unpaywall lookup failed', sourceId: source.id, error: String(error) });
+            return null;
+          })
+      : Promise.resolve(null),
+    resolved.venueOpenalexId
+      ? journalCitedness(
+          deps.openalex,
+          resolved.venueOpenalexId,
+          Date.now(),
+          AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+        ).catch((error: unknown) => {
+          log({
+            msg: 'journal citedness lookup failed',
+            sourceId: source.id,
+            error: String(error),
+          });
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+  const openAccess = Boolean(location?.pdfUrl);
+  const oaStatus = location?.oaStatus ?? resolved.oaStatus;
+  try {
+    await deps.prisma.source.update({
+      where: { id: source.id },
+      data: { ...(oaStatus ? { oaStatus } : {}), venueCitedness },
+    });
+  } catch (error) {
+    // Removed from the library in the meantime; the resolution above was all that mattered.
+    log({ msg: 'open-access details not saved', sourceId: source.id, error: String(error) });
+  }
 
   return {
     sourceId: source.id,
