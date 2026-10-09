@@ -71,4 +71,24 @@ describe('the Voyage embedding adapter', () => {
     const voyage = new VoyageEmbeddingProvider({ apiKey: 'k', model: 'voyage-4', dims: 4, fetch });
     await expect(voyage.embed(['x'])).rejects.toThrow(/429.*3 RPM/);
   });
+
+  it('gives up on a request that never answers (ADR-0136: no call without a time limit)', async () => {
+    let signal: AbortSignal | undefined;
+    // A Voyage that never replies, but lets go when the request is aborted, as a socket does.
+    const fetch = ((_input: string | URL | Request, init?: RequestInit) => {
+      signal = init?.signal ?? undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal?.reason), { once: true });
+      });
+    }) as typeof globalThis.fetch;
+    const voyage = new VoyageEmbeddingProvider({
+      apiKey: 'k',
+      model: 'voyage-4',
+      dims: 4,
+      fetch,
+      timeoutMs: 50,
+    });
+    await expect(voyage.embed(['x'])).rejects.toThrow();
+    expect(signal?.aborted).toBe(true);
+  });
 });

@@ -846,7 +846,7 @@ export class SourcesService {
     // and nothing queued, is settled.
     const unsettled =
       view.status !== 'PENDING' && view.groundingLevel !== 'FULL_TEXT'
-        ? await this.queue.hasUnfinishedFor('index-source', view.id).catch(() => false)
+        ? await this.queue.indexingFor(view.id).catch(() => false)
         : false;
 
     return {

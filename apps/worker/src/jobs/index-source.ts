@@ -37,6 +37,12 @@ import type { IndexSourceJob } from '@tc/types';
 /** PHASES 2.7: "embed via `packages/ai` in batches of 64". */
 export const EMBED_BATCH = 64;
 
+/**
+ * One Unpaywall or CORE lookup's time limit (ADR-0136). Both were called with none, so a lookup
+ * that never answered held one of the two indexing slots for as long as the socket stayed open.
+ */
+export const LOOKUP_TIMEOUT_MS = 20_000;
+
 export type IndexSourceDeps = {
   prisma: PrismaClient;
   embeddings: EmbeddingProvider;
@@ -155,77 +161,28 @@ export async function runIndexSource(
     await identifyUpload(source.id, text, pages, deps, log);
   }
 
-  // Embeds and stores a set of chunks, replacing whatever the source had. The one place this job
-  // spends embedding tokens, so the budget check and the EMBED log row cannot be skipped.
-  const store = async (chunks: ReturnType<typeof chunkText>): Promise<number> => {
-    await deps.assertBudget?.();
-    const vectors: number[][] = [];
-    let tokens = 0;
-    const embedStarted = Date.now();
-    try {
-      for (const batch of batched(chunks, EMBED_BATCH)) {
-        const counted = await deps.embeddings.embedWithUsage(batch.map((chunk) => chunk.text));
-        vectors.push(...counted.vectors);
-        tokens += counted.tokens;
-      }
-    } catch (error) {
-      await deps.logEmbed?.({
-        userId: job.userId,
-        documentId: job.documentId,
-        tokens,
-        latencyMs: Date.now() - embedStarted,
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-    await deps.logEmbed?.({
-      userId: job.userId,
-      documentId: job.documentId,
-      tokens,
-      latencyMs: Date.now() - embedStarted,
-      ok: true,
-    });
-    if (vectors.length !== chunks.length) {
-      throw new Error(`embedding count ${vectors.length} does not match ${chunks.length} chunks`);
-    }
-    return replaceSourceChunks(
-      deps.prisma as unknown as Parameters<typeof replaceSourceChunks>[0],
-      source.id,
-      chunks.map((chunk, index) => ({
-        sourceId: source.id,
-        ordinal: chunk.ordinal,
-        text: chunk.text,
-        tokenCount: chunk.tokenCount,
-        page: chunk.page,
-        charStart: chunk.charStart,
-        charEnd: chunk.charEnd,
-        section: chunk.section,
-        embedding: vectors[index] as number[],
-      })),
-    );
-  };
+  const store = (chunks: ReturnType<typeof chunkText>): Promise<number> =>
+    embedAndStoreChunks(source.id, chunks, job, deps);
 
   // ADR-0070: abstract first. Finding and reading an open-access copy can take a minute (three
   // services, each with its own time limit); the abstract is already here. A paper nothing has
   // been read from yet is made citable from its abstract now, and the full text, if one is
   // found, replaces it below. Costs one abstract's embedding (~300 tokens) a second time at most.
+  //
+  // ADR-0136: a paper that came through `resolve-reference` has had this done already, by its
+  // own `index-abstract` job on a queue no download can hold up, and arrives with
+  // `abstractStored`. Its passages stay as they are unless full text replaces them.
   let abstractFirst: { chunks: number } | null = null;
   const earlyAbstract = abstractOf(source.cslJson);
   // "Nothing read yet" is no chunks, not the badge: `resolve-reference` sets ABSTRACT as soon as
   // it finds an abstract, before anything is embedded.
-  if (
-    !text &&
-    source.doi &&
-    earlyAbstract &&
-    (await deps.prisma.sourceChunk.count({ where: { sourceId: source.id } })) === 0
-  ) {
-    const written = await store(
-      chunkText({
-        text: earlyAbstract,
-        sections: [{ section: 'Abstract', start: 0, end: earlyAbstract.length }],
-      }),
-    );
+  const chunksBefore = text
+    ? 0
+    : await deps.prisma.sourceChunk.count({ where: { sourceId: source.id } });
+  if (!text && job.abstractStored && chunksBefore > 0) {
+    abstractFirst = { chunks: chunksBefore };
+  } else if (!text && source.doi && earlyAbstract && chunksBefore === 0) {
+    const written = await store(abstractChunks(earlyAbstract));
     await deps.prisma.source.update({
       where: { id: source.id },
       data: { groundingLevel: 'ABSTRACT' },
@@ -424,6 +381,73 @@ export async function runIndexSource(
   };
 }
 
+/** The abstract as passages: one section, "Abstract", over the whole text. */
+export function abstractChunks(abstract: string): ReturnType<typeof chunkText> {
+  return chunkText({
+    text: abstract,
+    sections: [{ section: 'Abstract', start: 0, end: abstract.length }],
+  });
+}
+
+/**
+ * Embeds and stores a set of chunks, replacing whatever the source had. The one place indexing
+ * spends embedding tokens (this job and `index-abstract`, ADR-0136), so the budget check and the
+ * EMBED log row cannot be skipped.
+ */
+export async function embedAndStoreChunks(
+  sourceId: string,
+  chunks: ReturnType<typeof chunkText>,
+  job: Pick<IndexSourceJob, 'userId' | 'documentId'>,
+  deps: Pick<IndexSourceDeps, 'prisma' | 'embeddings' | 'logEmbed' | 'assertBudget'>,
+): Promise<number> {
+  await deps.assertBudget?.();
+  const vectors: number[][] = [];
+  let tokens = 0;
+  const embedStarted = Date.now();
+  try {
+    for (const batch of batched(chunks, EMBED_BATCH)) {
+      const counted = await deps.embeddings.embedWithUsage(batch.map((chunk) => chunk.text));
+      vectors.push(...counted.vectors);
+      tokens += counted.tokens;
+    }
+  } catch (error) {
+    await deps.logEmbed?.({
+      userId: job.userId,
+      documentId: job.documentId,
+      tokens,
+      latencyMs: Date.now() - embedStarted,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+  await deps.logEmbed?.({
+    userId: job.userId,
+    documentId: job.documentId,
+    tokens,
+    latencyMs: Date.now() - embedStarted,
+    ok: true,
+  });
+  if (vectors.length !== chunks.length) {
+    throw new Error(`embedding count ${vectors.length} does not match ${chunks.length} chunks`);
+  }
+  return replaceSourceChunks(
+    deps.prisma as unknown as Parameters<typeof replaceSourceChunks>[0],
+    sourceId,
+    chunks.map((chunk, index) => ({
+      sourceId,
+      ordinal: chunk.ordinal,
+      text: chunk.text,
+      tokenCount: chunk.tokenCount,
+      page: chunk.page,
+      charStart: chunk.charStart,
+      charEnd: chunk.charEnd,
+      section: chunk.section,
+      embedding: vectors[index] as number[],
+    })),
+  );
+}
+
 type OpenAccessOutcome =
   | { ok: true; bytes: Buffer; via: 'unpaywall' | 'core' | 'arxiv' }
   | { ok: false; reason: FullTextFailure };
@@ -453,7 +477,10 @@ async function fetchFromOpenAccess(
   let pdfUrls: string[] = [];
   let unpaywallFailure: FullTextFailure | null = null;
   try {
-    const location = await deps.unpaywall.bestOpenAccess(doi);
+    const location = await deps.unpaywall.bestOpenAccess(
+      doi,
+      AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    );
     pdfUrls = location?.pdfUrls ?? (location?.pdfUrl ? [location.pdfUrl] : []);
   } catch (error) {
     // A placeholder contact address makes Unpaywall answer 422; the worker warns about that at boot.
@@ -481,7 +508,7 @@ async function fetchFromOpenAccess(
 
   let coreUrl: string | null = null;
   try {
-    const hit = await deps.core.fullTextUrl(doi);
+    const hit = await deps.core.fullTextUrl(doi, AbortSignal.timeout(LOOKUP_TIMEOUT_MS));
     if (hit) {
       coreUrl = hit.pdfUrl;
       log({ msg: 'core has a copy', sourceId, coreId: hit.coreId, via: hit.via });
@@ -520,7 +547,7 @@ function crossrefFields(cslJson: unknown): { publisher?: unknown; member?: unkno
 }
 
 /** The plain-text abstract `resolve-reference` stored on the CSL record, if there is one. */
-function abstractOf(cslJson: unknown): string | null {
+export function abstractOf(cslJson: unknown): string | null {
   if (!cslJson || typeof cslJson !== 'object') return null;
   const abstract = (cslJson as { abstract?: unknown }).abstract;
   return typeof abstract === 'string' && abstract.trim().length > 0 ? abstract.trim() : null;

@@ -184,6 +184,12 @@ export class AnthropicLlmProvider implements LlmProvider {
 }
 
 /**
+ * One Voyage request's time limit. A batch of 64 passages answers in a few seconds; a minute is
+ * an outage, and the job that asked survives it as a failed call (retried by its queue).
+ */
+export const VOYAGE_TIMEOUT_MS = 60_000;
+
+/**
  * Voyage embeddings (PRD §7.2: `voyage-3`, 1024-d).
  *
  * There is no first-party AI SDK provider for Voyage, so this calls the REST API directly. That is
@@ -195,6 +201,7 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
   private readonly apiKey: string;
   private readonly endpoint: string;
   private readonly doFetch: typeof fetch;
+  private readonly timeoutMs: number;
 
   constructor(options: {
     apiKey: string;
@@ -203,12 +210,15 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
     endpoint?: string;
     /** Injected by the adapter test, so the request body is asserted without a network. */
     fetch?: typeof fetch;
+    /** One request's time limit; `VOYAGE_TIMEOUT_MS` unless a caller says otherwise. */
+    timeoutMs?: number;
   }) {
     this.apiKey = options.apiKey;
     this.modelId = options.model;
     this.dims = options.dims;
     this.endpoint = options.endpoint ?? 'https://api.voyageai.com/v1/embeddings';
     this.doFetch = options.fetch ?? ((input, init) => fetch(input, init));
+    this.timeoutMs = options.timeoutMs ?? VOYAGE_TIMEOUT_MS;
   }
 
   async embed(texts: readonly string[]): Promise<number[][]> {
@@ -225,6 +235,9 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ input: texts, model: this.modelId }),
+      // ADR-0136: no model call without a time limit. A hung request held an indexing slot, and
+      // with it every paper queued behind, for as long as the socket stayed open.
+      signal: AbortSignal.timeout(this.timeoutMs),
     });
 
     if (!response.ok) {

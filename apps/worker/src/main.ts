@@ -61,6 +61,7 @@ import {
   type FindSourcesJob,
   type GenerateOutlineJob,
   type IndexSourceJob,
+  indexJobId,
   jobId,
   jobKeyDigest,
   type ResolveReferenceJob,
@@ -88,6 +89,7 @@ import { runExaminerReview } from './jobs/examiner-review.js';
 import { runExtractPaper } from './jobs/extract-paper.js';
 import { runFindSources, startFindSources, waitForNewSources } from './jobs/find-sources.js';
 import { chapterBody, runGenerateOutline } from './jobs/generate-outline.js';
+import { runIndexAbstract } from './jobs/index-abstract.js';
 import { runIndexSource } from './jobs/index-source.js';
 import {
   isRetryExhausted,
@@ -98,6 +100,8 @@ import { runSearchLiterature } from './jobs/search-literature.js';
 import { assertPlatformBudget } from './platform-budget.js';
 import {
   DEFAULT_JOB_OPTIONS,
+  INDEX_ABSTRACT_CONCURRENCY,
+  INDEX_SOURCE_CONCURRENCY,
   QUEUE_CHAPTER_BUILD,
   QUEUE_COHERENCE,
   QUEUE_DRAFT_SECTION,
@@ -105,6 +109,7 @@ import {
   QUEUE_EXTRACT_PAPER,
   QUEUE_FIND_SOURCES,
   QUEUE_GENERATE_OUTLINE,
+  QUEUE_INDEX_ABSTRACT,
   QUEUE_INDEX_SOURCE,
   QUEUE_LIT_REVIEW_BUILD,
   QUEUE_NOOP,
@@ -285,6 +290,11 @@ async function main(): Promise<void> {
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   });
   const indexQueue = new Queue('index-source', {
+    connection,
+    defaultJobOptions: DEFAULT_JOB_OPTIONS,
+  });
+  // ADR-0136: a resolved paper's abstract, on a queue no full-text download can hold up.
+  const abstractQueue = new Queue(QUEUE_INDEX_ABSTRACT, {
     connection,
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   });
@@ -509,13 +519,10 @@ async function main(): Promise<void> {
         const result = await runResolveReference(job.data, {
           prisma,
           ...scholarly,
+          // ADR-0136: the abstract first, on its own queue; that job queues the full text.
           enqueueIndex: (input) =>
-            indexQueue.add('index-source', input, {
-              jobId: jobId(
-                'index-source',
-                input.sourceId,
-                jobKeyDigest(input.contentKey ?? 'none'),
-              ),
+            abstractQueue.add(QUEUE_INDEX_ABSTRACT, input, {
+              jobId: indexJobId(QUEUE_INDEX_ABSTRACT, input),
             }),
           log: (event) => log({ jobId: job.id, ...event }),
         });
@@ -524,6 +531,25 @@ async function main(): Promise<void> {
       // A handful at a time: the clients rate-limit themselves to the polite 5 req/s, and running
       // more in parallel would only queue behind that limiter.
       { connection: connection.duplicate(), concurrency: 3 },
+    ),
+
+    new Worker(
+      QUEUE_INDEX_ABSTRACT,
+      async (job: Job<IndexSourceJob>) =>
+        runIndexAbstract(job.data, {
+          prisma,
+          embeddings: providers.embeddings,
+          logEmbed: logEmbed(prisma, env),
+          assertBudget: assertPlatformBudget(prisma, env),
+          enqueueFullText: (input) =>
+            indexQueue.add(QUEUE_INDEX_SOURCE, input, {
+              jobId: indexJobId(QUEUE_INDEX_SOURCE, input),
+            }),
+          log: (event) => log({ jobId: job.id, ...event }),
+        }),
+      // One small embedding and a few rows per job: network-bound, so more slots than the
+      // full-text queue without more CPU. Voyage's per-minute limits are far above 4 in flight.
+      { connection: connection.duplicate(), concurrency: INDEX_ABSTRACT_CONCURRENCY },
     ),
 
     new Worker(
@@ -554,7 +580,7 @@ async function main(): Promise<void> {
       },
       // Downloads a PDF and then embeds it: mostly waiting on the network, but one paper's worth
       // of text in memory at a time per slot.
-      { connection: connection.duplicate(), concurrency: 2 },
+      { connection: connection.duplicate(), concurrency: INDEX_SOURCE_CONCURRENCY },
     ),
 
     new Worker(
@@ -927,6 +953,7 @@ async function main(): Promise<void> {
     await Promise.all(workers.map((w) => w.close()));
     await resolveQueue.close();
     await indexQueue.close();
+    await abstractQueue.close();
     await prisma.$disconnect();
     await connection.quit();
     process.exit(0);

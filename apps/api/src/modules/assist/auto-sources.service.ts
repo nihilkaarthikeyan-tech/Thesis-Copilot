@@ -164,7 +164,7 @@ export class AutoSourcesService {
     // open text) counted as "reading" for the whole window, so "reading 1…" stayed for minutes.
     // A resolved paper is still being read only while its index job is.
     const indexing = waiting.some((s) => s.status === 'RESOLVED')
-      ? await this.queue.unfinishedSourceIds('index-source').catch(() => null)
+      ? await this.queue.unfinishedIndexing().catch(() => null)
       : new Set<string>();
     const reading = waiting.filter(
       (s) => s.status === 'PENDING' || indexing === null || indexing.has(s.id),
