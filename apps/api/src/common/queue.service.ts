@@ -102,6 +102,21 @@ export class QueueService implements OnModuleDestroy {
     );
   }
 
+  /** The sources with a job of `name` not yet finished, in one read of the queue. */
+  async unfinishedSourceIds(name: QueueName): Promise<Set<string>> {
+    const jobs = await this.queue(name).getJobs(
+      ['active', 'waiting', 'delayed', 'prioritized', 'waiting-children', 'paused'],
+      0,
+      499,
+    );
+    const ids = new Set<string>();
+    for (const job of jobs) {
+      const id = (job?.data as { sourceId?: unknown } | undefined)?.sourceId;
+      if (typeof id === 'string') ids.add(id);
+    }
+    return ids;
+  }
+
   /** Puts one failed job back on its queue. False when it is not there or not failed. */
   async retry(name: QueueName, jobId: string): Promise<boolean> {
     const job = await this.queue(name).getJob(jobId);

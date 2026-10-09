@@ -144,21 +144,31 @@ export class AutoSourcesService {
     const jobId = await this.redis.client.get(searchKey(documentId));
     const searching = jobId ? await this.queue.pending('find-sources', jobId) : false;
     const recent = new Date(now.getTime() - READING_WINDOW_MS);
-    const [found, ready, reading] = await Promise.all([
+    const [found, ready, waiting] = await Promise.all([
       this.prisma.source.count({ where: { documentId } }),
       // Ready means something to cite is stored, not the grounding badge: `resolve-reference`
       // marks a paper ABSTRACT as soon as it has found one, before anything is embedded.
       this.prisma.source.count({ where: { documentId, chunks: { some: {} } } }),
       // Still on its way: added in the last few minutes, nothing stored yet, not given up on.
-      this.prisma.source.count({
+      this.prisma.source.findMany({
         where: {
           documentId,
           chunks: { none: {} },
           status: { in: ['PENDING', 'RESOLVED'] },
           createdAt: { gte: recent },
         },
+        select: { id: true, status: true },
       }),
     ]);
+    // QA 2026-10-09: a paper whose reading had finished with nothing to store (no abstract, no
+    // open text) counted as "reading" for the whole window, so "reading 1…" stayed for minutes.
+    // A resolved paper is still being read only while its index job is.
+    const indexing = waiting.some((s) => s.status === 'RESOLVED')
+      ? await this.queue.unfinishedSourceIds('index-source').catch(() => null)
+      : new Set<string>();
+    const reading = waiting.filter(
+      (s) => s.status === 'PENDING' || indexing === null || indexing.has(s.id),
+    ).length;
     return { searching, found, ready, reading };
   }
 }

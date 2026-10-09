@@ -119,6 +119,38 @@ describe('automatic sources from autocomplete', () => {
     expect(await progress.json()).toEqual({ searching: true, found: 0, ready: 0, reading: 0 });
   });
 
+  it('a paper whose reading finished with nothing to store is not "reading" (QA 2026-10-09)', async () => {
+    const res = await h.api('/documents', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'Untitled thesis', entryPath: 'A_TOPIC' }),
+    });
+    const created = (await res.json()) as { id: string };
+    const source = await h.prisma.source.create({
+      data: { documentId: created.id, status: 'RESOLVED', title: 'No abstract, no open text' },
+    });
+    const read = async () =>
+      (
+        (await (await h.api(`/documents/${created.id}/sources/progress`)).json()) as {
+          reading: number;
+        }
+      ).reading;
+    // Its index job is over (there is none): nothing is on its way.
+    expect(await read()).toBe(0);
+    // While its index job waits, it is still being read.
+    const index = new Queue('index-source', { connection: redis });
+    try {
+      await index.add('index-source', {
+        sourceId: source.id,
+        documentId: created.id,
+        userId: h.userId,
+      });
+      expect(await read()).toBe(1);
+    } finally {
+      await index.obliterate({ force: true });
+      await index.close();
+    }
+  });
+
   it('a placeholder title starts nothing', async () => {
     const res = await h.api('/documents', {
       method: 'POST',
