@@ -1,0 +1,94 @@
+{
+  "apiMessage": "This JSON was provided by Springer Nature",
+  "query": "doi:10.1186/s12889-020-09301-4",
+  "result": [{ "total": "1", "start": "1", "pageLength": "10", "recordsDisplayed": "1" }],
+  "records": [
+    {
+      "contentType": "Article",
+      "identifier": "doi:10.1186/s12889-020-09301-4",
+      "language": "en",
+      "url": [
+        { "format": "", "platform": "", "value": "http://dx.doi.org/10.1186/s12889-020-09301-4" }
+      ],
+      "title": "The role of telehealth during COVID-19 outbreak: a systematic review based on current evidence",
+      "creators": [{ "creator": "Monaghesh, Elham" }, { "creator": "Hajizadeh, Alireza" }],
+      "publicationName": "BMC Public Health",
+      "doi": "10.1186/s12889-020-09301-4",
+      "publisher": "Springer",
+      "publisherName": "BioMed Central",
+      "publicationDate": "2020-08-01",
+      "publicationType": "Journal",
+      "issn": "",
+      "eIssn": "1471-2458",
+      "volume": "20",
+      "number": "1",
+      "issueType": "Regular",
+      "topicalCollection": "Health behavior, health promotion and society",
+      "genre": ["OriginalPaper", "Research article"],
+      "startingPage": "1",
+      "endingPage": "9",
+      "journalId": "12889",
+      "openAccess": "true",
+      "onlineDate": "2020-08-01",
+      "coverDate": "2020-12",
+      "copyright": "©2020 The Author(s)",
+      "abstract": {
+        "h1": "Abstract",
+        "p": [
+          "Background",
+          "The outbreak of coronavirus disease-19 (COVID-19) is a public health emergency of international concern. Telehealth is an effective option to fight the outbreak of COVID-19. The aim of this systematic review was to identify the role of telehealth services in preventing, diagnosing, treating, and controlling diseases during COVID-19 outbreak.",
+          "Methods",
+          "This systematic review was conducted through searching five databases including PubMed, Scopus, Embase, Web of Science, and Science Direct. Inclusion criteria included studies clearly defining any use of telehealth services in all aspects of health care during COVID-19 outbreak, published from December 31, 2019, written in English language and published in peer reviewed journals. Two reviewers independently assessed search results, extracted data, and assessed the quality of the included studies. Quality assessment was based on the Critical Appraisal Skills Program (CASP) checklist. Narrative synthesis was undertaken to summarize and report the findings.",
+          "Results",
+          "Eight studies met the inclusion out of the 142 search results. Currently, healthcare providers and patients who are self-isolating, telehealth is certainly appropriate in minimizing the risk of COVID-19 transmission. This solution has the potential to prevent any sort of direct physical contact, provide continuous care to the community, and finally reduce morbidity and mortality in COVID-19 outbreak.",
+          "Conclusions",
+          "The use of telehealth improves the provision of health services. Therefore, telehealth should be an important tool in caring services while keeping patients and health providers safe during COVID-19 outbreak."
+        ]
+      },
+      "subjects": [
+        "Medicine & Public Health",
+        "Public Health",
+        "Medicine/Public Health, general",
+        "Epidemiology",
+        "Environmental Health",
+        "Biostatistics",
+        "Vaccine"
+      ],
+      "disciplines": [
+        { "id": "2977", "term": "Public Health" },
+        { "id": "4140", "term": "Epidemiology" },
+        { "id": "4264", "term": "Environmental Health" },
+        { "id": "5065", "term": "Biostatistics" },
+        { "id": "3357", "term": "Pharmacology" }
+      ]
+    }
+  ],
+  "facets": [
+    {
+      "name": "subject",
+      "values": [
+        { "value": "Biostatistics", "count": "1" },
+        { "value": "Environmental Health", "count": "1" },
+        { "value": "Epidemiology", "count": "1" },
+        { "value": "Medicine & Public Health", "count": "1" },
+        { "value": "Medicine/Public Health, general", "count": "1" },
+        { "value": "Public Health", "count": "1" },
+        { "value": "Vaccine", "count": "1" }
+      ]
+    },
+    {
+      "name": "keyword",
+      "values": [
+        { "value": "Coronavirus", "count": "1" },
+        { "value": "COVID-19", "count": "1" },
+        { "value": "Outbreaks", "count": "1" },
+        { "value": "Telehealth", "count": "1" },
+        { "value": "Telemedicine", "count": "1" }
+      ]
+    },
+    { "name": "pub", "values": [{ "value": "BMC Public Health", "count": "1" }] },
+    { "name": "year", "values": [{ "value": "2020", "count": "1" }] },
+    { "name": "country", "values": [{ "value": "Iran", "count": "1" }] },
+    { "name": "type", "values": [{ "value": "Journal", "count": "1" }] }
+  ]
+}

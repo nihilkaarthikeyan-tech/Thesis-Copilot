@@ -136,9 +136,16 @@ Springer, Nature, BMC and SpringerOpen papers that are open access but not in Pu
 abstract-only. Springer's site now blocks server downloads with a bot check, which we must not get
 past. The sanctioned route is the Springer Nature Open Access API.
 
-1. Register for a free key at https://dev.springernature.com (an "Open Access" API key).
-2. Put it in `.env` as `SPRINGER_NATURE_API_KEY` and tell the agent. The agent reads the API's
-   real response with the key, then builds the client the way Europe PMC's was built.
+- [x] **Done 2026-10-09:** the owner registered the key. The client is built from the API's real
+  responses (ADR-0134).
+- [ ] **On release:** add `SPRINGER_NATURE_API_KEY=<the key>` to the VPS `.env` (the same value as
+  the local `.env`), then restart the worker. Only the worker uses it. Without it the step is
+  skipped and these papers stay ABSTRACT, as before.
+- [ ] **After release:** re-index, or press "Fetch PDF" on, Springer, Nature, BMC and SpringerOpen
+  papers that are still ABSTRACT. Check that the worker log says `full text from springer nature`.
+- [ ] **Watch the 500 a day.** The free plan allows 500 requests a day for the whole site, and the
+  worker stops at 480. If `springer nature has no full text` with `reason: daily-limit` shows up
+  often, decide whether to ask Springer Nature for the Premium plan (10,000 a day).
 
 ## Examiner review of a written chapter (ADR-0056, 2026-10-04)
 

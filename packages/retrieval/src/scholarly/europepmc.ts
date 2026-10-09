@@ -118,8 +118,13 @@ function floatBlock(inner: string): string {
   const label = plainText(firstInner(inner, 'label'));
   const caption = plainText(firstInner(inner, 'caption')?.replace(/<\/(title|p)>/g, '$& '));
   const table = firstInner(inner, 'table');
+  // Springer Nature's JATS (ADR-0134) wraps every cell's text in <p> and puts the whole table
+  // inside a body <p>; a <p> left in the rows would end that paragraph at the first cell.
   const rows = table
-    ? table.replace(/<\/t[hd]>/g, `${CELL}</td>`).replace(/<\/tr>/g, `${ROW}</tr>`)
+    ? table
+        .replace(/<\/?p\b[^>]*>/g, ' ')
+        .replace(/<\/t[hd]>/g, `${CELL}</td>`)
+        .replace(/<\/tr>/g, `${ROW}</tr>`)
     : '';
   const head = [label, caption].filter(Boolean).join('. ');
   return `<tc-block>${head}${rows ? ROW + rows : ''}</tc-block>`;
@@ -142,7 +147,12 @@ function layout(text: string): string {
  * References, graphics and supplementary files are dropped. Maths keeps the text of its MathML,
  * which reads plainly enough for retrieval though not for print.
  */
-export function jatsToText(xml: string): { text: string; sections: SectionSpan[] } | null {
+export function jatsToText(source: string): { text: string; sections: SectionSpan[] } | null {
+  // Springer Nature gives each formula as MathML and as a whole LaTeX document
+  // (`\documentclass[12pt]{minimal}…`, ADR-0134); the MathML is kept, the preamble is not text.
+  const xml = source.replace(/<alternatives>([\s\S]*?)<\/alternatives>/g, (_w, inner: string) =>
+    inner.includes('<mml:math') ? inner.replace(/<tex-math\b[\s\S]*?<\/tex-math>/g, '') : inner,
+  );
   const rawBody = firstInner(xml, 'body');
   if (!rawBody) return null;
 
@@ -154,7 +164,14 @@ export function jatsToText(xml: string): { text: string; sections: SectionSpan[]
     .replace(/<table-wrap\b[^>]*>([\s\S]*?)<\/table-wrap>/g, (_w, inner: string) =>
       floatBlock(inner),
     )
-    .replace(/<fig\b[^>]*>([\s\S]*?)<\/fig>/g, (_w, inner: string) => floatBlock(inner));
+    .replace(/<fig\b[^>]*>([\s\S]*?)<\/fig>/g, (_w, inner: string) => floatBlock(inner))
+    // A list item's own <p> inside a body <p> (Springer Nature's JATS) would end that paragraph at
+    // the first item. Each item becomes one block: read with its paragraph when the list sits in
+    // one, read on its own when the list stands alone.
+    .replace(
+      /<list-item\b[^>]*>([\s\S]*?)<\/list-item>/g,
+      (_w, inner: string) => `<tc-item>${inner.replace(/<\/?p\b[^>]*>/g, ' ')}</tc-item>`,
+    );
 
   const parts: string[] = [];
   const sections: SectionSpan[] = [];
@@ -180,7 +197,7 @@ export function jatsToText(xml: string): { text: string; sections: SectionSpan[]
 
   let depth = 0;
   const token =
-    /<sec\b[^>]*>|<\/sec>|<title>([\s\S]*?)<\/title>|<(p|tc-block|disp-formula)\b[^>]*>([\s\S]*?)<\/\2>/g;
+    /<sec\b[^>]*>|<\/sec>|<title>([\s\S]*?)<\/title>|<(p|tc-block|tc-item|disp-formula)\b[^>]*>([\s\S]*?)<\/\2>/g;
   for (const match of body.matchAll(token)) {
     const whole = match[0];
     if (whole.startsWith('<sec')) depth++;

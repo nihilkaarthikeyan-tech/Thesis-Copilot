@@ -23,10 +23,13 @@ import {
   type FullTextFailure,
   fetchOpenAccessPdf,
   groundingLevelFor,
+  isSpringerNatureDoi,
   type ResolvedSource,
   readableFullTextReason,
+  readableSpringerReason,
   readFirstPage,
   replaceSourceChunks,
+  type SpringerNatureClient,
   type UnpaywallClient,
 } from '@tc/retrieval';
 import type { IndexSourceJob } from '@tc/types';
@@ -45,6 +48,11 @@ export type IndexSourceDeps = {
    * PMC's open-access subset. Keyless; null or absent turns the step off.
    */
   europePmc?: EuropePmcClient | null;
+  /**
+   * ADR-0134: Springer Nature's own Open Access API, asked last and only for a Springer Nature
+   * DOI. Null without `SPRINGER_NATURE_API_KEY`, which turns the step off silently.
+   */
+  springer?: Pick<SpringerNatureClient, 'fullText'> | null;
   /** Reads a PDF already in object storage — a student upload, or one fetched by an earlier run. */
   getObject: (key: string) => Promise<Buffer>;
   /** Writes a fetched open-access PDF to object storage. */
@@ -79,7 +87,7 @@ export type IndexSourceResult = {
   /** Where the indexed text came from, so the log says what was actually read. */
   from: 'stored-pdf' | 'open-access-pdf' | 'open-access-xml' | 'abstract' | 'nothing';
   /** Which service located an open-access PDF, when one was fetched. */
-  via?: 'unpaywall' | 'core' | 'europepmc' | 'arxiv';
+  via?: 'unpaywall' | 'core' | 'europepmc' | 'springer' | 'arxiv';
   fullTextFailure?: FullTextFailure;
 };
 
@@ -120,7 +128,7 @@ export async function runIndexSource(
   let sections: Array<{ section: string; start: number; end: number }> | undefined;
   let from: IndexSourceResult['from'] = 'nothing';
   let fullTextFailure: FullTextFailure | undefined;
-  let via: 'unpaywall' | 'core' | 'europepmc' | 'arxiv' | undefined;
+  let via: 'unpaywall' | 'core' | 'europepmc' | 'springer' | 'arxiv' | undefined;
   let fileKey = source.fileKey;
 
   // 1. A PDF we already hold — the student's own upload (FR-2.3), or one fetched by an earlier run.
@@ -279,6 +287,44 @@ export async function runIndexSource(
       }
     } catch (error) {
       log({ msg: 'europe pmc lookup failed', sourceId: source.id, error: String(error) });
+    }
+  }
+
+  // 2c. ADR-0134: still nothing, and the paper is Springer Nature's (Springer, Nature, BMC,
+  // SpringerOpen): ask the publisher's Open Access API for the JATS. Its free plan allows 500
+  // requests a day, so only a Springer Nature DOI spends one, and only after Europe PMC (keyless)
+  // has had its turn. The client never throws; a failure leaves the abstract as before.
+  if (
+    !text &&
+    source.doi &&
+    deps.springer &&
+    isSpringerNatureDoi(source.doi, crossrefFields(source.cslJson))
+  ) {
+    try {
+      const article = await deps.springer.fullText(source.doi, AbortSignal.timeout(60_000));
+      if (article.ok) {
+        text = article.text;
+        pages = undefined;
+        sections = article.sections;
+        from = 'open-access-xml';
+        via = 'springer';
+        log({
+          msg: 'full text from springer nature',
+          sourceId: source.id,
+          license: article.license,
+          pdfFailure: fullTextFailure,
+        });
+        fullTextFailure = undefined;
+      } else {
+        log({
+          msg: 'springer nature has no full text',
+          sourceId: source.id,
+          reason: article.reason,
+          why: readableSpringerReason(article.reason),
+        });
+      }
+    } catch (error) {
+      log({ msg: 'springer nature lookup failed', sourceId: source.id, error: String(error) });
     }
   }
 
@@ -464,6 +510,13 @@ async function fetchFromOpenAccess(
 export function arxivPdfUrl(doi: string): string | null {
   const id = /^10\.48550\/arxiv\.(.+)$/i.exec(doi.trim())?.[1];
   return id ? `https://arxiv.org/pdf/${id}` : null;
+}
+
+/** Crossref's `publisher` and `member`, when the stored record is Crossref's (ADR-0134). */
+function crossrefFields(cslJson: unknown): { publisher?: unknown; member?: unknown } | null {
+  if (!cslJson || typeof cslJson !== 'object') return null;
+  const { publisher, member } = cslJson as { publisher?: unknown; member?: unknown };
+  return { publisher, member };
 }
 
 /** The plain-text abstract `resolve-reference` stored on the CSL record, if there is one. */

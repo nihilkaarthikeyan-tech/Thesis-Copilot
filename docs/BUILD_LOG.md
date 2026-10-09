@@ -5942,3 +5942,36 @@ worker to read them. It never did, so the edit came back unchanged. Three fixes:
 Tests pass: `packages/retrieval/test/edit-search.spec.ts` (7),
 `apps/api/test/edit-literature.spec.ts` (10), `apps/api/test/edit-literature-api.spec.ts` (9),
 `apps/web/test/edit-literature.spec.ts` (6), and the new `packages/ui/test/ai-text.spec.ts` case.
+
+## Springer Nature full text through its Open Access API (2026-10-09, ADR-0134)
+
+The owner supplied `SPRINGER_NATURE_API_KEY`. I read the API first, with the key.
+`/openaccess/jats?q=doi:…` returns the whole JATS article for six open-access papers: BMC, Discover
+Food, Nature Communications, a hybrid article in Annals of Operations Research, EPJ C and
+Journal of Big Data. It returns 404 for a closed article, a closed chapter or an unknown DOI, and
+401 for a bad key. The response carries no rate-limit headers. Four articles and the 404 body are
+fixtures now, with the key removed.
+
+- `SpringerNatureClient` (`packages/retrieval`): one request per DOI, typed failures, no throws.
+  It retries once on a network fault or a 5xx. After a 429 it stops asking for a while.
+- The worker counts the day's requests in Redis and stops at 480 of the free plan's 500.
+- `index-source` asks it last, after the PDF chain and Europe PMC, and only for a Springer Nature
+  DOI (Crossref member 297's prefixes, or a stored Crossref record naming Springer).
+  `SPRINGER_NATURE_API_KEY` is optional; without it the step is skipped.
+- Faults found in the shared `jatsToText` on Springer's JATS, both fixed:
+  - Tables and lists inside a paragraph lost their cell separators.
+  - Every formula carried a LaTeX `\documentclass` preamble into the text.
+- Live (`apps/worker/scripts/springer-fulltext-proof.ts`, real key):
+  - Discover Food: 38,974 characters, 6 sections, 37 chunks.
+  - Nature Communications: 58,467 characters, 5 sections, 49 chunks.
+  - EPJ C: 43,693 characters, 7 sections, 40 chunks.
+  - Journal of Big Data: 134,478 characters, 8 sections, 102 chunks.
+  - A closed Annals article: `no-record`.
+  - About 1.2 s each.
+- Tests:
+  - `packages/retrieval/test/springer.spec.ts`: 26 tests, covering parsing against the fixtures,
+    errors, the key never returned, prefixes and the day count.
+  - `apps/worker/test/index-source.spec.ts`: 9 new tests, covering the order, the key-absent skip,
+    FULL_TEXT only when a body was read, and survival on a 429 or a throw.
+  - The Europe PMC tests pass unchanged.
+- On release: set the key in the VPS `.env` and restart the worker (`docs/PENDING.md`).
