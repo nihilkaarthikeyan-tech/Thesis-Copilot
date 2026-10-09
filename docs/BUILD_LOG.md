@@ -5975,3 +5975,14 @@ fixtures now, with the key removed.
     FULL_TEXT only when a body was read, and survival on a 429 or a throw.
   - The Europe PMC tests pass unchanged.
 - On release: set the key in the VPS `.env` and restart the worker (`docs/PENDING.md`).
+
+## Released v0.1.34 (2026-10-09)
+
+Tag on cd23b01 after a green CI (one rerun: a Google Fonts fetch failed during a GitHub network
+blip). Backup `/root/backups/pre-v0.1.34/thesis-copilot.dump` (3.5 MB) taken first. Migrations
+0051 (reader highlights) and 0052 (research chats) applied by `deploy.sh`; all eight app
+containers on the tag, API healthy, health 200, anonymous `/admin/overview` 401, `/changelog`
+shows v0.1.34. Contents: ADR-0128 (writing reads more of the library), the R5 first sentence, the
+four QA checks' 38 fixes, A29 export numbering, reader highlights (0130), Add into (0129), chat
+rename/search, Hindi for Round 2, research chat without a thesis and across theses (0132),
+Search the literature on an edit (0133), examiner strengths and questions (0131, round 3).
