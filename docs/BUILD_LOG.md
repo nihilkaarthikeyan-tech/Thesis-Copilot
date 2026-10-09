@@ -5822,3 +5822,17 @@ references before and after their targets) and checks the chapter `.docx`, the w
   `refTargets` is now `numberingMap(withoutPendingDrafts(...))`.
 
 The web page and LaTeX (which numbers by `\label`/`\ref`) were already right.
+
+## Highlights and notes in the reader (2026-10-09, ADR-0130)
+
+Coverage map row 34, open since the reader was built: a passage selected in the reader (PDF or
+Text view) can now be highlighted in one of four colours, or highlighted with a note. Each is a
+`SourceHighlight` row (migration `0051_source_highlights`), the student's own, anchored by page
+or passage, offsets in the reader's normalised text, and the words with 32 characters either side,
+so it is drawn again (CSS Highlight API) after a zoom, on scrolling back, on reopening and in the
+other view. "Highlights and notes" lists them beside the paper (a sheet on a phone): jump,
+recolour, note, delete, Put in chat (fills the box only) and Put note in chapter (the cite bar,
+inserted only on "Put here"). No model, no metering. Erased with the paper (cascade), the thesis
+(`DocumentEraser`) and the account (by user); a merge moves them, a copy copies them.
+`apps/api/test/reader-highlights.spec.ts` (11) and `apps/web/test/reader-highlights.spec.ts`
+pin it; the browser checks are in the ADR's hand-off.
