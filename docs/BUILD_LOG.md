@@ -6327,3 +6327,21 @@ states.spec 5/6 — the cap and call-ceiling tests pass; "empty grounding" fails
 papers are still being read", because the initial paper search is still running when the
 suggestion arrives. The mock's change is not involved, since nothing has been kept at that
 point. API: cap-concurrency, week1, lit-review-build, assist-context 45/45; ui ghost-text 23/23.
+
+## Model-size test, ADR-0146 (2026-10-09): cost side only
+
+The owner asked whether Jenni reads better because of a bigger model. The harness gained
+`--strong-model <id>` (side B's strong tier; `--model` already swapped the fast tier), a separate
+meter for side A so each side's cost per case is reported, a running ₹ total per case, and
+`--max-rupees`. `gpt-4.1` and `gpt-5` were priced from OpenAI's pricing page (2026-10-09) into
+`pricing.ts`; the two mini models' table entries matched the page.
+
+All four ids answered a one-word call. But two runs of that probe each had one call refused with
+`insufficient_quota` / `credit_balance_exhausted` (a different model each time), so the OpenAI
+balance is at or near zero, not the ~$25 expected. The judged comparison was not run: with a
+quarter of calls refused, failures would count as "offered nothing" and decide the result, and it
+would spend the balance production also draws on. Spent: about ₹0.2.
+
+Cost model, `STUDENT_MONTHLY` worst case (`computeMonthlyBudget` with the model ids): today
+₹145.62; fast tier on `gpt-4.1` ₹366.04 (+₹220.42, Assist alone 540 × ₹0.47 = ₹252.56); strong tier
+on `gpt-5` ₹478.10 (+₹332.48); both ₹698.52 (+₹552.90). Draft alone on `gpt-5` would be +₹11.14.

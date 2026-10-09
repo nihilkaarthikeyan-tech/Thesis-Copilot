@@ -90,6 +90,11 @@ const OPENAI: Record<string, ModelPrice> = {
   'gpt-4.1-mini': { inputPerM: 0.4, outputPerM: 1.6, cacheReadMult: 0.25, cacheWriteMult: 1 },
   'gpt-4o-mini': { inputPerM: 0.15, outputPerM: 0.6, cacheReadMult: 0.5, cacheWriteMult: 1 },
   'gpt-5-mini': { inputPerM: 0.25, outputPerM: 2.0, cacheReadMult: 0.1, cacheWriteMult: 1 },
+  // Read off developers.openai.com/api/docs/pricing on 2026-10-09 for the model-size test
+  // (ADR-0146): gpt-4.1 $2.00 in / $0.50 cached / $8.00 out; gpt-5 $1.25 / $0.125 / $10.00. Neither
+  // is configured in production; priced so the eval meter and the cost model read them correctly.
+  'gpt-4.1': { inputPerM: 2.0, outputPerM: 8.0, cacheReadMult: 0.25, cacheWriteMult: 1 },
+  'gpt-5': { inputPerM: 1.25, outputPerM: 10.0, cacheReadMult: 0.1, cacheWriteMult: 1 },
   'gpt-5.4-nano': { inputPerM: 0.2, outputPerM: 1.25, cacheReadMult: 0.1, cacheWriteMult: 1 },
   'gpt-5.4-mini': { inputPerM: 0.75, outputPerM: 4.5, cacheReadMult: 0.1, cacheWriteMult: 1 },
 };
