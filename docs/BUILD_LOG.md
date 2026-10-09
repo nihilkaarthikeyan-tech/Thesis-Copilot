@@ -5986,3 +5986,13 @@ shows v0.1.34. Contents: ADR-0128 (writing reads more of the library), the R5 fi
 four QA checks' 38 fixes, A29 export numbering, reader highlights (0130), Add into (0129), chat
 rename/search, Hindi for Round 2, research chat without a thesis and across theses (0132),
 Search the literature on an edit (0133), examiner strengths and questions (0131, round 3).
+
+## Released v0.1.35 (2026-10-09): Springer Nature full text in production
+
+Tag on 0998d1f after a green CI. Backup `/root/backups/pre-v0.1.35/thesis-copilot.dump` and
+`infra/compose/.env.bak-pre-v0.1.35` taken first; `SPRINGER_NATURE_API_KEY` added to the VPS
+`.env` at the owner's word. All containers on the tag, health 200, anonymous admin 401; from the
+worker container a JATS request for a Nature Communications article returned 200 with its body
+(306k characters). The three production papers that were Springer Nature and abstract-only were
+re-read at the owner's word (an `index-source` job each, as "Fetch PDF" queues it): all three are
+FULL_TEXT now (44, 79 and 23 passages); the one-off script was removed from the server.
