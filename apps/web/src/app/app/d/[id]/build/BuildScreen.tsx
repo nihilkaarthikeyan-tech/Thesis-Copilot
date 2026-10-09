@@ -16,7 +16,7 @@
 
 import { LIT_REVIEW_MAX_THEMES } from '@tc/types';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import { RateThis, type RunRating } from '@/components/RateThis';
 import { Badge, Select } from '@/components/ui/primitives';
@@ -1418,6 +1418,18 @@ const FROM_LABEL: Record<Theme['from'], string> = {
  * ADR-0124: the review's themes, one section each, for the student to rename, reorder, remove or
  * add before the unit is taken. Nothing is charged on this screen.
  */
+/** The themes as `PUT …/plan` takes them: titled rows only, each keeping its planned id. */
+const themesBody = (list: ThemeRow[]) =>
+  JSON.stringify({
+    themes: list
+      .filter((r) => r.title.trim().length > 0)
+      .map((r) => ({
+        title: r.title.trim(),
+        note: r.note.trim(),
+        ...(r.id ? { id: r.id } : {}),
+      })),
+  });
+
 function ThemesEditor({
   documentId,
   view,
@@ -1439,6 +1451,44 @@ function ThemesEditor({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+
+  // QA 2026-10-09: edits were sent only by Write, so a student who renamed or reordered themes
+  // and left the page lost them. They are saved a moment after each change (free: no model).
+  const initialBody = useRef(themesBody(rows));
+  useEffect(() => {
+    const body = themesBody(rows);
+    if (body === initialBody.current) return;
+    setSaved('saving');
+    const timer = setTimeout(() => {
+      api<BuildView>(`/documents/${documentId}/literature-review/${view.id}/plan`, {
+        method: 'PUT',
+        body,
+      })
+        .then((next) => {
+          // The server numbers the themes by position on every save. The rows take those ids, or
+          // the next save would match a renamed theme to another's subheadings.
+          const ids = (next.plan?.themes ?? []).map((t) => t.id);
+          setRows((current) => {
+            if (themesBody(current) !== body) return current;
+            const seen = new Set<string>();
+            let k = 0;
+            const renumbered = current.map((r) => {
+              const title = r.title.trim().toLowerCase();
+              if (!title || seen.has(title)) return r;
+              seen.add(title);
+              const id = ids[k++];
+              return id ? { ...r, id } : r;
+            });
+            initialBody.current = themesBody(renumbered);
+            return renumbered;
+          });
+          setSaved('saved');
+        })
+        .catch(() => setSaved('failed'));
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [rows, documentId, view.id]);
 
   const update = (i: number, patch: Partial<ThemeRow>) =>
     setRows((current) => current.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -1460,15 +1510,7 @@ function ThemesEditor({
     try {
       await api(`/documents/${documentId}/literature-review/${view.id}/plan`, {
         method: 'PUT',
-        body: JSON.stringify({
-          themes: rows
-            .filter((r) => r.title.trim().length > 0)
-            .map((r) => ({
-              title: r.title.trim(),
-              note: r.note.trim(),
-              ...(r.id ? { id: r.id } : {}),
-            })),
-        }),
+        body: themesBody(rows),
       });
       await api(`/documents/${documentId}/literature-review/${view.id}/start`, {
         method: 'POST',
@@ -1495,6 +1537,15 @@ function ThemesEditor({
         before the gaps. They come from your outline and from your literature search: rename,
         reorder, remove or add (up to {LIT_REVIEW_MAX_THEMES}). A note says what the section should
         cover. Nothing is charged until you press Write.
+      </p>
+      <p className="mt-1 text-xs text-muted" aria-live="polite" data-testid="litreview-saved">
+        {saved === 'saving'
+          ? 'Saving your changes…'
+          : saved === 'saved'
+            ? 'Changes saved.'
+            : saved === 'failed'
+              ? 'Your last change was not saved. It will be saved when you press Write.'
+              : ''}
       </p>
       {rows.length === 0 ? (
         <p className="mt-3 text-xs text-muted" data-testid="litreview-no-themes">
