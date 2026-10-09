@@ -86,13 +86,44 @@ test('a viva question set is rated, with a line, and stays rated after a reload'
   await page.setViewportSize({ width: 390, height: 900 });
   expect(await fitsTheWindow(page)).toBe(true);
 
+  // QA 2026-10-08: the pressed thumb is more than a colour — it has a filled background.
+  const pressedBackground = (name: string) =>
+    again
+      .getByRole('button', { name, exact: true })
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const transparent = ['rgba(0, 0, 0, 0)', 'transparent'];
+  expect(transparent).not.toContain(await pressedBackground('Not useful'));
+  expect(transparent).toContain(await pressedBackground('Useful'));
+
+  // QA 2026-10-08: switching to Useful does not keep the complaint written for Not useful.
+  await again.getByRole('button', { name: 'Useful', exact: true }).click();
+  await expect(again.getByTestId('rate-status')).toHaveText(
+    'Saved. Your note was for the other rating, so it was cleared.',
+  );
+  await expect(again).not.toContainText('Two questions were about the same paragraph.');
+  await expect(again.getByTestId('rate-note')).toHaveValue('');
+
+  // Rated with no note, then reloaded: the note can still be added.
+  await page.reload();
+  const third = page.getByTestId('rate-this');
+  await expect(third.getByRole('button', { name: 'Useful', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(third).not.toContainText('Two questions were about the same paragraph.');
+  await third.getByTestId('rate-add-note').click();
+  await third.getByTestId('rate-note').fill('The method questions were the right ones.');
+  await third.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(third).toContainText('“The method questions were the right ones.”');
+
   // Pressed again, it is taken back.
-  await again.getByRole('button', { name: 'Not useful', exact: true }).click();
-  await expect(again.getByTestId('rate-status')).toHaveText('Taken back.');
-  await expect(again.getByRole('button', { name: 'Not useful', exact: true })).toHaveAttribute(
+  await third.getByRole('button', { name: 'Useful', exact: true }).click();
+  await expect(third.getByTestId('rate-status')).toHaveText('Taken back.');
+  await expect(third.getByRole('button', { name: 'Useful', exact: true })).toHaveAttribute(
     'aria-pressed',
     'false',
   );
+  await expect(third.getByTestId('rate-add-note')).toHaveCount(0);
 });
 
 test('a finished chapter build asks "How was this build?" and sends the rating for that build', async ({
