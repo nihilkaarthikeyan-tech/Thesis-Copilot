@@ -693,6 +693,18 @@ export const en = {
   'account.invoices': 'Invoices',
   'account.invoiceError': 'That invoice could not be produced.',
   'account.emailTitle': 'Email address',
+  'account.commentEmail.title': 'Email me about comments and replies',
+  'account.commentEmail.body':
+    'On by default. When someone else comments or replies on a thesis you can see the comments of, we email you the first few lines and a link to it. At most one email per comment thread an hour; anything more in that hour comes in the next one.',
+  'unsubscribe.title': 'Comment emails',
+  'unsubscribe.working': 'Turning comment emails off…',
+  'unsubscribe.off':
+    'Comment emails are off. You will not be emailed about comments and replies any more.',
+  'unsubscribe.on': 'Comment emails are on again.',
+  'unsubscribe.undo': 'Turn them back on',
+  'unsubscribe.again': 'Turn them off',
+  'unsubscribe.account': 'You can change this at any time under Account.',
+  'unsubscribe.invalid': 'That link is not valid. Sign in and turn these emails off under Account.',
   'account.signInWith': 'You sign in with {email}.',
   'account.emailWithPassword':
     'The code we email you and your password both belong to this address, so changing it changes how you sign in. Move it before you lose access to a university mailbox.',
@@ -886,6 +898,8 @@ export const en = {
   'limit.plansLink': 'See plans',
   'limit.cap.title': 'Monthly limit reached',
   'limit.cap.used': '{allowance}: {used} of {cap} used this month.',
+  'limit.cap.callCeiling':
+    '{allowance}: you asked for {ceiling} this month, the most one month allows. You kept {used} of your {cap}.',
   'limit.resetsOn': 'Resets on {date}.',
   'limit.resetsNextMonth': 'Resets on the 1st of next month.',
   'limit.notIncluded.title': 'Not in your plan',

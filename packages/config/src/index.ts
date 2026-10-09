@@ -46,6 +46,7 @@ export {
   ONE_TIME_PROFILES,
   OUTLINE_CALLS_PER_DOCUMENT,
   PRD_ACTION_PROFILES,
+  PROJECTION_LIMIT_INR,
   type TokenUsage,
 } from './cost.js';
 export {
@@ -59,7 +60,10 @@ export {
   AUTO_SOURCES,
   AUTO_SOURCES_FLAG,
   autoSourcesJobKey,
+  CALLS_PER_KEPT,
+  callCeiling,
   capFor,
+  countsKept,
   initialSourcesJobKey,
   LIT_REVIEW_BUILD_FLAG,
   monthlyAutoOutlines,

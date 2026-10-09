@@ -54,6 +54,13 @@ export type LlmRequest = {
   readonly documentId?: string;
   /** Lets the caller cancel an in-flight stream, e.g. when the student keeps typing (Appendix B.3). */
   readonly signal?: AbortSignal;
+  /**
+   * More thinking for this one call than its tier's default (ADR-0111 addendum, 2026-10-09).
+   * Honoured by the OpenAI adapter for a model that reasons, with the thinking headroom raised to
+   * match (`REASONING_HEADROOM_BY_EFFORT`); ignored by a model that does not reason, by the
+   * Anthropic adapter (no configured model routes there) and by the mock. Unset: the tier's own.
+   */
+  readonly reasoningEffort?: 'low' | 'medium' | 'high';
 };
 
 /**

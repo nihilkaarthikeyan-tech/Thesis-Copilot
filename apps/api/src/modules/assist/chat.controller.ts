@@ -159,6 +159,12 @@ const settingsBody = z.object({
    */
   emailWhenJobDone: z.boolean().optional(),
   /**
+   * ADR-0142: an email when someone else comments or replies on a thesis this person can see the
+   * comments of; at most one per thread an hour. On unless turned off; the worker reads it, and
+   * the unsubscribe link in each email turns it off.
+   */
+  emailOnComments: z.boolean().optional(),
+  /**
    * ADR-0061: the language of the screens (menus, buttons, labels). Not the thesis's language,
    * which is the document's own (§2.2) and decides what the AI writes; nothing server-side reads
    * this one. Absent means English.
@@ -470,6 +476,7 @@ export class ChatController {
       autoCite: settings.autoCite !== false,
       autoSources: settings.autoSources !== false,
       emailWhenJobDone: settings.emailWhenJobDone !== false,
+      emailOnComments: settings.emailOnComments !== false,
       ...settings,
       searchBeyondLibrary: beyondSettingOf(settings),
     };

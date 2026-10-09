@@ -9,7 +9,7 @@
  */
 
 import type { AiAction, MeteredAction, Tier } from './actions.js';
-import { PLAN_LIMITS, type Plan } from './plans.js';
+import { CALLS_PER_KEPT, callCeiling, PLAN_LIMITS, type Plan } from './plans.js';
 import { DEFAULT_PRICING, type Pricing, priceFor } from './pricing.js';
 
 export const MICRO_INR_PER_INR = 1_000_000;
@@ -24,6 +24,21 @@ export const MICRO_INR_PER_INR = 1_000_000;
  */
 export const MONTHLY_CEILING_INR = 100;
 export const MONTHLY_CEILING_MICRO_INR = MONTHLY_CEILING_INR * MICRO_INR_PER_INR;
+
+/**
+ * ADR-0143 (the owner, 2026-10-09: "my aim is ₹100 per month — even if it's higher, no issue, just
+ * tell me the amount"). The *projected* worst case — every allowance used in full, every unit at
+ * its priced ceiling — may now exceed ₹100; `pnpm ai:verify` prints the figure and says plainly
+ * that it is over. What it may not exceed is this bound, so a runaway configuration (a price rise,
+ * a wrong model id, a cap typed ten times too large) still fails `pnpm ai:verify` and CI.
+ *
+ * The ₹100 itself is unchanged where it is a fact rather than a projection: `UsageService.consume`
+ * refuses every metered call once a student's real logged spend this month reaches
+ * `MONTHLY_CEILING_INR`, so no student actually costs more than ₹100 plus the one call that
+ * crosses the line. A projection above ₹100 only means a student who used everything would be
+ * stopped before the end of their allowances.
+ */
+export const PROJECTION_LIMIT_INR = 175;
 
 export function inrToMicro(inr: number): number {
   return Math.round(inr * MICRO_INR_PER_INR);
@@ -174,14 +189,21 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
    * once (5.5k in, 600 out), half of them fixed once (2.5k in, 900 out), the fast-tier proofread
    * scaled from fourteen sections to twenty (16,000 × 20 / 14 strong-tier input tokens), and the
    * fast-tier key-term extraction folded in. The 4k cached block once per call (50 calls). At
-   * `gpt-5-mini` that is ₹12.92 a build, 20/14 of a chapter build's ₹9.04. Its cap is 0 on every
-   * plan, so it adds nothing to any monthly total until the owner sets one.
+   * `gpt-5-mini` that was ₹12.92 a build, 20/14 of a chapter build's ₹9.04.
+   *
+   * ADR-0143 repriced it from the first real review (2026-10-09, ten sections, ₹8.63): the
+   * reasoning model wrote more than the profile allowed — about 930 tokens a draft, 1,540 an
+   * examiner reading and 970 a fix — and every section of a ten-section review was fixed. Each
+   * part is now the larger of the old profile and the measurement: drafts 6k in / 930 out,
+   * examiner readings 5.5k in / 1,540 out, ten fixes 3,250 in / 970 out, and the fast-tier calls
+   * (key terms, proofread: ₹0.48 for ten sections) doubled to ₹0.96 and written as 44,138
+   * strong-tier input tokens. ₹17.39 a build. One a month on the paid plans, none on the trial.
    */
   LIT_REVIEW_BUILD: {
     tier: 'strong',
-    inputTokens: 20 * (6_000 + 5_500) + 10 * 2_500 + 22_857,
+    inputTokens: 20 * (6_000 + 5_500) + 10 * 3_250 + 44_138,
     cachedInputTokens: 50 * 4_000,
-    outputTokens: 20 * (800 + 600) + 10 * 900,
+    outputTokens: 20 * (930 + 1_540) + 10 * 970,
   },
 };
 
@@ -245,6 +267,9 @@ export type MonthlyBudget = {
   /** The ₹100/user/month ceiling from PRD §11. */
   readonly ceilingInr: number;
   readonly withinCeiling: boolean;
+  /** ADR-0143: the projection's own bound, which `pnpm ai:verify` and CI enforce. */
+  readonly projectionLimitInr: number;
+  readonly withinProjectionLimit: boolean;
 };
 
 export type BudgetOptions = {
@@ -275,6 +300,12 @@ export type BudgetOptions = {
    * §11.3 rows at its reference prices (ADR-0030); omitted, every metered action is charged.
    */
   readonly actions?: readonly MeteredAction[];
+  /**
+   * ADR-0144: price an allowance that counts only kept suggestions at its call ceiling (the calls
+   * the atomic statement actually lets through), not at the allowance. On by default; the PRD
+   * self-check turns it off, because §11.4 prints one call per unit.
+   */
+  readonly callCeilings?: boolean;
 };
 
 function profileCost(
@@ -320,7 +351,13 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
 
   const metered: BudgetLine[] = (
     [
-      ['Assist', 'ASSIST'],
+      // ADR-0144: priced at the call ceiling, CALLS_PER_KEPT calls for each suggestion kept.
+      [
+        options.callCeilings === false
+          ? 'Assist'
+          : `Assist (calls, ${CALLS_PER_KEPT.ASSIST ?? 1} per kept)`,
+        'ASSIST',
+      ],
       ['Draft', 'DRAFT'],
       ['Citation suggestions', 'CITE'],
       ['Chat', 'CHAT'],
@@ -335,7 +372,8 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
   )
     .filter(([, action]) => !options.actions || options.actions.includes(action))
     .map(([label, action]) => {
-      const count = caps[action];
+      const count =
+        options.callCeilings === false ? caps[action] : callCeiling(action, caps[action]);
       const unitMicroInr = unitFor(action);
       return {
         label,
@@ -385,6 +423,8 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
     totalInr: microToInr(totalMicroInr),
     ceilingInr: MONTHLY_CEILING_INR,
     withinCeiling: microToInr(totalMicroInr) <= MONTHLY_CEILING_INR,
+    projectionLimitInr: PROJECTION_LIMIT_INR,
+    withinProjectionLimit: microToInr(totalMicroInr) <= PROJECTION_LIMIT_INR,
   };
 }
 
@@ -420,6 +460,18 @@ export function formatBudget(budget: MonthlyBudget): string {
       ' by INR ' +
       Math.abs(budget.ceilingInr - budget.totalInr).toFixed(2) +
       '.',
+    ...(budget.withinCeiling
+      ? []
+      : [
+          'The projection is over INR ' +
+            budget.ceilingInr +
+            ' (accepted by the owner, ADR-0143); the runtime stop still refuses every AI call ' +
+            'once a student has really spent INR ' +
+            budget.ceilingInr +
+            ' this month. Projection limit: INR ' +
+            budget.projectionLimitInr +
+            '.',
+        ]),
   ];
   return [...head, ...rows, ...foot].join('\n');
 }

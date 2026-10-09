@@ -1,11 +1,12 @@
 /**
  * The literature review build through its real HTTP path — ADR-0124 (R37).
  *
- * The cap test every metered action has, with this one's two extra locks: the flag (off by
- * default, seeded off by migration 0050) and a cap of 0 on every plan. Planning is code only and
- * costs nothing (no unit, no provider call); starting is one `LIT_REVIEW_BUILD` unit taken before
- * the job is queued, refused at the cap with no unit and no job, and allowed by an admin's extra
- * allowance. The job is keyed on the build row and carries `kind: 'LIT_REVIEW'`.
+ * The cap test every metered action has, with this one's flag (inserted off by migration 0050,
+ * turned on by 0055, ADR-0143) and its allowance: one a month on a paid plan, none on the trial.
+ * Planning is code only and costs nothing (no unit, no provider call); starting is one
+ * `LIT_REVIEW_BUILD` unit taken before the job is queued, refused at the cap with no unit and no
+ * job, and allowed by an admin's extra allowance. The job is keyed on the build row and carries
+ * `kind: 'LIT_REVIEW'`.
  */
 
 import type { Prisma } from '@tc/db';
@@ -22,6 +23,8 @@ let introductionId: string;
 let literatureId: string;
 let redis: Redis;
 let queue: Queue;
+/** The flag as the migrations left it, read before any test changes it. */
+let flagAfterMigrations: boolean;
 
 const FLAG = 'literatureReviewBuild';
 
@@ -78,6 +81,8 @@ type View = {
 
 beforeAll(async () => {
   h = await startHarness('review@example.com');
+  flagAfterMigrations = (await h.prisma.featureFlag.findUniqueOrThrow({ where: { key: FLAG } }))
+    .enabled;
   const created = await h.api('/documents', {
     method: 'POST',
     body: JSON.stringify({ title: 'Wear of AA7050 composites', entryPath: 'A_TOPIC' }),
@@ -156,14 +161,17 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await setLedger(0, 0);
+  await h.prisma.user.update({ where: { id: h.userId }, data: { plan: 'FREE_TRIAL' } });
   await h.prisma.chapterBuild.deleteMany({ where: { documentId } });
   await setFlag(false);
 });
 
 describe('behind its flag', () => {
-  it('is seeded off, not offered, and refused for nothing while off', async () => {
-    const row = await h.prisma.featureFlag.findUniqueOrThrow({ where: { key: FLAG } });
-    expect(row.enabled).toBe(false);
+  it('is on after the migrations (ADR-0143)', () => {
+    expect(flagAfterMigrations).toBe(true);
+  });
+
+  it('turned off, is not offered, and is refused for nothing', async () => {
     const overview = (await (await h.api(`/documents/${documentId}/chapter-build`)).json()) as {
       literatureReview: { enabled: boolean; chapters?: unknown };
     };
@@ -188,7 +196,7 @@ describe('with the flag on', () => {
     };
     expect(overview.literatureReview.enabled).toBe(true);
     expect(overview.literatureReview.chapters.map((c) => c.id)).toEqual([literatureId]);
-    // Not on any plan yet: 0 until the owner sets an allowance.
+    // ADR-0143: none on the trial.
     expect(overview.literatureReview.remaining).toEqual({ used: 0, cap: 0 });
 
     expect((await planReview(introductionId)).status).toBe(400);
@@ -234,7 +242,7 @@ describe('with the flag on', () => {
     expect(after.plan.themes[1]?.children).toHaveLength(1);
   });
 
-  it('is refused at a cap of 0 before any job, and stays PLANNED; the chapter route cannot start it', async () => {
+  it('is refused on the trial (a cap of 0) before any job, and stays PLANNED; the chapter route cannot start it', async () => {
     await setFlag(true);
     const view = (await (await planReview(literatureId)).json()) as View;
 
@@ -258,11 +266,49 @@ describe('with the flag on', () => {
     });
     expect(wrongRoute.status).toBe(404);
 
-    // Nothing advertises an allowance the plan does not have.
+    // ADR-0143: a paid plan includes it, so the trial's usage list shows it as not included,
+    // as it shows coherence checks.
     const usage = (await (await h.api('/usage/me')).json()) as {
-      actions: Array<{ action: string }>;
+      actions: Array<{ action: string; cap: number }>;
     };
-    expect(usage.actions.some((a) => a.action === 'LIT_REVIEW_BUILD')).toBe(false);
+    expect(usage.actions.find((a) => a.action === 'LIT_REVIEW_BUILD')?.cap).toBe(0);
+  });
+
+  it('on a paid plan: one a month, the second refused before any job (ADR-0143)', async () => {
+    await setFlag(true);
+    await h.prisma.user.update({ where: { id: h.userId }, data: { plan: 'STUDENT_MONTHLY' } });
+    const first = (await (await planReview(literatureId)).json()) as View;
+    const overview = (await (await h.api(`/documents/${documentId}/chapter-build`)).json()) as {
+      literatureReview: { remaining: { used: number; cap: number } };
+    };
+    expect(overview.literatureReview.remaining).toEqual({ used: 0, cap: 1 });
+
+    const started = await h.api(`/documents/${documentId}/literature-review/${first.id}/start`, {
+      method: 'POST',
+      body: '{}',
+    });
+    expect(started.status).toBe(202);
+    expect(await ledger()).toEqual({ count: 1, bonus: 0 });
+    const job = await queue.getJob(`lit-review-build__${first.id}`);
+    expect(job?.data).toMatchObject({ buildId: first.id, kind: 'LIT_REVIEW' });
+    await job?.remove();
+
+    // The month's one is used: a second review is planned for nothing and refused at the start.
+    await h.prisma.chapterBuild.update({ where: { id: first.id }, data: { status: 'DONE' } });
+    const second = (await (await planReview(literatureId)).json()) as View;
+    const refused = await h.api(`/documents/${documentId}/literature-review/${second.id}/start`, {
+      method: 'POST',
+      body: '{}',
+    });
+    expect(refused.status).toBe(429);
+    const problem = (await refused.json()) as { detail: string; used: number; cap: number };
+    expect(problem.detail).toContain(
+      "You have used all 1 of this month's literature review builds",
+    );
+    expect((await ledger()).count).toBe(1);
+    const row = await h.prisma.chapterBuild.findUniqueOrThrow({ where: { id: second.id } });
+    expect(row.status).toBe('PLANNED');
+    expect(await queue.getJob(`lit-review-build__${second.id}`)).toBeUndefined();
   });
 
   it('with an admin’s extra unit: takes exactly one, queues the job keyed on the build, once', async () => {

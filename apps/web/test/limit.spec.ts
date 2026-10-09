@@ -122,6 +122,23 @@ describe('limitText', () => {
     });
   });
 
+  it('ADR-0144: the call ceiling says how many were asked for and how many kept', () => {
+    const limit = limitRefusal({
+      type: 'CAP_EXCEEDED',
+      action: 'ASSIST',
+      allowance: 'Assist suggestions',
+      used: 40,
+      cap: 180,
+      callCeiling: 540,
+      resetsAt: RESETS,
+    });
+    expect(limit).toMatchObject({ kind: 'cap', used: 40, cap: 180, callCeiling: 540 });
+    if (!limit) throw new Error('unreachable');
+    expect(limitText(limit, INDIA).body).toBe(
+      'Assist suggestions: you asked for 540 this month, the most one month allows. You kept 40 of your 180. Resets on 1 Nov 2026. Writing, editing and exporting still work.',
+    );
+  });
+
   it('an allowance the plan does not include points at the plans', () => {
     expect(limitText({ kind: 'notIncluded', allowance: 'Coherence checks' })).toEqual({
       title: 'Not in your plan',

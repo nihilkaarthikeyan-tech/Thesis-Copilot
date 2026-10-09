@@ -26,9 +26,11 @@ import {
 } from '@tc/ai';
 import { computeCallCost, type Env, type Plan } from '@tc/config';
 import { type ChapterSentence, sentencesOf } from '@tc/retrieval';
+import { commentEventJobId } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
+import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { ContextService } from '../assist/context.service.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
@@ -96,7 +98,25 @@ export class CommentsService {
     private readonly context: ContextService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
+    private readonly queue: QueueService,
   ) {}
+
+  /**
+   * ADR-0142: tells the worker a comment or reply was written; it emails the others who can see
+   * the comments, at most once an hour per thread. Never fails the write: a Redis fault is logged
+   * and the comment stands.
+   */
+  private async announce(documentId: string, commentId: string, eventId: string): Promise<void> {
+    try {
+      await this.queue.enqueue(
+        'comment-email',
+        { kind: 'event', documentId, commentId, eventId },
+        { jobId: commentEventJobId(eventId) },
+      );
+    } catch (error) {
+      this.logger.warn({ err: error, commentId, eventId }, 'comment email not queued');
+    }
+  }
 
   /**
    * Either the owner, or a guide the document was shared with — and never a Reader (ADR-0057).
@@ -151,6 +171,8 @@ export class CommentsService {
         anchorKey: input.anchorKey ?? null,
       },
     });
+
+    await this.announce(documentId, comment.id, comment.id);
 
     // A student's note on their own text is not feedback to triage: no classification, and so no
     // model call (2026-10-04). A guide's comment is classified as before (D.2.3).
@@ -555,13 +577,15 @@ export class CommentsService {
     if (!comment) throw new NotFoundError('That comment');
     const text = body.trim();
     if (!text) throw new ValidationError('Write a reply first.');
-    await this.prisma.commentReply.create({
+    const reply = await this.prisma.commentReply.create({
       data: {
         commentId,
         authorEmail: user.email.toLowerCase(),
         body: text.slice(0, REPLY_MAX_CHARS),
       },
+      select: { id: true },
     });
+    await this.announce(documentId, commentId, reply.id);
     return this.one(user, documentId, commentId);
   }
 

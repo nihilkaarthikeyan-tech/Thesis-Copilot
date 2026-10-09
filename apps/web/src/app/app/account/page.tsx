@@ -86,6 +86,8 @@ export default function AccountPage() {
   const [pwRepeat, setPwRepeat] = useState('');
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwNotice, setPwNotice] = useState<string | null>(null);
+  // ADR-0142. `null` until /settings has answered; on unless the student turned it off.
+  const [commentEmails, setCommentEmails] = useState<boolean | null>(null);
 
   const session = useSession();
   // The confirm response is the authority once the change lands: the session's copy is a snapshot
@@ -110,7 +112,22 @@ export default function AccountPage() {
     api<{ hasPassword: boolean }>('/account/password')
       .then((s) => setHasPassword(s.hasPassword))
       .catch(() => undefined);
+    api<{ emailOnComments?: boolean }>('/settings')
+      .then((s) => setCommentEmails(s.emailOnComments !== false))
+      .catch(() => undefined);
   }, []);
+
+  async function toggleCommentEmails() {
+    if (commentEmails === null) return;
+    const next = !commentEmails;
+    setCommentEmails(next);
+    try {
+      await api('/settings', { method: 'PUT', body: JSON.stringify({ emailOnComments: next }) });
+    } catch (e) {
+      setCommentEmails(!next);
+      setError(e instanceof ApiError ? e.problem.title : tNow('account.loadError'));
+    }
+  }
 
   function resetPasswordForm() {
     setPwStage('idle');
@@ -478,6 +495,31 @@ export default function AccountPage() {
           </ul>
         </section>
       ) : null}
+
+      <section className="mt-6 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="eyebrow">{t('account.commentEmail.title')}</h2>
+            <p className="mt-1 text-sm text-muted">{t('account.commentEmail.body')}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={commentEmails !== false}
+            aria-label={t('account.commentEmail.title')}
+            disabled={commentEmails === null}
+            onClick={() => void toggleCommentEmails()}
+            data-testid="comment-email-toggle"
+            className={`shrink-0 rounded-full px-3 py-1 text-xs ${
+              commentEmails !== false
+                ? 'bg-accent text-accent-ink'
+                : 'border border-line text-muted'
+            }`}
+          >
+            {commentEmails !== false ? t('common.on') : t('common.off')}
+          </button>
+        </div>
+      </section>
 
       <section
         className="mt-6 rounded-md border border-line bg-surface p-4"

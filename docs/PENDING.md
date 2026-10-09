@@ -9,6 +9,13 @@ The agent builds every phase it can (owner's instruction, 2026-09-04) and lists 
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
 
+## URGENT: OpenAI credit ran out (2026-10-09 evening)
+
+Every OpenAI call returns `credit_balance_exhausted`; production uses the same key, so every AI
+feature on the live site fails until the balance is topped up. Add credit at
+https://platform.openai.com/settings/organization/billing/ and turn on auto-recharge with a
+monthly limit above the site budget (₹2,000). Nothing to redeploy: calls work again at once.
+
 ## Scopus, Web of Science and UGC-CARE as indexing filters (ADR-0087, 2026-10-07)
 
 The start step's Indexing filter offers the journal lists OpenAlex records (core international
@@ -196,8 +203,8 @@ download, and in Word for Windows, Word for Mac and Word on the web:
 Everything from the Jenni study that needed no decision is built (docs/JENNI-BUILD-PLAN.md). These
 are left, each for a reason the agent should not settle alone:
 
-1. **Count only kept suggestions against the allowance** (Jenni does). Raises AI spend per
-   student; the cost model needs re-running against ₹100 first.
+1. ~~**Count only kept suggestions against the allowance**~~ **built 2026-10-09** (ADR-0144):
+   180 kept a month, at most 540 calls. Release with migration 0056.
 2. **New prompts** (each needs an ADR and an eval round like ADR-0010): chat that searches beyond
    the library and shows its steps (coverage rows 40–41), more selection actions
    (counter-argument, hedge/strengthen, tense, to table, translate), "what changed and why" on a
@@ -321,12 +328,15 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       reach the team** (R36, ADR-0115), as feedback already is.
 - [ ] **Hindi for the limit message** (R31, ADR-0122) — English only for now, like the panels it
       appears in.
-- [ ] **R37 literature-review build (ADR-0124): set its allowance and turn the flag on.** ₹12.92 a
-      build (worst case). At production prices (Assist on gpt-4.1-mini) one a month on a paid plan
-      makes ₹106.05 — over the ₹100 ceiling — unless something gives: chapter builds 3→2 plus one
-      review is ₹97.00; examiner reviews 6→2 plus one review is ₹98.60. One fits the trial. Then
-      Admin → Settings → "Whole literature review build", and run one real review to compare
-      `totals.spentInr` with ₹12.92. About 8,700 words, no tables.
+- [x] **R37 literature-review build: allowance set and flag on** (2026-10-09, ADR-0143, the
+      owner's delegation): one a month on the paid plans, none on the trial; migration 0055 turns
+      the flag on at release. One real ten-section review: ₹8.63, 4 min 41 s; repriced to ₹17.39 a
+      build at twenty sections.
+- [ ] **The worst case is over ₹100 (ADR-0143, ADR-0144), at the owner's word of 2026-10-09:**
+      ₹145.62 a fully active paid student at production prices (≤ ₹148.73 all-in), ₹39.90 a trial.
+      The runtime stop still refuses every AI call at ₹100 of real spend. Nothing to do unless the
+      owner wants it back under ₹100 — levers: Assist calls per kept 3 → 2 (−₹16.84), or chapter
+      builds 3 → 2 (−₹9.04). Release with migrations 0055 and 0056 (backup first).
 - [ ] **Release with migration 0045 (R30): backup first.** Once 0045 runs, a code-only rollback would
       show empty chats; the data stays in `ChatThread`.
 - [ ] **Optional: the examiner's score card** (ADR-0111). Built and evaluated in four rounds; not
@@ -388,6 +398,17 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
 - [ ] **Release.** No migration and no new variable. The `start` field on `POST /documents` is
       optional, so an older web build keeps working.
 
+## Comment emails (ADR-0142, 2026-10-09)
+
+- [ ] **Release it** when you choose: migration `0054_comment_emails` runs with the release, and
+      **both** the API and the worker must be redeployed (the API queues, the worker sends). No new
+      key: the worker already has the mail provider and `AUTH_SECRET`. Note that rotating
+      `AUTH_SECRET` also invalidates every unsubscribe link already sent.
+- [ ] **Run `apps/web/e2e/comment-email-switch.spec.ts`** on the dev stack with this branch (not run
+      in the build session, to keep the machine light).
+- [ ] **Tell supervisors and students**, if you want to: from this release, a comment or reply
+      emails the other side, at most once an hour per thread, with a switch under Account.
+
 ## Hindi interface, beta (ADR-0061, 2026-10-05)
 
 - [ ] **Hindi leaves beta after a native speaker reviews docs/i18n/hi-review.md.** It lists every
@@ -397,6 +418,9 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       buttons that read as actions. Corrections go into `apps/web/src/i18n/hi.ts`, then
       `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` rewrites the sheet. When it is done, drop
       "(बीटा)" from `LANGUAGES` in `apps/web/src/i18n/index.ts` (and the test that checks it).
+- [ ] **The Hindi comment email (ADR-0142)** is not in that sheet — it is in the worker,
+      `commentEmail()` in `apps/worker/src/comment-email.ts` (subject, body, footer). The same
+      reviewer should read it.
 - [ ] **Decide the next language** (Tamil was named in ADR-0059). Same route: a catalogue, a sheet,
       a reviewer.
 - [ ] **Nothing to configure for the release.** No migration (the choice is in `User.settings`).

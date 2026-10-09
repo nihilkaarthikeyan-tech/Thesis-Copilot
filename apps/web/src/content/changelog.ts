@@ -24,6 +24,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: 'v0.1.38',
+    date: '2026-10-09',
+    title: 'A whole literature review, and only kept suggestions count',
+    changes: [
+      'Paid plans can write the whole literature review chapter in one go, once a month: a section for each theme, delivered as drafts you accept one by one, with the quality report.',
+      'Assist suggestions count against your monthly allowance only when you keep them. Dismissing one, or typing past it, costs nothing.',
+      'A comment or reply on your thesis now sends an email to the others who can see it, at most one an hour for each thread; turn it off under Account or from the link in any email.',
+    ],
+  },
+  {
     version: 'v0.1.37',
     date: '2026-10-09',
     title: 'Sub-headings in your plan, and no paper stuck at "Looking it up"',

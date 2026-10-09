@@ -19,7 +19,14 @@ import { barTone } from '@/lib/usage';
 type Usage = {
   resetsAt: string;
   trial?: { ended: boolean; endsAt?: string | null } | null;
-  actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
+  actions: Array<{
+    action: string;
+    used: number;
+    cap: number;
+    remaining: number;
+    /** ADR-0144: only the suggestions kept count against this allowance. */
+    countsKept?: boolean;
+  }>;
 };
 
 const TONE_CLASS: Record<ReturnType<typeof barTone>, string> = {
@@ -123,6 +130,11 @@ export function UsageMenu(props: {
                           data-tone={tone}
                         />
                       </span>
+                      {line.countsKept ? (
+                        <span className="mt-0.5 block text-[11.5px] text-muted">
+                          Only the ones you keep count.
+                        </span>
+                      ) : null}
                     </li>
                   );
                 })}

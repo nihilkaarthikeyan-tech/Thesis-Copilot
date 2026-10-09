@@ -23,6 +23,13 @@ export const EXAMINER_SCORES = {
   /** 500 for the card, 200 more for the reading written before it (v3). */
   maxTokens: 700,
   temperature: 0,
+  /**
+   * Round 5 (ADR-0111 addendum, 2026-10-09): the strong tier's default `'low'` gave a card that
+   * echoed the issue list; this one call thinks harder. Ignored by a model that does not reason.
+   * Round 5 failed too (the builder stays unwired), and 'high' costs ≈₹0.94 a call against
+   * ≈₹0.36 at 'low'; kept as the last candidate evaluated, not as a recommendation.
+   */
+  reasoningEffort: 'high',
   /** Characters of the chapter sent; a longer chapter is cut, each section keeping its share. */
   chapterChars: 24_000,
   /** Issues listed, blocking first. */
@@ -129,6 +136,7 @@ export function buildExaminerScoresRequest(input: ExaminerScoresInput): Omit<Llm
     messages: [{ role: 'user', content: examinerScoresUserMessage(input) }],
     maxTokens: EXAMINER_SCORES.maxTokens,
     temperature: EXAMINER_SCORES.temperature,
+    reasoningEffort: EXAMINER_SCORES.reasoningEffort,
     // Inside the review's own unit: logged against EXAMINER_REVIEW, never a second unit.
     action: 'EXAMINER_REVIEW',
     userId: input.userId,

@@ -75,6 +75,32 @@ export class CapExceededError extends AppError {
 }
 
 /**
+ * ADR-0144: an allowance that counts only kept suggestions has reached its call ceiling — the
+ * student asked for `callCeiling` suggestions this month and kept fewer than the allowance. Kept as
+ * `CAP_EXCEEDED`, like the trial's refusal, so every screen that already shows a limit shows this
+ * one; `used` and `cap` are the suggestions kept and the allowance, `callCeiling` the calls.
+ */
+export class CallCeilingError extends AppError {
+  constructor(action: string, cap: number, ceiling: number, resetsAt: Date, used: number) {
+    const name = (ALLOWANCE_NAMES[action] ?? 'AI actions of this kind').toLowerCase();
+    super(
+      'CAP_EXCEEDED',
+      'Monthly limit reached',
+      HttpStatus.TOO_MANY_REQUESTS,
+      `You have asked for ${ceiling} ${name} this month, the most one month allows. You kept ${used} of your ${cap}.`,
+      {
+        action,
+        allowance: allowanceOf(action),
+        used,
+        cap,
+        callCeiling: ceiling,
+        resetsAt: resetsAt.toISOString(),
+      },
+    );
+  }
+}
+
+/**
  * The free trial has ended (ADR-0036).
  *
  * Kept as `CAP_EXCEEDED` on purpose: every screen that meets a refused AI action already shows

@@ -6137,6 +6137,16 @@ unchanged. Tests: `packages/ai/test/subsections.spec.ts` (39) and one in
 The real-model run on five new title-only plans was not made in this change (declined at the
 tool prompt); run it before release (about ₹0.5 a title):
 `pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx scripts/probe-outline-from-title.ts "<title>" …`
+
+Real-model check, run the same day (ADR-0138 → "Real-model check"): five new title-only plans
+(solar in Karnataka, diabetic retinopathy ML, Kenyan mobile banking, nano-silica concrete,
+inclusive education in Tamil Nadu), ₹3.18. Sub-sections only in the Literature Review and
+Methodology (5/5), at most three divided sections a chapter (5/5), Literature Review counts
+untouched (6, 6, 6, 5, 5), 9–13 sub-sections a plan. One nonsense split: "Policy and regulatory
+context for rooftop solar" → a bare "Policy". Fixed: setting nouns (context, environment,
+landscape, framework, setting) share the way kind-nouns do, giving "Policy context for rooftop
+solar"; "Sampling and statistical analysis" still gives Sampling / Statistical analysis. Two
+cases added to `subsections.spec.ts` (41 pass).
 ## Hindi for the calm editor (2026-10-09, ADR-0137)
 
 The 22 strings ADR-0137 added (status line, ⋯ menu, More menu, Cite) are in `hi.ts`, in the
@@ -6219,3 +6229,84 @@ screenshots in `docs/design/setup-in-editor/built/`. Found on the way: the card 
 folded status line still counts as present to `toHaveCount`, so the spec asserts visibility.
 Not done: the older start specs (`start-writing-now`, `first-session`, `_measure/*`) still drive the
 removed steps; time to first cited suggestion not re-measured (OpenAI credit out). ADR-0145 "Status".
+
+## Comments and replies send an email (2026-10-09, ADR-0142)
+
+The owner's decision, details delegated. A comment (`CommentsService.create`) or reply
+(`CommentsService.reply`) queues a `comment-email` event (`comment-event__<rowId>`); the worker
+(`apps/worker/src/comment-email.ts`) emails the owner, guides and co-authors who can see the
+comments — never the author, a Reader, a guide without an account, or a suspended / deleting
+account — at most once per thread per person an hour. Each person's send is one delayed job keyed
+on thread, person and throttle slot, so an hour's events fold into one email ("And 2 more replies
+since."); `CommentEmailState` (migration 0054) holds the slot and the cursor, and the claim is one
+conditional `updateMany`. Plain text, English or Hindi by the recipient's interface language, the
+first ~200 characters of the comment (never the quoted passage), one link to the comment (the
+review queue and the guide page now open at `?comment=`). Off switch under Account
+(`User.settings.emailOnComments`), and a signed one-click `/unsubscribe` page (`POST
+/email/unsubscribe`, no session, Undo).
+
+Tests: `apps/worker/test/comment-email.spec.ts` (15, real Postgres: recipients, never the author,
+the fold onto one delayed job, early send throttled and re-queued, a racing pair sends once, a mail
+fault puts the claim back, own reply not mailed back, opt-out without backlog, suspended / deleting
+/ turned-Reader skipped, Hindi), `apps/api/test/comment-emails.spec.ts` (5: events queued, Account
+switch, unsubscribe on/off, forged tokens refused), `packages/mail/test/unsubscribe.spec.ts` (5).
+Touched specs pass: comment-replies, web i18n and i18n-review (sheet regenerated).
+`apps/web/e2e/comment-email-switch.spec.ts` is written and **not yet run** (it needs the dev stack
+on this branch with migration 0054 applied).
+
+## The examiner score card at high reasoning effort, round 5: withheld again (2026-10-09, ADR-0111 addendum)
+
+Criterion written into ADR-0111 and committed before the run: the round-4 bar (full cards;
+stable on all four; presentation, soundness and contribution each fall on at least three of four)
+plus a price that keeps a fully active student under ₹100. The candidate changed one thing: the
+score call asks for `'high'` reasoning effort (new `LlmRequest.reasoningEffort`, sent by the
+OpenAI adapter to a reasoning model with headroom 8,000 for high / 4,000 for medium; two cases
+in `packages/ai/test/openai.spec.ts`, 27 pass with `examiner-scores.spec.ts`).
+
+Result 9/16: stable 3/4, presentation 1/4, soundness 4/4, contribution 1/4. **Failed; the card
+stays unwired and unshown.** Three of the four chapters the script picked were the same e2e
+"Writing profile" fixture under different thesis titles, stuck at the floor (S2 P3 C2 O2) on every
+variant; the one real chapter (urban heat stress gap analysis) scored P6 C5, then P8 C4, then in
+a pricing run straight after P3 C2 twice: a grade that moves three points on the same text.
+Measured price at `'high'`: ₹0.94 a score call (5,188 output tokens, mostly thinking) against
+≈₹0.36 at `'low'`; a review would be ≈₹2.80 and a fully active student ≈₹98.8. Spend ≈₹21 for
+the round (estimated; its spend line did not print) and ₹5.83 for the pricing run. The eval
+script now prints chapter ids and spend; a next candidate should pin real chapters by id.
+
+## The literature review on, and only kept suggestions count (2026-10-09, ADRs 0143–0144)
+
+The owner delegated both decisions (2026-10-09: "even if it's higher, no issue, just tell me the
+amount").
+
+**ADR-0143.** `LIT_REVIEW_BUILD` is 1 a month on the paid plans and 0 on the trial; migration 0055
+turns `literatureReviewBuild` on (the seed too). One real review against the dev stack (api-real,
+the real worker; `gpt-5-mini` strong, `gpt-4.1-mini` fast) on the rooftop-solar dev thesis (19
+papers, 360 passages, five outline themes): 10 sections, 40 calls, **₹8.63, 4 min 41 s**, 3,421
+words, 67 citations, 12 sentences fixed, 15 blocking and 35 warning issues left for the student.
+₹0.86 a section against the ₹0.65 profiled: the reasoning model's output (≈930 a draft, 1,540 an
+examiner reading, 970 a fix), no cache hits, and every section of a ten-section review fixed. The
+profile was repriced part by part to the larger of the old shape and the measurement: ₹12.92 →
+**₹17.39** a build. `PROJECTION_LIMIT_INR` (₹175) replaces ₹100 as what `pnpm ai:verify` and CI
+fail on; they print the over-₹100 figure. The runtime ₹100 stop is untouched. Note: the
+chapter-build worker does not re-check the ceiling between sections, so a review started just
+under ₹100 can end near ₹116.
+
+**ADR-0144.** `UsageLedger.kept` and `SuggestionEvent.countedAt` (migration 0056, which also
+backfills this month's accepted suggestions). `consume`'s one statement now refuses Assist at
+`count < (allowance + bonus) × 3 AND kept < allowance + bonus`; `keep` (one statement, from
+`/assist/outcome` on ACCEPTED/PARTIAL with kept characters) counts a suggestion once. `/usage/me`
+shows kept; the call ceiling has its own message (English and Hindi; `docs/i18n/hi-review.md`
+regenerated). Admin "reset caps" zeroes both. The budget prices Assist at 540 calls.
+
+Worst case, fully active paid student, production prices: ₹94.55 → ₹111.94 (review) → **₹145.62**
+(call ceiling); ≤ ₹148.73 all-in; trial ₹30.55 → ₹39.90. Real call spend for the run: ₹8.63 of the
+₹30 budget.
+
+Tests (touched only): `packages/config/test/cost-model.spec.ts` 33, `apps/api/test/lit-review-build.spec.ts` 7,
+`cap-concurrency.spec.ts` 19 (8 new), `week1.spec.ts` 11, `admin-users.spec.ts` 14,
+`apps/web/test/limit.spec.ts` 16, `i18n*.spec.ts` 13, `changelog.spec.ts` 6 — all pass. Not run:
+the full suite and Playwright.
+
+On the way: a Python edit on Windows rewrote LF files as CRLF (text mode); `open(..., newline='')`
+keeps them. Parallel agents share the session scratchpad, so a log named `lint.log` was another
+agent's — name scratch files per agent.

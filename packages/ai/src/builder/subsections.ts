@@ -71,6 +71,13 @@ const ADJECTIVE = /^[a-z][a-z-]*(al|ic|ive|ous|ary|ory|ible|able|ful|less|ar|ian
 const KIND_NOUN =
   /^(barriers|factors|determinants|constraints|drivers|influences|effects|outcomes|impacts|challenges|dimensions|aspects|considerations|issues|risks|benefits|properties|mechanisms|policies|perspectives|approaches|methods|models|theories|frameworks|dimensions|costs|incentives|enablers|motivations)$/i;
 
+/**
+ * Singular nouns a setting is named by, which one modifier word can share the same way: "Policy
+ * and regulatory context for rooftop solar" → Policy context… / Regulatory context… (the
+ * real-model check of 2026-10-09 gave a bare "Policy" heading before this).
+ */
+const FRAME_NOUN = /^(context|contexts|environment|landscape|framework|setting|settings)$/i;
+
 const words = (s: string) => s.split(/\s+/).filter(Boolean);
 const capitalise = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
@@ -106,7 +113,8 @@ export function splitSectionTitle(title: string): string[] | null {
     lastWords.length >= 2 &&
     singleWords &&
     (leading.every((p) => ADJECTIVE.test(p)) ||
-      (ADJECTIVE.test(lastWords[0] as string) && KIND_NOUN.test(lastWords[1] as string)));
+      (ADJECTIVE.test(lastWords[0] as string) &&
+        (KIND_NOUN.test(lastWords[1] as string) || FRAME_NOUN.test(lastWords[1] as string))));
   const titles = distribute ? [...leading.map((p) => `${p} ${head}`), last] : parts;
 
   const out = titles.map((t) => capitalise(t));

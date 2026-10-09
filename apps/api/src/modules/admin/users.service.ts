@@ -379,7 +379,11 @@ export class UsersService {
       .filter((r) => r.count > 0)
       .map((r) => ({ action: r.action, was: r.count }));
     await this.prisma.$transaction([
-      this.prisma.usageLedger.updateMany({ where: { userId, period }, data: { count: 0 } }),
+      // ADR-0144: the suggestions kept are reset with the calls.
+      this.prisma.usageLedger.updateMany({
+        where: { userId, period },
+        data: { count: 0, kept: 0 },
+      }),
       this.prisma.auditEvent.create({
         data: { kind: 'CAPS_RESET', userId, actorId, detail: { period, reset } },
       }),

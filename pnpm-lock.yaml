@@ -418,6 +418,9 @@ importers:
       '@swc/core':
         specifier: 1.16.1
         version: 1.16.1
+      '@testcontainers/postgresql':
+        specifier: 12.1.0
+        version: 12.1.0
       '@testcontainers/redis':
         specifier: 12.1.0
         version: 12.1.0

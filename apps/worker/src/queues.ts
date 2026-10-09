@@ -32,6 +32,7 @@ export const QUEUE_FIND_SOURCES = 'find-sources' satisfies QueueName;
 export const QUEUE_CHAPTER_BUILD = 'chapter-build' satisfies QueueName;
 export const QUEUE_EXAMINER_REVIEW = 'examiner-review' satisfies QueueName;
 export const QUEUE_LIT_REVIEW_BUILD = 'lit-review-build' satisfies QueueName;
+export const QUEUE_COMMENT_EMAIL = 'comment-email' satisfies QueueName;
 
 /**
  * Three attempts with exponential backoff from 1s. Jobs are kept after completion and failure so
