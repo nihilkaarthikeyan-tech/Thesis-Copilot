@@ -17,7 +17,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { tNow } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
+import {
+  addedHeading,
+  addedLabel,
+  commandRunBody,
+  type EditLiterature,
+  literatureApplies,
+} from '@/lib/edit-literature';
 import { type LimitNoticeMessage, limitNotice, limitRefusal } from '@/lib/limit';
+import { readerHref } from '@/lib/reader';
 import { listNodeFromMarkdown } from './list-from-markdown';
 import { tableNodeFromMarkdown } from './table-from-markdown';
 
@@ -58,6 +66,8 @@ type RunResult = {
   repeatedCitations?: string[];
   /** ADR-0095: "What changed and why", asked for once with this. */
   runId?: string;
+  /** ADR-0133: the papers "Search the literature" added to the library, or why it added none. */
+  literature?: EditLiterature;
 };
 
 /**
@@ -223,6 +233,13 @@ export function CommandToolbar({
   const [instruction, setInstruction] = useState('');
   /** ADR-0095: "Use my library" — the student's own instruction is sent passages when on. */
   const [useLibrary, setUseLibrary] = useState(true);
+  /**
+   * ADR-0133: "Search the literature" — the indexes are searched and the few papers on topic are
+   * added to the library before the edit cites them. Off by default: it adds papers.
+   */
+  const [searchLiterature, setSearchLiterature] = useState(false);
+  /** ADR-0133: the papers added by this panel's runs, kept across a follow-up. */
+  const [literature, setLiterature] = useState<EditLiterature | null>(null);
   /** ADR-0095: "What changed and why"; null while it is being worked out. */
   const [reasons, setReasons] = useState<string[] | null>(null);
   const [followUp, setFollowUp] = useState('');
@@ -283,17 +300,23 @@ export function CommandToolbar({
         );
         const answer = await api<RunResult>('/commands/run', {
           method: 'POST',
-          body: JSON.stringify({
-            chapterId,
-            command,
-            selection: refining && result ? result.text : selection.text,
-            contextBefore: before,
-            contextAfter: after,
-            ...(options.instruction ? { instruction: options.instruction, useLibrary } : {}),
-            ...(refining ? { original: base } : {}),
-          }),
+          body: JSON.stringify(
+            commandRunBody({
+              chapterId,
+              command,
+              selection: refining && result ? result.text : selection.text,
+              contextBefore: before,
+              contextAfter: after,
+              ...(options.instruction ? { instruction: options.instruction } : {}),
+              useLibrary,
+              searchLiterature,
+              ...(refining ? { original: base } : {}),
+            }),
+          ),
         });
         setOriginal(base);
+        // A follow-up does not search again; the papers the first run added stay listed.
+        if (answer.literature || !refining) setLiterature(answer.literature ?? null);
         setAddedCitations((previous) => {
           const merged = refining ? [...previous] : [];
           for (const c of answer.citations ?? []) {
@@ -332,7 +355,17 @@ export function CommandToolbar({
         setBusy(null);
       }
     },
-    [editor, selection, chapterId, onUsageChange, onNotice, result, original, useLibrary],
+    [
+      editor,
+      selection,
+      chapterId,
+      onUsageChange,
+      onNotice,
+      result,
+      original,
+      useLibrary,
+      searchLiterature,
+    ],
   );
 
   /** Clears the panel after Replace, Insert below or Discard. */
@@ -341,6 +374,7 @@ export function CommandToolbar({
     setReasons(null);
     setOriginal(null);
     setAddedCitations([]);
+    setLiterature(null);
     setFollowUp('');
   }
 
@@ -560,6 +594,36 @@ export function CommandToolbar({
               A citation now appears twice in this version. Check that each one belongs where it is.
             </p>
           ) : null}
+          {literature && (literature.added.length > 0 || literature.note) ? (
+            <div className="mt-2 text-xs" data-testid="command-literature">
+              {literature.added.length > 0 ? (
+                <>
+                  <p className="font-semibold text-ink">{addedHeading(literature)}</p>
+                  <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                    {literature.added.map((paper) => (
+                      <li key={paper.sourceId} className="min-w-0 max-w-full">
+                        <a
+                          href={readerHref(documentId, paper.sourceId)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={paper.title}
+                          data-testid="command-literature-paper"
+                          className="block truncate text-accent underline"
+                        >
+                          {addedLabel(paper)}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {literature.note ? (
+                <p className="mt-1 text-muted" data-testid="command-literature-note">
+                  {literature.note}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {result.unchanged ? null : (
             <div className="mt-2" data-testid="command-reasons">
               <p className="text-xs font-semibold text-ink">What changed and why</p>
@@ -675,19 +739,6 @@ export function CommandToolbar({
               data-testid="ai-edit-input"
               className="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
             />
-            <label
-              className="flex shrink-0 items-center gap-1 text-xs text-muted"
-              title="Your own instruction may use passages from your library, cited"
-            >
-              <input
-                type="checkbox"
-                checked={useLibrary}
-                onChange={(e) => setUseLibrary(e.target.checked)}
-                data-testid="ai-edit-library"
-                className="accent-accent"
-              />
-              Use my library
-            </label>
             <button
               type="submit"
               disabled={busy !== null || !instruction.trim()}
@@ -697,6 +748,40 @@ export function CommandToolbar({
               {busy === 'custom' ? t('command.working') : 'Edit'}
             </button>
           </form>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+            <label
+              className="flex items-center gap-1"
+              title="Your own instruction may use passages from your library, cited"
+            >
+              <input
+                type="checkbox"
+                checked={useLibrary || searchLiterature}
+                disabled={searchLiterature}
+                onChange={(e) => setUseLibrary(e.target.checked)}
+                data-testid="ai-edit-library"
+                className="accent-accent"
+              />
+              Use my library
+            </label>
+            <label
+              className="flex items-center gap-1"
+              title="Searches the scholarly indexes and adds the few papers on this passage to your library before the edit cites them. Your own instruction, Expand, Check consistency and Counter-argument."
+            >
+              <input
+                type="checkbox"
+                checked={searchLiterature}
+                onChange={(e) => setSearchLiterature(e.target.checked)}
+                data-testid="ai-edit-literature"
+                className="accent-accent"
+              />
+              Search the literature
+            </label>
+          </div>
+          {busy && searchLiterature && literatureApplies(busy) ? (
+            <p className="mt-1 text-xs text-muted" role="status" data-testid="ai-edit-searching">
+              Searching the literature and adding what fits to your library…
+            </p>
+          ) : null}
           <div className="mt-2 max-h-56 overflow-y-auto" data-testid="ai-edit-presets">
             {PRESET_GROUPS.map((group) => {
               const typed = instruction.trim().toLowerCase();
