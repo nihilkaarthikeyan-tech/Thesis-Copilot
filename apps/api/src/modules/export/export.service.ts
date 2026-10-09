@@ -18,6 +18,7 @@ import {
   usageToCsv,
   usageToDocx,
   type WordCounts,
+  withoutPendingDrafts,
 } from '@tc/export';
 import {
   type CitationMode,
@@ -137,7 +138,8 @@ export class ExportService {
       // Without this every figure the student inserted exports as the placeholder '[image]'.
       images: await loadFigures(this.storage, chapter.content, chapter.documentId, this.logger),
       // Cross-reference numbers, from the same walk the editor uses.
-      refTargets: numberingMap(chapter.content),
+      // A29: numbered without pending drafts, which the file leaves out, as the captions are.
+      refTargets: numberingMap(withoutPendingDrafts(chapter.content)),
       numberHeadings: true,
       chapterNumber: chapter.order,
       noteStyle: rendered.noteStyle,

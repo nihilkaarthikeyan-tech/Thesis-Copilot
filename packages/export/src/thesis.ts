@@ -429,7 +429,7 @@ function chapterBlocks(
   );
 
   const blocks = (chapter.content as Node | undefined)?.content ?? [];
-  for (const block of blocks) {
+  const emit = (block: Node): void => {
     switch (block.type) {
       case 'heading': {
         const level = Number(block.attrs?.level ?? 2);
@@ -498,6 +498,13 @@ function chapterBlocks(
         const ordered = block.type === 'orderedList';
         for (const item of block.content ?? []) {
           for (const child of item.content ?? []) {
+            // A29 (2026-10-09): a figure, table or equation in a list item was printed as the
+            // runs of its (absent) text, so the figure vanished from the thesis and every later
+            // figure took its number. It goes through the block path, numbered and captioned.
+            if (child.type !== 'paragraph' && child.type !== 'heading') {
+              emit(child);
+              continue;
+            }
             out.push(
               new Paragraph({
                 spacing: spacingFor(spec),
@@ -585,7 +592,8 @@ function chapterBlocks(
           );
         }
     }
-  }
+  };
+  for (const block of blocks) emit(block);
   return out;
 }
 

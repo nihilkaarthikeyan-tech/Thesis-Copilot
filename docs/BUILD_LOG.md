@@ -5802,3 +5802,23 @@ planner walked the global HNSW index (~40 nearest chunks of every thesis) and fi
 document afterwards. Every vector query now ranks one thesis's chunks exactly (window function or
 `OFFSET 0` fence); 0.1 s for 3,850 chunks. Production (624 chunks) was not yet affected.
 Production theses have 3–6 indexed papers each: all were created before v0.1.31's 15-paper start.
+
+## A29: figure and table numbers agree in every export (2026-10-09)
+
+Fix list A29 asked to confirm that a cross-reference and its caption carry the same number in
+every export. `packages/export/test/numbering-agrees.spec.ts` puts the awkward cases in one
+chapter (a table inside an unaccepted draft, a figure in a table cell, a figure in a list,
+references before and after their targets) and checks the chapter `.docx`, the whole-thesis
+`.docx` (and so its PDF), the web page and the LaTeX project. It found three faults:
+
+- **The whole-thesis export dropped a figure inside a list item** (it printed the item's text
+  runs, and a figure has none), so every later figure was captioned one lower than its
+  references said. List items now send any non-paragraph child through the block path.
+- **The chapter `.docx` printed figure captions without a number and tables with no caption**,
+  while the references in its text said "Figure 3.2". Captions are now numbered by the editor's
+  rule ("Figure 3.2: Survey sites", "Table 3.1: …" above the table).
+- **The chapter export numbered references counting pending drafts**, which the file leaves out
+  ("Table 3.3" in a file with two tables; the gap analysis of ADR-0123 is a table in a draft).
+  `refTargets` is now `numberingMap(withoutPendingDrafts(...))`.
+
+The web page and LaTeX (which numbers by `\label`/`\ref`) were already right.

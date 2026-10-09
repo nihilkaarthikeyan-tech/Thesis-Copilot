@@ -131,6 +131,38 @@ const PAGE_MM = { A4: [210, 297], Letter: [215.9, 279.4] } as const;
  */
 const contentsFor = new WeakMap<object, Array<{ title: string; level: number }>>();
 
+/**
+ * A29 (2026-10-09): each numbered figure and table of the chapter, by node, counted exactly as
+ * `numberTargets` counts them (document order, not inside a table, never inside a pending draft),
+ * so a caption carries the number the editor and every cross-reference print.
+ */
+const numbersFor = new WeakMap<object, WeakMap<object, number>>();
+
+function numberCaptions(root: PmNode, options: ExportOptions): void {
+  const numbers = new WeakMap<object, number>();
+  const counts = { image: 0, table: 0 };
+  const walk = (node: PmNode): void => {
+    if (node.type === 'draftBlock') return;
+    if (node.type === 'image' || node.type === 'table') {
+      counts[node.type] += 1;
+      numbers.set(node, counts[node.type]);
+      return;
+    }
+    for (const child of node.content ?? []) walk(child);
+  };
+  walk(root);
+  numbersFor.set(options, numbers);
+}
+
+/** "Figure 3.2: Survey sites", "Table 3.1", or the bare caption for an unnumbered figure. */
+function numberedCaption(node: PmNode, options: ExportOptions, label: string): string {
+  const n = numbersFor.get(options)?.get(node);
+  const caption = captionOf(node);
+  if (n === undefined) return caption;
+  const number = `${label} ${options.chapterNumber ?? 1}.${n}`;
+  return caption ? `${number}: ${caption}` : number;
+}
+
 /** Running heading counters for one export (H2 within the chapter, H3 within the H2). */
 type HeadingCounter = { h2: number; h3: number };
 
@@ -350,9 +382,21 @@ function paragraphsFrom(
       break;
     }
 
-    case 'table':
+    case 'table': {
+      // A29: a table's caption goes above it, numbered, as in the thesis export's default.
+      const caption = numberedCaption(node, options, 'Table');
+      if (caption) {
+        out.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            keepNext: true,
+            children: [new TextRun({ text: caption, italics: true, size: 20 })],
+          }),
+        );
+      }
       out.push(tableFrom(node, options));
       break;
+    }
 
     case 'mathBlock':
       out.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [mathRun(node, true)] }));
@@ -390,8 +434,8 @@ function paragraphsFrom(
         // A missing image must not corrupt the file; the student sees where it was.
         out.push(new Paragraph({ children: [new TextRun({ text: '[image]', italics: true })] }));
       }
-      // The caption the student wrote, never the uploaded file's name.
-      const caption = captionOf(node);
+      // The caption the student wrote, never the uploaded file's name, after its number.
+      const caption = numberedCaption(node, options, 'Figure');
       if (caption) {
         out.push(
           new Paragraph({
@@ -491,6 +535,7 @@ export async function chapterToDocx(doc: unknown, options: ExportOptions): Promi
   );
   const title = (ownTitle ? textOf(ownTitle).trim() : '') || options.title;
   contentsFor.set(options, contentsEntries(root, options, title));
+  numberCaptions(root, options);
   if (options.comments?.list.length) {
     planComments(options, options.comments.list, [
       { id: options.comments.chapterId, content: root },
