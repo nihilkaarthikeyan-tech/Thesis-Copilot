@@ -52,6 +52,14 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > for a fully active student at the production configuration is ₹89.85 + 15 × ₹0.039 + ₹2.72 =
 > **₹93.16**, within the ₹100 ceiling.
 >
+> **2026-10-09 — "Search the literature" on an AI edit (ADR-0133).** No new allowance and no new
+> model call: still one COMMAND unit, the edit still sent at most 6 passages. New is embedding
+> only — the relevance call over at most 24 found abstracts (≤ ₹0.039, chat research's bound) and
+> the reading of the at most 5 papers it adds to the library (abstracts, and full text when open
+> access: the auto-sources bound, under ₹0.50). At most ~₹0.54 an edit with the switch on, 4
+> edits a month on a paid plan: **≤ ₹2.16 a month**, ₹93.16 → **≤ ₹95.32**, within the ₹100
+> ceiling (and inside `voyage-4`'s free 200M tokens in practice). Not in the profile table.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.

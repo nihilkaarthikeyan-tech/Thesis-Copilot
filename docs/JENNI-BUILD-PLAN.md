@@ -279,7 +279,7 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R5 | Partly done 2026-10-07 — the opening sentence fixed (a lost plan mark, focus), Skip says why; title from the topic comes with R4. H3: two prompt candidates evaluated, both lost 0–2 (3 ties), A.9 unchanged; the layout writes sub-sections as H3 when an outline has them. **Open**: first sentence ≤ 20 s (outline call 21–24 s) | ADR-0092 + addendum |
 | R6 | Done 2026-10-07 — Source settings line + Change on the editor's Sources tab (same fields as the start), `PUT /documents/:id/source-prefs`; "select sources" is the pins below it | ADR-0093 |
 | R7 | Done 2026-10-07 — "+" and grip beside each block; menu Turn into, Cite, Highlight, Ask in chat, Edit, Review ▸ (examiner, find a source), Move, Duplicate, Delete; drag to move. Other checks on one block are R26 | ADR-0094 |
-| R8 | Done 2026-10-07 — one panel (Ctrl+J): box that filters or is your instruction, Use my library, three preset groups (+10 actions; no general paraphrase, §12.3), lists as lists, What changed and why (new fast prompt, inside the unit), follow-up against the original; citations doubled/moved/after-the-stop handled in code; detector requests refused in code. Web switch not built (ADR) | ADR-0095 |
+| R8 | Done 2026-10-07 — one panel (Ctrl+J): box that filters or is your instruction, Use my library, three preset groups (+10 actions; no general paraphrase, §12.3), lists as lists, What changed and why (new fast prompt, inside the unit), follow-up against the original; citations doubled/moved/after-the-stop handled in code; detector requests refused in code. Web switch built 2026-10-09 as "Search the literature": found papers join the library before the edit cites them | ADR-0095, ADR-0133 |
 | R9 | Done 2026-10-07 — Copy with citation carries a real citation (HTML); a paste keeps its label and a key of its own; menu: cited → "Put it in my words, cited" / Keep; uncited → Edit with AI / Find a source / Cite it / Keep. No uncited paraphrase (§12.3), no Proofread on the menu | ADR-0096 |
 | R10 | Done 2026-10-07 — the rail's headings are the Sections panel: each opens to its note (edit/add in place; a typed heading becomes a section), Draft, Sources; `PUT /outline/section-note` with a row lock | ADR-0097 |
 | R11 | Done 2026-10-07 — dots on the Sources, Citations, Chat and Check tabs; one line, Try now / Dismiss; gone once used, tried or dismissed; none while the first-session guide shows | ADR-0098 |
@@ -331,7 +331,7 @@ missing. Nothing is "Not done".
 | R5 | Faster, fuller start | **Partly** | 0092 + addendum | The opening sentence, the title from the topic (with R4) and H3 layout are done. **Open:** first cited sentence ≤ 20 s (the outline call alone is 21–24 s); an outline prompt that writes sub-sections lost its evaluation 0–2 (two candidates), so A.9 is unchanged |
 | R6 | Source settings in the editor | Done | 0093 | — |
 | R7 | Block handle | Done | 0094 | — |
-| R8 | AI Edit as one panel | **Partly** | 0095 | Panel, Ctrl+J, 22 presets, What changed and why, follow-up, citation checks: done. **Not built, by decision:** the web switch on an edit ("revisit on evidence"); Paraphrase with tones is refused under §12.3 |
+| R8 | AI Edit as one panel | Done | 0095, 0133 | Panel, Ctrl+J, 22 presets, What changed and why, follow-up, citation checks: done. Web switch done 2026-10-09 (ADR-0133): the papers found are added to the library first, so the edit cites only library papers. Paraphrase with tones is refused under §12.3 (right) |
 | R9 | Paste with a choice | Done | 0096 | — |
 | R10 | Sections panel | Done | 0097 | — |
 | R11 | Feature hints | Done | 0098 | — |
@@ -389,8 +389,9 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
    into the collection chosen in "Add into".
 4. Row 55: strengths and questions for the author on the examiner review — a change to
    `examiner.md`, so an ADR and an eval round (rule 6).
-5. R8: the web switch on an edit (passages from the indexes behind a rewrite, on the chat's search
-   path) — ADR-0095 left it for evidence of need; buildable without a new prompt.
+5. ~~R8: the web switch on an edit~~ **done 2026-10-09** (ADR-0133): "Search the literature"
+   beside "Use my library" adds the few papers on topic to the library (into "Add into") before
+   the edit cites them; same prompt, same COMMAND unit.
 6. ~~Row 34: highlights and notes saved on a paper in the reader~~ **done 2026-10-09**
    (ADR-0130, migration 0051): four colours and a note, kept per paper and per student, drawn
    again on reopening, listed beside the paper; to chat or chapter only by the student's press.

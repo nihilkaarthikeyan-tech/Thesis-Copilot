@@ -5856,3 +5856,20 @@ the planned headings (28.8 s and 39.9 s measured). Now 15.6 / 18.1 / 20.3 s on t
 A chapter holding only that sentence when the plan lands gets its headings around it. The
 `first-session` measurement spec was brought up to date with the start screens (ADR-0087/0091)
 and logs every suggestion request on the same clock.
+
+## R8 (b): "Search the literature" on an AI edit (2026-10-09, ADR-0133)
+
+The owner's safe form of the web switch ADR-0095 left out. In the edit panel, beside "Use my
+library", a switch that, for your own instruction and Expand / Check consistency /
+Counter-argument, searches the indexes on chat's research path (no model), embeds the abstracts
+once against the thesis and the question, adds the few at cosine >= 0.60 (at most five) to the
+library as `find-sources` does (marked found, filed into "Add into"), waits up to 25 s for their
+abstracts to be read, and sends their passages first with the library's (six in all, re-keyed).
+The edit prompt is unchanged; `postProcessCommand` still strips any citation not sent, so every
+citation is to a library paper. The result lists "Added to your library" with each paper opening
+in the reader; an empty, failed or slow search says in one line that the edit used the library
+alone. One COMMAND unit, taken first; the relevance embedding is an EMBED row. Cost: at most
+~₹0.54 an edit in embeddings, ≤ ₹2.16 a month (COSTING.md). Tests:
+`apps/api/test/edit-literature.spec.ts` (9), `apps/api/test/edit-literature-api.spec.ts` (10),
+`apps/web/test/edit-literature.spec.ts` (7) pass; `apps/web/e2e/edit-literature.spec.ts` (2)
+lists but was not run here (the dev stack serves main's code).
