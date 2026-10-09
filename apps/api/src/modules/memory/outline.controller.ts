@@ -28,6 +28,11 @@ const regenerateBody = z.object({
 
 const generateBody = z.object({ template: z.enum(TEMPLATES).optional() });
 const outlineBody = z.object({ outline: z.array(z.unknown()) });
+const restartBody = z.object({
+  structure: z.enum(['standard', 'none']),
+  /** The chapter on screen, which stays (as the first chapter) so its address keeps working. */
+  chapterId: z.string().uuid().optional(),
+});
 const sectionNoteBody = z.object({
   chapterId: z.string().uuid(),
   title: z.string().trim().min(1).max(300),
@@ -121,6 +126,22 @@ export class OutlineController {
   @HttpCode(202)
   planFromTitle(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
     return this.outline.planFromTitle(user, documentId);
+  }
+
+  /**
+   * ADR-0145: the setup card's "Standard chapters" or "No headings" in place of a plan, while no
+   * chapter has writing in it. Free; no model.
+   */
+  @Post('outline/restart')
+  @HttpCode(200)
+  restart(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = restartBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Choose a structure', parsed.error.issues);
+    return this.outline.restart(user.id, documentId, parsed.data.structure, parsed.data.chapterId);
   }
 
   /** R10 (ADR-0097): one section's note, from the editor's Sections panel. */

@@ -41,7 +41,7 @@ import {
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
-import { emptyChapterDoc } from '../chapters/word-counts.js';
+import { emptyChapterDoc, hasWriting } from '../chapters/word-counts.js';
 import { namesATopic } from '../documents/topic.js';
 import { refusal, resetsAtFor, UsageService } from '../usage/usage.service.js';
 
@@ -272,6 +272,81 @@ export class OutlineService {
       { jobId: `generate-outline-${documentId}-title-${now.getTime()}` },
     );
     return { queued: true, template: chosen };
+  }
+
+  /**
+   * ADR-0145: the setup card's "Standard chapters" and "No headings", after a plan has been made
+   * (ADR-0087 offered them only at creation). The plan is replaced by the empirical thesis's six
+   * chapters, or by one chapter with no plan — and only while no chapter has a word of writing in
+   * it, because the chapters it removes are the planned ones. The chapter the student has open
+   * (else the first) keeps its row, and so its address, as the new first chapter; the others are
+   * removed and made again. No model; free.
+   */
+  async restart(
+    ownerId: string,
+    documentId: string,
+    structure: 'standard' | 'none',
+    keepChapterId?: string,
+  ): Promise<OutlineView> {
+    const document = await this.owned(ownerId, documentId);
+    const meta = (document.meta as { outlineRun?: OutlineRun } | null) ?? {};
+    if (runIsLive(meta.outlineRun, new Date())) {
+      throw new ConflictError(
+        'Your chapters are still being planned. Choose again when the plan has arrived.',
+      );
+    }
+    const chapters = await this.prisma.chapter.findMany({
+      where: { documentId },
+      orderBy: { order: 'asc' },
+      select: { id: true, content: true },
+    });
+    if (chapters.some((c) => hasWriting(c.content))) {
+      throw new ConflictError(
+        'Your chapters have writing in them now, so they are kept. Change them on the Outline page.',
+      );
+    }
+    const nodes: OutlineNode[] =
+      structure === 'standard'
+        ? TEMPLATE_SPECS.STEM_EMPIRICAL.chapters.map((c, i) => ({
+            id: `ch-${i + 1}`,
+            title: c.title,
+            scopeNote: c.intent,
+            children: [],
+          }))
+        : [];
+    const rows =
+      nodes.length > 0
+        ? nodes.map((n) => ({ outlineNodeId: n.id, title: n.title, scopeNote: n.scopeNote }))
+        : [{ outlineNodeId: 'ch-1', title: 'Chapter 1', scopeNote: '' }];
+    // The chapter the student has open keeps its row; without one, the first in order.
+    const first = chapters.find((c) => c.id === keepChapterId) ?? chapters[0];
+    const rest = chapters.filter((c) => c.id !== first?.id);
+    const [firstRow, ...restRows] = rows;
+    if (!first || !firstRow) throw new NotFoundError('That chapter');
+    await this.prisma.$transaction([
+      this.prisma.documentMemory.update({
+        where: { documentId },
+        data: { outline: nodes as never },
+      }),
+      this.prisma.chapter.deleteMany({ where: { id: { in: rest.map((c) => c.id) } } }),
+      this.prisma.chapter.update({
+        where: { id: first.id },
+        data: { ...firstRow, order: 1, content: emptyChapterDoc(firstRow.title) as never },
+      }),
+      ...restRows.map((row, i) =>
+        this.prisma.chapter.create({
+          data: {
+            documentId,
+            ...row,
+            order: i + 2,
+            content: emptyChapterDoc(row.title) as never,
+          },
+        }),
+      ),
+    ]);
+    // The plan, if one failed, is no longer what the editor should talk about.
+    if (meta.outlineRun) await setMetaKey(this.prisma, documentId, 'outlineRun', null);
+    return this.get(ownerId, documentId);
   }
 
   /**

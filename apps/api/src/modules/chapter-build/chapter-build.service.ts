@@ -199,11 +199,13 @@ export class ChapterBuildService {
     const saved = chapterProfileSchema.safeParse(meta.chapterProfile);
     if (saved.success) return { profile: saved.data, suggested: false };
     const discipline = suggestDiscipline(document.field, document.title) ?? disciplineProfile(null);
+    // ADR-0145: the university the student chose in the editor's setup card, when they chose one.
+    const universityId = typeof meta.universityId === 'string' ? meta.universityId : null;
     return {
       profile: {
         disciplineId: discipline.id,
         paradigm: discipline.defaultParadigms[0] ?? 'experimental',
-        universityId: universityProfile(null).id,
+        universityId: universityProfile(universityId).id,
         language: document.language,
       },
       suggested: true,

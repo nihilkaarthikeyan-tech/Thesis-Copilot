@@ -194,9 +194,15 @@ export function autoSourcesJobKey(
   return `find-sources-${chapterId}${part}-${window}`;
 }
 
-/** ADR-0087: the one search a thesis makes when it is created (`initialPerRun` papers). */
-export function initialSourcesJobKey(documentId: string): string {
-  return `find-sources-initial-${documentId}`;
+/**
+ * ADR-0087: the one search a thesis makes when it is created (`initialPerRun` papers).
+ * ADR-0145: a thesis named in the setup card searches on the title it was given there, keyed on
+ * that title too (what the job reads), so naming it again starts a new search, not a swallowed one.
+ */
+export function initialSourcesJobKey(documentId: string, title?: string | null): string {
+  return title
+    ? `find-sources-initial-${documentId}-${sectionDigest(title)}`
+    : `find-sources-initial-${documentId}`;
 }
 
 /** A short, colon-free tag for a section heading (FNV-1a); job ids cannot contain ':'. */

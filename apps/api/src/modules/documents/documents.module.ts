@@ -14,6 +14,7 @@ import { DocumentsController } from './documents.controller.js';
 import { NextActionService, SetupProgressService } from './next-action.service.js';
 import { OwnThesisDeletion } from './own-thesis-deletion.service.js';
 import { ProgressService } from './progress.service.js';
+import { SetupCardService } from './setup-card.service.js';
 
 @Module({
   imports: [FlagsModule, AssistModule, MemoryModule],
@@ -31,6 +32,7 @@ import { ProgressService } from './progress.service.js';
     ClaimsService,
     ClaimsDocumentService,
     RedisService,
+    SetupCardService,
   ],
 })
 export class DocumentsModule {}

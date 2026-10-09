@@ -77,6 +77,22 @@ export function stripUnsafeKeys(value: unknown): void {
   }
 }
 
+/**
+ * Whether a chapter body holds writing: text anywhere but in a heading. ADR-0145's "Standard
+ * chapters" and "No headings" replace a plan only while no chapter has any (the worker's
+ * `isBlankChapter`, from the API side).
+ */
+export function hasWriting(doc: unknown): boolean {
+  let found = false;
+  const walk = (node: JsonNode | undefined, inHeading: boolean) => {
+    if (!node || found) return;
+    if (node.type === 'text' && !inHeading && (node.text ?? '').trim().length > 0) found = true;
+    for (const child of node.content ?? []) walk(child, inHeading || node.type === 'heading');
+  };
+  walk(doc as JsonNode, false);
+  return found;
+}
+
 /** Empty chapter body: the level-1 title heading plus one paragraph (Appendix B.2). */
 export function emptyChapterDoc(title: string): { type: 'doc'; content: unknown[] } {
   return {
