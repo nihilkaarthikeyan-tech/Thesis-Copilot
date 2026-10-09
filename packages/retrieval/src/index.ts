@@ -198,6 +198,15 @@ export {
   type WorkFilters,
 } from './scholarly/discover.js';
 export {
+  EDIT_SEARCH,
+  type EditSearchPlan,
+  editSearchContext,
+  editSearchPlan,
+  keepRelevant,
+  namesNothing,
+  plainSelection,
+} from './scholarly/edit-search.js';
+export {
   EUROPE_PMC_REQUESTS_PER_SECOND,
   EuropePmcClient,
   type EuropePmcFullText,
