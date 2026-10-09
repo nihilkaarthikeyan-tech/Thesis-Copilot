@@ -743,6 +743,10 @@ export const en = {
   'chat.threads.delete': 'Delete the chat “{title}”',
   'chat.threads.deleteYes': 'Delete',
   'chat.threads.deleteNo': 'Keep',
+  'chat.threads.rename': 'Rename the chat “{title}”',
+  'chat.threads.renameLabel': 'The chat’s name',
+  'chat.threads.search': 'Search your chats',
+  'chat.threads.noMatch': 'No chat matches.',
   'chat.collection.chip': 'Collection: {name}',
   'chat.collection.blurb':
     'Answers come only from the papers in this collection, and cite the passage they came from. This chat never searches beyond them.',

@@ -158,3 +158,11 @@ could not be asked on its own.
    a stored scripted reply keeps its outcome. Copy stays.
 4. While the stored chat loads, the bar says "Opening chat…", not "New chat".
 
+
+## Amendment 2026-10-09: rename and search
+
+The two leftovers are built. Each chat row has a rename (pencil) beside delete: the name is
+edited in place, Enter or leaving the field saves, Esc cancels (`PATCH
+/chat/:documentId/threads/:threadId`, 1–200 characters, spaces collapsed). A rename is not a
+use, so the chat keeps its place in the list (`updatedAt` is kept). From four chats a search box
+filters the list by every word typed, in the chat's name or its collection's.

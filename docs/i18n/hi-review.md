@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**647** strings are translated; **1** are deliberately
+**651** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -737,6 +737,10 @@ English. Write corrections in the last column.
 | `chat.threads.delete` | Delete the chat “{title}” | चैट “{title}” हटाएँ | |
 | `chat.threads.deleteYes` | Delete | हटाएँ | |
 | `chat.threads.deleteNo` | Keep | रखें | |
+| `chat.threads.rename` | Rename the chat “{title}” | चैट “{title}” का नाम बदलें | |
+| `chat.threads.renameLabel` | The chat’s name | चैट का नाम | |
+| `chat.threads.search` | Search your chats | अपनी चैट खोजें | |
+| `chat.threads.noMatch` | No chat matches. | कोई चैट मेल नहीं खाती। | |
 | `chat.collection.chip` | Collection: {name} | Collection: {name} | |
 | `chat.collection.blurb` | Answers come only from the papers in this collection, and cite the passage they came from. This chat never searches beyond them. | जवाब सिर्फ़ इस collection के paper से आते हैं, और जिस हिस्से से आए उसका साइटेशन देते हैं। यह चैट इनके बाहर कभी नहीं खोजती। | |
 | `chat.collection.empty` | Ask about the papers in “{name}” — what they found, where they disagree, what is missing. | “{name}” के paper के बारे में पूछिए — उन्होंने क्या पाया, कहाँ असहमत हैं, क्या छूटा है। | |

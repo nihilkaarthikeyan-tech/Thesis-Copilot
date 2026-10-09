@@ -10,7 +10,7 @@
 
 import { tokenizeAiText } from '@tc/ui';
 import katex from 'katex';
-import { History, Plus, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import { History, Pencil, Plus, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import type { MessageKey, Vars } from '@/i18n';
@@ -19,10 +19,12 @@ import { ApiError, api, type ProblemDetails } from '@/lib/api';
 import { answerPlainText, isRefusalAnswer } from '@/lib/chat-copy';
 import {
   type ChatThreadSummary,
+  filterThreads,
   NEW_CHAT,
   type OpenChat,
   recallChat,
   rememberChat,
+  THREAD_SEARCH_FROM,
   type ThreadCollection,
   threadBarState,
   threadFields,
@@ -642,6 +644,22 @@ export function ChatPanel({
     setNewMenu((open) => !open);
   }
 
+  /** Renames one chat; the bar follows when it is the open one. */
+  async function renameThread(id: string, title: string) {
+    try {
+      const saved = await api<{ id: string; title: string }>(`/chat/${documentId}/threads/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title }),
+      });
+      setThreadList(
+        (list) => list?.map((t) => (t.id === id ? { ...t, title: saved.title } : t)) ?? null,
+      );
+      if (chat.id === id) setChat((current) => ({ ...current, title: saved.title }));
+    } catch (e) {
+      setError(problemText(e));
+    }
+  }
+
   /** Deletes one chat, after the row's own confirm. The open chat, if it was that one, becomes new. */
   async function deleteThread(id: string) {
     try {
@@ -1073,6 +1091,7 @@ export function ChatPanel({
           onOpen={(id) => void openThread(id)}
           onAskDelete={setConfirmDelete}
           onDelete={(id) => void deleteThread(id)}
+          onRename={(id, title) => void renameThread(id, title)}
           onCancel={() => setConfirmDelete(null)}
           t={t}
         />
@@ -1696,6 +1715,7 @@ function ThreadList({
   onOpen,
   onAskDelete,
   onDelete,
+  onRename,
   onCancel,
   t,
 }: {
@@ -1705,9 +1725,13 @@ function ThreadList({
   onOpen: (id: string) => void;
   onAskDelete: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   onCancel: () => void;
   t: (key: MessageKey, vars?: Vars) => string;
 }) {
+  // ADR-0116 leftovers (2026-10-09): a search over the chats' names once there are several.
+  const [query, setQuery] = useState('');
+  const shown = threads ? filterThreads(threads, query) : null;
   return (
     <section
       aria-label={t('chat.threads.heading')}
@@ -1715,20 +1739,36 @@ function ThreadList({
       className="mx-1 mb-2 rounded-md border border-line bg-surface p-1.5"
     >
       <p className="px-1 pb-1 text-[11px] text-muted">{t('chat.threads.heading')}</p>
+      {threads && threads.length >= THREAD_SEARCH_FROM ? (
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('chat.threads.search')}
+          aria-label={t('chat.threads.search')}
+          data-testid="chat-threads-search"
+          className="mb-1 w-full min-w-0 rounded-md border border-line bg-transparent px-2 py-1 text-xs text-ink"
+        />
+      ) : null}
       {threads === null ? (
         <p className="px-1 py-1 text-xs text-muted">{t('chat.threads.loading')}</p>
       ) : threads.length === 0 ? (
         <p data-testid="chat-threads-empty" className="px-1 py-1 text-xs text-muted">
           {t('chat.threads.none')}
         </p>
+      ) : shown && shown.length === 0 ? (
+        <p data-testid="chat-threads-nomatch" className="px-1 py-1 text-xs text-muted">
+          {t('chat.threads.noMatch')}
+        </p>
       ) : (
         <ThreadRows
-          threads={threads}
+          threads={shown ?? threads}
           currentId={currentId}
           confirming={confirming}
           onOpen={onOpen}
           onAskDelete={onAskDelete}
           onDelete={onDelete}
+          onRename={onRename}
           onCancel={onCancel}
           t={t}
         />
@@ -1744,6 +1784,7 @@ function ThreadRows({
   onOpen,
   onAskDelete,
   onDelete,
+  onRename,
   onCancel,
   t,
 }: {
@@ -1753,9 +1794,15 @@ function ThreadRows({
   onOpen: (id: string) => void;
   onAskDelete: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   onCancel: () => void;
   t: (key: MessageKey, vars?: Vars) => string;
 }) {
+  const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null);
+  const finish = () => {
+    if (renaming?.title.trim()) onRename(renaming.id, renaming.title.trim());
+    setRenaming(null);
+  };
   return (
     <ul
       data-testid="chat-threads"
@@ -1771,17 +1818,45 @@ function ThreadRows({
             thread.id === currentId ? 'border-accent/50 bg-accent-soft' : 'border-line bg-surface',
           )}
         >
-          <button
-            type="button"
-            data-testid="chat-thread-open"
-            onClick={() => onOpen(thread.id)}
-            className="min-w-0 flex-1 px-2 py-1.5 text-left"
-          >
-            <span className="block truncate text-sm text-ink" title={thread.title}>
-              {thread.title}
-            </span>
-            <span className="block truncate text-[11px] text-muted">{threadLine(thread)}</span>
-          </button>
+          {renaming?.id === thread.id ? (
+            <form
+              className="min-w-0 flex-1 px-1 py-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                finish();
+              }}
+            >
+              <input
+                // biome-ignore lint/a11y/noAutofocus: the field the student just asked for.
+                autoFocus
+                value={renaming.title}
+                maxLength={200}
+                aria-label={t('chat.threads.renameLabel')}
+                data-testid="chat-thread-rename-input"
+                onChange={(e) => setRenaming({ id: thread.id, title: e.target.value })}
+                onBlur={finish}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setRenaming(null);
+                  }
+                }}
+                className="w-full min-w-0 rounded border border-accent/50 bg-transparent px-1.5 py-1 text-sm text-ink"
+              />
+            </form>
+          ) : (
+            <button
+              type="button"
+              data-testid="chat-thread-open"
+              onClick={() => onOpen(thread.id)}
+              className="min-w-0 flex-1 px-2 py-1.5 text-left"
+            >
+              <span className="block truncate text-sm text-ink" title={thread.title}>
+                {thread.title}
+              </span>
+              <span className="block truncate text-[11px] text-muted">{threadLine(thread)}</span>
+            </button>
+          )}
           {confirming === thread.id ? (
             <span className="flex shrink-0 items-center gap-2 py-2 pr-2 text-[11px]">
               <button
@@ -1796,16 +1871,27 @@ function ThreadRows({
                 {t('chat.threads.deleteNo')}
               </button>
             </span>
-          ) : (
-            <button
-              type="button"
-              data-testid="chat-thread-delete"
-              aria-label={t('chat.threads.delete', { title: thread.title })}
-              onClick={() => onAskDelete(thread.id)}
-              className="shrink-0 rounded p-2 text-faint transition-colors hover:text-warn"
-            >
-              <Trash2 size={13} aria-hidden />
-            </button>
+          ) : renaming?.id === thread.id ? null : (
+            <span className="flex shrink-0 items-center">
+              <button
+                type="button"
+                data-testid="chat-thread-rename"
+                aria-label={t('chat.threads.rename', { title: thread.title })}
+                onClick={() => setRenaming({ id: thread.id, title: thread.title })}
+                className="rounded p-2 text-faint transition-colors hover:text-ink"
+              >
+                <Pencil size={13} aria-hidden />
+              </button>
+              <button
+                type="button"
+                data-testid="chat-thread-delete"
+                aria-label={t('chat.threads.delete', { title: thread.title })}
+                onClick={() => onAskDelete(thread.id)}
+                className="rounded p-2 text-faint transition-colors hover:text-warn"
+              >
+                <Trash2 size={13} aria-hidden />
+              </button>
+            </span>
           )}
         </li>
       ))}

@@ -275,6 +275,42 @@ describe('a thesis’s chats', () => {
     expect(await units()).toBe(0);
   });
 
+  it('renames one chat without moving it in the list (2026-10-09)', async () => {
+    const order = (await threads()).map((t) => t.id);
+    const res = await h.api(`/chat/${documentId}/threads/${first}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: '  Installer   survey notes ' }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: first, title: 'Installer survey notes' });
+    const list = await threads();
+    expect(list.map((t) => t.id)).toEqual(order);
+    expect(list.find((t) => t.id === first)?.title).toBe('Installer survey notes');
+    const opened = (await (await h.api(`/chat/${documentId}?threadId=${first}`)).json()) as {
+      title: string;
+    };
+    expect(opened.title).toBe('Installer survey notes');
+    // An empty name, a bad id and someone else's chat are refused.
+    const empty = await h.api(`/chat/${documentId}/threads/${first}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: '   ' }),
+    });
+    expect(empty.status).toBe(400);
+    const bad = await h.api(`/chat/${documentId}/threads/not-an-id`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: 'x' }),
+    });
+    expect(bad.status).toBe(400);
+    const missing = await h.api(
+      `/chat/${documentId}/threads/01a00000-0000-7000-8000-000000000000`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'x' }),
+      },
+    );
+    expect(missing.status).toBe(404);
+  });
+
   it('deletes one chat on request, and only that one', async () => {
     // `{}`: the harness sends JSON's content-type on every call, and Fastify refuses an empty JSON
     // body. The web's `api()` sets the type only when there is a body, so it sends none.

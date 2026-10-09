@@ -82,6 +82,22 @@ export function threadWhen(updatedAt: string, now: Date = new Date()): string {
   });
 }
 
+/** ADR-0116 leftovers (2026-10-09): the chat list offers a search from this many chats. */
+export const THREAD_SEARCH_FROM = 4;
+
+/** The chats whose name holds every word of the query, in any case and order. */
+export function filterThreads<T extends { title: string; collection?: { name: string } | null }>(
+  threads: readonly T[],
+  query: string,
+): T[] {
+  const words = query.toLowerCase().split(' ').filter(Boolean);
+  if (words.length === 0) return [...threads];
+  return threads.filter((thread) => {
+    const name = `${thread.title} ${thread.collection?.name ?? ''}`.toLowerCase();
+    return words.every((word) => name.includes(word));
+  });
+}
+
 /** The line under a chat's title in the list. */
 export function threadLine(thread: ChatThreadSummary, now: Date = new Date()): string {
   const parts = [

@@ -10,6 +10,7 @@ import {
   HttpCode,
   Inject,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -93,6 +94,8 @@ const chatRequest = chatBody
 
 /** ADR-0116: which chat, where a route takes one. */
 const threadIdParam = z.string().uuid();
+/** ADR-0116 leftovers (2026-10-09): a chat's own name, as the student types it. */
+const renameBody = z.object({ title: z.string().trim().min(1).max(200) });
 
 const webBody = z.object({
   documentId: z.string().uuid(),
@@ -274,6 +277,21 @@ export class ChatController {
   @Get('chat/:documentId/threads')
   listThreads(@CurrentUser() user: SessionUser, @Param('documentId') documentId: string) {
     return this.threads.list(user.id, documentId);
+  }
+
+  /** ADR-0116 leftovers: renames one chat. Nothing else of the chat changes. */
+  @Patch('chat/:documentId/threads/:threadId')
+  renameThread(
+    @CurrentUser() user: SessionUser,
+    @Param('documentId') documentId: string,
+    @Param('threadId') threadId: string,
+    @Body() body: unknown,
+  ) {
+    const id = threadIdParam.safeParse(threadId);
+    if (!id.success) throw new ValidationError('Which chat?');
+    const parsed = renameBody.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Give the chat a name.', parsed.error.issues);
+    return this.threads.rename(user.id, documentId, id.data, parsed.data.title);
   }
 
   /** ADR-0116: deletes one chat, on the student's press. Nothing else of the thesis changes. */

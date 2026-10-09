@@ -262,6 +262,27 @@ export class ChatThreadsService {
     };
   }
 
+  /** Renames one chat (spaces collapsed); its turns and place in the list are unchanged. */
+  async rename(
+    ownerId: string,
+    documentId: string,
+    threadId: string,
+    title: string,
+  ): Promise<{ id: string; title: string }> {
+    const clean = title.replace(/\s+/g, ' ').trim();
+    const thread = await this.prisma.chatThread.findFirst({
+      where: { id: threadId, documentId, document: { ownerId } },
+      select: { id: true, updatedAt: true },
+    });
+    if (!thread) throw new NotFoundError('That chat');
+    // A name is not a use: `updatedAt` is kept, so renaming does not move the chat to the top.
+    await this.prisma.chatThread.update({
+      where: { id: thread.id },
+      data: { title: clean, updatedAt: thread.updatedAt },
+    });
+    return { id: thread.id, title: clean };
+  }
+
   /** Deletes one chat, on the student's press; the thesis and its library are untouched. */
   async remove(ownerId: string, documentId: string, threadId: string): Promise<{ deleted: true }> {
     const { count } = await this.prisma.chatThread.deleteMany({

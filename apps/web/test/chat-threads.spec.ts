@@ -7,9 +7,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ChatThreadSummary,
+  filterThreads,
   inThreadCollection,
   NEW_CHAT,
   parseRemembered,
+  THREAD_SEARCH_FROM,
   threadBarState,
   threadFields,
   threadLine,
@@ -103,5 +105,24 @@ describe('the papers a chat on one collection can name', () => {
     ];
     expect(inThreadCollection(rows, 'c1').map((r) => r.id)).toEqual(['a']);
     expect(inThreadCollection(rows, null).map((r) => r.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('searching the chat list (2026-10-09)', () => {
+  const list = [
+    { id: '1', title: 'Which survey counted installers?', collection: null },
+    { id: '2', title: 'Subsidy delays in Mandya', collection: { name: 'Policy papers' } },
+    { id: '3', title: 'Cost of credit', collection: null },
+  ];
+  it('keeps every chat for an empty query', () => {
+    expect(filterThreads(list, '  ').map((t) => t.id)).toEqual(['1', '2', '3']);
+  });
+  it('matches every word, in any case and order, in the name or its collection', () => {
+    expect(filterThreads(list, 'SURVEY installers').map((t) => t.id)).toEqual(['1']);
+    expect(filterThreads(list, 'policy').map((t) => t.id)).toEqual(['2']);
+    expect(filterThreads(list, 'credit survey')).toEqual([]);
+  });
+  it('appears from four chats', () => {
+    expect(THREAD_SEARCH_FROM).toBe(4);
   });
 });

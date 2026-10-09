@@ -734,6 +734,10 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'chat.threads.delete': 'चैट “{title}” हटाएँ',
   'chat.threads.deleteYes': 'हटाएँ',
   'chat.threads.deleteNo': 'रखें',
+  'chat.threads.rename': 'चैट “{title}” का नाम बदलें',
+  'chat.threads.renameLabel': 'चैट का नाम',
+  'chat.threads.search': 'अपनी चैट खोजें',
+  'chat.threads.noMatch': 'कोई चैट मेल नहीं खाती।',
   'chat.collection.chip': 'Collection: {name}',
   'chat.collection.blurb':
     'जवाब सिर्फ़ इस collection के paper से आते हैं, और जिस हिस्से से आए उसका साइटेशन देते हैं। यह चैट इनके बाहर कभी नहीं खोजती।',

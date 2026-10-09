@@ -393,7 +393,7 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
    path) — ADR-0095 left it for evidence of need; buildable without a new prompt.
 6. Row 34: highlights and notes saved on a paper in the reader (noted "not built" since
    ADR-0068; never an R row).
-7. ADR-0116's small leftovers: rename a chat, search the chat list.
+7. ~~ADR-0116's small leftovers~~ **done 2026-10-09**: rename a chat, search the chat list.
 8. ~~Fix list A29~~ **done 2026-10-09** (three export faults found and fixed; BUILD_LOG): confirm figure and table numbering with cross-references survives every export
    (ADR-0049 built them; the export was not re-checked in this audit).
 9. Hindi for Round 2's new strings (the limit message, the chat bar) — the agent's own
