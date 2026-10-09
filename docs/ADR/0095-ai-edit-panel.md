@@ -87,3 +87,12 @@ The reasons call is ~700 fast-tier tokens, under a paisa, folded into the COMMAN
 (`packages/config/src/cost.ts`). The COMMAND allowance is unchanged — **4 a month on a paid plan,
 2 on the trial**, and each follow-up is a run. A panel this visible will meet that cap quickly;
 the owner's pending usage-limit rebalance (`docs/PENDING.md`) is where it is decided.
+
+## Amendment 2026-10-09 — the web switch, built safely (ADR-0133)
+
+The owner decided to build the web switch in the form that keeps grounding: "Search the
+literature" beside "Use my library" searches the indexes (chat's ADR-0074 path), **adds the few
+papers on topic to the student's library** (at most five, filed into "Add into"), waits for their
+abstracts to be read, and only then writes the edit from library passages, so every citation it
+makes is to a library paper. Same prompt, same COMMAND unit. ADR-0133 has the rules and the cost.
+"Web switch: not built" above is superseded.

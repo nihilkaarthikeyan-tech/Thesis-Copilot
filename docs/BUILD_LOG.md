@@ -5864,3 +5864,19 @@ title-only plan, gave the Literature Review 0/5/1 sections where the current pro
 time. Not adopted; ADR-0092 addendum 3. The open chapter now lays out sub-sections as H3 when an
 outline has them. Lesson: an evaluation set must include the commonest real path (here, no gap
 map), or a winner can regress it.
+## R8 (b): "Search the literature" on an AI edit (2026-10-09, ADR-0133)
+
+The owner's safe form of the web switch ADR-0095 left out. In the edit panel, beside "Use my
+library", a switch that, for your own instruction and Expand / Check consistency /
+Counter-argument, searches the indexes on chat's research path (no model), embeds the abstracts
+once against the thesis and the question, adds the few at cosine >= 0.60 (at most five) to the
+library as `find-sources` does (marked found, filed into "Add into"), waits up to 25 s for their
+abstracts to be read, and sends their passages first with the library's (six in all, re-keyed).
+The edit prompt is unchanged; `postProcessCommand` still strips any citation not sent, so every
+citation is to a library paper. The result lists "Added to your library" with each paper opening
+in the reader; an empty, failed or slow search says in one line that the edit used the library
+alone. One COMMAND unit, taken first; the relevance embedding is an EMBED row. Cost: at most
+~₹0.54 an edit in embeddings, ≤ ₹2.16 a month (COSTING.md). Tests:
+`apps/api/test/edit-literature.spec.ts` (9), `apps/api/test/edit-literature-api.spec.ts` (10),
+`apps/web/test/edit-literature.spec.ts` (7) pass; `apps/web/e2e/edit-literature.spec.ts` (2)
+lists but was not run here (the dev stack serves main's code).

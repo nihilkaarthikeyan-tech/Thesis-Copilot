@@ -40,6 +40,8 @@ import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
+import { withFoundPassages } from './edit-literature.js';
+import { type AddedPaper, EditLiteratureService } from './edit-literature.service.js';
 
 export type CommandRunInput = {
   chapterId: string;
@@ -56,6 +58,21 @@ export type CommandRunInput = {
    * citation checks are against the student's original text, which this carries.
    */
   original?: string;
+  /**
+   * ADR-0133: "Search the literature" — for your own instruction and the edits that take
+   * passages, the indexes are searched, the few papers on topic are added to the library, and
+   * the edit is sent their abstracts beside the library's passages.
+   */
+  searchLiterature?: boolean;
+};
+
+/** ADR-0133: what "Search the literature" did, for the line under the result. */
+export type CommandLiterature = {
+  added: AddedPaper[];
+  /** The "Add into" collection they were filed into, if the thesis has one. */
+  collection: { id: string; name: string } | null;
+  /** Said when the edit used the library alone (a failed or empty search, papers not read yet). */
+  note: string | null;
 };
 
 export type CommandRunResult = {
@@ -81,6 +98,8 @@ export type CommandRunResult = {
   repeatedCitations: string[];
   /** ADR-0095: asks for "What changed and why" once, within this run's unit. */
   runId: string;
+  /** ADR-0133: present when "Search the literature" was on for an edit it applies to. */
+  literature?: CommandLiterature;
 };
 
 /**
@@ -112,6 +131,7 @@ export class CommandService {
     private readonly prisma: PrismaService,
     private readonly usage: UsageService,
     private readonly context: ContextService,
+    private readonly literature: EditLiteratureService,
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
     redis: RedisService,
@@ -159,13 +179,52 @@ export class CommandService {
       throw refusal('COMMAND', cap);
     }
 
+    // ADR-0133: "Search the literature" applies where passages can be used — your own instruction
+    // and A.11's passage commands — and implies the library: what it finds is added there first.
+    const searching =
+      input.searchLiterature === true &&
+      (input.command === 'custom' || COMMAND.needsPassages.includes(input.command));
+    let literature: CommandLiterature | undefined;
+    let found: Awaited<ReturnType<ContextService['retrieve']>> | null = null;
+    if (searching) {
+      // After the unit is taken (§10.2): the relevance embedding is a provider call. The edit
+      // survives anything here; the unit is refunded below only if the edit itself fails.
+      try {
+        const result = await this.literature.findAndAdd({
+          userId: user.id,
+          documentId: chapter.documentId,
+          chapterTitle: chapter.title,
+          selection,
+          ...(input.instruction ? { instruction: input.instruction } : {}),
+        });
+        literature = { added: result.added, collection: result.collection, note: result.note };
+        if (result.readyIds.length > 0) {
+          found = await this.context.retrieve(
+            chapter,
+            [input.instruction ?? '', selection].filter(Boolean).join('. '),
+            'CHAT',
+            { sourceIds: result.readyIds },
+          );
+        }
+      } catch (error) {
+        this.logger.warn({ err: error, chapterId: chapter.id }, 'edit literature search failed');
+        literature = {
+          added: [],
+          collection: null,
+          note: 'The literature search did not answer in time; this edit used your library alone.',
+        };
+      }
+    }
+
     // A.11 sends passages only to expand and consistency; the others rewrite what is there.
     // ADR-0095: the student's own instruction gets them when "Use my library" is on.
-    const retrieved =
+    const library =
       COMMAND.needsPassages.includes(input.command) ||
-      (input.command === 'custom' && input.useLibrary === true)
+      (input.command === 'custom' && (input.useLibrary === true || searching))
         ? await this.context.retrieve(chapter, selection, 'CHAT')
         : null;
+    // ADR-0133: the found papers' passages first, re-keyed with the library's into one set.
+    const retrieved = found ? withFoundPassages(library, found, COMMAND.topK) : library;
     const passages = retrieved?.passages.slice(0, COMMAND.topK) ?? [];
     const memory = await this.context.memoryBlock(chapter);
     const request = buildCommandRequest({
@@ -278,6 +337,7 @@ export class CommandService {
         doubledCitations: processed.doubled,
         repeatedCitations: processed.repeated,
         runId,
+        ...(literature ? { literature } : {}),
       };
     } catch (error) {
       await this.log(

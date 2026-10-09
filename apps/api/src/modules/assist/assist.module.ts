@@ -20,6 +20,7 @@ import { CommandService } from './command.service.js';
 import { ContextService } from './context.service.js';
 import { DraftController } from './draft.controller.js';
 import { DraftService } from './draft.service.js';
+import { EditLiteratureService } from './edit-literature.service.js';
 import { EquationService } from './equation.service.js';
 import { ProofreadService } from './proofread.service.js';
 import { ToneService } from './tone.service.js';
@@ -38,6 +39,7 @@ import { WebScopeService } from './web-scope.service.js';
     CiteRoleService,
     EquationService,
     CommandService,
+    EditLiteratureService,
     CiteService,
     ContextService,
     DraftService,
