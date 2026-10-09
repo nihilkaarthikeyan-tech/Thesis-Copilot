@@ -733,6 +733,7 @@ export const en = {
   'chat.threads.list': 'Chats',
   'chat.threads.heading': 'Your chats in this thesis',
   'chat.threads.new': 'New chat',
+  'chat.threads.opening': 'Opening chat…',
   'chat.threads.newButton': 'New',
   'chat.threads.newOn': 'Start a new chat on',
   'chat.threads.wholeLibrary': 'Your whole library',

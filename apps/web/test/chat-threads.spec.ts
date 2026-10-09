@@ -10,6 +10,7 @@ import {
   inThreadCollection,
   NEW_CHAT,
   parseRemembered,
+  threadBarState,
   threadFields,
   threadLine,
   threadWhen,
@@ -30,6 +31,18 @@ function summary(over: Partial<ChatThreadSummary> = {}): ChatThreadSummary {
     ...over,
   };
 }
+
+describe('the bar above the chat (QA 2026-10-08)', () => {
+  it('says the chat is opening while it loads, never "New chat"', () => {
+    expect(threadBarState(true, '')).toBe('loading');
+    expect(threadBarState(true, 'Heat stress in dairy cattle')).toBe('loading');
+  });
+
+  it('then shows the title, or New chat for one not stored yet', () => {
+    expect(threadBarState(false, 'Heat stress in dairy cattle')).toBe('title');
+    expect(threadBarState(false, '')).toBe('new');
+  });
+});
 
 describe('which chat a question goes to', () => {
   it('names the open chat', () => {

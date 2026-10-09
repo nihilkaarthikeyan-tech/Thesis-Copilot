@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**604** strings are translated; **19** are deliberately
+**605** strings are translated; **19** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -725,6 +725,7 @@ English. Write corrections in the last column.
 | `chat.research.plan` | Parts: {titles} | हिस्से: {titles} | |
 | `chat.threads.list` | Chats | चैट | |
 | `chat.threads.new` | New chat | नई चैट | |
+| `chat.threads.opening` | Opening chat… | चैट खुल रही है… | |
 | `chat.threads.newButton` | New | नई | |
 | `chat.threads.wholeLibrary` | Your whole library | आपकी पूरी library | |
 | `chat.web.ask` | Search beyond your library? | अपनी library से आगे खोजें? | |

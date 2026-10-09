@@ -24,6 +24,7 @@ import {
   recallChat,
   rememberChat,
   type ThreadCollection,
+  threadBarState,
   threadFields,
   threadLine,
 } from '@/lib/chat-threads';
@@ -276,14 +277,20 @@ export function ChatPanel({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   /** Set once the student picks a chat, so a slow first load cannot replace their choice. */
   const chosenRef = useRef(false);
+  /**
+   * QA 2026-10-08: until the stored chat has loaded the bar says so, rather than "New chat" for
+   * the few seconds before the student's own chat appears.
+   */
+  const [loadingChat, setLoadingChat] = useState(true);
 
   // The chat this tab had open (the panel is rebuilt each time the Chat tab opens), else the one
   // used last. A chat that has gone (deleted in another tab) falls back to the one used last.
   useEffect(() => {
     let cancelled = false;
     chosenRef.current = false;
+    setLoadingChat(true);
     const remembered = recallChat(documentId);
-    void (async () => {
+    const loadStored = async () => {
       const shelves = await api<Collection[]>(`/documents/${documentId}/collections`).catch(
         () => [] as Collection[],
       );
@@ -311,7 +318,10 @@ export function ChatPanel({
         collectionDeleted: view.collectionDeleted,
         collectionName: view.collectionName,
       });
-    })();
+    };
+    void loadStored().finally(() => {
+      if (!cancelled) setLoadingChat(false);
+    });
     api<{ chatFilters?: Filters }>('/settings')
       .then((s) => setFilters(s.chatFilters ?? {}))
       .catch(() => undefined);
@@ -464,6 +474,7 @@ export function ChatPanel({
     setSavingPrompt(null);
     // ADR-0116: the question goes to the chat on screen; the menus above it close.
     chosenRef.current = true;
+    setLoadingChat(false);
     setShowThreads(false);
     setNewMenu(false);
     await send(message, scope);
@@ -528,6 +539,7 @@ export function ChatPanel({
    */
   function afterSwitch(next: OpenChat) {
     chosenRef.current = true;
+    setLoadingChat(false);
     setSteps([]);
     setStreaming('');
     setWebResults(null);
@@ -939,13 +951,27 @@ export function ChatPanel({
           <History size={12} aria-hidden />
           {t('chat.threads.list')}
         </button>
-        <span
-          data-testid="chat-thread-title"
-          title={chat.title || undefined}
-          className="min-w-0 flex-1 truncate text-xs text-ink"
-        >
-          {chat.title || t('chat.threads.new')}
-        </span>
+        {(() => {
+          const bar = threadBarState(loadingChat, chat.title);
+          return (
+            <span
+              data-testid="chat-thread-title"
+              data-state={bar}
+              aria-busy={bar === 'loading' || undefined}
+              title={bar === 'title' ? chat.title : undefined}
+              className={cn(
+                'min-w-0 flex-1 truncate text-xs',
+                bar === 'loading' ? 'text-faint' : 'text-ink',
+              )}
+            >
+              {bar === 'loading'
+                ? t('chat.threads.opening')
+                : bar === 'new'
+                  ? t('chat.threads.new')
+                  : chat.title}
+            </span>
+          );
+        })()}
         <button
           type="button"
           data-testid="chat-new"
@@ -1217,7 +1243,7 @@ export function ChatPanel({
       ) : null}
 
       <div className="flex-1 space-y-3 overflow-y-auto px-1" aria-live="polite">
-        {turns.length === 0 && !streaming && scope !== 'web' ? (
+        {turns.length === 0 && !streaming && scope !== 'web' && !loadingChat ? (
           <p className="text-sm text-muted">
             {chat.collection
               ? t('chat.collection.empty', { name: chat.collection.name })

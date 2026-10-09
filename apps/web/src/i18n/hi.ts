@@ -717,6 +717,7 @@ export const hi: Partial<Record<MessageKey, string>> = {
   // ADR-0116: the agent's translation, as ADR-0061's were; a native reader has not checked it.
   'chat.threads.list': 'चैट',
   'chat.threads.new': 'नई चैट',
+  'chat.threads.opening': 'चैट खुल रही है…',
   'chat.threads.newButton': 'नई',
   'chat.threads.wholeLibrary': 'आपकी पूरी library',
   'chat.web.ask': 'अपनी library से आगे खोजें?',
