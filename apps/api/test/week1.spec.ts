@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import type { MockLlmProvider } from '@tc/ai';
-import { PLAN_LIMITS } from '@tc/config';
+import { callCeiling, PLAN_LIMITS } from '@tc/config';
 import { PrismaClient } from '@tc/db';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
@@ -381,6 +381,30 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
     });
     expect(updated.outcome).toBe('ACCEPTED');
     expect(updated.keptChars).toBe(42);
+
+    // ADR-0144: kept, so it counts against the allowance — once, however often it is reported.
+    const keptBefore =
+      (await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } }))?.kept ?? 0;
+    const again = await api('/assist/outcome', {
+      method: 'POST',
+      body: JSON.stringify({ suggestionId: suggestion.id, outcome: 'ACCEPTED', keptChars: 42 }),
+    });
+    expect(again.status).toBe(201);
+    const ledger = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(ledger?.kept).toBe(keptBefore);
+    expect(keptBefore).toBe(1);
+    const meter = (await (await api('/usage/me')).json()) as {
+      actions: Array<{
+        action: string;
+        used: number;
+        countsKept?: boolean;
+        calls?: number;
+        callCeiling?: number;
+      }>;
+    };
+    const assist = meter.actions.find((a) => a.action === 'ASSIST');
+    expect(assist).toMatchObject({ used: 1, countsKept: true, calls: ledger?.count });
+    expect(assist?.callCeiling).toBeGreaterThan(0);
   });
 
   it('records a thumbs up or down on a suggestion, and clears it', async () => {
@@ -464,10 +488,11 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
   });
 
   it('exhausting the ASSIST cap answers 429 CAP_EXCEEDED with resetsAt, and makes no provider call', async () => {
+    // ADR-0144: the allowance counts suggestions kept; the calls have a ceiling of their own.
     const cap = PLAN_LIMITS.FREE_TRIAL.caps.ASSIST;
     await prisma.usageLedger.updateMany({
       where: { userId, action: 'ASSIST' },
-      data: { count: cap },
+      data: { count: 1, kept: cap },
     });
     const { AssistService } = await import('../src/modules/assist/assist.service.js');
     const mock = app.get(AssistService).llm as MockLlmProvider;
@@ -481,9 +506,25 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
     expect(new Date(problem.resetsAt).getUTCDate()).toBe(1);
     expect(mock.calls.length).toBe(calls);
 
+    // The call ceiling refuses too, with nothing kept, and names it.
+    const ceiling = callCeiling('ASSIST', cap);
     await prisma.usageLedger.updateMany({
       where: { userId, action: 'ASSIST' },
-      data: { count: 0 },
+      data: { count: ceiling, kept: 0 },
+    });
+    const atCeiling = await api('/assist/suggest', { method: 'POST', body: body() });
+    expect(atCeiling.status).toBe(429);
+    expect(await atCeiling.json()).toMatchObject({
+      type: 'CAP_EXCEEDED',
+      cap,
+      used: 0,
+      callCeiling: ceiling,
+    });
+    expect(mock.calls.length).toBe(calls);
+
+    await prisma.usageLedger.updateMany({
+      where: { userId, action: 'ASSIST' },
+      data: { count: 0, kept: 0 },
     });
   });
 

@@ -571,6 +571,11 @@ export class AssistService {
     });
     if (updated.count === 0) throw new NotFoundError('That suggestion');
     suggestionOutcome.inc({ outcome });
+    // ADR-0144: a suggestion kept, whole or in part, is what counts against the allowance —
+    // once per suggestion, however often the editor reports it. A dismissed one never does.
+    if ((outcome === 'ACCEPTED' || outcome === 'PARTIAL') && keptChars > 0) {
+      await this.usage.keep(userId, suggestionId);
+    }
   }
 
   /** A thumbs up (1), down (-1) or cleared (0) on the student's own suggestion. */

@@ -60,8 +60,8 @@ export const METERED_ACTIONS = [
   'EXAMINER_REVIEW',
   // ADR-0080. One unit is one deep research question: the plan, every search, and the answer.
   'RESEARCH',
-  // ADR-0124. One unit is one whole literature review (up to 20 sections). Its cap is 0 on every
-  // plan until the owner sets one, and the build screen offers it only behind its flag.
+  // ADR-0124. One unit is one whole literature review (up to 20 sections). ADR-0143: one a month
+  // on the paid plans, none on the trial; the flag is on.
   'LIT_REVIEW_BUILD',
 ] as const satisfies readonly AiAction[];
 

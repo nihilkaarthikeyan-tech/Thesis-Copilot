@@ -226,7 +226,7 @@ under the first heading without typing.
 
 | # | Decision | Why it needs the owner |
 |---|---|---|
-| D1 | **Count only the suggestions a student keeps** (Jenni does; fix list 37) | Conflicts with the hard rule "cap taken before any provider call" (§10.2) and the ₹100 ceiling. Proposal: keep the internal request cap for cost, show the student an allowance of *kept* suggestions and applied edits; re-run `docs/COSTING.md` first |
+| D1 | **Count only the suggestions a student keeps** (Jenni does; fix list 37) — **done 2026-10-09, ADR-0144** | Conflicts with the hard rule "cap taken before any provider call" (§10.2) and the ₹100 ceiling. Proposal: keep the internal request cap for cost, show the student an allowance of *kept* suggestions and applied edits; re-run `docs/COSTING.md` first |
 | D2 | **New prompts**: "What changed and why" (R8), examiner scores (R24), region explanations (R13) | Not from Appendix A; each needs an ADR and an eval round (rule 6) |
 | D3 | **Whole literature-review document** (R37) | A new allowance and cost line against ₹100 |
 
@@ -360,7 +360,7 @@ missing. Nothing is "Not done".
 | R34 | Word import says why | Done | 0113 | — |
 | R35 | Shortcuts listed | Done | 0118 | — |
 | R36 | "How was this?" thumbs | Done | 0115 | After a chapter build and a viva set; a /privacy line is the owner's optional |
-| R37 | Whole literature review | Done, **not on** | 0124 | Built behind an off `literatureReviewBuild` flag at a cap of 0. The owner sets the allowance (₹12.92 a build; one a month on a paid plan makes ₹106.05 against the ₹100 ceiling unless chapter builds or examiner reviews give) and turns it on |
+| R37 | Whole literature review | Done, **on 2026-10-09** (ADR-0143: one a month paid, ₹17.39) | 0124 | Built behind an off `literatureReviewBuild` flag at a cap of 0. The owner sets the allowance (₹12.92 a build; one a month on a paid plan makes ₹106.05 against the ₹100 ceiling unless chapter builds or examiner reviews give) and turns it on |
 | R38 | Gap analysis as a document | Done | 0123 | — |
 | R39 | Add-on buttons in the page | Done, **not published** | 0125 | Add-on 0.3.0 built; submitted by the owner after 0.2.1 is approved (`apps/extension/PUBLISHING.md` §7a) |
 | R40 | Citations side by side | Done | 0117 | A two-source Word field opened in real Word is the owner's check |
@@ -413,10 +413,10 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
 
 **(b) Needs the owner — keys, accounts, decisions, nginx**
 
-1. **D1** (fix list 37): count only *kept* suggestions against the allowance — conflicts with the
-   cap-before-call rule (§10.2); re-run `docs/COSTING.md` first.
-2. **R37**: set the `LIT_REVIEW_BUILD` allowance and turn `literatureReviewBuild` on; run one real
-   review against ₹12.92.
+1. ~~**D1** (fix list 37): count only *kept* suggestions~~ **done 2026-10-09** (ADR-0144): the
+   atomic statement checks the kept allowance and a call ceiling of three per unit.
+2. ~~**R37**: set the allowance, turn the flag on, run one real review~~ **done 2026-10-09**
+   (ADR-0143): one a month paid, none on the trial; real ten-section review ₹8.63, 4 min 41 s.
 3. **R39**: submit add-on 0.3.0 after 0.2.1 is approved; try the live Scholar / PubMed / arXiv /
    MDPI pages first.
 4. **Row 80**: the host nginx `/collab/` block and the `collaboration` flag for co-editing in

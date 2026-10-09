@@ -17,17 +17,26 @@
  * Postgres takes a row lock on the conflicting row, so concurrent requests serialise on it. When
  * the cap is already reached the WHERE fails, `DO UPDATE` touches nothing, and `RETURNING` yields
  * no row — which is the refusal. Two requests can never both see the last remaining unit.
+ *
+ * ADR-0144: for an allowance that counts only kept suggestions (`CALLS_PER_KEPT`, Assist), the
+ * same statement checks two things on the same locked row: the calls (`count`) against the call
+ * ceiling, and the suggestions kept (`kept`) against the allowance. `keep` adds to `kept` when the
+ * student keeps one; nothing else changes it.
  */
 
 import { Injectable } from '@nestjs/common';
 import {
+  CALLS_PER_KEPT,
+  callCeiling,
   capFor,
+  countsKept,
   type MeteredAction,
   MONTHLY_CEILING_INR,
   MONTHLY_CEILING_MICRO_INR,
   type Plan,
 } from '@tc/config';
 import {
+  CallCeilingError,
   CapExceededError,
   CeilingExceededError,
   PlatformCeilingExceededError,
@@ -61,6 +70,12 @@ export type ConsumeResult =
       readonly platformCeilingInr?: number;
       /** When the free trial ended, present when that is what refused (ADR-0036). */
       readonly trialEndedAt?: Date;
+      /**
+       * ADR-0144: the month's calls hit the call ceiling of an allowance that counts kept
+       * suggestions, before the student kept the whole allowance. `cap` and `used` are still the
+       * allowance and the suggestions kept.
+       */
+      readonly callCeiling?: number;
     };
 
 /**
@@ -157,17 +172,29 @@ export class UsageService {
       };
     }
 
-    const rows = await this.prisma.$queryRawUnsafe<Array<{ count: number; bonus: number }>>(
+    // ADR-0144: `$5` is how many calls one unit of the allowance may take (1 for every action
+    // that counts calls), and `$6` whether the allowance counts kept suggestions. For those, the
+    // calls are refused at (allowance + bonus) × $5 and the kept at allowance + bonus, both on
+    // the row the statement has locked. A new row starts at one call and nothing kept, which an
+    // allowance above 0 always admits.
+    const perKept = CALLS_PER_KEPT[action] ?? 1;
+    const keptOnly = countsKept(action);
+    const rows = await this.prisma.$queryRawUnsafe<
+      Array<{ count: number; bonus: number; kept: number }>
+    >(
       `INSERT INTO "UsageLedger" ("id", "userId", "period", "action", "count")
        VALUES (uuid_generate_v7(), $1::uuid, $2, $3::"AiAction", 1)
        ON CONFLICT ("userId", "period", "action")
        DO UPDATE SET "count" = "UsageLedger"."count" + 1
-       WHERE "UsageLedger"."count" < $4 + "UsageLedger"."bonus"
-       RETURNING "count", "bonus"`,
+       WHERE "UsageLedger"."count" < ($4 + "UsageLedger"."bonus") * $5
+         AND (NOT $6::boolean OR "UsageLedger"."kept" < $4 + "UsageLedger"."bonus")
+       RETURNING "count", "bonus", "kept"`,
       userId,
       period,
       action,
       cap,
+      perKept,
+      keptOnly,
     );
 
     const row = rows[0];
@@ -175,17 +202,55 @@ export class UsageService {
       // Refused by the statement above. What the row holds now is only read, to say how much of
       // the allowance was used (R31); the decision is already made.
       const ledger = await this.ledgerFor(userId, period, action);
-      await this.audit(userId, plan, action, cap + ledger.bonus, refusedFor);
-      return capRefusal(cap + ledger.bonus, ledger.count);
+      const allowance = cap + ledger.bonus;
+      await this.audit(userId, plan, action, allowance, refusedFor);
+      if (!keptOnly) return capRefusal(allowance, ledger.count);
+      // ADR-0144: kept the whole allowance, or asked for the most suggestions a month allows.
+      return ledger.kept >= allowance
+        ? capRefusal(allowance, ledger.kept)
+        : { ...capRefusal(allowance, ledger.kept), callCeiling: callCeiling(action, allowance) };
     }
 
     const allowed = cap + row.bonus;
+    const used = keptOnly ? row.kept : row.count;
     return {
       ok: true,
       count: row.count,
       cap: allowed,
-      remaining: Math.max(allowed - row.count, 0),
+      remaining: Math.max(allowed - used, 0),
     };
+  }
+
+  /**
+   * ADR-0144: the student kept suggestion `suggestionId` (accepted it whole or in part), so it
+   * counts against the allowance — once, however many times the editor reports it, and only for
+   * an action whose allowance counts kept suggestions. One statement: the suggestion is marked
+   * counted only if it was not already, and the ledger row of the month it was shown in gains one
+   * only if that mark was made. Returns whether it counted.
+   *
+   * Never refused: the text is already in the thesis. A student with several suggestions on screen
+   * at the last unit can keep each, so `kept` may pass the allowance by those few; the money is
+   * bounded by the call ceiling, which `consume` checks before every call.
+   */
+  async keep(userId: string, suggestionId: string): Promise<boolean> {
+    const actions = Object.keys(CALLS_PER_KEPT);
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ kept: number }>>(
+      `WITH counted AS (
+         UPDATE "SuggestionEvent" SET "countedAt" = now()
+         WHERE "id" = $1::uuid AND "userId" = $2::uuid AND "countedAt" IS NULL
+           AND "action"::text = ANY($3::text[])
+         RETURNING "userId", "action", to_char("createdAt", 'YYYY-MM') AS period
+       )
+       UPDATE "UsageLedger" l SET "kept" = l."kept" + 1
+       FROM counted
+       WHERE l."userId" = counted."userId" AND l."period" = counted.period
+         AND l."action" = counted."action"
+       RETURNING l."kept"`,
+      suggestionId,
+      userId,
+      actions,
+    );
+    return rows.length > 0;
   }
 
   /**
@@ -259,12 +324,12 @@ export class UsageService {
     userId: string,
     period: string,
     action: MeteredAction,
-  ): Promise<{ count: number; bonus: number }> {
+  ): Promise<{ count: number; bonus: number; kept: number }> {
     const row = await this.prisma.usageLedger.findUnique({
       where: { userId_period_action: { userId, period, action } },
-      select: { count: true, bonus: true },
+      select: { count: true, bonus: true, kept: true },
     });
-    return { count: row?.count ?? 0, bonus: row?.bonus ?? 0 };
+    return { count: row?.count ?? 0, bonus: row?.bonus ?? 0, kept: row?.kept ?? 0 };
   }
 
   /**
@@ -374,12 +439,12 @@ export class UsageService {
   async usageFor(
     userId: string,
     now: Date = new Date(),
-  ): Promise<Array<{ action: string; count: number; bonus: number }>> {
+  ): Promise<Array<{ action: string; count: number; bonus: number; kept: number }>> {
     const rows = await this.prisma.usageLedger.findMany({
       where: { userId, period: periodFor(now) },
-      select: { action: true, count: true, bonus: true },
+      select: { action: true, count: true, bonus: true, kept: true },
     });
-    return rows.map((r) => ({ action: r.action, count: r.count, bonus: r.bonus }));
+    return rows.map((r) => ({ action: r.action, count: r.count, bonus: r.bonus, kept: r.kept }));
   }
 }
 
@@ -392,7 +457,12 @@ export class UsageService {
 export function refusal(
   action: string,
   result: Extract<ConsumeResult, { ok: false }>,
-): CapExceededError | CeilingExceededError | PlatformCeilingExceededError | TrialEndedError {
+):
+  | CallCeilingError
+  | CapExceededError
+  | CeilingExceededError
+  | PlatformCeilingExceededError
+  | TrialEndedError {
   if (result.reason === 'trial' && result.trialEndedAt) {
     return new TrialEndedError(action, result.trialEndedAt);
   }
@@ -410,6 +480,15 @@ export function refusal(
       result.spentInr ?? MONTHLY_CEILING_INR,
       MONTHLY_CEILING_INR,
       result.resetsAt,
+    );
+  }
+  if (result.callCeiling !== undefined) {
+    return new CallCeilingError(
+      action,
+      result.cap,
+      result.callCeiling,
+      result.resetsAt,
+      result.used ?? 0,
     );
   }
   return new CapExceededError(action, result.cap, result.resetsAt, result.used ?? result.cap);
