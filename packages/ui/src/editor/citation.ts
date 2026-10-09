@@ -965,7 +965,8 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         popover = el;
       };
 
-      const onEnter = () => {
+      /** Opens the card after `delay` ms: the hover delay for a pointer, none for a tap. */
+      const openCard = (delay: number) => {
         if (!options.resolvePassage) return;
         if (hiddenInCluster()) return;
         const cluster = shownCluster();
@@ -999,10 +1000,40 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
               showPopover(passage);
             })
             .catch(() => undefined);
-        }, options.hoverDelayMs ?? 250);
+        }, delay);
       };
+      const onEnter = () => openCard(options.hoverDelayMs ?? 250);
       dom.addEventListener('mouseenter', onEnter);
       dom.addEventListener('mouseleave', closePopover);
+
+      /**
+       * QA 2026-10-09: on a phone there is no hover, so the card — each source's passage, and
+       * Remove — was out of reach. A tap (a touch or pen press) opens it at once and a second tap
+       * closes it; a tap anywhere else closes it too. A mouse is untouched: its card is the
+       * hover's, and a click only selects.
+       */
+      let pressedBy = '';
+      const onPointerDown = (event: Event) => {
+        pressedBy = String((event as PointerEvent).pointerType ?? '');
+      };
+      const onTap = (event: Event) => {
+        const target = event.target as globalThis.Node | null;
+        if (popover && target && popover.contains(target)) return;
+        const touch = pressedBy === 'touch' || pressedBy === 'pen';
+        pressedBy = '';
+        if (!touch) return;
+        if (popover) closePopover();
+        else openCard(0);
+      };
+      const onPressElsewhere = (event: Event) => {
+        if (!popover) return;
+        const target = event.target as globalThis.Node | null;
+        if (target && dom.contains(target)) return;
+        closePopover();
+      };
+      dom.addEventListener('pointerdown', onPointerDown);
+      dom.addEventListener('click', onTap);
+      document.addEventListener('pointerdown', onPressElsewhere, true);
 
       const render = () => {
         const a = current.attrs as CitationAttrs;
@@ -1098,6 +1129,9 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           closePopover();
           dom.removeEventListener('mouseenter', onEnter);
           dom.removeEventListener('mouseleave', closePopover);
+          dom.removeEventListener('pointerdown', onPointerDown);
+          dom.removeEventListener('click', onTap);
+          document.removeEventListener('pointerdown', onPressElsewhere, true);
           editor.off('transaction', onTransaction);
         },
       };

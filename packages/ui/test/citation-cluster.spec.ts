@@ -266,6 +266,60 @@ describe('selecting and removing a cluster', () => {
     expect(shown()).toEqual([LABELS.c_g, LABELS.c_t]);
   });
 
+  it('a tap opens the card on a phone, a second tap or a tap elsewhere closes it', async () => {
+    // The lone citation has no chunk; give it the passage of its paper so it has a card too.
+    open({ resolvePassage: async (_sourceId, chunkId) => PASSAGES[chunkId ?? 'chunk-r'] ?? null });
+    const [head, , single] = spans() as HTMLElement[];
+    const press = (el: Element, pointerType: string) => {
+      const down = new MouseEvent('pointerdown', { bubbles: true });
+      Object.defineProperty(down, 'pointerType', { value: pointerType });
+      el.dispatchEvent(down);
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    };
+    const settle = async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      await Promise.resolve();
+    };
+    const card = () => head?.querySelector('[data-testid="citation-cluster-card"]');
+
+    press(head as HTMLElement, 'touch');
+    await settle();
+    expect(card()).toBeTruthy();
+    // The card's own tabs work by tap without closing it.
+    press(card()?.querySelectorAll('[data-testid="citation-cluster-tab"]')[1] as Element, 'touch');
+    await settle();
+    expect(card()?.textContent).toContain(PASSAGES['chunk-r']?.text);
+    press(head as HTMLElement, 'touch');
+    await settle();
+    expect(card()).toBeNull();
+
+    press(head as HTMLElement, 'touch');
+    await settle();
+    expect(card()).toBeTruthy();
+    press(editor.view.dom.querySelector('p') as Element, 'touch');
+    await settle();
+    expect(card()).toBeNull();
+
+    // A single citation too.
+    press(single as HTMLElement, 'touch');
+    await settle();
+    expect(single?.querySelector('.citation-popover')).toBeTruthy();
+  });
+
+  it('a mouse click opens no card: a mouse has the hover', async () => {
+    open();
+    const head = spans()[0] as HTMLElement;
+    const down = new MouseEvent('pointerdown', { bubbles: true });
+    Object.defineProperty(down, 'pointerType', { value: 'mouse' });
+    head.dispatchEvent(down);
+    head.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 5));
+    expect(head.querySelector('.citation-popover')).toBeNull();
+    // And a hover still opens it, as before.
+    await hover(head);
+    expect(head.querySelector('[data-testid="citation-cluster-card"]')).toBeTruthy();
+  });
+
   it('a read-only chapter offers no Remove', async () => {
     open();
     editor.setEditable(false);
