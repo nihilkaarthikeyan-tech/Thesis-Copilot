@@ -26,6 +26,7 @@ import {
   postProcessCommand,
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
+import type { RetrievedPassage } from '@tc/retrieval';
 import type { Redis } from 'ioredis';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
@@ -40,7 +41,7 @@ import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { ContextService } from './context.service.js';
-import { withFoundPassages } from './edit-literature.js';
+import { realChunkId, withFoundPassages } from './edit-literature.js';
 import { type AddedPaper, EditLiteratureService } from './edit-literature.service.js';
 
 export type CommandRunInput = {
@@ -88,7 +89,7 @@ export type CommandRunResult = {
    * resolved to real ids with the label to show. Keys that were already in the selection are not
    * here: the client keeps those nodes as they were (ADR-0045).
    */
-  citations: Array<{ key: string; sourceId: string; chunkId: string; rendered: string }>;
+  citations: Array<{ key: string; sourceId: string; chunkId: string | null; rendered: string }>;
   unchanged: boolean;
   /** ADR-0095: citations of the selection now on another claim — a warning, like a dropped one. */
   movedCitations: string[];
@@ -185,7 +186,7 @@ export class CommandService {
       input.searchLiterature === true &&
       (input.command === 'custom' || COMMAND.needsPassages.includes(input.command));
     let literature: CommandLiterature | undefined;
-    let found: Awaited<ReturnType<ContextService['retrieve']>> | null = null;
+    let found: RetrievedPassage[] = [];
     if (searching) {
       // After the unit is taken (§10.2): the relevance embedding is a provider call. The edit
       // survives anything here; the unit is refunded below only if the edit itself fails.
@@ -194,18 +195,13 @@ export class CommandService {
           userId: user.id,
           documentId: chapter.documentId,
           chapterTitle: chapter.title,
+          scopeNote: chapter.scopeNote,
           selection,
           ...(input.instruction ? { instruction: input.instruction } : {}),
         });
         literature = { added: result.added, collection: result.collection, note: result.note };
-        if (result.readyIds.length > 0) {
-          found = await this.context.retrieve(
-            chapter,
-            [input.instruction ?? '', selection].filter(Boolean).join('. '),
-            'CHAT',
-            { sourceIds: result.readyIds },
-          );
-        }
+        // Their abstracts, tied to the new library rows: no wait for the worker.
+        found = result.passages;
       } catch (error) {
         this.logger.warn({ err: error, chapterId: chapter.id }, 'edit literature search failed');
         literature = {
@@ -224,7 +220,7 @@ export class CommandService {
         ? await this.context.retrieve(chapter, selection, 'CHAT')
         : null;
     // ADR-0133: the found papers' passages first, re-keyed with the library's into one set.
-    const retrieved = found ? withFoundPassages(library, found, COMMAND.topK) : library;
+    const retrieved = found.length > 0 ? withFoundPassages(library, found, COMMAND.topK) : library;
     const passages = retrieved?.passages.slice(0, COMMAND.topK) ?? [];
     const memory = await this.context.memoryBlock(chapter);
     const request = buildCommandRequest({
@@ -306,7 +302,8 @@ export class CommandService {
               {
                 key,
                 sourceId: real.sourceId,
-                chunkId: real.chunkId,
+                // ADR-0133: a paper cited by the abstract this edit was sent has no chunk yet.
+                chunkId: realChunkId(real.chunkId),
                 rendered: `(${real.shortRef})`,
               },
             ]

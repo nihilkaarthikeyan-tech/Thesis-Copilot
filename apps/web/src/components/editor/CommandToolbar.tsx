@@ -19,7 +19,6 @@ import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import {
   addedHeading,
-  addedLabel,
   commandRunBody,
   type EditLiterature,
   literatureApplies,
@@ -58,7 +57,7 @@ type RunResult = {
   originalWords: number;
   droppedCitations: string[];
   /** Citations the rewrite added from the passages it was sent, resolved (ADR-0045). */
-  citations?: Array<{ key: string; sourceId: string; chunkId: string; rendered: string }>;
+  citations?: Array<{ key: string; sourceId: string; chunkId: string | null; rendered: string }>;
   unchanged: boolean;
   /** ADR-0095: citations now on another claim — a warning before Replace, like a dropped one. */
   movedCitations?: string[];
@@ -610,7 +609,7 @@ export function CommandToolbar({
                           data-testid="command-literature-paper"
                           className="block truncate text-accent underline"
                         >
-                          {addedLabel(paper)}
+                          {paper.shortRef}
                         </a>
                       </li>
                     ))}
