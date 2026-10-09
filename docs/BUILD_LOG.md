@@ -6207,3 +6207,15 @@ passes (before this, a tag on a red commit deployed). Docs-only pushes (`docs/**
 cached. No test removed. From recent runs: ≈29 runner-minutes per push before, ≈11 on average
 after (0 docs-only, ≈4 web-only, ≈17 otherwise); a release ≈16 before, ≈45 after, and ≈30 min
 longer from tag to deploy. Validated with `@action-validator/cli`; not yet run on GitHub.
+
+## Setup inside the editor (2026-10-09, ADR-0145)
+
+New ▾ → New thesis now makes the thesis and opens its first chapter with a "Set up this thesis" card
+(title and sources, field, aim, chapters, first line), built to `docs/design/setup-in-editor/`.
+New: `PUT /documents/:id/setup`, `POST /documents/:id/outline/restart`, untouched untitled theses
+off the list after a day. No migration, no prompt, no metered action. Proved on the mock stack
+(new API, unit and Playwright specs; layout audit at five widths, 800 px tall, no faults);
+screenshots in `docs/design/setup-in-editor/built/`. Found on the way: the card hidden inside the
+folded status line still counts as present to `toHaveCount`, so the spec asserts visibility.
+Not done: the older start specs (`start-writing-now`, `first-session`, `_measure/*`) still drive the
+removed steps; time to first cited suggestion not re-measured (OpenAI credit out). ADR-0145 "Status".

@@ -186,7 +186,7 @@ export function SetupAim({
             ) : null}
           </div>
           {options.length > 0 ? (
-            <fieldset className="mt-2 flex flex-col items-start gap-1.5 border-0 p-0">
+            <fieldset className="mt-2 flex flex-col items-start gap-1.5 border-0 p-0 [@media(max-height:820px)]:max-h-[24vh] [@media(max-height:820px)]:overflow-y-auto">
               <legend className="sr-only">{t('pathA.chooseAnswer')}</legend>
               {options
                 .filter((o) => !o.other)

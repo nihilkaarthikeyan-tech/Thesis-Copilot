@@ -425,7 +425,7 @@ export function SetupCard({
   const planFrom = card.aim?.fromTitle === false ? 'answers' : 'title';
   /** Long steps scroll inside the card on a short screen, so the first heading stays in view. */
   const body =
-    'min-w-0 [@media(max-height:820px)]:max-h-[34vh] [@media(max-height:820px)]:overflow-y-auto [@media(max-height:820px)]:pr-1';
+    'min-w-0 [@media(max-height:820px)]:max-h-[40vh] [@media(max-height:820px)]:overflow-y-auto [@media(max-height:820px)]:pr-1';
 
   return (
     <section
@@ -474,66 +474,68 @@ export function SetupCard({
         {/* Row 1: title, then the Sources line as its own row once folded. */}
         {state('title') === 'open' ? (
           <Row id="title" state="open" label={t('setup.row.title')}>
-            <form onSubmit={(e) => void confirmTitle(e)} className={body}>
-              <label htmlFor="setup-title" className="text-[14px] font-semibold text-ink">
-                {t('setup.title.question')}
-              </label>
-              <input
-                id="setup-title"
-                // biome-ignore lint/a11y/noAutofocus: the one thing to do on a new thesis.
-                autoFocus
-                value={title}
-                maxLength={300}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={t('setup.title.placeholder')}
-                data-testid="setup-title-input"
-                className="mt-1.5 h-10 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink focus:border-accent focus:outline-none"
-              />
-              <p className="mt-1 text-[12.5px] text-muted">
-                {title.trim() && !titleReady ? t('setup.title.short') : t('setup.title.hint')}
-              </p>
-              <div className="mt-3">
-                <StartingStyle value={style} onChange={setStyle} compact />
-              </div>
-              <p className="mt-2 text-[12.5px] text-muted [overflow-wrap:anywhere]">
-                {t('setup.sources.label')} {sourcesLine(prefs, null, t)}{' '}
-                <LinkButton onClick={() => setPrefsOpen((v) => !v)} testId="setup-sources-change">
-                  {prefsOpen ? t('setup.sources.done') : t('setup.change')}
-                </LinkButton>
-              </p>
-              {prefsOpen ? (
-                <div className="mt-1 rounded-md border border-line bg-surface px-3 pb-2">
-                  <SourcePrefsFields
-                    value={prefs}
-                    onChange={setPrefs}
-                    onValidChange={setPrefsValid}
-                    testIdPrefix="setup"
-                  />
+            <form onSubmit={(e) => void confirmTitle(e)} className="min-w-0">
+              <div className={body}>
+                <label htmlFor="setup-title" className="text-[14px] font-semibold text-ink">
+                  {t('setup.title.question')}
+                </label>
+                <input
+                  id="setup-title"
+                  // biome-ignore lint/a11y/noAutofocus: the one thing to do on a new thesis.
+                  autoFocus
+                  value={title}
+                  maxLength={300}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={t('setup.title.placeholder')}
+                  data-testid="setup-title-input"
+                  className="mt-1.5 h-10 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[14px] text-ink focus:border-accent focus:outline-none"
+                />
+                <p className="mt-1 text-[12.5px] text-muted">
+                  {title.trim() && !titleReady ? t('setup.title.short') : t('setup.title.hint')}
+                </p>
+                <div className="mt-3">
+                  <StartingStyle value={style} onChange={setStyle} compact />
                 </div>
-              ) : null}
-              {reopened ? null : (
-                <p className="mt-2 text-[12.5px] text-muted">
-                  {t('setup.or')}{' '}
-                  <Link
-                    href="/app/new?start=paper"
-                    className="underline underline-offset-2 hover:text-ink"
-                    data-testid="setup-link-paper"
-                  >
-                    {t('setup.link.paper')}
-                  </Link>
-                  {' · '}
-                  <LinkButton
-                    onClick={() => window.dispatchEvent(new Event(OPEN_WORD_IMPORT))}
-                    testId="setup-link-word"
-                  >
-                    {t('setup.link.word')}
-                  </LinkButton>
-                  {' · '}
-                  <LinkButton onClick={() => void toProposal()} testId="setup-link-proposal">
-                    {t('setup.link.proposal')}
+                <p className="mt-2 text-[12.5px] text-muted [overflow-wrap:anywhere]">
+                  {t('setup.sources.label')} {sourcesLine(prefs, null, t)}{' '}
+                  <LinkButton onClick={() => setPrefsOpen((v) => !v)} testId="setup-sources-change">
+                    {prefsOpen ? t('setup.sources.done') : t('setup.change')}
                   </LinkButton>
                 </p>
-              )}
+                {prefsOpen ? (
+                  <div className="mt-1 rounded-md border border-line bg-surface px-3 pb-2">
+                    <SourcePrefsFields
+                      value={prefs}
+                      onChange={setPrefs}
+                      onValidChange={setPrefsValid}
+                      testIdPrefix="setup"
+                    />
+                  </div>
+                ) : null}
+                {reopened ? null : (
+                  <p className="mt-2 text-[12.5px] text-muted">
+                    {t('setup.or')}{' '}
+                    <Link
+                      href="/app/new?start=paper"
+                      className="underline underline-offset-2 hover:text-ink"
+                      data-testid="setup-link-paper"
+                    >
+                      {t('setup.link.paper')}
+                    </Link>
+                    {' · '}
+                    <LinkButton
+                      onClick={() => window.dispatchEvent(new Event(OPEN_WORD_IMPORT))}
+                      testId="setup-link-word"
+                    >
+                      {t('setup.link.word')}
+                    </LinkButton>
+                    {' · '}
+                    <LinkButton onClick={() => void toProposal()} testId="setup-link-proposal">
+                      {t('setup.link.proposal')}
+                    </LinkButton>
+                  </p>
+                )}
+              </div>
               <div className="mt-3 flex justify-end gap-2">
                 {reopened ? (
                   <Button type="button" variant="secondary" onClick={() => setReopened(null)}>
@@ -573,55 +575,57 @@ export function SetupCard({
         {index(card.step) >= 2 || card.done ? (
           state('field') === 'open' ? (
             <Row id="field" state="open" label={t('setup.row.field')}>
-              <div className={body}>
-                <p className="text-[14px] font-semibold text-ink">{t('setup.field.question')}</p>
-                <p className="mt-0.5 text-[12.5px] text-muted">{t('setup.field.hint')}</p>
-                <label
-                  htmlFor="setup-field"
-                  className="mt-2.5 block text-[13px] font-semibold text-ink"
-                >
-                  {t('setup.field.label')}
-                </label>
-                <select
-                  id="setup-field"
-                  value={field}
-                  onChange={(e) => setField(e.target.value)}
-                  data-testid="setup-field"
-                  className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
-                >
-                  <option value="">{t('setup.field.none')}</option>
-                  {DISCIPLINE_PROFILES.map((d) => (
-                    <option key={d.id} value={d.displayName}>
-                      {d.displayName}
-                    </option>
-                  ))}
-                  {field && !DISCIPLINE_PROFILES.some((d) => d.displayName === field) ? (
-                    <option value={field}>{field}</option>
+              <div className="min-w-0">
+                <div className={body}>
+                  <p className="text-[14px] font-semibold text-ink">{t('setup.field.question')}</p>
+                  <p className="mt-0.5 text-[12.5px] text-muted">{t('setup.field.hint')}</p>
+                  <label
+                    htmlFor="setup-field"
+                    className="mt-2.5 block text-[13px] font-semibold text-ink"
+                  >
+                    {t('setup.field.label')}
+                  </label>
+                  <select
+                    id="setup-field"
+                    value={field}
+                    onChange={(e) => setField(e.target.value)}
+                    data-testid="setup-field"
+                    className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
+                  >
+                    <option value="">{t('setup.field.none')}</option>
+                    {DISCIPLINE_PROFILES.map((d) => (
+                      <option key={d.id} value={d.displayName}>
+                        {d.displayName}
+                      </option>
+                    ))}
+                    {field && !DISCIPLINE_PROFILES.some((d) => d.displayName === field) ? (
+                      <option value={field}>{field}</option>
+                    ) : null}
+                  </select>
+                  {guessed && field === guessed.displayName && !doc.field ? (
+                    <p className="mt-1 text-[12px] text-muted">{t('setup.field.guessed')}</p>
                   ) : null}
-                </select>
-                {guessed && field === guessed.displayName && !doc.field ? (
-                  <p className="mt-1 text-[12px] text-muted">{t('setup.field.guessed')}</p>
-                ) : null}
-                <label
-                  htmlFor="setup-university"
-                  className="mt-2.5 block text-[13px] font-semibold text-ink"
-                >
-                  {t('setup.university.label')}
-                </label>
-                <select
-                  id="setup-university"
-                  value={universityId}
-                  onChange={(e) => setUniversityId(e.target.value)}
-                  data-testid="setup-university"
-                  className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
-                >
-                  <option value="">{t('setup.field.none')}</option>
-                  {UNIVERSITY_PROFILES.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.displayName}
-                    </option>
-                  ))}
-                </select>
+                  <label
+                    htmlFor="setup-university"
+                    className="mt-2.5 block text-[13px] font-semibold text-ink"
+                  >
+                    {t('setup.university.label')}
+                  </label>
+                  <select
+                    id="setup-university"
+                    value={universityId}
+                    onChange={(e) => setUniversityId(e.target.value)}
+                    data-testid="setup-university"
+                    className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
+                  >
+                    <option value="">{t('setup.field.none')}</option>
+                    {UNIVERSITY_PROFILES.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="mt-3 flex justify-end gap-2">
                   <Button
                     type="button"
@@ -658,7 +662,7 @@ export function SetupCard({
         {index(card.step) >= 3 || card.done ? (
           state('aim') === 'open' ? (
             <Row id="aim" state="open" label={t('setup.row.aim')}>
-              <div className={body}>
+              <div className="min-w-0">
                 <SetupAim
                   documentId={doc.id}
                   title={doc.title}
@@ -690,7 +694,7 @@ export function SetupCard({
         {index(card.step) >= 4 || card.done ? (
           state('chapters') === 'open' ? (
             <Row id="chapters" state="open" label={t('setup.row.chapters')}>
-              <div className={body} data-plan={plan ?? 'unknown'}>
+              <div className="min-w-0" data-plan={plan ?? 'unknown'}>
                 {plan === 'planning' ? (
                   <div role="status" aria-busy="true" data-testid="setup-planning">
                     <p className="text-[14px] font-semibold text-ink">
