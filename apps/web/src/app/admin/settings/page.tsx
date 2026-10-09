@@ -95,7 +95,7 @@ const FLAG_NOTES: Record<string, string> = {
     'Draft mode uses the stronger, dearer model. Off routes drafts to the fast model.',
   grobid: 'Read uploaded PDFs with the GROBID service instead of the built-in reader.',
   literatureReviewBuild:
-    'Shows “Write the whole literature review” on the Build page: up to 20 sections from the library, as drafts to accept, with the QA report (about ₹12.92 a build at worst). Every plan’s allowance is 0 until one is set, so only accounts given extra allowance can run it.',
+    'Shows “Write the whole literature review” on the Build page: up to 20 sections from the library, as drafts to accept, with the QA report (about ₹12.92 a build at worst). One a month on the paid plans, none on the free trial; extra allowance can add more.',
   livingGapMap: 'Recompute the literature gap map whenever the library changes.',
 };
 

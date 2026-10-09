@@ -47,9 +47,11 @@ const STUDENT: PlanLimits = {
     CHAPTER_BUILD: 3,
     EXAMINER_REVIEW: 6,
     RESEARCH: 3,
-    // ADR-0124: built and priced, not yet sold. The owner sets the allowance (docs/PENDING.md);
-    // until then only an admin's extra allowance lets an account run one.
-    LIT_REVIEW_BUILD: 0,
+    // ADR-0143 (2026-10-09, decisions delegated by the owner): one whole literature review a
+    // month (₹12.92 at its worst case). A thesis has one literature review chapter; one a month is
+    // a full rewrite every month, and the chapter build (3 a month) still writes it section by
+    // section.
+    LIT_REVIEW_BUILD: 1,
   },
   seedPapers: 3,
   libraryPdfs: 60,
@@ -72,6 +74,9 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
       CHAPTER_BUILD: 1,
       EXAMINER_REVIEW: 1,
       RESEARCH: 1,
+      // ADR-0143: none on the trial. The trial's chapter build already shows what a build does;
+      // a review is twenty sections, a fifth of the ceiling in one press, for an account that may
+      // never pay.
       LIT_REVIEW_BUILD: 0,
     },
     seedPapers: 1,
@@ -95,7 +100,7 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
       CHAPTER_BUILD: 3,
       EXAMINER_REVIEW: 6,
       RESEARCH: 3,
-      LIT_REVIEW_BUILD: 0,
+      LIT_REVIEW_BUILD: 1,
     },
     seedPapers: 3,
     libraryPdfs: 60,
@@ -112,8 +117,8 @@ export function capFor(plan: Plan, action: MeteredAction): number {
 }
 
 /**
- * ADR-0124: an allowance some plan actually includes. One that no plan includes yet (the
- * literature review build, until the owner prices it) is left off the pricing page, the help
+ * ADR-0124: an allowance some plan actually includes. One that no plan includes (as the
+ * literature review build was until ADR-0143) is left off the pricing page, the help
  * page and the student's usage list, so nothing advertises what is not on sale; an account an
  * admin gave extra units still sees its line.
  */

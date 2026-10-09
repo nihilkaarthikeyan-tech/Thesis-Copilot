@@ -46,6 +46,7 @@ export {
   ONE_TIME_PROFILES,
   OUTLINE_CALLS_PER_DOCUMENT,
   PRD_ACTION_PROFILES,
+  PROJECTION_LIMIT_INR,
   type TokenUsage,
 } from './cost.js';
 export {

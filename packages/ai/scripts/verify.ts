@@ -336,12 +336,25 @@ async function main(): Promise<void> {
   );
   console.log(line('='));
 
-  if (!budget.withinCeiling) {
+  // ADR-0143 (the owner, 2026-10-09): the projection may exceed INR 100 — the runtime stop in
+  // `UsageService.consume` keeps real spend at INR 100 — but not the projection limit.
+  if (!budget.withinCeiling && budget.withinProjectionLimit) {
+    console.log('');
+    console.log(
+      'OVER INR 100: the STUDENT worst case is INR ' +
+        budget.totalInr.toFixed(2) +
+        ' (accepted by the owner, ADR-0143). A student who really spends INR 100 in a month is ' +
+        'refused every further AI call by the runtime stop.',
+    );
+  }
+  if (!budget.withinProjectionLimit) {
     console.error('');
     console.error(
       'FAILED: the STUDENT budget is INR ' +
         budget.totalInr.toFixed(2) +
-        ', above the INR 100 ceiling (PRD §11).',
+        ', above the INR ' +
+        budget.projectionLimitInr +
+        ' projection limit (ADR-0143).',
     );
     console.error('Apply the levers in Appendix E.4, in order, and run again:');
     console.error('  1. turn draftModeStrongTier off      2. lower the ASSIST cap 180 -> 150');
@@ -350,7 +363,9 @@ async function main(): Promise<void> {
   }
 
   console.log('');
-  console.log(`OK: STUDENT budget INR ${budget.totalInr.toFixed(2)} <= INR 100.`);
+  console.log(
+    `OK: STUDENT budget INR ${budget.totalInr.toFixed(2)} <= INR ${budget.projectionLimitInr} (projection limit; runtime stop at INR 100).`,
+  );
 }
 
 main().catch((error: unknown) => {

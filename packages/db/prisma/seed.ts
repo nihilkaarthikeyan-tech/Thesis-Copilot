@@ -31,8 +31,8 @@ const FEATURE_FLAGS: ReadonlyArray<{ key: string; enabled: boolean; note: string
   { key: 'autoSources', enabled: false, note: 'ADR-0037: find sources when the library has none' },
   // ADR-0028. Off until the host nginx passes WebSockets to the collab instance.
   { key: 'collaboration', enabled: false, note: 'Live co-authoring (ADR-0028)' },
-  // ADR-0124. Off until the owner sets the literature review allowance (migration 0050 too).
-  { key: 'literatureReviewBuild', enabled: false, note: 'Whole literature review (ADR-0124)' },
+  // ADR-0124, turned on by ADR-0143 (migration 0055 too): one a month on the paid plans.
+  { key: 'literatureReviewBuild', enabled: true, note: 'Whole literature review (ADR-0143)' },
   // Not one of FR-9.7's four. PHASES task 0.10 adds it: the admin page shows "Cost model:
   // UNVERIFIED" until the human fills PRD Appendix E.3 and flips this to true. Seeded so the row
   // exists to flip. Logged in docs/CONSISTENCY_REVIEW.md §3.

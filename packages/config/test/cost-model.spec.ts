@@ -23,6 +23,7 @@ import {
   LIT_REVIEW_BUILD_MAX_SECTIONS,
   microToInr,
   PRD_ACTION_PROFILES,
+  PROJECTION_LIMIT_INR,
 } from '../src/cost.js';
 import { capFor, offeredOnSomePlan, PLAN_LIMITS, PLANS } from '../src/plans.js';
 import { applyPricingOverride, DEFAULT_PRICING, parsePricingOverride } from '../src/pricing.js';
@@ -51,7 +52,7 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(budget.totalInr).toBeLessThanOrEqual(100);
   });
 
-  it('the whole STUDENT budget, viva included, stays within ₹100 at the production models', () => {
+  it('the whole STUDENT budget, viva included, stays within ₹100 with gpt-5-nano on the fast tier', () => {
     const budget = computeMonthlyBudget('STUDENT_MONTHLY', { models: PRODUCTION_MODELS });
     console.log(`\n${formatBudget(budget)}\n`);
     expect(budget.lines.map((line) => line.label)).toContain('Viva preparation');
@@ -67,19 +68,23 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(microToInr(line?.unitMicroInr ?? 0)).toBeCloseTo(2.0993, 4);
     // ADR-0077 + ADR-0074: chat on the strong tier, researching a thin library (₹0.4850 a
     // question) took this from ₹63.89 to ₹70.73; ADR-0080's deep research adds ₹3.27; ADR-0131
-    // ₹1.43 more.
-    expect(budget.totalInr).toBeCloseTo(75.43, 2);
-    // ADR-0051 moved the fast tier to gpt-4.1-mini for Assist; the ceiling holds there too.
+    // ₹1.43 more; ADR-0143's one literature review a month ₹12.92.
+    expect(budget.totalInr).toBeCloseTo(88.34, 2);
+    // ADR-0051 moved the fast tier to gpt-4.1-mini, which is what production runs.
     const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
     });
     // ADR-0077 + ADR-0074: from ₹85.82; ADR-0080's three deep research questions (₹1.09 each)
-    // from ₹89.85 to ₹93.13; ADR-0131's strengths and questions to ₹94.55.
-    expect(assistModel.totalInr).toBeCloseTo(94.55, 2);
-    expect(assistModel.withinCeiling).toBe(true);
+    // from ₹89.85 to ₹93.13; ADR-0131's strengths and questions to ₹94.55; ADR-0143's one
+    // literature review a month to ₹107.47 — over ₹100, which the owner accepted (2026-10-09).
+    // The runtime stop still holds real spend at ₹100; the projection must stay under its limit.
+    expect(assistModel.totalInr).toBeCloseTo(107.47, 2);
+    expect(assistModel.withinCeiling).toBe(false);
+    expect(assistModel.withinProjectionLimit).toBe(true);
+    expect(assistModel.projectionLimitInr).toBe(PROJECTION_LIMIT_INR);
   });
 
-  it('literature review builds are priced per section and add nothing while the cap is 0 (ADR-0124)', () => {
+  it('literature review builds are priced per section, one a month on a paid plan (ADR-0124, ADR-0143)', () => {
     // Twenty sections at the chapter build's per-section shape: 20/14 of a chapter build.
     const unit = microToInr(
       computeCallCost({
@@ -108,15 +113,16 @@ describe('Appendix E.2 — cost self-check', () => {
     expect(unit).toBeCloseTo((chapter * 20) / 14, 2);
 
     for (const plan of PLANS) {
-      expect(capFor(plan, 'LIT_REVIEW_BUILD'), plan).toBe(0);
+      const allowance = plan === 'FREE_TRIAL' ? 0 : 1;
+      expect(capFor(plan, 'LIT_REVIEW_BUILD'), plan).toBe(allowance);
       const budget = computeMonthlyBudget(plan, { models: PRODUCTION_MODELS });
       const line = budget.lines.find((l) => l.label === 'Literature review builds');
-      expect(line?.count, plan).toBe(0);
-      expect(line?.totalMicroInr, plan).toBe(0);
+      expect(line?.count, plan).toBe(allowance);
+      expect(microToInr(line?.totalMicroInr ?? 0), plan).toBeCloseTo(allowance * 12.9164, 4);
       expect(microToInr(line?.unitMicroInr ?? 0), plan).toBeCloseTo(12.9164, 4);
     }
-    // Not on sale yet, so the pricing and help pages leave it off.
-    expect(offeredOnSomePlan('LIT_REVIEW_BUILD')).toBe(false);
+    // On sale now, so the pricing and help pages list it.
+    expect(offeredOnSomePlan('LIT_REVIEW_BUILD')).toBe(true);
     expect(offeredOnSomePlan('CHAPTER_BUILD')).toBe(true);
     expect(offeredOnSomePlan('COHERENCE')).toBe(true);
   });
@@ -130,7 +136,23 @@ describe('Appendix E.2 — cost self-check', () => {
       expect(prd.totalInr, plan).toBeLessThanOrEqual(100);
       const production = computeMonthlyBudget(plan, { models: PRODUCTION_MODELS });
       expect(production.totalInr, plan).toBeLessThanOrEqual(100);
+      // ADR-0143: at the fast tier production runs, over ₹100 but inside the projection limit.
+      const live = computeMonthlyBudget(plan, {
+        models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
+      });
+      expect(live.withinProjectionLimit, plan).toBe(true);
     }
+  });
+
+  it('a runaway configuration still fails the projection limit (ADR-0143)', () => {
+    // Prices ten times what is configured (a wrong rate, a wrong model id) is a mistake, not a
+    // decision, and must still fail.
+    const pricing = applyPricingOverride(DEFAULT_PRICING, { inrPerUsd: 87 * 10 });
+    const budget = computeMonthlyBudget('STUDENT_MONTHLY', {
+      pricing,
+      models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
+    });
+    expect(budget.withinProjectionLimit).toBe(false);
   });
 
   it('viva is what the reference prices cannot carry — the reason for the two bases', () => {
@@ -193,7 +215,7 @@ describe('§11.3 — plan caps match the PRD table', () => {
       EXAMINER_REVIEW: 1,
       // ADR-0080: one deep research question to see what it does.
       RESEARCH: 1,
-      // ADR-0124: not on sale until the owner sets the allowance.
+      // ADR-0124; ADR-0143 keeps it off the trial.
       LIT_REVIEW_BUILD: 0,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
@@ -224,8 +246,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       EXAMINER_REVIEW: 6,
       // ADR-0080: three deep research questions a month (₹1.09 each).
       RESEARCH: 3,
-      // ADR-0124: not on sale until the owner sets the allowance (₹12.92 a build).
-      LIT_REVIEW_BUILD: 0,
+      // ADR-0124, ADR-0143: one whole literature review a month (₹12.92 a build).
+      LIT_REVIEW_BUILD: 1,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);

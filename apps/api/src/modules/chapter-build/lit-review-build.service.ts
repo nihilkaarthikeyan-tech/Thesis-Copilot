@@ -7,8 +7,9 @@
  * queued and so before any provider call, and given back if the job cannot be queued. The worker
  * runs the chapter build's pipeline over every theme and owns the row's status from there.
  *
- * Behind the `literatureReviewBuild` flag (off by default) and on a cap of 0 on every plan until
- * the owner sets one: with the flag off every route here refuses and the screen does not offer it.
+ * Behind the `literatureReviewBuild` flag (on since ADR-0143, migration 0055): with the flag off
+ * every route here refuses and the screen does not offer it. One a month on the paid plans, none on
+ * the trial (ADR-0143).
  * The state, the QA report (and its PDF/HTML), and the student's decisions on issues are the
  * chapter build's own routes, on the same `ChapterBuild` row.
  */

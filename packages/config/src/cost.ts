@@ -25,6 +25,21 @@ export const MICRO_INR_PER_INR = 1_000_000;
 export const MONTHLY_CEILING_INR = 100;
 export const MONTHLY_CEILING_MICRO_INR = MONTHLY_CEILING_INR * MICRO_INR_PER_INR;
 
+/**
+ * ADR-0143 (the owner, 2026-10-09: "my aim is ₹100 per month — even if it's higher, no issue, just
+ * tell me the amount"). The *projected* worst case — every allowance used in full, every unit at
+ * its priced ceiling — may now exceed ₹100; `pnpm ai:verify` prints the figure and says plainly
+ * that it is over. What it may not exceed is this bound, so a runaway configuration (a price rise,
+ * a wrong model id, a cap typed ten times too large) still fails `pnpm ai:verify` and CI.
+ *
+ * The ₹100 itself is unchanged where it is a fact rather than a projection: `UsageService.consume`
+ * refuses every metered call once a student's real logged spend this month reaches
+ * `MONTHLY_CEILING_INR`, so no student actually costs more than ₹100 plus the one call that
+ * crosses the line. A projection above ₹100 only means a student who used everything would be
+ * stopped before the end of their allowances.
+ */
+export const PROJECTION_LIMIT_INR = 150;
+
 export function inrToMicro(inr: number): number {
   return Math.round(inr * MICRO_INR_PER_INR);
 }
@@ -174,8 +189,8 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
    * once (5.5k in, 600 out), half of them fixed once (2.5k in, 900 out), the fast-tier proofread
    * scaled from fourteen sections to twenty (16,000 × 20 / 14 strong-tier input tokens), and the
    * fast-tier key-term extraction folded in. The 4k cached block once per call (50 calls). At
-   * `gpt-5-mini` that is ₹12.92 a build, 20/14 of a chapter build's ₹9.04. Its cap is 0 on every
-   * plan, so it adds nothing to any monthly total until the owner sets one.
+   * `gpt-5-mini` that is ₹12.92 a build, 20/14 of a chapter build's ₹9.04. ADR-0143: one a month
+   * on the paid plans, none on the trial.
    */
   LIT_REVIEW_BUILD: {
     tier: 'strong',
@@ -245,6 +260,9 @@ export type MonthlyBudget = {
   /** The ₹100/user/month ceiling from PRD §11. */
   readonly ceilingInr: number;
   readonly withinCeiling: boolean;
+  /** ADR-0143: the projection's own bound, which `pnpm ai:verify` and CI enforce. */
+  readonly projectionLimitInr: number;
+  readonly withinProjectionLimit: boolean;
 };
 
 export type BudgetOptions = {
@@ -385,6 +403,8 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
     totalInr: microToInr(totalMicroInr),
     ceilingInr: MONTHLY_CEILING_INR,
     withinCeiling: microToInr(totalMicroInr) <= MONTHLY_CEILING_INR,
+    projectionLimitInr: PROJECTION_LIMIT_INR,
+    withinProjectionLimit: microToInr(totalMicroInr) <= PROJECTION_LIMIT_INR,
   };
 }
 
@@ -420,6 +440,18 @@ export function formatBudget(budget: MonthlyBudget): string {
       ' by INR ' +
       Math.abs(budget.ceilingInr - budget.totalInr).toFixed(2) +
       '.',
+    ...(budget.withinCeiling
+      ? []
+      : [
+          'The projection is over INR ' +
+            budget.ceilingInr +
+            ' (accepted by the owner, ADR-0143); the runtime stop still refuses every AI call ' +
+            'once a student has really spent INR ' +
+            budget.ceilingInr +
+            ' this month. Projection limit: INR ' +
+            budget.projectionLimitInr +
+            '.',
+        ]),
   ];
   return [...head, ...rows, ...foot].join('\n');
 }
