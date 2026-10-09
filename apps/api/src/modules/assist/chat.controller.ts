@@ -130,6 +130,8 @@ const commandBody = z
     instruction: z.string().trim().max(COMMAND.maxInstructionChars).optional(),
     useLibrary: z.boolean().optional(),
     original: z.string().max(20_000).optional(),
+    // ADR-0133: "Search the literature" — found papers join the library before the edit cites.
+    searchLiterature: z.boolean().optional(),
   })
   .refine((b) => b.command !== 'custom' || (b.instruction ?? '').length > 0, {
     message: 'Write what you want changed.',
