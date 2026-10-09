@@ -162,7 +162,7 @@ export function ownPlaces(scopePlaces: ReadonlySet<string>): Set<string> {
  * was done. "In Kerala, abundant solar potential … positions the state as a leader" has neither.
  */
 const MARKED_AS_ELSEWHERE = [
-  /\b(unlike|in contrast|by contrast|contrast(s|ing)? with|compared (with|to)|comparison|comparable|similar(ly)?|likewise|as in|as elsewhere|elsewhere|other (indian )?(states?|countries|regions|parts)|another (state|country|region)|neighbou?ring|outside|beyond|whereas)\b/i,
+  /\b(unlike|in contrast|by contrast|for example|for instance|e\.g|such as in|as evidenced|evidenced|demonstrated|illustrated|contrast(s|ing)? with|compared (with|to)|comparison|comparable|similar(ly)?|likewise|as in|as elsewhere|elsewhere|other (indian )?(states?|countries|regions|parts)|another (state|country|region)|neighbou?ring|outside|beyond|whereas)\b/i,
   /\b(a|one|an earlier|a recent|the)?\s*(study|studies|survey|surveys|research|evidence|experience|data|analysis|trial|assessment|work)\s+(in|from|of|on|across|conducted in|carried out in|set in)\b/i,
   /\b(found|find|finds|reported|reports|report|observed|observes|showed|shows|show|documented|documents|identified|identifies|estimated|estimates|recorded|records|noted|notes|surveyed|interviewed|measured|measures)\b/i,
 ];

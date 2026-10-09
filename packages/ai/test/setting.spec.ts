@@ -76,6 +76,22 @@ describe('unmarkedOtherSettings', () => {
     ).toEqual([]);
   });
 
+  it('does not count an example marked as one (the opener round, 2026-10-09)', () => {
+    const KENYA = 'Mobile money and the incomes of smallholder farmers in Kenya';
+    for (const s of [
+      'For instance, adoption of mobile money in northern Ghana led to increased use of fertilizers {{cite:S2#c1}}.',
+      'Adoption raises farm output, as evidenced by higher production in northern Ghana {{cite:S2#c1}}.',
+    ]) {
+      expect(unmarkedOtherSettings(s, KENYA)).toEqual([]);
+    }
+    expect(
+      unmarkedOtherSettings(
+        'In rural Ghana, adoption of mobile money among smallholder farmers positively influences the use of inputs {{cite:S2#c1}}.',
+        KENYA,
+      ),
+    ).toEqual(['Ghana']);
+  });
+
   it('counts a country the scope does not name', () => {
     expect(
       unmarkedOtherSettings(

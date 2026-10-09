@@ -310,16 +310,25 @@ function aimsCases(name: string): Case[] {
  * thesis: `chapter1`, the six abstracts today's query ("Chapter 1") ranks first, and `titled`, the
  * six ranked first once the working title stands in for the empty scope note.
  */
-function openerCases(name: string): Case[] {
+function openerCases(name: string, keralaInRequest = false): Case[] {
   if (name !== 'assist') return [];
   const cases: Case[] = [];
-  for (const topic of FRESH) {
+  // `--set opener-kerala` (a diagnostic, not part of the criterion): the Karnataka thesis with the
+  // pool's Kerala paper put second in the request, as the live request had Mathew (2024) second.
+  for (const topic of keralaInRequest ? FRESH.slice(0, 1) : FRESH) {
     const fixture = JSON.parse(readFileSync(join(here, 'papers', `${topic.id}.json`), 'utf8')) as {
       papers: Array<{ title: string; year: number | null; authors: string[]; abstract: string }>;
       rankings: { chapter1: number[]; titled: number[] };
     };
+    const kerala = fixture.papers.findIndex((p) => /kerala/i.test(p.title));
     for (const condition of ['chapter1', 'titled'] as const) {
-      const passages = fixture.rankings[condition].slice(0, 6).map((index, i) => {
+      const order = keralaInRequest
+        ? (() => {
+            const rest = fixture.rankings[condition].filter((i) => i !== kerala);
+            return [rest[0] as number, kerala, ...rest.slice(1, 5)];
+          })()
+        : fixture.rankings[condition].slice(0, 6);
+      const passages = order.map((index, i) => {
         const paper = fixture.papers[index] as (typeof fixture.papers)[number];
         return {
           id: `S${i + 1}#c1`,
@@ -329,7 +338,7 @@ function openerCases(name: string): Case[] {
         };
       });
       cases.push({
-        id: `${topic.id}-${condition}`,
+        id: `${topic.id}-${condition}${keralaInRequest ? '-kerala' : ''}`,
         topic,
         context: 'Chapter 1\n',
         passages,
@@ -928,10 +937,14 @@ ${c.context}`,
       c.kind === 'revise'
         ? `The guide's comment: ${c.context}\n\nThe paragraph it is on:\n${firstParagraph(draftedSection(c.topic).shown)}`
         : '',
-    proposal: `Related works found for the idea:
+    // Only built for a proposal case: a fresh topic's paper file (ADR-0135) is not a paper list.
+    proposal:
+      c.kind === 'proposal'
+        ? `Related works found for the idea:
 ${papersFor(c.topic)
   .map((p) => `- ${p.title} (${p.year})`)
-  .join('\n')}`,
+  .join('\n')}`
+        : '',
   }[c.kind];
   const answer = await llm.complete({
     tier: 'strong',
@@ -1006,7 +1019,9 @@ async function main(): Promise<void> {
           ? aimsCases(name)
           : set === 'opener'
             ? openerCases(name)
-            : casesFor(name)
+            : set === 'opener-kerala'
+              ? openerCases(name, true)
+              : casesFor(name)
   ).filter((c) => !only || c.id.includes(only));
   const measured = { a: [] as Measures[], b: [] as Measures[] };
   const hallucinated = { a: 0, b: 0 };
