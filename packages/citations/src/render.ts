@@ -104,6 +104,11 @@ export type RenderResult = {
   noteStyle: boolean;
   /** The locale citeproc was given: the caller's, else the style's own, else en-US. */
   locale: string;
+  /**
+   * False for a style with no bibliography by design ("notes without bibliography": the notes
+   * give the full reference). `bibliography` is then always empty, however much is cited.
+   */
+  hasBibliography: boolean;
 };
 
 type CiteprocEngine = {
@@ -112,7 +117,11 @@ type CiteprocEngine = {
     format: string,
     uncited: string[],
   ) => Array<[string, number, string]>;
-  makeBibliography: () => [{ entry_ids: string[][] }, string[]];
+  /**
+   * `false` when the style has no `<bibliography>` at all — a "notes without bibliography" style
+   * such as Chicago 18th `chicago-notes`, whose every note carries the full reference.
+   */
+  makeBibliography: () => [{ entry_ids: string[][] }, string[]] | false;
 };
 
 type CslConfig = {
@@ -146,6 +155,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
   const known = new Map(input.sources.map((s) => [s.id, s]));
   const styleId = ensureRegistered(style, stylesDir);
   const noteStyle = isNoteStyle(style, stylesDir);
+  const hasBibliography = declaresBibliography(style, stylesDir);
 
   const missing = new Set<string>();
   const used: CitationRef[] = [];
@@ -165,6 +175,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     missingSourceIds: [...missing],
     noteStyle,
     locale,
+    hasBibliography,
   };
   if (used.length === 0) return empty;
 
@@ -204,11 +215,16 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     else clusters.push({ keys: group.map((c) => c.key), label: clean(text) });
   }
 
-  const [meta, entries] = engine.makeBibliography();
-  const bibliography: BibliographyEntry[] = entries.map((text, i) => ({
-    sourceId: meta.entry_ids[i]?.[0] ?? '',
-    text: clean(text),
-  }));
+  // QA 2026-10-09: citeproc answers `false`, not an empty list, for a style with no
+  // <bibliography> element. Destructuring that threw "boolean false is not iterable", so choosing
+  // Chicago 18th "notes without bibliography" turned every chapter with a citation into a 500.
+  const made = engine.makeBibliography();
+  const bibliography: BibliographyEntry[] = made
+    ? made[1].map((text, i) => ({
+        sourceId: made[0].entry_ids[i]?.[0] ?? '',
+        text: clean(text),
+      }))
+    : [];
 
   // The second pass, only when there is a cluster: every citation alone, as before ADR-0117, for
   // the label a clustered citation shows if an edit takes its neighbour away before the next
@@ -240,6 +256,7 @@ export function renderCitations(input: RenderInput, stylesDir?: string): RenderR
     missingSourceIds: [...missing],
     noteStyle,
     locale,
+    hasBibliography,
   };
 }
 
@@ -347,4 +364,15 @@ export function isNoteStyle(style: StyleEntry, stylesDir?: string): boolean {
   const note = /\bclass\s*=\s*["']note["']/.test(head);
   noteStyles.set(style.id, note);
   return note;
+}
+
+const withBibliography = new Map<string, boolean>();
+
+/** Whether a style has a `<bibliography>` at all; "notes without bibliography" styles do not. */
+export function declaresBibliography(style: StyleEntry, stylesDir?: string): boolean {
+  const known = withBibliography.get(style.id);
+  if (known !== undefined) return known;
+  const has = /<bibliography[\s>]/.test(styleXml(style, stylesDir));
+  withBibliography.set(style.id, has);
+  return has;
 }
