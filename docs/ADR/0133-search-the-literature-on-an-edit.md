@@ -2,7 +2,9 @@
 
 Date: 2026-10-09
 Status: accepted (the owner's decision of 2026-10-09; Jenni build plan "next" item 5 / R8 (b);
-amends ADR-0095's "Web switch: not built")
+amends ADR-0095's "Web switch: not built"). **Amended the same afternoon** (last section): no wait
+for the worker, the search asks the selection's subject, and the keep rule is measured. Where
+the two disagree, the amendment wins.
 
 ## Context
 
@@ -107,3 +109,82 @@ runtime hard stop in `UsageService.consume` is unchanged. Recorded in `docs/COST
   edits, never on a follow-up), the list's words, the panel's wiring.
 - `apps/web/e2e/edit-literature.spec.ts` (Playwright; the run answered in the page): the switch,
   the list with reader links, nothing changed until Replace, no sideways overflow at 375 px.
+
+## Amendment 2026-10-09 (afternoon) — after the first live run
+
+**What happened.** The coordinator ran the switch once on the real models
+(`apps/web/e2e/_measure/edit-literature-live.spec.ts`, an untitled thesis with an empty library):
+the selection "Many rural households in Karnataka have not installed rooftop solar panels even
+though subsidies exist. The upfront cost and access to credit appear to matter.", the instruction
+"Add evidence from published studies for each claim". In 39 s it added two barely relevant papers
+("Utilizing Solar Photovoltaics to Improve Primary Health Care in Rural and Tribal Regions…",
+2017; "A review of renewable off-grid mini-grids in Sub-Saharan Africa", 2023). Neither was read
+within the 25 s wait, so the edit used the library alone and came back unchanged. On first use the
+feature did nothing.
+
+**Three causes, three changes.**
+
+1. **The wait.** Removed. The abstract is already on the new `Source` row, so it is the edit's
+   passage for that paper, tied to the new library row (`abstractPassages`): the paper is in the
+   library, so grounding holds and `postProcessCommand` is unchanged. The worker still resolves,
+   reads and embeds it in the background. A citation of it is sent with **no chunk id**
+   (`realChunkId`); the editor already handles that (`aiTextToNodes`, pinned by a new
+   `packages/ui/test/ai-text.spec.ts` case), and the citation card says "Cited from the library,
+   with no passage attached" until the student opens the paper. A placeholder chunk was rejected:
+   `index-source` replaces a paper's chunks, so any id written now would point at nothing later.
+   The panel no longer has "(still being read)": every added paper is offered to the edit.
+2. **The search.** The first version asked the keyword indexes with the instruction's words
+   first — the replay below shows the queries "add published claim rural households karnataka
+   installed rooftop" and "add published claim rural", which PubMed answered with rural
+   health-care papers. `editSearchPlan` (`@tc/retrieval`, `edit-search.ts`) now searches the
+   **selection's** content words (eight, then the first four; edit words such as add, cite,
+   claim, published, evidence dropped), borrowing the instruction's only when the selection
+   gives fewer than three. The instruction still reaches OpenAlex's semantic search.
+3. **The line.** Relevance is now scored against the subject — the context (below) and the
+   selection — never the instruction, and the rule is measured, not guessed: **cosine ≥ 0.66 and
+   within 0.10 of the best paper found**, five at most (`EDIT_SEARCH`, `keepRelevant`).
+
+**Context (c).** `editSearchContext` leads the semantic search and the relevance text with the
+working or document title, the chapter title and its scope note — each only when it names
+something (`namesNothing`: "Untitled thesis", "Chapter 2" and the like add nothing). The live run
+had none of them, which is why the subject has to come from the selection.
+
+### The measurement (2026-10-09, `apps/worker/scripts/edit-literature-relevance.ts`)
+
+voyage-4; the indexes as `searchPlan` asks them (Semantic Scholar off: no key); ten pairs in ten
+fields; ~54k embedding tokens for the whole run (about ₹0.29, inside the free tier). Cosine against
+context + selection. "5th kept" is the lowest of the five the rule adds; "off-field, highest" are the
+best-scoring papers about something else (or about a neighbouring question).
+
+| Pair (context) | Best | 5th kept | Line (≥ 0.66 and best − 0.10) | Off-field, highest |
+|---|---|---|---|---|
+| Rooftop solar, Karnataka (untitled — the live run) | 0.778 | 0.716 | 0.678 | 0.654 off-grid solar demand, Rwanda; 0.614 rural electrification subsidy model; 0.533 cooking energy |
+| Net metering (titled thesis) | 0.798 | 0.775 | 0.698 | 0.564 storage arbitrage; 0.516 smart meters, Italy |
+| AlphaFold2 (titled) | 0.887 | 0.875 | 0.787 | 0.727 protein sequence generation |
+| Fish sun-drying, Kerala (titled) | 0.773 | 0.704 | 0.673 | 0.573 renewable food drying; 0.548 sweet-potato drying |
+| Mother-tongue instruction (untitled) | 0.795 | 0.734 | 0.695 | 0.514 metacognitive reading strategies; 0.453 classroom acoustics |
+| Iron-folic acid, adolescent girls (titled) | 0.890 | 0.827 | 0.790 | 0.690 anaemia in pregnancy; 0.680 preconception nutrition |
+| Back-translation, low-resource MT (titled) | 0.862 | 0.850 | 0.762 | 0.704 sign-language translation |
+| Microfinance, self-help groups (untitled) | 0.771 | 0.704 | 0.671 | 0.576 microfinance and child nutrition |
+| Fly ash in concrete (titled) | 0.863 | 0.852 | 0.763 | 0.743 waste glass in concrete; 0.733 GGBS; 0.650 leachate sludge |
+| Bedtime smartphones, sleep (chapter only) | 0.889 | 0.877 | 0.789 | 0.593 toddlers in cribs; 0.550 toddlers' media |
+
+Every pair adds five papers a reader would call on the passage, and every off-field paper is below
+its pair's line. On-topic papers also fall below the line in a long list, which costs nothing
+because only five are added. The margin does the work where the indexes answer well (waste glass
+at 0.743 under fly ash's 0.863). The floor does it where they answer badly: a weak set, as the live
+run got, adds nothing. The fixed 0.60 line would have let in the leachate sludge (0.650), the
+plastic pavers (0.612) and the live run's health-care paper.
+
+**Replay of the live run** (the first version's plan, and the live run's papers looked up by
+title): "Utilizing Solar Photovoltaics to Improve Primary Health Care…" scored **0.615** on the
+first version's measure (instruction + selection), over the 0.60 line, and **0.574** on the new
+one, under 0.66 and 0.20 below the best. The mini-grids review could not be found again by title
+with an abstract. The live run evidently got a weak candidate set (OpenAlex's results were not
+among what it kept). With the new search, the same selection finds "The Last Mile of a Subsidy:
+Household Frictions in Rooftop Solar Adoption in Karnataka" (0.779) and four more rooftop-solar
+adoption papers at 0.716 or above. If only weak candidates come back, as they did live, the 0.66
+floor now adds nothing and the line says so.
+
+**Cost.** Unchanged: the same relevance call, now one text shorter, and at most 6 passages, the
+abstracts cut at 2,000 characters (about a chunk). The run is faster, since there is no wait.

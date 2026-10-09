@@ -5894,3 +5894,20 @@ Not wired: the worker / API / Flags-tab wiring is commit `485a472`, reverted by 
 Had it shipped: ₹2.53 a review instead of ₹1.86, ₹97.16 a month for a fully active student.
 Found on the way: the examiner's own blocking issues agree with themselves only 59% of the time
 from run to run, so any single comparison between two prompts is noisy.
+
+## R8 (b) after the first live run (2026-10-09, ADR-0133 amendment)
+
+On the real models the switch added two barely relevant papers and then waited 25 s for the
+worker to read them. It never did, so the edit came back unchanged. Three fixes:
+- The edit no longer waits. It is sent each added paper's abstract from the new `Source` row,
+  tied to that library row. The citation goes in with no chunk id, and the worker indexes the
+  paper in the background.
+- The keyword search asks for the selection's subject, not the instruction's words: the live
+  run had searched "add published claim rural …".
+- Papers are kept at cosine ≥ 0.66 and within 0.10 of the best, against the thesis, chapter
+  and scope (when they name something) plus the selection. The rule was measured on ten pairs
+  in ten fields with `apps/worker/scripts/edit-literature-relevance.ts`; the table is in the ADR.
+  The live run's health-care paper scores 0.574 under it.
+Tests pass: `packages/retrieval/test/edit-search.spec.ts` (7),
+`apps/api/test/edit-literature.spec.ts` (10), `apps/api/test/edit-literature-api.spec.ts` (9),
+`apps/web/test/edit-literature.spec.ts` (6), and the new `packages/ui/test/ai-text.spec.ts` case.
