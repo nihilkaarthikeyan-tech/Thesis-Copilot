@@ -87,6 +87,12 @@ const shown = () => spans().map((span) => span.textContent);
 const paragraphText = () =>
   (editor.view.dom.querySelector('p')?.textContent ?? '').replace(/\s+/g, ' ');
 
+/** What the browser's `selectionchange` makes ProseMirror do: read the DOM selection. */
+const readDomSelection = () =>
+  (
+    editor.view as unknown as { domObserver: { onSelectionChange(): void } }
+  ).domObserver.onSelectionChange();
+
 async function hover(span: HTMLElement): Promise<void> {
   span.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
   await new Promise((r) => setTimeout(r, 5));
@@ -164,6 +170,55 @@ describe('selecting and removing a cluster', () => {
     expect([selection.from, selection.to]).toEqual([17, 19]);
     editor.commands.deleteSelection();
     expect(shown()).toEqual([LABELS.c_t]);
+  });
+
+  it('a click between the lines of a wrapped bracket selects it, and the caret can leave', () => {
+    // QA 2026-10-09: a click in the gap between the two lines of a wrapped bracket lands on the
+    // paragraph, and Chrome puts its caret inside the label's text. The editor ignored that, so
+    // its selection stayed in the heading and Ctrl+End then did nothing.
+    open();
+    const view = editor.view;
+    view.focus();
+    const label = spans()[0]?.firstChild as Text;
+    expect(label.nodeType).toBe(3);
+    // What a mousedown leaves behind: ProseMirror's note that the next selection is the pointer's.
+    const input = (view as unknown as { input: Record<string, unknown> }).input;
+    input.lastSelectionOrigin = 'pointer';
+    input.lastSelectionTime = Date.now();
+    document.getSelection()?.collapse(label, 5);
+    readDomSelection();
+
+    const selection = view.state.selection;
+    expect(selection).toBeInstanceOf(TextSelection);
+    expect([selection.from, selection.to]).toEqual([17, 19]);
+    // And the selection is the editor's: moving it (Ctrl+End) goes where it is sent.
+    view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+    expect(view.state.selection.from).toBe(view.state.doc.content.size - 1);
+  });
+
+  it('a caret inside a single citation’s label selects that citation', () => {
+    open();
+    const view = editor.view;
+    view.focus();
+    const label = spans()[2]?.firstChild as Text;
+    document.getSelection()?.collapse(label, 3);
+    readDomSelection();
+    const selection = view.state.selection;
+    expect(selection).toBeInstanceOf(NodeSelection);
+    expect((selection as NodeSelection).node.attrs.key).toBe('c_t');
+  });
+
+  it('a selection inside the hover card stays the card’s own', async () => {
+    open();
+    const view = editor.view;
+    view.focus();
+    const before = view.state.selection.toJSON();
+    const head = spans()[0] as HTMLElement;
+    await hover(head);
+    const text = head.querySelector('.citation-popover__text')?.firstChild as Text;
+    document.getSelection()?.collapse(text, 4);
+    readDomSelection();
+    expect(view.state.selection.toJSON()).toEqual(before);
   });
 
   it('a hidden node selected from the keyboard shows on the bracket', () => {

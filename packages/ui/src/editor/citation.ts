@@ -306,6 +306,22 @@ function clusterDecorations(state: EditorState, live: LiveCitationCluster[]): De
   return DecorationSet.create(state.doc, decorations);
 }
 
+/** The whole bracket a node selection on one of a live cluster's nodes stands for. */
+function clusterRangeAt(
+  state: EditorState,
+  selection: EditorState['selection'],
+): { from: number; to: number } | null {
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'citation') {
+    return null;
+  }
+  const cluster = citationClustersKey
+    .getState(state)
+    ?.live.find((c) => c.positions.includes(selection.from));
+  const from = cluster?.positions[0];
+  const last = cluster?.positions[cluster.positions.length - 1];
+  return from === undefined || last === undefined ? null : { from, to: last + 1 };
+}
+
 /** A node view's place in a cluster, from the decorations ProseMirror hands it. */
 function clusterSpecOf(decorations: readonly Decoration[]): ClusterSpec | null {
   for (const decoration of decorations) {
@@ -563,6 +579,17 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
             }
             return value;
           },
+        },
+        /**
+         * A pointer selection that lands on one node of a cluster — the browser's caret put
+         * inside the bracket's label by a click between its lines, which ProseMirror reads as a
+         * node selection — becomes the whole bracket, as a click on it does (QA 2026-10-09).
+         */
+        appendTransaction: (transactions, _old, state) => {
+          if (!transactions.some((tr) => tr.getMeta('pointer'))) return null;
+          const range = clusterRangeAt(state, state.selection);
+          if (!range) return null;
+          return state.tr.setSelection(TextSelection.create(state.doc, range.from, range.to));
         },
         props: {
           decorations: (state) => citationClustersKey.getState(state)?.decorations,
@@ -1055,7 +1082,16 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
           const target = event.target as HTMLElement | null;
           return Boolean(popover && target && popover.contains(target));
         },
-        ignoreMutation() {
+        ignoreMutation(mutation) {
+          // QA 2026-10-09: a click in the gap between the lines of a bracket that wraps lands on
+          // the paragraph, and the browser puts its caret inside the label's own text. Ignoring
+          // that selection left the editor's selection where it was (the chapter heading, on a
+          // fresh chapter) and the caret stranded in a non-editable island, where Ctrl+End does
+          // nothing. ProseMirror reads it instead and selects the citation (the cluster plugin
+          // widens that to the bracket). A selection inside the card stays the card's own.
+          if (mutation.type === 'selection') {
+            return Boolean(popover?.contains(mutation.target));
+          }
           return true;
         },
         destroy() {
