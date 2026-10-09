@@ -4,6 +4,9 @@
  * models wrote in the stored evaluation runs (`eval/results/`).
  */
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   academicPunctuation,
@@ -11,12 +14,14 @@ import {
   countDashes,
   stockPhrases,
 } from '../src/builder/academic-style.js';
+import { unchangedSentencesKept } from '../src/builder/chapter-build.js';
 import { postProcessChat } from '../src/builder/chat.js';
 import { citationMoved, postProcessCommand } from '../src/builder/command.js';
 import { postProcessRevision } from '../src/builder/comment.js';
 import { postProcessDraft } from '../src/builder/draft.js';
 import { postProcessAssist } from '../src/builder/postprocess.js';
 import { postProcessProofread } from '../src/builder/proofread.js';
+import { splitSentences } from '../src/builder/quality.js';
 import { postProcessTone } from '../src/builder/tone.js';
 
 const letters = (t: string) => t.replace(/[^\p{L}\p{N}]/gu, '');
@@ -412,5 +417,162 @@ describe('ADR-0147: the backstop on every path that puts generated text in front
       [{ id: 's1', text: 'Costs fell, sharply in 2020.' }],
     );
     expect(corrections).toHaveLength(0);
+  });
+
+  it('The ADR-0066 edit actions (counter-argument, hedge, translate) go through the same command path', () => {
+    const counter = postProcessCommand(
+      'Subsidies raise uptake {{cite:S1#c1}} — yet cost still limits it {{cite:S1#c1}}.',
+      'Subsidies raise uptake {{cite:S1#c1}}.',
+      ['S1#c1'],
+      'counter',
+    );
+    // (The command path already drops the second citation of the same passage.)
+    expect(counter.text).toBe('Subsidies raise uptake {{cite:S1#c1}}, yet cost still limits it.');
+    expect(counter.hallucinated).toEqual([]);
+    const hedge = postProcessCommand(
+      'Cost may limit uptake — at least in the households surveyed.',
+      'Cost limits uptake.',
+      [],
+      'hedge',
+    );
+    expect(hedge.text).toBe('Cost may limit uptake, at least in the households surveyed.');
+    // A translation into Hindi: the Devanagari rule, a comma.
+    const translate = postProcessCommand(
+      'लागत सबसे बड़ी बाधा है — विशेषकर ग्रामीण परिवारों के लिए।',
+      'Cost is the main barrier, especially for rural households.',
+      [],
+      'translate',
+    );
+    expect(translate.text).toBe('लागत सबसे बड़ी बाधा है, विशेषकर ग्रामीण परिवारों के लिए।');
+  });
+
+  it('Deep-research chat answers (headed, with lists) keep their structure and lose the dashes', () => {
+    const out = postProcessChat(
+      [
+        '## Where the sources agree',
+        '',
+        'Both studies find cost the main barrier — in Karnataka and in Kerala {{cite:S1#c1}}.',
+        '',
+        '- Subsidies help — but only where installers are trusted {{cite:S1#c1}}.',
+        '- Trust matters — less than cost.',
+        '',
+        '## For your thesis',
+        '',
+        'The gap is clear: no study — of the two — measures post-installation experience.',
+      ].join('\n'),
+      ['S1#c1'],
+    );
+    expect(out.text).toContain('## Where the sources agree');
+    expect(out.text).toContain(
+      'Both studies find cost the main barrier, in Karnataka and in Kerala {{cite:S1#c1}}.',
+    );
+    expect(out.text).toContain(
+      '- Subsidies help, but only where installers are trusted {{cite:S1#c1}}.',
+    );
+    expect(out.text).toContain('- Trust matters: less than cost.');
+    expect(out.text).toContain('no study, of the two, measures post-installation experience.');
+    expect(countDashes(out.text)).toBe(0);
+  });
+
+  it('Assist in Hindi', () => {
+    const out = postProcessAssist({
+      output: 'लागत मुख्य बाधा है — विशेषकर ग्रामीण कर्नाटक में {{cite:S1#c1}}।',
+      passageIds: ['S1#c1'],
+      before: 'छत पर सौर ऊर्जा का उपयोग कम है।',
+    });
+    expect(out.text).toBe('लागत मुख्य बाधा है, विशेषकर ग्रामीण कर्नाटक में {{cite:S1#c1}}।');
+  });
+
+  it("A chapter-build fix: the backstop's punctuation never counts as a changed sentence", () => {
+    // The fixer returns the section with one flagged sentence corrected and a dash elsewhere; the
+    // guard compares sentences by their words, so the corrected punctuation keeps `ratio` at 1.
+    const original =
+      'Upfront cost limits uptake {{cite:S1#c1}}. Trust matters too. Panels are costly.';
+    const fixed = postProcessDraft(
+      'Upfront cost limits uptake — among rural households {{cite:S1#c1}}. Trust matters too. Panels cost a lot.',
+      passages,
+      10,
+    ).result.markdown;
+    expect(fixed).toBe(
+      'Upfront cost limits uptake, among rural households {{cite:S1#c1}}. Trust matters too. Panels cost a lot.',
+    );
+    const kept = unchangedSentencesKept(original, fixed, [
+      'Upfront cost limits uptake {{cite:S1#c1}}.',
+      'Panels are costly.',
+    ]);
+    expect(kept).toEqual({ kept: 1, expected: 1, ratio: 1 });
+  });
+
+  it('A draft with a table, an equation, code and a quotation keeps every one of them', () => {
+    const markdown = [
+      '### Results',
+      '',
+      'The yield rose — from 4–7 t/ha — after 2015–2020 {{cite:S1#c1}}.',
+      '',
+      '| Year | Yield — t/ha |',
+      '|---|---|',
+      '| 2015 | 4 — 5 |',
+      '',
+      '$$\ny = a - b\n$$',
+      '',
+      'The authors write that "the gain — though small — was real" {{cite:S1#c1}}. See `a -- b`.',
+    ].join('\n');
+    const out = postProcessDraft(markdown, passages, 10).result.markdown;
+    expect(out).toContain('The yield rose, from 4–7 t/ha, after 2015–2020 {{cite:S1#c1}}.');
+    expect(out).toContain('| Year | Yield — t/ha |');
+    expect(out).toContain('| 2015 | 4 — 5 |');
+    expect(out).toContain('$$\ny = a - b\n$$');
+    expect(out).toContain('"the gain — though small — was real" {{cite:S1#c1}}');
+    expect(out).toContain('`a -- b`');
+  });
+});
+
+describe('ADR-0147: punctuation only, on every output the real models wrote in the stored runs', () => {
+  // `eval/results/*.json` holds what the models wrote (`aRaw`, `bRaw`) for every evaluated path.
+  // Whatever the rule does to them, the words, numbers and citation markers must be the same,
+  // every citation must stay in its sentence, and no dash used as punctuation may remain.
+  const here = dirname(fileURLToPath(import.meta.url));
+  const dir = join(here, '..', 'eval', 'results');
+  const outputs: Array<{ file: string; text: string }> = [];
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith('.json')) continue;
+    const data = JSON.parse(readFileSync(join(dir, file), 'utf8')) as {
+      rows?: Array<Record<string, unknown>>;
+    };
+    for (const row of data.rows ?? []) {
+      for (const side of ['aRaw', 'bRaw']) {
+        const text = row[side];
+        if (typeof text === 'string' && text.trim() && !text.startsWith('FAILED')) {
+          outputs.push({ file, text });
+        }
+      }
+    }
+  }
+  const PROSE = /^(assist|draft|chat|chat_deep|command|revise)-/;
+  const citationSentences = (text: string) =>
+    splitSentences(text).flatMap((s, i) => [...s.matchAll(/\{\{cite:[^}]+\}\}/g)].map(() => i));
+
+  it(`holds on all ${outputs.length} stored outputs`, () => {
+    expect(outputs.length).toBeGreaterThan(1000);
+    const faults: string[] = [];
+    let changed = 0;
+    for (const { file, text } of outputs) {
+      const out = academicPunctuation(text);
+      if (out !== text) changed++;
+      if (letters(out) !== letters(text)) faults.push(`${file}: words changed`);
+      if (markers(out).join() !== markers(text).join()) faults.push(`${file}: markers changed`);
+      if (citationSentences(out).join() !== citationSentences(text).join()) {
+        faults.push(`${file}: a citation moved`);
+      }
+      // A structured output (a proposal skeleton, an outline) is JSON whose strings are quoted,
+      // and a quotation keeps its punctuation; the prose paths must come out with no dash.
+      if (PROSE.test(file) && countDashes(out) > 0) {
+        faults.push(`${file}: a dash remains: ${out.slice(0, 80)}`);
+      }
+      if (academicPunctuation(out) !== out) faults.push(`${file}: not idempotent`);
+    }
+    expect(faults).toEqual([]);
+    // The rule did something: the stored drafts and edit commands are full of dashes.
+    expect(changed).toBeGreaterThan(100);
   });
 });

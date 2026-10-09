@@ -53,8 +53,8 @@ export function countDashes(text: string): number {
 /**
  * Stock phrases a careful thesis writer avoids: vague emphasis and filler that says nothing a
  * plainer word would not ("plays a crucial role", "it is important to note", "delve into").
- * Measured in the evaluation and named in the shared rule (`_style.md`); never removed in code,
- * because removing a phrase would change the wording.
+ * Measured in the evaluation (`eval/style-measure.ts`) and named in the A.1 and A.2 prompts'
+ * style rule; never removed in code, because removing a phrase would change the wording.
  */
 export const STOCK_PHRASES: ReadonlyArray<{ label: string; re: RegExp }> = [
   { label: 'delve', re: /\bdelv(?:e|es|ed|ing)\b/gi },
@@ -175,7 +175,10 @@ const COMMA_STARTERS = new Set(
     'rather as because since if unless even for e.g i.e eg ie that namely with without from ' +
     'despite like unlike than both either neither only just perhaps possibly probably ' +
     'thereby thus hence therefore however instead also alongside along beyond compared ' +
-    'according depending given resulting'
+    'according depending given resulting ' +
+    // A prepositional phrase continues the clause: "limits uptake — among rural households".
+    'in among at on by under across within over through during after before between ' +
+    'towards toward via per except against into onto upon amid'
   ).split(' '),
 );
 
