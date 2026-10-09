@@ -52,6 +52,12 @@ export type BeyondSummary = { papers: number; outsideLibrary: number; note: stri
 export type StoredTurn = ChatTurn & {
   id: string;
   rating?: 1 | -1;
+  /**
+   * QA 2026-10-08: an answer that is a scripted reply rather than an answer ("not-enough",
+   * "beyond-not-enough", "writing-redirect"), so the panel offers no "Add to document" under it
+   * after a reload either. Absent on an ordinary answer.
+   */
+  outcome?: string;
   citations?: ChatCitation[];
   /** ADR-0060: the answer was written from search abstracts, not the library. */
   beyond?: BeyondSummary;

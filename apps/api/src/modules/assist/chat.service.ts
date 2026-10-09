@@ -182,6 +182,14 @@ export type ChatEvent =
       };
     };
 
+/**
+ * QA 2026-10-08: a stored answer keeps its outcome when it is a scripted reply, so the panel can
+ * tell a refusal from an answer after a reload (no "Add to document" under a refusal).
+ */
+function scripted(outcome: string): { outcome?: string } {
+  return outcome === 'answered' ? {} : { outcome };
+}
+
 /** What `ContextService.retrieve` returns, so the filter keeps the passage shape. */
 type Retrieved = Awaited<ReturnType<ContextService['retrieve']>>;
 
@@ -548,6 +556,7 @@ export class ChatService {
         role: 'assistant' as const,
         text: processed.text,
         citations,
+        ...scripted(processed.outcome),
         ...(summary ? { research: summary } : {}),
       },
     ];
@@ -781,6 +790,7 @@ export class ChatService {
         role: 'assistant' as const,
         text: processed.text,
         citations,
+        ...scripted(processed.outcome),
         research: summary,
       },
     ];
@@ -1116,6 +1126,7 @@ export class ChatService {
         role: 'assistant' as const,
         text,
         citations,
+        ...scripted(notEnough ? 'beyond-not-enough' : processed.outcome),
         ...(notEnough ? {} : { beyond }),
       },
     ];

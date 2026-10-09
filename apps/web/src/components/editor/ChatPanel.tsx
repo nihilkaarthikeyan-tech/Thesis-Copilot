@@ -16,7 +16,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 import type { MessageKey, Vars } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
 import { ApiError, api, type ProblemDetails } from '@/lib/api';
-import { answerPlainText } from '@/lib/chat-copy';
+import { answerPlainText, isRefusalAnswer } from '@/lib/chat-copy';
 import {
   type ChatThreadSummary,
   NEW_CHAT,
@@ -1334,7 +1334,7 @@ export function ChatPanel({
                     the thesis only once they are added and asked about on Library. ADR-0074: the
                     same holds for a library answer that also cited a found paper. */}
                 {onAddToDocument &&
-                turn.outcome !== 'not-enough' &&
+                !isRefusalAnswer(turn) &&
                 !turn.beyond &&
                 !(turn.citations ?? []).some((c) => c.beyond || c.attachment) ? (
                   <button
