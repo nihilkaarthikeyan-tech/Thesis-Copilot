@@ -58,6 +58,8 @@ export class DocumentEraser {
     }
     if (sourceIds.length > 0) {
       await tx.sourceChunk.deleteMany({ where: { sourceId: { in: sourceIds } } });
+      // ADR-0130 (0051): the students' highlights and notes on these papers.
+      await tx.sourceHighlight.deleteMany({ where: { sourceId: { in: sourceIds } } });
     }
     // ADR-0116 (0045): the chats, before the collections some of them answer from.
     await tx.chatThread.deleteMany({ where: inDocs });

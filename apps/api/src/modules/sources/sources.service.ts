@@ -1286,6 +1286,14 @@ export class SourcesService {
           });
         }
 
+        // ADR-0130: the student's highlights and notes go to the kept record; the reader finds
+        // each again by its words when the kept paper's text is laid out differently.
+        await tx.sourceHighlight.updateMany({
+          where: { sourceId: drop.id },
+          // The removed record's passages go with it, so a Text-view anchor loses its passage.
+          data: { sourceId: keep.id, chunkId: null },
+        });
+
         if (fileMoved) {
           await tx.source.update({ where: { id: drop.id }, data: { fileKey: null } });
           await tx.source.update({ where: { id: keep.id }, data: { fileKey: drop.fileKey } });

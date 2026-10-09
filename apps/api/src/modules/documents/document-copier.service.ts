@@ -4,7 +4,7 @@
  * A new document owned by the same student, with its own copies of everything that is the
  * thesis: the chapters, the outline and memory, the settings (citation style, language,
  * template), the library — every source with its metadata, its chunks and their embeddings, and
- * the student's collections of them — the seed papers, the pins and the citations. Never copied: shares, the read link, comments, usage,
+ * the student's collections of them and highlights on them (ADR-0130) — the seed papers, the pins and the citations. Never copied: shares, the read link, comments, usage,
  * exports, version history, coherence flags, viva questions, chapter builds, search runs,
  * suggestion telemetry and the chats (ADR-0116; before it the one chat rode along inside `meta`).
  * Those belong to the original's history or its people, not to its text.
@@ -215,6 +215,22 @@ export class DocumentCopier {
               })),
             );
             if (items.length > 0) await tx.sourceCollectionItem.createMany({ data: items });
+          }
+
+          // ADR-0130: the student's own highlights and notes on those papers, on the copy's.
+          if (original.sources.length > 0) {
+            const highlights = await tx.sourceHighlight.findMany({
+              where: { userId: ownerId, sourceId: { in: original.sources.map((s) => s.id) } },
+            });
+            if (highlights.length > 0) {
+              await tx.sourceHighlight.createMany({
+                data: highlights.map(({ id: _i, createdAt: _c, updatedAt: _u, ...h }) => ({
+                  ...h,
+                  sourceId: idOf(h.sourceId),
+                  chunkId: h.chunkId ? (map.get(h.chunkId) ?? null) : null,
+                })),
+              });
+            }
           }
 
           if (original.seedPapers.length > 0) {

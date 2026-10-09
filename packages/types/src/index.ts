@@ -105,6 +105,19 @@ export {
   walkOutline,
 } from './outline.js';
 export {
+  READER_CONTEXT_CHARS,
+  READER_HIGHLIGHT_QUOTE_MAX,
+  READER_HIGHLIGHTS_PER_SOURCE_MAX,
+  READER_NOTE_MAX,
+  type ReaderHighlight,
+  type ReaderHighlightColour,
+  type ReaderHighlightCreate,
+  type ReaderHighlightUpdate,
+  readerHighlightColour,
+  readerHighlightCreate,
+  readerHighlightUpdate,
+} from './reader-highlights.js';
+export {
   DEFAULT_SOURCE_PREFS,
   INDEX_LIST_LABELS,
   INDEX_LISTS,
