@@ -383,7 +383,10 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
 1. ~~R5~~ **done 2026-10-09** (15.6–20.3 s measured; ADR-0092 addendum): the first cited sentence within 20 s on Start writing now — start the first sentence
    before the whole outline is written, or a shorter outline call; measure with
    `apps/web/e2e/_measure`.
-2. R5b: an outline prompt (A.9 candidate) that writes H3 sub-sections *and* wins its evaluation
+2. ~~R5b~~ **done in code 2026-10-09** (ADR-0138): A.9 unchanged; `addSubsections` divides
+   Literature Review and Methodology sections whose titles name their parts (at most three a
+   chapter), and gives a "Methodology" section the blueprint's parts. Real-model check on five
+   new titles still to run (BUILD_LOG). History: an outline prompt (A.9 candidate) that writes H3 sub-sections *and* wins its evaluation
    (`packages/ai/eval/candidates/outline-h3*.md` both lost 0–2). Still open after four tries
    (ADR-0092 addenda 3 and 4): h3c won but emptied the title-only Literature Review; h3d
    (2026-10-09) held it (6 sections every run), tied 1–1 and was faster, but one title-only plan
