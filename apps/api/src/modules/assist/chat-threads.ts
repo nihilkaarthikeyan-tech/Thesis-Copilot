@@ -24,7 +24,11 @@ export const THREAD_KEEP_TURNS = 60;
 /** The list shows the most recent this many chats of a thesis. */
 export const THREADS_LISTED = 100;
 
-/** A thread is titled by its first question, cut here. */
+/**
+ * Before 2026-10-08 a thread's title was its first question cut here, with "…" (and migration
+ * 0045 cut the same way). Titles are now the whole question; this is kept to recognise the old,
+ * cut ones (`fullTitle`).
+ */
 export const THREAD_TITLE_MAX = 80;
 
 /**
@@ -107,17 +111,28 @@ export function questionCount(turns: readonly StoredTurn[]): number {
 }
 
 /**
- * A new thread's title: its first question, spaces collapsed, cut at a word under
- * THREAD_TITLE_MAX with an ellipsis. Migration 0045 titled the existing conversations the same way
- * without the word boundary (SQL has none to hand); either reads as the question.
+ * A new thread's title: its whole first question, spaces collapsed (QA 2026-10-08, ADR-0116's
+ * amendment). It was cut at 80 characters with "…", so the tooltip and the bar showed a cut
+ * question; the list cuts it on screen with CSS instead. A question is at most 2,000 characters
+ * (`POST /chat`), so the title is too.
  */
 export function threadTitle(question: string): string {
   const text = question.replace(/\s+/g, ' ').trim();
-  if (text.length === 0) return 'Chat';
-  if (text.length <= THREAD_TITLE_MAX) return text;
-  const cut = text.slice(0, THREAD_TITLE_MAX - 1);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > THREAD_TITLE_MAX / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+  return text.length === 0 ? 'Chat' : text;
+}
+
+/**
+ * A title stored cut (before 2026-10-08, or by migration 0045) made whole again from the thread's
+ * first question, when that question is still among the kept turns and is the one the title was
+ * cut from. Anything else is returned as it is.
+ */
+export function fullTitle(title: string, turns: readonly StoredTurn[]): string {
+  if (!title.endsWith('…')) return title;
+  const stem = title.slice(0, -1).trimEnd();
+  const first = turns.find((t) => t.role === 'user');
+  if (!first || stem.length === 0) return title;
+  const question = threadTitle(first.text);
+  return question.length > stem.length && question.startsWith(stem) ? question : title;
 }
 
 /**

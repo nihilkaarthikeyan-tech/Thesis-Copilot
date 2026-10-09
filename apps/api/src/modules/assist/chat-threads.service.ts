@@ -17,6 +17,7 @@ import type { Prisma } from '@tc/db';
 import { ConflictError, NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import {
+  fullTitle,
   questionCount,
   readTurns,
   type StoredTurn,
@@ -207,13 +208,14 @@ export class ChatThreadsService {
         turns: [],
       };
     }
+    const turns = readTurns(row.turns);
     return {
       threadId: row.id,
-      title: row.title,
+      title: fullTitle(row.title, turns),
       collection: row.collection ? { id: row.collection.id, name: row.collection.name } : null,
       collectionDeleted: collectionDeleted(row),
       collectionName: row.collectionName,
-      turns: readTurns(row.turns),
+      turns,
     };
   }
 
@@ -235,10 +237,21 @@ export class ChatThreadsService {
         collection: { select: { id: true, name: true } },
       },
     });
+    // A title stored cut (before 2026-10-08) is made whole from its first question; only those
+    // rows' turns are read, so the list still need not read every conversation.
+    const cut = rows.filter((row) => row.title.endsWith('…')).map((row) => row.id);
+    const whole = new Map<string, string>();
+    if (cut.length > 0) {
+      const withTurns = await this.prisma.chatThread.findMany({
+        where: { id: { in: cut }, documentId },
+        select: { id: true, title: true, turns: true },
+      });
+      for (const row of withTurns) whole.set(row.id, fullTitle(row.title, readTurns(row.turns)));
+    }
     return {
       threads: rows.map((row) => ({
         id: row.id,
-        title: row.title,
+        title: whole.get(row.id) ?? row.title,
         questions: row.questions,
         collection: row.collection,
         collectionDeleted: collectionDeleted(row),

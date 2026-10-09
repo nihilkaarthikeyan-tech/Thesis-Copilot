@@ -420,3 +420,39 @@ describe('a chat on one collection', () => {
     expect(await units()).toBe(0);
   });
 });
+
+describe('a chat’s title (QA 2026-10-08)', () => {
+  const LONG =
+    'What did the survey and the household study find about the upfront cost of rooftop solar for rural households, and did either compare it with financing?';
+
+  it('is the whole first question, in the list and when reopened', async () => {
+    expect(LONG.length).toBeGreaterThan(80);
+    const sse = await ask({ newThread: true, message: LONG });
+    const id = String(done(sse).threadId);
+    expect((await threads()).find((t) => t.id === id)?.title).toBe(LONG);
+    const view = (await (await h.api(`/chat/${documentId}?threadId=${id}`)).json()) as {
+      title: string;
+    };
+    expect(view.title).toBe(LONG);
+  });
+
+  it('a title stored cut before the fix reads whole again from its first question', async () => {
+    const cut = `${LONG.slice(0, 79).trimEnd()}…`;
+    const row = await h.prisma.chatThread.create({
+      data: {
+        documentId,
+        title: cut,
+        questions: 1,
+        turns: [
+          { id: 'q-old', role: 'user', text: LONG },
+          { id: 'a-old', role: 'assistant', text: 'Upfront cost.' },
+        ],
+      },
+    });
+    expect((await threads()).find((t) => t.id === row.id)?.title).toBe(LONG);
+    const view = (await (await h.api(`/chat/${documentId}?threadId=${row.id}`)).json()) as {
+      title: string;
+    };
+    expect(view.title).toBe(LONG);
+  });
+});

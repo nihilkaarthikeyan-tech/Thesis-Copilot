@@ -114,3 +114,16 @@ could not be asked on its own.
   the three buttons.
 - `prisma migrate diff` against a database migrated from the files (the CI check,
   `packages/db/scripts/migrate-diff-check.mjs`): migrations and schema agree.
+
+## Amendment 2026-10-08 (QA audit of the chat)
+
+1. **A chat's title is its whole first question** (spaces collapsed; at most 2,000 characters, the
+   longest question `POST /chat` takes), not the first 80 characters cut at a word with "…". The
+   cut title was all the row's tooltip and the bar could show, so after reopening a chat the
+   student read a cut question. The list's row cuts the title on screen (CSS ellipsis); its tooltip
+   and the bar's show it whole. A title stored cut before this (by the service, or by migration
+   0045) is made whole when read, from the thread's first question when that question is still
+   among the kept turns and is the one it was cut from (`fullTitle`); the list reads turns only
+   for those rows. No migration. Tests: `chat-threads.spec.ts` ("is the whole question…", "is made
+   whole again…"), `chat-threads-api.spec.ts` ("a chat's title").
+
