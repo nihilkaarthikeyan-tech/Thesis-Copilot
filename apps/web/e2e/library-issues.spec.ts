@@ -4,8 +4,10 @@ import { API_URL, establishSession, freshEmail } from './_session.js';
 /**
  * Library hygiene on the real Sources screen (2026-10-04, from the Jenni study).
  *
- * One paper imported twice from a reference manager — the same DOI under two spellings of its
- * title — shows up as a possible duplicate, and "Merge" leaves one record. Then the "Without full
+ * One paper imported twice from a reference manager — once with its DOI, once without one under
+ * another spelling of its title — shows up as a possible duplicate once the second is looked up,
+ * and "Merge" leaves one record. (Since ADR-0139 two entries with the same DOI are added once, so
+ * the duplicate that reaches the student is the one only resolution can recognise.) Then the "Without full
  * text" view lists what the AI can only read the abstract of, says why, and offers "Add the PDF".
  *
  * Needs the dev stack: web, API, the worker (to resolve against Crossref) and Compose.
@@ -22,8 +24,7 @@ const BIB = `@article{lecun,
   title = {Deep Learning.},
   author = {LeCun, Y. and Bengio, Y. and Hinton, G.},
   journal = {Nature},
-  year = {2015},
-  doi = {https://doi.org/10.1038/NATURE14539}
+  year = {2015}
 }
 `;
 
