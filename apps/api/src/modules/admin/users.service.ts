@@ -130,6 +130,8 @@ export type UserDetail = UserRow & {
   /** How this person signs in: `otp` always, plus `password` and/or `google`. */
   signInMethods: string[];
   sessions: number;
+  /** ADR-0132: research chats asked with no thesis — a count, never their content. */
+  researchChats: number;
   suspendedAt: Date | null;
   suspendedReason: string | null;
   deletionRequestedAt: Date | null;
@@ -248,7 +250,8 @@ export class UsersService {
         createdAt: true,
         ...statusSelect,
         suspendedReason: true,
-        _count: { select: { documents: true, sessions: true } },
+        // ADR-0132: research chats asked with no thesis are counted, never read here.
+        _count: { select: { documents: true, sessions: true, researchChats: true } },
         usage: { where: { period }, select: { action: true, count: true, bonus: true } },
         accounts: { select: { providerId: true } },
       },
@@ -347,6 +350,7 @@ export class UsersService {
       })),
       signInMethods,
       sessions: user._count.sessions,
+      researchChats: user._count.researchChats,
       suspendedAt: user.suspendedAt,
       suspendedReason: user.suspendedReason,
       deletionRequestedAt: user.deletionRequestedAt,

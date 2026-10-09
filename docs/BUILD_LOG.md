@@ -5894,3 +5894,21 @@ Not wired: the worker / API / Flags-tab wiring is commit `485a472`, reverted by 
 Had it shipped: ₹2.53 a review instead of ₹1.86, ₹97.16 a month for a fully active student.
 Found on the way: the examiner's own blocking issues agree with themselves only 59% of the time
 from run to run, so any single comparison between two prompts is noisy.
+## A research question with no thesis, and across all theses (2026-10-09, ADR-0132)
+
+Jenni build plan R30/R32's last gap. "Ask a research question" on the thesis list and in New ▾
+opens `/app/ask`: the literature (ADR-0060's search-abstract path, every paper "Not in your
+library") or **All my theses** (the owner's addition the same day: each of the student's own
+non-archived theses ranked exactly as ADR-0128 ranks one, merged, A.4's top 8, every citation
+naming its thesis). Same CHAT unit taken before any provider call, same relevance floor and
+refusals, A.4 unchanged (no new prompt). Kept in a new `ResearchChat` table (migration
+`0052_research_chats`, applied at the next release), erased with the account; the admin user page
+shows a count. "Add to a thesis…" and "Start a thesis from this" are the ordinary resolve and
+create paths, on the student's press. Tests: `apps/api/test/research-chat-api.spec.ts` (13: the
+unit is in the ledger when the model is called, 429 at the cap with no search and no call, the
+floor and the empty and failed searches refunded, the setting, 404 on another student's chat,
+only the owner's non-archived theses reach the request, labels, erasure),
+`apps/api/test/research-chat.spec.ts`, `apps/web/test/research-chat.spec.ts`, and
+`apps/web/e2e/research-chat.spec.ts` (the whole journey, layout measured at 1280 and 390). One
+fault found in the browser: the page re-read a just-stored chat when its address changed and
+dropped the note under the streamed answer; it now keeps what it has.

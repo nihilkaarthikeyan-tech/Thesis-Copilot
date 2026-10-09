@@ -307,8 +307,8 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R34 | Done 2026-10-08 — Word import says why its citations were not linked | ADR-0113 |
 | R38 | Done 2026-10-08 — the gap analysis opens as an editable chapter of pending drafts | ADR-0123 |
 | R37 | Done 2026-10-08 — whole literature review from one press, behind an off flag at a cap of 0 (owner sets the price) | ADR-0124 |
-| R30 | Done 2026-10-08 — chat threads, a chat on one collection, web search asked inline (a chat across theses waits) | ADR-0116 |
-| R32 | Done 2026-10-08 — the theses beside the open one, and one New menu | ADR-0127 |
+| R30 | Done 2026-10-08 — chat threads, a chat on one collection, web search asked inline; 2026-10-09 — a chat across all theses ("All my theses" on Ask a research question) | ADR-0116, ADR-0132 |
+| R32 | Done 2026-10-08 — the theses beside the open one, and one New menu; 2026-10-09 — New ▸ Ask a research question, with no thesis | ADR-0127, ADR-0132 |
 | R28 | Done 2026-10-08 — contents block, text colour, highlight, horizontal rule, in every export | ADR-0119 |
 | R33 | Done 2026-10-08 — paper light/dark themes and a font style | ADR-0120 |
 | R27 | Done 2026-10-08 — one export dialog with presets, options and a live preview | ADR-0121 |
@@ -353,9 +353,9 @@ missing. Nothing is "Not done".
 | R27 | One export dialog | Done | 0121 | — |
 | R28 | Contents block, colours, rule | Done | 0119 | — |
 | R29 | Archive and restore | Done | 0114 | — |
-| R30 | Chat threads, collection, inline ask | **Partly** | 0116 | Threads, a chat on one collection, Allow this time / Always allow / Skip: done. **Not built:** a chat across theses — every chat is grounded in one thesis's library (§10.6); it needs a student-owned thread and grounding that switches with the open thesis |
+| R30 | Chat threads, collection, inline ask, across theses | Done | 0116, 0132 | A chat across theses is "All my theses" on Ask a research question (ADR-0132); the editor's chat panel stays one thesis's |
 | R31 | Limit message on every screen | Done | 0122 | English only (Hindi in PENDING) |
-| R32 | Theses beside, one New menu | **Partly** | 0127 | The side panel and New ▾ (thesis, Start writing now, Word import, upload): done. **Not built:** New ▸ AI chat with no thesis (same reason as R30) |
+| R32 | Theses beside, one New menu, chat with no thesis | Done | 0127, 0132 | New ▸ Ask a research question (ADR-0132) |
 | R33 | Font style and paper themes | Done | 0120 | — |
 | R34 | Word import says why | Done | 0113 | — |
 | R35 | Shortcuts listed | Done | 0118 | — |
@@ -366,7 +366,7 @@ missing. Nothing is "Not done".
 | R40 | Citations side by side | Done | 0117 | A two-source Word field opened in real Word is the owner's check |
 | R41 | Dark mode and typography | Done | 0090 | Dark is B (warm Flexoki, Inter, our blue); light kept as it was, by the owner's choice |
 
-**Totals: 36 done, 5 partly (R5, R8, R24, R30, R32), 0 not done** (R18 finished 2026-10-09, ADR-0129). Two of the 35 are built
+**Totals: 40 done, 1 partly (R24), 0 not done** (R5, R8, R18, R30 and R32 done 2026-10-09: ADR-0092 addendum, 0133, 0129, 0132). Two of the 40 are built
 but wait on the owner to be used (R37 flag and price, R39 store submission). Of the three owner
 decisions: **D3** answered (R37 built, priced, left off); **D2** taken by the agent under
 ADR-0059 — "What changed and why" built (ADR-0095), region explanations built without a new prompt
@@ -419,8 +419,8 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
 6. **Row 38** (fix list 18): the Springer Nature Open Access API key.
 7. **Row 89**: the Hindi native review (`docs/i18n/hi-review.md`) and the next language (Tamil).
 8. **Rows 94, 95, 98**: live chat support, video tutorials, a community — who answers, where.
-9. **Row 45 / R30 / R32**: a chat across theses or without a thesis — a decision, because every
-   chat is grounded in one thesis's library (§10.6); not a code gap.
+9. **Row 45 / R30 / R32**: done 2026-10-09 (ADR-0132) — a research question with no thesis, and
+   "All my theses" as its second source, each citation naming its thesis.
 10. **R24 / row 55**: whether to try the score card again at a higher reasoning effort (about
     ₹0.36 a review before reasoning); it must pass `eval-examiner-scores.ts`.
 11. **R40 and ADR-0055**: open a Word citation field (one source, and two) in real Word and

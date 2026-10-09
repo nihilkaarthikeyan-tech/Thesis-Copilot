@@ -23,18 +23,27 @@ import { DraftService } from './draft.service.js';
 import { EditLiteratureService } from './edit-literature.service.js';
 import { EquationService } from './equation.service.js';
 import { ProofreadService } from './proofread.service.js';
+import { ResearchChatController } from './research-chat.controller.js';
+import { ResearchChatService } from './research-chat.service.js';
 import { ToneService } from './tone.service.js';
 import { WebScopeService } from './web-scope.service.js';
 
 @Module({
   imports: [UsageModule, FlagsModule],
-  controllers: [AssistController, CitationsController, DraftController, ChatController],
+  controllers: [
+    AssistController,
+    CitationsController,
+    DraftController,
+    ChatController,
+    ResearchChatController,
+  ],
   providers: [
     AssistService,
     AutoSourcesService,
     ChatService,
     ChatAttachmentsService,
     ChatThreadsService,
+    ResearchChatService,
     WebScopeService,
     CiteRoleService,
     EquationService,

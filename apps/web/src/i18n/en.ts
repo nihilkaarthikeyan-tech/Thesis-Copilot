@@ -110,6 +110,9 @@ export const en = {
   'newMenu.paperHint': 'A thesis that grows from a paper you have written',
   'newMenu.word': 'Import from Word',
   'newMenu.wordHint': 'A new thesis from the chapters in a .docx',
+  // ADR-0132: a research question with no thesis, or across all of them.
+  'newMenu.ask': 'Ask a research question',
+  'newMenu.askHint': 'No thesis needed: ask the literature, or all your theses',
   'switcher.heading': 'Theses',
   'switcher.headingCount': 'Theses ({count})',
   'switcher.open': 'Open now',

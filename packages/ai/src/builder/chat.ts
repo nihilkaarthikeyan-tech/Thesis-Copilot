@@ -79,7 +79,8 @@ export type ChatBuildInput = {
   passages: readonly PromptPassage[];
   filters: ChatFilters;
   userId: string;
-  documentId: string;
+  /** Absent for a research question asked with no thesis (ADR-0132). */
+  documentId?: string;
   signal?: AbortSignal;
   /** ADR-0074: `AI_CHAT_TIER`. Absent means `CHAT.tier`. */
   tier?: 'fast' | 'strong';
@@ -145,7 +146,7 @@ export function buildChatRequest(input: ChatBuildInput): LlmRequest {
     temperature: CHAT.temperature,
     action: 'CHAT',
     userId: input.userId,
-    documentId: input.documentId,
+    ...(input.documentId ? { documentId: input.documentId } : {}),
     ...(input.signal ? { signal: input.signal } : {}),
   };
 }

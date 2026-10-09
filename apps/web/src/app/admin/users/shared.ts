@@ -40,6 +40,8 @@ export type UserDetail = UserRow & {
   }>;
   signInMethods: string[];
   sessions: number;
+  /** ADR-0132: research chats asked with no thesis — a count only. */
+  researchChats?: number;
   suspendedAt: string | null;
   suspendedReason: string | null;
   deletionRequestedAt: string | null;

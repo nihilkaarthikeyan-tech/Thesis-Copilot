@@ -10,8 +10,8 @@
  * - **Import from Word** — the same chooser with "Create and import from Word" first; the thesis
  *   opens with the existing Word import dialog up.
  *
- * Every item is a link: nothing is created until the student presses a button on `/app/new`. A
- * chat without a thesis is not here (ADR-0127: it needs its own grounding).
+ * Every item is a link: nothing is created until the student presses a button on `/app/new`. The
+ * last item, "Ask a research question" (ADR-0132), opens a chat with no thesis at `/app/ask`.
  *
  * The menu is measured when it opens and nudged back inside the window, so it never runs off a
  * phone's edge whichever side of the screen its button ends up on after wrapping.
@@ -130,6 +130,19 @@ export function NewMenu({
               <span className="block text-[11.5px] leading-snug text-muted">{t(item.hint)}</span>
             </Link>
           ))}
+          {/* ADR-0132: a chat with no thesis, or across all of them. */}
+          <Link
+            href="/app/ask"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            data-testid="new-menu-ask"
+            className="mt-0.5 block min-w-0 rounded border-t border-line px-2.5 py-1.5 text-left hover:bg-sunk"
+          >
+            <span className="block text-[13px] font-semibold text-ink">{t('newMenu.ask')}</span>
+            <span className="block text-[11.5px] leading-snug text-muted">
+              {t('newMenu.askHint')}
+            </span>
+          </Link>
         </div>
       ) : null}
     </div>

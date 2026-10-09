@@ -373,6 +373,14 @@ export default function AdminUserPage() {
                   </table>
                 </div>
               )}
+              {/* ADR-0132: chats asked with no thesis. Counted, not shown: no new way into them. */}
+              <p
+                className="border-t border-line px-4 py-2 text-xs text-muted"
+                data-testid="admin-user-research-chats"
+              >
+                Research chats with no thesis:{' '}
+                <span className="tnum">{user.researchChats ?? 0}</span> · erased with the account
+              </p>
             </Card>
 
             <Card>
