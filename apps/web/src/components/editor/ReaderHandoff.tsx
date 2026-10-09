@@ -8,6 +8,8 @@
  *                           Cite here. The editor does not remember a caret between visits, so
  *                           guessing a place would put a citation somewhere the student did not
  *                           choose; one click is the honest version of "at the cursor".
+ *   "Put note in chapter"  — ADR-0130: the same bar, carrying the student's own note on a
+ *                           highlight; "Put here" puts the note in with the citation after it.
  *
  * Nothing enters the chapter without that press (flag, don't fix).
  */
@@ -32,7 +34,12 @@ export function ReaderHandoffBar({
     text: string,
     mention: Mention,
     /** R13 (ADR-0100): a part of a page as a picture, and questions to offer with it. */
-    extra?: { attachment?: { id: string; kind: 'image'; name: string }; questions?: string[] },
+    extra?: {
+      attachment?: { id: string; kind: 'image'; name: string };
+      questions?: string[];
+      /** ADR-0130: the student's note on a highlight. */
+      note?: string;
+    },
   ) => void;
 }) {
   const [cite, setCite] = useState<CiteHandoff | null>(null);
@@ -57,6 +64,7 @@ export function ReaderHandoffBar({
         {
           ...(handoff.attachment ? { attachment: handoff.attachment } : {}),
           ...(handoff.questions ? { questions: handoff.questions } : {}),
+          ...(handoff.note ? { note: handoff.note } : {}),
         },
       );
     } else {
@@ -96,9 +104,10 @@ export function ReaderHandoffBar({
     const store = (editor.storage as { citation?: { renderedMap?: Record<string, string> } })
       .citation;
     if (store?.renderedMap && label && !numeric) store.renderedMap[key] = label;
-    editor
-      .chain()
-      .focus()
+    const note = target.text?.replace(/\s+/g, ' ').trim();
+    const chain = editor.chain().focus();
+    if (note) chain.insertContent({ type: 'text', text: `${note} ` });
+    chain
       .insertCitation({
         key,
         sourceId: target.sourceId,
@@ -117,9 +126,11 @@ export function ReaderHandoffBar({
       className="fixed inset-x-0 bottom-16 z-40 mx-auto flex w-[min(40rem,94vw)] flex-wrap items-center gap-2 rounded-lg border border-accent/40 bg-surface px-3 py-2 text-[13px] text-ink shadow-lg"
     >
       <span className="min-w-0 flex-1">
-        Citing <strong>{cite.label}</strong>
+        {cite.text ? 'Putting your note in, citing ' : 'Citing '}
+        <strong>{cite.label}</strong>
         {cite.page ? `, p. ${cite.page}` : ''}.{' '}
-        {message ?? 'Click in your chapter where it goes, then press Cite here.'}
+        {message ??
+          `Click in your chapter where it goes, then press ${cite.text ? 'Put here' : 'Cite here'}.`}
       </span>
       <button
         type="button"
@@ -128,7 +139,7 @@ export function ReaderHandoffBar({
         onClick={() => void insert(cite)}
         className="rounded-md bg-accent px-3 py-1 text-[12px] font-bold text-accent-ink hover:bg-accent-hover"
       >
-        Cite here
+        {cite.text ? 'Put here' : 'Cite here'}
       </button>
       <button
         type="button"

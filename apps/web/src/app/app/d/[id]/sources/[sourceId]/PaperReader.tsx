@@ -7,24 +7,39 @@
  * publisher. This page reads it inside Thesis Copilot, as Jenni's reader does: the PDF drawn on
  * the page (when we hold one), or the text we extracted (always, and all an abstract-only paper
  * has); search with Ctrl/Cmd+F; and a selected passage copied with its citation, cited in the
- * chapter, or asked about in chat.
+ * chapter, or asked about in chat; and (ADR-0130) highlighted, with a note, in a side list that is
+ * the student's alone and reaches the chat or the chapter only by their press.
  *
  * Every state says what is true: still being looked up or read (and the page refreshes itself),
  * only the abstract held (with "Add the PDF"), a PDF that yielded no text (with the reason).
  */
 
 import type { CslAuthor } from '@tc/retrieval';
+import { READER_HIGHLIGHT_QUOTE_MAX, type ReaderHighlight } from '@tc/types';
 import { newCitationKey, sourceMetricBadges } from '@tc/ui';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HighlightsPanel } from '@/components/reader/HighlightsPanel';
+import {
+  clearHighlights,
+  paintHighlights,
+  rangeAt,
+  rangeOffsets,
+  scrollRangeIntoView,
+  searchableText,
+} from '@/components/reader/highlight';
 import {
   type PdfController,
   PdfView,
   type ReaderView,
   ZOOM_STEPS,
 } from '@/components/reader/PdfView';
-import { type Selected, SelectionMenu } from '@/components/reader/SelectionMenu';
+import {
+  type HighlightColour,
+  type Selected,
+  SelectionMenu,
+} from '@/components/reader/SelectionMenu';
 import { type Passage, TextView } from '@/components/reader/TextView';
 import { Button } from '@/components/ui/button';
 import { Badge, Kbd } from '@/components/ui/primitives';
@@ -39,6 +54,7 @@ import {
   stepMatch,
   writeHandoff,
 } from '@/lib/reader';
+import { anchorAt, chatHandoffFor, locate, sortHighlights } from '@/lib/reader-highlights';
 
 type Reading = 'LOOKING_UP' | 'READING' | 'FULL_TEXT' | 'ABSTRACT' | 'UNREADABLE' | 'NOTHING';
 
@@ -69,6 +85,53 @@ type ReaderSource = {
 type DocumentInfo = { id: string; title: string; chapters: Array<{ id: string }> };
 
 const POLL_MS = 3_000;
+
+/**
+ * ADR-0130: what a selection is anchored to — one PDF page's text layer, or one Text-view passage
+ * (the whole Text view when it crosses passages). A string is the reason it cannot be kept.
+ */
+function anchorRoot(
+  range: Range,
+): { view: 'PDF' | 'TEXT'; page: number | null; chunkId: string | null; root: Element } | string {
+  const elementOf = (node: Node) =>
+    node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  const start = elementOf(range.startContainer);
+  const end = elementOf(range.endContainer);
+  if (!start || !end) return 'Select the passage again.';
+  const layer = start.closest('.textLayer');
+  if (layer) {
+    if (!layer.contains(end)) return 'A highlight stays on one page. Select within one page.';
+    const page = Number(layer.closest('[data-page]')?.getAttribute('data-page'));
+    return {
+      view: 'PDF',
+      page: Number.isFinite(page) && page > 0 ? page : null,
+      chunkId: null,
+      root: layer,
+    };
+  }
+  const body = start.closest('[data-text-body]');
+  if (!body?.contains(end)) return 'Select a passage of the paper itself.';
+  const first = start.closest('[data-chunk-id]');
+  const last = end.closest('[data-chunk-id]');
+  const pageOf = Number(first?.getAttribute('data-page'));
+  const page = Number.isFinite(pageOf) && pageOf > 0 ? pageOf : null;
+  if (first && first === last) {
+    return { view: 'TEXT', page, chunkId: first.getAttribute('data-chunk-id'), root: first };
+  }
+  return { view: 'TEXT', page, chunkId: null, root: body };
+}
+
+/** The scrolling frame of the PDF or the Text view inside the reader's content. */
+function scrollerIn(root: HTMLElement | null, kind: 'pdf' | 'text'): HTMLElement | null {
+  return (
+    root?.querySelector<HTMLElement>(
+      kind === 'pdf' ? '[data-testid="pdf-view"]' : '[data-testid="text-view"]',
+    ) ?? null
+  );
+}
+
+const isWide = () =>
+  typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
 
 function authorLine(authors: CslAuthor[] | null): string {
   if (!authors || authors.length === 0) return '';
@@ -446,6 +509,328 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
     return () => window.removeEventListener('keydown', onKey);
   }, [boxMode]);
 
+  // ---- Highlights and notes (ADR-0130) ------------------------------------------------------------
+  const [highlights, setHighlights] = useState<ReaderHighlight[]>([]);
+  const highlightsRef = useRef(highlights);
+  highlightsRef.current = highlights;
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeRef = useRef(activeId);
+  activeRef.current = activeId;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [unplaced, setUnplaced] = useState<Set<string>>(() => new Set());
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  /** Each highlight's range in the PDF's drawn pages and in the Text view. */
+  const pdfRanges = useRef(new Map<string, Range>());
+  const textRanges = useRef(new Map<string, Range>());
+  /** Highlights looked for on a drawn page (or in the text) and not found there. */
+  const pdfMissing = useRef(new Set<string>());
+  const textMissing = useRef(new Set<string>());
+  /** A highlight to scroll to once its page's text layer is drawn. */
+  const pendingJump = useRef<string | null>(null);
+  const lastColour = useRef<HighlightColour>('yellow');
+
+  useEffect(() => {
+    api<ReaderHighlight[]>(`/sources/${sourceId}/highlights`)
+      .then((list) => setHighlights(sortHighlights(list)))
+      .catch(() => undefined);
+  }, [sourceId]);
+
+  useEffect(() => () => clearHighlights(), []);
+
+  const repaint = useCallback(() => {
+    const ranges = viewRef.current === 'pdf' ? pdfRanges.current : textRanges.current;
+    const byColour = new Map<string, Range[]>();
+    for (const h of highlightsRef.current) {
+      const range = ranges.get(h.id);
+      if (!range) continue;
+      byColour.set(h.colour, [...(byColour.get(h.colour) ?? []), range]);
+    }
+    paintHighlights(byColour, activeRef.current ? (ranges.get(activeRef.current) ?? null) : null);
+  }, []);
+
+  const syncUnplaced = useCallback(() => {
+    const missing = viewRef.current === 'pdf' ? pdfMissing.current : textMissing.current;
+    const next = new Set(missing);
+    if (viewRef.current === 'pdf') {
+      for (const h of highlightsRef.current) if (!h.page) next.add(h.id);
+    }
+    setUnplaced((current) =>
+      current.size === next.size && [...next].every((id) => current.has(id)) ? current : next,
+    );
+  }, []);
+
+  /** One page's text layer is drawn: find the highlights on it again. */
+  const onPageText = useCallback(
+    (page: number, layer: HTMLElement) => {
+      const text = searchableText(layer);
+      for (const h of highlightsRef.current) {
+        if (h.page !== page) continue;
+        const at = locate(text, h, h.view === 'PDF');
+        const range = at ? rangeAt(layer, at.start, at.end) : null;
+        if (range) {
+          pdfRanges.current.set(h.id, range);
+          pdfMissing.current.delete(h.id);
+        } else {
+          pdfRanges.current.delete(h.id);
+          pdfMissing.current.add(h.id);
+        }
+      }
+      syncUnplaced();
+      repaint();
+      const waiting = pendingJump.current;
+      const range = waiting ? pdfRanges.current.get(waiting) : null;
+      const scroller = layer.closest<HTMLElement>('[data-testid="pdf-view"]');
+      if (range && scroller && viewRef.current === 'pdf') {
+        pendingJump.current = null;
+        scrollRangeIntoView(scroller, range);
+      }
+    },
+    [repaint, syncUnplaced],
+  );
+
+  // The list changed: look again on every page already drawn.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run when the highlights change
+  useEffect(() => {
+    for (const id of [...pdfRanges.current.keys()]) {
+      if (!highlights.some((h) => h.id === id)) pdfRanges.current.delete(id);
+    }
+    const pages = content.current?.querySelectorAll<HTMLElement>('[data-testid="pdf-page"]') ?? [];
+    let any = false;
+    for (const el of pages) {
+      const layer = el.querySelector<HTMLElement>('.textLayer');
+      if (layer && layer.childElementCount > 0) {
+        any = true;
+        onPageText(Number(el.dataset.page), layer);
+      }
+    }
+    if (!any) {
+      syncUnplaced();
+      repaint();
+    }
+  }, [highlights, onPageText]);
+
+  // The Text view: every highlight, in its passage when it was made there, else in the whole text.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: new passages are a new text to search
+  useEffect(() => {
+    textRanges.current.clear();
+    textMissing.current.clear();
+    if (view !== 'text') {
+      syncUnplaced();
+      repaint();
+      return;
+    }
+    const body = content.current?.querySelector('[data-text-body]');
+    if (!body) return;
+    const bodyText = searchableText(body);
+    for (const h of highlights) {
+      let root: Element = body;
+      let text = bodyText;
+      let same = h.view === 'TEXT' && !h.chunkId;
+      if (h.view === 'TEXT' && h.chunkId) {
+        const passage = body.querySelector(`[data-chunk-id="${CSS.escape(h.chunkId)}"]`);
+        if (passage) {
+          root = passage;
+          text = searchableText(passage);
+          same = true;
+        }
+      }
+      const at = locate(text, h, same);
+      const range = at ? rangeAt(root, at.start, at.end) : null;
+      if (range) textRanges.current.set(h.id, range);
+      else textMissing.current.add(h.id);
+    }
+    syncUnplaced();
+    repaint();
+    const waiting = pendingJump.current;
+    const range = waiting ? textRanges.current.get(waiting) : null;
+    const scroller = scrollerIn(content.current, 'text');
+    if (range && scroller) {
+      pendingJump.current = null;
+      scrollRangeIntoView(scroller, range);
+    }
+  }, [view, passages, highlights, repaint, syncUnplaced]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: repaint when the one looked at changes
+  useEffect(() => {
+    repaint();
+  }, [activeId, view, repaint]);
+
+  const keep = useCallback(
+    async (selected: Selected, colour: HighlightColour, withNote: boolean) => {
+      const range = selected.range;
+      const where = range ? anchorRoot(range) : 'Select the passage again.';
+      if (typeof where === 'string' || !range) {
+        setNotice(typeof where === 'string' ? where : 'Select the passage again.');
+        return;
+      }
+      if (selected.text.length > READER_HIGHLIGHT_QUOTE_MAX) {
+        setNotice(
+          `A highlight can be at most ${READER_HIGHLIGHT_QUOTE_MAX.toLocaleString('en-IN')} characters. Select less.`,
+        );
+        return;
+      }
+      const offsets = rangeOffsets(where.root, range);
+      const anchor = offsets ? anchorAt(offsets.text, offsets.start, offsets.end) : null;
+      if (!anchor) {
+        setNotice('That selection could not be kept. Select the passage again.');
+        return;
+      }
+      lastColour.current = colour;
+      try {
+        const made = await api<ReaderHighlight>(`/sources/${sourceId}/highlights`, {
+          method: 'POST',
+          body: JSON.stringify({
+            view: where.view,
+            page: where.page,
+            chunkId: where.chunkId,
+            ...anchor,
+            quote: selected.text,
+            colour,
+          }),
+        });
+        window.getSelection()?.removeAllRanges();
+        setHighlights((list) => sortHighlights([...list, made]));
+        if (withNote) {
+          setPanelOpen(true);
+          setEditingId(made.id);
+          setActiveId(made.id);
+        } else if (!panelOpen) {
+          setNotice('Highlighted. It is kept under Highlights, for you alone.');
+        }
+      } catch (e) {
+        setNotice(
+          e instanceof ApiError
+            ? (e.problem.detail ?? e.problem.title)
+            : 'The highlight could not be saved.',
+        );
+      }
+    },
+    [sourceId, panelOpen],
+  );
+
+  const goTo = useCallback(
+    (h: ReaderHighlight) => {
+      setActiveId(h.id);
+      if (!isWide()) setPanelOpen(false);
+      if (view === 'pdf') {
+        if (!h.page) {
+          if (hasText) {
+            pendingJump.current = h.id;
+            setView('text');
+          }
+          return;
+        }
+        const range = pdfRanges.current.get(h.id);
+        const scroller = scrollerIn(content.current, 'pdf');
+        if (range?.startContainer.isConnected && scroller) {
+          scrollRangeIntoView(scroller, range);
+          return;
+        }
+        pendingJump.current = h.id;
+        pdfController.current?.goToPage(h.page);
+        return;
+      }
+      const scroller = scrollerIn(content.current, 'text');
+      const range = textRanges.current.get(h.id);
+      if (!scroller) return;
+      if (range?.startContainer.isConnected) {
+        scrollRangeIntoView(scroller, range);
+        return;
+      }
+      const fallback = h.chunkId
+        ? scroller.querySelector<HTMLElement>(`[data-chunk-id="${CSS.escape(h.chunkId)}"]`)
+        : h.page
+          ? scroller.querySelector<HTMLElement>(`[data-page="${h.page}"]`)
+          : null;
+      if (fallback) scroller.scrollTo({ top: fallback.offsetTop - 24 });
+    },
+    [view, hasText],
+  );
+
+  const patch = useCallback(
+    async (h: ReaderHighlight, change: { colour?: HighlightColour; note?: string | null }) => {
+      try {
+        const updated = await api<ReaderHighlight>(`/highlights/${h.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(change),
+        });
+        setHighlights((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+        return true;
+      } catch (e) {
+        setNotice(
+          e instanceof ApiError
+            ? (e.problem.detail ?? e.problem.title)
+            : 'That change could not be saved.',
+        );
+        return false;
+      }
+    },
+    [],
+  );
+
+  const removeHighlight = useCallback(async (h: ReaderHighlight) => {
+    try {
+      await api(`/highlights/${h.id}`, { method: 'DELETE' });
+      pdfRanges.current.delete(h.id);
+      textRanges.current.delete(h.id);
+      setHighlights((list) => list.filter((x) => x.id !== h.id));
+      setActiveId((id) => (id === h.id ? null : id));
+      setEditingId((id) => (id === h.id ? null : id));
+    } catch (e) {
+      setNotice(
+        e instanceof ApiError
+          ? (e.problem.detail ?? e.problem.title)
+          : 'The highlight could not be deleted.',
+      );
+    }
+  }, []);
+
+  /** "Put in chat": fills the chat box with the passage and the note. The student sends it. */
+  const highlightToChat = useCallback(
+    (h: ReaderHighlight) => {
+      if (!targetChapter()) {
+        setNotice('This thesis has no chapter yet, so there is no chat to ask in.');
+        return;
+      }
+      writeHandoff({
+        kind: 'ask',
+        documentId,
+        sourceId,
+        ...chatHandoffFor(h),
+        label,
+        readable: (source?.groundingLevel ?? 'NONE') !== 'NONE',
+      });
+      goToEditor();
+    },
+    [documentId, sourceId, label, source, goToEditor, targetChapter],
+  );
+
+  /** "Put note in chapter": the editor asks where, and "Put here" inserts note and citation. */
+  const highlightToChapter = useCallback(
+    (h: ReaderHighlight) => {
+      if (!h.note) return;
+      if (!targetChapter()) {
+        setNotice('This thesis has no chapter yet. Make the outline first, then put notes in it.');
+        return;
+      }
+      const chunkKnown = h.chunkId && passages?.some((p) => p.id === h.chunkId);
+      writeHandoff({
+        kind: 'cite',
+        documentId,
+        sourceId,
+        chunkId: chunkKnown ? h.chunkId : null,
+        page: h.page,
+        label,
+        title: source?.title ?? null,
+        text: h.note,
+      });
+      goToEditor();
+    },
+    [documentId, sourceId, label, source, goToEditor, targetChapter, passages],
+  );
+
   async function attachPdf(file: File) {
     setUploading(true);
     setNotice(null);
@@ -665,7 +1050,22 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
               ) : null}
             </div>
           ) : null}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {showPdf || hasText ? (
+              <Button
+                variant={panelOpen ? 'secondary' : 'ghost'}
+                size="sm"
+                aria-pressed={panelOpen}
+                aria-label={`Highlights and notes, ${highlights.length}`}
+                data-testid="reader-highlights-open"
+                onClick={() => setPanelOpen((open) => !open)}
+              >
+                Highlights{' '}
+                <span className="tnum text-muted" data-testid="reader-highlights-count">
+                  {highlights.length}
+                </span>
+              </Button>
+            ) : null}
             {showPdf ? (
               <Button
                 variant={boxMode ? 'secondary' : 'ghost'}
@@ -777,33 +1177,52 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
         </p>
       ) : null}
 
-      <div ref={content} className="flex min-h-0 flex-1 flex-col">
-        {source.hasFile && !pdfFailed ? (
-          <PdfView
-            sourceId={sourceId}
-            initialPage={initialPage}
-            controller={pdfController}
-            zoom={zoom}
-            onState={setPdfState}
-            onPageChange={(p, scale) => setPage({ page: p, scale })}
-            className={showPdf ? '' : 'hidden'}
-            boxMode={boxMode}
-            onBox={(shot) => void explainBox(shot)}
-          />
-        ) : null}
-        {view === 'text' || !source.hasFile || pdfFailed ? (
-          hasText ? (
-            <TextView
-              passages={passages ?? []}
-              controller={textController}
+      <div className="flex min-h-0 flex-1">
+        <div ref={content} className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {source.hasFile && !pdfFailed ? (
+            <PdfView
+              sourceId={sourceId}
               initialPage={initialPage}
-              initialChunk={params.get('chunk')}
+              controller={pdfController}
+              zoom={zoom}
+              onState={setPdfState}
+              onPageChange={(p, scale) => setPage({ page: p, scale })}
+              className={showPdf ? '' : 'hidden'}
+              boxMode={boxMode}
+              onBox={(shot) => void explainBox(shot)}
+              onPageText={onPageText}
             />
-          ) : passages === null ? (
-            <p className="p-6 text-sm text-muted">Opening the text…</p>
-          ) : (
-            <div className="flex-1" />
-          )
+          ) : null}
+          {view === 'text' || !source.hasFile || pdfFailed ? (
+            hasText ? (
+              <TextView
+                passages={passages ?? []}
+                controller={textController}
+                initialPage={initialPage}
+                initialChunk={params.get('chunk')}
+              />
+            ) : passages === null ? (
+              <p className="p-6 text-sm text-muted">Opening the text…</p>
+            ) : (
+              <div className="flex-1" />
+            )
+          ) : null}
+        </div>
+        {panelOpen ? (
+          <HighlightsPanel
+            highlights={highlights}
+            activeId={activeId}
+            editingId={editingId}
+            unplaced={unplaced}
+            onEdit={setEditingId}
+            onGo={goTo}
+            onColour={(h, colour) => void patch(h, { colour })}
+            onNote={(h, note) => patch(h, { note })}
+            onDelete={(h) => void removeHighlight(h)}
+            onChat={highlightToChat}
+            onChapter={highlightToChapter}
+            onClose={() => setPanelOpen(false)}
+          />
         ) : null}
       </div>
 
@@ -812,6 +1231,8 @@ export function PaperReader({ documentId, sourceId }: { documentId: string; sour
         onCopy={copyWithCitation}
         onCite={cite}
         onAsk={ask}
+        onHighlight={(selected, colour) => void keep(selected, colour, false)}
+        onNote={(selected) => void keep(selected, lastColour.current, true)}
         busy={copying}
       />
     </main>

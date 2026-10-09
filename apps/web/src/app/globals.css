@@ -561,3 +561,27 @@ html[lang="hi"] .eyebrow {
   background-color: rgb(231 120 30 / 0.7);
   color: inherit;
 }
+
+/* The student's own highlights (ADR-0130), the editor's highlight colours made see-through so the
+   PDF's print shows under them; the text layer's own text is transparent. */
+::highlight(reader-hl-yellow) {
+  background-color: rgb(250 204 21 / 0.4);
+  color: inherit;
+}
+::highlight(reader-hl-green) {
+  background-color: rgb(74 222 128 / 0.35);
+  color: inherit;
+}
+::highlight(reader-hl-blue) {
+  background-color: rgb(96 165 250 / 0.35);
+  color: inherit;
+}
+::highlight(reader-hl-pink) {
+  background-color: rgb(244 114 182 / 0.35);
+  color: inherit;
+}
+::highlight(reader-hl-active) {
+  background-color: rgb(231 120 30 / 0.35);
+  text-decoration: underline 2px rgb(231 120 30);
+  color: inherit;
+}

@@ -68,6 +68,7 @@ export function PdfView({
   className,
   boxMode = false,
   onBox,
+  onPageText,
 }: {
   sourceId: string;
   initialPage?: number | null;
@@ -88,6 +89,11 @@ export function PdfView({
    */
   boxMode?: boolean;
   onBox?: (shot: { page: number; blob: Blob }) => void;
+  /**
+   * ADR-0130: told each time a page's text layer has been drawn (first time, after a zoom, after
+   * scrolling back to it), so the student's highlights on that page can be drawn again.
+   */
+  onPageText?: (page: number, layer: HTMLElement) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -99,6 +105,8 @@ export function PdfView({
   const textReady = useRef(new Map<number, { promise: Promise<void>; resolve: () => void }>());
   const onStateRef = useRef(onState);
   onStateRef.current = onState;
+  const onPageTextRef = useRef(onPageText);
+  onPageTextRef.current = onPageText;
 
   // Load: the bytes through the API with the session cookie, then pdf.js.
   useEffect(() => {
@@ -367,7 +375,10 @@ export function PdfView({
                       doc={doc}
                       page={page}
                       scale={scale}
-                      onTextLayer={() => readyFor(page).resolve()}
+                      onTextLayer={(layer) => {
+                        readyFor(page).resolve();
+                        onPageTextRef.current?.(page, layer);
+                      }}
                     />
                   ) : null}
                   {boxMode && onBox ? <BoxSelect onShot={(blob) => onBox({ page, blob })} /> : null}
@@ -390,7 +401,7 @@ function PdfPage({
   doc: PDFDocumentProxy;
   page: number;
   scale: number;
-  onTextLayer: () => void;
+  onTextLayer: (layer: HTMLElement) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -432,7 +443,7 @@ function PdfPage({
       });
       textLayer = layer;
       await Promise.all([task.promise, layer.render()]);
-      if (live) onTextLayerRef.current();
+      if (live) onTextLayerRef.current(container);
     })().catch(() => {
       // A cancelled render rejects; anything else leaves a blank page, which the Text view covers.
     });

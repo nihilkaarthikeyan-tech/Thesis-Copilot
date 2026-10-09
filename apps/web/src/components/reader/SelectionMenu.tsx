@@ -2,7 +2,8 @@
 
 /**
  * What a passage selected in the reader can become (ADR-0068): copied with its citation, cited in
- * the chapter, or asked about in chat. A small menu over the selection with a mouse; a bar along
+ * the chapter, or asked about in chat — or, since ADR-0130, highlighted in one of four colours or
+ * highlighted with a note, kept for the student alone. A small menu over the selection with a mouse; a bar along
  * the foot of the screen on a touch screen, where the phone's own copy/select menu sits over the
  * selection and a second menu there would fight it.
  *
@@ -19,19 +20,41 @@ export type Selected = {
   page: number | null;
   /** The passage (chunk) it came from — the Text view knows; the PDF view does not. */
   chunkId: string | null;
+  /** ADR-0130: the selection itself, kept so a highlight can be anchored after it collapses. */
+  range?: Range;
 };
+
+export type HighlightColour = 'yellow' | 'green' | 'blue' | 'pink';
+
+/** The swatches, the same four colours as the editor's highlighter. */
+export const SWATCHES: ReadonlyArray<{
+  colour: HighlightColour;
+  label: string;
+  className: string;
+}> = [
+  { colour: 'yellow', label: 'Yellow', className: 'bg-yellow-300' },
+  { colour: 'green', label: 'Green', className: 'bg-green-300' },
+  { colour: 'blue', label: 'Blue', className: 'bg-blue-300' },
+  { colour: 'pink', label: 'Pink', className: 'bg-pink-300' },
+];
 
 export function SelectionMenu({
   container,
   onCopy,
   onCite,
   onAsk,
+  onHighlight,
+  onNote,
   busy,
 }: {
   container: RefObject<HTMLElement | null>;
   onCopy: (selected: Selected) => void;
   onCite: (selected: Selected) => void;
   onAsk: (selected: Selected) => void;
+  /** ADR-0130: keep the passage, highlighted in this colour. */
+  onHighlight?: (selected: Selected, colour: HighlightColour) => void;
+  /** ADR-0130: keep the passage highlighted and write a note on it. */
+  onNote?: (selected: Selected) => void;
   busy?: boolean;
 }) {
   const [selected, setSelected] = useState<Selected | null>(null);
@@ -79,7 +102,12 @@ export function SelectionMenu({
       const pageAttr = start?.closest('[data-page]')?.getAttribute('data-page');
       const page = pageAttr ? Number(pageAttr) : null;
       const chunkId = start?.closest('[data-chunk-id]')?.getAttribute('data-chunk-id') ?? null;
-      setSelected({ text, page: Number.isFinite(page) ? page : null, chunkId });
+      setSelected({
+        text,
+        page: Number.isFinite(page) ? page : null,
+        chunkId,
+        range: range.cloneRange(),
+      });
       const box = range.getBoundingClientRect();
       setAnchor({ top: box.top, left: box.left + box.width / 2 });
     };
@@ -152,20 +180,58 @@ export function SelectionMenu({
     </>
   );
 
+  const keep =
+    onHighlight || onNote ? (
+      <div className="flex items-center gap-1" data-testid="reader-highlight-actions">
+        {onHighlight
+          ? SWATCHES.map((s) => (
+              <button
+                key={s.colour}
+                type="button"
+                data-testid={`reader-highlight-${s.colour}`}
+                aria-label={`Highlight ${s.label.toLowerCase()}`}
+                title={`Highlight ${s.label.toLowerCase()}`}
+                className="grid size-8 shrink-0 place-items-center rounded-md transition-colors hover:bg-sunk"
+                {...hold}
+                onClick={act((sel) => onHighlight(sel, s.colour))}
+              >
+                <span className={`size-4 rounded-full ring-1 ring-black/15 ${s.className}`} />
+              </button>
+            ))
+          : null}
+        {onNote ? (
+          <button
+            type="button"
+            data-testid="reader-note"
+            className={button}
+            {...hold}
+            onClick={act(onNote)}
+          >
+            Note
+          </button>
+        ) : null}
+      </div>
+    ) : null;
+
   if (coarse) {
     return (
       <div
         role="toolbar"
         aria-label="Use the selected passage"
         data-testid="reader-selection-menu"
-        className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 gap-1 border-t border-line bg-surface px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg [&>button]:whitespace-normal [&>button]:leading-tight"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg"
       >
-        {buttons}
+        <div className="grid grid-cols-3 gap-1 [&>button]:whitespace-normal [&>button]:leading-tight">
+          {buttons}
+        </div>
+        {keep ? (
+          <div className="mt-1 flex justify-center border-t border-line pt-1">{keep}</div>
+        ) : null}
       </div>
     );
   }
 
-  const width = 420;
+  const width = keep ? 600 : 420;
   const left = Math.min(Math.max(8, anchor.left - width / 2), window.innerWidth - width - 8);
   const top = anchor.top > 64 ? anchor.top - 48 : anchor.top + 28;
   return (
@@ -173,10 +239,16 @@ export function SelectionMenu({
       role="toolbar"
       aria-label="Use the selected passage"
       data-testid="reader-selection-menu"
-      className="fixed z-50 flex gap-0.5 rounded-lg border border-line bg-surface p-1 shadow-lg"
+      className="fixed z-50 flex max-w-[calc(100vw-16px)] flex-wrap gap-0.5 rounded-lg border border-line bg-surface p-1 shadow-lg"
       style={{ top, left: Math.max(8, left) }}
     >
       {buttons}
+      {keep ? (
+        <>
+          <span aria-hidden="true" className="mx-0.5 w-px self-stretch bg-line" />
+          {keep}
+        </>
+      ) : null}
     </div>
   );
 }
