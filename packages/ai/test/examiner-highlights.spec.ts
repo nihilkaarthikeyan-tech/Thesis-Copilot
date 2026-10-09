@@ -132,6 +132,15 @@ describe('questions', () => {
     ).toBeNull();
   });
 
+  it('drops a question naming a sentence id (round 3: "placed at s33")', () => {
+    expect(
+      questionFault(
+        'Why is the moisture ratio defined at s33 and not before its first use?',
+        input,
+      ),
+    ).toBe('passage id');
+  });
+
   it('drops passage ids, statements and duplicates', () => {
     const out = postProcessHighlights(
       {

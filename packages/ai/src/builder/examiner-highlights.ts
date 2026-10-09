@@ -189,7 +189,8 @@ export type HighlightsInput = {
 
 const YEAR = /\b(1[89]\d{2}|20\d{2})\b/g;
 const ET_AL = /\b(\p{Lu}[\p{L}'-]+)\s+et\s+al\b/gu;
-const PASSAGE_ID = /\bP\d+\b|\{\{cite:/;
+/** The request's own ids: passages (P5), citation markers, sentences (round 3: "at s33"). */
+const PASSAGE_ID = /\bP\d+\b|\{\{cite:|\bs\d+\b/;
 
 /**
  * Why a question is dropped, or null when it stands. Exported so the evaluation can count the
