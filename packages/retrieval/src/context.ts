@@ -15,7 +15,7 @@ import {
   type PromptPassage,
   type StyleProfile,
 } from '@tc/ai';
-import { findOutlineNode, headingKey, readOutline } from '@tc/types';
+import { findOutlineNode, headingKey, isGenericSectionTitle, readOutline } from '@tc/types';
 import { findCandidates, type RawClient } from './pgvector.js';
 import {
   buildQueryText,
@@ -25,6 +25,7 @@ import {
   spreadCitations,
   topK,
 } from './rank.js';
+import { splitSentences } from './text.js';
 
 /** The Prisma surface this module uses. Structural, so either app's client satisfies it. */
 export type ContextClient = RawClient & {
@@ -166,6 +167,31 @@ export async function buildChapterMemory(
  * passage would cost around 25 tokens each and is exactly the kind of string a model mis-copies;
  * the map back to the real ids is returned alongside.
  */
+/**
+ * ADR-0135: the scope half of §10.4's query. A chapter with no scope note — "Chapter 1" on Start
+ * writing now, before the plan lands — would otherwise embed just the heading before the cursor,
+ * which says nothing about the thesis, and the six passages sent were close to arbitrary (a Kerala
+ * programme framing a Karnataka thesis, 2026-10-09). The thesis's working title stands in.
+ *
+ * Only for a suggestion with nothing of its own to search on: the text before the cursor ends in
+ * a heading that names no topic ("Chapter 1") or in nothing. A sentence, a chat question or a
+ * selection is searched as before, so the relevance floor (`isOffTopic`) still reads the
+ * student's own words, never the title's.
+ */
+export function queryScope(
+  chapterScope: string | null | undefined,
+  scope: unknown,
+  queryFrom = '',
+  action: RetrievalAction = 'ASSIST',
+): string | null {
+  if (chapterScope?.trim()) return chapterScope;
+  if (action !== 'ASSIST') return chapterScope ?? null;
+  const last = splitSentences(queryFrom).at(-1)?.text.trim() ?? '';
+  if (!isGenericSectionTitle(last)) return chapterScope ?? null;
+  const title = readScope(scope).workingTitle.trim();
+  return title || null;
+}
+
 export async function retrievePassages(
   db: ContextClient,
   embed: (texts: readonly string[]) => Promise<number[][]>,
@@ -194,7 +220,7 @@ export async function retrievePassages(
     }),
     db.documentMemory.findUnique({
       where: { documentId: chapter.documentId },
-      select: { outline: true },
+      select: { outline: true, scope: true },
     }),
   ]);
   const pinnedSourceIds = pinsInScope(pins, sectionKey);
@@ -205,7 +231,10 @@ export async function retrievePassages(
     candidates: 0,
   };
 
-  const queryText = buildQueryText(queryFrom, chapter.scopeNote);
+  const queryText = buildQueryText(
+    queryFrom,
+    queryScope(chapter.scopeNote, memory?.scope, queryFrom, action),
+  );
   if (queryText.trim().length === 0) return empty;
 
   const [embedding] = await embed([queryText]);
