@@ -37,6 +37,7 @@ import {
   type ContextClient,
   CoreClient,
   CrossrefClient,
+  dailyAllowance,
   EuropePmcClient,
   extractDocument,
   OpenAlexClient,
@@ -46,6 +47,8 @@ import {
   resolveByDoi,
   retrievePassages,
   SemanticScholarClient,
+  SPRINGER_DAILY_LIMIT,
+  SpringerNatureClient,
   sharedGate,
   UnpaywallClient,
 } from '@tc/retrieval';
@@ -312,6 +315,9 @@ async function main(): Promise<void> {
     });
   }
 
+  // ADR-0134: requests kept back from Springer Nature's 500 a day, because its day may not be UTC's.
+  const SPRINGER_DAILY_MARGIN = 20;
+
   // Its own connection: the slot checks must never queue behind a BullMQ command.
   const gateStore = connection.duplicate();
   const scholarly = {
@@ -327,6 +333,18 @@ async function main(): Promise<void> {
       : null,
     // ADR-0054: JATS full text for Europe PMC's open-access subset; keyless.
     europePmc: new EuropePmcClient({ mailto: env.UNPAYWALL_EMAIL }),
+    // ADR-0134: Springer Nature's Open Access API; optional, so no key means no client. The day's
+    // count lives in Redis (a restart must not reset it), with a margin under the plan's 500.
+    springer: env.SPRINGER_NATURE_API_KEY
+      ? new SpringerNatureClient(env.SPRINGER_NATURE_API_KEY, {
+          userAgent: `ThesisCopilot/0.1 (mailto:${env.UNPAYWALL_EMAIL})`,
+          allowance: dailyAllowance(
+            gateStore,
+            'scholarly:springer:day',
+            SPRINGER_DAILY_LIMIT - SPRINGER_DAILY_MARGIN,
+          ),
+        })
+      : null,
     // FR-2.5 discovery: OpenAlex primary, Semantic Scholar only when a key exists (PRD 13.3).
     discovery: new OpenAlexDiscovery({
       mailto: env.OPENALEX_MAILTO,
@@ -517,6 +535,7 @@ async function main(): Promise<void> {
           unpaywall: scholarly.unpaywall,
           core: scholarly.core,
           europePmc: scholarly.europePmc,
+          springer: scholarly.springer,
           getObject: (key) => storage.get(key),
           putObject: (key, body) => storage.put(key, body),
           extract: (bytes) => extractDocument(bytes, 'pdf'),

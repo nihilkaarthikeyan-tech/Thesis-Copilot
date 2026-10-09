@@ -137,6 +137,9 @@ export const envSchema = z
     UNPAYWALL_EMAIL: z.email('UNPAYWALL_EMAIL must be an email address'),
     SEMANTIC_SCHOLAR_API_KEY: optionalString,
     CORE_API_KEY: optionalString,
+    // ADR-0134: Springer Nature's Open Access API, the sanctioned road to the full text of its
+    // open-access papers (its site turns servers away). Optional: without it the step is skipped.
+    SPRINGER_NATURE_API_KEY: optionalString,
     // ADR-0020: PubMed works without one at 3 requests/second; a free NCBI key raises it to 10.
     NCBI_API_KEY: optionalString,
 

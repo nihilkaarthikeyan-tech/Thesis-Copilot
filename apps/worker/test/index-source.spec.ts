@@ -6,7 +6,13 @@
  * actually succeeded, never assumed from the fact that a source resolved.
  */
 
-import { type CoreClient, EMBEDDING_DIMENSIONS, type UnpaywallClient } from '@tc/retrieval';
+import { readFileSync } from 'node:fs';
+import {
+  type CoreClient,
+  EMBEDDING_DIMENSIONS,
+  SpringerNatureClient,
+  type UnpaywallClient,
+} from '@tc/retrieval';
 import type { IndexSourceJob } from '@tc/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -635,5 +641,159 @@ Night-time temperatures in coastal South Indian cities stay high during the pre-
     });
     await runIndexSource(job(), deps);
     expect((source as unknown as Record<string, unknown>).status).toBe('UNRESOLVED');
+  });
+});
+
+describe('Springer Nature Open Access API (ADR-0134)', () => {
+  const SPRINGER_DOI = '10.1186/s12889-020-09301-4';
+  const abstract = 'Telehealth reduced direct contact during the COVID-19 outbreak.';
+  // The real recorded JATS, read through the real client with a fake network.
+  const jats = readFileSync(
+    new URL(
+      '../../../packages/retrieval/test/fixtures/scholarly/springer-jats-s12889-020-09301-4.xml',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  function springerWith(respond: () => Response) {
+    const fetchFn = vi.fn(async () => respond());
+    const client = new SpringerNatureClient('test-key', { fetch: fetchFn, sleep: async () => {} });
+    const fullText = vi.fn((doi: string, signal?: AbortSignal) => client.fullText(doi, signal));
+    return { fullText, fetchFn };
+  }
+
+  function springerDeps(over: Parameters<typeof fakeDeps>[0] = {}) {
+    return fakeDeps({
+      oaPdfUrl: 'https://link.springer.com/content/pdf/x.pdf',
+      fetchedPdf: 'fail',
+      ...over,
+      source: { doi: SPRINGER_DOI, cslJson: { abstract }, ...(over.source ?? {}) },
+    });
+  }
+
+  it('reads the JATS when every PDF failed and Europe PMC has nothing: FULL_TEXT with its sections', async () => {
+    const { deps, source, inserted, logs } = springerDeps();
+    const europe = vi.fn(async () => null);
+    deps.europePmc = { fullText: europe } as unknown as IndexSourceDeps['europePmc'];
+    const { fullText } = springerWith(
+      () => new Response(jats, { status: 200, headers: { 'content-type': 'application/xml' } }),
+    );
+    deps.springer = { fullText };
+
+    const result = await runIndexSource(job(), deps);
+
+    expect(europe).toHaveBeenCalled();
+    expect(fullText).toHaveBeenCalledWith(SPRINGER_DOI, expect.any(AbortSignal));
+    expect(result).toMatchObject({
+      from: 'open-access-xml',
+      via: 'springer',
+      groundingLevel: 'FULL_TEXT',
+    });
+    expect(result.fullTextFailure).toBeUndefined();
+    expect(result.chunks).toBeGreaterThan(5);
+    expect(source.groundingLevel).toBe('FULL_TEXT');
+    expect(source.fileKey).toBeNull();
+    const written = JSON.stringify(inserted.map((row) => row.values));
+    for (const section of ['Background', 'Methods', 'Results', 'Discussion', 'Conclusion']) {
+      expect(written).toContain(`"${section}"`);
+    }
+    expect(logs.some((l) => l.msg === 'full text from springer nature')).toBe(true);
+  });
+
+  it('is not asked when Europe PMC already had the full text', async () => {
+    const { deps } = springerDeps();
+    deps.europePmc = {
+      fullText: vi.fn(async () => ({
+        pmcid: 'PMC1',
+        text: 'Telehealth in the outbreak. '.repeat(80),
+        sections: [{ section: 'Results', start: 0, end: 2240 }],
+        url: 'https://europepmc.org/article/PMC/PMC1',
+      })),
+    } as unknown as IndexSourceDeps['europePmc'];
+    const { fullText } = springerWith(() => new Response(jats));
+    deps.springer = { fullText };
+    expect((await runIndexSource(job(), deps)).via).toBe('europepmc');
+    expect(fullText).not.toHaveBeenCalled();
+  });
+
+  it('is not asked when the open-access PDF was read', async () => {
+    const { deps } = fakeDeps({
+      source: { doi: SPRINGER_DOI },
+      oaPdfUrl: 'https://repo.example.org/p.pdf',
+    });
+    const { fullText } = springerWith(() => new Response(jats));
+    deps.springer = { fullText };
+    expect((await runIndexSource(job(), deps)).from).toBe('open-access-pdf');
+    expect(fullText).not.toHaveBeenCalled();
+  });
+
+  it("spends no request on another publisher's DOI", async () => {
+    const { deps } = springerDeps({ source: { doi: '10.1371/journal.pone.0185809' } });
+    const { fullText } = springerWith(() => new Response(jats));
+    deps.springer = { fullText };
+    expect((await runIndexSource(job(), deps)).groundingLevel).toBe('ABSTRACT');
+    expect(fullText).not.toHaveBeenCalled();
+  });
+
+  it("asks for an unlisted prefix when Crossref's record names Springer as publisher", async () => {
+    const { deps } = springerDeps({
+      source: {
+        doi: '10.99999/abc',
+        cslJson: { abstract, publisher: 'Springer Science and Business Media LLC' },
+      },
+    });
+    const fullText = vi.fn(async () => ({ ok: false as const, reason: 'no-record' as const }));
+    deps.springer = { fullText };
+    await runIndexSource(job(), deps);
+    expect(fullText).toHaveBeenCalledWith('10.99999/abc', expect.any(AbortSignal));
+  });
+
+  it('is skipped silently without a key', async () => {
+    const { deps, logs } = springerDeps();
+    deps.springer = null;
+    const result = await runIndexSource(job(), deps);
+    expect(result).toMatchObject({ from: 'abstract', groundingLevel: 'ABSTRACT' });
+    expect(logs.some((l) => String(l.msg).includes('springer'))).toBe(false);
+  });
+
+  it('stays ABSTRACT when Springer Nature has no record, and says why in the log', async () => {
+    const { deps, source, logs } = springerDeps();
+    const { fullText } = springerWith(() => new Response('{}', { status: 404 }));
+    deps.springer = { fullText };
+    const result = await runIndexSource(job(), deps);
+    expect(result).toMatchObject({
+      from: 'abstract',
+      groundingLevel: 'ABSTRACT',
+      fullTextFailure: 'not-ok',
+    });
+    expect(source.groundingLevel).toBe('ABSTRACT');
+    expect(
+      logs.some((l) => l.msg === 'springer nature has no full text' && l.reason === 'no-record'),
+    ).toBe(true);
+  });
+
+  it('never claims FULL_TEXT from a record with no body', async () => {
+    const { deps, source } = springerDeps();
+    const bare = jats.replace(/<body>[\s\S]*<\/body>/, '');
+    const { fullText } = springerWith(() => new Response(bare, { status: 200 }));
+    deps.springer = { fullText };
+    expect((await runIndexSource(job(), deps)).groundingLevel).toBe('ABSTRACT');
+    expect(source.groundingLevel).toBe('ABSTRACT');
+  });
+
+  it('survives a rate limit and a client that throws', async () => {
+    const limited = springerDeps();
+    limited.deps.springer = springerWith(() => new Response('{}', { status: 429 }));
+    expect((await runIndexSource(job(), limited.deps)).groundingLevel).toBe('ABSTRACT');
+
+    const broken = springerDeps();
+    broken.deps.springer = {
+      fullText: vi.fn(async () => {
+        throw new Error('boom');
+      }),
+    };
+    expect((await runIndexSource(job(), broken.deps)).groundingLevel).toBe('ABSTRACT');
+    expect(broken.logs.some((l) => l.msg === 'springer nature lookup failed')).toBe(true);
   });
 });
