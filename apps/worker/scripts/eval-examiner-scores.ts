@@ -36,7 +36,14 @@ import {
   sectionInput,
   soundnessBlocking,
 } from '@tc/ai';
-import { disciplineProfile, loadEnv, suggestDiscipline } from '@tc/config';
+import {
+  computeCallCost,
+  disciplineProfile,
+  loadEnv,
+  microToInr,
+  suggestDiscipline,
+  type TokenUsage,
+} from '@tc/config';
 import { PrismaClient } from '@tc/db';
 import { loadPassages } from '../src/jobs/examiner-review.js';
 
@@ -55,6 +62,11 @@ const prisma = new PrismaClient();
 const llm = createProviders(loadEnv()).llm;
 let calls = 0;
 let tokens = 0;
+/** Spend, in INR at the configured prices: every call, and the score calls on their own. */
+let spentInr = 0;
+const scoreCalls: Array<{ inr: number; usage: TokenUsage }> = [];
+const costOf = (modelId: string, usage: TokenUsage) =>
+  microToInr(computeCallCost({ tier: 'strong', modelId, usage }));
 
 const survey = process.argv.includes('--survey');
 const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -144,6 +156,7 @@ async function examine(chapter: Picked): Promise<ScoreIssue[]> {
         schema: examinerSchema,
       });
       tokens += result.usage.inputTokens + result.usage.outputTokens;
+      spentInr += costOf(result.modelId, result.usage);
       const processed = postProcessExaminer(result.value, {
         sentences: input.sentences,
         pitfalls,
@@ -188,6 +201,9 @@ async function score(
     schema: examinerScoresSchema,
   });
   tokens += result.usage.inputTokens + result.usage.outputTokens;
+  const inr = costOf(result.modelId, result.usage);
+  spentInr += inr;
+  scoreCalls.push({ inr, usage: result.usage });
   const raw = result.value as ExaminerScores;
   return { raw, card: cleanExaminerScores(raw, { blocking: soundnessBlocking(issues) }) };
 }
@@ -215,7 +231,7 @@ const check = (ok: boolean, what: string) => {
 
 for (const chapter of picked) {
   const { sections } = chapter;
-  console.log(`\n=== ${chapter.document.title.slice(0, 60)} — ${chapter.title}`);
+  console.log(`\n=== ${chapter.document.title.slice(0, 60)} — ${chapter.title}  [${chapter.id}]`);
   console.log(`    ${sections.length} sections, ${chapter.words} words`);
   const issues = await examine(chapter);
   const blocking = issues.filter((i) => i.severity === 'blocking').length;

@@ -96,6 +96,18 @@ export function noThinking(modelId: string): 'minimal' | 'none' {
 export const REASONING_HEADROOM = 1_000;
 
 /**
+ * The headroom for a request that asks for its own effort (`LlmRequest.reasoningEffort`). `low`
+ * is the measured 1,000 above; the higher efforts think several times longer, and a budget that
+ * is too small fails silently (an empty answer at full price), so they get room generously.
+ * The meter bills what was spent, not this ceiling.
+ */
+export const REASONING_HEADROOM_BY_EFFORT = {
+  low: REASONING_HEADROOM,
+  medium: 4_000,
+  high: 8_000,
+} as const;
+
+/**
  * Schemas OpenAI's strict Structured Outputs mode has already refused, so the next call with the
  * same schema goes straight to JSON mode instead of paying the round trip again.
  *
@@ -212,7 +224,8 @@ export class OpenAiLlmProvider implements LlmProvider {
    * started returning objects the schema rejected. The budget for that thinking is
    * `REASONING_HEADROOM`, added to the action's cap rather than taken out of it.
    */
-  private providerOptionsFor(tier: Tier, strict: boolean) {
+  private providerOptionsFor(req: LlmRequest, strict: boolean) {
+    const tier: Tier = req.tier;
     const openai: {
       store: false;
       reasoningEffort?: string;
@@ -222,7 +235,9 @@ export class OpenAiLlmProvider implements LlmProvider {
     // gpt-4o-* and gpt-4.1-* take no reasoning key, and log "not supported" for each one they are
     // sent. A warning on every call is how real warnings stop being read.
     if (reasons(this.models[tier])) {
-      openai.reasoningEffort = tier === 'fast' ? noThinking(this.models[tier]) : 'low';
+      // A request may ask for more thinking than its tier's default (ADR-0111 addendum).
+      openai.reasoningEffort =
+        req.reasoningEffort ?? (tier === 'fast' ? noThinking(this.models[tier]) : 'low');
     }
     if (!strict) openai.strictJsonSchema = false;
     return { openai };
@@ -233,7 +248,11 @@ export class OpenAiLlmProvider implements LlmProvider {
    * model is one that thinks. See `REASONING_HEADROOM`.
    */
   private outputBudget(req: LlmRequest): number {
-    return reasons(this.models[req.tier]) ? req.maxTokens + REASONING_HEADROOM : req.maxTokens;
+    if (!reasons(this.models[req.tier])) return req.maxTokens;
+    const headroom = req.reasoningEffort
+      ? REASONING_HEADROOM_BY_EFFORT[req.reasoningEffort]
+      : REASONING_HEADROOM;
+    return req.maxTokens + headroom;
   }
 
   /**
@@ -259,7 +278,7 @@ export class OpenAiLlmProvider implements LlmProvider {
     let finishReason: string;
 
     try {
-      const providerOptions = this.providerOptionsFor(req.tier, true);
+      const providerOptions = this.providerOptionsFor(req, true);
       const temperature = this.temperatureFor(req);
       const result = streamText({
         model: this.model(req.tier),
@@ -295,7 +314,7 @@ export class OpenAiLlmProvider implements LlmProvider {
     req: LlmRequest & { schema: z.ZodType<T> },
     strict: boolean,
   ): Promise<{ object: unknown; usage: LanguageModelUsage; repaired: boolean }> {
-    const providerOptions = this.providerOptionsFor(req.tier, strict);
+    const providerOptions = this.providerOptionsFor(req, strict);
     const temperature = this.temperatureFor(req);
     let repaired = false;
     const result = await generateObject({
