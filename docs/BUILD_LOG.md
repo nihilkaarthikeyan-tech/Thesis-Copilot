@@ -5822,3 +5822,15 @@ references before and after their targets) and checks the chapter `.docx`, the w
   `refTargets` is now `numberingMap(withoutPendingDrafts(...))`.
 
 The web page and LaTeX (which numbers by `\label`/`\ref`) were already right.
+
+## R18 finished: papers filed where they are added (2026-10-09, ADR-0129)
+
+ADR-0105's "Add into" covered only the library's own add row. Discover, the Papers tab ("Add to
+library" before "Cite here"), chat's Add and Add all, and a pasted reference on the Citations tab
+now send the chosen collection with the add (`collectionId`, null for none), and the server files
+the rows in the same request after checking the collection belongs to the thesis
+(`LibraryFilingService`). The choice is kept on the thesis (`Document.meta.addInto`,
+`GET/PUT /documents/:id/add-into`) and the same picker sits wherever the student adds. The server
+never files from the stored choice by itself, so the add-on, automatic sources and chapter builds
+are unaffected. Tests: `apps/api/test/papers-filed-where-added.spec.ts` (7),
+`apps/web/test/add-into.spec.ts` (9); the two chat e2e specs expect the new body field.
