@@ -299,6 +299,23 @@ export {
   type WorkMetrics,
 } from './scholarly/resolve.js';
 export {
+  type AllowanceCheck,
+  type CounterStore,
+  dailyAllowance,
+  isSpringerNatureDoi,
+  readArticle as readSpringerArticle,
+  readableSpringerReason,
+  SPRINGER_COOL_OFF_MS,
+  SPRINGER_DAILY_LIMIT,
+  SPRINGER_NATURE_PREFIXES,
+  SPRINGER_REQUESTS_PER_SECOND,
+  type SpringerClientOptions,
+  type SpringerFailure,
+  type SpringerFullText,
+  SpringerNatureClient,
+  type SpringerOutcome,
+} from './scholarly/springer.js';
+export {
   type CslItem,
   cslToBibEntry,
   listZoteroCollections,
