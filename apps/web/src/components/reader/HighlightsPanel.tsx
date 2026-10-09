@@ -51,7 +51,7 @@ export function HighlightsPanel({
     <aside
       aria-label="Highlights and notes"
       data-testid="reader-highlights"
-      className="fixed inset-x-0 bottom-0 z-40 flex max-h-[65dvh] flex-col rounded-t-xl border-t border-line bg-surface shadow-2xl lg:static lg:z-auto lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-none lg:border-t-0 lg:border-l lg:shadow-none"
+      className="fixed inset-x-0 bottom-0 z-40 flex max-h-[65dvh] flex-col rounded-t-xl border-t border-line bg-surface shadow-2xl lg:static lg:z-auto lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-none lg:border-t-0 lg:border-l lg:pb-0 lg:shadow-none pb-[env(safe-area-inset-bottom)]"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-2">
         <h2 className="text-[13px] font-bold text-ink">
