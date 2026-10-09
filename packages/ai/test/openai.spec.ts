@@ -22,7 +22,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { noThinking, OpenAiLlmProvider, REASONING_HEADROOM } from '../src/providers/openai.js';
+import {
+  noThinking,
+  OpenAiLlmProvider,
+  REASONING_HEADROOM,
+  REASONING_HEADROOM_BY_EFFORT,
+} from '../src/providers/openai.js';
 import { LlmProviderError, type LlmRequest } from '../src/types.js';
 
 /** The OpenAI responses-API body, in the parts these tests read. */
@@ -149,6 +154,27 @@ describe('room to think', () => {
     const { bodies } = await capture(request(), 'stream', { fastModel: 'gpt-4o-mini' });
 
     expect(bodies[0]?.reasoning).toBeUndefined();
+  });
+
+  it('sends a request’s own effort, with headroom to match, on the wire (ADR-0111 addendum)', async () => {
+    const { bodies } = await capture(
+      request({ tier: 'strong', maxTokens: 700, reasoningEffort: 'high' }),
+      'complete',
+    );
+
+    expect(bodies[0]?.reasoning?.effort).toBe('high');
+    expect(bodies[0]?.max_output_tokens).toBe(700 + REASONING_HEADROOM_BY_EFFORT.high);
+  });
+
+  it('does not send a request’s own effort to a model that does not reason', async () => {
+    const { bodies } = await capture(
+      request({ tier: 'strong', maxTokens: 700, reasoningEffort: 'high' }),
+      'stream',
+      { strongModel: 'gpt-4.1-mini' },
+    );
+
+    expect(bodies[0]?.reasoning).toBeUndefined();
+    expect(bodies[0]?.max_output_tokens).toBe(700);
   });
 });
 

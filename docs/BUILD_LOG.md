@@ -6137,6 +6137,16 @@ unchanged. Tests: `packages/ai/test/subsections.spec.ts` (39) and one in
 The real-model run on five new title-only plans was not made in this change (declined at the
 tool prompt); run it before release (about ₹0.5 a title):
 `pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx scripts/probe-outline-from-title.ts "<title>" …`
+
+Real-model check, run the same day (ADR-0138 → "Real-model check"): five new title-only plans
+(solar in Karnataka, diabetic retinopathy ML, Kenyan mobile banking, nano-silica concrete,
+inclusive education in Tamil Nadu), ₹3.18. Sub-sections only in the Literature Review and
+Methodology (5/5), at most three divided sections a chapter (5/5), Literature Review counts
+untouched (6, 6, 6, 5, 5), 9–13 sub-sections a plan. One nonsense split: "Policy and regulatory
+context for rooftop solar" → a bare "Policy". Fixed: setting nouns (context, environment,
+landscape, framework, setting) share the way kind-nouns do, giving "Policy context for rooftop
+solar"; "Sampling and statistical analysis" still gives Sampling / Statistical analysis. Two
+cases added to `subsections.spec.ts` (41 pass).
 ## Hindi for the calm editor (2026-10-09, ADR-0137)
 
 The 22 strings ADR-0137 added (status line, ⋯ menu, More menu, Cite) are in `hi.ts`, in the
@@ -6230,3 +6240,22 @@ switch, unsubscribe on/off, forged tokens refused), `packages/mail/test/unsubscr
 Touched specs pass: comment-replies, web i18n and i18n-review (sheet regenerated).
 `apps/web/e2e/comment-email-switch.spec.ts` is written and **not yet run** (it needs the dev stack
 on this branch with migration 0054 applied).
+
+## The examiner score card at high reasoning effort, round 5: withheld again (2026-10-09, ADR-0111 addendum)
+
+Criterion written into ADR-0111 and committed before the run: the round-4 bar (full cards;
+stable on all four; presentation, soundness and contribution each fall on at least three of four)
+plus a price that keeps a fully active student under ₹100. The candidate changed one thing: the
+score call asks for `'high'` reasoning effort (new `LlmRequest.reasoningEffort`, sent by the
+OpenAI adapter to a reasoning model with headroom 8,000 for high / 4,000 for medium; two cases
+in `packages/ai/test/openai.spec.ts`, 27 pass with `examiner-scores.spec.ts`).
+
+Result 9/16: stable 3/4, presentation 1/4, soundness 4/4, contribution 1/4. **Failed; the card
+stays unwired and unshown.** Three of the four chapters the script picked were the same e2e
+"Writing profile" fixture under different thesis titles, stuck at the floor (S2 P3 C2 O2) on every
+variant; the one real chapter (urban heat stress gap analysis) scored P6 C5, then P8 C4, then in
+a pricing run straight after P3 C2 twice: a grade that moves three points on the same text.
+Measured price at `'high'`: ₹0.94 a score call (5,188 output tokens, mostly thinking) against
+≈₹0.36 at `'low'`; a review would be ≈₹2.80 and a fully active student ≈₹98.8. Spend ≈₹21 for
+the round (estimated; its spend line did not print) and ₹5.83 for the pricing run. The eval
+script now prints chapter ids and spend; a next candidate should pin real chapters by id.
