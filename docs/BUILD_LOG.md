@@ -6120,3 +6120,20 @@ origin); `onboarding`'s first test (the hint reads "A suggestion appears when yo
 automatic suggest is on for new accounts — so there is no "Ctrl+/"); `states` empty grounding and
 `proposal-sources` empty-library draft (the API now answers with the papers-loading and
 finding-sources messages). The Hindi review sheet lists the 22 new strings as English for now.
+
+## Sub-sections in code (2026-10-09, ADR-0138, R5b)
+
+Four A.9 candidates could not write sub-sections reliably, so A.9 is unchanged and
+`addSubsections` (`packages/ai/src/builder/subsections.ts`) adds them after the call, in the
+worker's outline post-processing: a Literature Review or Methodology section whose title names
+its parts ("Financing, incentives and affordability", "Policy and institutional barriers") gets
+one sub-section per part, at most three divided sections a chapter; a section called
+"Methodology" gets the blueprint's design / data collection / analysis. No model call; every word
+comes from the plan. Offline, on the twenty stored plans of the outline rounds (ten title-only):
+every plan gets sub-sections (6–15), none outside the two chapters, Literature Review counts
+unchanged. Tests: `packages/ai/test/subsections.spec.ts` (39) and one in
+`apps/worker/test/generate-outline.spec.ts` (stored tree and the chapter's H3).
+`scripts/probe-outline-from-title.ts` now takes several titles and prints each plan as stored.
+The real-model run on five new title-only plans was not made in this change (declined at the
+tool prompt); run it before release (about ₹0.5 a title):
+`pnpm --filter @tc/ai exec dotenv -e ../../.env -- tsx scripts/probe-outline-from-title.ts "<title>" …`
