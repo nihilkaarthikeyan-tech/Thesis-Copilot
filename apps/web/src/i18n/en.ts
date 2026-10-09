@@ -284,6 +284,23 @@ export const en = {
   'editor.tab.flags': 'check',
   'editor.tab.review': 'comments',
   'editor.chapterAndTools': 'Chapter and tools',
+  // ---- The calm editor (ADR-0137) ---------------------------------------------------------------
+  'editor.menu': 'More options',
+  'editor.menu.usage': 'Usage',
+  'editor.menu.theme': 'Theme',
+  'editor.menu.firstSteps': 'First steps',
+  'editor.line.label': 'This chapter at a glance',
+  'editor.line.searching': 'Finding papers…',
+  'editor.line.found': '{found} papers found',
+  'editor.line.reading': 'reading {reading}…',
+  'editor.line.ready': '{ready} ready to cite',
+  'editor.line.planned': 'chapters planned',
+  'editor.line.planning': 'planning chapters…',
+  'editor.line.notPlanned': 'chapters not planned',
+  'editor.line.next': 'next: {step}',
+  'editor.line.empty': 'Chapter plan, papers and first steps',
+  'editor.line.show': 'Show',
+  'editor.line.hide': 'Hide',
   'editor.feedbackLabel':
     'What happened? The admin gets this note, this document’s id and your last five suggestion events — not your text.',
   'editor.feedbackSent':
@@ -360,6 +377,12 @@ export const en = {
 
   // ---- The formatting toolbar -----------------------------------------------------------------
   'fmt.toolbar': 'Formatting',
+  'fmt.more': 'More',
+  'fmt.moreTitle': 'More formatting and things to insert',
+  'fmt.moreFormat': 'Format',
+  'fmt.moreInsert': 'Insert',
+  'fmt.cite': 'Cite',
+  'fmt.citeTitle': 'Cite a paper from your library (or type @)',
   'fmt.undo': 'Undo',
   'fmt.redo': 'Redo',
   'fmt.bold': 'Bold (Ctrl+B)',

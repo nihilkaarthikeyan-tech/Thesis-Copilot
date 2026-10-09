@@ -46,8 +46,13 @@ import {
   Baseline,
   Bold,
   Braces,
+  Captions,
+  ChartColumn,
+  ChevronDown,
   Code,
+  Hash,
   Highlighter,
+  Image as ImageIcon,
   Italic,
   Link2,
   Link2Off,
@@ -60,9 +65,11 @@ import {
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
   Table as TableIcon,
+  TextQuote,
   Trash2,
   Underline as UnderlineIcon,
   Undo2,
+  Workflow,
 } from 'lucide-react';
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -285,6 +292,66 @@ function Tool({
   );
 }
 
+/**
+ * One row of the More menu (ADR-0137): the same control as a `Tool`, with its name written out
+ * beside the icon, because a menu of bare icons is a quiz. The accessible name is the same label
+ * the bar's button had, so a control that moved here is still found by its name.
+ */
+function MenuTool({
+  label,
+  text,
+  active,
+  disabled,
+  onClick,
+  children,
+  testId,
+}: {
+  label: string;
+  /** What the row shows; the label when absent. */
+  text?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      disabled={disabled}
+      data-testid={testId}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={cn(
+        'flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-[12.5px] transition-colors',
+        'disabled:pointer-events-none disabled:opacity-35',
+        active ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-sunk',
+      )}
+    >
+      <span aria-hidden="true" className="inline-flex w-[18px] shrink-0 justify-center text-muted">
+        {children}
+      </span>
+      <span aria-hidden="true" className="min-w-0 flex-1 truncate">
+        {text ?? label}
+      </span>
+    </button>
+  );
+}
+
+function MenuHeading({ children }: { children: ReactNode }) {
+  return (
+    <p className="px-2 pt-2 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+      {children}
+    </p>
+  );
+}
+
+/** The More menu's width; it is clamped to the window as well. */
+const MORE_WIDTH = 248;
+
 function Divider() {
   return <span aria-hidden="true" className="mx-0.5 h-5 w-px shrink-0 bg-line" />;
 }
@@ -353,7 +420,16 @@ const PICKER_WIDTH = 216;
  * inside it, and an `absolute` panel at the button would run off a phone's screen at the bar's
  * right edge. Choosing keeps the selection: every control here prevents the mousedown.
  */
-function ColorPicker({ editor, kind }: { editor: Editor; kind: 'text' | 'highlight' }) {
+function ColorPicker({
+  editor,
+  kind,
+  row = false,
+}: {
+  editor: Editor;
+  kind: 'text' | 'highlight';
+  /** ADR-0137: drawn as a labelled row of the toolbar's More menu. */
+  row?: boolean;
+}) {
   const { t } = useT();
   const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -433,32 +509,45 @@ function ColorPicker({ editor, kind }: { editor: Editor; kind: 'text' | 'highlig
         onMouseDown={(e) => e.preventDefault()}
         onClick={toggle}
         className={cn(
-          'relative inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md px-1 transition-colors',
+          row
+            ? 'relative flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-[12.5px] transition-colors'
+            : 'relative inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md px-1 transition-colors',
           current || place
             ? 'bg-accent-soft text-accent'
-            : 'text-muted hover:bg-sunk hover:text-ink',
+            : row
+              ? 'text-ink hover:bg-sunk'
+              : 'text-muted hover:bg-sunk hover:text-ink',
         )}
       >
-        {kind === 'text' ? (
-          <Baseline className="size-[15px]" strokeWidth={1.75} />
-        ) : (
-          <Highlighter className="size-[15px]" strokeWidth={1.75} />
-        )}
-        {current ? (
-          <span
-            aria-hidden="true"
-            className={cn(
-              'absolute inset-x-1.5 bottom-0.5 h-[3px] rounded-full',
-              kind === 'text' ? 'tc-ink-swatch' : 'tc-hl-swatch',
-            )}
-            {...(kind === 'text' ? { 'data-text-color': current } : { 'data-color': current })}
-          />
+        <span className="relative inline-flex">
+          {kind === 'text' ? (
+            <Baseline className="size-[15px]" strokeWidth={1.75} />
+          ) : (
+            <Highlighter className="size-[15px]" strokeWidth={1.75} />
+          )}
+          {current ? (
+            <span
+              aria-hidden="true"
+              className={cn(
+                'absolute inset-x-0 -bottom-1 h-[3px] rounded-full',
+                kind === 'text' ? 'tc-ink-swatch' : 'tc-hl-swatch',
+              )}
+              {...(kind === 'text' ? { 'data-text-color': current } : { 'data-color': current })}
+            />
+          ) : null}
+        </span>
+        {row ? (
+          <span aria-hidden="true" className="min-w-0 flex-1 truncate">
+            {kind === 'text' ? t('fmt.textColor') : t('fmt.highlight')}
+          </span>
         ) : null}
       </button>
       {place && typeof document !== 'undefined'
         ? createPortal(
             <div
               ref={panelRef}
+              // The toolbar's More menu stays open while a colour is chosen here.
+              data-keep-menu=""
               role="dialog"
               aria-label={label}
               data-testid={kind === 'text' ? 'text-color-picker' : 'highlight-picker'}
@@ -680,6 +769,55 @@ export function FormatToolbar({
     return () => dom.removeEventListener(MATH_EDIT_EVENT, onEdit);
   }, [editor, prompt, describeEquation, readEquationPhoto]);
 
+  // ADR-0137: the More ▾ menu. Drawn in `document.body` at the button, clamped to the window, for
+  // the reason the colour picker is: the bar's `backdrop-blur` makes it the containing block of
+  // anything `fixed` inside it.
+  const [more, setMore] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const moreMenu = useRef<HTMLDivElement>(null);
+  const placeMore = useCallback(() => {
+    const rect = moreButton.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const width = Math.min(MORE_WIDTH, window.innerWidth - 16);
+    const top = rect.bottom + 4;
+    return {
+      left: Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)),
+      top,
+      maxHeight: Math.max(160, window.innerHeight - top - 8),
+    };
+  }, []);
+  const closeMore = useCallback(() => setMore(null), []);
+  const moreOpen = more !== null;
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (moreMenu.current?.contains(target) || moreButton.current?.contains(target)) return;
+      // A colour panel opened from the menu is drawn outside it.
+      if (target?.closest?.('[data-keep-menu]')) return;
+      setMore(null);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMore(null);
+    };
+    // The bar is sticky, so the menu follows its button rather than closing on a scroll.
+    const follow = (event: Event) => {
+      if (event.type === 'scroll' && moreMenu.current?.contains(event.target as Node)) return;
+      const next = placeMore();
+      if (next) setMore(next);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', follow);
+    window.addEventListener('scroll', follow, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', follow);
+      window.removeEventListener('scroll', follow, true);
+    };
+  }, [moreOpen, placeMore]);
+
   if (!editor) return null;
 
   const inTable = editor.isActive('table');
@@ -691,6 +829,23 @@ export function FormatToolbar({
   // make it immediately referenceable, and renumber the references that exist.
   const refTargets = numberTargets(editor.getJSON());
 
+  /** "@" at the caret opens the library picker (`CitePicker`), as typing it does. */
+  const cite = () => {
+    const { from } = editor.state.selection;
+    const before = editor.state.doc.textBetween(Math.max(0, from - 1), from, '\n', ' ');
+    editor
+      .chain()
+      .focus()
+      .insertContent(before === '' || /\s|[([]/.test(before) ? '@' : ' @')
+      .run();
+  };
+  /** A menu row that opens a field, a dialog or a file picker closes the menu first. */
+  const thenClose = (run: () => void) => () => {
+    closeMore();
+    run();
+  };
+  const icon = 'size-[15px]';
+
   return (
     <div
       data-testid="format-toolbar"
@@ -699,29 +854,34 @@ export function FormatToolbar({
       className={cn(
         // The negative margin cancels the page's own padding so the bar runs edge to edge; it has
         // to match that padding at every width, or on a phone the bar is wider than the screen.
-        'sticky top-0 z-20 -mx-4 mb-4 border-b border-line bg-paper/95 px-4 py-1.5 backdrop-blur sm:-mx-6 sm:px-6',
+        // `lg:top-12`: from `lg` up the editor's header is sticky too (ADR-0137), 48 px tall.
+        'sticky top-0 z-20 -mx-4 mb-4 border-b border-line bg-paper/95 px-4 py-1.5 backdrop-blur sm:-mx-6 sm:px-6 lg:top-12',
         // QA 2026-10-09: a separate `relative` here made tailwind-merge drop `sticky`, so the bar
         // scrolled away with the page. `sticky` already anchors the inline prompt below to it.
         className,
       )}
     >
-      <div className="mx-auto flex max-w-[72ch] flex-wrap items-center gap-0.5">
-        <Tool
-          label={t('fmt.undo')}
-          disabled={!editor.can().undo()}
-          onClick={() => editor.chain().focus().undo().run()}
-        >
-          <Undo2 className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool
-          label={t('fmt.redo')}
-          disabled={!editor.can().redo()}
-          onClick={() => editor.chain().focus().redo().run()}
-        >
-          <Redo2 className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
+      {/* ADR-0137: one row. What a thesis needs every few minutes stays on the bar; the rest is
+          under More, named. Below `sm` the lists, table, equation and undo/redo join it. */}
+      <div className="mx-auto flex max-w-[72ch] flex-nowrap items-center gap-0.5">
+        <span className="hidden items-center gap-0.5 sm:flex">
+          <Tool
+            label={t('fmt.undo')}
+            disabled={!editor.can().undo()}
+            onClick={() => editor.chain().focus().undo().run()}
+          >
+            <Undo2 className={icon} strokeWidth={1.75} />
+          </Tool>
+          <Tool
+            label={t('fmt.redo')}
+            disabled={!editor.can().redo()}
+            onClick={() => editor.chain().focus().redo().run()}
+          >
+            <Redo2 className={icon} strokeWidth={1.75} />
+          </Tool>
+          <Divider />
+        </span>
 
-        <Divider />
         <BlockStyle editor={editor} />
         <Divider />
 
@@ -731,7 +891,7 @@ export function FormatToolbar({
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
-          <Bold className="size-[15px]" strokeWidth={2} />
+          <Bold className={icon} strokeWidth={2} />
         </Tool>
         <Tool
           label={t('fmt.italic')}
@@ -739,301 +899,399 @@ export function FormatToolbar({
           active={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
-          <Italic className="size-[15px]" strokeWidth={2} />
+          <Italic className={icon} strokeWidth={2} />
         </Tool>
         <Tool
           label={t('fmt.underline')}
           active={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         >
-          <UnderlineIcon className="size-[15px]" strokeWidth={2} />
+          <UnderlineIcon className={icon} strokeWidth={2} />
         </Tool>
-        <Tool
-          label={t('fmt.strike')}
-          active={editor.isActive('strike')}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-        >
-          <Strikethrough className="size-[15px]" strokeWidth={2} />
-        </Tool>
-        <ColorPicker editor={editor} kind="text" />
-        <ColorPicker editor={editor} kind="highlight" />
-
-        <Divider />
-
-        <Tool
-          label={t('fmt.superscript')}
-          active={editor.isActive('superscript')}
-          onClick={() => editor.chain().focus().toggleSuperscript().run()}
-        >
-          <SuperscriptIcon className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool
-          label={t('fmt.subscript')}
-          active={editor.isActive('subscript')}
-          onClick={() => editor.chain().focus().toggleSubscript().run()}
-        >
-          <SubscriptIcon className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool
-          label={t('fmt.inlineCode')}
-          active={editor.isActive('code')}
-          onClick={() => editor.chain().focus().toggleCode().run()}
-        >
-          <Code className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool
-          label={t('fmt.codeBlock')}
-          active={editor.isActive('codeBlock')}
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        >
-          <Braces className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-
-        <Divider />
-
-        <Tool
-          label={t('fmt.bulletList')}
-          active={editor.isActive('bulletList')}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-        >
-          <List className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool
-          label={t('fmt.orderedList')}
-          active={editor.isActive('orderedList')}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        >
-          <ListOrdered className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool
-          label={t('fmt.blockquote')}
-          active={editor.isActive('blockquote')}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        >
-          <Quote className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-
-        <Divider />
 
         <Tool
           label={editor.isActive('link') ? t('fmt.editLink') : t('fmt.addLink')}
           active={editor.isActive('link')}
           onClick={setLink}
         >
-          <Link2 className="size-[15px]" strokeWidth={1.75} />
+          <Link2 className={icon} strokeWidth={1.75} />
         </Tool>
         {editor.isActive('link') ? (
           <Tool
             label={t('fmt.removeLink')}
             onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}
           >
-            <Link2Off className="size-[15px]" strokeWidth={1.75} />
+            <Link2Off className={icon} strokeWidth={1.75} />
           </Tool>
         ) : null}
 
-        <Tool
-          label={t('fmt.insertTable')}
-          testId="fmt-table"
-          active={inTable}
-          onClick={() =>
-            editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-          }
+        <button
+          type="button"
+          title={t('fmt.citeTitle')}
+          data-testid="fmt-cite"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={cite}
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] text-muted transition-colors hover:bg-sunk hover:text-ink"
         >
-          <TableIcon className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
+          <TextQuote className="size-[14px]" strokeWidth={1.75} aria-hidden="true" />
+          {t('fmt.cite')}
+        </button>
 
-        {/* Only when there is something to point at. A reference picker offering nothing is a
-            button that teaches people the feature is broken. */}
-        {refTargets.length > 0 ? (
-          <select
-            aria-label={t('fmt.referTo')}
-            data-testid="fmt-crossref"
-            value=""
-            onMouseDown={(e) => e.stopPropagation()}
-            onChange={(e) => {
-              const chosen = refTargets.find((t) => t.refId === e.target.value);
-              if (chosen) {
-                editor
-                  .chain()
-                  .focus()
-                  .insertCrossRef({ refId: chosen.refId, kind: chosen.kind })
-                  .run();
-              }
-              e.target.value = '';
-            }}
-            className="h-7 shrink-0 rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink transition-colors hover:bg-sunk"
+        <span className="hidden items-center gap-0.5 sm:flex">
+          <Divider />
+          <Tool
+            label={t('fmt.bulletList')}
+            active={editor.isActive('bulletList')}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
           >
-            <option value="">{t('fmt.referToOption')}</option>
-            {refTargets.map((target) => (
-              <option key={target.refId} value={target.refId}>
-                {t(target.kind === 'figure' ? 'fmt.figureN' : 'fmt.tableN', { n: target.index })}
-              </option>
-            ))}
-          </select>
-        ) : null}
+            <List className={icon} strokeWidth={1.75} />
+          </Tool>
+          <Tool
+            label={t('fmt.orderedList')}
+            active={editor.isActive('orderedList')}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          >
+            <ListOrdered className={icon} strokeWidth={1.75} />
+          </Tool>
+          <Tool
+            label={t('fmt.insertTable')}
+            testId="fmt-table"
+            active={inTable}
+            onClick={() =>
+              editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+            }
+          >
+            <TableIcon className={icon} strokeWidth={1.75} />
+          </Tool>
+          <Tool label={t('fmt.equation')} testId="fmt-math" onClick={() => insertMath('inline')}>
+            <Sigma className={icon} strokeWidth={1.75} />
+          </Tool>
+        </span>
 
-        <Tool label={t('fmt.equation')} testId="fmt-math" onClick={() => insertMath('inline')}>
-          <Sigma className="size-[15px]" strokeWidth={1.75} />
-        </Tool>
-        <Tool label={t('fmt.displayEquation')} onClick={() => insertMath('block')}>
-          <span className="text-[13px] font-semibold leading-none">Σ⁺</span>
-        </Tool>
-        <Tool
-          label={editor.isActive('footnote') ? t('fmt.editFootnote') : t('fmt.footnote')}
-          testId="fmt-footnote"
-          active={editor.isActive('footnote')}
-          onClick={footnote}
+        <button
+          ref={moreButton}
+          type="button"
+          title={t('fmt.moreTitle')}
+          aria-haspopup="menu"
+          aria-expanded={moreOpen}
+          data-testid="fmt-more"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setMore((open) => (open ? null : placeMore()))}
+          className={cn(
+            'ml-auto inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md px-1.5 text-[12px] transition-colors',
+            moreOpen || inTable
+              ? 'bg-accent-soft text-accent'
+              : 'text-muted hover:bg-sunk hover:text-ink',
+          )}
         >
-          <span className="text-[12px] font-semibold leading-none">¹</span>
-        </Tool>
-
-        {onInsertImage ? (
-          <>
-            <Tool
-              label={t('fmt.insertFigure')}
-              testId="fmt-image"
-              onClick={() => fileRef.current?.click()}
-            >
-              {/* biome-ignore lint/a11y/noSvgWithoutTitle: the button carries the label. */}
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-[15px]"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="9" cy="9" r="2" />
-                <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
-              </svg>
-            </Tool>
-            <input
-              ref={fileRef}
-              type="file"
-              // What the server accepts (`sniffImage`); offering WebP and SVG here only to refuse
-              // them on upload was a picker that lied.
-              accept="image/png,image/jpeg,image/gif"
-              className="hidden"
-              data-testid="figure-input"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                // Cleared before the upload so choosing the same file twice fires `change` again.
-                e.target.value = '';
-                if (file) onInsertImage(file);
-              }}
-            />
-          </>
-        ) : null}
-
-        {onInsertChart ? (
-          <Tool
-            label={chartSelected ? t('fmt.editChart') : t('fmt.insertChart')}
-            testId="fmt-chart"
-            active={chartSelected}
-            onClick={onInsertChart}
-          >
-            <span className="text-[11px] font-medium leading-none">{t('fmt.chart')}</span>
-          </Tool>
-        ) : null}
-
-        {onInsertDiagram ? (
-          <Tool
-            label={diagramSelected ? t('fmt.editDiagram') : t('fmt.insertDiagram')}
-            testId="fmt-diagram"
-            active={diagramSelected}
-            onClick={onInsertDiagram}
-          >
-            <span className="text-[11px] font-medium leading-none">{t('fmt.diagram')}</span>
-          </Tool>
-        ) : null}
-
-        {/* A caption for the selected figure or the table the cursor is in. */}
-        {inTable || editor.isActive('image') ? (
-          <Tool label={t('fmt.caption')} testId="fmt-caption" onClick={setCaption}>
-            <span className="text-[11px] font-medium leading-none">{t('fmt.caption')}</span>
-          </Tool>
-        ) : null}
-
-        {/* Table editing only appears inside a table: eight controls that do nothing anywhere else
-            would be eight-ninths of this bar permanently greyed out. */}
-        {inTable ? (
-          <>
-            <Divider />
-            <span className="shrink-0 text-[11px] text-faint">{t('fmt.table')}</span>
-            <Tool
-              label={t('fmt.rowAbove')}
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-            >
-              <span className="text-[12px] leading-none">↑+</span>
-            </Tool>
-            <Tool
-              label={t('fmt.rowBelow')}
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-            >
-              <span className="text-[12px] leading-none">↓+</span>
-            </Tool>
-            <Tool
-              label={t('fmt.columnLeft')}
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-            >
-              <span className="text-[12px] leading-none">←+</span>
-            </Tool>
-            <Tool
-              label={t('fmt.columnRight')}
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-            >
-              <span className="text-[12px] leading-none">→+</span>
-            </Tool>
-            {/* Merge needs two or more cells selected (drag across them); split needs a merged
-                cell. Shown only when they would do something, like the rest of this group. */}
-            {editor.can().mergeCells() ? (
-              <Tool
-                label={t('fmt.mergeCells')}
-                testId="fmt-merge-cells"
-                onClick={() => editor.chain().focus().mergeCells().run()}
-              >
-                <span className="text-[11px] font-medium leading-none">{t('fmt.merge')}</span>
-              </Tool>
-            ) : null}
-            {editor.can().splitCell() ? (
-              <Tool
-                label={t('fmt.splitCell')}
-                testId="fmt-split-cell"
-                onClick={() => editor.chain().focus().splitCell().run()}
-              >
-                <span className="text-[11px] font-medium leading-none">{t('fmt.split')}</span>
-              </Tool>
-            ) : null}
-            <Tool
-              label={t('fmt.headerRow')}
-              testId="fmt-header-row"
-              onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-            >
-              <span className="text-[11px] font-medium leading-none">{t('fmt.header')}</span>
-            </Tool>
-            <Tool
-              label={t('fmt.deleteRow')}
-              onClick={() => editor.chain().focus().deleteRow().run()}
-            >
-              <span className="text-[12px] leading-none">⌫R</span>
-            </Tool>
-            <Tool
-              label={t('fmt.deleteColumn')}
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-            >
-              <span className="text-[12px] leading-none">⌫C</span>
-            </Tool>
-            <Tool
-              label={t('fmt.deleteTable')}
-              onClick={() => editor.chain().focus().deleteTable().run()}
-            >
-              <Trash2 className="size-[15px]" strokeWidth={1.75} />
-            </Tool>
-          </>
-        ) : null}
+          {t('fmt.more')}
+          <ChevronDown className="size-[13px]" strokeWidth={1.75} aria-hidden="true" />
+        </button>
       </div>
+
+      {/* Always mounted: the "/" menu's "Figure" uses this picker too. */}
+      {onInsertImage ? (
+        <input
+          ref={fileRef}
+          type="file"
+          // What the server accepts (`sniffImage`); offering WebP and SVG here only to refuse
+          // them on upload was a picker that lied.
+          accept="image/png,image/jpeg,image/gif"
+          className="hidden"
+          data-testid="figure-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // Cleared before the upload so choosing the same file twice fires `change` again.
+            e.target.value = '';
+            if (file) onInsertImage(file);
+          }}
+        />
+      ) : null}
+
+      {more && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={moreMenu}
+              role="menu"
+              aria-label={t('fmt.moreTitle')}
+              data-testid="fmt-more-menu"
+              style={{
+                left: more.left,
+                top: more.top,
+                width: Math.min(MORE_WIDTH, window.innerWidth - 16),
+                maxHeight: more.maxHeight,
+              }}
+              className="fixed z-50 overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-lg"
+            >
+              {/* On a phone the bar keeps only the everyday marks; the rest of its row is here. */}
+              <div className="sm:hidden">
+                <MenuTool
+                  label={t('fmt.undo')}
+                  disabled={!editor.can().undo()}
+                  onClick={() => editor.chain().focus().undo().run()}
+                >
+                  <Undo2 className={icon} strokeWidth={1.75} />
+                </MenuTool>
+                <MenuTool
+                  label={t('fmt.redo')}
+                  disabled={!editor.can().redo()}
+                  onClick={() => editor.chain().focus().redo().run()}
+                >
+                  <Redo2 className={icon} strokeWidth={1.75} />
+                </MenuTool>
+                <MenuTool
+                  label={t('fmt.bulletList')}
+                  active={editor.isActive('bulletList')}
+                  onClick={() => editor.chain().focus().toggleBulletList().run()}
+                >
+                  <List className={icon} strokeWidth={1.75} />
+                </MenuTool>
+                <MenuTool
+                  label={t('fmt.orderedList')}
+                  active={editor.isActive('orderedList')}
+                  onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                >
+                  <ListOrdered className={icon} strokeWidth={1.75} />
+                </MenuTool>
+                <MenuTool
+                  label={t('fmt.insertTable')}
+                  active={inTable}
+                  onClick={() =>
+                    editor
+                      .chain()
+                      .focus()
+                      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                      .run()
+                  }
+                >
+                  <TableIcon className={icon} strokeWidth={1.75} />
+                </MenuTool>
+                <MenuTool label={t('fmt.equation')} onClick={thenClose(() => insertMath('inline'))}>
+                  <Sigma className={icon} strokeWidth={1.75} />
+                </MenuTool>
+              </div>
+
+              <MenuHeading>{t('fmt.moreFormat')}</MenuHeading>
+              <MenuTool
+                label={t('fmt.strike')}
+                active={editor.isActive('strike')}
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+              >
+                <Strikethrough className={icon} strokeWidth={2} />
+              </MenuTool>
+              <ColorPicker editor={editor} kind="text" row />
+              <ColorPicker editor={editor} kind="highlight" row />
+              <MenuTool
+                label={t('fmt.superscript')}
+                active={editor.isActive('superscript')}
+                onClick={() => editor.chain().focus().toggleSuperscript().run()}
+              >
+                <SuperscriptIcon className={icon} strokeWidth={1.75} />
+              </MenuTool>
+              <MenuTool
+                label={t('fmt.subscript')}
+                active={editor.isActive('subscript')}
+                onClick={() => editor.chain().focus().toggleSubscript().run()}
+              >
+                <SubscriptIcon className={icon} strokeWidth={1.75} />
+              </MenuTool>
+              <MenuTool
+                label={t('fmt.inlineCode')}
+                active={editor.isActive('code')}
+                onClick={() => editor.chain().focus().toggleCode().run()}
+              >
+                <Code className={icon} strokeWidth={1.75} />
+              </MenuTool>
+              <MenuTool
+                label={t('fmt.codeBlock')}
+                active={editor.isActive('codeBlock')}
+                onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+              >
+                <Braces className={icon} strokeWidth={1.75} />
+              </MenuTool>
+              <MenuTool
+                label={t('fmt.blockquote')}
+                active={editor.isActive('blockquote')}
+                onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              >
+                <Quote className={icon} strokeWidth={1.75} />
+              </MenuTool>
+
+              <MenuHeading>{t('fmt.moreInsert')}</MenuHeading>
+              <MenuTool
+                label={t('fmt.displayEquation')}
+                onClick={thenClose(() => insertMath('block'))}
+              >
+                <span className="text-[13px] font-semibold leading-none">Σ⁺</span>
+              </MenuTool>
+              <MenuTool
+                label={editor.isActive('footnote') ? t('fmt.editFootnote') : t('fmt.footnote')}
+                testId="fmt-footnote"
+                active={editor.isActive('footnote')}
+                onClick={thenClose(footnote)}
+              >
+                <span className="text-[12px] font-semibold leading-none">¹</span>
+              </MenuTool>
+              {onInsertImage ? (
+                <MenuTool
+                  label={t('fmt.insertFigure')}
+                  testId="fmt-image"
+                  onClick={thenClose(() => fileRef.current?.click())}
+                >
+                  <ImageIcon className={icon} strokeWidth={1.75} />
+                </MenuTool>
+              ) : null}
+              {onInsertChart ? (
+                <MenuTool
+                  label={chartSelected ? t('fmt.editChart') : t('fmt.insertChart')}
+                  testId="fmt-chart"
+                  active={chartSelected}
+                  onClick={thenClose(onInsertChart)}
+                >
+                  <ChartColumn className={icon} strokeWidth={1.75} />
+                </MenuTool>
+              ) : null}
+              {onInsertDiagram ? (
+                <MenuTool
+                  label={diagramSelected ? t('fmt.editDiagram') : t('fmt.insertDiagram')}
+                  testId="fmt-diagram"
+                  active={diagramSelected}
+                  onClick={thenClose(onInsertDiagram)}
+                >
+                  <Workflow className={icon} strokeWidth={1.75} />
+                </MenuTool>
+              ) : null}
+              {/* A caption for the selected figure or the table the cursor is in. */}
+              {inTable || editor.isActive('image') ? (
+                <MenuTool
+                  label={t('fmt.caption')}
+                  testId="fmt-caption"
+                  onClick={thenClose(setCaption)}
+                >
+                  <Captions className={icon} strokeWidth={1.75} />
+                </MenuTool>
+              ) : null}
+              {/* Only when there is something to point at. A reference picker offering nothing is
+                  a button that teaches people the feature is broken. */}
+              {refTargets.length > 0 ? (
+                <label className="flex h-8 items-center gap-2.5 px-2 text-[12.5px] text-ink">
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex w-[18px] shrink-0 justify-center text-muted"
+                  >
+                    <Hash className={icon} strokeWidth={1.75} />
+                  </span>
+                  <select
+                    aria-label={t('fmt.referTo')}
+                    data-testid="fmt-crossref"
+                    value=""
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const chosen = refTargets.find((t) => t.refId === e.target.value);
+                      if (chosen) {
+                        editor
+                          .chain()
+                          .focus()
+                          .insertCrossRef({ refId: chosen.refId, kind: chosen.kind })
+                          .run();
+                        closeMore();
+                      }
+                      e.target.value = '';
+                    }}
+                    className="h-7 min-w-0 flex-1 rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink transition-colors hover:bg-sunk"
+                  >
+                    <option value="">{t('fmt.referToOption')}</option>
+                    {refTargets.map((target) => (
+                      <option key={target.refId} value={target.refId}>
+                        {t(target.kind === 'figure' ? 'fmt.figureN' : 'fmt.tableN', {
+                          n: target.index,
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
+              {/* Table editing only inside a table: controls that do nothing anywhere else would
+                  be a section of greyed-out rows. */}
+              {inTable ? (
+                <>
+                  <MenuHeading>{t('fmt.table')}</MenuHeading>
+                  <MenuTool
+                    label={t('fmt.rowAbove')}
+                    onClick={() => editor.chain().focus().addRowBefore().run()}
+                  >
+                    <span className="text-[12px] leading-none">↑+</span>
+                  </MenuTool>
+                  <MenuTool
+                    label={t('fmt.rowBelow')}
+                    onClick={() => editor.chain().focus().addRowAfter().run()}
+                  >
+                    <span className="text-[12px] leading-none">↓+</span>
+                  </MenuTool>
+                  <MenuTool
+                    label={t('fmt.columnLeft')}
+                    onClick={() => editor.chain().focus().addColumnBefore().run()}
+                  >
+                    <span className="text-[12px] leading-none">←+</span>
+                  </MenuTool>
+                  <MenuTool
+                    label={t('fmt.columnRight')}
+                    onClick={() => editor.chain().focus().addColumnAfter().run()}
+                  >
+                    <span className="text-[12px] leading-none">→+</span>
+                  </MenuTool>
+                  {/* Merge needs two or more cells selected (drag across them); split needs a
+                      merged cell. Shown only when they would do something. */}
+                  {editor.can().mergeCells() ? (
+                    <MenuTool
+                      label={t('fmt.mergeCells')}
+                      testId="fmt-merge-cells"
+                      onClick={() => editor.chain().focus().mergeCells().run()}
+                    >
+                      <span className="text-[11px] font-medium leading-none">⊞</span>
+                    </MenuTool>
+                  ) : null}
+                  {editor.can().splitCell() ? (
+                    <MenuTool
+                      label={t('fmt.splitCell')}
+                      testId="fmt-split-cell"
+                      onClick={() => editor.chain().focus().splitCell().run()}
+                    >
+                      <span className="text-[11px] font-medium leading-none">⊟</span>
+                    </MenuTool>
+                  ) : null}
+                  <MenuTool
+                    label={t('fmt.headerRow')}
+                    testId="fmt-header-row"
+                    onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+                  >
+                    <span className="text-[11px] font-medium leading-none">H</span>
+                  </MenuTool>
+                  <MenuTool
+                    label={t('fmt.deleteRow')}
+                    onClick={() => editor.chain().focus().deleteRow().run()}
+                  >
+                    <span className="text-[12px] leading-none">⌫R</span>
+                  </MenuTool>
+                  <MenuTool
+                    label={t('fmt.deleteColumn')}
+                    onClick={() => editor.chain().focus().deleteColumn().run()}
+                  >
+                    <span className="text-[12px] leading-none">⌫C</span>
+                  </MenuTool>
+                  <MenuTool
+                    label={t('fmt.deleteTable')}
+                    onClick={() => editor.chain().focus().deleteTable().run()}
+                  >
+                    <Trash2 className={icon} strokeWidth={1.75} />
+                  </MenuTool>
+                </>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
       {prompt.element}
     </div>
   );
