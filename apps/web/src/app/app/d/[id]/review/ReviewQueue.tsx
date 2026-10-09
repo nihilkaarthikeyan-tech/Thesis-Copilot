@@ -92,6 +92,21 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
   const open = (comments ?? []).filter((c) => c.status === 'OPEN');
   const current = open[Math.min(index, Math.max(0, open.length - 1))];
 
+  // ADR-0142: a comment email links here with `?comment=<id>`; select that one and bring it into
+  // view once, when the list first arrives.
+  const linked = useRef(false);
+  useEffect(() => {
+    if (linked.current || comments === null) return;
+    linked.current = true;
+    const id = new URLSearchParams(window.location.search).get('comment');
+    const at = id ? open.findIndex((c) => c.id === id) : -1;
+    if (at < 0) return;
+    setIndex(at);
+    requestAnimationFrame(() =>
+      document.getElementById(`comment-${id}`)?.scrollIntoView({ block: 'center' }),
+    );
+  }, [comments, open]);
+
   const act = useCallback(
     async (comment: Comment, action: 'accept' | 'edited' | 'suggest', note?: string) => {
       setBusy(true);
@@ -428,6 +443,7 @@ export function ReviewQueue({ documentId }: { documentId: string }) {
             {open.map((comment, i) => (
               <li
                 key={comment.id}
+                id={`comment-${comment.id}`}
                 data-testid="review-item"
                 className={`rounded-lg border bg-surface p-4 ${i === index ? 'border-accent' : 'border-line'}`}
               >

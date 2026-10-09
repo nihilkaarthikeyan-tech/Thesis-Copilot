@@ -9,9 +9,10 @@ import { DeletionScheduler } from './deletion.scheduler.js';
 import { DeletionService } from './deletion.service.js';
 import { EmailChangeService } from './email-change.service.js';
 import { PasswordService } from './password.service.js';
+import { UnsubscribeController } from './unsubscribe.controller.js';
 
 @Module({
-  controllers: [AccountController],
+  controllers: [AccountController, UnsubscribeController],
   providers: [
     DeletionService,
     DeletionScheduler,

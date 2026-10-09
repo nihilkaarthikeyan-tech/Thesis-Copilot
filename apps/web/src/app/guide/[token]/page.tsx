@@ -11,7 +11,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CommentThread, type ThreadReply } from '@/components/feedback/CommentThread';
 import { ApiError, api } from '@/lib/api';
 import { GuideProgress } from './GuideProgress';
@@ -79,7 +79,9 @@ export default function GuidePage() {
     api<GuideDocument>(`/guide/accept/${token}`, { method: 'POST', body: '{}' })
       .then((doc) => {
         setDocument(doc);
-        setChapterId(doc.chapters[0]?.id ?? null);
+        // ADR-0142: a comment email links here with `?chapter=` (and `?comment=`); open that one.
+        const wanted = new URLSearchParams(window.location.search).get('chapter');
+        setChapterId(doc.chapters.find((c) => c.id === wanted)?.id ?? doc.chapters[0]?.id ?? null);
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.problem.status === 401) {
@@ -118,6 +120,21 @@ export default function GuidePage() {
   useEffect(() => {
     void loadChapter();
   }, [loadChapter]);
+
+  // ADR-0142: bring the emailed comment into view the first time it is on the page.
+  const linked = useRef(false);
+  useEffect(() => {
+    if (linked.current || comments.length === 0) return;
+    const id = new URLSearchParams(window.location.search).get('comment');
+    if (!id) {
+      linked.current = true;
+      return;
+    }
+    const element = window.document.getElementById(`comment-${id}`);
+    if (!element) return;
+    linked.current = true;
+    element.scrollIntoView({ block: 'center' });
+  }, [comments]);
 
   async function submit() {
     if (!document || !body.trim()) return;
@@ -285,6 +302,7 @@ export default function GuidePage() {
                   {mine.map((comment) => (
                     <li
                       key={comment.id}
+                      id={`comment-${comment.id}`}
                       className="rounded-md border border-line bg-surface p-2 text-xs"
                     >
                       {comment.quotedText ? (

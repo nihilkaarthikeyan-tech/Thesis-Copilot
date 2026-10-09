@@ -145,6 +145,8 @@ model User {
   sourceHighlights SourceHighlight[]
   /// ADR-0132: research questions asked with no thesis.
   researchChats ResearchChat[]
+  /// ADR-0142: when each comment thread was last emailed to this person.
+  commentEmails CommentEmailState[]
   // --- PRD §12.2 account deletion ---
   /**
    * When the student asked for their account to be erased, or null if they have not.
@@ -717,6 +719,8 @@ model Comment {
   /// R22 (ADR-0109): who gave it a thumbs-up, by email.
   thumbs        String[] @default([])
   replies       CommentReply[]
+  /// ADR-0142: who has been emailed about this thread, and when.
+  emailStates   CommentEmailState[]
   @@index([documentId, status])
 }
 
@@ -731,6 +735,25 @@ model CommentReply {
   createdAt   DateTime @default(now())
   editedAt    DateTime?
   @@index([commentId, createdAt])
+}
+
+/**
+ * ADR-0142: the email throttle for one comment thread and one person who can see it.
+ *
+ * `lastSentAt` is when this person was last emailed about the thread (null: never); no second
+ * email goes within an hour of it. `cursorAt` is the newest comment or reply already accounted
+ * for — mailed, or passed over while the person was opted out — so the next email folds in only
+ * what came after it. Claiming a send is one conditional upsert on this row.
+ */
+model CommentEmailState {
+  commentId  String    @db.Uuid
+  comment    Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSentAt DateTime?
+  cursorAt   DateTime
+  @@id([commentId, userId])
+  @@index([userId])
 }
 
 /**
