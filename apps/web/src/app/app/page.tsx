@@ -551,7 +551,15 @@ export default function DocumentListPage() {
           lede={t('list.lede')}
           actions={
             // R32 (ADR-0127): one New menu — a thesis, a paper, a Word file — as in the editor.
-            <NewMenu align="end" />
+            // ADR-0132: and a research question, with no thesis or across all of them.
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/app/ask" data-testid="list-ask">
+                  {t('newMenu.ask')}
+                </Link>
+              </Button>
+              <NewMenu align="end" />
+            </>
           }
         />
 

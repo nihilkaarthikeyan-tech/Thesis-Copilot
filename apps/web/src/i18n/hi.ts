@@ -112,6 +112,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'newMenu.paperHint': 'ऐसी थीसिस जो आपके लिखे पेपर से निकलती है',
   'newMenu.word': 'Word से इम्पोर्ट करें',
   'newMenu.wordHint': '.docx के अध्यायों से एक नई थीसिस',
+  'newMenu.ask': 'शोध प्रश्न पूछें',
+  'newMenu.askHint': 'थीसिस की ज़रूरत नहीं: साहित्य से, या अपनी सभी थीसिस से पूछें',
   'switcher.heading': 'थीसिस',
   'switcher.headingCount': 'थीसिस ({count})',
   'switcher.open': 'अभी खुली है',

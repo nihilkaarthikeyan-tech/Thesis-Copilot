@@ -1904,7 +1904,7 @@ function ThreadRows({
  * `$$…$$` as typeset maths. Equations used to show as their LaTeX source — "$7.44735 \\times
  * 10^{-10}$" — the formula complaint, in chat (found 2026-10-04 comparing with Jenni).
  */
-function AnswerText({
+export function AnswerText({
   text,
   citations,
   onOpen,
