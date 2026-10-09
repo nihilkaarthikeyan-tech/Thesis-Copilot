@@ -48,7 +48,7 @@ const STUDENT: PlanLimits = {
     EXAMINER_REVIEW: 6,
     RESEARCH: 3,
     // ADR-0143 (2026-10-09, decisions delegated by the owner): one whole literature review a
-    // month (₹12.92 at its worst case). A thesis has one literature review chapter; one a month is
+    // month (₹17.39 at its worst case, ADR-0143). A thesis has one literature review chapter; one a month is
     // a full rewrite every month, and the chapter build (3 a month) still writes it section by
     // section.
     LIT_REVIEW_BUILD: 1,
@@ -124,6 +124,32 @@ export function capFor(plan: Plan, action: MeteredAction): number {
  */
 export function offeredOnSomePlan(action: MeteredAction): boolean {
   return PLANS.some((plan) => capFor(plan, action) > 0);
+}
+
+/**
+ * ADR-0144 (D1, fix list 37): allowances that count only what the student keeps. For these the
+ * monthly allowance the student sees is the number of suggestions *kept* (accepted whole or in
+ * part); one dismissed, typed over or left to expire costs the student nothing.
+ *
+ * The money is still bounded before any provider call, in the same one atomic statement
+ * (`UsageService.consume`): the ledger row's `count` is the number of calls, refused at
+ * `allowance × CALLS_PER_KEPT`, and its `kept` is refused at the allowance. So a student keeps at
+ * most the allowance, and asks at most this many times the allowance — keeping one suggestion in
+ * three gets the whole allowance (published autocomplete acceptance rates are around 25–35%).
+ * The budget (`computeMonthlyBudget`) prices the call ceiling, not the allowance.
+ */
+export const CALLS_PER_KEPT: Readonly<Partial<Record<MeteredAction, number>>> = {
+  ASSIST: 3,
+};
+
+/** The calls one month allows for `allowance` units of `action` (ADR-0144). */
+export function callCeiling(action: MeteredAction, allowance: number): number {
+  return allowance * (CALLS_PER_KEPT[action] ?? 1);
+}
+
+/** ADR-0144: whether `action`'s allowance counts kept suggestions rather than calls. */
+export function countsKept(action: MeteredAction): boolean {
+  return CALLS_PER_KEPT[action] !== undefined;
 }
 
 /** ADR-0124: the switch that shows "Write the whole literature review" on the build screen. */

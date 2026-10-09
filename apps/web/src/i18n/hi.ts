@@ -782,6 +782,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'limit.plansLink': 'प्लान देखें',
   'limit.cap.title': 'इस महीने की सीमा पूरी हो गई',
   'limit.cap.used': '{allowance}: इस महीने {cap} में से {used} इस्तेमाल हुए।',
+  'limit.cap.callCeiling':
+    '{allowance}: इस महीने आपने {ceiling} माँगे, जो एक महीने में सबसे ज़्यादा है। आपने अपने {cap} में से {used} रखे।',
   'limit.resetsOn': '{date} को फिर से शुरू होगी।',
   'limit.resetsNextMonth': 'अगले महीने की 1 तारीख़ को फिर से शुरू होगी।',
   'limit.notIncluded.title': 'आपके प्लान में नहीं है',

@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**688** strings are translated; **1** are deliberately
+**689** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -788,6 +788,7 @@ English. Write corrections in the last column.
 | `limit.plansLink` | See plans | प्लान देखें | |
 | `limit.cap.title` | Monthly limit reached | इस महीने की सीमा पूरी हो गई | |
 | `limit.cap.used` | {allowance}: {used} of {cap} used this month. | {allowance}: इस महीने {cap} में से {used} इस्तेमाल हुए। | |
+| `limit.cap.callCeiling` | {allowance}: you asked for {ceiling} this month, the most one month allows. You kept {used} of your {cap}. | {allowance}: इस महीने आपने {ceiling} माँगे, जो एक महीने में सबसे ज़्यादा है। आपने अपने {cap} में से {used} रखे। | |
 | `limit.resetsOn` | Resets on {date}. | {date} को फिर से शुरू होगी। | |
 | `limit.resetsNextMonth` | Resets on the 1st of next month. | अगले महीने की 1 तारीख़ को फिर से शुरू होगी। | |
 | `limit.notIncluded.title` | Not in your plan | आपके प्लान में नहीं है | |

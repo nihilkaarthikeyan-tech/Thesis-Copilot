@@ -545,6 +545,8 @@ model SuggestionEvent {
   guided      Boolean  @default(false)
   // 2026-10-04: the student's thumbs, apart from whether it was kept. 1 | -1 | null (not rated).
   rating      Int?     @db.SmallInt
+  // ADR-0144: when this suggestion was counted as kept against the allowance; set once, never twice.
+  countedAt   DateTime?
   createdAt   DateTime @default(now())
   @@index([userId, createdAt])
   @@index([documentId, createdAt])
@@ -636,6 +638,8 @@ model UsageLedger {
   count     Int      @default(0)
   /** Extra units a superadmin granted for this period only (2026-09-29); the cap is plan + bonus. */
   bonus     Int      @default(0)
+  /** ADR-0144: suggestions kept, for an allowance that counts only those (`CALLS_PER_KEPT`). `count` stays the calls. */
+  kept      Int      @default(0)
   @@unique([userId, period, action])
 }
 

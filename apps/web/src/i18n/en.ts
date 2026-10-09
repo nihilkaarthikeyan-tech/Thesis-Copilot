@@ -797,6 +797,8 @@ export const en = {
   'limit.plansLink': 'See plans',
   'limit.cap.title': 'Monthly limit reached',
   'limit.cap.used': '{allowance}: {used} of {cap} used this month.',
+  'limit.cap.callCeiling':
+    '{allowance}: you asked for {ceiling} this month, the most one month allows. You kept {used} of your {cap}.',
   'limit.resetsOn': 'Resets on {date}.',
   'limit.resetsNextMonth': 'Resets on the 1st of next month.',
   'limit.notIncluded.title': 'Not in your plan',

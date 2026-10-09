@@ -14,11 +14,16 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAN_LIMITS } from '@tc/config';
+import { CALLS_PER_KEPT, callCeiling, PLAN_LIMITS } from '@tc/config';
 import { PrismaClient } from '@tc/db';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { periodFor, resetsAtFor, UsageService } from '../src/modules/usage/usage.service.js';
+import {
+  periodFor,
+  refusal,
+  resetsAtFor,
+  UsageService,
+} from '../src/modules/usage/usage.service.js';
 
 let container: StartedPostgreSqlContainer;
 let prisma: PrismaClient;
@@ -100,10 +105,11 @@ beforeEach(async () => {
 });
 
 describe('UsageService.consume under concurrency', () => {
-  it('20 parallel calls at cap−1 let exactly 1 through (PRD §15)', async () => {
-    const cap = PLAN_LIMITS.STUDENT_MONTHLY.caps.ASSIST; // 180
+  it('20 parallel calls at the call ceiling − 1 let exactly 1 through (PRD §15)', async () => {
+    // ADR-0144: Assist's calls are bounded at three per suggestion the student may keep.
+    const cap = callCeiling('ASSIST', PLAN_LIMITS.STUDENT_MONTHLY.caps.ASSIST); // 540
 
-    // Put the ledger at cap − 1 so exactly one unit remains.
+    // Put the ledger at the ceiling − 1 so exactly one call remains.
     await prisma.usageLedger.create({
       data: { userId, period: periodFor(), action: 'ASSIST', count: cap - 1 },
     });
@@ -222,5 +228,144 @@ describe('period helpers', () => {
 
   it('rolls the reset over the year boundary', () => {
     expect(resetsAtFor(new Date(Date.UTC(2026, 11, 20)))).toEqual(new Date(Date.UTC(2027, 0, 1)));
+  });
+});
+
+/**
+ * ADR-0144 (D1): Assist's allowance counts only the suggestions a student keeps. The same atomic
+ * statement refuses at the allowance kept or at the call ceiling, whichever comes first, before
+ * any provider call; `keep` counts a suggestion once.
+ */
+describe('an allowance that counts only kept suggestions (ADR-0144)', () => {
+  const allowance = PLAN_LIMITS.STUDENT_MONTHLY.caps.ASSIST; // 180
+  const ceiling = allowance * (CALLS_PER_KEPT.ASSIST ?? 1); // 540
+
+  const suggestion = async (action: 'ASSIST' | 'DRAFT' = 'ASSIST', owner = userId) =>
+    (
+      await prisma.suggestionEvent.create({
+        data: {
+          userId: owner,
+          documentId: '01a00000-0000-7000-8000-000000000000',
+          action,
+          shownChars: 80,
+          outcome: 'ACCEPTED',
+          keptChars: 80,
+          latencyMs: 1,
+        },
+      })
+    ).id;
+
+  beforeEach(async () => {
+    await prisma.suggestionEvent.deleteMany();
+  });
+
+  it('a call shown and not kept leaves the allowance untouched', async () => {
+    const first = await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    expect(first).toMatchObject({ ok: true, count: 1, cap: allowance, remaining: allowance });
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(row).toMatchObject({ count: 1, kept: 0 });
+  });
+
+  it('a kept suggestion counts once, however often it is reported', async () => {
+    await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    const id = await suggestion();
+    expect(await usage.keep(userId, id)).toBe(true);
+    expect(await usage.keep(userId, id)).toBe(false);
+    await Promise.all([usage.keep(userId, id), usage.keep(userId, id)]);
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(row).toMatchObject({ count: 1, kept: 1 });
+    const event = await prisma.suggestionEvent.findUniqueOrThrow({ where: { id } });
+    expect(event.countedAt).toBeInstanceOf(Date);
+
+    const next = await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    expect(next).toMatchObject({ ok: true, count: 2, remaining: allowance - 1 });
+  });
+
+  it('keeps nothing for another student, or for an action that counts calls', async () => {
+    await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    await usage.consume(userId, 'STUDENT_MONTHLY', 'DRAFT');
+    const other = await prisma.user.create({
+      data: { email: 'someone-else@example.com', role: 'STUDENT', plan: 'STUDENT_MONTHLY' },
+    });
+    expect(await usage.keep(userId, await suggestion('ASSIST', other.id))).toBe(false);
+    expect(await usage.keep(userId, await suggestion('DRAFT'))).toBe(false);
+    const rows = await prisma.usageLedger.findMany({ where: { userId } });
+    expect(rows.every((r) => r.kept === 0)).toBe(true);
+  });
+
+  it('refuses at the allowance kept, with calls to spare, before any call', async () => {
+    await prisma.usageLedger.create({
+      data: { userId, period: periodFor(), action: 'ASSIST', count: 200, kept: allowance },
+    });
+    const refused = await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    expect(refused).toMatchObject({ ok: false, reason: 'cap', cap: allowance, used: allowance });
+    if (refused.ok) throw new Error('expected a refusal');
+    expect(refused.callCeiling).toBeUndefined();
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(row?.count).toBe(200);
+    expect(refusal('ASSIST', refused).getResponse()).toMatchObject({
+      type: 'CAP_EXCEEDED',
+      detail: `You have used all ${allowance} of this month's assist suggestions.`,
+    });
+  });
+
+  it('refuses at the call ceiling with the allowance not yet kept, and says which', async () => {
+    await prisma.usageLedger.create({
+      data: { userId, period: periodFor(), action: 'ASSIST', count: ceiling, kept: 40 },
+    });
+    const refused = await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    expect(refused).toMatchObject({
+      ok: false,
+      reason: 'cap',
+      cap: allowance,
+      used: 40,
+      callCeiling: ceiling,
+    });
+    if (refused.ok) throw new Error('expected a refusal');
+    expect(refusal('ASSIST', refused).getResponse()).toMatchObject({
+      type: 'CAP_EXCEEDED',
+      used: 40,
+      cap: allowance,
+      callCeiling: ceiling,
+      detail: `You have asked for ${ceiling} assist suggestions this month, the most one month allows. You kept 40 of your ${allowance}.`,
+    });
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(row?.count).toBe(ceiling);
+  });
+
+  it('20 parallel calls at the allowance kept − 1 all pass; only keeping moves the allowance', async () => {
+    // Keeping is the student's act after a call; the calls race only against the ceiling.
+    await prisma.usageLedger.create({
+      data: { userId, period: periodFor(), action: 'ASSIST', count: 300, kept: allowance - 1 },
+    });
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST')),
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(20);
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(row).toMatchObject({ count: 320, kept: allowance - 1 });
+  });
+
+  it('an admin’s extra allowance raises both the kept allowance and the call ceiling', async () => {
+    await prisma.usageLedger.create({
+      data: {
+        userId,
+        period: periodFor(),
+        action: 'ASSIST',
+        count: ceiling,
+        kept: allowance,
+        bonus: 10,
+      },
+    });
+    const allowed = await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    expect(allowed).toMatchObject({ ok: true, cap: allowance + 10, remaining: 10 });
+  });
+
+  it('a refund gives back a call, never a kept suggestion', async () => {
+    await usage.consume(userId, 'STUDENT_MONTHLY', 'ASSIST');
+    await usage.keep(userId, await suggestion());
+    await usage.refund(userId, 'ASSIST');
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
+    expect(row).toMatchObject({ count: 0, kept: 1 });
   });
 });

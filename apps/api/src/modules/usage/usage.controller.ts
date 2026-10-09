@@ -3,7 +3,16 @@
  */
 
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { METERED_ACTIONS, offeredOnSomePlan, PLAN_LIMITS, PLANS, type Plan } from '@tc/config';
+import {
+  callCeiling,
+  countsKept,
+  METERED_ACTIONS,
+  type MeteredAction,
+  offeredOnSomePlan,
+  PLAN_LIMITS,
+  PLANS,
+  type Plan,
+} from '@tc/config';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { periodFor, resetsAtFor, UsageService } from './usage.service.js';
@@ -19,7 +28,15 @@ export class UsageController {
       ? (user.plan as Plan)
       : 'FREE_TRIAL';
     const rows = await this.usage.usageFor(user.id);
-    const used = Object.fromEntries(rows.map((r) => [r.action, r.count])) as Record<string, number>;
+    // ADR-0144: an allowance that counts kept suggestions shows the ones kept as used; the calls
+    // and their ceiling travel beside it.
+    const used = Object.fromEntries(
+      rows.map((r) => [r.action, countsKept(r.action as MeteredAction) ? r.kept : r.count]),
+    ) as Record<string, number>;
+    const calls = Object.fromEntries(rows.map((r) => [r.action, r.count])) as Record<
+      string,
+      number
+    >;
     // An admin's extra allowance counts as cap for this month (2026-09-29).
     const bonus = Object.fromEntries(rows.map((r) => [r.action, r.bonus])) as Record<
       string,
@@ -48,6 +65,13 @@ export class UsageController {
         used: used[action] ?? 0,
         cap: caps[action] ?? 0,
         remaining: Math.max((caps[action] ?? 0) - (used[action] ?? 0), 0),
+        ...(countsKept(action)
+          ? {
+              countsKept: true,
+              calls: calls[action] ?? 0,
+              callCeiling: callCeiling(action, caps[action] ?? 0),
+            }
+          : {}),
       })),
     };
   }

@@ -18,7 +18,15 @@ export const LIMIT_TYPES = ['CAP_EXCEEDED', 'CEILING_EXCEEDED', 'PLATFORM_CEILIN
 
 export type LimitRefusal =
   /** A monthly allowance used up: `used` of `cap` this month. */
-  | { kind: 'cap'; allowance: string; used: number; cap: number; resetsAt: string | null }
+  | {
+      kind: 'cap';
+      allowance: string;
+      used: number;
+      cap: number;
+      resetsAt: string | null;
+      /** ADR-0144: the calls hit their ceiling before the kept allowance was used up. */
+      callCeiling?: number;
+    }
   /** An allowance the plan does not include at all (a cap of 0). */
   | { kind: 'notIncluded'; allowance: string }
   /** The 14-day free trial is over (ADR-0036); nothing resets. */
@@ -67,7 +75,15 @@ export function limitRefusal(source: unknown): LimitRefusal | null {
   const cap = num(problem.cap) ?? 0;
   if (cap <= 0) return { kind: 'notIncluded', allowance };
   // An API from before R31 sends no `used`; a refusal at the cap means every unit was used.
-  return { kind: 'cap', allowance, used: num(problem.used) ?? cap, cap, resetsAt };
+  const ceiling = num(problem.callCeiling);
+  return {
+    kind: 'cap',
+    allowance,
+    used: num(problem.used) ?? cap,
+    cap,
+    resetsAt,
+    ...(ceiling !== null ? { callCeiling: ceiling } : {}),
+  };
 }
 
 /**
@@ -117,7 +133,20 @@ export function limitText(
     case 'cap':
       return {
         title: tNow('limit.cap.title'),
-        body: `${tNow('limit.cap.used', { allowance: limit.allowance, used: limit.used, cap: limit.cap })} ${resets(limit.resetsAt, 'limit.resetsOn', 'limit.resetsNextMonth')} ${stillWorks}`,
+        body: `${
+          limit.callCeiling !== undefined
+            ? tNow('limit.cap.callCeiling', {
+                allowance: limit.allowance,
+                ceiling: limit.callCeiling,
+                used: limit.used,
+                cap: limit.cap,
+              })
+            : tNow('limit.cap.used', {
+                allowance: limit.allowance,
+                used: limit.used,
+                cap: limit.cap,
+              })
+        } ${resets(limit.resetsAt, 'limit.resetsOn', 'limit.resetsNextMonth')} ${stillWorks}`,
         link: usageLink,
       };
     case 'notIncluded':
