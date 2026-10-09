@@ -14,7 +14,7 @@
  *   not raised again.
  */
 
-import { type LlmProvider, type LlmRequest, mockExaminerFor } from '@tc/ai';
+import { type LlmProvider, type LlmRequest, mockExaminerFor, mockExaminerReviewFor } from '@tc/ai';
 import type { ExaminerReviewJob, ExaminerReviewRecord } from '@tc/types';
 import { describe, expect, it, vi } from 'vitest';
 import { type ExaminerReviewDeps, runExaminerReview } from '../src/jobs/examiner-review.js';
@@ -431,5 +431,67 @@ describe('examiner review', () => {
     expect(result.status).toBe('FAILED');
     expect(w.requests).toHaveLength(0);
     expect(w.refunds).toEqual(['user-1']);
+  });
+});
+
+/**
+ * ADR-0131: a whole chapter's review also asks each section for strengths and questions for the
+ * author, and keeps only what the code can pin to the chapter.
+ */
+describe('strengths and questions for the author', () => {
+  it('asks each section of a whole chapter, and stores what anchors, with positions', async () => {
+    const w = world({ answer: mockExaminerReviewFor });
+    const result = await runExaminerReview(job, w.deps);
+    expect(result.status).toBe('DONE');
+    const user = (r: LlmRequest) => r.messages[0]?.content ?? '';
+    // Five strengths and six questions dealt over two sections, the larger first.
+    expect(user(w.requests[0] as LlmRequest)).toContain('<ask strengths="3" questions="3"/>');
+    expect(user(w.requests[1] as LlmRequest)).toContain('<ask strengths="2" questions="3"/>');
+    expect(w.requests[0]?.system.cached).toContain('Questions for the author');
+
+    const record = w.record();
+    const strengths = record?.strengths ?? [];
+    expect(strengths.length).toBeGreaterThanOrEqual(2);
+    expect(strengths.length).toBeLessThanOrEqual(4);
+    // The pitfall sentence has a blocking issue: no strength on it.
+    expect(strengths.some((s) => PITFALL_SENTENCE.startsWith(s.quote))).toBe(false);
+    // Positions are the sentence's: the first strength quotes the first sentence of the chapter.
+    expect(strengths[0]).toMatchObject({
+      quote: 'Solar drying removes moisture using solar heat in',
+      section: 'Literature review',
+      from: 20,
+    });
+    const questions = record?.questions ?? [];
+    expect(questions.length).toBeGreaterThanOrEqual(2);
+    expect(questions.length).toBeLessThanOrEqual(5);
+    expect(questions.every((q) => q.question.endsWith('?'))).toBe(true);
+  });
+
+  it('drops a strength that quotes words not in the chapter, and a question with an outside study', async () => {
+    const w = world({
+      answer: (req: LlmRequest) => ({
+        ...mockExaminerFor(req),
+        strengths: [
+          { sentenceId: 's1', quote: 'a novel hybrid dryer was validated', why: 'Invented.' },
+        ],
+        questions: [
+          {
+            sentenceId: 's1',
+            question: 'How does Smith et al. change your view of cabinet drying?',
+          },
+        ],
+      }),
+    });
+    await runExaminerReview(job, w.deps);
+    expect(w.record()?.strengths).toEqual([]);
+    expect(w.record()?.questions).toEqual([]);
+  });
+
+  it('keeps the examiner as it was for a selection: no ask line, nothing stored', async () => {
+    const w = world({ answer: mockExaminerReviewFor });
+    await runExaminerReview({ ...job, range: { from: 173, to: 400 } }, w.deps);
+    expect(w.requests[0]?.messages[0]?.content ?? '').not.toContain('<ask');
+    expect(w.requests[0]?.system.cached).not.toContain('Questions for the author');
+    expect(w.record()?.strengths).toBeUndefined();
   });
 });

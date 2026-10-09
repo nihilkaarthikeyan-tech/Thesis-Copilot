@@ -5,6 +5,7 @@ import {
   type ExaminerReviewState,
   elapsed,
   examinerLabel,
+  highlightsOf,
   isReviewRunning,
   resultLine,
 } from '../src/lib/examiner-review.js';
@@ -71,5 +72,24 @@ describe('labels', () => {
     expect(isReviewRunning(done({ status: 'RUNNING' }))).toBe(true);
     expect(isReviewRunning(done({}))).toBe(false);
     expect(isReviewRunning(null)).toBe(false);
+  });
+});
+
+describe('highlightsOf (ADR-0131)', () => {
+  const strength = { quote: 'a', why: 'b', section: 'S', from: 1, to: 9 };
+  const question = { question: 'Why?', section: 'S', from: null, to: null };
+
+  it('shows the strengths and questions of a finished whole-chapter review', () => {
+    expect(highlightsOf(done({ strengths: [strength], questions: [question] }))).toEqual({
+      strengths: [strength],
+      questions: [question],
+    });
+  });
+
+  it('shows nothing for a selection, a running review, or a review from before them', () => {
+    expect(highlightsOf(done({ selection: true, strengths: [strength] }))).toBeNull();
+    expect(highlightsOf(done({ status: 'RUNNING', strengths: [strength] }))).toBeNull();
+    expect(highlightsOf(done({}))).toBeNull();
+    expect(highlightsOf(null)).toBeNull();
   });
 });
