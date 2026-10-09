@@ -123,6 +123,29 @@ const job = (over: Partial<ResolveReferenceJob> = {}): ResolveReferenceJob => ({
 });
 
 describe('runResolveReference', () => {
+  it('queues the paper for reading before asking Unpaywall, and still saves what it says (ADR-0136)', async () => {
+    const { deps, source, calls } = fakeDeps([
+      { match: 'query.bibliographic', body: { message: { items: [crossrefItem] } } },
+      { match: 'api.openalex.org', body: { id: 'W1', open_access: { oa_status: 'bronze' } } },
+      { match: 'api.unpaywall.org', body: { is_oa: true, oa_status: 'gold' } },
+    ]);
+    let unpaywallAskedBeforeQueue: boolean | null = null;
+    deps.enqueueIndex = vi.fn(async (input) => {
+      unpaywallAskedBeforeQueue = calls.some((url) => url.includes('api.unpaywall.org'));
+      // What the abstract job will read is already saved when it is queued.
+      expect(source.status).toBe('RESOLVED');
+      expect(source.cslJson?.abstract).toBe('Cost, not awareness, drives non-adoption.');
+      expect(input.contentKey).toBe('10.1016/j.enpol.2021.112121');
+    });
+
+    await runResolveReference(job(), deps);
+
+    expect(deps.enqueueIndex).toHaveBeenCalledTimes(1);
+    expect(unpaywallAskedBeforeQueue).toBe(false);
+    expect(calls.some((url) => url.includes('api.unpaywall.org'))).toBe(true);
+    expect(source.oaStatus).toBe('gold');
+  });
+
   it('stores a Crossref match and queues it for indexing', async () => {
     const { deps, source, indexed } = fakeDeps([
       { match: 'query.bibliographic', body: { message: { items: [crossrefItem] } } },
