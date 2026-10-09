@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Noto_Sans_Devanagari, Spectral } from 'next/font/google';
+import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 import { satoshi } from '@/components/marketing/fonts';
 import { ThemeScript } from '@/components/theme';
@@ -14,10 +14,42 @@ import './globals.css';
  * only, the student's own writing — the editor's page, a chapter a guide reads, a quoted passage —
  * so a thesis still reads like a manuscript and never like a form.
  */
-const spectral = Spectral({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['normal', 'italic'],
+// 2026-10-09: the three Google fonts are self-hosted from @fontsource (SIL OFL), as Satoshi already
+// was. `next/font/google` fetched them from fonts.googleapis.com at build time, and a slow answer
+// failed two CI builds in one day; the release build is the same build.
+const spectral = localFont({
+  src: [
+    {
+      path: '../../node_modules/@fontsource/spectral/files/spectral-latin-400-normal.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/spectral/files/spectral-latin-400-italic.woff2',
+      weight: '400',
+      style: 'italic',
+    },
+    {
+      path: '../../node_modules/@fontsource/spectral/files/spectral-latin-500-normal.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/spectral/files/spectral-latin-500-italic.woff2',
+      weight: '500',
+      style: 'italic',
+    },
+    {
+      path: '../../node_modules/@fontsource/spectral/files/spectral-latin-600-normal.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/spectral/files/spectral-latin-600-italic.woff2',
+      weight: '600',
+      style: 'italic',
+    },
+  ],
   variable: '--font-spectral',
   display: 'swap',
 });
@@ -27,9 +59,29 @@ const spectral = Spectral({
  * with Inter for every screen and the thesis text; light keeps Satoshi and Spectral. Not
  * preloaded, so a light page does not download it.
  */
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+const inter = localFont({
+  src: [
+    {
+      path: '../../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-inter',
   display: 'swap',
   preload: false,
@@ -40,9 +92,24 @@ const inter = Inter({
  * system fallback on many Windows and Android machines draws matras badly. Only referenced from
  * `html[lang="hi"]` in globals.css, and not preloaded, so an English page never downloads it.
  */
-const devanagari = Noto_Sans_Devanagari({
-  subsets: ['devanagari'],
-  weight: ['400', '500', '700'],
+const devanagari = localFont({
+  src: [
+    {
+      path: '../../node_modules/@fontsource/noto-sans-devanagari/files/noto-sans-devanagari-devanagari-400-normal.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/noto-sans-devanagari/files/noto-sans-devanagari-devanagari-500-normal.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../../node_modules/@fontsource/noto-sans-devanagari/files/noto-sans-devanagari-devanagari-700-normal.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-devanagari',
   display: 'swap',
   preload: false,

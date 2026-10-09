@@ -6074,3 +6074,10 @@ merge. Expected from the timings: first passage about a second after each paper 
 
 Found while measuring, not fixed: two `find-sources` runs 3.6 s apart added the same five papers
 twice; each second copy stays PENDING for good, because its resolve job has the first copy's id.
+
+## Fonts self-hosted (2026-10-09)
+
+Two CI builds in one day failed in `next/font/google` ("Cannot read properties of null") while
+fonts.googleapis.com answered slowly; the release build is the same build. Spectral, Inter and
+Noto Sans Devanagari now come from `@fontsource/*` (SIL OFL) through `next/font/local`, as Satoshi
+already did. Same families, weights and CSS variables; no request to Google at build or at view.
