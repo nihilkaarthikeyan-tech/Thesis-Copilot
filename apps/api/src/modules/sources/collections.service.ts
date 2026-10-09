@@ -15,10 +15,12 @@
 
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@tc/db';
+import { COLLECTION_NAME_MAX } from '@tc/types';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 
-export const COLLECTION_NAME_MAX = 60;
+/** Shared with the name box on the Library tab (`@tc/types`), so the two cannot disagree. */
+export { COLLECTION_NAME_MAX };
 /** More than any student keeps; a bound so a runaway script cannot fill the strip. */
 export const COLLECTIONS_PER_DOCUMENT_MAX = 100;
 

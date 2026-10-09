@@ -6,12 +6,15 @@
  * Pure, so the rules the screen shows are the rules the server enforces and both are tested.
  */
 
+import { COLLECTION_NAME_MAX } from '@tc/types';
+
 export type Collection = { id: string; name: string; order: number; count: number };
 
 /** What the strip has chosen: every paper, the papers in no collection, or one collection. */
 export type CollectionFilter = { kind: 'all' } | { kind: 'unfiled' } | { kind: 'one'; id: string };
 
-export const COLLECTION_NAME_MAX = 60;
+/** The API's limit (`@tc/types`): the name box stops typing here, so it never sends a longer one. */
+export { COLLECTION_NAME_MAX };
 
 type Filed = { id: string; collectionIds?: readonly string[] | undefined };
 

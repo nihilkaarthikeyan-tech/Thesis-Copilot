@@ -12,7 +12,12 @@
 
 import { useState } from 'react';
 import { ApiError, api } from '@/lib/api';
-import { type Collection, type CollectionFilter, checkCollectionName } from '@/lib/collections';
+import {
+  COLLECTION_NAME_MAX,
+  type Collection,
+  type CollectionFilter,
+  checkCollectionName,
+} from '@/lib/collections';
 
 const chip = (active: boolean) =>
   `rounded-md px-3 py-1 ${
@@ -175,7 +180,7 @@ export function CollectionsStrip({
             aria-label={renaming ? 'New name for the collection' : 'Name of the new collection'}
             data-testid="collection-name"
             placeholder="Methods, Chapter 2, Policy…"
-            maxLength={80}
+            maxLength={COLLECTION_NAME_MAX}
             className="w-64 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink"
             value={name}
             onChange={(e) => {
