@@ -83,3 +83,28 @@ own issue lists vary a lot between runs on the same chapter (4 issues in round 2
 rounding into 1–10, the soundness ceiling, no card on a missing score.
 `apps/web/test/examiner-review.spec.ts` (6): "Examiner: major" / "Examiner: minor" and "N issues,
 M major". The browser proof of the points opening in the text is in docs/BUILD_LOG.md (R24).
+
+## Addendum, 2026-10-09: round 5, the score call at a higher reasoning effort
+
+**Criterion, written and committed before the run** (the owner approved real-model spend for one
+round; budget for it about ₹30 of the day's ₹40).
+
+- **The candidate.** Prompt v3 and its builder unchanged; only the score call's reasoning effort
+  rises from the strong tier's `'low'` to `'high'` (a per-request option on `LlmRequest`, honoured
+  by the OpenAI adapter for a reasoning model, with the thinking headroom raised to match so a
+  long think cannot eat the answer). Every other call in the product keeps its effort.
+- **The round.** `apps/worker/scripts/eval-examiner-scores.ts`, unchanged in its checks, on the
+  four chapters it picks from the local database (ids printed with the results), with the real
+  per-section examiner first.
+- **Pass, all of:**
+  1. every run gives a full card (a missing card is a failed check, as before);
+  2. **stable on all four** chapters (every score within one point on a second run);
+  3. **presentation falls** on at least three of four;
+  4. **soundness falls** (or is already at the floor) on at least three of four;
+  5. **contribution falls** on at least three of four;
+  6. the priced review (measured tokens of the score call at `'high'`, at the production model's
+     prices) keeps a fully active student under the ₹100 ceiling.
+- **If it passes**, the review of a whole chapter makes the call (inside the same
+  `EXAMINER_REVIEW` unit, as built) and the card is shown with its reasons; the price is recorded
+  here. **If it fails**, nothing is wired, nothing is shown or spent in production, and the round
+  is recorded below. One round only: no prompt changes, no second effort tried in this run.
