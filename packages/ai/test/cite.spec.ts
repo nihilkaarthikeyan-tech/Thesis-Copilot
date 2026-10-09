@@ -73,6 +73,30 @@ describe('detectClaim (FR-4.5 heuristic)', () => {
     expect(detectClaim('   ').isClaim).toBe(false);
   });
 
+  it.each([
+    'Studies have shown that awareness campaigns had little effect on adoption.',
+    'Several studies have found that tenants adopt rooftop solar later.',
+    'Earlier research has demonstrated that subsidies change siting decisions.',
+    'Studies showed that awareness campaigns had little effect on adoption.',
+    'Studies found that awareness campaigns had little effect on adoption.',
+    'Researchers found that tenants rarely installed panels themselves.',
+    'Studies have consistently reported a gap between intention and uptake.',
+    'Recent research has shown a gap between intention and uptake.',
+  ])('treats a perfect or past attribution as a claim: %s', (sentence) => {
+    expect(detectClaim(sentence).reasons, sentence).toContain('attribution');
+  });
+
+  it.each([
+    'We found that the interviews were shorter in the second round.',
+    'Participants reported feeling rushed during the interview.',
+    'The teachers showed great patience in every session.',
+    'Our research found that tenants waited for the landlord.',
+    'This research has shown the value of a pilot round.',
+    'The village elders have shown us their records.',
+  ])('does not take the student’s own finding for a claim: %s', (sentence) => {
+    expect(detectClaim(sentence).isClaim, sentence).toBe(false);
+  });
+
   it('names why it fired, for the log', () => {
     expect(detectClaim('Studies show adoption rose by 40% after 2015.').reasons).toEqual(
       expect.arrayContaining(['figure', 'attribution']),
