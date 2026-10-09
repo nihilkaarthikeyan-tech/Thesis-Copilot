@@ -18,7 +18,39 @@ export type ExaminerReviewState = {
   error: string | null;
   /** ADR-0067 / R26: the latest run read a selection or one paragraph, not the chapter. */
   selection?: boolean;
+  /** ADR-0131: what the chapter does well, each pinned to the sentence it quotes. */
+  strengths?: ExaminerStrength[];
+  /** ADR-0131: questions an examiner would ask the author in the viva. */
+  questions?: ExaminerQuestion[];
 };
+
+export type ExaminerStrength = {
+  quote: string;
+  why: string;
+  section: string;
+  from: number;
+  to: number;
+};
+
+export type ExaminerQuestion = {
+  question: string;
+  section: string;
+  from: number | null;
+  to: number | null;
+};
+
+/**
+ * ADR-0131: the strengths and questions a finished whole-chapter review shows, or null when there
+ * are none to show (a selection's review, a review from before them, or a run still going).
+ */
+export function highlightsOf(
+  s: ExaminerReviewState | null,
+): { strengths: ExaminerStrength[]; questions: ExaminerQuestion[] } | null {
+  if (!s || s.status !== 'DONE' || s.selection) return null;
+  const strengths = s.strengths ?? [];
+  const questions = s.questions ?? [];
+  return strengths.length || questions.length ? { strengths, questions } : null;
+}
 
 export const isReviewRunning = (s: ExaminerReviewState | null): boolean =>
   s?.status === 'QUEUED' || s?.status === 'RUNNING';

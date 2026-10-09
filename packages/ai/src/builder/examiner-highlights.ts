@@ -39,6 +39,12 @@ export const EXAMINER_HIGHLIGHTS = {
   /** Asked for beyond those, over the chapter, so a dropped one can be replaced. */
   spare: 1,
   /**
+   * How many sections are asked at all: the largest two (round 3). The others are reviewed by
+   * `examiner.md` exactly as before, so a review of eight sections pays for the longer answer
+   * twice, not eight times.
+   */
+  sections: 2,
+  /**
    * The examiner's 1,500 plus room for the two new lists (the prompt's header says the same).
    * Round 1 asked for 2,000 and a 50-sentence section's answer twice failed its schema, cut off.
    */
@@ -61,8 +67,9 @@ export type SectionAsk = { strengths: number; questions: number };
 
 /**
  * How many of each one section's call may give: four strengths and five questions, plus a spare
- * of each, dealt over the sections one at a time, larger sections first. A one-section chapter
- * asks its one call for all of them; an eight-section chapter asks most sections for one or none.
+ * of each, dealt one at a time over the largest two sections (ties to the earlier). A one-section
+ * chapter asks its one call for all of them; every other section is asked for none, and its call
+ * is `examiner.md`'s (`asksHighlights`).
  */
 export function askPlan(sectionSizes: readonly number[]): SectionAsk[] {
   const plan = sectionSizes.map(() => ({ strengths: 0, questions: 0 }));
@@ -70,7 +77,8 @@ export function askPlan(sectionSizes: readonly number[]): SectionAsk[] {
   const order = sectionSizes
     .map((size, index) => ({ size, index }))
     .sort((a, b) => b.size - a.size || a.index - b.index)
-    .map((x) => x.index);
+    .map((x) => x.index)
+    .slice(0, EXAMINER_HIGHLIGHTS.sections);
   const deal = (key: keyof SectionAsk, total: number) => {
     for (let i = 0; i < total; i++) {
       const at = plan[order[i % order.length] as number] as SectionAsk;
@@ -81,6 +89,10 @@ export function askPlan(sectionSizes: readonly number[]): SectionAsk[] {
   deal('questions', EXAMINER_HIGHLIGHTS.questions + EXAMINER_HIGHLIGHTS.spare);
   return plan;
 }
+
+/** True when a section's call is asked for strengths or questions (else it is `examiner.md`'s). */
+export const asksHighlights = (ask: SectionAsk | null | undefined): ask is SectionAsk =>
+  !!ask && (ask.strengths > 0 || ask.questions > 0);
 
 /**
  * The examiner request for one section of a whole-chapter review: `examiner.md`'s request with
@@ -177,7 +189,8 @@ export type HighlightsInput = {
 
 const YEAR = /\b(1[89]\d{2}|20\d{2})\b/g;
 const ET_AL = /\b(\p{Lu}[\p{L}'-]+)\s+et\s+al\b/gu;
-const PASSAGE_ID = /\bP\d+\b|\{\{cite:/;
+/** The request's own ids: passages (P5), citation markers, sentences (round 3: "at s33"). */
+const PASSAGE_ID = /\bP\d+\b|\{\{cite:|\bs\d+\b/;
 
 /**
  * Why a question is dropped, or null when it stands. Exported so the evaluation can count the

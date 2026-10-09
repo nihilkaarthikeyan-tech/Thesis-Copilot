@@ -60,6 +60,17 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > edits a month on a paid plan: **≤ ₹2.16 a month**, ₹93.16 → **≤ ₹95.32**, within the ₹100
 > ceiling (and inside `voyage-4`'s free 200M tokens in practice). Not in the profile table.
 >
+> **2026-10-09 — strengths and questions on the examiner review (ADR-0131).** No new call and
+> no new allowance: the two largest sections of a reviewed chapter are asked, in the same call,
+> for strengths and questions for the author — a system block about 600 tokens longer (cached)
+> and about 600 more output tokens each (measured in round 3: 1,700 against 1,099). The
+> `EXAMINER_REVIEW` row is now 8 × (5,500 in, 4,000 cached, 600 out) + 2 × (600, 600, 600):
+> ₹1.8618 → **₹2.0993 a review**, ₹11.17 → ₹12.60 a month. A fully active student goes from
+> ₹93.13 to **₹94.55** at the production configuration (`pnpm ai:verify`'s table; ₹74.00 →
+> ₹75.43 with `gpt-5-nano` on the fast tier), and with the notes above that sit outside the table
+> (research embedding, ADR-0133's ≤ ₹2.16) from ≤ ₹95.32 to **≤ ₹96.74** — ₹3.26 under the ₹100
+> ceiling.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.

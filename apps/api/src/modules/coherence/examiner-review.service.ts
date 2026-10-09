@@ -13,7 +13,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EXAMINER_REVIEW, ownSentenceCount, reviewChapter } from '@tc/ai';
 import type { Plan } from '@tc/config';
 import type { Prisma } from '@tc/db';
-import { type ExaminerReviewRecord, jobId } from '@tc/types';
+import {
+  type ExaminerQuestion,
+  type ExaminerReviewRecord,
+  type ExaminerStrength,
+  jobId,
+} from '@tc/types';
 import { ConflictError, NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
@@ -42,6 +47,10 @@ export type ExaminerReviewView = {
   error: string | null;
   /** ADR-0067: the latest run read a selection (or one paragraph, R26), not the chapter. */
   selection: boolean;
+  /** ADR-0131: what the chapter does well, each pinned to the sentence it quotes. */
+  strengths: ExaminerStrength[];
+  /** ADR-0131: questions an examiner would ask the author. */
+  questions: ExaminerQuestion[];
 };
 
 export function readExaminerReviews(meta: unknown): Record<string, ExaminerReviewRecord> {
@@ -236,6 +245,8 @@ export class ExaminerReviewService {
         blocking: null,
         error: null,
         selection: false,
+        strengths: [],
+        questions: [],
       };
     }
     const stale = isStale(record);
@@ -252,6 +263,8 @@ export class ExaminerReviewService {
       blocking: record.blocking ?? null,
       error: stale ? 'The review did not finish. You can start it again.' : (record.error ?? null),
       selection: record.selection === true,
+      strengths: record.strengths ?? [],
+      questions: record.questions ?? [],
     };
   }
 }

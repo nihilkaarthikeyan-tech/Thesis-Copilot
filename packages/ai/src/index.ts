@@ -251,6 +251,7 @@ export { asksToEvadeDetection, EVASION_REFUSAL } from './builder/evasion.js';
 export {
   anchorStrength,
   askPlan,
+  asksHighlights,
   buildExaminerReviewHighlightsRequest,
   cleanWhy,
   contentWords,
