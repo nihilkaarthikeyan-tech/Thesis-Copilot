@@ -91,14 +91,12 @@ test('Search the literature: sends the switch, lists the papers added, changes n
               shortRef: 'Rao 2022',
               title: 'Credit and solar',
               year: 2022,
-              ready: true,
             },
             {
               sourceId: PAPER_B,
               shortRef: 'Iyer 2021',
               title: 'Solar loans',
               year: 2021,
-              ready: false,
             },
           ],
           collection: { id: '01890000-0000-7000-8000-0000000000cc', name: 'Finance' },
@@ -140,7 +138,7 @@ test('Search the literature: sends the switch, lists the papers added, changes n
   await expect(papers).toHaveCount(2);
   await expect(papers.nth(0)).toHaveText('Rao 2022');
   await expect(papers.nth(0)).toHaveAttribute('href', `/app/d/${documentId}/sources/${PAPER_A}`);
-  await expect(papers.nth(1)).toHaveText('Iyer 2021 (still being read)');
+  await expect(papers.nth(1)).toHaveText('Iyer 2021');
 
   // Nothing is in the chapter until Replace.
   await expect(editor).not.toContainText('Access to credit');

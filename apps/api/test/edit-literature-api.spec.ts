@@ -2,12 +2,14 @@
  * ADR-0133 — "Search the literature" on an AI edit, through the API.
  *
  * The real application on Postgres and Redis with the mock model. Replaced, as in
- * `chat-research-api.spec.ts`: the scholarly search (`WebScopeService.searchPlan`), the embedding
- * vectors (so "on topic" is the test's decision), and the worker's reading of an added paper
- * (`EditLiteratureService.waitUntilReadable` stores the abstract as a chunk, as `index-source`
- * would). Pinned:
+ * `chat-research-api.spec.ts`: the scholarly search (`WebScopeService.searchPlan`) and the
+ * embedding vectors (so "on topic" is the test's decision). No worker runs, which is the point:
+ * the edit is sent the added papers' abstracts from their new rows without waiting for one.
+ * Pinned:
+ * - the search is for the subject, led by the thesis, chapter and scope note;
  * - the found papers on topic are added to the library, marked found, filed into "Add into";
- * - the edit's passages include them, and every citation it makes is to a library paper;
+ * - the edit's passages include their abstracts, and every citation it makes is to a library
+ *   paper (a new one with no chunk id);
  * - one COMMAND unit, taken before anything is searched; nothing searched at the cap;
  * - an empty or failed search is the library alone, with one line saying so;
  * - someone else's chapter is a 404 before anything is searched;
@@ -19,7 +21,6 @@ import { EMBEDDING_DIMENSIONS, type RawClient, replaceSourceChunks } from '@tc/r
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setMetaKey } from '../src/common/document-meta.js';
 import { PROVIDERS } from '../src/modules/ai/ai.module.js';
-import { EditLiteratureService } from '../src/modules/assist/edit-literature.service.js';
 import { type WebResult, WebScopeService } from '../src/modules/assist/web-scope.service.js';
 import { periodFor } from '../src/modules/usage/usage.service.js';
 import { type Harness, startHarness } from './_harness.js';
@@ -60,9 +61,9 @@ function found(i: number, over: Partial<WebResult> = {}): WebResult {
 
 type RunResult = {
   text: string;
-  citations: Array<{ key: string; sourceId: string; chunkId: string; rendered: string }>;
+  citations: Array<{ key: string; sourceId: string; chunkId: string | null; rendered: string }>;
   literature?: {
-    added: Array<{ sourceId: string; shortRef: string; title: string; ready: boolean }>;
+    added: Array<{ sourceId: string; shortRef: string; title: string }>;
     collection: { id: string; name: string } | null;
     note: string | null;
   };
@@ -160,36 +161,6 @@ beforeEach(async () => {
     vectors: texts.map((_, i) => (i === 3 ? OFF : ON)),
     tokens: texts.length * 100,
   }));
-  // Stands in for resolve-reference → index-source: the abstract stored as an ABSTRACT chunk.
-  const service = h.app.get(EditLiteratureService);
-  vi.spyOn(service, 'waitUntilReadable').mockImplementation(async (ids) => {
-    for (const id of ids) {
-      const row = await h.prisma.source.findUniqueOrThrow({
-        where: { id },
-        select: { cslJson: true, _count: { select: { chunks: true } } },
-      });
-      if (row._count.chunks > 0) continue;
-      const abstract = String((row.cslJson as { abstract?: string } | null)?.abstract ?? '');
-      await h.prisma.source.update({
-        where: { id },
-        data: { status: 'RESOLVED', groundingLevel: 'ABSTRACT', authors: [{ family: 'Rao' }] },
-      });
-      await replaceSourceChunks(h.prisma as unknown as RawClient, id, [
-        {
-          sourceId: id,
-          ordinal: 0,
-          text: abstract,
-          tokenCount: 30,
-          page: null,
-          charStart: 0,
-          charEnd: abstract.length,
-          section: 'Abstract',
-          embedding: ON,
-        },
-      ]);
-    }
-    return [...ids];
-  });
   await h.prisma.usageLedger.upsert({
     where: { userId_period_action: { userId: h.userId, period: periodFor(), action: 'COMMAND' } },
     create: { userId: h.userId, action: 'COMMAND', period: periodFor(), count: 0, bonus: 40 },
@@ -221,10 +192,20 @@ describe('Search the literature on your own instruction', () => {
     expect(res.status).toBe(200);
     const result = (await res.json()) as RunResult;
 
-    // 1. Searched with the instruction and the selection.
+    // 1. Searched for the subject: the thesis, the chapter and its scope lead; the instruction
+    // reaches only the semantic search, never the keyword queries or the relevance text.
     expect(searchPlan).toHaveBeenCalledOnce();
-    expect(String(searchPlan.mock.calls[0]?.[1])).toContain(INSTRUCTION);
-    expect(String(searchPlan.mock.calls[0]?.[1])).toContain('Upfront cost limits');
+    const [, relevance, plan] = searchPlan.mock.calls[0] as [
+      string,
+      string,
+      { semantic: string; keyword: string[] },
+    ];
+    expect(relevance).toBe(
+      `Rooftop solar in Karnataka. Literature Review. Household adoption of rooftop solar.. ${SELECTION}`,
+    );
+    expect(plan.semantic.startsWith('Rooftop solar in Karnataka. Literature Review.')).toBe(true);
+    expect(plan.semantic).toContain(INSTRUCTION);
+    expect(plan.keyword[0]).toBe('upfront cost limits rooftop solar adoption among rural');
 
     // 2. The two on topic are in the library, found for the student, filed into "Add into".
     const added = await h.prisma.source.findMany({
@@ -248,6 +229,10 @@ describe('Search the literature on your own instruction', () => {
     expect(message).toContain('Access to credit raised rooftop solar adoption');
     expect(message).toContain('upfront cost was the main barrier to rooftop solar');
     expect(passageIds(model.seen[0])).toHaveLength(3);
+    // Nothing waited for the worker: the new papers have no chunks yet, and are cited anyway.
+    expect(
+      await h.prisma.sourceChunk.count({ where: { sourceId: { in: added.map((s) => s.id) } } }),
+    ).toBe(0);
 
     // Every citation the result carries is a library row of this thesis; the invented one is gone.
     expect(result.text).not.toContain('S9#c9');
@@ -255,14 +240,16 @@ describe('Search the literature on your own instruction', () => {
     const libraryIds = new Set([librarySourceId, ...added.map((s) => s.id)]);
     for (const c of result.citations) expect(libraryIds.has(c.sourceId)).toBe(true);
     expect(added.map((s) => s.id)).toContain(result.citations[0]?.sourceId);
+    // Cited by the abstract it was sent: no chunk id leaves the server (the card says so).
+    expect(result.citations[0]?.chunkId).toBeNull();
 
     // 4. What the panel lists.
     expect(result.literature?.note).toBeNull();
     expect(result.literature?.collection).toEqual({ id: collectionId, name: 'Finance' });
     expect(result.literature?.added).toHaveLength(2);
     for (const paper of result.literature?.added ?? []) {
-      expect(paper.ready).toBe(true);
-      expect(paper.shortRef).toBe('Rao 2022');
+      // Authors arrive with the resolver; until then the title and year name it.
+      expect(paper.shortRef).toMatch(/^Credit access and rooftop solar adoption.* 2022$/);
     }
 
     // One unit; the relevance embedding is its own EMBED row.
@@ -322,16 +309,6 @@ describe('Search the literature on your own instruction', () => {
     expect(result.literature?.note).toBe(
       'The literature search did not answer in time; this edit used your library alone.',
     );
-  });
-
-  it('papers not read in time stay in the library; the edit uses the library alone and says so', async () => {
-    vi.spyOn(h.app.get(EditLiteratureService), 'waitUntilReadable').mockResolvedValue([]);
-    const model = answerWith(() => SELECTION);
-    const res = await run({ command: 'custom', instruction: INSTRUCTION, searchLiterature: true });
-    const result = (await res.json()) as RunResult;
-    expect(result.literature?.added.map((p) => p.ready)).toEqual([false, false]);
-    expect(result.literature?.note).toMatch(/still being read/);
-    expect(passageIds(model.seen[0])).toHaveLength(1);
   });
 
   it('refunds the unit when the edit itself fails after the search', async () => {

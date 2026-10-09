@@ -70,8 +70,6 @@ export type AddedPaper = {
   shortRef: string;
   title: string;
   year: number | null;
-  /** Read in time to be offered to this edit. */
-  ready: boolean;
 };
 
 export type EditLiterature = {
@@ -85,9 +83,4 @@ export function addedHeading(literature: EditLiterature): string {
   const n = literature.added.length;
   const into = literature.collection ? ` (in ${literature.collection.name})` : '';
   return `Added to your library${into}${n > 1 ? ` — ${n} papers` : ''}:`;
-}
-
-/** A paper's label in that list: its short reference, and "still being read" when not cited. */
-export function addedLabel(paper: AddedPaper): string {
-  return paper.ready ? paper.shortRef : `${paper.shortRef} (still being read)`;
 }

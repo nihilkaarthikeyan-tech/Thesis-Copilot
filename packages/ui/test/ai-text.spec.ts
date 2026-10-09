@@ -64,6 +64,20 @@ describe('aiTextToNodes', () => {
     editor.destroy();
   });
 
+  it('a citation of a paper just added, with no chunk yet, goes in as a library citation (ADR-0133)', () => {
+    const editor = createTestEditor('<p>x</p>');
+    const nodes = aiTextToNodes(editor.schema, 'Credit raised adoption {{cite:S1#c1}}.', {
+      provenance: { kind: 'COMMAND', actionId: null },
+      citations: [
+        { key: 'S1#c1', sourceId: 'new-src', chunkId: null, rendered: '(Credit access 2022)' },
+      ],
+    });
+    const cite = nodes.find((n) => n.type.name === 'citation');
+    expect(cite?.attrs).toMatchObject({ sourceId: 'new-src', chunkId: null });
+    expect(String(cite?.attrs.key)).toMatch(/^c_/);
+    editor.destroy();
+  });
+
   it('citationsInRange collects the nodes a rewrite must keep', () => {
     const editor = createTestEditor('<p>x</p>');
     editor.commands.setContent({

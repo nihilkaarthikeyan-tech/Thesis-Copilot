@@ -1,27 +1,36 @@
 /**
  * "Search the literature" on an AI edit — ADR-0133. The wiring; the rules are in
- * `edit-literature.ts`.
+ * `edit-literature.ts` and `@tc/retrieval`'s `edit-search.ts`.
  *
  * One edit with the switch on:
- *   1. the scholarly indexes are searched with the instruction and the selection (chat's search,
+ *   1. the scholarly indexes are searched for the selection's subject, led by the thesis, chapter
+ *      and scope note when they name something (`editSearchPlan`; chat's search,
  *      `WebScopeService.searchPlan`, ADR-0074 — no model, no unit);
- *   2. the found abstracts are scored against the thesis and the question in one embedding call
- *      (logged as `EMBED`, so the ₹100 ceiling sees it), and the few on topic are **added to the
- *      library** the way `find-sources` adds papers (ADR-0037): a `Source` row carrying the
- *      index's metadata and abstract, marked `autoAddedAt`, filed into the thesis's "Add into"
- *      collection (ADR-0129), and handed to `resolve-reference` → `index-source`;
- *   3. the edit waits a bounded time for their abstracts to be embedded, then retrieves from the
- *      library restricted to them, so each brings a passage into the request.
+ *   2. the found abstracts are scored against that subject in one embedding call (logged as
+ *      `EMBED`, so the ₹100 ceiling sees it), and the few the measured rule keeps
+ *      (`keepRelevant`) are **added to the library** the way `find-sources` adds papers
+ *      (ADR-0037): a `Source` row carrying the index's metadata and abstract, marked
+ *      `autoAddedAt`, filed into the thesis's "Add into" collection (ADR-0129), and handed to
+ *      `resolve-reference` → `index-source`, which read and embed it in the background;
+ *   3. their abstracts are this edit's passages for them, tied to the new library rows — nothing
+ *      waits for the worker (the first live run waited 25 s and got nothing).
  *
- * Nothing here fails the edit. A failed or empty search, or papers not read in time, leave the
- * edit to the library alone with a one-line note. The COMMAND unit is the caller's.
+ * Nothing here fails the edit. A failed or empty search leaves the edit to the library alone with
+ * a one-line note. The COMMAND unit is the caller's.
  */
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Providers } from '@tc/ai';
 import { computeEmbeddingCost, type Env } from '@tc/config';
 import type { Prisma } from '@tc/db';
-import { cosine, planResearchQueries, researchEmbedText, shortReference } from '@tc/retrieval';
+import type { RetrievedPassage } from '@tc/retrieval';
+import {
+  cosine,
+  editSearchContext,
+  editSearchPlan,
+  researchEmbedText,
+  shortReference,
+} from '@tc/retrieval';
 import { jobId, jobKeyDigest } from '@tc/types';
 import { ENV } from '../../common/env.token.js';
 import { type FilingTarget, LibraryFilingService } from '../../common/library-filing.js';
@@ -30,8 +39,8 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { QueueService } from '../../common/queue.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import {
+  abstractPassages,
   EDIT_LITERATURE,
-  editSearchQuestion,
   type LiteratureOutcome,
   literatureNote,
   papersToAdd,
@@ -45,14 +54,12 @@ export type AddedPaper = {
   shortRef: string;
   title: string;
   year: number | null;
-  /** Its abstract was read in time to be offered to this edit. */
-  ready: boolean;
 };
 
 export type EditLiterature = {
   added: AddedPaper[];
-  /** The ones ready to cite, for the library retrieval restricted to them. */
-  readyIds: string[];
+  /** Their abstracts, as this edit's passages, tied to the new library rows. */
+  passages: RetrievedPassage[];
   /** The collection they were filed into, when the thesis has an "Add into". */
   collection: FilingTarget | null;
   outcome: LiteratureOutcome;
@@ -87,25 +94,33 @@ export class EditLiteratureService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** Search, add the few on topic, wait for them to be read. The caller owns the chapter. */
+  /** Search, add the few on topic, hand back their abstracts. The caller owns the chapter. */
   async findAndAdd(input: {
     userId: string;
     documentId: string;
     chapterTitle: string;
+    scopeNote?: string | null;
     selection: string;
     instruction?: string;
   }): Promise<EditLiterature> {
     const none = (outcome: LiteratureOutcome): EditLiterature => ({
       added: [],
-      readyIds: [],
+      passages: [],
       collection: null,
       outcome,
       note: literatureNote(outcome),
     });
 
-    const question = editSearchQuestion(input.selection, input.instruction);
-    const thesis = await this.thesisTitle(input.documentId);
-    const plan = planResearchQueries(question, thesis ?? input.chapterTitle);
+    const context = editSearchContext({
+      thesisTitle: await this.thesisTitle(input.documentId),
+      chapterTitle: input.chapterTitle,
+      scopeNote: input.scopeNote ?? null,
+    });
+    const plan = editSearchPlan({
+      selection: input.selection,
+      instruction: input.instruction ?? null,
+      context,
+    });
 
     // 1. The indexes, on a clock. A failure is the library alone, said in one line.
     let results: WebResult[];
@@ -113,7 +128,7 @@ export class EditLiteratureService {
       results = (
         await this.web.searchPlan(
           input.documentId,
-          question,
+          plan.relevance,
           plan,
           AbortSignal.timeout(EDIT_LITERATURE.searchTimeoutMs),
         )
@@ -126,13 +141,13 @@ export class EditLiteratureService {
     }
     if (results.length === 0) return none('none-relevant');
 
-    // 2. On topic, by one embedding call against the thesis and the question.
-    let chosen: WebResult[];
+    // 2. On topic, by one embedding call against the subject, and the measured rule.
+    let chosen: Array<{ work: WebResult; cosine: number }>;
     try {
       const began = Date.now();
       const { vectors, tokens } = await raceTimeout(
         this.providers.embeddings.embedWithUsage([
-          plan.semantic,
+          plan.relevance,
           ...results.map((r) => researchEmbedText(r)),
         ]),
         EDIT_LITERATURE.embedTimeoutMs,
@@ -140,73 +155,70 @@ export class EditLiteratureService {
       );
       await this.logEmbed(input.userId, input.documentId, tokens, Date.now() - began);
       const [asked, ...each] = vectors;
-      chosen = papersToAdd(
-        results.map((result, i) => ({ result, cosine: cosine(asked ?? [], each[i] ?? []) })),
-      );
+      const scored = results.map((result, i) => ({
+        result,
+        cosine: cosine(asked ?? [], each[i] ?? []),
+      }));
+      const score = new Map(scored.map((s) => [s.result, s.cosine]));
+      chosen = papersToAdd(scored).map((work) => ({ work, cosine: score.get(work) ?? 0 }));
     } catch (error) {
       this.logger.warn({ err: error, documentId: input.documentId }, 'edit search scoring failed');
       return none('failed');
     }
     if (chosen.length === 0) return none('none-relevant');
 
-    // 3. Into the library, filed where the thesis files new papers, and read.
+    // 3. Into the library, filed where the thesis files new papers; read in the background.
     const collection = await this.filingTarget(input.userId, input.documentId);
-    const ids = await this.add(input.userId, input.documentId, input.chapterTitle, chosen);
+    const ids = await this.add(
+      input.userId,
+      input.documentId,
+      input.chapterTitle,
+      chosen.map((c) => c.work),
+    );
     await this.filing.file(input.documentId, collection, ids);
-    const readyIds = await this.waitUntilReadable(ids);
 
     const rows = await this.prisma.source.findMany({
       where: { id: { in: ids }, documentId: input.documentId },
       select: { id: true, title: true, authors: true, year: true },
     });
     const byId = new Map(rows.map((r) => [r.id, r]));
-    const ready = new Set(readyIds);
-    const added = ids.flatMap((id, i): AddedPaper[] => {
+    const papers = ids.map((id, i) => {
       const row = byId.get(id);
       const found = chosen[i];
-      const title = row?.title ?? found?.title ?? '';
-      const year = row?.year ?? found?.year ?? null;
-      return [
-        {
-          sourceId: id,
-          shortRef: shortReference(row?.authors, year, title) ?? title.slice(0, 40),
-          title,
-          year,
-          ready: ready.has(id),
-        },
-      ];
+      const title = row?.title ?? found?.work.title ?? '';
+      const year = row?.year ?? found?.work.year ?? null;
+      return {
+        sourceId: id,
+        shortRef: shortReference(row?.authors, year, title) ?? title.slice(0, 40),
+        title,
+        year,
+        abstract: found?.work.abstract ?? '',
+        cosine: found?.cosine ?? 0,
+      };
     });
-    const outcome: LiteratureOutcome = readyIds.length > 0 ? 'added' : 'not-ready';
     this.logger.log(
       {
         documentId: input.documentId,
         candidates: results.length,
         added: ids.length,
-        ready: readyIds.length,
+        best: Number((chosen[0]?.cosine ?? 0).toFixed(3)),
         collection: collection?.id ?? null,
+        context: context.length > 0,
       },
       'edit literature search',
     );
-    return { added, readyIds, collection, outcome, note: literatureNote(outcome) };
-  }
-
-  /**
-   * The source ids whose text is stored to cite, waiting at most `readyTimeoutMs`. A paper the
-   * resolver gave up on stops the wait for itself. Public so a test can stand in for the worker.
-   */
-  async waitUntilReadable(ids: readonly string[]): Promise<string[]> {
-    if (ids.length === 0) return [];
-    const deadline = Date.now() + EDIT_LITERATURE.readyTimeoutMs;
-    for (;;) {
-      const rows = await this.prisma.source.findMany({
-        where: { id: { in: [...ids] } },
-        select: { id: true, status: true, _count: { select: { chunks: true } } },
-      });
-      const ready = rows.filter((r) => r._count.chunks > 0).map((r) => r.id);
-      const settled = rows.every((r) => r._count.chunks > 0 || r.status === 'UNRESOLVED');
-      if (settled || Date.now() >= deadline) return ready;
-      await new Promise((resolve) => setTimeout(resolve, EDIT_LITERATURE.readyPollMs));
-    }
+    return {
+      added: papers.map(({ sourceId, shortRef, title, year }) => ({
+        sourceId,
+        shortRef,
+        title,
+        year,
+      })),
+      passages: abstractPassages(papers),
+      collection,
+      outcome: 'added',
+      note: null,
+    };
   }
 
   /** Adds the papers as `find-sources` does, and starts the read every added paper gets. */

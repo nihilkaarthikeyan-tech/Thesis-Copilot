@@ -5912,3 +5912,20 @@ only the owner's non-archived theses reach the request, labels, erasure),
 `apps/web/e2e/research-chat.spec.ts` (the whole journey, layout measured at 1280 and 390). One
 fault found in the browser: the page re-read a just-stored chat when its address changed and
 dropped the note under the streamed answer; it now keeps what it has.
+
+## R8 (b) after the first live run (2026-10-09, ADR-0133 amendment)
+
+On the real models the switch added two barely relevant papers and then waited 25 s for the
+worker to read them. It never did, so the edit came back unchanged. Three fixes:
+- The edit no longer waits. It is sent each added paper's abstract from the new `Source` row,
+  tied to that library row. The citation goes in with no chunk id, and the worker indexes the
+  paper in the background.
+- The keyword search asks for the selection's subject, not the instruction's words: the live
+  run had searched "add published claim rural …".
+- Papers are kept at cosine ≥ 0.66 and within 0.10 of the best, against the thesis, chapter
+  and scope (when they name something) plus the selection. The rule was measured on ten pairs
+  in ten fields with `apps/worker/scripts/edit-literature-relevance.ts`; the table is in the ADR.
+  The live run's health-care paper scores 0.574 under it.
+Tests pass: `packages/retrieval/test/edit-search.spec.ts` (7),
+`apps/api/test/edit-literature.spec.ts` (10), `apps/api/test/edit-literature-api.spec.ts` (9),
+`apps/web/test/edit-literature.spec.ts` (6), and the new `packages/ui/test/ai-text.spec.ts` case.

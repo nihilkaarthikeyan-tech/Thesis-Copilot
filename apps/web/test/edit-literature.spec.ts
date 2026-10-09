@@ -12,7 +12,6 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   addedHeading,
-  addedLabel,
   commandRunBody,
   type EditLiterature,
   literatureApplies,
@@ -83,8 +82,8 @@ describe('what an edit sends', () => {
 describe('the added list', () => {
   const literature: EditLiterature = {
     added: [
-      { sourceId: 's1', shortRef: 'Rao 2022', title: 'Credit and solar', year: 2022, ready: true },
-      { sourceId: 's2', shortRef: 'Iyer 2021', title: 'Solar loans', year: 2021, ready: false },
+      { sourceId: 's1', shortRef: 'Rao 2022', title: 'Credit and solar', year: 2022 },
+      { sourceId: 's2', shortRef: 'Iyer 2021', title: 'Solar loans', year: 2021 },
     ],
     collection: { id: 'k1', name: 'Finance' },
     note: null,
@@ -95,11 +94,6 @@ describe('the added list', () => {
     expect(
       addedHeading({ ...literature, added: literature.added.slice(0, 1), collection: null }),
     ).toBe('Added to your library:');
-  });
-
-  it('marks a paper not read in time', () => {
-    expect(addedLabel(literature.added[0] as never)).toBe('Rao 2022');
-    expect(addedLabel(literature.added[1] as never)).toBe('Iyer 2021 (still being read)');
   });
 });
 

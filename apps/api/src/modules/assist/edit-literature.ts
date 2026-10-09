@@ -1,70 +1,64 @@
 /**
  * "Search the literature" on an AI edit — ADR-0133 (amends ADR-0095's "Web switch: not built").
  *
- * The pure half: what is searched for, which found papers join the library, how their passages
- * join the library's, and the one line the student reads when the search gave nothing. No model,
- * no network, no database; `EditLiteratureService` does the wiring.
+ * The pure half: which found papers join the library, the passages they bring to this edit, how
+ * those join the library's, and the one line the student reads when the search gave nothing. What
+ * is searched for and the relevance rule are `@tc/retrieval`'s (`editSearchPlan`, `keepRelevant`).
  *
  * The rule that makes the switch safe: **a found paper is added to the library before anything
- * cites it**. The edit is sent passages from the library only — the ones it already had, and the
- * abstracts of the papers just added, read and embedded by the ordinary pipeline — so every
- * citation the rewrite makes is to a library paper, and `postProcessCommand` strips any other.
+ * cites it**. Its abstract — already on the new `Source` row — is this edit's passage for it, tied
+ * to that library row; nothing waits for the worker, which reads and embeds it in the background
+ * as it does every added paper. So every citation the rewrite makes is to a library paper, and
+ * `postProcessCommand` strips any other.
  */
 
 import type { RetrievalResult, RetrievedPassage } from '@tc/retrieval';
-import { CHAT_RESEARCH } from '@tc/retrieval';
+import { CHAT_RESEARCH, EDIT_SEARCH, keepRelevant } from '@tc/retrieval';
 import type { WebResult } from './web-scope.service.js';
 
 export const EDIT_LITERATURE = {
   /** Found papers added to the library by one edit, at most (the owner's "few", ≤5). */
-  maxPapers: 5,
-  /**
-   * A found abstract is added only at or above this against the thesis, the instruction and the
-   * selection: chat's measured floor for a found abstract (ADR-0074), the same number
-   * `find-sources` adds at (`AUTO_SOURCES.addCosine`).
-   */
-  keepCosine: CHAT_RESEARCH.keepCosine,
+  maxPapers: EDIT_SEARCH.maxPapers,
   /** Candidates embedded, at most: chat's bound, so one edit's search embedding is chat's. */
   maxCandidates: CHAT_RESEARCH.maxCandidates,
   /** The whole search's wall clock; each index also has its own (ADR-0074's budget). */
   searchTimeoutMs: 20_000,
   /** The relevance embedding call's time limit. */
   embedTimeoutMs: 15_000,
-  /**
-   * How long the edit waits for the added papers' abstracts to be read and embedded
-   * (`resolve-reference` → `index-source`, abstract first since ADR-0070: a few seconds).
-   */
-  readyTimeoutMs: 25_000,
-  readyPollMs: 1_000,
-  /** Passages a found paper brings into the request, at most — one each, its abstract. */
-  perFoundPaper: 1,
+  /** An abstract is cut here as a passage: about a chunk's length. */
+  abstractChars: 2_000,
 } as const;
 
-/** The words the indexes are asked with: the instruction, then the selection without markers. */
-export function editSearchQuestion(selection: string, instruction?: string): string {
-  const text = selection
-    .replace(/\{\{cite:[^}]+\}\}/g, ' ')
-    .replace(/\$\$[^$]*\$\$|\$[^$\n]*\$/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const asked = (instruction ?? '').replace(/\s+/g, ' ').trim();
-  return [asked, text].filter(Boolean).join('. ').slice(0, 1_000);
+/**
+ * The chunk id an abstract passage carries until the worker has stored the paper's own chunks.
+ * It never leaves the server: a citation of it is sent with no chunk (`realChunkId`), which the
+ * editor already shows as "cited from the library, with no passage attached".
+ */
+const ABSTRACT_CHUNK = 'abstract:';
+
+export function realChunkId(chunkId: string): string | null {
+  return chunkId.startsWith(ABSTRACT_CHUNK) ? null : chunkId;
 }
 
 export type ScoredWork = { result: WebResult; cosine: number };
 
-/** The found papers worth adding: not already in the library, on topic, best first, a few. */
+/**
+ * The found papers worth adding: not already in the library, with an abstract to read, once per
+ * DOI or title — then the measured rule (`keepRelevant`: a floor, and close to the best), a few.
+ */
 export function papersToAdd(
   scored: readonly ScoredWork[],
-  keepCosine: number = EDIT_LITERATURE.keepCosine,
-  max: number = EDIT_LITERATURE.maxPapers,
+  rule: { floor: number; margin: number; max: number } = {
+    floor: EDIT_SEARCH.floor,
+    margin: EDIT_SEARCH.margin,
+    max: EDIT_LITERATURE.maxPapers,
+  },
 ): WebResult[] {
   const seen = new Set<string>();
-  return scored
+  const eligible = [...scored]
     .filter(
       (s) =>
         !s.result.inLibrary &&
-        s.cosine >= keepCosine &&
         (s.result.abstract ?? '').trim().length >= 80 &&
         s.result.title.trim().length > 0,
     )
@@ -74,36 +68,56 @@ export function papersToAdd(
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .slice(0, max)
-    .map((s) => s.result);
+    });
+  return keepRelevant(eligible, rule).map((s) => s.result);
+}
+
+/** A paper just added, with the abstract that is this edit's passage for it. */
+export type AddedWithAbstract = {
+  sourceId: string;
+  shortRef: string;
+  abstract: string;
+  cosine: number;
+};
+
+/** The added papers' abstracts as passages, tied to their library rows. */
+export function abstractPassages(papers: readonly AddedWithAbstract[]): RetrievedPassage[] {
+  return papers
+    .filter((p) => p.abstract.trim().length > 0)
+    .map((p) => ({
+      id: '',
+      shortRef: p.shortRef,
+      page: null,
+      text: p.abstract.replace(/\s+/g, ' ').trim().slice(0, EDIT_LITERATURE.abstractChars),
+      sourceId: p.sourceId,
+      chunkId: `${ABSTRACT_CHUNK}${p.sourceId}`,
+      score: p.cosine,
+      cosine: p.cosine,
+    }));
 }
 
 /**
- * The request's passages: the found papers' best passage each first (the student asked for the
- * literature, so a paper just added is not crowded out by the library's own), then the library's
- * as retrieval ranked them, without a chunk twice, `topK` in all. Keys are given afresh — two
- * retrievals both number from `S1#c1` — and `byKey` is rebuilt to match, so a citation the
- * rewrite makes resolves to the right library row.
+ * The request's passages: the found papers' abstracts first (the student asked for the
+ * literature, so a paper just added is not crowded out), then the library's as retrieval ranked
+ * them — without another passage of a paper already there by its abstract — `topK` in all. Keys
+ * are given afresh and `byKey` rebuilt to match, so a citation resolves to the right library row.
  */
 export function withFoundPassages(
   library: RetrievalResult | null,
-  found: RetrievalResult | null,
+  found: readonly RetrievedPassage[],
   topK: number,
-  perFoundPaper: number = EDIT_LITERATURE.perFoundPaper,
 ): RetrievalResult {
   const chosen: RetrievedPassage[] = [];
   const chunks = new Set<string>();
-  const perPaper = new Map<string, number>();
-  for (const p of found?.passages ?? []) {
-    const n = perPaper.get(p.sourceId) ?? 0;
-    if (n >= perFoundPaper || chunks.has(p.chunkId)) continue;
-    perPaper.set(p.sourceId, n + 1);
+  const foundSources = new Set<string>();
+  for (const p of found) {
+    if (foundSources.has(p.sourceId) || chunks.has(p.chunkId)) continue;
+    foundSources.add(p.sourceId);
     chunks.add(p.chunkId);
     chosen.push(p);
   }
   for (const p of library?.passages ?? []) {
-    if (chunks.has(p.chunkId)) continue;
+    if (chunks.has(p.chunkId) || foundSources.has(p.sourceId)) continue;
     chunks.add(p.chunkId);
     chosen.push(p);
   }
@@ -124,13 +138,13 @@ export function withFoundPassages(
   return {
     passages,
     byKey,
-    pinned: Math.max(library?.pinned ?? 0, found?.pinned ?? 0),
-    candidates: (library?.candidates ?? 0) + (found?.candidates ?? 0),
+    pinned: library?.pinned ?? 0,
+    candidates: (library?.candidates ?? 0) + found.length,
   };
 }
 
 /** What the search came to, for the line under the result. */
-export type LiteratureOutcome = 'added' | 'none-relevant' | 'failed' | 'not-ready';
+export type LiteratureOutcome = 'added' | 'none-relevant' | 'failed';
 
 /** The one line the student reads when the edit used the library alone; null when it did not. */
 export function literatureNote(outcome: LiteratureOutcome): string | null {
@@ -139,8 +153,6 @@ export function literatureNote(outcome: LiteratureOutcome): string | null {
       return 'The literature search did not answer in time; this edit used your library alone.';
     case 'none-relevant':
       return 'The search found nothing close enough to this passage; this edit used your library alone.';
-    case 'not-ready':
-      return 'The papers found are in your library but still being read; this edit used your library alone. Try again in a minute to cite them.';
     default:
       return null;
   }
