@@ -1,7 +1,7 @@
 # ADR-0147: Generated text reads as a careful academic writes (academic punctuation and style)
 
-**Date:** 2026-10-10 · **Status:** backstop built; prompt candidate under evaluation (criterion
-below, written before the runs) · **Asked by:** the owner
+**Date:** 2026-10-10 · **Status:** backstop shipped; the prompt candidate was measured against the
+criterion below (written before the runs) and **not adopted** · **Asked by:** the owner
 
 ## Context
 
@@ -144,9 +144,54 @@ a path only if, on that path's runs, **all** of these hold:
 If Assist passes and Draft does not (or the reverse), only the passing prompt changes. The code
 backstop ships regardless.
 
-## Results
+## Results (2026-10-10; ₹17.28 spent, no quota refusal, no failed call)
 
-_To be filled from the runs._
+Results files in `packages/ai/eval/results/` (the harness stamps UTC):
+`assist-academic-2026-10-09-20-18.json`, `assist-academic-opener-2026-10-09-20-20.json`,
+`draft-academic-2026-10-09-20-24.json`. A is the prompt on disk, B the candidate; same models.
+
+| Set (runs) | Wins A–B–tie | Mean A → B | Cited sentences A / B | Shared citation A / B | Dashes (raw) A / B | Stock per 1k words A / B | Intensifiers A / B | run6 / flagged A vs B | Hallucinated A / B | Nothing A / B |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Assist, typed sentence (15) | 1–**8**–6 | 7.30 → **8.23** | 19/30 (63%) / 25/29 (**86%**) | 11 / 4 | 0 / 0 | 6.8 / **11.3** | 5 / 4 | 3/3 vs **6/4** | 0 / 0 | 0 / 0 |
+| Assist, opener (10) | 3–4–3 | 7.40 → 7.80 | 14/20 / 14/19 | 6 / 5 | 0 / 0 | 5.6 / **8.4** | 5 / 4 | 4/7 vs 4/6 | 0 / 0 | 0 / 0 |
+| Draft (5 topics × 2) | **4**–1–5 | **8.55** → 8.30 | 92/122 (75%) / 103/127 (81%) | 30 / 24 | 13 / **7** | 0.95 / **0** | 7 / 6 | 7/8 vs 5/7 | 0 / 0 | 0 / 0 |
+
+Against the criterion:
+
+| | Assist | Draft |
+|---|---|---|
+| 1. Cited sentences ≥ 90% (typed set) | **86%, fails** (up from 63%) | not required |
+| 2. Dashes ≤ 1 per 20 outputs, raw | 0 in 25, passes (A had none either) | **7 in 10, fails** (A: 13) |
+| 3. Stock phrases down ≥ 70% | **up 66% and 49%, fails** | 100% down, passes |
+| 4. Judge: wins ≥ A, mean ≥ A − 0.2 | passes on both sets | **1 against 4, mean −0.25, fails** |
+| 5. Hallucinated, run6/flagged, nothing not up | **run6 6 against 3, fails** (typed); opener equal/down | passes |
+
+**Neither prompt is adopted.** The prompt files are unchanged.
+
+What the runs showed, for the next candidate (a separate round, at the owner's word):
+
+- **A negative rule naming the word did not stop the mini writing it.** The candidate said "Do
+  not begin a sentence with Furthermore, Moreover or Additionally", and the mini opened its
+  second sentence with "Additionally," in 7 of 15 outputs, against 5 of 15 for the prompt on
+  disk. "crucial", "significantly" and "plays a crucial role" also survived their listing. The
+  next candidate should say what to write instead (open the second sentence with its subject, or
+  with the condition that distinguishes it) and leave the banned words unnamed.
+- **The citation-per-sentence rule moved the mini most of the way** (63% → 86%, shared citations
+  11 → 4), and the judge rewarded it (8–1–6, +0.93). The misses are the ones ADR-0146 saw: a
+  first sentence of mechanism with no marker, then both markers on the second.
+- **Copying rose with specificity.** Asking for "the figure, condition or material from the
+  passage" in every sentence produced three more six-word runs. The paraphrase rule and this one
+  pull against each other on a 120-token answer.
+- **On the draft path the style block cost more than it gave.** Stock phrases went to zero and
+  dashes went from 13 to 7 (in 4 of 10 drafts, still), but the judge preferred the current
+  prompt on 4 of 10 pairs. Its reasons for those four call the current draft "tighter and more
+  focused", "more concise", and more specific in its numbers ("0.31 μm, 10^7 K/s"); the
+  candidate's drafts were a little longer (4,360 words against 4,201) and no more specific. The
+  dash rule alone, without the vocabulary list, is the next thing to test there; the backstop
+  already removes the dashes the prompt still writes.
+
+The backstop is what ships from this round: on every path, after it, the student sees no dash
+they did not write.
 
 ## Consequences
 
