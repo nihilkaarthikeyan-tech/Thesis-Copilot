@@ -270,6 +270,28 @@ export function CommandToolbar({
     };
   }, [editor]);
 
+  /**
+   * ADR-0137: the bar is centred on the writing column, not the window, so it never lies over the
+   * tool panel beside the chapter (it hid the Comments tab's Accept button).
+   */
+  const [column, setColumn] = useState<{ left: number; width: number } | null>(null);
+  const open = Boolean(selection || result);
+  useEffect(() => {
+    if (!editor || !open) return;
+    const measure = () => {
+      const main = editor.view.dom.closest('main');
+      if (!main || window.innerWidth < 1024) {
+        setColumn(null);
+        return;
+      }
+      const rect = main.getBoundingClientRect();
+      setColumn({ left: rect.left + rect.width / 2, width: rect.width });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [editor, open]);
+
   /** The command the preview came from, for "Try again". */
   const [lastCommand, setLastCommand] = useState<{ command: string; instruction?: string } | null>(
     null,
@@ -539,6 +561,7 @@ export function CommandToolbar({
   return (
     <aside
       data-testid="command-toolbar"
+      style={column ? { left: column.left, maxWidth: Math.max(320, column.width - 32) } : undefined}
       className="fixed bottom-16 left-1/2 z-30 w-[36rem] max-w-[92vw] -translate-x-1/2 lg:bottom-4 rounded-md border border-line bg-surface p-3 shadow-lg"
     >
       {result ? (

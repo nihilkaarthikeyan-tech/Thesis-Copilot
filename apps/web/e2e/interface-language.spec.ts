@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openHeaderMenu } from './_editor.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -43,7 +44,12 @@ test('switching the interface to Hindi relabels the editor and survives a reload
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('tab', { name: 'चैट', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'इतिहास' })).toBeVisible();
+  // ADR-0137: History lives in the header's ⋯ menu.
+  await openHeaderMenu(page);
+  await expect(
+    page.getByRole('menuitem', { name: 'इतिहास' }).or(page.getByRole('button', { name: 'इतिहास' })),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'बोल्ड (Ctrl+B)' })).toBeVisible();
 
   // Reloaded: the server renders Hindi from the cookie, and the account agrees.
