@@ -5996,3 +5996,34 @@ worker container a JATS request for a Nature Communications article returned 200
 (306k characters). The three production papers that were Springer Nature and abstract-only were
 re-read at the owner's word (an `index-source` job each, as "Fetch PDF" queues it): all three are
 FULL_TEXT now (44, 79 and 23 passages); the one-off script was removed from the server.
+
+## A Kerala programme opening a Karnataka thesis (2026-10-09, ADR-0135)
+
+Seen live: Start writing now on "Barriers to rooftop solar adoption among rural households in
+Karnataka" offered an opener framed by Kerala's SOURA programme (Mathew 2024). Diagnosis: the
+passages first. Under the empty "Chapter 1" there is no scope note, so the Assist query was the
+words "Chapter 1"; on a fresh Karnataka pool the one Karnataka paper ranked eighth and never
+reached the request. A.1 has only "do not apply a finding … to another country without saying
+so", which the live sentence obeyed in the letter.
+
+- **Retrieval (adopted).** For Assist only, on a chapter with no scope note, when the text before
+  the cursor ends in a heading that names no topic or in nothing, the working title stands in
+  for the scope note (`queryScope`, `packages/retrieval/test/untitled-chapter-query.spec.ts`, 5).
+  Chat, cite, edits and typed sentences are searched as before, so the relevance floor is
+  unaffected.
+- **A measure** (`packages/ai/src/builder/setting.ts`, `test/setting.spec.ts`, 13): a sentence
+  naming another state or country than the thesis's scope, with neither comparison wording nor a
+  study reporting its own setting. Reported by `eval/run.ts` for every assist run.
+- **New eval set `--set opener`**, the commonest real path: five theses naming a place, fresh
+  15-paper OpenAlex pools (`eval/fetch-fresh.ts`, `eval/papers/fresh-*.json`), the empty
+  "Chapter 1", title-only memory, today's query and the titled one.
+- **Prompt candidate `assist-setting` (not adopted).** Criterion fixed in the ADR before the run.
+  20 runs a side: mismatched sentences 2 vs 2 (0 vs 1 after the measure stopped counting "For
+  instance, … in northern Ghana"), so criterion 1 (strictly fewer) failed and the judged and
+  copying runs were not spent on. Diagnostic with the Kerala paper second in the request: 0 of 12
+  outputs framed by Kerala from either prompt; Karnataka openers set in Karnataka 0/5 under
+  "Chapter 1", 5/5 under the titled query, for both prompts.
+- A harness fault: the judge's task text read the proposal case's paper list eagerly and failed
+  on every fresh topic; it is now built only for a proposal case.
+
+Cost ₹6.81 on the models (₹5.28 + ₹1.53) and about ₹0.40 of embeddings, against ₹25.

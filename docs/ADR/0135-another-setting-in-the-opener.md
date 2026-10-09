@@ -1,7 +1,8 @@
 # 0135 — A passage from another setting, written as the thesis's own
 
 Date: 2026-10-09
-Status: proposed (criterion fixed before the round; the result is recorded below it)
+Status: accepted — retrieval change adopted; A.1 unchanged (the candidate failed the criterion
+fixed before the round)
 Follows: ADR-0038 (prompts change only by evaluation), ADR-0075 (the copying round and its set),
 ADR-0079 (a round that found nothing to change), ADR-0092 (the first sentence of a new chapter).
 
@@ -39,9 +40,13 @@ and nothing in the sentence says that Kerala is somewhere else.
 
 ## Changes
 
-1. **Code, no prompt (retrieval).** When the chapter has no scope note, `retrievePassages` uses
-   the thesis's working title (`DocumentMemory.scope.workingTitle`) in its place. A chapter with a
-   scope note is unchanged. Tested in `packages/retrieval/test/untitled-chapter-query.spec.ts`.
+1. **Code, no prompt (retrieval).** For an Assist request on a chapter with no scope note, when
+   the text before the cursor ends in a heading that names no topic ("Chapter 1",
+   `isGenericSectionTitle`) or in nothing, `retrievePassages` uses the thesis's working title
+   (`DocumentMemory.scope.workingTitle`) in place of the missing scope note (`queryScope`). A
+   chapter with a scope note, a typed sentence, chat, cite and the edit commands are searched as
+   before, so the relevance floor (`isOffTopic`) never reads the title instead of the student's
+   own words. Tested in `packages/retrieval/test/untitled-chapter-query.spec.ts`.
 2. **A measure in code** (`packages/ai/src/builder/setting.ts`, `unmarkedOtherSettings`): a
    sentence naming an Indian state or a country that the thesis's scope does not name (a state
    thesis owns its country; a country thesis owns its states), with no comparison wording
@@ -91,4 +96,64 @@ Spend limit for the round: ₹25.
 
 ## Result
 
-(Recorded after the run.)
+Real models: Assist `gpt-4.1-mini`, judge `gpt-5-mini`. Result files in `eval/results/`:
+`assist-setting-opener-2026-10-09-11-09.json` and
+`assist-setting-opener-kerala-measured-2026-10-09-11-11.json`.
+
+**`--set opener`, 20 runs per side** (10 cases × 2 samples):
+
+| | current | candidate |
+|---|---|---|
+| mismatched sentences (measure as committed in `fb80db4`) | 2 | 2 |
+| mismatched sentences (measure after `8c64ed2`, see below) | 0 | 1 |
+| first sentence set in the thesis's own place or its country | 9 / 20 | 11 / 20 |
+| answered with a citation / offered nothing | 20 / 0 | 20 / 0 |
+| outputs with a 6+-word run / 8+ | 10 / 5 | 9 / 7 |
+| citations / cited sentences | 39 / 25 | 33 / 22 |
+| intensifiers | 8 | 5 |
+| hallucinated citations / failed calls | 0 / 0 | 0 / 0 |
+
+The as-committed measure counted two of the current prompt's Kenya sentences that were honest
+("For instance, adoption of mobile money in northern Ghana led to …", "… as evidenced by … in
+northern Ghana"); `8c64ed2` adds "for example", "for instance" and "as evidenced" to the
+marking wording, with a test. Recounted from the stored rows, without a new call, the current
+prompt has 0 and the candidate 1 ("In rural Ghana, adoption of mobile money … positively
+influences …").
+
+**Criterion 1 fails either way** (2 against 2, or 0 against 1: not strictly fewer), so the
+candidate cannot pass and A.1 stays as it is. The judge did not score this run: its task text
+built the proposal case's paper list eagerly, which fails on a fresh topic's file (fixed in
+`8c64ed2`), and with criterion 1 already failed the judged opener run and the `copying` run were
+not spent on. The candidate stays in `eval/candidates/` as one that did not win.
+
+**Diagnostic, outside the criterion: the Kerala paper in the request** (`--set opener-kerala`,
+the Karnataka thesis with the pool's Kerala paper put second, as Mathew 2024 was in the live
+request; 2 conditions × 3 samples, no judge): 0 mismatched sentences from either prompt in 12
+outputs. Under the "Chapter 1" query neither opened in Karnataka (0/3 each; both opened on solar
+energy in general, from Shakeel et al. 2023); under the titled query every output opened in
+Karnataka from Bagla 2026 (3/3 each).
+
+**What the evidence says.** In 26 real outputs the current prompt never framed the thesis with
+another place, with or without a Kerala passage in the request. The live fault is rare, and its
+precondition is the passages: with the query "Chapter 1" the Karnataka paper does not reach the
+request, so the model opens from whatever does. The retrieval change puts the thesis's own
+paper first: Karnataka openers set in Karnataka went from 0 of 5 to 5 of 5 across both sets,
+for both prompts. In the other four theses the change mattered less: their pools already lead
+with own-setting papers (Punjab, Tamil Nadu), or have none from the named place (the Kerala
+pool has no Kerala paper; in Kenya several outputs name Kenya only in the second sentence).
+
+Limits: the fixture pools are 2021 onwards and built by two OpenAlex searches, not the product's
+model-written queries; the live library held an older paper (Pradeep 2017). The measure lists
+states and countries only.
+
+**Cost:** ₹6.81 on the models (₹5.28 the opener round, ₹1.53 the diagnostic), plus about ₹0.40
+of Voyage embeddings for the fixtures. Limit ₹25.
+
+## Decision
+
+1. Retrieval change adopted (change 1).
+2. A.1 unchanged; `assist-setting` not adopted.
+3. The setting measure is reported for every assist run of the harness; it is not a production
+   filter. A sentence like "In Kerala, …" is a fault only in framing, and in 26 outputs the
+   current prompt wrote none, so a filter would mostly remove honest comparisons.
+4. The next assist round includes `--set opener` alongside `copying`.
