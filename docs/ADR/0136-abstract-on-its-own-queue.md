@@ -90,3 +90,5 @@ thesis's creation; a passage's time is its UUID v7):
   13.9 s in one thesis) added the same papers twice. The second copy's
   `resolve-reference` job has the same id as the first's and is dropped, so the copy stays
   PENDING ("Looking it up…") for good. Five such pairs in each of two measured theses.
+  **Fixed by ADR-0138** (2026-10-09): every add takes a per-thesis lock, and migration 0053 plus a
+  step in `find-sources` clear the copies already made.
