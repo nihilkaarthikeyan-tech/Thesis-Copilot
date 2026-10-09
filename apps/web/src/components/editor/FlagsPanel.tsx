@@ -321,6 +321,7 @@ export function FlagsPanel({
     <section data-testid="flags-panel">
       <ExaminerReview
         chapterId={chapterId}
+        editor={editor}
         request={request}
         save={save}
         onNotice={onNotice}
