@@ -14,6 +14,8 @@
 import type { Editor } from '@tiptap/core';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { AddIntoPicker, useAddInto } from '@/components/sources/AddInto';
+import { withCollection } from '@/lib/add-into';
 import { ApiError, api } from '@/lib/api';
 import { automaticLocaleLabel } from '@/lib/citation-locale';
 import { ReadingDepth } from './ReadingDepth';
@@ -321,6 +323,8 @@ type Outcome = {
  * unverified one says so and stays out of the library, which is the whole point of the feature.
  */
 function PasteParse({ documentId, onAdded }: { documentId: string; onAdded: () => void }) {
+  /** R18 (ADR-0129): an accepted reference is filed into the thesis's "Add into". */
+  const addInto = useAddInto(documentId);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [outcomes, setOutcomes] = useState<Outcome[] | null>(null);
@@ -349,7 +353,12 @@ function PasteParse({ documentId, onAdded }: { documentId: string; onAdded: () =
     try {
       await api(`/documents/${documentId}/citations/accept`, {
         method: 'POST',
-        body: JSON.stringify({ reference: outcome.raw, doi: outcome.match?.doi ?? null }),
+        body: JSON.stringify(
+          withCollection(
+            { reference: outcome.raw, doi: outcome.match?.doi ?? null },
+            addInto.collectionId,
+          ),
+        ),
       });
       setAdded((prev) => new Set(prev).add(outcome.raw));
       onAdded();
@@ -388,6 +397,12 @@ function PasteParse({ documentId, onAdded }: { documentId: string; onAdded: () =
         <p role="alert" className="mt-2 text-xs text-warn">
           {error}
         </p>
+      ) : null}
+
+      {outcomes?.some((o) => o.verified) ? (
+        <div className="mt-3">
+          <AddIntoPicker addInto={addInto} compact testId="paste-add-into" />
+        </div>
       ) : null}
 
       {outcomes ? (

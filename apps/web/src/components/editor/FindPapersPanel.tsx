@@ -21,6 +21,8 @@
 import { newCitationKey } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AddIntoPicker, useAddInto } from '@/components/sources/AddInto';
+import { type FiledIn, filedNotice, withCollection } from '@/lib/add-into';
 import { ApiError, api } from '@/lib/api';
 import { type MatchedPassage, passageRuns } from '@/lib/passage';
 import { requestReadBeside } from '@/lib/read-beside';
@@ -111,6 +113,8 @@ export function FindPapersPanel({
   const [library, setLibrary] = useState<LibrarySource[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** R18 (ADR-0129): the thesis's "Add into"; Add to library files the paper there. */
+  const addInto = useAddInto(documentId);
 
   useEffect(() => setRecent(readRecent()), []);
 
@@ -177,10 +181,13 @@ export function FindPapersPanel({
     setAdding(result.title);
     setError(null);
     try {
-      await api(`/documents/${documentId}/sources/resolve`, {
+      const added = await api<{ filedIn?: FiledIn }>(`/documents/${documentId}/sources/resolve`, {
         method: 'POST',
-        body: JSON.stringify({ references: [result.reference] }),
+        body: JSON.stringify(
+          withCollection({ references: [result.reference] }, addInto.collectionId),
+        ),
       });
+      if (added.filedIn) setNotice(`Added.${filedNotice(added.filedIn)}`);
       await loadLibrary();
     } catch (e) {
       setError(
@@ -249,6 +256,7 @@ export function FindPapersPanel({
           {busy ? 'Searching…' : 'Search'}
         </button>
       </form>
+      <AddIntoPicker addInto={addInto} compact testId="papers-add-into" />
 
       {results === null && !busy ? (
         <div className="grid grid-cols-1 gap-1 text-xs">

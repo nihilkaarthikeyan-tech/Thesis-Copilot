@@ -185,7 +185,8 @@ test('a thin library: the steps show while it works, the answer comes in parts, 
 
   await answer.getByTestId('chat-research-add-all').click();
   await expect(answer.getByTestId('chat-research-paper').first()).toContainText('Added.');
-  expect(resolved).toEqual([{ references: PAPERS.map((p) => p.reference) }]);
+  // R18 (ADR-0129): the thesis's "Add into" goes with it; none chosen here, so null.
+  expect(resolved).toEqual([{ references: PAPERS.map((p) => p.reference), collectionId: null }]);
   await expect(answer.getByTestId('chat-research-add-all')).toHaveCount(0);
 });
 

@@ -13,8 +13,10 @@ import katex from 'katex';
 import { History, Pencil, Plus, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { AddIntoPicker, useAddInto } from '@/components/sources/AddInto';
 import type { MessageKey, Vars } from '@/i18n';
 import { useLanguage, useT } from '@/i18n/react';
+import { withCollection } from '@/lib/add-into';
 import { ApiError, api, type ProblemDetails } from '@/lib/api';
 import { answerPlainText, isRefusalAnswer } from '@/lib/chat-copy';
 import {
@@ -430,6 +432,8 @@ export function ChatPanel({
   const [steps, setSteps] = useState<Step[]>([]);
   /** Papers from an answer's abstracts the student has added, by DOI or title. */
   const [addedPapers, setAddedPapers] = useState<Set<string>>(() => new Set());
+  /** R18 (ADR-0129): the thesis's "Add into"; every Add in the chat files the paper there. */
+  const addInto = useAddInto(documentId);
   /**
    * ADR-0080: the next library question is deep research — planned, searched per part, answered
    * at length, on its own allowance. Switched off again once asked: each one is a deliberate spend.
@@ -855,10 +859,11 @@ export function ChatPanel({
     }
   }
 
+  /** R18 (ADR-0129): every Add here files into the thesis's "Add into", shown above the results. */
   function resolveReference(reference: { raw: string; doi?: string }) {
     return api(`/documents/${documentId}/sources/resolve`, {
       method: 'POST',
-      body: JSON.stringify({ references: [reference] }),
+      body: JSON.stringify(withCollection({ references: [reference] }, addInto.collectionId)),
     });
   }
 
@@ -890,7 +895,9 @@ export function ChatPanel({
     try {
       await api(`/documents/${documentId}/sources/resolve`, {
         method: 'POST',
-        body: JSON.stringify({ references: papers.map((p) => p.reference) }),
+        body: JSON.stringify(
+          withCollection({ references: papers.map((p) => p.reference) }, addInto.collectionId),
+        ),
       });
       setAddedPapers((set) => {
         const next = new Set(set);
@@ -1162,6 +1169,9 @@ export function ChatPanel({
 
       {scope === 'web' && webResults ? (
         <div data-testid="web-results" className="mb-2 grid gap-2">
+          {webResults.length > 0 ? (
+            <AddIntoPicker addInto={addInto} compact testId="chat-add-into" />
+          ) : null}
           {webResults.length === 0 ? (
             <p className="px-1 text-sm text-muted">
               Nothing came back for that. Try naming the method or the population rather than asking

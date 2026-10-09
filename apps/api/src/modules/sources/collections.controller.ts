@@ -8,11 +8,14 @@
  *   DELETE /collections/:id                        the papers stay in the library
  *   POST   /collections/:id/sources                { sourceIds } — add
  *   POST   /collections/:id/sources/remove         { sourceIds } — take out
+ *   GET    /documents/:id/add-into                  the thesis's "Add into" (R18, ADR-0129)
+ *   PUT    /documents/:id/add-into                  { collectionId | null }
  */
 
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
+import { LibraryFilingService } from '../../common/library-filing.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { CollectionsService } from './collections.service.js';
@@ -22,6 +25,7 @@ const nameBody = z.object({ name: z.string().max(200) });
 const orderBody = z.object({ ids: z.array(z.string().uuid()).max(500) });
 /** A library is at most a few hundred papers; "select all" on it fits. */
 const sourcesBody = z.object({ sourceIds: z.array(z.string().uuid()).min(1).max(1000) });
+const addIntoBody = z.object({ collectionId: z.string().uuid().nullable() });
 
 function parse<T>(schema: z.ZodType<T>, body: unknown, message: string): T {
   const parsed = schema.safeParse(body);
@@ -32,7 +36,26 @@ function parse<T>(schema: z.ZodType<T>, body: unknown, message: string): T {
 @Controller()
 @UseGuards(SessionGuard)
 export class CollectionsController {
-  constructor(private readonly collections: CollectionsService) {}
+  constructor(
+    private readonly collections: CollectionsService,
+    private readonly filing: LibraryFilingService,
+  ) {}
+
+  /** R18 (ADR-0129): the collection every add on this thesis files into, kept per thesis. */
+  @Get('documents/:id/add-into')
+  addInto(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {
+    return this.filing.stored(user.id, documentId);
+  }
+
+  @Put('documents/:id/add-into')
+  setAddInto(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
+    const { collectionId } = parse(addIntoBody, body, 'Choose a collection, or none.');
+    return this.filing.store(user.id, documentId, collectionId);
+  }
 
   @Get('documents/:id/collections')
   list(@CurrentUser() user: SessionUser, @Param('id') documentId: string) {

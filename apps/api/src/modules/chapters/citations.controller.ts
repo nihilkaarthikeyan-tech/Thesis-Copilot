@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
+import { LibraryFilingService } from '../../common/library-filing.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { CitationsService } from './citations.service.js';
@@ -36,6 +37,8 @@ const parseBody = z.object({ text: z.string().trim().min(4).max(20_000) });
 const acceptBody = z.object({
   reference: z.string().trim().min(4).max(1_000),
   doi: z.string().trim().max(200).nullable().optional(),
+  /** R18 (ADR-0129): the collection to file the paper into; absent or null, the library only. */
+  collectionId: z.string().uuid().nullable().optional(),
 });
 
 @Controller('documents/:id')
@@ -44,6 +47,7 @@ export class DocumentCitationsController {
   constructor(
     private readonly citations: CitationsService,
     private readonly citeParse: CiteParseService,
+    private readonly filing: LibraryFilingService,
   ) {}
 
   /** Labels, bibliography and the FR-5.4 findings for the whole document. */
@@ -143,9 +147,21 @@ export class DocumentCitationsController {
   /** The student accepted one: it enters the library through the normal resolution path. */
   @Post('citations/accept')
   @HttpCode(200)
-  accept(@CurrentUser() user: SessionUser, @Param('id') documentId: string, @Body() body: unknown) {
+  async accept(
+    @CurrentUser() user: SessionUser,
+    @Param('id') documentId: string,
+    @Body() body: unknown,
+  ) {
     const parsed = acceptBody.safeParse(body);
     if (!parsed.success) throw new ValidationError('Invalid reference', parsed.error.issues);
-    return this.citeParse.accept(user, documentId, parsed.data.reference, parsed.data.doi ?? null);
+    const target = await this.filing.target(user.id, documentId, parsed.data.collectionId);
+    const result = await this.citeParse.accept(
+      user,
+      documentId,
+      parsed.data.reference,
+      parsed.data.doi ?? null,
+    );
+    const filedIn = await this.filing.file(documentId, target, [result.sourceId]);
+    return { ...result, filedIn };
   }
 }

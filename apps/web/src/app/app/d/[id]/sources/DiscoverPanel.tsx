@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type FiledIn, filedNotice, withCollection } from '@/lib/add-into';
 import { ApiError, api } from '@/lib/api';
 import { JOB_EMAIL_NOTE, useJobEmailSetting, watchingParam } from '@/lib/job-watch';
 import { ClaimsMap } from './ClaimsMap';
@@ -190,8 +191,11 @@ export function DiscoverPanel({
   documentId,
   hasLibrary,
   onAdded,
+  addInto = null,
 }: {
   documentId: string;
+  /** R18 (ADR-0129): the library's "Add into"; picked papers are filed there as they are added. */
+  addInto?: string | null;
   /** Path B expansion needs resolved sources to expand from. */
   hasLibrary: boolean;
   onAdded: () => void;
@@ -264,12 +268,15 @@ export function DiscoverPanel({
     setBusy('select');
     setError(null);
     try {
-      const result = await api<{ added: number; alreadyPresent: number }>(
+      const result = await api<{ added: number; alreadyPresent: number; filedIn?: FiledIn }>(
         `/documents/${documentId}/search/${run.runId}/select`,
-        { method: 'POST', body: JSON.stringify({ candidateIds: [...picked] }) },
+        {
+          method: 'POST',
+          body: JSON.stringify(withCollection({ candidateIds: [...picked] }, addInto)),
+        },
       );
       setNotice(
-        `${result.added} added to the library${result.alreadyPresent ? ` (${result.alreadyPresent} already there)` : ''}. They are being looked up and indexed.`,
+        `${result.added} added to the library${result.alreadyPresent ? ` (${result.alreadyPresent} already there)` : ''}. They are being looked up and indexed.${filedNotice(result.filedIn)}`,
       );
       setPicked(new Set());
       await loadRun(run.runId);

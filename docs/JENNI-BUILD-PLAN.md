@@ -289,7 +289,7 @@ Jenni on a phone, Jenni's Tone of Voice and Proofread results, error and offline
 | R15 | Done 2026-10-07 — Edit details on each library paper: a form by kind; saved to the CSL record and the row, so every citation follows | ADR-0102 |
 | R16 | Done 2026-10-07 — Paste an ID: DOI, arXiv, PubMed, ISBN → preview → Add to library (DOIs through the reference pipeline; books from Open Library) | ADR-0103 |
 | R17 | Done 2026-10-07 — filters by year, access and kind; a details drawer (abstract, ↑ ↓, Cite in my chapter, Ask AI with questions, Read, Edit details) | ADR-0104 |
-| R18 | Done 2026-10-07 — "Add into" (a collection or a new one) on the library's add row; files, Zotero, PDFs and IDs go straight in. Discover and the editor's adds not yet | ADR-0105 |
+| R18 | Done 2026-10-07 — "Add into" (a collection or a new one) on the library's add row; files, Zotero, PDFs and IDs go straight in. 2026-10-09: Discover, the Papers tab, chat's Add / Add all and a pasted reference send the choice too; kept per thesis | ADR-0105, ADR-0129 |
 | R19 | Done 2026-10-07 — "Sources in this thesis (N)" on the Citations tab: every cited paper, how often and where, Read, and Keep in my library (one or all) for papers found for the student | ADR-0106 |
 | R20 | Done 2026-10-07 — an uploaded PDF names itself from its first page (printed DOI → its record; else title, byline with initials, year, abstract; broken words joined); no more "still looking up" for ever | ADR-0107 |
 | R21 | Done 2026-10-07 — Read beside opens at the cited passage, marked | ADR-0108 |
@@ -341,7 +341,7 @@ missing. Nothing is "Not done".
 | R15 | Edit a paper's details | Done | 0102 | — |
 | R16 | Add by ID | Done | 0103 | — |
 | R17 | Library filters and drawer | Done | 0104 | — |
-| R18 | Save into a collection while adding | **Partly** | 0105 | Every add on the library screen files in. **Open:** papers added from Discover and from the editor (chat's Add, Find papers, Cite here) are not filed into the chosen collection |
+| R18 | Save into a collection while adding | Done | 0105, 0129 | — (Discover, Papers tab, chat, pasted references file in too since 2026-10-09; the choice is kept per thesis) |
 | R19 | Sources in this thesis | Done | 0106 | — |
 | R20 | PDF upload quality | Done | 0107 | — |
 | R21 | Open quote beside | Done | 0108 | — |
@@ -366,7 +366,7 @@ missing. Nothing is "Not done".
 | R40 | Citations side by side | Done | 0117 | A two-source Word field opened in real Word is the owner's check |
 | R41 | Dark mode and typography | Done | 0090 | Dark is B (warm Flexoki, Inter, our blue); light kept as it was, by the owner's choice |
 
-**Totals: 35 done, 6 partly (R5, R8, R18, R24, R30, R32), 0 not done.** Two of the 35 are built
+**Totals: 36 done, 5 partly (R5, R8, R24, R30, R32), 0 not done** (R18 finished 2026-10-09, ADR-0129). Two of the 35 are built
 but wait on the owner to be used (R37 flag and price, R39 store submission). Of the three owner
 decisions: **D3** answered (R37 built, priced, left off); **D2** taken by the agent under
 ADR-0059 — "What changed and why" built (ADR-0095), region explanations built without a new prompt
@@ -385,7 +385,7 @@ three open items overlap too (18 ↔ row 38, 37 ↔ D1). De-duplicated:
    `apps/web/e2e/_measure`.
 2. R5b: an outline prompt (A.9 candidate) that writes H3 sub-sections *and* wins its evaluation
    (`packages/ai/eval/candidates/outline-h3*.md` both lost 0–2).
-3. R18: file papers added from Discover and from the editor (chat's Add, Find papers, Cite here)
+3. ~~R18~~ **done 2026-10-09** (ADR-0129): file papers added from Discover and from the editor (chat's Add, Find papers, Cite here)
    into the collection chosen in "Add into".
 4. Row 55: strengths and questions for the author on the examiner review — a change to
    `examiner.md`, so an ADR and an eval round (rule 6).
