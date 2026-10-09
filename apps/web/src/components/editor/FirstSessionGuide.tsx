@@ -70,6 +70,8 @@ export function FirstSessionGuide({
   onShowSources,
   onHowItWorks,
   onVisibleChange,
+  onStepChange,
+  forceVisible = false,
   className,
 }: {
   documentId: string;
@@ -80,6 +82,14 @@ export function FirstSessionGuide({
   onHowItWorks?: () => void;
   /** Whether the guide is on screen, so the editor can leave out the hint it replaces. */
   onVisibleChange?: (visible: boolean) => void;
+  /** ADR-0137: the step the student is on while the guide is showing, for the status line. */
+  onStepChange?: (label: string | null) => void;
+  /**
+   * ADR-0137: drawn even when put away with Hide or finished — the student asked for it (the
+   * status line's Show, or First steps in the editor's menu). It reports itself as not visible,
+   * so nothing else waits on it.
+   */
+  forceVisible?: boolean;
   className?: string;
 }) {
   const { t } = useT();
@@ -196,7 +206,11 @@ export function FirstSessionGuide({
   useEffect(() => {
     onVisibleChange?.(visible);
   }, [visible, onVisibleChange]);
-  if (!visible || !current) return null;
+  const stepLabel = visible && current ? current.label : null;
+  useEffect(() => {
+    onStepChange?.(stepLabel);
+  }, [stepLabel, onStepChange]);
+  if (!visible && !forceVisible) return null;
 
   return (
     <section
@@ -236,31 +250,35 @@ export function FirstSessionGuide({
             </li>
           ))}
         </ol>
-        <button
-          type="button"
-          className="shrink-0 text-xs text-muted underline"
-          onClick={() => {
-            write(key('hidden', documentId));
-            setHidden(true);
-          }}
-        >
-          {t('guide.hide')}
-        </button>
+        {visible ? (
+          <button
+            type="button"
+            className="shrink-0 text-xs text-muted underline"
+            onClick={() => {
+              write(key('hidden', documentId));
+              setHidden(true);
+            }}
+          >
+            {t('guide.hide')}
+          </button>
+        ) : null}
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p className="text-[13px] text-muted" data-testid="guide-detail">
-          {current.detail}
-          {current.id === 'suggest' && onHowItWorks ? (
-            <>
-              {' '}
-              <button type="button" className="underline" onClick={onHowItWorks}>
-                {t('guide.howItWorks')}
-              </button>
-            </>
-          ) : null}
-        </p>
-        {current.action}
-      </div>
+      {current ? (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p className="text-[13px] text-muted" data-testid="guide-detail">
+            {current.detail}
+            {current.id === 'suggest' && onHowItWorks ? (
+              <>
+                {' '}
+                <button type="button" className="underline" onClick={onHowItWorks}>
+                  {t('guide.howItWorks')}
+                </button>
+              </>
+            ) : null}
+          </p>
+          {current.action}
+        </div>
+      ) : null}
     </section>
   );
 }

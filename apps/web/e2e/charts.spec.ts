@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { openFormatMore } from './_editor.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -49,6 +50,7 @@ test('a chart is drawn from typed numbers, inserted as a figure, and can be edit
   await page.locator('.thesis-editor p').first().click();
   await page.keyboard.type('Uptake differed between the districts. ');
 
+  await openFormatMore(page);
   await page.getByTestId('fmt-chart').click();
   const dialog = page.getByTestId('chart-dialog');
   await expect(dialog).toBeVisible();
@@ -83,6 +85,7 @@ test('a chart is drawn from typed numbers, inserted as a figure, and can be edit
 
   // Selecting the chart offers to edit it; the change is redrawn and stored.
   await img.click();
+  await openFormatMore(page);
   const chartButton = page.getByTestId('fmt-chart');
   await expect(chartButton).toHaveAccessibleName('Edit chart');
   await chartButton.click();
@@ -125,6 +128,7 @@ test('a chart starts from the table the cursor is in, and can be a line with a l
     if (cell !== '9') await page.keyboard.press('Tab');
   }
 
+  await openFormatMore(page);
   await page.getByTestId('fmt-chart').click();
   const dialog = page.getByTestId('chart-dialog');
   await expect(dialog).toBeVisible();

@@ -90,7 +90,7 @@ test('the editor, the thesis list and the outline fit their boxes on a laptop an
   const check = async (where: string) => {
     for (const fault of await page.evaluate(measureLayout, false)) found.push({ where, ...fault });
   };
-  const TABS = ['sources', 'papers', 'citations', 'chat', 'flags', 'review'];
+  const TABS = ['chat', 'sources', 'papers', 'citations', 'flags', 'review'];
 
   for (const width of [1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });

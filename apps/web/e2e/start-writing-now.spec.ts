@@ -45,6 +45,8 @@ test('from the thesis list, with no title typed: an untitled thesis opens in the
   await expect(editor).toContainText('Fish drying in coastal villages');
 
   // ADR-0073: while the next-step guide shows, it is the one card; its last step is planning.
+  // ADR-0137: the cards sit behind the status line's Show.
+  await page.getByTestId('status-line-toggle').click();
   const guide = page.getByTestId('first-session-guide');
   await expect(guide).toBeVisible();
   await expect(page.getByTestId('add-proposal')).toHaveCount(0);
@@ -95,6 +97,7 @@ test('from /app/new, a typed title is kept and the editor opens', async ({ page,
   });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
   // ADR-0073: the guide, whose last step is planning, stands in for the proposal prompt.
+  await page.getByTestId('status-line-toggle').click();
   await expect(page.getByTestId('first-session-guide')).toBeVisible();
 
   await page.goto('/app');

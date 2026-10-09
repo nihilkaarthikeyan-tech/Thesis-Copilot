@@ -103,14 +103,19 @@ function placeCursorInSection(editor: Editor, title: string): void {
     .run();
 }
 
+/** ADR-0137: the plan's state, for the editor's one-line status above the text. */
+export type PlanState = 'planning' | 'planned' | 'notPlanned' | null;
+
 export function SectionGuide({
   documentId,
   chapterId,
   editor,
+  onState,
 }: {
   documentId: string;
   chapterId: string;
   editor: Editor | null;
+  onState?: (state: PlanState) => void;
 }) {
   const { t } = useT();
   const [view, setView] = useState<OutlineView | null>(null);
@@ -161,6 +166,19 @@ export function SectionGuide({
 
   const row = view?.chapters.find((c) => c.id === chapterId) ?? null;
   const node = row && view ? findNode(view.outline, row.outlineNodeId) : null;
+
+  const planState: PlanState = !view
+    ? null
+    : view.generating
+      ? 'planning'
+      : node
+        ? 'planned'
+        : view.canPlanFromTitle
+          ? 'notPlanned'
+          : null;
+  useEffect(() => {
+    onState?.(planState);
+  }, [planState, onState]);
 
   useEffect(() => {
     if (!node) return;

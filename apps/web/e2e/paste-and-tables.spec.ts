@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openFormatMore } from './_editor.js';
 import { tinyPng } from './_images.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
@@ -54,6 +55,7 @@ test('a pasted picture becomes a figure; merged cells keep their shape in the ex
   await cells.nth(0).click();
   await page.keyboard.type('Merged heading');
   await cells.nth(1).click({ modifiers: ['Shift'] });
+  await openFormatMore(page);
   await page.getByTestId('fmt-merge-cells').click();
   await expect(editor.locator('table tr').first().locator('[colspan="2"]')).toHaveCount(1);
   await expect(page.getByTestId('fmt-split-cell')).toBeVisible();

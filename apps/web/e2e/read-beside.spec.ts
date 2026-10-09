@@ -73,7 +73,8 @@ test('on a wide screen the Sources tab opens the PDF in a pane beside the chapte
 
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  // The Sources tab is the default.
+  // ADR-0137: the panel opens on Chat; Sources is one press away on the rail.
+  await page.getByRole('tab', { name: 'sources', exact: true }).click();
   const read = page.getByTestId('source-read-pdf');
   await expect(read).toBeVisible({ timeout: 30_000 });
   await read.click();

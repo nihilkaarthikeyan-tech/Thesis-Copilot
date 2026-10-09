@@ -74,7 +74,7 @@ test('layout audit: nothing sticks out, nothing is cut, no sideways scroll', asy
     `${d}/build`,
     `${d}/write/${CHAPTER}`,
   ];
-  const TABS = ['sources', 'papers', 'citations', 'chat', 'check', 'comments'];
+  const TABS = ['chat', 'sources', 'papers', 'citations', 'check', 'comments'];
 
   const report: Array<{ route: string; width: number; faults: LayoutFault[] }> = [];
   for (const width of WIDTHS) {

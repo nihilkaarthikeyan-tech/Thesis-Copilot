@@ -1,5 +1,6 @@
 import { inflateRawSync } from 'node:zlib';
 import { expect, type Page, test } from '@playwright/test';
+import { openFormatMore } from './_editor.js';
 import { tinyPng } from './_images.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
@@ -69,6 +70,7 @@ test('the thesis comes out as a LaTeX project and as a web page', async ({ page,
   await page.locator('.thesis-editor p').first().click();
   // TeX's special characters, which the LaTeX export has to escape.
   await page.keyboard.type('Uptake rose 40% in R&D_2 districts. ');
+  await openFormatMore(page);
   await page.getByRole('button', { name: 'Display equation' }).click();
   await page.locator('#inline-prompt-field').fill('E = mc^2');
   await page.getByTestId('inline-prompt-apply').click();

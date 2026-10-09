@@ -307,6 +307,8 @@ test.describe('Stage 4 chapter setup', () => {
     // The chapter is the paper's own first section, not the "Chapter 1" placeholder (FR-3.3).
     await expect(page.locator('.thesis-editor h1').first()).not.toHaveText('Chapter 1');
 
+    // ADR-0137: the panel opens on Chat; Sources is a rail item.
+    await page.getByRole('tab', { name: 'sources', exact: true }).click();
     const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
     await expect(panel.getByText(/Suggestions .* every source in the library/)).toBeVisible({
       timeout: 60_000,
@@ -361,6 +363,8 @@ test.describe('Stage 4 citations', () => {
     await expect(editor).toBeVisible({ timeout: 20_000 });
 
     // Both sources indexed and pinned, so retrieval has passages to offer.
+    // ADR-0137: the panel opens on Chat; Sources is a rail item.
+    await page.getByRole('tab', { name: 'sources', exact: true }).click();
     const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
     const boxes = panel.locator('input[type=checkbox]');
     await expect(boxes).toHaveCount(2, { timeout: 120_000 });
@@ -444,6 +448,8 @@ test.describe('Stage 4 citations', () => {
     const editor = page.locator('.thesis-editor');
     await expect(editor).toBeVisible({ timeout: 20_000 });
     // Wait for the library to finish resolving, or the picker has nothing to offer.
+    // ADR-0137: the panel opens on Chat; Sources is a rail item.
+    await page.getByRole('tab', { name: 'sources', exact: true }).click();
     const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
     await expect(panel.locator('input[type=checkbox]')).toHaveCount(2, { timeout: 120_000 });
 
@@ -515,6 +521,8 @@ test.describe('Stage 4 draft mode', () => {
     const editor = page.locator('.thesis-editor');
     await expect(editor).toBeVisible({ timeout: 20_000 });
 
+    // ADR-0137: the panel opens on Chat; Sources is a rail item.
+    await page.getByRole('tab', { name: 'sources', exact: true }).click();
     const panel = page.getByRole('complementary').filter({ hasText: 'sources' });
     await expect(panel.locator('input[type=checkbox]')).toHaveCount(2, { timeout: 120_000 });
     await panel.getByRole('button', { name: 'Pin all' }).click();

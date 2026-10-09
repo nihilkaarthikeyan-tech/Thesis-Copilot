@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { docxEntry } from './_docx.js';
+import { openFormatMore } from './_editor.js';
 import { type LayoutFault, measureLayout, settle } from './_layout.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
@@ -67,6 +68,7 @@ test('colours, a contents block and a rule insert, fit every width, and reach th
       ['fmt-text-color', 'text-color-picker'],
       ['fmt-highlight', 'highlight-picker'],
     ] as const) {
+      await openFormatMore(page);
       await page.getByTestId(button).click();
       const box = await page.getByTestId(panel).boundingBox();
       expect(box, `${width} ${panel}`).not.toBeNull();
@@ -112,10 +114,12 @@ test('colours, a contents block and a rule insert, fit every width, and reach th
   };
   await editor.click();
   await selectWord('sharply');
+  await openFormatMore(page);
   await page.getByTestId('fmt-text-color').click();
   await page.getByTestId('text-color-red').click();
   await expect(editor.locator('span[data-text-color="red"]')).toHaveText('sharply');
   await selectWord('decade');
+  await openFormatMore(page);
   await page.getByTestId('fmt-highlight').click();
   await page.getByTestId('highlight-green').click();
   await expect(editor.locator('mark[data-color="green"]')).toHaveText('decade');

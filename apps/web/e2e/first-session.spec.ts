@@ -53,10 +53,14 @@ test('the editor says what the library is doing, and the guide moves the student
   await expect(page).toHaveURL(/\/write\/[0-9a-f-]{36}$/, { timeout: 30_000 });
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
 
+  // ADR-0137: the status line says it in a few words; Show opens the same three parts.
+  await page.getByTestId('status-line-toggle').click();
   const line = page.getByTestId('library-filling');
   await expect(line).toContainText('Finding papers on your topic');
   await expect(line).toContainText('Found 5 papers · reading 5', { timeout: 10_000 });
   await expect(line).toContainText('5 papers ready', { timeout: 10_000 });
+  await expect(page.getByTestId('status-line-text')).toContainText('5 papers found');
+  await expect(page.getByTestId('status-line-text')).toContainText('5 ready to cite');
 
   const guide = page.getByTestId('first-session-guide');
   await expect(guide.locator('[aria-current="step"]')).toHaveAttribute('data-step', 'write');

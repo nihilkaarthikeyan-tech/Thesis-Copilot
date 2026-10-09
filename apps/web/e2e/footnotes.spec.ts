@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { docxEntry } from './_docx.js';
+import { openFormatMore } from './_editor.js';
 import { API_URL, establishSession, freshEmail } from './_session.js';
 
 /**
@@ -30,6 +31,7 @@ test('a footnote is inserted, numbered, edited, and exported as a real footnote'
 
   await editor.locator('p').first().click();
   await page.keyboard.type('Uptake stayed low');
+  await openFormatMore(page);
   await page.getByTestId('fmt-footnote').click();
   await page
     .getByTestId('inline-prompt')
@@ -37,6 +39,7 @@ test('a footnote is inserted, numbered, edited, and exported as a real footnote'
     .fill('The survey predates the 2020 subsidy.');
   await page.getByTestId('inline-prompt-apply').click();
   await page.keyboard.type(' in both districts');
+  await openFormatMore(page);
   await page.getByTestId('fmt-footnote').click();
   await page.locator('#inline-prompt-field').fill('District office data.');
   await page.getByTestId('inline-prompt-apply').click();
@@ -49,7 +52,9 @@ test('a footnote is inserted, numbered, edited, and exported as a real footnote'
 
   // Selecting a footnote and pressing the button edits it.
   await refs.nth(1).click();
+  await openFormatMore(page);
   await expect(page.getByTestId('fmt-footnote')).toHaveAccessibleName('Edit footnote');
+  await openFormatMore(page);
   await page.getByTestId('fmt-footnote').click();
   await expect(page.locator('#inline-prompt-field')).toHaveValue('District office data.');
   await page

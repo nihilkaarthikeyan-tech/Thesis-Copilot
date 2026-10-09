@@ -32,7 +32,17 @@ import {
 } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { ListTree } from 'lucide-react';
+import {
+  Ellipsis,
+  Library,
+  ListChecks,
+  ListTree,
+  type LucideIcon,
+  MessageSquare,
+  MessageSquareText,
+  Quote,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -102,7 +112,6 @@ import { FirstRunHint } from '../onboarding/FirstRunHint';
 import { HowSuggestionsWork } from '../onboarding/HowSuggestionsWork';
 import { applyFontStyle, ThemeToggle } from '../theme';
 import { UsageMenu } from '../UsageMenu';
-import { Button } from '../ui/button';
 import { Kbd } from '../ui/primitives';
 import { BlockMenu } from './BlockMenu';
 import { ChapterContents } from './ChapterContents';
@@ -124,7 +133,7 @@ import { type Flag, FlagsPanel } from './FlagsPanel';
 import { type FormatActions, FormatToolbar, WordCount } from './FormatToolbar';
 import { useGuidedInput } from './GuidedInput';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
-import { LibraryFilling, PAPERS_AWAITED } from './LibraryFilling';
+import { LibraryFilling, type LibraryProgress, PAPERS_AWAITED } from './LibraryFilling';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { PasteMenu } from './PasteMenu';
 import { ProofreadPanel } from './ProofreadPanel';
@@ -132,12 +141,13 @@ import { ReadBesidePane } from './ReadBesidePane';
 import { ReaderHandoffBar } from './ReaderHandoff';
 import { ReviewMode } from './ReviewMode';
 import { ReviewPanel } from './ReviewPanel';
-import { SectionGuide } from './SectionGuide';
+import { type PlanState, SectionGuide } from './SectionGuide';
 import { ShareButton } from './ShareButton';
 import { SlashMenu } from './SlashMenu';
 import { LIBRARY_CHANGED, SourcePins } from './SourcePins';
 import { SourceQualityPanel } from './SourceQualityPanel';
 import { SourceSettings } from './SourceSettings';
+import { StatusLine } from './StatusLine';
 import { SuggestionBar } from './SuggestionBar';
 import { ThesisSwitcher } from './ThesisSwitcher';
 import { UNDO_PARAM, VersionHistory } from './VersionHistory';
@@ -181,8 +191,35 @@ const STATUS_LABEL: Record<AutosaveStatus, MessageKey> = {
   error: 'editor.status.error',
 };
 
-/** The panel tabs, in order; each label is `editor.tab.<id>`. */
-const TABS = ['sources', 'papers', 'citations', 'chat', 'flags', 'review'] as const;
+/**
+ * The panel tabs, in order; each label is `editor.tab.<id>`. ADR-0137: Chat first, and the panel
+ * opens on it, as Jenni's does.
+ */
+const TABS = ['chat', 'sources', 'papers', 'citations', 'flags', 'review'] as const;
+type Tab = (typeof TABS)[number];
+
+/** The rail's icon for each tool (ADR-0137). */
+const TAB_ICONS: Record<Tab, LucideIcon> = {
+  chat: MessageSquare,
+  sources: Library,
+  papers: Search,
+  citations: Quote,
+  flags: ListChecks,
+  review: MessageSquareText,
+};
+
+/** The tool the student had open last in this thesis, in this browser; Chat the first time. */
+const toolKey = (documentId: string) => `tc.tool.${documentId}`;
+function rememberedTool(documentId: string): Tab {
+  try {
+    const stored = window.localStorage.getItem(toolKey(documentId));
+    return (TABS as readonly string[]).includes(stored ?? '') ? (stored as Tab) : 'chat';
+  } catch {
+    return 'chat';
+  }
+}
+/** Whether the status line above the text is open (ADR-0137), in this browser. */
+const LINE_KEY = 'tc.statusLine.open';
 
 /** R11 (ADR-0098): the features a dot points to, on their tabs. */
 const FEATURE_HINTS: Partial<Record<(typeof TABS)[number], { id: string; line: string }>> = {
@@ -387,9 +424,39 @@ function ChapterEditor({
     typeof noticeRaw === 'string' ? { text: noticeRaw, action: null } : noticeRaw;
   const notice = noticeState?.text ?? null;
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
-  const [tab, setTab] = useState<'sources' | 'papers' | 'citations' | 'chat' | 'flags' | 'review'>(
-    'sources',
+  const [tab, setTab] = useState<Tab>(() =>
+    typeof window === 'undefined' ? 'chat' : rememberedTool(doc.id),
   );
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(toolKey(doc.id), tab);
+    } catch {
+      // The panel opens on Chat next time instead.
+    }
+  }, [doc.id, tab]);
+  /** ADR-0137: the one-line status above the text, and what it reads from the parts below it. */
+  const [lineOpen, setLineOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setLineOpen(window.localStorage.getItem(LINE_KEY) === '1');
+    } catch {
+      // Folded, then.
+    }
+  }, []);
+  const setLine = useCallback((open: boolean) => {
+    setLineOpen(open);
+    try {
+      if (open) window.localStorage.setItem(LINE_KEY, '1');
+      else window.localStorage.removeItem(LINE_KEY);
+    } catch {
+      // Holds for this page view.
+    }
+  }, []);
+  const [libraryProgress, setLibraryProgress] = useState<LibraryProgress | null>(null);
+  const [planState, setPlanState] = useState<PlanState>(null);
+  const [guideStep, setGuideStep] = useState<string | null>(null);
+  /** First steps (in the ⋯ menu) shows the guide even after Hide, until the line is folded. */
+  const [firstStepsAsked, setFirstStepsAsked] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
   /** ADR-0073: the next-step guide is on screen, so the other first-run cards wait. */
   const [guideShown, setGuideShown] = useState(false);
@@ -460,8 +527,9 @@ function ChapterEditor({
   /** R7: the block the grip's menu is open on, and where to draw it. */
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  // Measured once open: the header wraps on a phone, so "More" may not sit at the window's edge.
+  // Measured once open: the header wraps on a phone, so "⋯" may not sit at the window's edge.
   const moreMenu = useStayInWindow<HTMLSpanElement>(moreOpen);
+  const moreWrap = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!drawer && !moreOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -470,8 +538,17 @@ function ChapterEditor({
         setMoreOpen(false);
       }
     };
+    const onDown = (event: MouseEvent) => {
+      if (moreWrap.current && !moreWrap.current.contains(event.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    if (moreOpen) document.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
   }, [drawer, moreOpen]);
   /**
    * Set when the page loaded straight after a restore: the id of the snapshot the restore wrote of
@@ -1281,7 +1358,7 @@ function ChapterEditor({
           the save status going from "Saved" to "Unsaved changes" or "Saving…" — which pushed the
           whole page down a line under the student's pointer. A click that started on a button
           ended on whatever moved there, and was lost. The title truncates instead. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 lg:flex-nowrap">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 lg:sticky lg:top-0 lg:z-30 lg:h-12 lg:flex-nowrap lg:py-0">
         {/* A floor on the width (2026-10-04): with a long title and a crowded right side the
             breadcrumb shrank to "Theses / /". Now it wraps to its own line before it vanishes. */}
         <div className="flex min-w-[14rem] flex-1 items-baseline gap-2 text-[13px]">
@@ -1301,7 +1378,8 @@ function ChapterEditor({
             {chapter.title}
           </span>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1 lg:shrink-0 lg:flex-nowrap">
+        {/* ADR-0137: Saved, Share, Export and one ⋯ menu for everything else. */}
+        <div className="ml-auto flex items-center justify-end gap-1.5 lg:shrink-0">
           <span
             data-testid="autosave-status"
             // A fixed width, so "Saved" becoming "Unsaved changes" does not shift the buttons.
@@ -1321,99 +1399,14 @@ function ChapterEditor({
                       : t('editor.live.with', { names: liveState.others.join(', ') })
               : t(STATUS_LABEL[status])}
           </span>
-          {/* R12 (ADR-0099): the counter opens every allowance, as bars. */}
-          <span className="mr-1 border-l border-line pl-3">
-            <UsageMenu
-              testId="usage-meter"
-              className="tnum whitespace-nowrap text-[12px] text-muted underline-offset-2 hover:text-ink hover:underline"
-              label={t('editor.usage', {
-                assist: assist ? `${assist.used}/${assist.cap}` : '–',
-                draft: draft ? `${draft.used}/${draft.cap}` : '–',
-              })}
-            />
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            data-testid="open-history"
-            onClick={() => setHistoryOpen(true)}
-          >
-            {t('editor.history')}
-          </Button>
           <ShareButton documentId={doc.id} />
-          <ThemeToggle className="mr-1 hidden xl:inline-flex" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden md:inline-flex"
-            onClick={() => setHowOpen(true)}
-          >
-            {t('editor.howSuggestions')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden md:inline-flex"
-            onClick={() => setFeedbackOpen((open) => !open)}
-          >
-            {t('editor.feedback')}
-          </Button>
-          {/* The same two, on a screen too narrow for them to sit in the bar. */}
-          <span className="relative md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={moreOpen}
-              data-testid="header-more"
-              onClick={() => setMoreOpen((open) => !open)}
-            >
-              {t('common.more')}
-            </Button>
-            {moreOpen ? (
-              <span
-                ref={moreMenu.ref}
-                style={moreMenu.style}
-                className="absolute right-0 top-full z-40 mt-1 grid w-52 rounded-md border border-line bg-surface p-1 shadow-lg"
-              >
-                <button
-                  type="button"
-                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    setHowOpen(true);
-                  }}
-                >
-                  {t('editor.howSuggestions')}
-                </button>
-                <a
-                  href="/help"
-                  target="_blank"
-                  rel="noopener"
-                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
-                  onClick={() => setMoreOpen(false)}
-                >
-                  {t('common.help')}
-                </a>
-                <button
-                  type="button"
-                  className="rounded px-2 py-1.5 text-left text-sm hover:bg-sunk"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    setFeedbackOpen(true);
-                  }}
-                >
-                  {t('editor.feedback')}
-                </button>
-              </span>
-            ) : null}
-          </span>
           {/* R27 (ADR-0121): one export dialog — this chapter or the whole thesis, any format,
               a layout and a preview. The file is a signed link shown in the dialog, because a
               tab opened after an await is what popup blockers exist to stop (FR-8.1). */}
           <button
             type="button"
             data-testid="open-export"
-            className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink transition-colors hover:bg-sunk"
+            className="rounded-md bg-accent px-3 py-1 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
             title={t('editor.exportTitle')}
             onClick={() => setExportOpen(true)}
           >
@@ -1429,6 +1422,109 @@ function ChapterEditor({
               initialScope="chapter"
             />
           ) : null}
+          <span ref={moreWrap} className="relative">
+            <button
+              type="button"
+              aria-label={t('editor.menu')}
+              title={t('editor.menu')}
+              aria-haspopup="true"
+              aria-expanded={moreOpen}
+              data-testid="header-more"
+              onClick={() => setMoreOpen((open) => !open)}
+              className="inline-flex size-7 items-center justify-center rounded-md border border-line-strong bg-surface text-muted transition-colors hover:bg-sunk hover:text-ink"
+            >
+              <Ellipsis aria-hidden="true" className="size-4" strokeWidth={1.75} />
+            </button>
+            {/* Mounted while shut, so the usage counter's numbers are always there to read. */}
+            <span
+              ref={moreMenu.ref}
+              style={moreMenu.style}
+              data-testid="header-more-menu"
+              className={`absolute right-0 top-full z-40 mt-1 w-64 max-w-[calc(100vw-1rem)] rounded-md border border-line bg-surface p-1 shadow-lg ${
+                moreOpen ? 'grid' : 'hidden'
+              }`}
+            >
+              {/* R12 (ADR-0099): the counter opens every allowance, as bars. */}
+              <span className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm">
+                <span className="text-ink">{t('editor.menu.usage')}</span>
+                <UsageMenu
+                  testId="usage-meter"
+                  className="tnum whitespace-nowrap text-[12px] text-muted underline-offset-2 hover:text-ink hover:underline"
+                  label={t('editor.usage', {
+                    assist: assist ? `${assist.used}/${assist.cap}` : '–',
+                    draft: draft ? `${draft.used}/${draft.cap}` : '–',
+                  })}
+                />
+              </span>
+              <button
+                type="button"
+                data-testid="open-history"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setHistoryOpen(true);
+                }}
+              >
+                {t('editor.history')}
+              </button>
+              <button
+                type="button"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setHowOpen(true);
+                }}
+              >
+                {t('editor.howSuggestions')}
+              </button>
+              <button
+                type="button"
+                data-testid="open-first-steps"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setLine(true);
+                  setFirstStepsAsked(true);
+                  window.scrollTo({ top: 0 });
+                }}
+              >
+                {t('editor.menu.firstSteps')}
+              </button>
+              <button
+                type="button"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setShortcutsOpen(true);
+                }}
+              >
+                {t('editor.key.all')}
+              </button>
+              <a
+                href="/help"
+                target="_blank"
+                rel="noopener"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => setMoreOpen(false)}
+              >
+                {t('common.help')}
+              </a>
+              <button
+                type="button"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setFeedbackOpen(true);
+                }}
+              >
+                {t('editor.feedback')}
+              </button>
+              <span className="mt-1 flex items-center justify-between gap-2 border-t border-line px-2 pt-2 pb-1 text-sm">
+                <span className="text-ink">{t('editor.menu.theme')}</span>
+                <ThemeToggle />
+              </span>
+            </span>
+          </span>
         </div>
       </header>
 
@@ -1583,48 +1679,89 @@ function ChapterEditor({
 
         {/* min-w-0 so a wide table or equation scrolls inside the page instead of widening it. */}
         <main className="min-w-0 flex-1 px-4 pt-8 pb-24 sm:px-6 lg:pb-8">
-          {/* ADR-0072: the chapter's plan, with Add heading and Draft for each section. */}
-          <SectionGuide documentId={doc.id} chapterId={chapter.id} editor={editor} />
-          {/* ADR-0070: the next-step guide. ADR-0073: while it shows, it is the only card above
-              the page — its last step is planning (the proposal), its second links the
-              walkthrough — so the proposal prompt and the first-run hint wait until it is done. */}
-          <FirstSessionGuide
-            documentId={doc.id}
-            editor={editor}
-            onSuggest={() => editor?.chain().focus().requestSuggestion().run()}
-            onShowSources={() => setTab('sources')}
-            onHowItWorks={() => setHowOpen(true)}
-            onVisibleChange={setGuideShown}
-            className="mx-auto mb-4 max-w-[72ch]"
-          />
-          {guideShown ? null : (
-            /* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */
-            <AddProposalPrompt
+          {/* ADR-0137: one slim line above the text; Show opens the chapter's plan, the
+              first-session guide and the library line, all still mounted while folded. */}
+          <StatusLine
+            progress={libraryProgress}
+            plan={planState}
+            step={guideStep}
+            open={lineOpen}
+            onToggle={() => {
+              if (lineOpen) setFirstStepsAsked(false);
+              setLine(!lineOpen);
+            }}
+          >
+            {/* ADR-0072: the chapter's plan, with Add heading and Draft for each section. */}
+            <SectionGuide
               documentId={doc.id}
-              variant="editor"
+              chapterId={chapter.id}
+              editor={editor}
+              onState={setPlanState}
+            />
+            {/* ADR-0070: the next-step guide. ADR-0073: while it shows, it is the only card above
+                the page — its last step is planning (the proposal), its second links the
+                walkthrough — so the proposal prompt and the first-run hint wait until it is done. */}
+            <FirstSessionGuide
+              documentId={doc.id}
+              editor={editor}
+              onSuggest={() => editor?.chain().focus().requestSuggestion().run()}
+              onShowSources={() => setTab('sources')}
+              onHowItWorks={() => setHowOpen(true)}
+              onVisibleChange={setGuideShown}
+              onStepChange={setGuideStep}
+              forceVisible={lineOpen && firstStepsAsked}
               className="mx-auto mb-4 max-w-[72ch]"
             />
-          )}
-          {guideShown ? null : (
-            <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
-              {t('editor.hint.intro')}{' '}
-              {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
-              {autoSuggest ? null : (
+            {guideShown ? null : (
+              /* ADR-0062: a thesis begun with "Start writing now" has no proposal yet. */
+              <AddProposalPrompt
+                documentId={doc.id}
+                variant="editor"
+                className="mx-auto mb-4 max-w-[72ch]"
+              />
+            )}
+            {guideShown ? null : (
+              <FirstRunHint id="editor" className="mx-auto mb-4 max-w-[72ch]">
+                {t('editor.hint.intro')}{' '}
+                {autoSuggest ? t('editor.hint.auto') : t('editor.hint.manual')}
+                {autoSuggest ? null : (
+                  <span className="hidden sm:inline">
+                    {' '}
+                    {rich('editor.hint.orKey', { key: <kbd>Ctrl+/</kbd> })}
+                  </span>
+                )}
+                {t('editor.hint.stop')}{' '}
                 <span className="hidden sm:inline">
-                  {' '}
-                  {rich('editor.hint.orKey', { key: <kbd>Ctrl+/</kbd> })}
+                  {rich('editor.hint.keys', { tab: <kbd>Tab</kbd>, esc: <kbd>Esc</kbd> })}{' '}
                 </span>
-              )}
-              {t('editor.hint.stop')}{' '}
-              <span className="hidden sm:inline">
-                {rich('editor.hint.keys', { tab: <kbd>Tab</kbd>, esc: <kbd>Esc</kbd> })}{' '}
-              </span>
-              {t('editor.hint.cites')}{' '}
-              <button type="button" className="underline" onClick={() => setHowOpen(true)}>
-                {t('editor.hint.how')}
-              </button>
-            </FirstRunHint>
-          )}
+                {t('editor.hint.cites')}{' '}
+                <button type="button" className="underline" onClick={() => setHowOpen(true)}>
+                  {t('editor.hint.how')}
+                </button>
+              </FirstRunHint>
+            )}
+            <LibraryFilling
+              documentId={doc.id}
+              onProgress={setLibraryProgress}
+              onFirstReady={() => {
+                setNotice(null);
+                const current = editorRef.current;
+                const stale = uncitedWhileLoading.current;
+                uncitedWhileLoading.current = null;
+                if (current && stale && getGhostState(current)?.suggestionId === stale) {
+                  current.commands.dismissSuggestion();
+                }
+                // A suggestion still on its way makes the command a no-op; try again shortly
+                // rather than lose the one the student is waiting for.
+                let tries = 0;
+                const ask = () => {
+                  const asked = editorRef.current?.chain().focus().requestSuggestion().run();
+                  if (!asked && ++tries < 6) window.setTimeout(ask, 1_000);
+                };
+                ask();
+              }}
+            />
+          </StatusLine>
           {noticeState ? (
             <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center px-4 lg:bottom-20">
               <div className="pointer-events-auto flex min-w-0 max-w-xl items-start gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm shadow-lg">
@@ -1684,26 +1821,6 @@ function ChapterEditor({
             onInsertChart={openChart}
             onInsertDiagram={openDiagram}
             actionsRef={formatActions}
-          />
-          <LibraryFilling
-            documentId={doc.id}
-            onFirstReady={() => {
-              setNotice(null);
-              const current = editorRef.current;
-              const stale = uncitedWhileLoading.current;
-              uncitedWhileLoading.current = null;
-              if (current && stale && getGhostState(current)?.suggestionId === stale) {
-                current.commands.dismissSuggestion();
-              }
-              // A suggestion still on its way makes the command a no-op; try again shortly
-              // rather than lose the one the student is waiting for.
-              let tries = 0;
-              const ask = () => {
-                const asked = editorRef.current?.chain().focus().requestSuggestion().run();
-                if (!asked && ++tries < 6) window.setTimeout(ask, 1_000);
-              };
-              ask();
-            }}
           />
           <EditorContent editor={editor} />
           {/* Typing "/" offers the toolbar's blocks at the caret. */}
@@ -1782,44 +1899,75 @@ function ChapterEditor({
 
         <ReadBesidePane documentId={doc.id} />
 
+        {/* ADR-0137: the tool panel opens on Chat, and the six tools are a rail of icons on its
+            right edge from `lg` up, each with its name under it. Below `lg` the panel is a drawer
+            opened from the bottom bar, as before, and the same tabs sit three by two at its top
+            (every name fits in English and Hindi at every width, 2026-10-08). From `lg` the panel
+            is sticky under the header and as tall as the window, so the chat box sits at its foot
+            and the rest scrolls. One tablist at every width: the rail and the drawer's grid are
+            the same buttons, laid out twice. */}
         <aside
           data-testid="tool-panel"
-          className={`shrink-0 border-l border-line bg-sunk lg:static lg:z-auto lg:block lg:w-72 lg:overflow-visible lg:shadow-none ${
+          className={`shrink-0 border-l border-line bg-sunk lg:sticky lg:top-12 lg:z-auto lg:grid lg:h-[calc(100dvh-3rem)] lg:w-[22rem] lg:grid-cols-[minmax(0,1fr)_4.25rem] lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:shadow-none xl:w-[25rem] ${
             drawer === 'panel'
-              ? 'fixed inset-y-0 right-0 z-40 w-[min(24rem,92vw)] overflow-y-auto shadow-2xl'
+              ? 'fixed inset-y-0 right-0 z-40 flex w-[min(24rem,92vw)] flex-col shadow-2xl'
               : 'hidden'
           }`}
         >
-          <div className="flex items-center justify-between border-b border-line px-3 py-2 lg:hidden">
-            <span className="eyebrow">{t('editor.tools')}</span>
-            <button
-              type="button"
-              className="text-xs text-muted underline"
-              onClick={() => setDrawer(null)}
+          <div className="flex min-h-11 min-w-0 items-center justify-between gap-2 border-b border-line px-3 py-1.5 lg:col-start-1 lg:row-start-1">
+            <h2
+              data-testid="tool-panel-title"
+              className="min-w-0 truncate text-[14px] font-semibold capitalize text-ink"
             >
-              {t('common.close')}
-            </button>
+              {t(`editor.tab.${tab}`)}
+            </h2>
+            <span className="flex shrink-0 items-center gap-2">
+              {/* Room for the open tool's own actions (Chat's "+ New chat"). */}
+              <span id="tool-panel-actions" data-testid="tool-panel-actions" className="contents" />
+              <button
+                type="button"
+                className="text-xs text-muted underline lg:hidden"
+                onClick={() => setDrawer(null)}
+              >
+                {t('common.close')}
+              </button>
+            </span>
           </div>
-          {/* Three by two (2026-10-08): six labels need 357 px in one row and the panel is 288,
-              so "Comments" ran off the screen and the page scrolled sideways. In a grid every
-              label fits, in English and Hindi, at every width. */}
-          <div className="grid grid-cols-3 gap-1 border-b border-line p-1.5" role="tablist">
+          <div
+            role="tablist"
+            aria-label={t('editor.tools')}
+            className="grid grid-cols-3 gap-1 border-b border-line p-1.5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:items-stretch lg:gap-1 lg:overflow-y-auto lg:border-b-0 lg:border-l lg:bg-surface lg:px-0 lg:py-2"
+          >
             {TABS.map((id) => {
               const hint = FEATURE_HINTS[id];
+              const Icon = TAB_ICONS[id];
               return (
                 <span key={id} className="relative flex min-w-0">
                   <button
                     type="button"
                     role="tab"
                     aria-selected={tab === id}
+                    aria-label={t(`editor.tab.${id}`)}
+                    title={t(`editor.tab.${id}`)}
+                    data-testid={`tool-rail-${id}`}
                     onClick={() => setTab(id)}
-                    className={`min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-[12px] capitalize transition-colors ${
+                    className={`flex min-w-0 flex-1 items-center justify-center rounded-md px-2 py-1.5 transition-colors lg:mx-1 lg:flex-col lg:gap-0.5 lg:px-0.5 ${
                       tab === id
-                        ? 'bg-surface font-semibold text-ink shadow-sm ring-1 ring-line'
-                        : 'text-muted hover:bg-surface hover:text-ink'
+                        ? 'bg-surface font-semibold text-ink shadow-sm ring-1 ring-line lg:bg-accent-soft lg:font-normal lg:text-accent lg:shadow-none lg:ring-0'
+                        : 'text-muted hover:bg-surface hover:text-ink lg:hover:bg-sunk'
                     }`}
                   >
-                    {t(`editor.tab.${id}`)}
+                    <Icon
+                      aria-hidden="true"
+                      className="hidden size-[18px] lg:block"
+                      strokeWidth={1.75}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="w-full truncate text-center text-[12px] capitalize lg:text-[10px] lg:leading-tight"
+                    >
+                      {t(`editor.tab.${id}`)}
+                    </span>
                   </button>
                   {/* R11: a dot on a feature not yet used, while the first-session guide is not. */}
                   {hint ? (
@@ -1846,7 +1994,11 @@ function ChapterEditor({
               );
             })}
           </div>
-          <div className="p-3 text-[13px] text-muted">
+          <div
+            className={`min-h-0 flex-1 p-3 text-[13px] text-muted lg:col-start-1 lg:row-start-2 ${
+              tab === 'chat' ? 'flex flex-col' : 'overflow-y-auto'
+            }`}
+          >
             {tab === 'sources' ? (
               <>
                 <SourceSettings documentId={doc.id} meta={doc.meta} />
