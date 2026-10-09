@@ -6167,3 +6167,29 @@ give five rows, ten with the lock commented out; the cleanup's removals and ever
 in `apps/worker/test/find-sources.spec.ts` (a paper added after the read is neither inserted nor
 resolved). Touched API specs pass: edit-literature(-api), paper-id, papers-filed-where-added,
 resolve-source-ids, chat-beyond.
+
+## A one-sentence opener, evaluated and not adopted (2026-10-09, ADR-0140)
+
+Jenni's first suggestion on a new document is one short sentence; ours (A.1 in an empty section)
+is two sentences, median 67–71 words, whose first sentence is cited only 5 times in 20 (the model
+puts one marker at the end of the second). A cut after the first sentence alone would have left
+15 of 20 openers uncited, so the candidate was code plus words: `isSectionOpener` (the empty
+paragraph under the heading the editor names), `OPENER_INSTRUCTION` through A.1's own
+`<instruction>` slot (ADR-0082's route; `assist.md` untouched, continuations byte-identical), and
+a one-sentence cut (`postProcessAssist({ maxSentences: 1 })`). Tests: `packages/ai/test/opener.spec.ts`.
+Harness: `eval/run.ts --opener-mode`, with sentence, first-cited and word measures.
+
+Round on the real models, `--set opener --samples 2` (criterion in the ADR before the run): the
+candidate did what it was asked — 20/20 one sentence, 19/20 cited, median 30 words, 16/20 set in
+the thesis's own place (current 9/20), less copying (6+-word runs 5 against 11) and no
+intensifiers (8) — but the judge preferred today's opener 15–3 (2 ties), mean 6.60 against 7.97,
+for its detail; the candidate also had 1 setting mismatch (0) and 2 hallucinated citations caught
+by the whitelist (0), and twice put a figure or effect in the sentence that its source does not
+report. **Not adopted; the service is not wired and nothing changes in production.** Whether a
+shorter opener is worth a lower examiner score is the owner's call (ADR-0140, Decision 3).
+
+Cost ₹14.90 (₹8.18 the round, ₹6.72 a run lost to PowerShell 5.1 dropping a bare `--`, so
+`dotenv-cli` ate the harness's flags; quote it as `'--'`).
+
+
+The candidate's code (`isSectionOpener`, `OPENER_INSTRUCTION`, `maxSentences`, the harness's `--opener-mode`) stays on branch `worktree-agent-a4111c5e444d5e7f7` (commit 338fa95), not on main, until the owner decides whether a short opener is wanted at a lower examiner score.
