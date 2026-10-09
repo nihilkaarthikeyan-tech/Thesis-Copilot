@@ -659,7 +659,13 @@ export const GhostText = Extension.create<GhostTextOptions>({
               // selectionchange when the DOM changes under the caret); those must not count, or
               // every suggestion is rejected the moment it appears.
               prev.abort?.abort();
-              report(prev, prev.text ? 'REJECTED' : 'CANCELLED', prev.keptChars);
+              // ADR-0144: words already kept with "One word" make this a partial keep, which
+              // counts against the allowance; typing past the rest does not undo them.
+              report(
+                prev,
+                prev.keptChars > 0 ? 'PARTIAL' : prev.text ? 'REJECTED' : 'CANCELLED',
+                prev.keptChars,
+              );
               next = { ...IDLE, fade: prev.fade };
             } else if (prev.fade && tr.docChanged) {
               next = {

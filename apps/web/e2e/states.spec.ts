@@ -118,20 +118,28 @@ test.describe('§6.2 states, forced through the mock', () => {
     await editor.locator('p').first().click();
     await page.keyboard.type('Prior studies found ');
 
-    // FREE_TRIAL allows 50 Assist actions a month (PRD §11.3). Dismissing still counts: the
-    // tokens were generated.
+    // FREE_TRIAL allows 50 Assist suggestions a month (PRD §11.3). ADR-0144: only the ones kept
+    // count, so one dismissed first leaves the meter where it was, and fifty kept fill it.
     const meter = page.getByTestId('usage-meter');
-    await expect(meter).toContainText(/Assist \d+\/50/);
-    const used = Number(/Assist (\d+)\/50/.exec((await meter.textContent()) ?? '')?.[1] ?? 0);
-    for (let i = used; i < 50; i++) {
-      await page.keyboard.press('Control+/');
-      await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
-        timeout: 15_000,
-      });
-      await page.keyboard.press('Escape');
-      await expect(editor.locator('span.ghost')).toHaveCount(0);
+    const shown = page.locator('.thesis-editor span.ghost[data-status="shown"]');
+    await expect(meter).toContainText('Assist 0/50');
+    await page.keyboard.press('Control+/');
+    await expect(shown).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press('Escape');
+    await expect(editor.locator('span.ghost')).toHaveCount(0);
+    await page.keyboard.press('Control+/');
+    await expect(shown).toBeVisible({ timeout: 15_000 });
+    await expect(meter).toContainText('Assist 0/50');
+
+    for (let kept = 0; kept < 50; kept++) {
+      // An automatic suggestion may already be showing after the last keep; otherwise ask.
+      if (!(await shown.isVisible())) await page.keyboard.press('Control+/');
+      await expect(shown).toBeVisible({ timeout: 15_000 });
+      await page.keyboard.press('Tab');
+      await expect(meter).toContainText(`Assist ${kept + 1}/50`, { timeout: 10_000 });
     }
-    await expect(page.getByTestId('usage-meter')).toContainText('Assist 50/50');
+    await expect(meter).toContainText('Assist 50/50');
+    await expect(editor.locator('span.ghost')).toHaveCount(0);
 
     await page.keyboard.press('Control+/');
     const notice = page.getByTestId('notice');
@@ -145,6 +153,47 @@ test.describe('§6.2 states, forced through the mock', () => {
     await expect(notice).not.toContainText('T00:00:00');
     await expect(notice).toContainText('Writing, editing and exporting still work');
     await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/app/account');
+  });
+
+  test('call ceiling: asked for the most a month allows, kept fewer, says both (ADR-0144)', async ({
+    page,
+    request,
+  }) => {
+    // 150 real calls would trip §12.1's burst guard long before the ceiling, so the refusal the
+    // API sends at the ceiling (`CallCeilingError`, proven in apps/api/test/week1.spec.ts) is
+    // served here as is, and what is tested is what the editor says about it.
+    await signIn(page, request);
+    await openFreshChapter(page, `States ceiling ${Date.now()}`);
+    await page.route('**/api/v1/assist/suggest', (route) =>
+      route.fulfill({
+        status: 429,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({
+          type: 'CAP_EXCEEDED',
+          title: 'Monthly limit reached',
+          status: 429,
+          detail:
+            'You have asked for 150 assist suggestions this month, the most one month allows. You kept 12 of your 50.',
+          action: 'ASSIST',
+          allowance: 'Assist suggestions',
+          used: 12,
+          cap: 50,
+          callCeiling: 150,
+          resetsAt: new Date(Date.UTC(2099, 0, 1)).toISOString(),
+        }),
+      }),
+    );
+    const editor = page.locator('.thesis-editor');
+    await editor.locator('p').first().click();
+    await page.keyboard.type('Prior studies found ');
+    await page.keyboard.press('Control+/');
+    const notice = page.getByTestId('notice');
+    await expect(notice).toContainText(
+      'Assist suggestions: you asked for 150 this month, the most one month allows. You kept 12 of your 50.',
+      { timeout: 15_000 },
+    );
+    await expect(notice).toContainText(/Resets on .*2099/);
+    await expect(notice).toContainText('Writing, editing and exporting still work');
   });
 
   test('autosave conflict: a stale save shows the 409 screen rather than overwriting', async ({
