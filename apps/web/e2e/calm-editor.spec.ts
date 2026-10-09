@@ -242,3 +242,25 @@ test.describe('at 390', () => {
     await noLayoutFaults(page);
   });
 });
+
+for (const width of [360, 430, 768, 1024, 1440]) {
+  test.describe(`at ${width}`, () => {
+    test.use({ viewport: { width, height: 844 } });
+
+    test('no layout faults, with the line open, and the menus inside the window', async ({
+      page,
+      request,
+    }) => {
+      await openEditor(page, request);
+      await noLayoutFaults(page);
+      await page.getByTestId('status-line-toggle').click();
+      await noLayoutFaults(page);
+      await page.getByTestId('fmt-more').click();
+      await insideWindow(page, page.getByTestId('fmt-more-menu'));
+      await page.keyboard.press('Escape');
+      await page.getByTestId('header-more').click();
+      await insideWindow(page, page.getByTestId('header-more-menu'));
+      await shot(page, `${width}-menu`);
+    });
+  });
+}
