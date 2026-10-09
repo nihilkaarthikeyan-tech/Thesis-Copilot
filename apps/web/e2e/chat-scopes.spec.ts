@@ -52,7 +52,12 @@ test.describe('chat scopes', () => {
     await expect(panel).toBeVisible();
 
     await panel.getByTestId('chat-scope-document').click();
-    await expect(panel).toContainText('Nothing here is citable');
+    // Calm editor (2026-10-09): the chip carries the full explanation; a short note stays visible.
+    await expect(panel.getByTestId('chat-scope-document')).toHaveAttribute(
+      'title',
+      /Nothing here is citable/,
+    );
+    await expect(panel.getByTestId('chat-scope-note')).toContainText('not citable');
 
     await panel.getByRole('textbox').fill('What have I written about the subsidy?');
     await panel.getByRole('button', { name: 'Ask', exact: true }).click();
@@ -106,7 +111,11 @@ test.describe('chat scopes', () => {
 
     const panel = page.getByTestId('chat-panel');
     await panel.getByTestId('chat-scope-web').click();
-    await expect(panel).toContainText('It does not answer the question');
+    await expect(panel.getByTestId('chat-scope-web')).toHaveAttribute(
+      'title',
+      /It does not answer the question/,
+    );
+    await expect(panel.getByTestId('chat-scope-note')).toContainText('no answer');
 
     await panel.getByRole('textbox').fill('drip irrigation adoption smallholder farmers');
     await panel.getByRole('button', { name: 'Ask', exact: true }).click();

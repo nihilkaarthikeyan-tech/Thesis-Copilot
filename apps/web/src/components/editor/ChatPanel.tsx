@@ -10,7 +10,19 @@
 
 import { tokenizeAiText } from '@tc/ui';
 import katex from 'katex';
-import { History, Pencil, Plus, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import {
+  AtSign,
+  ChevronDown,
+  History,
+  Paperclip,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  SquareSlash,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { AddIntoPicker, useAddInto } from '@/components/sources/AddInto';
@@ -191,10 +203,20 @@ const SCOPE_BLURB: Record<Scope, string> = {
   web: 'Searches the literature and shows real papers. It does not answer the question: add a paper to your library and ask again to get a grounded answer.',
 };
 
+/**
+ * Calm editor (2026-10-09): the blurb above is the chip's tooltip; under the chips only these
+ * short words stay, and only where the scope behaves unlike an ordinary answer.
+ */
+const SCOPE_NOTE: Record<Scope, string | null> = {
+  library: null,
+  document: 'Your draft · not citable',
+  web: 'Finds papers · no answer',
+};
+
 // The prompt has to change with the scope. "What do my sources say about…" in Find-papers mode
 // invites the question this scope deliberately does not answer.
 const SCOPE_PLACEHOLDER: Record<Scope, string> = {
-  library: 'What do my sources say about…',
+  library: 'Ask about your papers — @ to name one',
   document: 'What have I already written about…',
   web: 'A topic, method or population to search for…',
 };
@@ -262,7 +284,7 @@ export function ChatPanel({
   const [filters, setFilters] = useState<Filters>({});
   const [showFilters, setShowFilters] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const boxRef = useRef<HTMLInputElement>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!prefill?.text) return;
@@ -967,8 +989,16 @@ export function ChatPanel({
   }
 
   /** The arrow keys and Enter drive whichever picker is open; Escape closes it. */
-  function onBoxKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (!pickerOpen) return;
+  function onBoxKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!pickerOpen) {
+      // Calm editor (2026-10-09): the box is a taller textarea, but Enter still asks, as the one-
+      // line input did; Shift+Enter is a new line. Not while an IME is composing a word.
+      if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+        event.preventDefault();
+        event.currentTarget.form?.requestSubmit();
+      }
+      return;
+    }
     if (event.key === 'ArrowDown' && optionCount > 0) {
       event.preventDefault();
       setActive((i) => (i + 1) % optionCount);
@@ -997,6 +1027,20 @@ export function ChatPanel({
 
   const canSavePrompt =
     draft.trim().length > 0 && typingPrompt === null && savingPrompt === null && !busy;
+
+  /** The box's small buttons type what the keyboard would: `@` names a paper, `/` a prompt. */
+  function typeIntoBox(text: string) {
+    setDraft((current) =>
+      text === '/' ? '/' : `${current}${current && !/\s$/.test(current) ? ' ' : ''}${text}`,
+    );
+    setDismissed(false);
+    requestAnimationFrame(() => {
+      const box = boxRef.current;
+      if (!box) return;
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+    });
+  }
 
   async function saveFilters(next: Filters) {
     setFilters(next);
@@ -1119,61 +1163,6 @@ export function ChatPanel({
           {t('chat.collection.deleted', { name: chat.collectionName ?? '' })}
         </p>
       ) : null}
-      {chat.collection ? (
-        <div className="px-1 pb-2">
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <p
-              data-testid="chat-collection-scope"
-              title={chat.collection.name}
-              className="min-w-0 truncate rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-[11px] text-ink"
-            >
-              {t('chat.collection.chip', { name: chat.collection.name })}
-            </p>
-            <button
-              type="button"
-              className="shrink-0 text-xs text-muted underline"
-              onClick={() => setShowFilters((v) => !v)}
-            >
-              Filters
-            </button>
-          </div>
-          <p className="mt-1.5 text-xs text-muted">{t('chat.collection.blurb')}</p>
-        </div>
-      ) : chat.collectionDeleted ? null : (
-        <div className="px-1 pb-2">
-          <div className="flex items-center justify-between gap-2">
-            {/* A real fieldset rather than role="group": the native element already carries the
-              grouping semantics, and the legend names it without a duplicate aria-label. */}
-            <fieldset className="inline-flex rounded-md border border-line bg-surface p-0.5">
-              <legend className="sr-only">What to answer from</legend>
-              {SCOPES.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={scope === option}
-                  data-testid={`chat-scope-${option}`}
-                  onClick={() => setScope(option)}
-                  className={cn(
-                    'rounded-sm px-2 py-0.5 text-[11px] font-semibold transition-colors',
-                    scope === option ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink',
-                  )}
-                >
-                  {SCOPE_LABEL[option]}
-                </button>
-              ))}
-            </fieldset>
-            <button
-              type="button"
-              className="text-xs text-muted underline"
-              onClick={() => setShowFilters((v) => !v)}
-            >
-              Filters
-            </button>
-          </div>
-          <p className="mt-1.5 text-xs text-muted">{SCOPE_BLURB[scope]}</p>
-        </div>
-      )}
-
       {scope === 'web' && webResults ? (
         <div data-testid="web-results" className="mb-2 grid gap-2">
           {webResults.length > 0 ? (
@@ -1250,74 +1239,12 @@ export function ChatPanel({
               </div>
             </article>
           ))}
-          <p className="px-1 text-xs text-faint">
-            Adding fetches the paper and indexes it. Once it is in, ask the same question on Library
-            and the answer will cite it.
+          <p
+            className="px-1 text-xs text-faint"
+            title="Adding fetches the paper and indexes it. Once it is in, ask the same question on Library and the answer will cite it."
+          >
+            Added papers are cited on Library.
           </p>
-        </div>
-      ) : null}
-
-      {showFilters ? (
-        <div className="mb-2 space-y-2 rounded-md border border-line bg-surface p-2 text-xs">
-          <label className="flex items-center justify-between gap-2">
-            Published from
-            <input
-              type="number"
-              className="w-20 rounded border border-line px-1"
-              value={filters.yearFrom ?? ''}
-              onChange={(e) =>
-                void saveFilters({
-                  ...filters,
-                  yearFrom: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2">
-            Minimum citations
-            <input
-              type="number"
-              className="w-20 rounded border border-line px-1"
-              value={filters.minCitations ?? ''}
-              onChange={(e) =>
-                void saveFilters({
-                  ...filters,
-                  minCitations: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2">
-            <span>
-              Journal citedness at least
-              <span className="block text-[11px] text-faint">
-                OpenAlex's 2-year figure, the idea behind an impact factor. Sources without one are
-                left out.
-              </span>
-            </span>
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              data-testid="filter-journal-citedness"
-              className="w-20 rounded border border-line px-1"
-              value={filters.minJournalCitedness ?? ''}
-              onChange={(e) =>
-                void saveFilters({
-                  ...filters,
-                  minJournalCitedness: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2">
-            Exclude preprints
-            <input
-              type="checkbox"
-              checked={filters.excludePreprints ?? false}
-              onChange={(e) => void saveFilters({ ...filters, excludePreprints: e.target.checked })}
-            />
-          </label>
         </div>
       ) : null}
 
@@ -1472,7 +1399,15 @@ export function ChatPanel({
               />
             ) : null}
             {turn.role === 'assistant' && turn.text.trim() && turn.outcome !== 'research-offer' ? (
-              <div className="mt-2 flex items-center gap-3 text-xs">
+              <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <button
+                  type="button"
+                  data-testid="chat-copy"
+                  className="text-muted underline hover:text-ink"
+                  onClick={() => void copyAnswer(turn)}
+                >
+                  {copied?.id === turn.id ? copied.message : 'Copy'}
+                </button>
                 {/* An answer from abstracts cites papers that are not sources yet; it goes into
                     the thesis only once they are added and asked about on Library. ADR-0074: the
                     same holds for a library answer that also cited a found paper. */}
@@ -1489,14 +1424,6 @@ export function ChatPanel({
                     Add to document
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  data-testid="chat-copy"
-                  className="text-muted underline hover:text-ink"
-                  onClick={() => void copyAnswer(turn)}
-                >
-                  {copied?.id === turn.id ? copied.message : 'Copy'}
-                </button>
                 {turn.stored ? (
                   <span className="ml-auto flex items-center gap-0.5" data-testid="chat-rating">
                     <button
@@ -1520,6 +1447,9 @@ export function ChatPanel({
                   </span>
                 ) : null}
               </div>
+            ) : null}
+            {turn.role === 'assistant' && (turn.citations ?? []).length > 0 ? (
+              <AnswerSources citations={turn.citations ?? []} onOpen={onOpenPassage} />
             ) : null}
           </div>
         ))}
@@ -1554,169 +1484,400 @@ export function ChatPanel({
       ) : null}
       <LimitNotice limit={limit.value} className="my-2" />
 
-      {scope === 'library' ? (
-        <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />
-      ) : null}
-      {offered.length > 0 ? (
-        <ul data-testid="chat-offered" className="mt-1 flex flex-wrap gap-1 px-1">
-          {offered.map((question) => (
-            <li key={question}>
-              <button
-                type="button"
-                className="rounded-md border border-line px-2 py-0.5 text-left text-[12px] text-ink hover:bg-sunk"
-                onClick={() => {
-                  setDraft(question);
-                  requestAnimationFrame(() => boxRef.current?.focus());
-                }}
-              >
-                {question}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {attachments.length > 0 ? (
-        <ul data-testid="chat-attachments" className="mt-1 flex flex-wrap gap-1 px-1">
-          {attachments.map((a) => (
-            <li
-              key={a.id}
-              data-testid="chat-attachment-chip"
-              className="flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] text-muted"
+      {/* Calm editor (2026-10-09): everything about the next question sits together at the foot —
+          where to answer from as chips, then the box with its small tools inside it. */}
+      <div data-testid="chat-composer" className="mt-2 border-t border-line px-1 pt-2">
+        {showFilters ? (
+          <div className="mb-2 space-y-2 rounded-md border border-line bg-surface p-2 text-xs">
+            <label className="flex items-center justify-between gap-2">
+              Published from
+              <input
+                type="number"
+                className="w-20 rounded border border-line px-1"
+                value={filters.yearFrom ?? ''}
+                onChange={(e) =>
+                  void saveFilters({
+                    ...filters,
+                    yearFrom: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2">
+              Minimum citations
+              <input
+                type="number"
+                className="w-20 rounded border border-line px-1"
+                value={filters.minCitations ?? ''}
+                onChange={(e) =>
+                  void saveFilters({
+                    ...filters,
+                    minCitations: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              />
+            </label>
+            <label
+              className="flex items-center justify-between gap-2"
+              title="OpenAlex's 2-year figure, the idea behind an impact factor. Sources without one are left out."
             >
-              <span aria-hidden>{a.kind === 'image' ? '🖼' : '📄'}</span>
-              <span className="max-w-[12rem] truncate">{a.name}</span>
-              <button
-                type="button"
-                aria-label={`Remove ${a.name}`}
-                onClick={() => setAttachments((list) => list.filter((x) => x.id !== a.id))}
-                className="text-faint hover:text-ink"
+              <span>Journal citedness at least</span>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                data-testid="filter-journal-citedness"
+                className="w-20 rounded border border-line px-1"
+                value={filters.minJournalCitedness ?? ''}
+                onChange={(e) =>
+                  void saveFilters({
+                    ...filters,
+                    minJournalCitedness: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2">
+              Exclude preprints
+              <input
+                type="checkbox"
+                checked={filters.excludePreprints ?? false}
+                onChange={(e) =>
+                  void saveFilters({ ...filters, excludePreprints: e.target.checked })
+                }
+              />
+            </label>
+          </div>
+        ) : null}
+        {chat.collection ? (
+          <div data-testid="chat-scope-chips" className="mb-1.5 flex min-w-0 items-center gap-1.5">
+            <p
+              data-testid="chat-collection-scope"
+              title={`${chat.collection.name} — ${t('chat.collection.blurb')}`}
+              className="min-w-0 truncate rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-[11px] text-ink"
+            >
+              {t('chat.collection.chip', { name: chat.collection.name })}
+            </p>
+            <FiltersChip open={showFilters} onToggle={() => setShowFilters((v) => !v)} />
+          </div>
+        ) : chat.collectionDeleted ? null : (
+          <div data-testid="chat-scope-chips" className="mb-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {/* A real fieldset rather than role="group": the native element already carries
+                  the grouping semantics, and the legend names it without a duplicate label. */}
+              <fieldset className="flex min-w-0 flex-wrap items-center gap-1">
+                <legend className="sr-only">What to answer from</legend>
+                {SCOPES.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={scope === option}
+                    data-testid={`chat-scope-${option}`}
+                    title={SCOPE_BLURB[option]}
+                    onClick={() => setScope(option)}
+                    className={cn(
+                      'whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] transition-colors',
+                      scope === option
+                        ? 'border-accent bg-accent-soft font-semibold text-ink'
+                        : 'border-line text-muted hover:text-ink',
+                    )}
+                  >
+                    {SCOPE_LABEL[option]}
+                  </button>
+                ))}
+              </fieldset>
+              <FiltersChip open={showFilters} onToggle={() => setShowFilters((v) => !v)} />
+            </div>
+            {SCOPE_NOTE[scope] ? (
+              <p
+                data-testid="chat-scope-note"
+                title={SCOPE_BLURB[scope]}
+                className="mt-1 truncate text-[11px] text-faint"
               >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <form onSubmit={ask} className="relative mt-2 flex gap-2 border-t border-line pt-2">
-        {attachOffered ? (
-          <label
-            data-testid="chat-attach"
-            title="Attach a picture, PDF, Word or text file to this question (read for this question only)"
-            className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-muted hover:text-ink ${
-              busy || uploading || attachments.length >= 3 ? 'pointer-events-none opacity-50' : ''
-            }`}
-          >
-            <span aria-hidden>{uploading ? '…' : '📎'}</span>
-            <span className="sr-only">Attach a file</span>
-            <input
-              type="file"
-              data-testid="chat-attach-input"
-              className="sr-only"
-              accept="image/png,image/jpeg,image/gif,.pdf,.docx,.txt,.md,.csv"
-              multiple
-              disabled={busy || uploading || attachments.length >= 3}
-              onChange={(e) => {
-                void attachFiles(e.target.files);
-                e.target.value = '';
-              }}
-            />
-          </label>
+                {SCOPE_NOTE[scope]}
+              </p>
+            ) : null}
+          </div>
+        )}
+
+        {scope === 'library' ? (
+          <MentionChips mentions={mentions.mentions} onRemove={mentions.remove} />
         ) : null}
-        {pickerOpen && typingPrompt !== null ? (
-          <PromptPicker
-            options={promptOptions}
-            query={typingPrompt}
-            active={active}
-            onPick={applyPrompt}
-            onEdit={editPrompt}
-            onDelete={deletePrompt}
-          />
+        {offered.length > 0 ? (
+          <ul data-testid="chat-offered" className="mb-1.5 flex flex-wrap gap-1">
+            {offered.map((question) => (
+              <li key={question} className="min-w-0 max-w-full">
+                <button
+                  type="button"
+                  className="max-w-full rounded-md border border-line px-2 py-0.5 text-left text-[12px] text-ink hover:bg-sunk"
+                  onClick={() => {
+                    setDraft(question);
+                    requestAnimationFrame(() => boxRef.current?.focus());
+                  }}
+                >
+                  {question}
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : null}
-        {pickerOpen && typingMention !== null ? (
-          <MentionPicker
-            query={typingMention}
-            options={mentionOptions}
-            active={active}
-            onPick={pickMention}
-          />
+        {attachments.length > 0 ? (
+          <ul data-testid="chat-attachments" className="mb-1.5 flex flex-wrap gap-1">
+            {attachments.map((a) => (
+              <li
+                key={a.id}
+                data-testid="chat-attachment-chip"
+                className="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] text-muted"
+              >
+                <span aria-hidden>{a.kind === 'image' ? '🖼' : '📄'}</span>
+                <span className="min-w-0 max-w-[12rem] truncate" title={a.name}>
+                  {a.name}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${a.name}`}
+                  onClick={() => setAttachments((list) => list.filter((x) => x.id !== a.id))}
+                  className="text-faint hover:text-ink"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : null}
-        <label className="sr-only" htmlFor="chat-message">
-          {SCOPE_ASK_LABEL[scope]}
-        </label>
-        <input
-          id="chat-message"
-          ref={boxRef}
-          value={draft}
-          // ADR-0116: a chat whose collection was deleted can be read, not asked.
-          disabled={busy || chat.collectionDeleted}
-          maxLength={2000}
-          autoComplete="off"
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setDismissed(false);
-          }}
-          onKeyDown={onBoxKeyDown}
-          placeholder={SCOPE_PLACEHOLDER[scope]}
-          // min-w-0: an input keeps a default width of about 20 characters, which with a wider
-          // font (CI's Linux, 2026-10-08) pushed Ask 35 px out of the 288 px panel.
-          className="h-9 min-w-0 flex-1 rounded-md border border-line px-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={busy || draft.trim().length === 0 || chat.collectionDeleted}
-          className="shrink-0 rounded-md px-3 text-sm disabled:opacity-50 bg-accent text-accent-ink hover:bg-accent-hover font-semibold transition-colors"
+
+        <form
+          onSubmit={ask}
+          className="relative rounded-lg border border-line bg-surface transition-colors focus-within:border-accent"
         >
-          {busy ? '…' : 'Ask'}
-        </button>
-      </form>
-      {savingPrompt ? (
-        <SavePromptForm
-          key={savingPrompt.editing?.id ?? 'new'}
-          initialTitle={savingPrompt.editing?.title ?? suggestPromptTitle(draft)}
-          editing={savingPrompt.editing !== null}
-          onSubmit={submitPrompt}
-          onCancel={() => setSavingPrompt(null)}
-        />
-      ) : (
-        <div className="mt-1 flex min-h-6 items-center justify-between gap-2 px-1 text-[11px] text-faint">
-          <span data-testid="chat-box-hint" aria-live="polite">
-            {promptNotice ??
-              (deep && deepOffered
-                ? t('chat.deep.on')
-                : scope === 'library' && mentions.hasLibrary
-                  ? '@ names a paper · / uses a saved prompt'
-                  : '/ uses a saved prompt')}
-          </span>
-          {deepOffered ? (
+          {pickerOpen && typingPrompt !== null ? (
+            <PromptPicker
+              options={promptOptions}
+              query={typingPrompt}
+              active={active}
+              onPick={applyPrompt}
+              onEdit={editPrompt}
+              onDelete={deletePrompt}
+            />
+          ) : null}
+          {pickerOpen && typingMention !== null ? (
+            <MentionPicker
+              query={typingMention}
+              options={mentionOptions}
+              active={active}
+              onPick={pickMention}
+            />
+          ) : null}
+          <label className="sr-only" htmlFor="chat-message">
+            {SCOPE_ASK_LABEL[scope]}
+          </label>
+          <textarea
+            id="chat-message"
+            ref={boxRef}
+            value={draft}
+            rows={3}
+            // ADR-0116: a chat whose collection was deleted can be read, not asked.
+            disabled={busy || chat.collectionDeleted}
+            maxLength={2000}
+            autoComplete="off"
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setDismissed(false);
+            }}
+            onKeyDown={onBoxKeyDown}
+            placeholder={SCOPE_PLACEHOLDER[scope]}
+            className="block max-h-48 min-h-[4.5rem] w-full min-w-0 resize-none rounded-t-lg bg-transparent px-2.5 pt-2 text-sm text-ink placeholder:text-faint focus:outline-none disabled:opacity-60"
+          />
+          {/* The box's tools, small and inside it: attach, name a paper, a saved prompt, deep
+              research — then Ask. The row wraps rather than overflow a 288 px panel. */}
+          <div
+            data-testid="chat-box-tools"
+            className="flex min-w-0 flex-wrap items-center gap-1 px-1.5 pb-1.5"
+          >
+            {attachOffered ? (
+              <label
+                data-testid="chat-attach"
+                title="Attach a picture, PDF, Word or text file to this question (read for this question only)"
+                className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-sunk hover:text-ink ${
+                  busy || uploading || attachments.length >= 3
+                    ? 'pointer-events-none opacity-50'
+                    : ''
+                }`}
+              >
+                {uploading ? <span aria-hidden>…</span> : <Paperclip size={14} aria-hidden />}
+                <span className="sr-only">Attach a file</span>
+                <input
+                  type="file"
+                  data-testid="chat-attach-input"
+                  className="sr-only"
+                  accept="image/png,image/jpeg,image/gif,.pdf,.docx,.txt,.md,.csv"
+                  multiple
+                  disabled={busy || uploading || attachments.length >= 3}
+                  onChange={(e) => {
+                    void attachFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            ) : null}
+            {scope === 'library' && mentions.hasLibrary ? (
+              <button
+                type="button"
+                data-testid="chat-mention-button"
+                title="Name a paper to answer from (or type @)"
+                aria-label="Name a paper"
+                disabled={busy || chat.collectionDeleted}
+                onClick={() => typeIntoBox('@')}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-sunk hover:text-ink disabled:opacity-50"
+              >
+                <AtSign size={14} aria-hidden />
+              </button>
+            ) : null}
             <button
               type="button"
-              data-testid="chat-deep-toggle"
-              aria-pressed={deep}
-              disabled={busy}
-              title={t('chat.deep.hint')}
-              onClick={() => setDeep((on) => !on)}
-              className={`shrink-0 rounded-full border px-2 py-0.5 transition-colors disabled:opacity-50 ${
-                deep
-                  ? 'border-accent bg-accent text-accent-ink'
-                  : 'border-line text-muted hover:text-ink'
-              }`}
+              data-testid="chat-prompts-button"
+              title={
+                draft.trim()
+                  ? 'Saved prompts — empty the box first (or type / in an empty box)'
+                  : 'Use a saved prompt (or type /)'
+              }
+              aria-label="Use a saved prompt"
+              disabled={busy || chat.collectionDeleted || draft.trim().length > 0}
+              onClick={() => typeIntoBox('/')}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-sunk hover:text-ink disabled:opacity-50"
             >
-              {t('chat.deep.toggle')}
+              <SquareSlash size={14} aria-hidden />
             </button>
-          ) : null}
-          {canSavePrompt ? (
+            {deepOffered ? (
+              <button
+                type="button"
+                data-testid="chat-deep-toggle"
+                aria-pressed={deep}
+                disabled={busy}
+                title={t('chat.deep.hint')}
+                onClick={() => setDeep((on) => !on)}
+                className={`min-w-0 shrink truncate rounded-full border px-2 py-0.5 text-[11px] transition-colors disabled:opacity-50 ${
+                  deep
+                    ? 'border-accent bg-accent text-accent-ink'
+                    : 'border-line text-muted hover:text-ink'
+                }`}
+              >
+                {t('chat.deep.toggle')}
+              </button>
+            ) : null}
             <button
-              type="button"
-              data-testid="save-prompt"
-              onClick={() => setSavingPrompt({ editing: null })}
-              className="shrink-0 text-muted underline hover:text-ink"
+              type="submit"
+              disabled={busy || draft.trim().length === 0 || chat.collectionDeleted}
+              className="ml-auto h-7 shrink-0 rounded-md bg-accent px-3 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
-              Save as prompt
+              {busy ? '…' : 'Ask'}
             </button>
-          ) : null}
-        </div>
-      )}
+          </div>
+        </form>
+        {savingPrompt ? (
+          <SavePromptForm
+            key={savingPrompt.editing?.id ?? 'new'}
+            initialTitle={savingPrompt.editing?.title ?? suggestPromptTitle(draft)}
+            editing={savingPrompt.editing !== null}
+            onSubmit={submitPrompt}
+            onCancel={() => setSavingPrompt(null)}
+          />
+        ) : (
+          <div className="mt-1 flex min-h-6 min-w-0 items-center justify-between gap-2 text-[11px] text-faint">
+            <span data-testid="chat-box-hint" aria-live="polite" className="min-w-0 truncate">
+              {promptNotice ??
+                (deep && deepOffered
+                  ? t('chat.deep.on')
+                  : scope === 'library' && mentions.hasLibrary
+                    ? '@ names a paper · / uses a saved prompt'
+                    : '/ uses a saved prompt')}
+            </span>
+            {canSavePrompt ? (
+              <button
+                type="button"
+                data-testid="save-prompt"
+                onClick={() => setSavingPrompt({ editing: null })}
+                className="shrink-0 text-muted underline hover:text-ink"
+              >
+                Save as prompt
+              </button>
+            ) : null}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** The year, citation and preprint filters, as one more small chip at the end of the scope row. */
+function FiltersChip({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid="chat-filters-toggle"
+      aria-expanded={open}
+      aria-label="Filters"
+      title="Filters: year, citations, journal, preprints"
+      onClick={onToggle}
+      className={cn(
+        'ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors',
+        open ? 'border-accent text-ink' : 'border-line text-muted hover:text-ink',
+      )}
+    >
+      <SlidersHorizontal size={12} aria-hidden />
+    </button>
+  );
+}
+
+/**
+ * Calm editor (2026-10-09): "N sources ▾" under an answer, folded. Opened, it lists each source
+ * the answer cited once, by the label the answer shows; a library passage opens as a citation does.
+ */
+function AnswerSources({
+  citations,
+  onOpen,
+}: {
+  citations: Citation[];
+  onOpen: (sourceId: string, chunkId: string) => void;
+}) {
+  const bySource = new Map<string, Citation>();
+  for (const c of citations) {
+    const key = c.attachment
+      ? `a:${c.attachment.name}`
+      : c.beyond
+        ? `b:${c.beyond.doi ?? c.beyond.title}`
+        : `s:${c.sourceId}`;
+    if (!bySource.has(key)) bySource.set(key, c);
+  }
+  if (bySource.size === 0) return null;
+  const count = bySource.size;
+  return (
+    <details data-testid="chat-sources" className="group mt-2 rounded-md border border-line">
+      <summary className="flex cursor-pointer list-none items-center gap-1 px-2 py-1 text-xs text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+        {count === 1 ? '1 source' : `${count} sources`}
+        <ChevronDown size={12} aria-hidden className="transition-transform group-open:rotate-180" />
+      </summary>
+      <ul className="grid gap-0.5 border-t border-line px-2 py-1.5">
+        {[...bySource.values()].map((c) => (
+          <li key={c.key} className="min-w-0 text-xs">
+            {c.attachment || c.beyond ? (
+              <span className="block truncate text-muted" title={c.beyond?.title ?? c.label}>
+                {c.label}
+                {c.beyond ? ` — ${c.beyond.title}` : ''}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpen(c.sourceId, c.chunkId)}
+                className="block max-w-full truncate text-left text-accent underline"
+              >
+                {c.label}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
