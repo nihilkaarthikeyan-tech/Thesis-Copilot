@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**653** strings are translated; **1** are deliberately
+**653** strings are translated; **23** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -794,3 +794,25 @@ English. Write corrections in the last column.
 ## Left in English on purpose
 
 - `editor.usage` — Assist {assist} · Draft {draft}
+- `editor.menu` — More options
+- `editor.menu.usage` — Usage
+- `editor.menu.theme` — Theme
+- `editor.menu.firstSteps` — First steps
+- `editor.line.label` — This chapter at a glance
+- `editor.line.searching` — Finding papers…
+- `editor.line.found` — {found} papers found
+- `editor.line.reading` — reading {reading}…
+- `editor.line.ready` — {ready} ready to cite
+- `editor.line.planned` — chapters planned
+- `editor.line.planning` — planning chapters…
+- `editor.line.notPlanned` — chapters not planned
+- `editor.line.next` — next: {step}
+- `editor.line.empty` — Chapter plan, papers and first steps
+- `editor.line.show` — Show
+- `editor.line.hide` — Hide
+- `fmt.more` — More
+- `fmt.moreTitle` — More formatting and things to insert
+- `fmt.moreFormat` — Format
+- `fmt.moreInsert` — Insert
+- `fmt.cite` — Cite
+- `fmt.citeTitle` — Cite a paper from your library (or type @)

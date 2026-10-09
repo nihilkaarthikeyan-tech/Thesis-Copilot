@@ -6074,3 +6074,43 @@ merge. Expected from the timings: first passage about a second after each paper 
 
 Found while measuring, not fixed: two `find-sources` runs 3.6 s apart added the same five papers
 twice; each second copy stays PENDING for good, because its resolve job has the first copy's id.
+
+## The calm editor (2026-10-09, ADR-0137)
+
+The owner approved `docs/design/calm-editor/after.png` and asked for it as a rearrangement only:
+no control removed, every `data-testid` moved with its control.
+
+- **Chat first, tools on a rail.** The panel opens on Chat (the last tool is remembered per thesis
+  in this browser, `tc.tool.<id>`). The six tools are one `role="tablist"`: from `lg` a rail of
+  lucide icons on the panel's right edge with the name under each, in the drawer the old
+  three-by-two grid. From `lg` the header and the panel are sticky and the panel is the window's
+  height, so the chat box sits at its foot.
+- **One status line** ("15 papers found · 9 ready to cite · chapters planned") with Show, which
+  opens the section guide, the first-session guide, the proposal prompt, the first-run hint and
+  the library line. All stay mounted while folded: the library line still re-asks the waiting
+  suggestion, the section guide still lays headings into a blank chapter. ⋯ → First steps shows
+  the guide even after Hide.
+- **One toolbar row** with Cite (types `@`, which opens the existing free picker) and More ▾ for
+  the rest, named, in a menu clamped to the window. The row measures its own width: lists, table
+  and equation, then undo/redo, go into More when the text column is narrow. Found on the way:
+  with "read beside" open at 1440 a full-width row ran under the pane's resize handle, and at 768
+  it made the page 7 px wider than the window.
+- **Header:** breadcrumb, Saved, Share, Export (primary), ⋯ (usage, History, How suggestions
+  work, First steps, Keyboard shortcuts, Help, Feedback, theme). The "present" icon in the old
+  header was the theme toggle.
+- Item 5 (chat scope chips) went to a parallel agent; `ChatPanel.tsx` is untouched here. The
+  panel header has an empty `#tool-panel-actions` slot for its "+ New chat".
+
+Tests: `apps/web/e2e/calm-editor.spec.ts` (8: Chat first, each rail item, More and ⋯ contents
+inside the window, the status line and First steps, no layout faults at 360, 390, 430, 768, 1024,
+1280, 1440). Specs whose selectors moved were updated (`e2e/_editor.ts` opens More/⋯). Passed
+against this branch's web (:3020) and API (:3021, mock AI, Redis db 5): calm-editor, layout,
+mobile, blocks-and-colors, charts, diagrams, footnotes, paste-and-tables, thesis-export,
+other-exports, version-history, writing-profile, first-session, start-writing-now, journey,
+read-beside, section-pins, find-papers, chat-threads, editor, states (4 of 5), onboarding (1 of
+2), proposal-sources (7 of 8). The layout audit (`MEASURE=1`, five widths): 150 screens, 0 faults.
+Failing for reasons outside this change: `flags-keys` (its route mock hard-codes the :3000
+origin); `onboarding`'s first test (the hint reads "A suggestion appears when you pause" —
+automatic suggest is on for new accounts — so there is no "Ctrl+/"); `states` empty grounding and
+`proposal-sources` empty-library draft (the API now answers with the papers-loading and
+finding-sources messages). The Hindi review sheet lists the 22 new strings as English for now.
