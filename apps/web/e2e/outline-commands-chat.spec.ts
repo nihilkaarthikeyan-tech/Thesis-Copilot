@@ -262,11 +262,14 @@ test.describe('FR-4.9 — chat over the library', () => {
     // The promise the panel makes, before anything is asked.
     // The promise, not the punctuation: the sentence grew a clause when the chat scopes arrived
     // (ADR-0016) — "…from your library, and cite the passage they came from."
-    await expect(panel).toContainText('Answers come only from your library');
+    await expect(panel.getByTestId('chat-scope-library')).toHaveAttribute(
+      'title',
+      /Answers come only from your library/,
+    );
     await expect(panel).toContainText('use Assist or Draft in the editor');
 
     await panel
-      .getByPlaceholder('What do my sources say about…')
+      .getByPlaceholder('Ask about your papers — @ to name one')
       .fill('What do my sources say about drying rates?');
     await panel.getByRole('button', { name: /Ask|Send/ }).click();
 
