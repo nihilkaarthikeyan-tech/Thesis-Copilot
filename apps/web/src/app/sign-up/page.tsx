@@ -63,7 +63,9 @@ export default function SignUpPage() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [google, setGoogle] = useState(false);
+  // Null until `/auth/methods` answers. While unknown, the Google block keeps its place (hidden),
+  // so it never appears late and pushes the form about under a pointer (2026-10-09).
+  const [google, setGoogle] = useState<boolean | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   // ADR-0033: the code is the default; a password sign-up confirms the address by link instead.
   const [mode, setMode] = useState<'code' | 'password'>('code');
@@ -150,6 +152,7 @@ export default function SignUpPage() {
 
   return (
     <AuthFrame
+      formHeight={600}
       photo="/landing/library-cafe.webp"
       photoAlt="A student reading a book at a library table"
       cardTitle={`What the ${TRIAL_DAYS}-day free trial includes`}
@@ -339,8 +342,13 @@ export default function SignUpPage() {
         </p>
       ) : null}
 
-      {google && step === 'email' ? (
-        <>
+      {google !== false && step === 'email' ? (
+        <div
+          className={google ? undefined : 'invisible'}
+          aria-hidden={google ? undefined : true}
+          inert={google ? undefined : true}
+          data-testid="google-block"
+        >
           <div className="my-6 flex items-center gap-3">
             <hr className="flex-1 border-line" />
             <span className="eyebrow">or</span>
@@ -350,7 +358,7 @@ export default function SignUpPage() {
             variant="secondary"
             size="lg"
             className="w-full"
-            disabled={googleBusy}
+            disabled={googleBusy || !google}
             aria-busy={googleBusy}
             data-testid="google-sign-up"
             onClick={() => void continueWithGoogle()}
@@ -358,7 +366,7 @@ export default function SignUpPage() {
             <GoogleMark />
             {googleBusy ? 'Opening Google…' : 'Sign up with Google'}
           </Button>
-        </>
+        </div>
       ) : null}
 
       <p className="mt-8 border-t border-line pt-4 text-[13px] text-muted">

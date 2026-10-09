@@ -1167,8 +1167,16 @@
   color: var(--mk-body);
   text-decoration: none;
 }
+/*
+ * Centred on the form's usual height, not its height right now (2026-10-09). With `margin: auto`
+ * the box re-centred whenever something below the field arrived late — the Google block after
+ * `/auth/methods`, an error, the password link — and the email field jumped by half of it under
+ * the student's pointer. The offset depends on the window only, so whatever grows below the field
+ * grows downwards. 30px is the top bar, 56px/40px the form column's own padding.
+ */
 .mk .mk-auth-box {
-  margin: auto 0;
+  --mk-auth-h: 670px;
+  margin: max(0px, calc((100dvh - 56px - 30px - var(--mk-auth-h)) / 2)) 0 auto;
   padding: 48px 0;
   width: 100%;
   max-width: 400px;
@@ -1390,6 +1398,9 @@
   }
   .mk .mk-auth-form {
     padding: 20px 16px;
+  }
+  .mk .mk-auth-box {
+    margin-top: max(0px, calc((100dvh - 40px - 30px - var(--mk-auth-h)) / 2));
   }
 }
 

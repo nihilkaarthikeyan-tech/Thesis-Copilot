@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { ThemeToggle } from '@/components/theme';
 import { cn } from '@/lib/utils';
 import { Brand } from './Brand';
@@ -18,6 +18,7 @@ export function AuthFrame({
   cardTitle,
   cardBody,
   cardPoints,
+  formHeight,
   children,
 }: {
   photo: string;
@@ -25,6 +26,11 @@ export function AuthFrame({
   cardTitle: string;
   cardBody: string;
   cardPoints: readonly string[];
+  /**
+   * The form's usual height in px, Google block included: the box is centred on this, not on
+   * its height at the moment, so nothing arriving late below the field moves the field.
+   */
+  formHeight?: number;
   children: ReactNode;
 }) {
   return (
@@ -37,7 +43,12 @@ export function AuthFrame({
             <ThemeToggle />
           </nav>
         </div>
-        <main className="mk-auth-box">{children}</main>
+        <main
+          className="mk-auth-box"
+          style={formHeight ? ({ '--mk-auth-h': `${formHeight}px` } as CSSProperties) : undefined}
+        >
+          {children}
+        </main>
       </div>
       <aside className="mk-auth-visual" aria-label="About Thesis Copilot">
         {/* biome-ignore lint/performance/noImgElement: pre-sized WebP in public/; the standalone image runs no image optimiser. */}
