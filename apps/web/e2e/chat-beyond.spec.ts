@@ -161,7 +161,8 @@ test('a refused question offers the search; the answer shows its steps, its pape
 
   await paper.getByTestId('chat-beyond-add').click();
   await expect(paper).toContainText('Added. Once it has been read, ask on Library to cite it.');
-  expect(resolved).toEqual([{ references: [PAPER.reference] }]);
+  // R18 (ADR-0129): the thesis's "Add into" goes with it; none chosen here, so null.
+  expect(resolved).toEqual([{ references: [PAPER.reference], collectionId: null }]);
 });
 
 test('Settings: Search beyond my library is Ask first until changed, and keeps the choice', async ({
