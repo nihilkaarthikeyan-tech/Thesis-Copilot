@@ -10,6 +10,7 @@
  */
 
 import { ALLOWANCE_NAMES } from '@tc/config';
+import { type MessageKey, tNow } from '../i18n';
 import { ApiError } from './api';
 
 /** The problem types that mean "a limit refused this", as opposed to a fault. */
@@ -101,46 +102,46 @@ function formatDay(iso: string, options: { locale?: string; timeZone?: string })
   }).format(date);
 }
 
-const STILL_WORKS = 'Writing, editing and exporting still work.';
-const USAGE_LINK = { href: '/app/account', label: 'Usage and plans' };
-const PLANS_LINK = { href: '/pricing', label: 'See plans' };
-
 /** The words of the message. One place, so every screen says exactly the same thing. */
 export function limitText(
   limit: LimitRefusal,
   options: { locale?: string; timeZone?: string } = {},
 ): LimitText {
-  const resets = (iso: string | null, lead: string) =>
-    iso ? `${lead} ${formatResetDate(iso, options)}.` : `${lead} the 1st of next month.`;
+  // In the interface's language (`tNow`); English wherever a key has no translation.
+  const stillWorks = tNow('limit.stillWorks');
+  const usageLink = { href: '/app/account', label: tNow('limit.usageLink') };
+  const plansLink = { href: '/pricing', label: tNow('limit.plansLink') };
+  const resets = (iso: string | null, on: MessageKey, nextMonth: MessageKey) =>
+    iso ? tNow(on, { date: formatResetDate(iso, options) }) : tNow(nextMonth);
   switch (limit.kind) {
     case 'cap':
       return {
-        title: 'Monthly limit reached',
-        body: `${limit.allowance}: ${limit.used} of ${limit.cap} used this month. ${resets(limit.resetsAt, 'Resets on')} ${STILL_WORKS}`,
-        link: USAGE_LINK,
+        title: tNow('limit.cap.title'),
+        body: `${tNow('limit.cap.used', { allowance: limit.allowance, used: limit.used, cap: limit.cap })} ${resets(limit.resetsAt, 'limit.resetsOn', 'limit.resetsNextMonth')} ${stillWorks}`,
+        link: usageLink,
       };
     case 'notIncluded':
       return {
-        title: 'Not in your plan',
-        body: `${limit.allowance}: none included in your plan. ${STILL_WORKS}`,
-        link: PLANS_LINK,
+        title: tNow('limit.notIncluded.title'),
+        body: `${tNow('limit.notIncluded.body', { allowance: limit.allowance })} ${stillWorks}`,
+        link: plansLink,
       };
     case 'trial':
       return {
-        title: 'Free trial ended',
-        body: `${limit.endedAt ? `Your 14-day free trial ended on ${formatDay(limit.endedAt, options)}.` : 'Your 14-day free trial has ended.'} Your theses are safe and you can keep writing; choose a plan to use the AI features again.`,
-        link: PLANS_LINK,
+        title: tNow('limit.trial.title'),
+        body: `${limit.endedAt ? tNow('limit.trial.endedOn', { date: formatDay(limit.endedAt, options) }) : tNow('limit.trial.ended')} ${tNow('limit.trial.safe')}`,
+        link: plansLink,
       };
     case 'ceiling':
       return {
-        title: 'Monthly AI limit reached',
-        body: `You have used this month's AI allowance. ${resets(limit.resetsAt, 'It resets on')} ${STILL_WORKS}`,
-        link: USAGE_LINK,
+        title: tNow('limit.ceiling.title'),
+        body: `${tNow('limit.ceiling.body')} ${resets(limit.resetsAt, 'limit.ceiling.resetsOn', 'limit.ceiling.resetsNextMonth')} ${stillWorks}`,
+        link: usageLink,
       };
     case 'platform':
       return {
-        title: 'AI features paused for this month',
-        body: `The service's AI budget for this month is used up. ${resets(limit.resetsAt, 'AI features return on')} This is not your allowance, and the administrator has been told. ${STILL_WORKS}`,
+        title: tNow('limit.platform.title'),
+        body: `${tNow('limit.platform.body')} ${resets(limit.resetsAt, 'limit.platform.returnsOn', 'limit.platform.returnsNextMonth')} ${tNow('limit.platform.notYours')} ${stillWorks}`,
         link: null,
       };
   }

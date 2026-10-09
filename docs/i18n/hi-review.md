@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**604** strings are translated; **19** are deliberately
+**644** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -270,6 +270,7 @@ English. Write corrections in the last column.
 | `editor.hint.cites` | It cites only the papers in your library. | यह सिर्फ़ आपकी लाइब्रेरी के पेपर ही साइट करता है। | |
 | `editor.hint.how` | How suggestions work (90 seconds) | सुझाव कैसे काम करते हैं (90 सेकंड) | |
 | `editor.closeMessage` | Close message | संदेश बंद करें | |
+| `editor.suggest` | Suggest | सुझाव दें | |
 | `editor.key.suggestion` | suggestion | सुझाव | |
 | `editor.key.accept` | accept | स्वीकार | |
 | `editor.key.word` | a word | एक शब्द | |
@@ -724,32 +725,58 @@ English. Write corrections in the last column.
 | `chat.deep.hint` | Plans the question in parts, searches the literature for each, and answers at length. About a minute. Uses one deep research question, not a chat question. | सवाल को हिस्सों में बाँटता है, हर हिस्से के लिए literature खोजता है, और विस्तार से जवाब देता है। लगभग एक मिनट। एक गहरे शोध का सवाल खर्च होता है, chat का सवाल नहीं। | |
 | `chat.research.plan` | Parts: {titles} | हिस्से: {titles} | |
 | `chat.threads.list` | Chats | चैट | |
+| `chat.threads.heading` | Your chats in this thesis | इस थीसिस में आपकी चैट | |
 | `chat.threads.new` | New chat | नई चैट | |
 | `chat.threads.newButton` | New | नई | |
+| `chat.threads.newOn` | Start a new chat on | नई चैट शुरू करें: | |
 | `chat.threads.wholeLibrary` | Your whole library | आपकी पूरी library | |
+| `chat.threads.emptyCollection` | empty | खाली | |
+| `chat.threads.loading` | Loading your chats… | आपकी चैट लोड हो रही हैं… | |
+| `chat.threads.none` | No chats yet. Ask a question and the chat is kept here. | अभी कोई चैट नहीं। सवाल पूछिए, चैट यहाँ रखी जाएगी। | |
+| `chat.threads.delete` | Delete the chat “{title}” | चैट “{title}” हटाएँ | |
+| `chat.threads.deleteYes` | Delete | हटाएँ | |
+| `chat.threads.deleteNo` | Keep | रखें | |
+| `chat.collection.chip` | Collection: {name} | Collection: {name} | |
+| `chat.collection.blurb` | Answers come only from the papers in this collection, and cite the passage they came from. This chat never searches beyond them. | जवाब सिर्फ़ इस collection के paper से आते हैं, और जिस हिस्से से आए उसका साइटेशन देते हैं। यह चैट इनके बाहर कभी नहीं खोजती। | |
+| `chat.collection.empty` | Ask about the papers in “{name}” — what they found, where they disagree, what is missing. | “{name}” के paper के बारे में पूछिए — उन्होंने क्या पाया, कहाँ असहमत हैं, क्या छूटा है। | |
+| `chat.collection.notEnough` | Add papers to this collection in Sources, then ask again. | Sources में इस collection में paper जोड़िए, फिर दोबारा पूछिए। | |
+| `chat.collection.deleted` | This chat answered only from the collection “{name}”, which has been deleted. You can read it here; start a new chat to ask again. | यह चैट सिर्फ़ collection “{name}” से जवाब देती थी, जो अब हटा दिया गया है। आप इसे यहाँ पढ़ सकते हैं; दोबारा पूछने के लिए नई चैट शुरू करें। | |
 | `chat.web.ask` | Search beyond your library? | अपनी library से आगे खोजें? | |
+| `chat.web.why` | Nothing in your library is on this. The scholarly indexes can be searched and the answer written from the abstracts found, each marked “Not in your library”. | आपकी library में इस पर कुछ नहीं है। scholarly index में खोजकर, मिले abstract से जवाब लिखा जा सकता है; हर एक पर “आपकी library में नहीं” लिखा होगा। | |
 | `chat.web.once` | Allow this time | इस बार अनुमति दें | |
 | `chat.web.always` | Always allow | हमेशा अनुमति दें | |
 | `chat.web.skip` | Skip | छोड़ें | |
+| `chat.web.skipped` | Not searched. | नहीं खोजा। | |
+| `chat.web.alwaysNote` | Search beyond my library is now On: every library question also searches the literature. | Library से आगे खोज अब चालू है: library के हर सवाल पर literature में भी खोजा जाएगा। | |
+| `chat.web.settings` | Change it in Settings | Settings में बदलें | |
+
+## limit
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `limit.stillWorks` | Writing, editing and exporting still work. | लिखना, संपादन और export अब भी चलते हैं। | |
+| `limit.usageLink` | Usage and plans | उपयोग और प्लान | |
+| `limit.plansLink` | See plans | प्लान देखें | |
+| `limit.cap.title` | Monthly limit reached | इस महीने की सीमा पूरी हो गई | |
+| `limit.cap.used` | {allowance}: {used} of {cap} used this month. | {allowance}: इस महीने {cap} में से {used} इस्तेमाल हुए। | |
+| `limit.resetsOn` | Resets on {date}. | {date} को फिर से शुरू होगी। | |
+| `limit.resetsNextMonth` | Resets on the 1st of next month. | अगले महीने की 1 तारीख़ को फिर से शुरू होगी। | |
+| `limit.notIncluded.title` | Not in your plan | आपके प्लान में नहीं है | |
+| `limit.notIncluded.body` | {allowance}: none included in your plan. | {allowance}: आपके प्लान में शामिल नहीं। | |
+| `limit.trial.title` | Free trial ended | मुफ़्त trial ख़त्म हो गया | |
+| `limit.trial.endedOn` | Your 14-day free trial ended on {date}. | आपका 14 दिन का मुफ़्त trial {date} को ख़त्म हो गया। | |
+| `limit.trial.ended` | Your 14-day free trial has ended. | आपका 14 दिन का मुफ़्त trial ख़त्म हो गया है। | |
+| `limit.trial.safe` | Your theses are safe and you can keep writing; choose a plan to use the AI features again. | आपकी थीसिस सुरक्षित है और आप लिखते रह सकते हैं; AI सुविधाएँ फिर से इस्तेमाल करने के लिए कोई प्लान चुनें। | |
+| `limit.ceiling.title` | Monthly AI limit reached | इस महीने की AI सीमा पूरी हो गई | |
+| `limit.ceiling.body` | You have used this month's AI allowance. | आपने इस महीने का AI हिस्सा इस्तेमाल कर लिया है। | |
+| `limit.ceiling.resetsOn` | It resets on {date}. | यह {date} को फिर से शुरू होगा। | |
+| `limit.ceiling.resetsNextMonth` | It resets on the 1st of next month. | यह अगले महीने की 1 तारीख़ को फिर से शुरू होगा। | |
+| `limit.platform.title` | AI features paused for this month | इस महीने AI सुविधाएँ रुकी हुई हैं | |
+| `limit.platform.body` | The service's AI budget for this month is used up. | इस महीने के लिए सेवा का AI बजट ख़त्म हो गया है। | |
+| `limit.platform.returnsOn` | AI features return on {date}. | AI सुविधाएँ {date} को वापस आएँगी। | |
+| `limit.platform.returnsNextMonth` | AI features return on the 1st of next month. | AI सुविधाएँ अगले महीने की 1 तारीख़ को वापस आएँगी। | |
+| `limit.platform.notYours` | This is not your allowance, and the administrator has been told. | यह आपका हिस्सा नहीं है, और administrator को बता दिया गया है। | |
 
 ## Left in English on purpose
 
 - `editor.usage` — Assist {assist} · Draft {draft}
-- `editor.suggest` — Suggest
-- `chat.threads.heading` — Your chats in this thesis
-- `chat.threads.newOn` — Start a new chat on
-- `chat.threads.emptyCollection` — empty
-- `chat.threads.loading` — Loading your chats…
-- `chat.threads.none` — No chats yet. Ask a question and the chat is kept here.
-- `chat.threads.delete` — Delete the chat “{title}”
-- `chat.threads.deleteYes` — Delete
-- `chat.threads.deleteNo` — Keep
-- `chat.collection.chip` — Collection: {name}
-- `chat.collection.blurb` — Answers come only from the papers in this collection, and cite the passage they came from. This chat never searches beyond them.
-- `chat.collection.empty` — Ask about the papers in “{name}” — what they found, where they disagree, what is missing.
-- `chat.collection.notEnough` — Add papers to this collection in Sources, then ask again.
-- `chat.collection.deleted` — This chat answered only from the collection “{name}”, which has been deleted. You can read it here; start a new chat to ask again.
-- `chat.web.why` — Nothing in your library is on this. The scholarly indexes can be searched and the answer written from the abstracts found, each marked “Not in your library”.
-- `chat.web.skipped` — Not searched.
-- `chat.web.alwaysNote` — Search beyond my library is now On: every library question also searches the literature.
-- `chat.web.settings` — Change it in Settings

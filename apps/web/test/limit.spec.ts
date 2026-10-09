@@ -165,3 +165,24 @@ describe('the editor strip', () => {
     expect(notice.text.startsWith('Monthly AI limit reached. ')).toBe(true);
   });
 });
+
+describe('the limit message in Hindi (Round 2 strings)', () => {
+  it('follows the interface language, keeping the numbers', async () => {
+    const { setCurrentLanguage } = await import('../src/i18n');
+    setCurrentLanguage('hi');
+    try {
+      const text = limitText({
+        kind: 'cap',
+        allowance: 'Section commands',
+        used: 2,
+        cap: 2,
+        resetsAt: null,
+      });
+      expect(text.title).toBe('इस महीने की सीमा पूरी हो गई');
+      expect(text.body).toContain('Section commands: इस महीने 2 में से 2 इस्तेमाल हुए।');
+      expect(text.link?.label).toBe('उपयोग और प्लान');
+    } finally {
+      setCurrentLanguage('en');
+    }
+  });
+});

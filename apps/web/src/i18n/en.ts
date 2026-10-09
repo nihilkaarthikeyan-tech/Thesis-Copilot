@@ -760,6 +760,30 @@ export const en = {
   'chat.web.alwaysNote':
     'Search beyond my library is now On: every library question also searches the literature.',
   'chat.web.settings': 'Change it in Settings',
+  // ---- The limit message (R31, ADR-0122; `lib/limit.ts`) ----
+  'limit.stillWorks': 'Writing, editing and exporting still work.',
+  'limit.usageLink': 'Usage and plans',
+  'limit.plansLink': 'See plans',
+  'limit.cap.title': 'Monthly limit reached',
+  'limit.cap.used': '{allowance}: {used} of {cap} used this month.',
+  'limit.resetsOn': 'Resets on {date}.',
+  'limit.resetsNextMonth': 'Resets on the 1st of next month.',
+  'limit.notIncluded.title': 'Not in your plan',
+  'limit.notIncluded.body': '{allowance}: none included in your plan.',
+  'limit.trial.title': 'Free trial ended',
+  'limit.trial.endedOn': 'Your 14-day free trial ended on {date}.',
+  'limit.trial.ended': 'Your 14-day free trial has ended.',
+  'limit.trial.safe':
+    'Your theses are safe and you can keep writing; choose a plan to use the AI features again.',
+  'limit.ceiling.title': 'Monthly AI limit reached',
+  'limit.ceiling.body': "You have used this month's AI allowance.",
+  'limit.ceiling.resetsOn': 'It resets on {date}.',
+  'limit.ceiling.resetsNextMonth': 'It resets on the 1st of next month.',
+  'limit.platform.title': 'AI features paused for this month',
+  'limit.platform.body': "The service's AI budget for this month is used up.",
+  'limit.platform.returnsOn': 'AI features return on {date}.',
+  'limit.platform.returnsNextMonth': 'AI features return on the 1st of next month.',
+  'limit.platform.notYours': 'This is not your allowance, and the administrator has been told.',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
