@@ -6193,3 +6193,27 @@ Cost ₹14.90 (₹8.18 the round, ₹6.72 a run lost to PowerShell 5.1 dropping 
 
 
 The candidate's code (`isSectionOpener`, `OPENER_INSTRUCTION`, `maxSentences`, the harness's `--opener-mode`) stays on branch `worktree-agent-a4111c5e444d5e7f7` (commit 338fa95), not on main, until the owner decides whether a short opener is wanted at a lower examiner score.
+
+## Comments and replies send an email (2026-10-09, ADR-0142)
+
+The owner's decision, details delegated. A comment (`CommentsService.create`) or reply
+(`CommentsService.reply`) queues a `comment-email` event (`comment-event__<rowId>`); the worker
+(`apps/worker/src/comment-email.ts`) emails the owner, guides and co-authors who can see the
+comments — never the author, a Reader, a guide without an account, or a suspended / deleting
+account — at most once per thread per person an hour. Each person's send is one delayed job keyed
+on thread, person and throttle slot, so an hour's events fold into one email ("And 2 more replies
+since."); `CommentEmailState` (migration 0054) holds the slot and the cursor, and the claim is one
+conditional `updateMany`. Plain text, English or Hindi by the recipient's interface language, the
+first ~200 characters of the comment (never the quoted passage), one link to the comment (the
+review queue and the guide page now open at `?comment=`). Off switch under Account
+(`User.settings.emailOnComments`), and a signed one-click `/unsubscribe` page (`POST
+/email/unsubscribe`, no session, Undo).
+
+Tests: `apps/worker/test/comment-email.spec.ts` (15, real Postgres: recipients, never the author,
+the fold onto one delayed job, early send throttled and re-queued, a racing pair sends once, a mail
+fault puts the claim back, own reply not mailed back, opt-out without backlog, suspended / deleting
+/ turned-Reader skipped, Hindi), `apps/api/test/comment-emails.spec.ts` (5: events queued, Account
+switch, unsubscribe on/off, forged tokens refused), `packages/mail/test/unsubscribe.spec.ts` (5).
+Touched specs pass: comment-replies, web i18n and i18n-review (sheet regenerated).
+`apps/web/e2e/comment-email-switch.spec.ts` is written and **not yet run** (it needs the dev stack
+on this branch with migration 0054 applied).

@@ -388,6 +388,17 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
 - [ ] **Release.** No migration and no new variable. The `start` field on `POST /documents` is
       optional, so an older web build keeps working.
 
+## Comment emails (ADR-0142, 2026-10-09)
+
+- [ ] **Release it** when you choose: migration `0054_comment_emails` runs with the release, and
+      **both** the API and the worker must be redeployed (the API queues, the worker sends). No new
+      key: the worker already has the mail provider and `AUTH_SECRET`. Note that rotating
+      `AUTH_SECRET` also invalidates every unsubscribe link already sent.
+- [ ] **Run `apps/web/e2e/comment-email-switch.spec.ts`** on the dev stack with this branch (not run
+      in the build session, to keep the machine light).
+- [ ] **Tell supervisors and students**, if you want to: from this release, a comment or reply
+      emails the other side, at most once an hour per thread, with a switch under Account.
+
 ## Hindi interface, beta (ADR-0061, 2026-10-05)
 
 - [ ] **Hindi leaves beta after a native speaker reviews docs/i18n/hi-review.md.** It lists every
@@ -397,6 +408,9 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       buttons that read as actions. Corrections go into `apps/web/src/i18n/hi.ts`, then
       `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` rewrites the sheet. When it is done, drop
       "(बीटा)" from `LANGUAGES` in `apps/web/src/i18n/index.ts` (and the test that checks it).
+- [ ] **The Hindi comment email (ADR-0142)** is not in that sheet — it is in the worker,
+      `commentEmail()` in `apps/worker/src/comment-email.ts` (subject, body, footer). The same
+      reviewer should read it.
 - [ ] **Decide the next language** (Tamil was named in ADR-0059). Same route: a catalogue, a sheet,
       a reviewer.
 - [ ] **Nothing to configure for the release.** No migration (the choice is in `User.settings`).
