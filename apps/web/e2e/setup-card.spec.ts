@@ -87,17 +87,44 @@ test('the card takes a new thesis through its five rows, in the editor', async (
   await page.getByTestId('setup-field-next').click();
   await expect(page.getByTestId('setup-row-field')).toContainText('Anna University');
 
-  // Row 3: the start questions, one at a time; three answers make the proposal.
+  // Row 3: the start questions, one at a time, until the answers make the proposal. A.6 allows
+  // two to four model turns and never more than three questions: the mock always asks three, a
+  // real model (2026-10-09) sometimes had enough after two. Either way the result must arrive.
   await expect(page.getByTestId('setup-row-aim')).toHaveAttribute('data-state', 'open');
   const answer = page.locator('#setup-aim-answer');
-  for (const text of ['Household finance', 'Two districts', 'A survey I run myself']) {
-    await expect(answer).toBeEnabled({ timeout: 30_000 });
+  const result = page.getByTestId('setup-aim-result');
+  const answers = ['Household finance', 'Two districts', 'A survey I run myself'];
+  for (const [i, text] of answers.entries()) {
+    // The next question (the answer box open again), or the proposal: whichever came.
+    await expect
+      .poll(
+        async () =>
+          (await result.isVisible())
+            ? 'result'
+            : (await answer.count()) > 0 && (await answer.isEnabled())
+              ? 'question'
+              : 'wait',
+        { timeout: 30_000 },
+      )
+      .not.toBe('wait');
+    if (await result.isVisible()) {
+      // Never before the student has answered at least once.
+      expect(i).toBeGreaterThan(0);
+      break;
+    }
     await expect(page.getByTestId('setup-aim-question')).not.toHaveText(/Thinking/);
+    if (i === 0) await shot(page, '3-aim');
     await answer.fill(text);
     await answer.press('Enter');
   }
-  await shot(page, '3-aim');
-  await expect(page.getByTestId('setup-aim-result')).toBeVisible({ timeout: 30_000 });
+  await expect(result).toBeVisible({ timeout: 30_000 });
+  // The answers' working title becomes the thesis's title (FR-1.4). The mock's equals the typed
+  // one; a real model's is often sharper, and the card must show it before Use, not after.
+  const newTitle = page.getByTestId('setup-aim-title');
+  const titleNow =
+    (await newTitle.count()) > 0
+      ? ((await newTitle.locator('span').textContent()) ?? '').trim()
+      : TITLE;
   await page.getByTestId('setup-aim-use').click();
 
   // Row 4: the chapters arrive in place, in the chapter list and as headings on the page.
@@ -124,7 +151,7 @@ test('the card takes a new thesis through its five rows, in the editor', async (
   await page.getByTestId('status-line-toggle').click();
   const folded = page.getByTestId('setup-card');
   await expect(folded).toHaveAttribute('data-done', 'true');
-  await expect(folded.getByTestId('setup-row-title')).toContainText(TITLE);
+  await expect(folded.getByTestId('setup-row-title')).toContainText(titleNow);
   await shot(page, '6-done');
 
   // On another visit the card stays folded.
@@ -180,6 +207,39 @@ test('skipping the questions plans from the title; Standard chapters replace the
   await expect(page.locator('.thesis-editor h2')).toHaveCount(0);
 });
 
+test('a first question that does not arrive says so, and Try again asks it again', async ({
+  page,
+  request,
+}) => {
+  // Seen on real models (2026-10-09): OpenAI refused one call in six or so mid-stream, the turn
+  // failed, and the row sat at "Thinking of the first question…" over a shut answer box for good.
+  // The first turn is failed here at the network, the way the browser saw it then.
+  test.setTimeout(180_000);
+  await newThesis(page, request);
+  let failed = false;
+  await page.route('**/api/v1/documents/*/proposal', async (route) => {
+    if (route.request().method() === 'POST' && !failed) {
+      failed = true;
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ title: 'Something went wrong', status: 500 }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await nameAndSkipField(page);
+  await expect(page.getByTestId('setup-aim-question')).toHaveText(
+    'The first question did not arrive.',
+    { timeout: 30_000 },
+  );
+  await page.getByTestId('setup-aim-retry').click();
+  await expect(page.locator('#setup-aim-answer')).toBeEnabled({ timeout: 60_000 });
+  await expect(page.getByTestId('setup-aim-question')).not.toHaveText(/Thinking|did not arrive/);
+  await expect(page.getByTestId('setup-aim-retry')).toHaveCount(0);
+});
+
 for (const width of [360, 430, 768, 1024, 1440]) {
   test.describe(`at ${width}`, () => {
     // 800 tall: a laptop. The card at its tallest must leave the chapter's heading on screen.
@@ -194,7 +254,9 @@ for (const width of [360, 430, 768, 1024, 1440]) {
       const headingInView = async () => {
         const box = await page.locator('.thesis-editor h1').boundingBox();
         expect(box).not.toBeNull();
-        if (box) expect(box.y).toBeLessThan(800);
+        // The whole heading, not just its top edge: 801 px down on an 800 px screen is not "in
+        // view". Real A.6 questions are long; the mock's one-liner never tested this.
+        if (box) expect(box.y + box.height).toBeLessThanOrEqual(800);
       };
       await noLayoutFaults(page);
       await headingInView();

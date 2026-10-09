@@ -73,26 +73,44 @@ export function SetupAim({
     }
   }
 
-  // The conversation so far; a new one starts with the title, as Start writing now's did.
+  /** The conversation so far; a new one starts with the title, as Start writing now's did. */
+  async function load(live: () => boolean = () => true) {
+    setError(null);
+    try {
+      const v = await api<ProposalView>(`/documents/${documentId}/proposal`);
+      if (!live()) return;
+      setView(v);
+      if (v.visible.length === 0 && !started.current && title.trim()) {
+        started.current = true;
+        void send(title);
+      }
+    } catch (e) {
+      if (live()) setError(problem(e, t('setup.aim.error')));
+    }
+  }
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, for this thesis.
   useEffect(() => {
     let live = true;
-    api<ProposalView>(`/documents/${documentId}/proposal`)
-      .then((v) => {
-        if (!live) return;
-        setView(v);
-        if (v.visible.length === 0 && !started.current && title.trim()) {
-          started.current = true;
-          void send(title);
-        }
-      })
-      .catch((e: unknown) => {
-        if (live) setError(problem(e, t('setup.aim.error')));
-      });
+    void load(() => live);
     return () => {
       live = false;
     };
   }, [documentId]);
+
+  /**
+   * The first question did not come (a provider refusal, a time limit): say so in its place and
+   * offer it again, rather than "Thinking of the first question…" over a shut answer box for good
+   * (ADR-0145 addendum, found on real models 2026-10-09).
+   */
+  function retry() {
+    if (!view) {
+      started.current = false;
+      void load();
+    } else if (view.visible.length === 0) {
+      void send(title);
+    }
+  }
 
   const skeleton: Skeleton | null = view?.done ? view.skeleton : null;
   /** The student's answer to the first question: the aim row's one-line summary. */
@@ -147,12 +165,26 @@ export function SetupAim({
   const asking = !view?.done && last?.role === 'assistant';
   const options = asking && !busy ? questionOptions(last.text) : [];
   const userTurns = view?.visible.filter((m) => m.role === 'user').length ?? 0;
+  const firstFailed = !busy && !skipping && error !== null && (!view || view.visible.length === 0);
 
   return (
     <div data-testid="setup-aim" className="min-w-0">
       {skeleton ? (
         <div data-testid="setup-aim-result">
           <p className="text-[13px] font-semibold text-muted">{t('setup.aim.result')}</p>
+          {/*
+            Saving the answers makes their working title the thesis's title (FR-1.4), so it is
+            shown before the student agrees to it, as StartQuestions showed it. Without this a
+            real model's sharper title replaced the one typed in row 1 unseen (ADR-0145 addendum).
+          */}
+          {skeleton.workingTitle.trim() !== title.trim() ? (
+            <p className="mt-1 text-[12.5px] text-muted" data-testid="setup-aim-title">
+              {t('setup.aim.newTitle')}{' '}
+              <span className="font-semibold text-ink [overflow-wrap:anywhere]">
+                {skeleton.workingTitle}
+              </span>
+            </p>
+          ) : null}
           <p className="mt-1 text-[14px] text-ink [overflow-wrap:anywhere]">
             {skeleton.problemStatement}
           </p>
@@ -172,40 +204,55 @@ export function SetupAim({
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <p
-              className="min-w-0 flex-1 text-[14px] font-semibold text-ink [overflow-wrap:anywhere]"
-              data-testid="setup-aim-question"
-            >
-              {asking && last ? questionStem(last.text) : t('setup.aim.thinking')}
-            </p>
-            {view && asking ? (
-              <span className="shrink-0 text-[12px] text-muted">
-                {t('setup.aim.count', {
-                  n: Math.max(1, view.questionsAsked),
-                  max: view.maxQuestions,
-                })}
-              </span>
+          {/*
+            The question and its answers scroll together on a short screen, the answer box and
+            Skip staying outside: a real A.6 question runs to eight lines at 360 px, or three
+            lines and four long answers, and either pushed the chapter heading off an 800 px
+            screen (ADR-0145 addendum). The mock's one-line question never did.
+          */}
+          <div
+            data-testid="setup-aim-scroll"
+            className="min-w-0 [@media(max-height:820px)]:max-h-[22vh] [@media(max-height:820px)]:overflow-y-auto [@media(max-height:820px)]:pr-1"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p
+                className="min-w-0 flex-1 text-[14px] font-semibold text-ink [overflow-wrap:anywhere]"
+                data-testid="setup-aim-question"
+              >
+                {asking && last
+                  ? questionStem(last.text)
+                  : firstFailed
+                    ? t('setup.aim.failed')
+                    : t('setup.aim.thinking')}
+              </p>
+              {view && asking ? (
+                <span className="shrink-0 text-[12px] text-muted">
+                  {t('setup.aim.count', {
+                    n: Math.max(1, view.questionsAsked),
+                    max: view.maxQuestions,
+                  })}
+                </span>
+              ) : null}
+            </div>
+            {options.length > 0 ? (
+              <fieldset className="mt-2 flex flex-col items-start gap-1.5 border-0 p-0">
+                <legend className="sr-only">{t('pathA.chooseAnswer')}</legend>
+                {options
+                  .filter((o) => !o.other)
+                  .map((option) => (
+                    <button
+                      key={option.text}
+                      type="button"
+                      onClick={() => void send(option.text)}
+                      data-testid="setup-aim-option"
+                      className="max-w-full rounded-full border border-accent/60 px-3 py-1 text-left text-[13px] text-ink hover:bg-accent-soft [overflow-wrap:anywhere]"
+                    >
+                      {option.text}
+                    </button>
+                  ))}
+              </fieldset>
             ) : null}
           </div>
-          {options.length > 0 ? (
-            <fieldset className="mt-2 flex flex-col items-start gap-1.5 border-0 p-0 [@media(max-height:820px)]:max-h-[24vh] [@media(max-height:820px)]:overflow-y-auto">
-              <legend className="sr-only">{t('pathA.chooseAnswer')}</legend>
-              {options
-                .filter((o) => !o.other)
-                .map((option) => (
-                  <button
-                    key={option.text}
-                    type="button"
-                    onClick={() => void send(option.text)}
-                    data-testid="setup-aim-option"
-                    className="max-w-full rounded-full border border-accent/60 px-3 py-1 text-left text-[13px] text-ink hover:bg-accent-soft [overflow-wrap:anywhere]"
-                  >
-                    {option.text}
-                  </button>
-                ))}
-            </fieldset>
-          ) : null}
           {busy && userTurns > 0 ? (
             <p className="mt-2 text-[12px] text-muted" role="status">
               {t('pathA.thinking')}
@@ -231,6 +278,11 @@ export function SetupAim({
         </>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {firstFailed && !refused ? (
+          <Button type="button" variant="secondary" onClick={retry} data-testid="setup-aim-retry">
+            {t('setup.aim.retry')}
+          </Button>
+        ) : null}
         <button
           type="button"
           disabled={skipping}
