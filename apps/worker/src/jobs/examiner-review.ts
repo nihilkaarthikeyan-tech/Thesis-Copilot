@@ -18,27 +18,16 @@
  * - **A unit buys a review.** It is given back when no section could be reviewed at all.
  * - **Flags are flags.** Nothing here edits the chapter; the student resolves or ignores each one,
  *   and an ignored issue is not raised again on the same sentence (ADR-0007's fingerprint).
- * - **Strengths and questions for the author** (ADR-0131), whole-chapter reviews only: the same
- *   call asks each section for a few (`examiner_review.md`); a strength is kept only pinned to a
- *   sentence it quotes, a question only if it asserts nothing outside the request; the record
- *   keeps at most four and five.
  */
 
 import {
-  askPlan,
-  buildExaminerReviewHighlightsRequest,
   buildExaminerReviewRequest,
   EXAMINER_REVIEW,
   type ExaminerIssue,
-  type ExaminerResult,
-  type ExaminerReviewAnswer,
-  examinerReviewSchema,
   examinerSchema,
   flagFingerprint,
   type LlmProvider,
-  pickHighlights,
   postProcessExaminer,
-  postProcessHighlights,
   type ReviewCitation,
   type ReviewPassage,
   reviewChapter,
@@ -48,10 +37,8 @@ import { disciplineProfile, PARADIGMS, suggestDiscipline } from '@tc/config';
 import type { PrismaClient } from '@tc/db';
 import {
   chapterProfileSchema,
-  type ExaminerQuestion,
   type ExaminerReviewJob,
   type ExaminerReviewRecord,
-  type ExaminerStrength,
   readThesisDetails,
 } from '@tc/types';
 
@@ -276,13 +263,9 @@ export async function runExaminerReview(
       input: sectionInput(section, review.citations, passageFor),
     }));
 
-    // ADR-0131: a whole chapter's review also asks each section for strengths and questions for
-    // the author (`examiner_review.md`); a selection keeps the examiner as it was.
-    const plan = range ? null : askPlan(sections.map((s) => s.section.sentences.length));
-
     const outcomes = await pool(sections, EXAMINER_REVIEW.concurrency, async (item) => {
       const { section, input } = item;
-      const examinerInput = {
+      const request = buildExaminerReviewRequest({
         discipline,
         paradigm,
         degree,
@@ -312,21 +295,14 @@ export async function runExaminerReview(
           : {}),
         userId: job.userId,
         documentId: job.documentId,
-      };
-      const ask = plan?.[item.index];
+      });
       const started = Date.now();
       try {
-        const result = ask
-          ? await deps.llm.complete({
-              ...buildExaminerReviewHighlightsRequest(examinerInput, ask),
-              signal: AbortSignal.timeout(timeoutMs),
-              schema: examinerReviewSchema,
-            })
-          : await deps.llm.complete({
-              ...buildExaminerReviewRequest(examinerInput),
-              signal: AbortSignal.timeout(timeoutMs),
-              schema: examinerSchema,
-            });
+        const result = await deps.llm.complete({
+          ...request,
+          signal: AbortSignal.timeout(timeoutMs),
+          schema: examinerSchema,
+        });
         spentMicro += await deps.logCall({
           userId: job.userId,
           documentId: job.documentId,
@@ -335,11 +311,11 @@ export async function runExaminerReview(
           latencyMs: Date.now() - started,
           ok: true,
         });
-        const value = result.value as ExaminerResult | ExaminerReviewAnswer;
-        const processed = postProcessExaminer(
-          { issues: value.issues },
-          { sentences: input.sentences, pitfalls, discipline },
-        );
+        const processed = postProcessExaminer(result.value, {
+          sentences: input.sentences,
+          pitfalls,
+          discipline,
+        });
         if (processed.dropped > 0) {
           log({
             msg: 'examiner named sentences not sent',
@@ -347,20 +323,7 @@ export async function runExaminerReview(
             dropped: processed.dropped,
           });
         }
-        const highlights =
-          ask && 'strengths' in value
-            ? postProcessHighlights(value, {
-                sentences: input.sentences.map(({ id, text }) => ({ id, text })),
-                passages: input.passages,
-                title: section.title,
-                blockingIds: new Set(
-                  processed.issues
-                    .filter((i) => i.severity === 'blocking')
-                    .map((i) => i.sentenceId),
-                ),
-              })
-            : null;
-        return { ok: true as const, item, issues: processed.issues, highlights };
+        return { ok: true as const, item, issues: processed.issues };
       } catch (error) {
         spentMicro += await deps
           .logCall({
@@ -379,7 +342,7 @@ export async function runExaminerReview(
           section: section.title,
           error: String(error),
         });
-        return { ok: false as const, item, issues: [] as ExaminerIssue[], highlights: null };
+        return { ok: false as const, item, issues: [] as ExaminerIssue[] };
       }
     });
 
@@ -410,30 +373,6 @@ export async function runExaminerReview(
       }
     }
 
-    // ADR-0131: strengths pinned to their sentences, questions to theirs when they name one.
-    const lists = reviewed.map((outcome) => {
-      const byId = new Map(outcome.item.input.sentences.map((s) => [s.id, s.sentence]));
-      const title = outcome.item.section.title;
-      return {
-        strengths: (outcome.highlights?.strengths ?? []).flatMap((s): ExaminerStrength[] => {
-          const sentence = byId.get(s.sentenceId);
-          return sentence
-            ? [{ quote: s.quote, why: s.why, section: title, from: sentence.from, to: sentence.to }]
-            : [];
-        }),
-        questions: (outcome.highlights?.questions ?? []).map((q): ExaminerQuestion => {
-          const sentence = q.sentenceId ? byId.get(q.sentenceId) : undefined;
-          return {
-            question: q.question,
-            section: title,
-            from: sentence?.from ?? null,
-            to: sentence?.to ?? null,
-          };
-        }),
-      };
-    });
-    const highlights = range ? null : pickHighlights(lists);
-
     // What the student sees: an issue they already ignored on the same sentence is not counted.
     const written = await writeFlags(prisma, job, drafts);
     const done = {
@@ -448,14 +387,11 @@ export async function runExaminerReview(
       finishedAt: now().toISOString(),
       version: chapter.version,
       ...done,
-      ...(highlights ? highlights : {}),
     });
     log({
       msg: 'examiner review finished',
       runId: job.runId,
       ...done,
-      strengths: highlights?.strengths.length ?? 0,
-      questions: highlights?.questions.length ?? 0,
       omittedSections: review.omittedSections,
       spentInr: spentMicro / 1e6,
     });

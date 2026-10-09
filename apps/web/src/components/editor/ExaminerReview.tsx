@@ -16,14 +16,12 @@
  * screen behind this component's back, so a Flags tab that was already open never saw it run.
  */
 
-import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { type BlockCheckRequest, takeBlockCheck } from '@/lib/block-check';
 import {
   type ExaminerReviewState,
   elapsed,
-  highlightsOf,
   resultLine,
   isReviewRunning as running,
 } from '@/lib/examiner-review';
@@ -38,11 +36,8 @@ export function ExaminerReview({
   request,
   save,
   onNotice,
-  editor,
 }: {
   chapterId: string;
-  /** ADR-0131: "Go to" on a strength selects the sentence it quotes. */
-  editor?: Editor | null;
   /** Reloads the flag list once the review has written its flags. */
   onFinished: () => void | Promise<void>;
   /** R26: review just this range (a paragraph from the block menu, or a selection). */
@@ -184,7 +179,6 @@ export function ExaminerReview({
           {resultLine(state)}
         </p>
       ) : null}
-      <Highlights state={state} editor={editor ?? null} />
       {state?.status === 'FAILED' && state.error ? (
         <p className="mt-2 text-[12px] text-warn">{state.error}</p>
       ) : null}
@@ -194,76 +188,6 @@ export function ExaminerReview({
         </p>
       ) : null}
       <LimitNotice limit={limit.value} className="mt-2" />
-    </div>
-  );
-}
-
-/**
- * ADR-0131: what the chapter does well and what an examiner would ask its author, under the
- * result line of a finished whole-chapter review. Each strength quotes its sentence, and "Go to"
- * selects that sentence while the chapter is still the version the review read.
- */
-function Highlights({
-  state,
-  editor,
-}: {
-  state: ExaminerReviewState | null;
-  editor: Editor | null;
-}) {
-  const lists = highlightsOf(state);
-  if (!lists || !state) return null;
-  const canGo = Boolean(editor) && !state.chapterChanged;
-  const goTo = (from: number, to: number) =>
-    editor?.chain().focus().setTextSelection({ from, to }).scrollIntoView().run();
-  return (
-    <div data-testid="examiner-highlights" className="mt-3 space-y-3 text-[12px]">
-      {lists.strengths.length ? (
-        <div>
-          <p className="font-medium text-ink">Strengths</p>
-          <ul className="mt-1 space-y-2" data-testid="examiner-strengths">
-            {lists.strengths.map((s) => (
-              <li key={`${s.from}-${s.quote}`} className="break-words">
-                <q className="italic text-ink">{s.quote}</q>
-                <span className="text-muted"> — {s.why}</span>{' '}
-                {canGo ? (
-                  <button
-                    type="button"
-                    className="whitespace-nowrap underline"
-                    onClick={() => goTo(s.from, s.to)}
-                  >
-                    Go to
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {lists.questions.length ? (
-        <div>
-          <p className="font-medium text-ink">Questions for the author</p>
-          <p className="text-muted">What an examiner might ask you about this chapter in a viva.</p>
-          <ol
-            className="mt-1 list-decimal space-y-2 pl-4 text-ink"
-            data-testid="examiner-questions"
-          >
-            {lists.questions.map((q) => (
-              <li key={q.question} className="break-words">
-                {q.question}{' '}
-                {canGo && q.from !== null && q.to !== null ? (
-                  <button
-                    type="button"
-                    className="whitespace-nowrap underline"
-                    onClick={() => goTo(q.from as number, q.to as number)}
-                  >
-                    Go to
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
     </div>
   );
 }

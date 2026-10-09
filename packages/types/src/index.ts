@@ -69,10 +69,8 @@ export { analyseGap, draftScopeFrom, type ProposalScope } from './gap.js';
 export {
   type CoherenceRunJob,
   type DraftSectionJob,
-  type ExaminerQuestion,
   type ExaminerReviewJob,
   type ExaminerReviewRecord,
-  type ExaminerStrength,
   type ExtractPaperJob,
   type FindSourcesJob,
   type GenerateOutlineJob,

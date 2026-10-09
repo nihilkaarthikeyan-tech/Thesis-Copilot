@@ -16,7 +16,6 @@ import {
   mockDraftFor,
   mockEntitiesFor,
   mockExaminerFor,
-  mockExaminerReviewFor,
   mockExtractionResponse,
   mockFixFor,
   mockOutlineResponse,
@@ -146,11 +145,10 @@ function providersFor(env: Env): Providers {
               req.messages.some((m) => m.content.startsWith('<review')),
             respond: mockExaminerFor,
           },
-          // ADR-0056: the same examiner, reviewing a chapter the student wrote; ADR-0131: with
-          // strengths and questions for the author when the request asks for them.
+          // ADR-0056: the same examiner, reviewing a chapter the student wrote.
           {
             match: (req: LlmRequest) => req.action === 'EXAMINER_REVIEW',
-            respond: mockExaminerReviewFor,
+            respond: mockExaminerFor,
           },
           mockExtractionResponse,
           // ADR-0039: the build's proofread pass answers as the editor's does.

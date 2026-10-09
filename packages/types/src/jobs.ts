@@ -167,30 +167,6 @@ export type ExaminerReviewRecord = {
   error?: string;
   /** ADR-0067: the run reviewed a selection, not the whole chapter. */
   selection?: boolean;
-  /**
-   * ADR-0131: what the chapter does well, each pinned to the sentence it quotes (positions in the
-   * chapter as saved at `version`). A whole-chapter review only; at most four.
-   */
-  strengths?: ExaminerStrength[];
-  /** ADR-0131: questions an examiner would ask the author in the viva; at most five. */
-  questions?: ExaminerQuestion[];
-};
-
-/** One strength of a reviewed chapter — ADR-0131. `quote` is words of the sentence at from–to. */
-export type ExaminerStrength = {
-  quote: string;
-  why: string;
-  section: string;
-  from: number;
-  to: number;
-};
-
-/** One question for the author — ADR-0131. from–to: the sentence it is about, when it names one. */
-export type ExaminerQuestion = {
-  question: string;
-  section: string;
-  from: number | null;
-  to: number | null;
 };
 
 export type JobPayloads = {
