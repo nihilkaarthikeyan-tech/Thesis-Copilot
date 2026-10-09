@@ -1,0 +1,377 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 6,
+    "wins": {
+      "current": 0,
+      "candidate": 0,
+      "tie": 6
+    },
+    "meanScore": {
+      "current": 0,
+      "candidate": 0
+    },
+    "answeredWithCitation": {
+      "current": 5,
+      "candidate": 5
+    },
+    "offeredNothing": {
+      "current": 0,
+      "candidate": 0
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 0
+    },
+    "candidateFile": "assist-setting",
+    "set": "opener-kerala",
+    "judged": false,
+    "hallucinatedCites": {
+      "current": 1,
+      "candidate": 0
+    },
+    "setting": {
+      "current": {
+        "mismatched": 0,
+        "outputs": 0,
+        "firstOwn": 3,
+        "answered": 6
+      },
+      "candidate": {
+        "mismatched": 0,
+        "outputs": 0,
+        "firstOwn": 3,
+        "answered": 6
+      }
+    },
+    "measures": {
+      "current": {
+        "outputs": 6,
+        "run6": 3,
+        "run8": 2,
+        "flagged": 5,
+        "meanLongestRun": 6.33,
+        "sentences": 12,
+        "citedSentences": 7,
+        "sharedCitation": 3,
+        "citations": 12,
+        "claimsPerCitation": 0.83,
+        "intensifiers": 1,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 2
+      },
+      "candidate": {
+        "outputs": 6,
+        "run6": 4,
+        "run8": 3,
+        "flagged": 4,
+        "meanLongestRun": 7.17,
+        "sentences": 11,
+        "citedSentences": 6,
+        "sharedCitation": 3,
+        "citations": 6,
+        "claimsPerCitation": 1.5,
+        "intensifiers": 1,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 2
+      }
+    },
+    "medianMs": {
+      "current": 1823,
+      "candidate": 1967
+    },
+    "spentRupees": 1.53
+  },
+  "rows": [
+    {
+      "case": "fresh-karnataka-solar-chapter1-kerala",
+      "sample": 0,
+      "verdict": "=",
+      "a": "The transition to renewable energy sources has become imperative due to concerns over climate change, increasing energy demands, and the limitations of conventional energy generation methods. Solar energy, particularly solar photovoltaics (PV), offers a promising solution for sustainable energy generation at both commercial and household levels, although its contribution to the global energy mix remains limited.",
+      "b": "The transition to renewable energy sources, particularly solar photovoltaics (PV), is increasingly recognized as essential for meeting rising energy demands sustainably and addressing climate change concerns. Despite its potential for both commercial and household applications, the contribution of solar energy to the global energy supply remains limited due to various adoption barriers identified across multiple studies.",
+      "aRaw": "The transition to renewable energy sources has become imperative due to concerns over climate change, increasing energy demands, and the limitations of conventional energy generation methods. Solar energy, particularly solar photovoltaics (PV), offers a promising solution for sustainable energy generation at both commercial and household levels, although its contribution to the global energy mix remains limited. Numerous studies have identified a wide range of factors influencing household adoption of solar PV, categorizing them into economic, environmental, social, personal, demographic, technical, regulatory, and market-related groups, highlighting the complexity of adoption behavior and the need for multifaceted strategies to promote solar",
+      "bRaw": "The transition to renewable energy sources, particularly solar photovoltaics (PV), is increasingly recognized as essential for meeting rising energy demands sustainably and addressing climate change concerns. Despite its potential for both commercial and household applications, the contribution of solar energy to the global energy supply remains limited due to various adoption barriers identified across multiple studies. These barriers span economic, social, technical, and regulatory dimensions, influencing household decisions to adopt rooftop solar systems in diverse contexts {{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "renewable energy sources",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 0,
+        "citations": 0,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 3,
+        "runText": "renewable energy sources",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 0,
+        "citations": 0,
+        "intensifiers": ["various"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "fresh-karnataka-solar-chapter1-kerala",
+      "sample": 1,
+      "verdict": "=",
+      "a": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of factors spanning economic, environmental, social, personal, demographic, technical, regulatory, and market-related domains (Shakeel et al. 2023). Financial considerations, including high initial costs and access to subsidies, alongside awareness and trust issues, emerge as significant barriers, particularly in rural and low-income settings, where flexible payment mechanisms and targeted policy interventions can enhance uptake (K & Vinod 2023)(Aarakit et al. 2021)",
+      "b": "The transition to renewable energy sources, particularly solar photovoltaics (PV), is critical to addressing climate change and meeting increasing energy demands sustainably. Despite its potential for both commercial and household applications, the global contribution of solar PV to energy supply remains limited, with adoption influenced by a complex interplay of economic, environmental, social, personal, demographic, technical, regulatory, and market-related factors (Shakeel et al. 2023).",
+      "aRaw": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of factors spanning economic, environmental, social, personal, demographic, technical, regulatory, and market-related domains {{cite:S1#c1}}. Financial considerations, including high initial costs and access to subsidies, alongside awareness and trust issues, emerge as significant barriers, particularly in rural and low-income settings, where flexible payment mechanisms and targeted policy interventions can enhance uptake {{cite:S2#c1}}{{cite:S3#c1}}{{cite:Vu et al. 2025}}{{cite:Nath",
+      "bRaw": "The transition to renewable energy sources, particularly solar photovoltaics (PV), is critical to addressing climate change and meeting increasing energy demands sustainably. Despite its potential for both commercial and household applications, the global contribution of solar PV to energy supply remains limited, with adoption influenced by a complex interplay of economic, environmental, social, personal, demographic, technical, regulatory, and market-related factors {{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 10,
+        "runText": "economic environmental social personal demographic technical regulatory and market related",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 11,
+        "runText": "economic environmental social personal demographic technical regulatory and market related factors",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "fresh-karnataka-solar-chapter1-kerala",
+      "sample": 2,
+      "verdict": "=",
+      "a": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of factors spanning economic, social, technical, and regulatory domains. Studies have identified key barriers such as high initial costs, limited awareness, uncertain government policies, and financial constraints that hinder widespread adoption, especially in rural and less developed regions (Shakeel et al. 2023)(K & Vinod 2023)(Vu et al. 2025)(Nath & Das 2026).",
+      "b": "The transition from conventional energy sources to renewable energy has become imperative due to concerns about climate change and the growing demand for sustainable energy solutions. Solar energy, with its applicability at both commercial and household levels, holds promise for meeting these needs; however, its contribution to the global energy mix remains limited despite extensive research identifying a wide range of factors influencing household adoption of solar photovoltaics (PV) (Shakeel et al. 2023).",
+      "aRaw": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of factors spanning economic, social, technical, and regulatory domains. Studies have identified key barriers such as high initial costs, limited awareness, uncertain government policies, and financial constraints that hinder widespread adoption, especially in rural and less developed regions {{cite:S1#c1}}{{cite:S2#c1}}{{cite:S4#c1}}{{cite:S6#c1}}.",
+      "bRaw": "The transition from conventional energy sources to renewable energy has become imperative due to concerns about climate change and the growing demand for sustainable energy solutions. Solar energy, with its applicability at both commercial and household levels, holds promise for meeting these needs; however, its contribution to the global energy mix remains limited despite extensive research identifying a wide range of factors influencing household adoption of solar photovoltaics (PV) {{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "uncertain government policies and financial",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 4,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "adoption of solar photovoltaics pv",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "fresh-karnataka-solar-titled-kerala",
+      "sample": 0,
+      "verdict": "=",
+      "a": "Despite Karnataka’s progressive solar policies and substantial subsidies, residential rooftop solar adoption remains significantly below its technical potential, primarily due to various household-level frictions encountered during the adoption process. These barriers include space and roof-ownership constraints, information gaps, and upfront costs, while environmental concern motivates adopters, some of whom would have installed systems even without subsidies, which are sometimes diluted by procedural complexities (Bagla 2026).",
+      "b": "Rooftop solar adoption in Karnataka remains significantly below its technical potential despite progressive policies and substantial subsidies, as revealed by a study involving 70 households in the Bengaluru metropolitan area, which identified space and roof ownership constraints, information gaps, and upfront costs as primary barriers for non-adopters (Bagla 2026). This aligns with broader national trends where high initial costs, regulatory complexities, and procedural delays continue to impede residential uptake, even though innovations in subsidy delivery and business models show promise for expanding adoption (Mohammed. & Maheswari 2025).",
+      "aRaw": "Despite Karnataka’s progressive solar policies and substantial subsidies, residential rooftop solar adoption remains significantly below its technical potential, primarily due to various household-level frictions encountered during the adoption process. These barriers include space and roof-ownership constraints, information gaps, and upfront costs, while environmental concern motivates adopters, some of whom would have installed systems even without subsidies, which are sometimes diluted by procedural complexities {{cite:S1#c1}}.",
+      "bRaw": "Rooftop solar adoption in Karnataka remains significantly below its technical potential despite progressive policies and substantial subsidies, as revealed by a study involving 70 households in the Bengaluru metropolitan area, which identified space and roof ownership constraints, information gaps, and upfront costs as primary barriers for non-adopters {{cite:S1#c1}}. This aligns with broader national trends where high initial costs, regulatory complexities, and procedural delays continue to impede residential uptake, even though innovations in subsidy delivery and business models show promise for expanding adoption {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "space and roof ownership constraints",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["various"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "rooftop solar adoption in karnataka remains",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "fresh-karnataka-solar-titled-kerala",
+      "sample": 1,
+      "verdict": "=",
+      "a": "Rooftop solar adoption in India, particularly in Karnataka, remains significantly below its technical potential despite progressive policies and capital subsidies such as the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY) (Bagla 2026). Key barriers identified include structural constraints like limited roof space and ownership, high upfront costs, information gaps, and procedural complexities, while motivations for adoption are driven primarily by environmental concerns and financial incentives (Bagla 2026)(Mohammed. & Maheswari 2025).",
+      "b": "Residential rooftop solar adoption in Karnataka remains significantly below its technical potential despite progressive policies and substantial capital subsidies like the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY). A study involving 70 households in Karnataka found that non-adopters primarily face barriers related to space and roof ownership, information gaps, and upfront costs, while adopters are mainly motivated by environmental concerns; moreover, many adopters perceived the subsidy process as complex and sometimes counterproductive due to restrictions and paperwork(Bagla 2026).",
+      "aRaw": "Rooftop solar adoption in India, particularly in Karnataka, remains significantly below its technical potential despite progressive policies and capital subsidies such as the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY) {{cite:S1#c1}}. Key barriers identified include structural constraints like limited roof space and ownership, high upfront costs, information gaps, and procedural complexities, while motivations for adoption are driven primarily by environmental concerns and financial incentives {{cite:S1#c1}}{{cite:S3#c1}}.",
+      "bRaw": "Residential rooftop solar adoption in Karnataka remains significantly below its technical potential despite progressive policies and substantial capital subsidies like the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY). A study involving 70 households in Karnataka found that non-adopters primarily face barriers related to space and roof ownership, information gaps, and upfront costs, while adopters are mainly motivated by environmental concerns; moreover, many adopters perceived the subsidy process as complex and sometimes counterproductive due to restrictions and paperwork{{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 9,
+        "runText": "the pradhan mantri surya ghar muft bijli yojana pmsgy",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 9,
+        "runText": "the pradhan mantri surya ghar muft bijli yojana pmsgy",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "",
+      "reason2": ""
+    },
+    {
+      "case": "fresh-karnataka-solar-titled-kerala",
+      "sample": 2,
+      "verdict": "=",
+      "a": "Despite Karnataka's progressive solar policies and substantial subsidies, rooftop solar adoption remains significantly below its technical potential, primarily due to \"household friction\" encountered by consumers during the adoption process. A study involving 70 households in Karnataka found that non-adopters cited space and roof-ownership constraints as the main barriers, followed by information gaps and upfront costs, while adopters were motivated mainly by environmental concerns, with many perceiving the subsidy process as complex and sometimes diminishing the subsidy’s value (Bagla 2026).",
+      "b": "Despite Karnataka's progressive solar policies and substantial subsidies under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana, residential rooftop solar adoption remains far below its technical potential, largely due to \"household friction\" encountered during the adoption process, including space and roof-ownership constraints, information gaps, and upfront costs (Bagla 2026).",
+      "aRaw": "Despite Karnataka's progressive solar policies and substantial subsidies, rooftop solar adoption remains significantly below its technical potential, primarily due to \"household friction\" encountered by consumers during the adoption process. A study involving 70 households in Karnataka found that non-adopters cited space and roof-ownership constraints as the main barriers, followed by information gaps and upfront costs, while adopters were motivated mainly by environmental concerns, with many perceiving the subsidy process as complex and sometimes diminishing the subsidy’s value {{cite:S1#c1}}.",
+      "bRaw": "Despite Karnataka's progressive solar policies and substantial subsidies under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana, residential rooftop solar adoption remains far below its technical potential, largely due to \"household friction\" encountered during the adoption process, including space and roof-ownership constraints, information gaps, and upfront costs {{cite:S1#c1}}. Similar barriers such as high initial costs and limited awareness have also been identified in studies from other Indian states, highlighting the complex interplay of financial, informational, and structural factors that hinder widespread adoption despite evident environmental motivations {{cite:S",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 6,
+        "runText": "followed by information gaps and upfront",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 2
+      },
+      "bMeasures": {
+        "longestRun": 9,
+        "runText": "under the pradhan mantri surya ghar muft bijli yojana",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 2
+      },
+      "reason1": "",
+      "reason2": ""
+    }
+  ]
+}

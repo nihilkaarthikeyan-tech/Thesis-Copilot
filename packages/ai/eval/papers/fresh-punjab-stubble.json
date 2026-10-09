@@ -1,0 +1,226 @@
+{
+  "topic": "fresh-punjab-stubble",
+  "queries": {
+    "chapter1": "Chapter 1",
+    "titled": "Chapter 1 Farmers' adoption of alternatives to crop residue burning in Punjab"
+  },
+  "papers": [
+    {
+      "openalexId": "https://openalex.org/W4391614011",
+      "doi": "10.1088/2976-601x/ad2689",
+      "title": "Mitigating agricultural residue burning: challenges and solutions across land classes in Punjab, India",
+      "year": 2024,
+      "citationCount": 11,
+      "authors": [
+        "P P Krishnapriya",
+        "Subhrendu K. Pattanayak",
+        "E. Somanathan",
+        "Alwin Keil",
+        "Mangi Lal Jat",
+        "Harminder Singh Sidhu"
+      ],
+      "venue": "Environmental Research Food Systems",
+      "abstract": "Abstract India faces significant air quality challenges, contributing to local health and global climate concerns. Despite a national ban on agricultural residue burning and various incentive schemes, farmers in northern India continue to face difficulties in curbing open-field burning. Using data from 1021 farming households in rural Punjab in India, we examine the patterns and drivers of the adoption of no-burn agriculture, particularly for farmers who mulch instead of burning crop residue. We find a growing trend in no-burn farming practices among farmers between 2015 and 2017, with the highest adoption rates among large farmers compared to medium and small farmers. Our findings suggest that access to equipment and learning opportunities may increase the likelihood of farmers using straw as mulch instead of burning it. Specifically, social learning appears to increase the likelihood of farmers embracing no-burn practices relative to learning from extension agencies. Furthermore, the form of learning depends on farm size. While large and medium farmers exhibit a variety of learning strategies, small farmers primarily self-learn. These results underscore the importance of a multiprong policy that provides sufficient access to equipment and a combination of learning platforms that enabling farmers from different land classes to adopt no-burn technologies.",
+      "toTitle": 0.8147519033240239
+    },
+    {
+      "openalexId": "https://openalex.org/W4414263385",
+      "doi": "10.62823/ijira/5.3(ii).7949",
+      "title": "Stubble Burning in Punjab: Its Environmental Concern and Sustainable Alternatives",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Nisha Shilla"],
+      "venue": "INTERNATIONAL JOURNAL OF INNOVATIONS & RESEARCH ANALYSIS",
+      "abstract": "Punjab, India's agrarian heartland, faces a critical environmental challenge due to post-harvest stubble burning of paddy crops. This practice, while convenient for field clearance, releases substantial greenhouse gases (CO₂, CO, CH₄) and hazardous particulate matter (PM2.5/PM10), severely degrading air quality across northern India and contributing to Delhi's annual smog crisis. Our study reveals a 48.5% reduction in burning incidents (71,159 in 2021 to 36,663 in 2023), demonstrating progress through policy interventions, though persistent hotspots like Sangrur district remain. The research highlights the multidimensional impacts of stubble burning: soil nutrient depletion (90% nitrogen loss), reduced microbial activity, and serious public health consequences including respiratory illnesses. We evaluate sustainable alternatives including in-situ solutions (Happy Seeder technology, PUSA decomposer) and ex-situ utilization (bioenergy production, industrial applications). Government initiatives have successfully managed 15.86 million tons of residue (2023), with strategies scaling to 19.52 million tons (2024 projection). Key challenges include high machinery costs for smallholders and underdeveloped residue supply chains. The paper concludes with policy recommendations emphasizing subsidized technology access, farmer awareness programs, and strengthened market linkages to transform agricultural waste into economic resources while achieving environmental and climate objectives. This transition promises triple benefits: cleaner air, enhanced soil productivity, and improved farmer livelihoods, making it crucial for sustainable agriculture in India's breadbasket.",
+      "toTitle": 0.7939029713839647
+    },
+    {
+      "openalexId": "https://openalex.org/W4392551265",
+      "doi": "10.9734/ijecc/2024/v14i34040",
+      "title": "Challenges and Opportunities in Sustainable Stubble Management in Punjab: A Review",
+      "year": 2024,
+      "citationCount": 8,
+      "authors": ["Shubham Anand", "Harleen Kaur"],
+      "venue": "International Journal of Environment and Climate Change",
+      "abstract": "The review highlights the situation of paddy stubble farming in Punjab, where farmers aim to prevent environmental harm by avoiding crop residue burning. Despite this intent, challenges such as insufficient machinery and lack of crop insurance hinder their transition to sustainable practices. Punjab, a key agricultural region in India, faces issues like air pollution and environmental degradation due to stubble burning. Farmers increasingly recognize these problems and are willing to explore alternatives. Farmers in Punjab are committed to adopting sustainable practices to minimize stubble burning's adverse effects on soil health and pollution. However, they face obstacles, notably the high cost and limited availability of necessary machinery such as happy seeders and mulchers, particularly affecting small-scale farmers. Additionally, inadequate crop insurance exacerbates the situation by failing to cover risks associated with stubble management, dissuading farmers from transitioning. To address these challenges, promoting accessible and affordable environmentally friendly machinery is crucial. Collaborative efforts between the government and private sector can facilitate this. Moreover, revising crop insurance policies to include stubble management risks will provide farmers with the confidence and financial security needed to adopt sustainable practices. Stakeholder collaboration is essential to create a supportive environment for farmers, enabling Punjab to lead in sustainable agriculture and environmental stewardship.",
+      "toTitle": 0.7814548192181979
+    },
+    {
+      "openalexId": "https://openalex.org/W3174140931",
+      "doi": "10.20546/ijcmas.2021.1002.361",
+      "title": "Effect of Profile Characteristics on Stubble Burning Behaviour of farmers in Punjab",
+      "year": 2021,
+      "citationCount": 1,
+      "authors": ["Arpit Huria Neelam Bhardwaj", "Neelam Basera"],
+      "venue": "International Journal of Current Microbiology and Applied Sciences",
+      "abstract": "The problem of stubble burning has grown to be of utmost concern in past few years especially in Northern India. The most prevalent rice-wheat cropping system in states like Punjab, Haryana, Uttar Pradesh etc. features harvesting of paddy crop with mechanical combine harvesters which leaves a huge amount of stubble which is commonly burnt by the farmers for speedy sowing of next crop. The stubble burning in northern states is held responsible for several environmental and health issues which immediately needs to be addressed. Despite herculean efforts including judicial and legislative measures, the problem of stubble burning seems far from ending. Maximum number of stubble burning incidents was recorded from the state of Punjab. So, a study was carried out to find out which profile characteristics influence the stubble burning behaviour of farmers in Punjab. A total of 15 variables were taken for the study. Coefficient of correlation was found out for variables with ungrouped data while chi-square test was applied for grouped data variables to determine the relationships. It was found that only economic motivation of the farmers was in a positive and significant relationship with the stubble burning behaviour of the farmers.",
+      "toTitle": 0.7802522285918879
+    },
+    {
+      "openalexId": "https://openalex.org/W4413229129",
+      "doi": "10.5958/2231-6736.2025.00014.5",
+      "title": "Revealing the Socio-economic Factors Driving Crop Residue Burning Practices Among Farmers in Northern India",
+      "year": 2025,
+      "citationCount": 1,
+      "authors": [
+        "Alok Dube",
+        "Sukanya Barua",
+        "RAJARSHI ROY BURMAN",
+        "Rajeev Ranjan Kumar",
+        "Neha Padaliya",
+        "Shripati Dwivedi"
+      ],
+      "venue": "Journal of Community Mobilization and Sustainable Development",
+      "abstract": "This study was conducted in Sangrur district of Punjab and Kaithal district of Haryana due to highest incidence of crop residue burning (CREAMS, IARI 2021). Delhi also was the part of study because of high level of pollutions. This study investigates the economic and Social factors influencing farmers’ choices in managing crop residue, specifically comparing the burning of residue with alternative management practices. The analysis is based on eigen values and variance contributions derived from a principal component analysis of various economic factors. Our findings reveal that social influences and generational traditions play a significant role, with implications for both policy and practice. To address these issues, it is crucial to implement community-based interventions and educational programs that target these social factors.",
+      "toTitle": 0.7799437136906088
+    },
+    {
+      "openalexId": "https://openalex.org/W4318261518",
+      "doi": "10.1088/2515-7620/acb6d4",
+      "title": "Rice residue burning in Northern India: an assessment of environmental concerns and potential solutions – a review",
+      "year": 2023,
+      "citationCount": 65,
+      "authors": [
+        "Dilwar Singh Parihar",
+        "Mahesh Kumar Narang",
+        "Baldev Dogra",
+        "Apoorv Prakash",
+        "Akshay Sanjay Mahadik"
+      ],
+      "venue": "Environmental Research Communications",
+      "abstract": "Abstract Environmental alarms like climate change and rising air pollution levels in north India, particularly in the Delhi National Capital Region (NCR), draw attention to the severe issue of Rice straw burning. Straw burning is the common practice in Punjab and Haryana’s Indo-Gangetic plains. Large-scale burning of residues (straw and stubble) is a severe problem that emits Green House Gases (GHGs) while polluting the air, posing health problems, and eliminating micronutrients from burned-out field. Residue management has been a problem for the paddy farmers and as time changes, it is necessary to update their practices. For the disposal of rice residue, farmers are constrained by an insufficient technology base and a lack of viable economic solutions. Technical solutions are available, classified mainly as on-site ( in situ ) and off-site ( ex situ ) solutions, the in situ solution includes a variety of machines that can be used to incorporate or mulch residue efficiently. While ex situ management allow collecting the residue from field for various applications such as energy production, briquetting, composting, paper and cardboard making, and for mushroom cultivation. Farmers in North India are not aware of the prolific alternatives for managing stubble and, therefore, consider burning as the best option. Therefore, extensive awareness programs are needed to inform farmers about economic options and the effects of stubble burning. Zero till drill, happy seeder and super Straw Management System (SMS) are recommended for the farmers, and need to be supplied in sufficient quantity to evade residue burning in these regions. Meanwhile, alternative technology for straw management constitutes an active area of research, area-specific and crop-specific applications need to be evolved. All stakeholders i.e., farmers, researchers, extension agents and policy makers need to be engaged in understanding and harnessing the full potential of using crop residues with conservation agriculture for sustainability and resilience of Indian agriculture.",
+      "toTitle": 0.7785626114767691
+    },
+    {
+      "openalexId": "https://openalex.org/W7163363859",
+      "doi": "10.52458/23484349.2026.v13.iss2.kp.a1",
+      "title": "Air Pollution with Special Reference of Stubble Burning In Punjab: A Case Study of Malerkotla District",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": ["Dr. Mandeep Singh"],
+      "venue": "Kaav International Journal of Arts Humanities & Social Science A Refereed Peer Review Quarterly Journal",
+      "abstract": "Air pollution has emerged as one of the most serious environmental challenges in India, particularly in northern states such as Punjab, Haryana, and Delhi NCR. Among the various causes of air pollution, stubble burning has become a major seasonal contributor to rising PM2.5 levels and deteriorating air quality. This study examines the issue of air pollution with special reference to stubble burning in Punjab, focusing on the perceptions of farmers in Malerkotla district. The research is based on primary data collected from 100 farmers through interview and observation methods. The study highlights that although most farmers are aware of the harmful effects of stubble burning, they continue the practice due to lack of affordable alternatives, expensive machinery, and the short gap between paddy harvesting and wheat sowing. The study also discusses the contribution of stubble burning to pollution in Delhi NCR, its impact on human health and the environment, and the measures adopted by the government to control the problem. Findings suggest that crop diversification, subsidy on agricultural machinery, establishment of waste-to-energy plants, and effective residue management techniques are essential for reducing stubble burning and improving environmental sustainability in Punjab.",
+      "toTitle": 0.7779792732859201
+    },
+    {
+      "openalexId": "https://openalex.org/W7164052768",
+      "doi": "10.1088/2976-601x/ae7a75",
+      "title": "From fields to policy: analyzing the interplay between technology adoption and residue burning in Punjab, India",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": [
+        "Eshita Gupta",
+        "Shibanjan Dutta",
+        "Heena Sharma",
+        "Damini Thakur",
+        "Subham Agarwal",
+        "Rajveer Singh"
+      ],
+      "venue": "Environmental Research Food Systems",
+      "abstract": "Abstract Crop residue burning remains a critical environmental challenge in India’s rice-wheat system. This study provides new empirical evidence on the joint decision-making process underlying farmers’ adoption of crop residue management (CRM) machinery and their residue-burning behavior. Using household survey data from 2289 farmers in Punjab and bivariate probit models, we identify structural, behavioral, and spatial determinants shaping these interlinked choices. We find a significant negative correlation between adoption and burning ( ρ = − 0.46 ), indicating they are alternative responses to shared constraints like narrow sowing windows and field accessibility. Our results show that social norms often override technology; being in a burning-focused peer network increases the probability of continuing to burn by 42 percentage points, even for CRM machinery adopters. Additionally, traditional equipment ownership remains a major structural barrier, reducing CRM adoption by 29 percentage points. Heterogeneity analysis reveals the correlation is twice as strong for complete burners ( ρ = − 0.63 ) as for partial burners ( ρ = − 0.32 ), suggesting that many farmers use machinery and burning as complements to manage heavy straw. These findings suggest that policy must move beyond simple technology provision to include behavioral interventions and agronomic shifts for a successful no-burn transition.",
+      "toTitle": 0.7766276432197647
+    },
+    {
+      "openalexId": "https://openalex.org/W4223915258",
+      "doi": "10.21921/jas.v9i01.9903",
+      "title": "Readiness of farmers to adopt crop residue management alternatives: A study of Haryana state",
+      "year": 2022,
+      "citationCount": 2,
+      "authors": ["Anuradha Choudhary", "K. S. Kadian", "M. S. Meena", "Parashuram Kambale"],
+      "venue": "Journal of AgriSearch",
+      "abstract": "The research was carried outto assess the readiness of farmers toward crop residual management. For this study, Karnal, Kurukshetra, and Fatehabad districts were selected purposively according to the report of Haryana Space Applications Center (2018). The total number of the respondent understudy was 180. Data regarding socio-economic status, assets availability, source of information, and readiness of farmers were collected with the help of a structured interview schedule because some driving factors may affect the readiness of the farmer. A positive and significant relationship was found at a 0.01% level of Significantbetween the readiness of the respondents and operational land holding, annual income, farm assets, and source of information and with education at a 0.05% level of significance. So,making farmers aware of available management alternatives using the different extension and educational programs and by providing financial and technical backup it may reduce the rate of residue burning and increase the rate of adoption of management practices.",
+      "toTitle": 0.7727218970695188
+    },
+    {
+      "openalexId": "https://openalex.org/W7126153707",
+      "doi": "10.33545/26174693.2023.v7.i1b.7242",
+      "title": "Crop residue management: Sustainable strategies, mechanization challenges, and policy interventions for environmental conservation",
+      "year": 2023,
+      "citationCount": 0,
+      "authors": ["Nethra V"],
+      "venue": "International Journal of Advanced Biochemistry Research",
+      "abstract": "The burning of crop residues represents one of the most pressing environmental challenges confronting Indian agriculture, contributing substantially to air pollution, greenhouse gas emissions, and soil degradation. This review paper examines the multifaceted dimensions of crop residue management in India, analyzing sustainable alternative strategies, mechanization constraints limiting their adoption, and policy frameworks required for effective implementation. India generates approximately 500-550 million tonnes of crop residue annually, with rice and wheat contributing nearly 70% of this volume. An estimated 92 million tonnes are burned in fields each year, releasing over 150 million tonnes of CO2, 9 million tonnes of CO, 0.25 million tonnes of SOx, and significant quantities of particulate matter into the atmosphere [1]. The northwestern states of Punjab and Haryana witness the most intensive burning practices, with over 70% of paddy straw being burned within a narrow window of 15-20 days between rice harvest and wheat sowing. Sustainable management alternatives include in-situ incorporation using appropriate machinery, ex-situ utilization for bioenergy, livestock feed, mushroom cultivation, and industrial applications. However, adoption remains constrained by high machinery costs, limited time availability between cropping cycles, inadequate custom hiring infrastructure, and farmer reluctance to change established practices. The Happy Seeder technology enabling direct wheat sowing into standing rice stubble has demonstrated promise but penetration remains below 10% of potential users. Policy interventions including subsidies for residue management machinery, establishment of custom hiring centers, regulatory measures prohibiting burning, and awareness campaigns have yielded mixed results. An integrated approach combining financial incentives, technology promotion, regulatory enforcement, and market development for residue-based products offers the most promising pathway toward sustainable management. This review synthesizes available evidence regarding residue generation patterns, environmental impacts of burning, alternative management technologies, economic considerations, and policy effectiveness to provide recommendations for addressing this critical challenge.",
+      "toTitle": 0.7644859051164324
+    },
+    {
+      "openalexId": "https://openalex.org/W4415494733",
+      "doi": "10.33564/ijeast.2025.v10i05.006",
+      "title": "RETHINKING CROP RESIDUE DISPOSAL IN INDIA: SUSTAINABLE ALTERNATIVES, ADOPTION BARRIERS, AND CLIMATE CHANGE IMPERATIVES",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Prashant Ravish", "Smita Chaudhry"],
+      "venue": "International Journal of Engineering Applied Sciences and Technology",
+      "abstract": "Crop residue burning remains a widespread and environmentally damaging practice in Indian agriculture, particularly across the rice-wheat belt of the Indo-Gangetic Plains (IGP). Annually, India generates over 500 million tonnes of crop residues, of which nearly 127 million tonnes are surplus, and approximately 23% is burned in open fields. In 2022–23 alone, Punjab, Haryana, and Uttar Pradesh collectively generated over 54 million tonnes of paddy straw, with 7.49 million tonnes burned in Punjab and 0.75 million tonnes in Haryana, affecting more than 14.7 lakh hectares. This practice contributes up to 44% of PM₂.₅ pollution in Delhi during post-harvest months and emits approximately 15–20 million tonnes of CO₂-equivalent greenhouse gases annually, undermining India's climate goals. Despite decades of awareness and policy intervention, sustainable residue management remains uneven due to socio-economic, technological, and institutional barriers. This review critically examines both prevailing and emerging alternatives to burning, such as in-situ practices (e.g., Happy Seeder, PUSA Decomposer), ex-situ biomass utilization, and circular economy models, evaluating their environmental efficacy, scalability, costeffectiveness, and alignment with India's net-zero by 2070 commitment. The paper identifies persistent adoption barriers, from limited access to machinery and subsidies to behavioural inertia and gendered labor constraints. It also underscores residue management’s strategic role in climate-smart agriculture, carbon sequestration, and rural livelihoods. The review concludes with actionable policy recommendations aimed at institutional convergence, digital innovation, carbon finance integration, and inclusive farmer outreach, reframing residue not as waste, but as a resource critical to sustainable agricultural transformation.",
+      "toTitle": 0.7636280397901694
+    },
+    {
+      "openalexId": "https://openalex.org/W4214852564",
+      "doi": "10.1016/j.ecolecon.2022.107364",
+      "title": "Unlocking the unsustainable rice-wheat system of Indian Punjab: Assessing alternatives to crop-residue burning from a systems perspective",
+      "year": 2022,
+      "citationCount": 51,
+      "authors": [
+        "Andrea S. Downing",
+        "Manish Kumar",
+        "August Andersson",
+        "Amar Causevic",
+        "Örjan Gustafsson",
+        "Niraj U. Joshi"
+      ],
+      "venue": "Ecological Economics",
+      "abstract": "Crop residue burning in Indian Punjab emits particulate matter with detrimental impacts on health, climate and that threaten agricultural production. Though legal and technological barriers to residue burning exist – and alternatives considered more profitable to farmers – residue burning continues. We review black carbon (BC) emissions from residue burning in Punjab, analyse social-ecological processes driving residue burning, and rice and wheat value-chains. Our aims are to a) understand system feedbacks driving agricultural practices in Punjab; b) identify systemic effects of alternatives to residue burning and c) identify companies and financial actors investing in agricultural production in Punjab. We find feedbacks locking the system into crop residue burning. The Government of India has greatest financial leverage and risk in the current system. Corporate stakeholders have little financial incentive to enact change, but sufficient stakes in the value chains to influence change. Agricultural policy changes are necessary to reduce harmful impacts of current practices, but insufficient to bringing about sustainability. Transformative changes will require crop diversification, circular business models and green financing. Intermediating financial institutions setting sustainability conditions on loans could leverage these changes. Sustainability requires the systems perspective we provide, to reconnect production with demand and with supporting environmental conditions.",
+      "toTitle": 0.7578286896824071
+    },
+    {
+      "openalexId": "https://openalex.org/W4284706489",
+      "doi": "10.1016/j.envc.2022.100581",
+      "title": "A state of the art review in crop residue burning in India: Previous knowledge, present circumstances and future strategies",
+      "year": 2022,
+      "citationCount": 116,
+      "authors": [
+        "Asik Dutta",
+        "Abhik Patra",
+        "Kali Krishna Hazra",
+        "Chaitanya Prasad Nath",
+        "Narendra Kumar",
+        "Amitava Rakshit"
+      ],
+      "venue": "Environmental Challenges",
+      "abstract": "Sustainable management of surplus paddy residue in the Indo-Gangetic plain is a back-breaking task for farmers due to lack of viable options. Eventually, farmers prefer to incinerate it mindlessly. Sustainable residue management is important because paddy straws are rich in nutrients and can be translated into value added products. Several important reasons like short time span for sowing wheat, limited farm mechanisation, scarce manpower and poor acceptability of paddy straw as fodder are the root causes behind this residue burning. The aim of this paper is to find the fundamental causes behind this illicit practice and mark the harmful effects of residue burning on ecosystem. This manuscript also deciphers in depth strategies, environmental laws, socio-economic policy frameworks and future thrusts which would offer multifaceted avenues for the sustainable management of crop residues. Losses of essential nutrients from the soil and in the residue, along with emission of potential greenhouse gases (GHGs) are the major repercussions of this mal-practice. Adaption and commercialisation of resource conservation technologies like conservation agriculture (CA) with low silica content in rice varieties are excellent opportunities to look after. Value addition by preparation of compost, mushroom production, biogas/oil generation, and producing energy in the power plants are new avenues to convert this waste into wealth. Respective state and central government along with different private organisations are working hand in hand to spread awareness and control stubble burning. Fostering the current technologies through policy interventions and organising training camps in the village level with monetary incentives are the important strategies to look for.",
+      "toTitle": 0.7574061225650542
+    },
+    {
+      "openalexId": "https://openalex.org/W4399341461",
+      "doi": "10.63066/23220457.32.2.015",
+      "title": "Production, Utilization and Management of Crop Residue on Punjab Farms",
+      "year": 2022,
+      "citationCount": 0,
+      "authors": ["Sukhdeep Singh", "Sangeet Ranguwal"],
+      "venue": "Journal of agricultural development and policy.",
+      "abstract": "Considering the earnest need for a well-managed CRM system with good potential for resource use, the present study was conducted in the Punjab state during the year 2020-21.On average, 14.66 q of crop residue was generated from each acre.Among the four prevalent strategies of CRM i.e. complete burning (CB), partial burning (PB), complete incorporation (CI) and complete removal (CR), the CB was mostly followed for paddy and basmati though CR and CI were preferred for other crops.Of the total crop residue generated, only about 37 per cent was utilised at the domestic level as fodder, fuel and littering material.About 60 percent of the surplus paddy residue was used in industries and the rest 40 percent was incorporated into the soil and no use of paddy residue consumption at the domestic level was observed.Only about 8 per cent basmati residue was used as fodder.Surplus cotton residue was either sold (65.33%), gifted to others (20.1%), and paid in kind to the labour for picking the cotton (14.57%).The major share of wheat residue i.e. about 93 per cent as fodder for the livestock and the surplus was mainly stored for future use.Compensation /incentives to farmers opting for non-burning of crop residue on farms, ensuring the timely availability of residue management machines at subsidised rates, better custom hiring services and promoting the diversified uses of residue can prove to be better alternatives for addressing the state's crop residue management problem.",
+      "toTitle": 0.7559599532540247
+    },
+    {
+      "openalexId": "https://openalex.org/W4224000193",
+      "doi": "10.3390/ijerph19084753",
+      "title": "Environmental and Health Impacts of Crop Residue Burning: Scope of Sustainable Crop Residue Management Practices",
+      "year": 2022,
+      "citationCount": 119,
+      "authors": [
+        "Muhammad Haseeb Raza",
+        "Muhammad Abid",
+        "Muhammad Faisal",
+        "Tingwu Yan",
+        "Shoaib Akhtar",
+        "K M Mehedi Adnan"
+      ],
+      "venue": "International Journal of Environmental Research and Public Health",
+      "abstract": "The burning of crop residue in the open field has become a significant concern for climate change mitigation efforts worldwide. This practice has led to air quality impairment, smog, haze, heat waves, and different health problems. These could be avoided by adopting sustainable crop residue management practices (SCRMPs) and enabling farmers to engage in SCRMPs. Assessing the health effects at the household level is critical for understanding this problem and finding a solution. Using the primary dataset of 420 farmers from Punjab, Pakistan, we estimated the incurred impacts and costs of crop residue burning. We calculated the health and environmental benefits associated with adopting SCRMPs by comparing the two groups of farmers (adopters and non-adopters). Furthermore, we used a propensity score matching technique to measure the causal impact of SCRMPs adoption on health costs. The findings showed that a surprisingly large number of farmers are all aware of the adverse effects of residue burning, and many do not burn crop residues and instead use SCRMPs. This study found that households with chronic and non-chronic diseases become acute, and the severity increases during the burning period. They spend USD 13.37 to USD 8.79 on chronic and non-chronic diseases during the burning season, respectively. Consequently, the use of SCRMPs has a positive effect on healthcare costs. Our study findings highlight the meaningful implications for developing a new policy to promote the sustainable utilization of crop residues and enhance their adoption in Pakistan.",
+      "toTitle": 0.755627951357397
+    }
+  ],
+  "rankings": {
+    "chapter1": [11, 14, 3, 0, 5, 7, 2, 6, 8, 4, 12, 1, 13, 10, 9],
+    "titled": [0, 5, 11, 2, 7, 14, 4, 1, 12, 3, 8, 6, 10, 9, 13]
+  }
+}

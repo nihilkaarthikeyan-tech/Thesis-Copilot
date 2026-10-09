@@ -1,0 +1,250 @@
+{
+  "topic": "fresh-kerala-fish-drying",
+  "queries": {
+    "chapter1": "Chapter 1",
+    "titled": "Chapter 1 Solar drying of fish among small-scale fisherfolk in Kerala"
+  },
+  "papers": [
+    {
+      "openalexId": "https://openalex.org/W4309780560",
+      "doi": "10.5897/ajfs2022.2195",
+      "title": "Drying fish (Rastrineobola argentea) on the bank of Lake Victoria in a prototype solar-heated enclosure: Using renewable energy to reduce drying-time and improve product quality and value",
+      "year": 2022,
+      "citationCount": 2,
+      "authors": [
+        "Andrew Whiston",
+        "Andreas W. Rost",
+        "Richard Mangeni",
+        "Cayleigh Bruce",
+        "Andrew S. Brierley"
+      ],
+      "venue": "African Journal of Food Science",
+      "abstract": "Silver cyprinids (Rastrineobola argentea) are small pelagic fish endemic to Lake Victoria. High-quality dried fish are an important protein-rich human food. This study was carried out to determine if it would be practical to use renewable energy to dry silver cyprinid. Drying is presently achieved by laying fish out in the sun on the ground or on racks. In the wet seasons, however, drying is compromised and much of the catch becomes fit only for animal consumption, or spoils. Lake Victoria’s surface waters are c. 25°C year-round. Its enormous volume of tropical water offers a source of thermal energy that could be used to dry fish. As a proof of concept, we used solar-generated electricity to drive a heat pump to harvest heat energy from water in a 10,000-L rainwater tank beside Lake Victoria, used the energy to heat air, and blew the air over fish in a tent-like enclosure. Fish in the enclosure dried in about 4 h versus about 7 h outside, were free from insects, and not at risk of theft by or defecation upon by birds. The drying processes inside and outside the enclosure were modelled. The model correctly reproduced observed drying times, and enabled exploration of options to improve drying performance. Up-scaling the prototype could provide year-round sustainable fish-drying capability, reduce waste, boost food security, and add value to the catch. Key words: Rastrineobola argentea, dagaa, mukene, omena, drying, renewable energy, food security.",
+      "toTitle": 0.7345998334181524
+    },
+    {
+      "openalexId": "https://openalex.org/W4416564341",
+      "doi": "10.54894/jiscar.43.1.2025.165838",
+      "title": "Institutional and Technological Support for Dry Fish Processors in Tamil Nadu: An Empirical Assessment",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": [
+        "P. Seenivasan",
+        "Ankush Lala Kamble",
+        "P.S. Ananthan",
+        "T. Velumani",
+        "T. JAYAPRATHA",
+        "K. GOBIKA"
+      ],
+      "venue": "Journal of the Indian Society of Coastal Agricultural Research",
+      "abstract": "The dry fish sector in India is a vital component of the fisheries value chain systems, transforming low-value fish into higher-value, high-demand dried fish, contributing to food security, livelihoods, and exports. Despite this transformation driven by dry fish processors (DFPs), the sector experienced a 38.64% decline in population between 2005 and 2016. For this purpose, this study assesses the extent of institutional and technological support available to DFPs in coastal Tamil Nadu. A stratified random sampling method was employed to collect data from 300 DFPs across 14 coastal districts. The findings indicated that among the surveyed population, 41.7% were part of Self-Help Groups (SHGs) and 21% were members of fisheries cooperatives. Yet, the processors relied on traditional sun drying, and 63.3% of the DFPs population still struggled with access to drying yards, highlighting infrastructure and institutional support gaps in the sector. Despite these challenges, 80% of DFPs were willing to adopt solar dryer techniques, yet only 25% had received training in value addition, limiting their competitiveness in evolving markets. The institutional support remains fragmented and uneven, reaching only a small portion of the DFP community. Strengthening targeted training programs, enhancing infrastructure, and scaling up access to appropriate technologies like solar dryers are essential for improving the dry fish sector’s resilience and long-term sustainability.",
+      "toTitle": 0.7336633447390106
+    },
+    {
+      "openalexId": "https://openalex.org/W4392381374",
+      "doi": "10.3390/su16052130",
+      "title": "Impacts of Using Solar Dryers on Socio-Economic Conditions of Dried Fish Processors in Cambodia",
+      "year": 2024,
+      "citationCount": 11,
+      "authors": [
+        "Lyhour Hin",
+        "B. Buntong",
+        "Chan Makara Mean",
+        "Chhengven Chhoem",
+        "P. V. Vara Prasad"
+      ],
+      "venue": "Sustainability",
+      "abstract": "Fish is a vital source of proteins and nutrients and can be eaten in many forms, one of which is dried fish. In Cambodia, fish is mostly dried in traditional ways and can be subject to dust, flies, rain, and weather events, resulting in low-quality products. These issues can be addressed by using solar dryers. Thus, this study was aimed to (1) compare the socio-economic conditions between dried fish processors practicing traditional drying and those using solar dryers, (2) to identify potentials and challenges to dried fish production between the two groups, and (3) to determine the factors affecting income. The study was conducted between May and August 2023, using purposive sampling to select two groups of dried fish processors in three provinces along the river systems in Cambodia. The selection criteria included (1) engagement in year-round dried fish production, (2) at least 100 kg of raw fish dried per month, and (2) willingness to participate in the interviews. Then, 35 dried fish processors that practiced traditional drying and 9 processors that utilized solar dryers were selected. T-tests, chi-square tests, analysis of variance (ANOVA), Likert scale analysis, and multiple linear regression model were used to compare the socio-economic conditions, perceptions, and the factors affecting the income. The results show that the solar dryer group used more labor, produced more dried fish, and had a higher selling price when compared to the traditional drying group. They had more opportunities to attend training and trusted the solar dryer technology. Meanwhile, the traditional drying group preferred direct sun-drying, but dried fish quality was better when solar dryers were used. Experience, total costs, and the use of solar dryers affect the income. In conclusion, using solar dryers tends to produce dried fish of better quality and a higher income, which is good for both health and improved livelihoods of fish producers and sellers.",
+      "toTitle": 0.7314506124719761
+    },
+    {
+      "openalexId": "https://openalex.org/W4416163577",
+      "doi": "10.56093/ft.v62i4.157694",
+      "title": "Technological Interventions and Quality Improvements of Dry Fish Products Through Demonstration Using a Solar-Electrical Hybrid Dryer in the Aspirational Districts of Assam",
+      "year": 2025,
+      "citationCount": 1,
+      "authors": [
+        "Bipul Kumar Kakati",
+        "Inam Akhtar Hussain",
+        "Pranjyoti Sarma",
+        "Pradip Chandra Bhuyan",
+        "Nandita Barman",
+        "Hadi Ud Zaman"
+      ],
+      "venue": "Fishery Technology",
+      "abstract": "A hygienic dry fish preparation process using a solar-electrical hybrid dryer and packaging of dry fish products was demonstrated among 200 beneficiaries for the first time in four locations of two aspirational districts of Assam. Technology Demonstration Centres were established in the vicinity of the community involved in fish drying, with all necessary facilities at four selected locations for conducting demonstrations on hygienic fish drying and packaging. The standardization of the preparation process for dry fish products using the solar-electrical hybrid dryer was accomplished for the various fish species available in the region. Good-quality dry fish were produced following scientific interventions within 3–7 hours based on fish species used, instead of 3–4 days in traditional sun-drying methods. All problems associated with traditionally prepared dry fish products, like rancid odour, insect infestation, and contamination with dust and other contaminants, were solved with these interventions. The hygienically prepared and packaged dry fish were marketed in both rural and urban markets, including a few shopping malls, at a higher price (Rs. 550–750 per kg compared to Rs. 250–350 per kg), which was not possible earlier due to their inferior quality. After undergoing training and demonstration, the beneficiaries exhibited a heightened level of confidence in their ability to prepare hygienic dry fish products using solar-electrical hybrid dryer. Almost 70% of the selected beneficiaries adopted the technology demonstrated for their livelihood generation using the facilities created for them. The use of the solar-electrical hybrid dryer helped in increasing productivity and income of the producers, minimizing the waste and spoilage of fish during the peak harvesting period, thus helping to prevent protein loss as they could dry fish at any time.",
+      "toTitle": 0.7228376647679282
+    },
+    {
+      "openalexId": "https://openalex.org/W7213259613",
+      "doi": "10.9734/acri/2026/v26i92171",
+      "title": "A Comprehensive Review on Dried Fish Processing and Marketing in Bangladesh: Challenges, Opportunities, and SustainabilityA Comprehensive Review on Dried Fish Processing and Marketing in Bangladesh: Challenges, Opportunities, and Sustainability",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": [
+        "Shahanaj Parvin",
+        "Shishir Kumar Dey",
+        "Nazia Naheen Nisheeth",
+        "Mezbabul Alam",
+        "Sonia Sharmin"
+      ],
+      "venue": "Archives of Current Research International",
+      "abstract": "Dried fish remains an important shelf-stable food, livelihood product and trading commodity in Bangladesh, yet the sector is characterised by marked heterogeneity in processing conditions, food-safety performance, market organisation and access to upgrading technologies. This critical narrative review integrates evidence on production systems, drying and storage technologies, nutritional and microbiological quality, chemical hazards, value chains, livelihoods, regulation and sustainability. English-language literature published from 1 January 2000 to 5 July 2026 was identified through multidisciplinary and fisheries-, food- and health-relevant scholarly sources, supplemented by citation searching and authoritative institutional materials. The evidence indicates that traditional open sun drying persists because it is inexpensive, flexible and compatible with dispersed small-scale production, but product quality is vulnerable to humidity, insects, dust, uneven drying, handling and inadequate storage. Solar tunnel, chimney and covered drying systems can improve process protection and drying control under experimental or field conditions, although evidence for sustained adoption, profitability and maintenance at scale is substantially weaker than evidence for technical efficacy. Bangladesh studies report considerable variation in proximate composition, microbial contamination, pesticide residues and toxic metals. These findings justify stronger hazard-based quality assurance, but most studies are geographically local and cross-sectional, so they do not support a single national estimate of risk. Marketing studies consistently describe fragmented chains, limited working capital, storage and information constraints, and unequal value capture, while women contribute substantially to labour-intensive processing but often have less control over higher-value functions. Sustainability therefore cannot be reduced to dryer efficiency alone. It requires integrated attention to post-harvest loss, raw-material stewardship, climate resilience, safe processing, traceability, finance, labour conditions and market incentives. Future research should prioritise longitudinal, multi-site evaluations of technology adoption, representative surveillance of contaminants and microbiology, value-chain cost and margin analysis, and measurable social and environmental outcomes.",
+      "toTitle": 0.7114768423631384
+    },
+    {
+      "openalexId": "https://openalex.org/W4413861334",
+      "doi": "10.38177/ajast.2025.9309",
+      "title": "Implementation of a Solar-Powered Fish Dehydrator",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": [
+        "Rence Andrei L. Bustos",
+        "David Nowell Y",
+        "Dela Cruz Sid Jimuel C",
+        "Santos Edgardo M"
+      ],
+      "venue": "Asian Journal of Applied Science and Technology",
+      "abstract": "This study presents the implementation and evaluation of a solar-powered fish dehydrator aimed at enhancing traditional fish drying methods and reducing production costs for Kapampangan fishermen in Masantol, Pampanga. The system operates entirely on photovoltaic energy, consisting of four 260W solar panels, a 24V 100Ah battery bank, a 2000W inverter, and an 800W dehydrator. Designed for energy efficiency and sustainability, this setup supports a complete off-grid operation. Employing experimental, descriptive, and quantitative research methods, the study assessed the system’s drying efficiency, energy consumption, and overall performance under controlled conditions. Drying trials were conducted using two types of fish—tilapia and mackerel—under both full and partial load conditions. Observations were focused on evaluating changes in color, texture, and moisture content after dehydration. Results demonstrated that the solar-powered dehydrator consistently produced high-quality dried fish, while significantly reducing the overall drying time compared to traditional sun-drying methods. The system consumed approximately 5600Wh over a typical 7-hour drying cycle, which was fully supported by the solar energy collected during the day, confirming its reliability and independence from grid power. Statistical analyses indicated that marination time had no significant effect on drying efficiency. Overall, the study concludes that this system is a sustainable, efficient, and practical solution for fish preservation in rural coastal communities.",
+      "toTitle": 0.7106325103677531
+    },
+    {
+      "openalexId": "https://openalex.org/W4223440860",
+      "doi": "10.1111/faf.12664",
+      "title": "Dried fish at the intersection of food science, economy, and culture: A global survey",
+      "year": 2022,
+      "citationCount": 69,
+      "authors": [
+        "Ben Belton",
+        "Derek Stephen Johnson",
+        "Eric Thrift",
+        "Jonah Olsen",
+        "Mostafa Ali Reza Hossain",
+        "Shakuntala H. Thilsted"
+      ],
+      "venue": "Fish and Fisheries",
+      "abstract": "Abstract Dried fish—here defined broadly as aquatic animals preserved using simple techniques, such as sun‐drying, salting, fermentation, and smoking that permit storage as foods at ambient temperature for extended periods without specialized packaging—have received little direct attention in fisheries research. This lack of visibility belies their historical and contemporary importance. Prior to the introduction of refrigeration, dried fish were the main form in which fisheries catches were traded and consumed. Dried fish products remain a core component of production, trade, diets, and cuisines across the world, particularly in the Global South. The dried fish sector provides employment for millions of people, particularly women, who comprise most of the fish‐drying workforce in many locations. However, the sector also confronts and creates significant challenges including food safety concerns and exploitative labour conditions. This paper is the first systematic assessment of the global literature on dried fish, comprised of a sample of >1100 references. In contrast to the general fisheries literature, which is dominated by studies of ecology and governance and focusses mainly on primary production, the dried fish literature is dominated by studies from food science and concentrates on the processing segment of fish value chains. As such, it offers valuable reference point for fisheries research, which is becoming increasingly attentive to food systems. This paper uncovers a wealth of insights buried in this largely unheralded literature, and identifies key thematic intersections, gaps and research questions that remain to be addressed in the study of dried fish.",
+      "toTitle": 0.7072444461940564
+    },
+    {
+      "openalexId": "https://openalex.org/W4401014086",
+      "doi": "10.3390/cleantechnol6030048",
+      "title": "Development and Performance Assessment of Sensor-Mounted Solar Dryer for Micro-Climatic Modeling and Optimization of Dried Fish Quality in Cambodia",
+      "year": 2024,
+      "citationCount": 12,
+      "authors": [
+        "Lyhour Hin",
+        "Chan Makara Mean",
+        "Meng Chhay Kim",
+        "Chhengven Chhoem",
+        "Borarin Bunthong",
+        "Lytour Lor"
+      ],
+      "venue": "Clean Technologies",
+      "abstract": "Fish are one of the main sources of protein in Cambodia but they are highly perishable. This requires immediate consumption or processing for later use. In processing, fish drying is very common, but most processors practice traditional drying methods although solar dryers have been introduced, or gradually used, in Cambodia. There is a large variation in terms of drying efficiency due to large differences in solar radiation, temperature, and humidity conditions in traditional drying methods and solar dryers. However, there is limited information on the actual variation in these two systems, which should be documented in Cambodia. Using sensors to monitor micro-climatic changes inside the drying chamber will be useful to improve efficiency and performance. Therefore, the objectives of this research were to (1) design a fish dryer from locally available inputs; (2) determine changes in solar radiation over time; (3) compare relative humidity and temperatures between traditional sun-drying and the solar dryer; (4) determine the relationship among the climatic parameters; and (5) compare some physical, chemical, and biological properties of dried fish in both drying techniques with the Cambodian dried fish standards. The study was conducted in collaboration with a fish processor in the Siem Reap Province between December 2023 and January 2024 using a sensor-mounted solar dryer fabricated by the Royal University of Agriculture to dry fish and compared with traditional sun-drying. Three experiments were carried out from 8:00 to 16:00 following the common drying practices in Cambodia. In each experiment, 80–100 kg of raw giant snakehead, or 56–70 kg of prepared fish (1.04 ± 0.05 kg each fish), was prepared for drying. Data on environmental conditions were measured and analyzed. The results show that the solar dryer had higher temperatures (almost 60 °C) and lower relative humidity (about 20%) during peak hours when compared with traditional sun-drying (36.8 °C and 40%, respectively). In all cases, relative humidity decreased with rising solar radiation and temperatures. The final weight and moisture of dried fish in the solar dryer were lower than those in traditional sun-drying in eight hours. Salmonella was detected with traditional sun-drying but E. coli was not. Bacterial presence may be harmful to human health. Nevertheless, the time spent for drying in both techniques was the same, so future studies should focus on improving ventilation to remove moisture faster out of the solar dryer, which can help with faster drying and more time saving. Hybrid solar dryers should also be considered to maintain high temperatures at night, while bacteria should be counted for safety reasons.",
+      "toTitle": 0.6990574019249577
+    },
+    {
+      "openalexId": "https://openalex.org/W4205341121",
+      "doi": "10.37934/arfmts.90.1.115129",
+      "title": "Thermal Analysis of Tilapia Fish Drying by Hybrid Solar Thermal Drying System",
+      "year": 2021,
+      "citationCount": 10,
+      "authors": ["Hussain Hamoud Al-Kayiem", "Tadahmun Ahmed Yassen", "Sundus S. Al-Azawiey"],
+      "venue": "ARTS Bulletin :",
+      "abstract": "The present work presents a hybrid solar thermal drying of Tilapia fish to improve the product quality and satisfy the importers. The developed hybrid dryer utilized direct solar drying, a solar air heater and a thermal backup unit which sustains the drying process during the night, cloudy and rainy weather conditions. Besides, a new feature of the developed dryer utilizes the flue gas exhausted from the thermal unit to enhance the updraft in the drying chamber by re-injection of the flue gases in the chimney. The initial moisture content of the Tilapia fish used in the investigation was 246.6% on a dry basis, equivalent to 74% on a wet basis. The investigations were repeated three times on different days. Experimental results showed that the moisture content was reduced to an average final of 17.0% db (5.0% wb) within 17.5 hours, while in the open sun drying, it required around 48-72 hours. Hybrid solar drying required around 72% shorter time than open sun drying. The average overall drying efficiency of the developed system for drying Tilapia fish was 13.0%. The Re-injection technique used in the present hybrid solar-thermal system has excluded the need for an electric source for air extraction from the drying chamber, which is highly desired in the rural and fishery regions.",
+      "toTitle": 0.6756493619616698
+    },
+    {
+      "openalexId": "https://openalex.org/W3207968151",
+      "doi": "10.3329/bjz.v49i1.53687",
+      "title": "Small Scale Home Drying of Indigenous Fish Species in Urban High-Rises at Dhaka Metro",
+      "year": 2021,
+      "citationCount": 0,
+      "authors": ["Samia Farhana Sobhan", "M Niamul Naser"],
+      "venue": "Bangladesh Journal of Zoology",
+      "abstract": "Drying is one of the common and ancient methods of fish preservation and is generally done in a wide range of open space. This study attempt to evaluate fish drying method at high-rise urban households with three small indigenous fishes namely Mola (Amblypharyngodon mola), Chapila (Gudusia chapra) and Lal Khailsha (Trichogaster lalius). Fishes were dried at high-rise indoor veranda and outdoor rooftop conditions. The dry weight of Mola, Chapila and Lal Khailsha fishes were 70%, 69.5% and 72% in indoor condition and 71.1%, 70.5% and 73% in outdoor condition. The differences of drying capacity between the indoor and outdoor dried fishes were none (p<0.05), thus, the both drying methods are feasible for the urban lifestyle. In dry state, the moisture level in Mola, Chapila and Lal Khailsha were 6.45%, 7.89% and 7.82% whereas, the protein level were 66.51%, 72.26% and 62.02% respectively. The ash value found in the respective fishes was 10.05%, 12.18% and 16.07% and the amount of total fat was 11.14%, 11.28% and 12.32% respectively. The protein and moisture values showed an inverse relationship between the indoor and outdoor condition. The preference analysis of dried fish was found to be highly (100%) accepted among the dry fish-eating consumers from Chittagong, Lakhimpur, Mymensingh, Rangpur, Bandarban, Pabna and Sylhet districts. On the contrary, in case of the consumers of Barisal and Chandpur districts, the level of acceptance was none (0%), whereas the consumers of Kushtia district have accepted the dry fish moderately (60%). Bangladesh J. Zool. 49(1): 117-124, 2021",
+      "toTitle": 0.6734103784105311
+    },
+    {
+      "openalexId": "https://openalex.org/W4296741274",
+      "doi": "10.3390/foods11192938",
+      "title": "A Comprehensive Review on the Processing of Dried Fish and the Associated Chemical and Nutritional Changes",
+      "year": 2022,
+      "citationCount": 111,
+      "authors": [
+        "Nursyah Fitri",
+        "Sharon Xi Ying Chan",
+        "Noor Hanini Che Lah",
+        "Faidruz Azura Jam",
+        "Norazlan Mohmad Misnan",
+        "Nurkhalida Kamal"
+      ],
+      "venue": "Foods",
+      "abstract": "Fish is a good source of nutrients, although it is easily spoiled. As such, drying is a common method of preserving fish to compensate for its perishability. Dried fish exists in different cultures with varying types of fish used and drying methods. These delicacies are not only consumed for their convenience and for their health benefits, as discussed in this review. Most commonly, salt and spices are added to dried fish to enhance the flavours and to decrease the water activity (aw) of the fish, which further aids the drying process. For fish to be dried effectively, the temperature, drying environment, and time need to be considered along with the butchering method used on the raw fish prior to drying. Considering the various contributing factors, several physicochemical and biochemical changes will certainly occur in the fish. In this review, the pH, water activity (aw), lipid oxidation, and colour changes in fish drying are discussed as well as the proximate composition of dried fish. With these characteristic changes in dried fish, the sensory, microbial and safety aspects of dried fish are also affected, revolving around the preferences of consumers and their health concerns, especially based on how drying is efficient in eliminating/reducing harmful microbes from the fish. Interestingly, several studies have focused on upscaling the efficiency of dried fish production to generate a safer line of dried fish products with less effort and time. An exploratory approach of the published literature was conducted to achieve the purpose of this review. This evaluation gathers important information from all available library databases from 1990 to 2022. In general, this review will benefit the fishery and food industry by enabling them to enhance the efficiency and safety of fish drying, hence minimising food waste without compromising the quality and nutritional values of dried fish.",
+      "toTitle": 0.660646788434284
+    },
+    {
+      "openalexId": "https://openalex.org/W7161110475",
+      "doi": "10.54732/jeecs.v11i1.1",
+      "title": "A Microcontroller-based Fish Drying System for Enhanced Drying Time with Real-Time Environmental Monitoring",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": [
+        "Rainiell Guerrero",
+        "Armiel Calapit",
+        "John Mark Ortega",
+        "Ronaldo C. Maaño",
+        "Hannah Shamira P. Santonil",
+        "Dhon Niño B. Canela"
+      ],
+      "venue": "JEECS (Journal of Electrical Engineering and Computer Sciences)",
+      "abstract": "The preservation of fish through drying is a vital practice in coastal regions like the Philippines. Traditional sun-drying methods often suffer from inefficiencies, environmental inconsistencies, and long drying times ranging from 8 to 20 hours. However, existing automated solutions often lack the specific real-time precision required for small-scale costal processing, leading to inconsistent quality. To address these limitations, this study presents the design and implementation of a microcontroller-based fish drying system to enhance drying efficiency through real-time environmental monitoring. The system utilizes an Arduino UNO R3, a DHT22 sensor, infrared heating lamps, and an AC blower fan to maintain a regulated environment between 40°C and 50°C. The microcontroller is the central processing unit, communicating with the sensor to collect real-time temperature and humidity data. This data is used to dynamically control heating elements and ventilation, ensuring optimal drying conditions, reducing drying time, and improving product quality. Experimental results demonstrate that the microcontroller-based system significantly enhances the efficiency and consistency of the drying process to just 3.51 hours compared to conventional methods which recorded 4.48 hours. Technical evaluation through unit and system testing confirmed the system’s reliability in maintaining a 45° indicator. Stakeholders evaluated the prototype using a 5-point scale, resulting in an overall scientific and functional rating of 4.32 (Strongly Agree). This innovation offers a scalable solution for small-scale processors to improve productivity, quality, and production of dried fish products.",
+      "toTitle": 0.6474245022796116
+    },
+    {
+      "openalexId": "https://openalex.org/W7166051964",
+      "doi": "10.30574/ijsra.2026.19.3.1389",
+      "title": "Post-Harvest Technology Needs Assessment among Small-Scale Fisherfolk in Barangay Tinabilan, Palompon, Leyte, Philippines",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": ["Gamaliel A. Baldos"],
+      "venue": "International Journal of Science and Research Archive",
+      "abstract": "Post-harvest losses remain a major challenge in small-scale fisheries, reducing product quality, food availability, and fisherfolk income. This study assessed the post-harvest technology needs of small-scale fisherfolk in Barangay Tinabilan, Palompon, Leyte, Philippines. Specifically, it identified existing post-harvest technologies, determined technological gaps and constraints, and established priority technology needs that could contribute to reducing post-harvest losses, improving product quality, enhancing fisherfolk livelihoods, and promoting sustainable fisheries development. A descriptive research design utilizing a Technology Needs Assessment (TNA) approach was employed. Data were collected from 60 randomly selected small-scale fisherfolk through a validated survey questionnaire and analyzed using frequency counts, percentages, weighted means, and ranking. Findings revealed that ice preservation, insulated containers, and traditional drying methods were the most commonly utilized post-harvest technologies. However, limited access to modern technologies such as cold-storage facilities, solar dryers, and vacuum packaging systems was observed. The major constraints identified were the lack of cold-storage facilities, high costs of post-harvest technologies, and limited access to ice supplies. Among the identified technology needs, community cold-storage facilities, ice-making facilities, and solar-powered fish dryers emerged as the highest priorities. The study highlights the importance of strengthening post-harvest infrastructure, technology transfer, and capacity-building initiatives to enhance fisheries value chains, improve food security, increase fisherfolk income, and support sustainable coastal community development.",
+      "toTitle": 0.6445792120643837
+    },
+    {
+      "openalexId": "https://openalex.org/W4411975083",
+      "doi": "10.33373/profis.v13i1.7476",
+      "title": "DESIGN SOLAR CELL SYSTEM AS SOURCE ELECTRICAL ENERGY FOR MACHINES SALTED FISH DRYER AND FISH CRACKERS",
+      "year": 2025,
+      "citationCount": 0,
+      "authors": ["Michel Frans Sisco Napitupulu", "Zaenal Arifin", "Hery Irwan"],
+      "venue": "PROFISIENSI Jurnal Program Studi Teknik Industri",
+      "abstract": "ABSTRACT This research aims to design a solar cell system as an alternative source of electrical energy for drying machines for salted fish and fish crackers. The use of renewable energy is expected to reduce dependence on conventional electricity and reduce production costs for small and medium scale fish processing industries. Research methods include energy needs analysis,solar cell system design, intergration with drying machines, and system performance testing. The system is designed using 300Wp polycrystalline solar panels with a total capacity of 3kWp, a 3000W inverter and a 200Ah lithium battery. The research results show that the solar cell system can meet the energy needs of a drying machine with a capacity of 50kg for 8 hours of operation per day. Drying efficiency is increased by 15% compared to conventional methods, with drying time reduced from 10 hours to 8 hours. Economic analysis shows the investment payback period is 3.5 years with projected energy cost savings of up to 70% per year. This research concludes that implementing a solar cell system in a fish drying machine is a feasible and sustainable solution for the small and medium scale fish processing industry.",
+      "toTitle": 0.6365482967002154
+    },
+    {
+      "openalexId": "https://openalex.org/W4407358400",
+      "doi": "10.1038/s41598-025-87807-w",
+      "title": "Thin-layer modeling, drying parameters, and techno-enviro-economic analysis of a solar dried salted tilapia fish fillets",
+      "year": 2025,
+      "citationCount": 34,
+      "authors": [
+        "Tarek Hussien M. Ghanem",
+        "Loai S. Nsasrat",
+        "Omar Shahat Younis",
+        "Khaled A. Metwally",
+        "Ali Salem",
+        "Zoltán Orbán"
+      ],
+      "venue": "Scientific Reports",
+      "abstract": "Abstract This study focused on the development of an indirect forced solar dryer that incorporates a three-sided flat plate solar collector (TSFPSC) specifically designed for increasing thermal efficiency, and the system used for drying salted tilapia fish fillets (STFF). The investigation analyzed three fillet thicknesses—4 mm, 8 mm, and 12 mm, employing both open sun drying (OSD) and the developed solar dryer (DSD), with a constant airspeed of 0.5 m/s. The research additionally developed thin-layer drying models (TLDM), assessed drying parameters, and performed an extensive techno-enviro-economic analysis. Results showed that the initial and final moisture content (MC) (w.b. %) of the STFF were 74.83 and 18.84%, respectively, and reached the equilibrium MC after 16–20.5 h for the DSD and 30–36 h for the OSD, which means the drying time reduced by about 53.3%, and 61.11% compared with the OSD. This reduction in drying time demonstrates the effectiveness of the developed solar dryer. The effective moisture diffusivity (EMD) of different STFF samples at both drying systems were 0.51 × 10 –10 to 9.16 × 10 –10 m 2 /s. In addition, all eleven basic TLDM were applied to predict the drying behavior of STFF during the drying process, while the combined Two-Term and Page model had the best fitting for the OSD system, and the modified Midilli II model and combined Two-Term and Page model had the best fitting for the DSD system. In terms of economic analysis, the annual capital and investment costs were calculated to be $22.458 and $21.334, respectively. Additionally, the environmental analysis indicated an energy payback (EP) period of 1.59 years, with a net CO 2 mitigation of 14 tons realized over the operational lifetime of the DSD.",
+      "toTitle": 0.6343604049051976
+    }
+  ],
+  "rankings": {
+    "chapter1": [5, 10, 6, 13, 11, 7, 8, 2, 3, 14, 4, 9, 0, 12, 1],
+    "titled": [6, 2, 1, 5, 0, 3, 4, 7, 10, 8, 14, 9, 13, 12, 11]
+  }
+}

@@ -1,0 +1,197 @@
+{
+  "topic": "fresh-kenya-mobile-money",
+  "queries": {
+    "chapter1": "Chapter 1",
+    "titled": "Chapter 1 Mobile money and the incomes of smallholder farmers in Kenya"
+  },
+  "papers": [
+    {
+      "openalexId": "https://openalex.org/W3214915665",
+      "doi": "10.1016/j.gfs.2021.100590",
+      "title": "Use of mobile financial services among farmers in Africa: Insights from Kenya",
+      "year": 2021,
+      "citationCount": 98,
+      "authors": ["Martin C. Parlasca", "Constantin Johnen", "Matin Qaim"],
+      "venue": "Global Food Security",
+      "abstract": "The recent proliferation of mobile phones in rural Africa has also led to increased interest in mobile financial services (MFS), such as mobile money and mobile banking. Such services are often portrayed as promising tools to improve agricultural finance, especially among smallholders who are typically underserved by traditional banks. However, empirical evidence on the actual use of MFS for agricultural activities is thin. Here, we use nationally representative data from Kenya to analyze the use of mobile payments, mobile savings, and mobile credit among the farming population. We find that more than 80% of farmers use mobile money, but only 15% use this innovation for agriculture-related payments. Mobile loans for agricultural investments are used by less than 1% of farmers. Usage rates are somewhat higher among farmers in modern supply chains, even though for them traditional banking services are often also accessible and still much more important. Overall, the use of MFS for agriculture is lower than commonly assumed, indicating that these services do not yet have a transformative impact on smallholder farming. As Kenya is one of the leaders of the MFS boom in Africa, this general finding likely holds for other African countries as well.",
+      "toTitle": 0.8177777760953131
+    },
+    {
+      "openalexId": "https://openalex.org/W4206299208",
+      "doi": "10.4236/me.2021.1212097",
+      "title": "Filling the Niche—A Synthesis of Financial Inclusion among Smallholder Farmers in Africa, the Case for Kenya",
+      "year": 2021,
+      "citationCount": 4,
+      "authors": ["George Owuor"],
+      "venue": "Modern Economy",
+      "abstract": "This paper makes a synthesis of empirical studies carried out in parts of Africa, and in Kenya to derive lessons on financial inclusion among smallholder farmers in rural and peri-urban areas. The derived lessons point at a steadily growing expansion of financial services to rural/peri-urban poor traditionally characterised by high idiosyncratic risks and huge information asymmetry. This category of households seems to have made the African continent sustain itself in the midst of financial crisis in 2008/09 when the rest of the world including the Asian tigers and the American capitalists faced serious setbacks in their financial sector growth. During this period, Africa experienced steady growth that started in 2000 at below 3% and peaked at about 4.8% by 2009-2015. The contribution of the transformation of the financial sector experienced in Kenya is one of the reasons for this growth. The paper elucidates the key determinants of access to the reformed financial services by the rural poor, access to targeted training on financial services beyond the formal education, participation of female-headed households in collective frameworks and creditworthiness as exhibited by multiple borrowing points. The impact of such inclusion is exhibited by significant changes in purchasing power of households through income and diversified investment in farm assets. In all these successes, ICT through mobile money transfer played a significant role, as exhibited in studies across the region. Despite the successes, the key challenges include high fungibility of targeted funding, showing a need to provide an array of financial services to the poor including credit for consumption, school fees, medical cover and emergency loans found among the savings and credit cooperatives. Also, the inequality and raising the poorest of the poor is still a challenge, one reason being the instrumental role of ICT through mobile money transfer system which some of the poorest farmers have no access to. Mobile banking services such as M-Shwari product is something that extension personnel could take as part of their advice to small farmers in accessing short-term loans and as means of savings funds between USD 1 - 100. These kinds of funds are useful in particular in bridging financial gaps along the agribusiness value chains. The funds can be borrowed to transport produce to the market, and make payments in time to enable farmers to capitalise on their input purchases. On participation of smallholder farmers in mobile banking type, and in particular saving and immediate credit service is still limited. This is an area for immediate uptake by all stakeholders including policymakers and the financial sector.",
+      "toTitle": 0.7847993729908691
+    },
+    {
+      "openalexId": "https://openalex.org/W4406219632",
+      "doi": "10.4314/jpds.v17i1.20",
+      "title": "Use of mobile phones for market accessibility and price transparency among smallholder farmers in Tanzania: A case of Mbarali District",
+      "year": 2024,
+      "citationCount": 2,
+      "authors": ["Geofrey A. Mwakifwamba", "Joachim J. Chisanza", "Obedi L. Ngalesoni"],
+      "venue": "Journal of Policy and Development Studies",
+      "abstract": "This study examines the impact of mobile phone use on market accessibility and price transparency among smallholder farmers in Mbarali District, Tanzania. In rural areas where agriculture is the primary livelihood, farmers often face challenges such as limited access to market information, fluctuating prices, and reliance on intermediaries. The widespread adoption of mobile phones has emerged as a crucial tool for overcoming these barriers. By leveraging mobile-based services like SMS price notifications and mobile applications, farmers gain real-time information on market prices, weather forecasts, and agricultural advice, enabling them to make informed decisions and reduce dependence on middlemen. Additionally, mobile phones facilitate mobile banking and mobile money services, enhancing financial inclusion through efficient transactions and faster payments. The research, combining qualitative and quantitative data, reveals that mobile phone technology improves market efficiency, increases farmers' bargaining power, and contributes to better income stability. Improved access to financial services also allows farmers to manage their finances more effectively. The findings explore the transformative role of mobile phones in the agricultural sector, suggesting that further expansion of mobile technology and services can foster agricultural growth, improve livelihoods, and promote equitable market access, contributing to sustainable rural development in Tanzania.",
+      "toTitle": 0.7728044638435478
+    },
+    {
+      "openalexId": "https://openalex.org/W3183720341",
+      "doi": "10.1002/agr.21721",
+      "title": "Mobile money adoption, input use, and farm output among smallholder rice farmers in Ghana",
+      "year": 2021,
+      "citationCount": 80,
+      "authors": ["Awal Abdul‐Rahaman", "Awudu Abdulai"],
+      "venue": "Agribusiness",
+      "abstract": "Abstract Financial exclusion continues to be a major challenge to smallholder farmers' participation in agricultural value chains in developing countries. Digitizing procurements and other forms of transactions using mobile money technology among value chain actors is essential for ensuring financial inclusion and enhancing agricultural value chain transformation. This study examines the factors influencing the adoption of mobile money technology and the impact of the technology on production input use and farm output, utilizing data from a cross‐sectional survey of smallholder rice farmers in northern Ghana. A linear regression with endogenous treatment effects method is employed to account for both observable and unobservable selection bias. The results reveal positive and significant marginal effect of mobile money technology on input use and farm output. Adopters of the technology applied 18% and 13% more fertilizer and herbicides, respectively than nonadopters. The output increased by about 4% for the adopters. The results also show that mobile money technology adoption, input use and farm output are significantly influenced by education, farmer‐based organization (FBO) membership, access to credit, input prices, and location fixed effects. Expansion of mobile technology networks, increased investment in education, credit facilities, and FBOs can be quite relevant in promoting the adoption of mobile money technology in Ghana. [EconLit citations: C34, C35, Q12, Q13]",
+      "toTitle": 0.763834776475694
+    },
+    {
+      "openalexId": "https://openalex.org/W4391180392",
+      "doi": "10.59781/pari7773",
+      "title": "Effect of the Usage of Mobile Money Services on Smallholder Rural Households` Welfare in Oyo State, Nigeria",
+      "year": 2024,
+      "citationCount": 0,
+      "authors": ["Raphael Olanrewaju Babatunde", "Gbenga Opeyemi", "Emmanuel Jegede"],
+      "venue": "International Journal of Social Science Technology and Economics Management",
+      "abstract": "The study assessed the effect of the usage of mobile money technology on the welfare of smallholder household farmers in Oyo State, Nigeria. Primary data was used to achieve the study objectives. The data was collected through the use of structured questionnaire. A three stage sampling technique was used in selecting the sample for the study. A total number of 120 smallholder farmers across the selected villages in Oyo State, Nigeria were selected. The study utilized descriptive and inferential statistics in its analytical technique. The result of the study revealed that mobile money service were used for airtime purchase, fund transfer, purchase of farm inputs, bill payment, savings, cash withdrawal, remittance and payment of farm workers. The empirical results of the study show that the determinants of the usage of mobile money service by the respondents include age, gender, years of education and access to credit. The results of the effect of mobile money service usage on food security revealed that mobile money service usage, age, gender, years of formal education and access to credit significantly influenced food security in the study area. Also, Mobile money usage, age, household size represented by adult equivalent, access to credit and distance to the nearest banks were factors that significantly influenced household expenditure. The study concluded that usage of mobile money service significantly affect household welfare of farming households in the study area. These results suggest that access and usage of mobile money service can help to improve smallholder farmers` household welfare.",
+      "toTitle": 0.7520569152482219
+    },
+    {
+      "openalexId": "https://openalex.org/W7169874360",
+      "doi": "10.1007/s44279-026-00713-1",
+      "title": "ICT-enabled financial services enhance market access and income stability among smallholder farmers in Rwanda",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": [
+        "Xavier Uwiringiyimana",
+        "Emmanuel Niyotwizeye",
+        "Rifka Atmajaya",
+        "Constantine Dusabe",
+        "Venant Uzayisenga"
+      ],
+      "venue": "Discover Agriculture",
+      "abstract": "This paper examines how ICT-based financial services can increase market access and income stability of smallholder farmers in Rwanda. Although the use of mobile money and digital financial tools is increasingly adopted in sub-Saharan Africa, there are still limited empirical studies on the synergies between these instruments and agricultural market participation, as well as household income resilience, especially in the Rwandan context. Based on the Financial Inclusion Theory and the Technology Acceptance Model, the research paper forms an integrative conceptual framework of the relationship between ICT-enabled financial services and market access and income stability, and digital literacy, trust in ICT systems, and institutional support as direct antecedents of market access. Data were collected through a structured questionnaire administered to 398 smallholder maize farmers in Nyagatare District, Eastern Province of Rwanda, and analyzed using Partial Least Squares Structural Equation Modelling (PLS-SEM). The results show that ICT-enabled financial services significantly enhance both market access and income stability, both directly and indirectly through improved market participation. Digital literacy and institutional support have a significant direct effect on market access, whereas trust in ICT systems shows no significant effect. These findings underscore the importance of complementary investments in digital infrastructure, farmer training, and institutional frameworks to maximize the economic benefits of digital financial inclusion in rural agricultural contexts.",
+      "toTitle": 0.7517339176961009
+    },
+    {
+      "openalexId": "https://openalex.org/W4416831595",
+      "doi": "10.38157/bpr.v7i1.730",
+      "title": "Mobile Money and the Dynamics of Income Inequality",
+      "year": 2025,
+      "citationCount": 1,
+      "authors": ["Marus Eton", "Johnson Ocan", "Bernard Patrick Ogwel", "Felix Adiburu Andama"],
+      "venue": "Business Perspective Review",
+      "abstract": "Purpose: This article examines the relationship between mobile money adoption and income inequality in Arua City, Uganda. Although mobile money is often promoted as a tool for financial inclusion, its distributional outcomes remain underexplored. Methods: The study uses a mixed qualitative approach, combining household surveys, econometric analysis, and interviews to examine how mobile money affects income disparities. This methodology provides a comprehensive quantitative insight into usage patterns, household income distribution, and individual experiences. Results: Results indicate that mobile money facilitates financial participation, enhances household resilience, and expands economic opportunities, particularly for marginalized groups. However, unequal uptake driven by differences in education, digital literacy, and access to complementary financial services creates a paradox: while mobile money reduces some barriers to inclusion, it simultaneously risks amplifying socioeconomic divides. Implications: The study advances the literature on digital finance by highlighting the context-specific mechanisms through which mobile money influences income inequality. Policy implications point to the need for targeted interventions that strengthen digital capabilities, expand access across income groups, and ensure that financial innovation contributes to equitable development.",
+      "toTitle": 0.737982731121894
+    },
+    {
+      "openalexId": "https://openalex.org/W3169168483",
+      "doi": "10.22159/ijags.2021.v9i3.41520",
+      "title": "DETERMINANTS OF SMALLHOLDER FARMERS’ ACCESS TO MOBILE PHONE BASED MONEY TRANSFER SERVICES – EVIDENCE FROM VOLTA REGION OF GHANA",
+      "year": 2021,
+      "citationCount": 2,
+      "authors": ["Maxwell Amedi", "FREEDMAN DELALI WOLEDZI"],
+      "venue": "Innovare Journal of Agricultural Sciences",
+      "abstract": "Objective: Smallholder farmers’ access to Mobile Phone Based Money Transfer Services in Akatsi North District of Volta Region of Ghana under the Planting for Food and Jobs Programme. Methods: Primary data were collected from 300 farmers in beneficiary districts while secondary data were gathered from literatures and various actors. A multi-stage sampling technique was used in selecting respondents for the study. The first stage involved selecting ten communities that benefited from the planting for food and jobs program in the Akatsi North district, while the second stage considered randomly selecting 30 beneficiary farmers in each community. Obtained data were analyzed using Statistical Package for the Social Sciences and STATA-11 software. Results were presented in the form of descriptive statistics, cross tabulation, and Logit regression model. Results: Majority of respondents (74%) do not use Mobile Phone Based Money Transfer platform for any agricultural transaction. Is only 26% of the respondents that use the mobile money platform for their agribusiness activities. Out of the nine explanatory variables included in the Logit regression model, six of them were significant at p<0.01, p<0.05, and p<0.1. Significant factors include: Educational level of households, age, major occupation, accessibility of mobile money service provider, convenience to respondent, trust of the system, and availability of mobile money service. Conclusions: The availability and accessibility of Mobile Phone Based Money financial services among smallholder farmers is key to achieving competitive global business.",
+      "toTitle": 0.7293131944534279
+    },
+    {
+      "openalexId": "https://openalex.org/W3137412971",
+      "doi": "10.1177/0266666921999089",
+      "title": "Adoption and intensity of use of mobile money among smallholder farmers in rural Ghana",
+      "year": 2021,
+      "citationCount": 36,
+      "authors": ["Richard Kofi Asravor", "Afia Nyarko Boakye", "John Essuman"],
+      "venue": "Information Development",
+      "abstract": "The impact of mobile money services in sub-Saharan Africa have been largely recognised. However, empirical studies are principally lacking on the factors influencing the decision to own a mobile phone (first hurdle), register with mobile money (second hurdle) and the intensity of use of mobile money services (third hurdle). This study examined the determinants of the mobile phone ownership, drivers of registration (participation) of mobile money services, and the intensity of use of mobile money services in rural Ghana by employing the triple hurdle approach. The first and second hurdle were analysed using the logit model while quasi-poisson regression was used to analyse the third hurdle. The analysis from the cross-sectional data showed that the decision to own a mobile phone was driven by household size, marital status, the farm size, access to electricity, income status and the type of occupation engaged, whereas the decision to register with mobile money was influenced by the age, educational status, marital status, household size, farm size and the type of occupation engaged in by the household head. The intensity of usage of mobile money services was influenced by the age of the household head, higher educational level, marital status of the household head, household and farm size as well as the distance of the household heads from the mobile money agent which directly influences the intensity of use of mobile money services by household heads. The study recommends that strategies that promote access to electricity and occupation in the formal sector or both farming and trading in the rural communities should be promoted. Furthermore, policy attention should focus on location, farmers and farm characteristics.",
+      "toTitle": 0.7226603956353472
+    },
+    {
+      "openalexId": "https://openalex.org/W3132132783",
+      "doi": "10.1007/s11113-021-09641-y",
+      "title": "Mobile Money and School Participation: Evidence from Africa",
+      "year": 2021,
+      "citationCount": 12,
+      "authors": ["Valentina Rotondi", "Francesco Candeloro Billari"],
+      "venue": "Population Research and Policy Review",
+      "abstract": "Abstract This paper shows that mobile money technology—an electronic wallet service that allows users to deposit, transfer, and receive money using their mobile phones—is positively correlated with increased school participation of children in school age. By using data from 4 African countries, we argue that, by reducing transaction costs, and by making it easier and less expensive to receive remittances, mobile money reduces the need for coping strategies that are detrimental to child development, such as withdrawing children from school and sending them to work. We find that mobile money increases the chances of children attending school. This finding is robust to different empirical models. In a nutshell, our results show that 1 million children could start attending school in low-income countries if mobile money was available to all.",
+      "toTitle": 0.7212533329405889
+    },
+    {
+      "openalexId": "https://openalex.org/W4386510177",
+      "doi": "10.1007/s12571-023-01394-0",
+      "title": "Gendered investment differences among smallholder farmers: evidence from a microcredit programme in western kenya",
+      "year": 2023,
+      "citationCount": 21,
+      "authors": [
+        "Keiji Jindo",
+        "Jens Andersson",
+        "Foluke P.M. Quist-Wessel",
+        "Jackonia Onyango",
+        "J.W.A. Langeveld"
+      ],
+      "venue": "Food Security",
+      "abstract": "Abstract The advent of microcredit programmes in sub-Saharan Africa provides opportunities for rural households to acquire agricultural inputs and consumer goods. This study analysed gender differences in investment behaviour and repayment performance using a unique dataset—the complete client database (21,386 clients) of a microcredit programme operating in Western Kenya. Products purchased via the microcredit programme include seeds, fertilisers, post-harvesting technologies (drying sheets, storage bags, and pesticides), chicken feed packages, and different solar panel products. A machine learning-based basket analysis identified combinations of products purchased by male and female clients. Our results showed that female farmers usually made smaller investments, had higher repayment rates, and purchased more post-harvesting technologies than male farmers. In addition, female farmers used their loans to purchase less expensive products, whereas male farmers usually purchased more fertiliser and expensive solar panel products. The basket analysis revealed that female farmers purchased multiple products simultaneously more often than male farmers did. Finally, households without mobile phones had low repayment capabilities. Collectively, our findings show that microcredit programmes serving smallholder farmers can capitalise on their business data to learn about their clients’ gendered investment preferences and repayment behaviour.",
+      "toTitle": 0.7024740872676284
+    },
+    {
+      "openalexId": "https://openalex.org/W7218593198",
+      "doi": "10.21474/ijar01/24216",
+      "title": "SOCIO-ECONOMIC AND TECHNOLOGICAL DETERMINANTS OF MOBILE-BASED AGRICULTURAL INFORMATION ACCESS AMONG SMALLHOLDER FARMERS IN KERICHO COUNTY, KENYA",
+      "year": 2026,
+      "citationCount": 0,
+      "authors": ["Carolyne Cherotich", "Joash Keino Kibett", "Patrick K. Bii"],
+      "venue": "International Journal of Advanced Research",
+      "abstract": "Mobile phones are increasingly playing an important role in delivering agricultural extension, weather, market and production information to smallholder farmers. Nevertheless, farmers do not engage with mobilebased agricultural information services at the same frequency, and the factors explaining these differences vary across rural contexts. This study examined the relationship between selected socioeconomic and technological characteristics and the frequency with which smallholder farmers accessed agricultural information through mobile phones. A quantitative cross-sectional design was used with 287 small scale farmers who had complete observations. The dependent variable was frequency of mobilebased agricultural information access, categorized as regular, occasional or never. Explanatory variables included age, educational attainment, primary occupation, landholding size, household income, mobilephone ownership and device type. Data were analyzed using cross-tabulations, Pearsons chi-square tests and Fishers exact tests. Linearbylinear association tests were also used where ordinal trends were relevant. Age, education, occupation and mobilephone ownership were significantly associated with access frequency. Farmers younger than 35 years recorded the highest regular access rate at 72.0%while farmers aged 56 years and above mainly accessed information occasionally.",
+      "toTitle": 0.6999428401602457
+    },
+    {
+      "openalexId": "https://openalex.org/W4413234696",
+      "doi": "10.36423/hexagro.v9i1.2113",
+      "title": "ENHANCING SMALLHOLDER FARMERS' LIVELIHOODS: THE IMPACT OF CAPITAL PROVISION ON PRODUCTIVITY, INCOME, AND SUSTAINABILITY",
+      "year": 2025,
+      "citationCount": 2,
+      "authors": ["Farhan Ahmad"],
+      "venue": "Jurnal Hexagro",
+      "abstract": "Considerable financial limitations affect small-scale farmers, impeding their livelihood and agricultural output. Due to limited loan availability, high input costs, and unstable markets make it more difficult for farmers to maintain and grow their farming enterprises. Smallholder farmer's access to cash can help them recognize modern farming technologies, increase production, and invest in high-quality inputs. This review article investigates the influence of financial support on small-scale farming, focusing on capital-providing options such as microfinance, government subsidies, and cooperative funding. The article also assesses the success of these financial models in various socioeconomic contexts, highlighting the importance of institutional support and policy actions. According to research, capital access significantly boosts crop productivity, household income, and food security. However, issues such as loan repayment difficulties and financial literacy gaps persist. The article discusses solutions for ensuring small-scale farmers' long-term financial inclusion, such as digital financial services and community-based funding projects. The findings imply that a well-structured capital provision framework can have a transformative impact on the lives of small-scale farmers.",
+      "toTitle": 0.6809991650593101
+    },
+    {
+      "openalexId": "https://openalex.org/W4400929274",
+      "doi": "10.59557/rpj.26.1.2024.24",
+      "title": "The Influence of Expectations Regarding Performance on the Acceptance of Mobile Phone Banking Services by Smallholder Farmers: A Case of Smallholder Grape Farmers in Dodoma Region, Tanzania",
+      "year": 2024,
+      "citationCount": 0,
+      "authors": ["Anicet A. Rwezaula", "Titus Mwageni", "Emmanuel Tonya"],
+      "venue": "Rural Planning Journal/Rural planning journal",
+      "abstract": "This study uses a cross-sectional survey design to examine the influence of expectations regarding performance on the acceptance of mobile phone banking services by smallholder farmers in Dodoma Region, Tanzania. A total of 360 smallholder farmers were selected randomly for the study. The collected data was analysed using multiple linear regression to assess the relationship between expectations regarding performance and acceptance of mobile phone banking services. The study’s findings showed that expectations regarding performance measures (job fit, perceived usefulness, extrinsic motivation, and outcome expectations) have good predictive potential in explaining smallholder farmers' adoption of mobile phone banking services. The findings suggest that smallholder farmers have trust (i.e. perceived usefulness), in using a mobile phone banking system to improve agricultural commercialization. The findings also emphasize that smallholder farmers believe (i.e. job fit) that using mobile phone banking technology is beneficial to them. Furthermore, smallholder farmers believe that people who engage in farming activities are likely to achieve the desired results if rewards and/or incentives are given (i.e. extrinsic motivation). The study draws attention to mobile phone banking service providers to fulfil the expectations of smallholder farmers by providing services that address smallholder farmers’ needs. Finally, policy attention should focus on the expected performance of mobile phone banking services used by smallholder farmers in rural areas.",
+      "toTitle": 0.6746061518138519
+    },
+    {
+      "openalexId": "https://openalex.org/W4392710392",
+      "doi": "10.1016/j.heliyon.2024.e27541",
+      "title": "Exploring the impact of agricultural digitalization on smallholder farmers' livelihoods in Ghana",
+      "year": 2024,
+      "citationCount": 55,
+      "authors": [
+        "Monica Addison",
+        "Isaac Bonuedi",
+        "Albert Arhin",
+        "Bernice Wadei",
+        "Ebenezer Owusu‐Addo",
+        "Ernestina Fredua Antoh"
+      ],
+      "venue": "Heliyon",
+      "abstract": "With the government's pursuit of a digitalization agenda, Ghana is at the forefront of championing digital transformation in Africa. However, people in rural areas are being left behind in harnessing the immense benefits of digitalization for their livelihoods. This study contributes to policy efforts aimed at bridging that gap by investigating the drivers of agricultural digitalization (AD) as well as its effects on the livelihoods of smallholder farmers in rural Ghana. Data from a cross-sectional survey of 525 rural farmers across northern, middle and southern Ghana was employed. The study used the probit and tobit estimators to analyze the drivers and intensity of adoption of digital technologies in agriculture and the inverse probability weighting and regression adjustment estimator to mitigate endogeneity concerns. The results show that while female farmers trail male farmers in the intensity of applying digital technologies, higher educational attainment, better perception of digitalization, group/cooperative membership, number of economically active household members, and access to reliable electricity, internet and mobile money services significantly promote the use of digital technologies in agricultural activities. The results further show that AD is significantly associated with perceived improvements in livelihood assets, and ultimately livelihood outcomes of smallholder farmers in rural Ghana. These findings highlight the importance of investing in rural digital infrastructure by policymakers, the private sector and other stakeholders, so as to expand access to and the uptake of digital technologies in agriculture to bolster rural development in Ghana.",
+      "toTitle": 0.6742412682691139
+    }
+  ],
+  "rankings": {
+    "chapter1": [10, 9, 8, 14, 0, 3, 6, 2, 7, 11, 12, 5, 13, 4, 1],
+    "titled": [0, 3, 2, 1, 8, 5, 6, 7, 9, 4, 10, 14, 11, 12, 13]
+  }
+}

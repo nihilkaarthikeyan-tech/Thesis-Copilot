@@ -36,6 +36,7 @@ import {
   researchPlanSchema,
 } from '../src/builder/deep-research.js';
 import { buildDraftRequest, postProcessDraft } from '../src/builder/draft.js';
+import { buildMemoryBlock } from '../src/builder/memory.js';
 import {
   buildOutlineRequest,
   enforceTemplateShape,
@@ -50,7 +51,9 @@ import {
   parseProposalReply,
   SKELETON_INSTRUCTION,
 } from '../src/builder/proposal.js';
+import { splitSentences } from '../src/builder/quality.js';
 import { buildQueriesRequest, cleanQueries, queriesSchema } from '../src/builder/queries.js';
+import { ownPlaces, placesIn, unmarkedOtherSettings } from '../src/builder/setting.js';
 import { buildThemesRequest, normaliseThemes, themesSchema } from '../src/builder/themes.js';
 import {
   buildVivaQuestionsRequest,
@@ -63,7 +66,7 @@ import type { LlmProvider, LlmRequest } from '../src/types.js';
 import { type Measures, measure, totals } from './copying.js';
 import { metered } from './meter.js';
 import { draftedSection, memoryFor, papersFor, passagesFor, readable } from './shared.js';
-import { BAGLA_P11, KARNATAKA, TAMILNADU, TOPICS, type Topic } from './topics.js';
+import { BAGLA_P11, FRESH, KARNATAKA, TAMILNADU, TOPICS, type Topic } from './topics.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -93,6 +96,8 @@ type Output = {
   m?: Measures;
   /** Citations to passages not in the request, before the whitelist removed them. */
   hallucinated?: number;
+  /** ADR-0135: another setting written as the thesis's own. */
+  setting?: SettingMeasures;
 };
 
 type ChatMeasures = {
@@ -142,6 +147,11 @@ type Case = {
    * line, as the editor sends it, and the scope note carries the section's own note.
    */
   emptySection?: boolean;
+  /**
+   * ADR-0135: Start writing now. The thesis has only its title; the cursor is under the empty
+   * "Chapter 1", which has no scope note; the memory holds the working title and nothing else.
+   */
+  opener?: boolean;
   kind:
     | 'assist'
     | 'draft'
@@ -292,6 +302,94 @@ function aimsCases(name: string): Case[] {
     });
   });
   return cases;
+}
+
+/**
+ * ADR-0135's case set (`--set opener`): the Start-writing-now opener on a fresh 15-paper library
+ * (`eval/fetch-fresh.ts`), for five theses that each name a place. Two retrieval conditions per
+ * thesis: `chapter1`, the six abstracts today's query ("Chapter 1") ranks first, and `titled`, the
+ * six ranked first once the working title stands in for the empty scope note.
+ */
+function openerCases(name: string, keralaInRequest = false): Case[] {
+  if (name !== 'assist') return [];
+  const cases: Case[] = [];
+  // `--set opener-kerala` (a diagnostic, not part of the criterion): the Karnataka thesis with the
+  // pool's Kerala paper put second in the request, as the live request had Mathew (2024) second.
+  for (const topic of keralaInRequest ? FRESH.slice(0, 1) : FRESH) {
+    const fixture = JSON.parse(readFileSync(join(here, 'papers', `${topic.id}.json`), 'utf8')) as {
+      papers: Array<{ title: string; year: number | null; authors: string[]; abstract: string }>;
+      rankings: { chapter1: number[]; titled: number[] };
+    };
+    const kerala = fixture.papers.findIndex((p) => /kerala/i.test(p.title));
+    for (const condition of ['chapter1', 'titled'] as const) {
+      const order = keralaInRequest
+        ? (() => {
+            const rest = fixture.rankings[condition].filter((i) => i !== kerala);
+            return [rest[0] as number, kerala, ...rest.slice(1, 5)];
+          })()
+        : fixture.rankings[condition].slice(0, 6);
+      const passages = order.map((index, i) => {
+        const paper = fixture.papers[index] as (typeof fixture.papers)[number];
+        return {
+          id: `S${i + 1}#c1`,
+          shortRef: shortRefOf(paper),
+          page: null,
+          text: paper.abstract,
+        };
+      });
+      cases.push({
+        id: `${topic.id}-${condition}${keralaInRequest ? '-kerala' : ''}`,
+        topic,
+        context: 'Chapter 1\n',
+        passages,
+        kind: 'assist',
+        opener: true,
+      });
+    }
+  }
+  return cases;
+}
+
+function shortRefOf(p: { authors: string[]; year: number | null }): string {
+  const last = (p.authors[0] ?? 'Anon').split(/\s+/).pop() ?? 'Anon';
+  const etal =
+    p.authors.length > 2
+      ? ' et al.'
+      : p.authors.length === 2
+        ? ` & ${p.authors[1]?.split(/\s+/).pop()}`
+        : '';
+  return `${last}${etal} ${p.year ?? 'n.d.'}`;
+}
+
+/** A.0.1 for a thesis made by Start writing now: the title, and one chapter with no scope note. */
+function openerMemory(topic: Topic): string {
+  return buildMemoryBlock({
+    scope: { workingTitle: topic.thesisTitle, problemStatement: '', objectives: [], whyOpen: '' },
+    outline: [{ id: 'ch-1', title: 'Chapter 1', scopeNote: '', children: [] }],
+    glossary: {},
+    styleProfile: null,
+    chapter: { outlineNodeId: 'ch-1', text: '' },
+  }).text;
+}
+
+/**
+ * ADR-0135: sentences naming another state or country than the thesis's own without saying it is
+ * one (`unmarkedOtherSettings`), and whether the first sentence is set in the thesis's own place.
+ */
+type SettingMeasures = { mismatched: number; sentences: string[]; firstOwn: boolean | null };
+function settingMeasures(text: string, c: Case): SettingMeasures {
+  const scope = [c.topic.thesisTitle, c.topic.chapter.scopeNote, c.topic.section.scopeNote].join(
+    '\n',
+  );
+  const sentences = splitSentences(text.replace(/\n+/g, ' '));
+  const bad = sentences.filter((s) => unmarkedOtherSettings(s, scope).length > 0);
+  const own = ownPlaces(placesIn(scope));
+  const first = sentences[0];
+  return {
+    mismatched: bad.length,
+    sentences: bad,
+    firstOwn: first ? [...placesIn(first)].some((p) => own.has(p)) : null,
+  };
 }
 
 /** The three passages of `tamilnadu-aims.json` that report findings rather than aims. */
@@ -605,11 +703,13 @@ async function produce(
   }
   if (c.kind === 'assist') {
     // As production builds it under a section heading (`scopeWithSection`, assist.service.ts).
-    const scopeNote = c.emptySection
-      ? `${c.topic.chapter.scopeNote}\nThis section, "${c.topic.section.title}": ${c.topic.section.scopeNote}`
-      : c.topic.chapter.scopeNote;
+    const scopeNote = c.opener
+      ? null
+      : c.emptySection
+        ? `${c.topic.chapter.scopeNote}\nThis section, "${c.topic.section.title}": ${c.topic.section.scopeNote}`
+        : c.topic.chapter.scopeNote;
     const request = buildAssistRequest({
-      memoryBlock: memoryFor(c.topic, c.context),
+      memoryBlock: c.opener ? openerMemory(c.topic) : memoryFor(c.topic, c.context),
       chapter: { title: c.topic.chapter.title, scopeNote },
       passages: c.passages,
       before: c.context,
@@ -634,6 +734,7 @@ async function produce(
       dropped,
       m: measure(processed.text, c.passages),
       hallucinated: processed.hallucinated.length,
+      setting: settingMeasures(readable(processed.text, c.passages), c),
     };
   }
   if (c.kind === 'chat_deep' && side === 'candidate') {
@@ -814,9 +915,11 @@ async function judge(llm: LlmProvider, c: Case, first: string, second: string) {
       "Each candidate is the paragraph revised to address the guide's comment. A better revision does what the comment asks using only what the sources support, keeps the rest of the paragraph and its citations intact, and adds no unsupported claims.",
   }[c.kind];
   const studentText = {
-    assist: c.emptySection
-      ? `The student has written only the section heading "${c.topic.section.title}" (the section is meant to cover: ${c.topic.section.scopeNote}) and nothing under it yet. The candidate is the first sentence or two offered for this empty section.`
-      : `Student text before the cursor:
+    assist: c.opener
+      ? 'The student has just created this thesis from its title, and the cursor is in the empty first chapter (heading "Chapter 1", no plan yet); nothing is written. The candidate is the first sentence or two offered to open the thesis.'
+      : c.emptySection
+        ? `The student has written only the section heading "${c.topic.section.title}" (the section is meant to cover: ${c.topic.section.scopeNote}) and nothing under it yet. The candidate is the first sentence or two offered for this empty section.`
+        : `Student text before the cursor:
 ${c.context}`,
     draft: `Section to draft: ${c.topic.section.title}. ${c.topic.section.scopeNote}`,
     chat: `Student's question:
@@ -834,10 +937,14 @@ ${c.context}`,
       c.kind === 'revise'
         ? `The guide's comment: ${c.context}\n\nThe paragraph it is on:\n${firstParagraph(draftedSection(c.topic).shown)}`
         : '',
-    proposal: `Related works found for the idea:
+    // Only built for a proposal case: a fresh topic's paper file (ADR-0135) is not a paper list.
+    proposal:
+      c.kind === 'proposal'
+        ? `Related works found for the idea:
 ${papersFor(c.topic)
   .map((p) => `- ${p.title} (${p.year})`)
-  .join('\n')}`,
+  .join('\n')}`
+        : '',
   }[c.kind];
   const answer = await llm.complete({
     tier: 'strong',
@@ -910,10 +1017,19 @@ async function main(): Promise<void> {
         ? ownStudyCases(name)
         : set === 'aims'
           ? aimsCases(name)
-          : casesFor(name)
+          : set === 'opener'
+            ? openerCases(name)
+            : set === 'opener-kerala'
+              ? openerCases(name, true)
+              : casesFor(name)
   ).filter((c) => !only || c.id.includes(only));
   const measured = { a: [] as Measures[], b: [] as Measures[] };
   const hallucinated = { a: 0, b: 0 };
+  // ADR-0135: mismatched sentences, outputs with one, and first sentences set in the thesis's place.
+  const setting = {
+    a: { mismatched: 0, outputs: 0, firstOwn: 0, answered: 0 },
+    b: { mismatched: 0, outputs: 0, firstOwn: 0, answered: 0 },
+  };
 
   const rows: Array<Record<string, unknown>> = [];
   let aWins = 0;
@@ -970,6 +1086,12 @@ async function main(): Promise<void> {
         ['a', a],
         ['b', b],
       ] as const) {
+        if (o.setting) {
+          setting[k].mismatched += o.setting.mismatched;
+          if (o.setting.mismatched > 0) setting[k].outputs++;
+          if (o.setting.firstOwn !== null) setting[k].answered++;
+          if (o.setting.firstOwn) setting[k].firstOwn++;
+        }
         if (o.empty) stats[k].empty++;
         if (o.cited > 0) stats[k].cited++;
         stats[k].dropped += o.dropped;
@@ -993,6 +1115,7 @@ async function main(): Promise<void> {
         b: b.shown,
         aRaw: a.raw,
         bRaw: b.raw,
+        ...(a.setting || b.setting ? { aSetting: a.setting, bSetting: b.setting } : {}),
         ...(a.chat && b.chat
           ? { aMeasures: a.chat, bMeasures: b.chat }
           : a.m || b.m
@@ -1022,6 +1145,7 @@ async function main(): Promise<void> {
           set: set ?? 'default',
           judged: !noJudge,
           hallucinatedCites: { current: hallucinated.a, candidate: hallucinated.b },
+          setting: { current: setting.a, candidate: setting.b },
           measures: { current: totals(measured.a), candidate: totals(measured.b) },
         }
       : {}),
