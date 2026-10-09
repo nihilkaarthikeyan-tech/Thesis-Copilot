@@ -118,12 +118,13 @@ test('switch theses from the rail, and the New menu opens each start', async ({
     rail.getByTestId('thesis-switcher-item').filter({ hasText: titles.other }),
   ).toHaveAttribute('aria-current', 'page');
 
-  // The New menu's three starts, each the chooser on its starting point.
+  // The New menu's three starts. ADR-0145: New thesis makes the thesis at once and opens it in
+  // the editor, set up there by the card; the other two open the chooser on their start.
   await page.goto('/app');
   await page.getByTestId('new-menu-button').click();
   await page.getByRole('menuitem', { name: /New thesis/ }).click();
-  await expect(page).toHaveURL(/\/app\/new\?start=topic/);
-  await expect(page.getByLabel(/Start from a topic/)).toBeChecked();
+  await expect(page).toHaveURL(/\/app\/d\/[0-9a-f-]{36}\/write\//, { timeout: 30_000 });
+  await expect(page.getByTestId('setup-card')).toBeVisible({ timeout: 30_000 });
 
   await page.goto('/app');
   await page.getByTestId('new-menu-button').click();
