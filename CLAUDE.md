@@ -176,7 +176,7 @@ the QA report downloads as PDF or HTML. **Released as v0.1.23 on 2026-10-01** (b
 unconfirmed and the new prompts unevaluated — `docs/PENDING.md`.
 
 **The Jenni study build (2026-10-04/05, ADRs 0054–0067), released as v0.1.25 on 2026-10-05** (backup `/root/backups/pre-v0.1.25/`; CI and release green; migrations 0031–0038 applied). Studied Jenni
-end to end (docs/JENNI-*.md, docs/research/coverage-map.md: now 63 match, 15 ours better, 20
+end to end (D:/ThesisCopilot-private/research (kept off GitHub), docs/research/coverage-map.md: now 63 match, 15 ours better, 20
 partial, 3 missing), then built what it showed, the owner having delegated the product calls
 (ADR-0059). Among it: suggestion bar (Accept/One word/Refine presets/thumbs/‹ › history), evidence
 card, Papers tab with Cite here, "/" menu, equation from words (ADR-0063) and from a photo (ADR-0064:

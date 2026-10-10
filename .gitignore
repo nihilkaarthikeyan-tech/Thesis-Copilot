@@ -22,3 +22,11 @@ Thumbs.db
 # Agent worktrees (Claude Code)
 .claude/worktrees/
 qa-shots/
+
+# Competitor research and private notes stay off GitHub (kept in D:/ThesisCopilot-private).
+docs/JENNI-*
+docs/research/*jenni*
+docs/research/*side-by-side*
+docs/research/SIDE-BY-SIDE*
+docs/research/sbs-*/
+private/

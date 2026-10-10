@@ -543,7 +543,7 @@ OpenAlex.
       tested). No budget line yet: at launch scale the free tier covers it, and the day it does
       not, OpenAlex answers with a clear error rather than a bill.
 - [x] **Fixed with v0.1.6 (2026-09-25, seed run on the VPS): the owner's account is superadmin on production.** Was: Signing in with
-      nihilkaarthikeyan@gmail.com opened a student home. `deploy.sh` runs migrations, not the seed,
+      <the backup address> opened a student home. `deploy.sh` runs migrations, not the seed,
       and the seed (which promotes `SEED_ADMIN_EMAIL`) ran before that variable held this address.
       The agent runs the seed on the VPS at the next release — idempotent upserts only: the
       superadmin role, the four feature flags, the example template — and the home page now shows
@@ -552,13 +552,13 @@ OpenAlex.
       were set and working; the sign-in library would not attach a Google login to the account the
       emailed code had already created. Fixed in code (`accountLinking: { enabled, trustedProviders:
       ['google'] }`, Better Auth's own verified-email gate left on); live at the next release.
-- [x] **Done 2026-09-28: the superadmin is now `editor.publicationmart@gmail.com` only**, at the
+- [x] **Done 2026-09-28: the superadmin is now `<the superadmin address>` only**, at the
       owner's instruction. That account was created and verified by the owner's own Google sign-in;
       then, after a `pg_dump` (`/root/backups/pre-admin-swap-2026-09-28/`), one transaction set it
-      to SUPERADMIN and `nihilkaarthikeyan@gmail.com` to STUDENT (not deleted — its data stays),
+      to SUPERADMIN and `<the backup address>` to STUDENT (not deleted — its data stays),
       each with a `ROLE_CHANGED` audit row marked as done by the agent. The VPS `.env` now has
-      `SEED_ADMIN_EMAIL=editor.publicationmart@gmail.com` (so alerts and feedback mail go there)
-      and `ALERT_EMAILS=nihilkaarthikeyan@gmail.com` as the backup inbox; the old file is
+      `SEED_ADMIN_EMAIL=<the superadmin address>` (so alerts and feedback mail go there)
+      and `ALERT_EMAILS=<the backup address>` as the backup inbox; the old file is
       `.env.bak-2026-09-28-admin-swap`. The owner sets the password themselves under Account →
       Password. The item as it stood:
 - [ ] **Admin access for the manager / HR (2026-09-25).** Built: `PUT /admin/users/:id/role` and a
@@ -571,7 +571,7 @@ OpenAlex.
 - [x] **Site-wide monthly AI budget: ₹2,000, decided by the owner 2026-09-25** — set in the VPS
       `.env` as the fallback at the v0.1.7 release, and editable from Admin → "Site-wide AI
       budget" (the admin's number wins over the file). Alerts go to `SEED_ADMIN_EMAIL` and
-      `ALERT_EMAILS=editor.publicationmart@gmail.com` at 80% and at the stop. At the stop every
+      `ALERT_EMAILS=<the superadmin address>` at 80% and at the stop. At the stop every
       AI call is refused and paper indexing / literature search pause (the worker asks the same
       question before it spends). The item as it stood:
 - [ ] **Set the site-wide monthly AI budget** (`PLATFORM_MONTHLY_CEILING_INR` in the VPS `.env`,
@@ -908,7 +908,7 @@ already runs eight other projects, behind its nginx rather than our own Caddy (A
       a toggle.
 - [x] **Released v0.1.7, 2026-09-25** (tag on `09eac3d`, CI green, `pg_dump` in
       `/root/backups/pre-v0.1.7/`, migration 0022 applied): the site-wide AI budget at ₹2,000
-      with `ALERT_EMAILS=editor.publicationmart@gmail.com`, editable in Admin; the admin screen's
+      with `ALERT_EMAILS=<the superadmin address>`, editable in Admin; the admin screen's
       header, plain labels and corrected cost figure. Verified live: budget and alert address in
       the container, `/admin/platform-budget` 401 without a session.
 - [x] **Released v0.1.6, 2026-09-25, at the owner's go-ahead** (tag on `7b1aaa6`, CI green; a

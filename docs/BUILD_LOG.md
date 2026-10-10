@@ -3195,7 +3195,7 @@ papers remain what settles it.
 
 ### Left on production deliberately
 
-A smoke-test account (`nihilkaarthikeyan+tcsmoke@gmail.com`) and its thesis, "Smoke test: barriers
+A smoke-test account (`<a smoke-test address>`) and its thesis, "Smoke test: barriers
 to rooftop solar adoption", with the generated outline intact — worth being able to open in the
 browser. Removing it is one `DELETE` against the account endpoint whenever it stops being useful.
 
