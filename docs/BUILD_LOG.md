@@ -6407,3 +6407,33 @@ was committed before the runs (ADR-0147 §4). ₹17.28 spent, no refusal, no fai
 
 Lesson for the next round: a negative rule that names the word does not stop the mini writing
 it; say what to write instead. The citation-per-sentence rule is the part that worked.
+
+## The setup card on real models (2026-10-10, ADR-0145 addendum)
+
+The card failed on the owner's real-model stack where the mock stack had passed: the answer box
+never enabled, the question stuck on "Thinking of the first question…", the chapter heading
+pushed off an 800 px screen. The first agent (087f1b7) found three product faults — a failed
+first turn with no way to ask again, A.6 questions eight lines long at 360 px, a sharper working
+title replacing the typed one unseen — and fixed them (Try again, a 60 s turn limit, the
+question scrolling with its answers, "Your title becomes …"). This session merged that and ran
+the three specs on this branch's own stack (API :3031, web :3030, worker on Redis db 7, real
+models): 11 of 12 passed, the one failure a 5 s `toHaveURL` on `/app/new` that the dev server
+was still compiling (30 s now).
+
+Then the measurement: **a new thesis found no papers at all.** `MEASURE=1 _measure/first-session`
+sat at "Finding papers on your topic…" with 0 papers for the whole eight minutes, exactly as the
+first agent's run had the evening before. The worker said why: `openalex search skipped: HTTP
+429`. The OpenAlex key's $1 daily budget was spent — a day of real-model test runs, each
+suggestion on an empty library starting a twelve-query search — and the body said so:
+`you only have $0 remaining. Resets at midnight UTC`, `retryAfter: 13177`. The same request
+without the key answered 200. `ScholarlyHttp` now drops the key for the rest of the day on
+that answer and retries the same request at once in the polite pool (two tests in
+`openalex-key.spec.ts`; an ordinary 429 still waits with the key). Measured again: the cited
+first sentence **19.3 s** after Start writing now (editor 4.0 s, card taken 5.0 s), against
+ADR-0070's ~14 s without the card. Screenshots of the real questions and headings in the card
+are in `docs/design/setup-in-editor/built/real-*.png`.
+
+Seen and left: the opener is asked for twice after Skip, a second apart, and the editor cancels
+the first (`ASSIST ok=false "This operation was aborted"`, one per new thesis) — a part-call
+spent and a failed call in the admin's count. Spent: ₹12.51 in all — ₹8.24 before the fix
+(twelve outline plans at ₹0.67 each), ₹4.27 for the measurement and the screenshots after.

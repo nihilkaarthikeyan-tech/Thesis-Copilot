@@ -73,6 +73,24 @@ export class ScholarlyError extends Error {
   }
 }
 
+/**
+ * How long a refused response asks us to wait, in ms; 0 when it does not say. The `Retry-After`
+ * header first (seconds; OpenAlex's 503 of 2026-09-25 carried 60). OpenAlex's spent-budget 429
+ * (2026-10-10) says it in the JSON body instead — `{"retryAfter": 13177, "dailyRemainingUsd": 0,
+ * …}`, the seconds to midnight UTC — so the body is read when the header is silent.
+ */
+async function retryAfterOf(response: Response): Promise<number> {
+  const header = Number(response.headers.get('retry-after'));
+  if (Number.isFinite(header) && header > 0) return header * 1000;
+  try {
+    const body = (await response.json()) as { retryAfter?: unknown } | null;
+    const seconds = Number(body?.retryAfter);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** Status codes worth another attempt: rate limiting and transient server faults. */
 function retryable(status: number): boolean {
   return status === 429 || status === 408 || status >= 500;
@@ -138,17 +156,36 @@ export class ScholarlyHttp {
     }
   }
 
-  private async get(url: string, accept: string, signal?: AbortSignal): Promise<Response | null> {
-    let lastError: ScholarlyError | null = null;
-    // Added here, the one place every request passes, so no URL builder can forget it. Errors
-    // carry the service and status only, so the key never reaches a log.
-    const target = this.apiKey
+  /**
+   * The key's daily budget is spent until this time (ms since epoch), and requests go without it
+   * (ADR-0145 addendum, 2026-10-10). OpenAlex meters a key at $1 a day; a day of real-model test
+   * runs spent it, every keyed request then answered 429 "you only have $0 remaining. Resets at
+   * midnight UTC", and a new thesis found no papers for eight minutes — while the same request
+   * without the key, in the polite pool, answered 200.
+   */
+  private keySpentUntil = 0;
+
+  /** Whether the key is sent on the next request: set, and not known to be spent. */
+  keyInUse(now: number = Date.now()): boolean {
+    return this.apiKey !== undefined && now >= this.keySpentUntil;
+  }
+
+  private withKey(url: string): string {
+    return this.apiKey
       ? `${url}${url.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(this.apiKey)}`
       : url;
+  }
+
+  private async get(url: string, accept: string, signal?: AbortSignal): Promise<Response | null> {
+    let lastError: ScholarlyError | null = null;
 
     for (let attempt = 1; attempt <= this.attempts; attempt++) {
       await this.acquire();
       if (signal?.aborted) throw new ScholarlyError(this.service, null, 'aborted');
+      // Added here, the one place every request passes, so no URL builder can forget it. Errors
+      // carry the service and status only, so the key never reaches a log.
+      const keyed = this.keyInUse();
+      const target = keyed ? this.withKey(url) : url;
 
       let response: Response;
       try {
@@ -170,12 +207,17 @@ export class ScholarlyHttp {
 
       if (!response.ok) {
         lastError = new ScholarlyError(this.service, response.status, `HTTP ${response.status}`);
+        const retryAfterMs = await retryAfterOf(response);
+        // The key's day is spent (a 429 asking for longer than any request waits): the same
+        // request goes again at once without the key, and so does every request until the reset.
+        // Not an attempt — nothing was tried that could be tried again.
+        if (keyed && response.status === 429 && retryAfterMs > MAX_RETRY_AFTER_MS) {
+          this.keySpentUntil = Date.now() + retryAfterMs;
+          attempt -= 1;
+          continue;
+        }
         if (attempt < this.attempts && retryable(response.status)) {
-          const retryAfter = Number(response.headers.get('retry-after'));
-          const waitMs =
-            Number.isFinite(retryAfter) && retryAfter > 0
-              ? retryAfter * 1000
-              : 2 ** (attempt - 1) * 500;
+          const waitMs = retryAfterMs > 0 ? retryAfterMs : 2 ** (attempt - 1) * 500;
           // ADR-0050: a service that says "come back in an hour" (OpenAlex when the day's budget
           // is spent answers 429 with the seconds to midnight UTC) is a failure now, not a wait:
           // honouring it left a literature search on "Searching…" for as long as it asked.
