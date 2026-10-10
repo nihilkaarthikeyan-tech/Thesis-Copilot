@@ -637,8 +637,12 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           </li>
           <li>
             Section commands cover the selection commands (Expand, Formalise, Simplify, Shorten,
-            Check consistency), proofreading, <L>Suggest a revision</L> on a comment and{' '}
-            <L>Suggest fix</L> on a flag.
+            Check consistency), <L>Suggest a revision</L> on a comment and <L>Suggest fix</L> on a
+            flag.
+          </li>
+          <li>
+            Proofreading has its own allowance: one run reads up to 2,000 words, and it does not use
+            your section commands.
           </li>
           <li>If the AI fails, or chat refuses a question, the unit is given back.</li>
           <li>Nothing you type counts.</li>
@@ -652,7 +656,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         <H2>When an allowance runs out</H2>
         <P>
           That one feature stops until the 1st. Everything else carries on, and your documents are
-          untouched.
+          untouched. On the free trial, the allowances are for the whole trial and do not start
+          again on the 1st.
         </P>
         <H2>The free trial</H2>
         <P>

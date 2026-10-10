@@ -693,6 +693,8 @@ export const en = {
   'account.refundPolicy': 'Refund policy',
   'account.resets':
     'Resets on {date}. A suggestion counts when it is generated, whether you keep it or dismiss it — the tokens were spent either way. Nothing you type counts.',
+  'account.trialAllowance':
+    'These are for your whole free trial, which ends on {date}; they do not start again on the 1st. Proofreading reads up to 2,000 words a run. Nothing you type counts.',
   'account.invoices': 'Invoices',
   'account.invoiceError': 'That invoice could not be produced.',
   'account.emailTitle': 'Email address',
@@ -905,6 +907,10 @@ export const en = {
     '{allowance}: you asked for {ceiling} this month, the most one month allows. You kept {used} of your {cap}.',
   'limit.resetsOn': 'Resets on {date}.',
   'limit.resetsNextMonth': 'Resets on the 1st of next month.',
+  'limit.trialCap.title': 'Trial limit reached',
+  'limit.trialCap.used': '{allowance}: {used} of {cap} used in your free trial.',
+  'limit.trialCap.endsOn':
+    'The trial’s allowances are for the whole trial and do not start again on the 1st; your trial ends on {date}.',
   'limit.notIncluded.title': 'Not in your plan',
   'limit.notIncluded.body': '{allowance}: none included in your plan.',
   'limit.trial.title': 'Free trial ended',

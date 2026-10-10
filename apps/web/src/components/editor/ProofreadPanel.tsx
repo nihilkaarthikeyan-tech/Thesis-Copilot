@@ -427,7 +427,7 @@ export function ProofreadPanel({
       <p className="mt-1 text-xs text-muted">
         {mode === 'tone'
           ? 'Reads this chapter against the tone you want — your own writing profile, or a paper from your library — and offers a rewrite where a sentence clearly differs. Nothing changes until you accept one. One command unit a run, up to 2,000 words. For one paragraph, use Check this paragraph in the menu beside it.'
-          : 'Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown to you, and nothing changes until you accept it. One command unit a run, up to 2,000 words. For one paragraph, use Check this paragraph in the menu beside it.'}
+          : 'Reads this chapter for spelling, grammar and punctuation mistakes. Each correction is shown to you, and nothing changes until you accept it. One proofreading run from your allowance reads up to 2,000 words; it does not use your section commands. For one paragraph, use Check this paragraph in the menu beside it.'}
       </p>
       {mode === 'tone' ? (
         <label className="mt-2 flex items-center gap-2 text-xs">
