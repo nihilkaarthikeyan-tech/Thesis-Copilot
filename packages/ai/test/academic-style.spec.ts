@@ -574,5 +574,6 @@ describe('ADR-0147: punctuation only, on every output the real models wrote in t
     expect(faults).toEqual([]);
     // The rule did something: the stored drafts and edit commands are full of dashes.
     expect(changed).toBeGreaterThan(100);
-  });
+    // 1,600 real outputs: ~2 s here, ~10 s on a CI runner, past the 5 s default.
+  }, 60_000);
 });

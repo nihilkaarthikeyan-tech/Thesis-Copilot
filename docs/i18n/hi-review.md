@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**779** strings are translated; **1** are deliberately
+**831** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -371,6 +371,9 @@ English. Write corrections in the last column.
 | `setup.university.notSet` | university not set | विश्वविद्यालय तय नहीं | |
 | `setup.aim.count` | Question {n} of {max} | {max} में से सवाल {n} | |
 | `setup.aim.thinking` | Thinking of the first question… | पहला सवाल सोचा जा रहा है… | |
+| `setup.aim.failed` | The first question did not arrive. | पहला सवाल नहीं आया। | |
+| `setup.aim.retry` | Try again | फिर से कोशिश करें | |
+| `setup.aim.newTitle` | Your title becomes | आपका शीर्षक होगा | |
 | `setup.aim.own` | Or type your own answer | या अपना जवाब लिखें | |
 | `setup.aim.skip` | Skip — plan my chapters from the title | छोड़ें — शीर्षक से मेरे अध्यायों की योजना बनाएँ | |
 | `setup.aim.result` | From your answers | आपके जवाबों से | |
@@ -936,6 +939,60 @@ English. Write corrections in the last column.
 | `chat.filters.title` | Filters: year, citations, journal, preprints | फ़िल्टर: साल, साइटेशन, journal, preprints | |
 | `chat.sources.one` | {count} source | {count} स्रोत | |
 | `chat.sources.many` | {count} sources | {count} स्रोत | |
+
+## aiStatement
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `aiStatement.menu` | AI use statement | AI उपयोग का विवरण | |
+| `aiStatement.title` | AI use statement | AI उपयोग का विवरण | |
+| `aiStatement.intro` | Written from the record this thesis keeps: which features you used, what share of the text began as accepted AI text, and how sources were added. No model wrote it. Edit it so it says only what you did, and check it against your university’s policy on AI use. | यह इस थीसिस के रिकॉर्ड से लिखा गया है: आपने कौन-से फ़ीचर इस्तेमाल किए, कितना टेक्स्ट स्वीकार किए गए AI टेक्स्ट से शुरू हुआ, और स्रोत कैसे जोड़े गए। इसे किसी मॉडल ने नहीं लिखा। इसे ऐसे संपादित करें कि यह सिर्फ़ वही कहे जो आपने किया, और अपनी यूनिवर्सिटी की AI-उपयोग नीति से मिला लें। | |
+| `aiStatement.loading` | Reading the record… | रिकॉर्ड पढ़ा जा रहा है… | |
+| `aiStatement.loadError` | The record could not be read. Try again in a minute. | रिकॉर्ड नहीं पढ़ा जा सका। एक मिनट बाद फिर कोशिश करें। | |
+| `aiStatement.table` | Add a per-chapter table | हर अध्याय की तालिका जोड़ें | |
+| `aiStatement.copy` | Copy | कॉपी करें | |
+| `aiStatement.copied` | Copied | कॉपी हो गया | |
+| `aiStatement.insert` | Insert as an appendix | परिशिष्ट के रूप में जोड़ें | |
+| `aiStatement.inserting` | Inserting… | जोड़ा जा रहा है… | |
+| `aiStatement.insertError` | The appendix was not added. Try again in a minute. | परिशिष्ट नहीं जुड़ा। एक मिनट बाद फिर कोशिश करें। | |
+| `aiStatement.editLabel` | The statement (edit freely; a blank line starts a new paragraph) | विवरण (बेझिझक संपादित करें; एक खाली लाइन से नया पैराग्राफ़ शुरू होता है) | |
+| `aiStatement.heading` | Statement on the use of AI tools | AI टूल के उपयोग पर विवरण | |
+| `aiStatement.export` | Add my AI use statement as an appendix | मेरा AI उपयोग का विवरण परिशिष्ट के रूप में जोड़ें | |
+| `aiStatement.exportHint` | Written from this thesis’s record, in the interface language. Edit it first under ⋯ → AI use statement if you want your own wording in the file. | इस थीसिस के रिकॉर्ड से, इंटरफ़ेस की भाषा में लिखा जाता है। फ़ाइल में अपने शब्द चाहिए तो पहले ⋯ → AI उपयोग का विवरण में संपादित करें। | |
+| `aiStatement.p.open` | In preparing this thesis, “{title}”, I used Thesis Copilot, a writing tool with AI features, between {from} and {to}. | इस थीसिस, “{title}”, को तैयार करने में मैंने {from} से {to} के बीच Thesis Copilot का उपयोग किया, जो AI फ़ीचर वाला एक लेखन टूल है। | |
+| `aiStatement.p.openNone` | In preparing this thesis, “{title}”, I used Thesis Copilot, a writing tool with AI features. Its record shows no use of those features: no suggestion, draft, edit or search. | इस थीसिस, “{title}”, को तैयार करने में मैंने Thesis Copilot का उपयोग किया, जो AI फ़ीचर वाला एक लेखन टूल है। इसके रिकॉर्ड में उन फ़ीचर का कोई उपयोग दर्ज नहीं है: न कोई सुझाव, न ड्राफ़्ट, न संपादन, न खोज। | |
+| `aiStatement.p.openNoDates` | In preparing this thesis, “{title}”, I used Thesis Copilot, a writing tool with AI features. | इस थीसिस, “{title}”, को तैयार करने में मैंने Thesis Copilot का उपयोग किया, जो AI फ़ीचर वाला एक लेखन टूल है। | |
+| `aiStatement.f.suggestions.kept` | It offered {shown} sentence suggestions while I wrote, of which I kept {kept}, in whole or in part. | लिखते समय इसने मुझे {shown} वाक्य-सुझाव दिए, जिनमें से {kept} मैंने पूरे या आंशिक रूप से रखे। | |
+| `aiStatement.f.suggestions.none` | It offered {shown} sentence suggestions while I wrote, and I kept none of them. | लिखते समय इसने मुझे {shown} वाक्य-सुझाव दिए, और मैंने उनमें से कोई नहीं रखा। | |
+| `aiStatement.f.drafting` | I asked it to draft {n} sections from the papers in my library and accepted {accepted} of those drafts. | मैंने इससे अपनी लाइब्रेरी के पेपरों से {n} सेक्शन ड्राफ़्ट करवाए और उनमें से {accepted} ड्राफ़्ट स्वीकार किए। | |
+| `aiStatement.f.edits` | I used its edit commands on passages I had selected {n} times, for example to reword, expand or shorten them. | मैंने चुने हुए अंशों पर इसके संपादन कमांड {n} बार इस्तेमाल किए, जैसे शब्द बदलने, बढ़ाने या छोटा करने के लिए। | |
+| `aiStatement.f.proofreading` | I ran its proofreading {n} times; it corrects spelling, grammar and punctuation and is not allowed to put a different word in. | मैंने इसका प्रूफ़रीडिंग {n} बार चलाया; यह वर्तनी, व्याकरण और विराम-चिह्न सुधारता है और कोई दूसरा शब्द डालने की इसे अनुमति नहीं है। | |
+| `aiStatement.f.citations` | It suggested citations from my library {n} times. | इसने मेरी लाइब्रेरी से {n} बार साइटेशन सुझाए। | |
+| `aiStatement.f.chat` | I asked it {n} questions about my thesis and the papers in my library. | मैंने अपनी थीसिस और लाइब्रेरी के पेपरों के बारे में इससे {n} सवाल पूछे। | |
+| `aiStatement.f.research` | I used its deep research {n} times; it searches my library and the scholarly indexes and answers from the passages it finds, with their citations. | मैंने इसका गहन शोध (deep research) {n} बार इस्तेमाल किया; यह मेरी लाइब्रेरी और विद्वत सूचकांकों में खोजकर मिले अंशों से, साइटेशन के साथ, उत्तर देता है। | |
+| `aiStatement.f.literatureSearch` | It wrote the queries for {n} literature searches of the scholarly indexes; I chose which papers to keep. | इसने विद्वत सूचकांकों की {n} साहित्य-खोजों के लिए क्वेरी लिखीं; कौन-से पेपर रखने हैं, यह मैंने चुना। | |
+| `aiStatement.f.planning` | It proposed the chapter plan and the proposal’s questions ({n} requests), which I changed as I saw fit. | इसने अध्यायों की योजना और प्रस्ताव के सवाल सुझाए ({n} अनुरोध), जिन्हें मैंने अपनी समझ से बदला। | |
+| `aiStatement.f.checks` | I ran its coherence and cross-paper checks {n} times; they flag problems for me to decide on and change nothing themselves. | मैंने इसकी सुसंगतता और क्रॉस-पेपर जाँच {n} बार चलाई; ये समस्याएँ फ़्लैग करती हैं, जिन पर फ़ैसला मेरा होता है, और ख़ुद कुछ नहीं बदलतीं। | |
+| `aiStatement.f.chapterBuild` | I had it build {n} chapters whole from my library, delivered as drafts section by section, each of which I accepted, edited or discarded. | मैंने इससे अपनी लाइब्रेरी से {n} अध्याय पूरे बनवाए, जो सेक्शन-दर-सेक्शन ड्राफ़्ट के रूप में मिले और जिनमें से हर एक को मैंने स्वीकार किया, संपादित किया या छोड़ दिया। | |
+| `aiStatement.f.litReviewBuild` | I had it build the literature review whole, delivered as drafts theme by theme, each of which I accepted, edited or discarded. | मैंने इससे साहित्य समीक्षा पूरी बनवाई, जो विषय-दर-विषय ड्राफ़्ट के रूप में मिली और जिनमें से हर एक को मैंने स्वीकार किया, संपादित किया या छोड़ दिया। | |
+| `aiStatement.f.examinerReview` | I asked for an examiner’s review of my writing {n} times; it returned comments, not text. | मैंने अपने लेखन की परीक्षक-समीक्षा {n} बार माँगी; इसने टिप्पणियाँ दीं, टेक्स्ट नहीं। | |
+| `aiStatement.f.viva` | I used its viva preparation {n} times to practise questions. | मैंने सवालों के अभ्यास के लिए इसकी वाइवा तैयारी {n} बार इस्तेमाल की। | |
+| `aiStatement.p.action` | No AI text entered the thesis without my action: every suggestion and draft was shown to me first, and I accepted, edited or rejected each one. Every suggestion and citation it made was drawn from the papers in my own library. | मेरी कार्रवाई के बिना कोई AI टेक्स्ट थीसिस में नहीं आया: हर सुझाव और ड्राफ़्ट पहले मुझे दिखाया गया, और हर एक को मैंने स्वीकार किया, संपादित किया या अस्वीकार किया। इसका हर सुझाव और साइटेशन मेरी अपनी लाइब्रेरी के पेपरों से लिया गया था। | |
+| `aiStatement.p.share` | Of the {total} words in the thesis as it stands, {ai} ({aiPct}%) began as AI text I accepted; of those I have since edited at least {edited} ({editedPct}% of that text). The remaining {own} words ({ownPct}%) are recorded as my own writing. | थीसिस के मौजूदा {total} शब्दों में से {ai} ({aiPct}%) मेरे द्वारा स्वीकार किए गए AI टेक्स्ट से शुरू हुए; उनमें से कम-से-कम {edited} ({editedPct}%) मैंने बाद में संपादित किए हैं। बाक़ी {own} शब्द ({ownPct}%) मेरे अपने लेखन के रूप में दर्ज हैं। | |
+| `aiStatement.p.shareNone` | None of the {total} words in the thesis as it stands began as AI text; all are recorded as my own writing. | थीसिस के मौजूदा {total} शब्दों में से कोई भी AI टेक्स्ट से शुरू नहीं हुआ; सभी मेरे अपने लेखन के रूप में दर्ज हैं। | |
+| `aiStatement.p.shareEmpty` | The thesis has no text yet, so there is no share to report. | थीसिस में अभी कोई टेक्स्ट नहीं है, इसलिए बताने के लिए कोई हिस्सा नहीं है। | |
+| `aiStatement.p.limits` | These figures come from the record Thesis Copilot keeps as each chapter is saved: every run of text carries a mark saying where it came from. The record cannot tell text I pasted in from outside from text I typed, so both count as my own writing; and it counts an edit only where I changed text inside an accepted passage, so the edited figure is a floor. It is a record of how I used the tool, not an assessment of the text. | ये आँकड़े उस रिकॉर्ड से हैं जो Thesis Copilot हर अध्याय के सेव होने पर रखता है: टेक्स्ट के हर हिस्से पर एक निशान होता है कि वह कहाँ से आया। यह रिकॉर्ड बाहर से पेस्ट किए गए टेक्स्ट और मेरे टाइप किए गए टेक्स्ट में फ़र्क़ नहीं कर सकता, इसलिए दोनों मेरे अपने लेखन में गिने जाते हैं; और संपादन सिर्फ़ वहीं गिना जाता है जहाँ मैंने स्वीकार किए गए अंश के भीतर टेक्स्ट बदला, इसलिए संपादित आँकड़ा न्यूनतम है। यह टूल के मेरे उपयोग का रिकॉर्ड है, टेक्स्ट का मूल्यांकन नहीं। | |
+| `aiStatement.p.sources` | My library in Thesis Copilot held {total} sources, of which {cited} are cited in the thesis. {auto} were added by Thesis Copilot on its own where nothing in my library covered what I was writing, and I reviewed each before keeping it; the rest I added myself, by search, by reference, by file or by import. | Thesis Copilot में मेरी लाइब्रेरी में {total} स्रोत थे, जिनमें से {cited} थीसिस में साइट किए गए हैं। {auto} स्रोत Thesis Copilot ने ख़ुद जोड़े, जहाँ मेरी लाइब्रेरी में मेरे लिखे विषय पर कुछ नहीं था, और हर एक को रखने से पहले मैंने देखा; बाक़ी मैंने ख़ुद जोड़े — खोज से, संदर्भ से, फ़ाइल से या आयात से। | |
+| `aiStatement.p.sourcesOwn` | My library in Thesis Copilot held {total} sources, of which {cited} are cited in the thesis. I added every one myself, by search, by reference, by file or by import. | Thesis Copilot में मेरी लाइब्रेरी में {total} स्रोत थे, जिनमें से {cited} थीसिस में साइट किए गए हैं। हर एक मैंने ख़ुद जोड़ा — खोज से, संदर्भ से, फ़ाइल से या आयात से। | |
+| `aiStatement.p.sourcesNone` | No sources were added to my library in Thesis Copilot. | Thesis Copilot में मेरी लाइब्रेरी में कोई स्रोत नहीं जोड़ा गया। | |
+| `aiStatement.p.close` | The research, the arguments and the conclusions are my own, and I take full responsibility for the content of this thesis, including the accuracy of every citation. | शोध, तर्क और निष्कर्ष मेरे अपने हैं, और इस थीसिस की सामग्री की, हर साइटेशन की सटीकता सहित, पूरी ज़िम्मेदारी मेरी है। | |
+| `aiStatement.t.chapter` | Chapter | अध्याय | |
+| `aiStatement.t.words` | Words | शब्द | |
+| `aiStatement.t.ai` | Began as AI text | AI टेक्स्ट से शुरू | |
+| `aiStatement.t.edited` | Of which edited since | जिनमें से बाद में संपादित | |
+| `aiStatement.t.own` | Own writing | अपना लेखन | |
+| `aiStatement.t.actions` | AI suggestions and drafts | AI सुझाव और ड्राफ़्ट | |
+| `aiStatement.t.total` | Total | कुल | |
 
 ## Left in English on purpose
 
