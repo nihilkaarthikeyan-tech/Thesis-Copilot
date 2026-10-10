@@ -540,6 +540,7 @@ export {
   toTokenUsage,
   VoyageEmbeddingProvider,
 } from './providers/anthropic.js';
+export { callSignal, MODEL_CALL_CEILING_MS } from './providers/call-limit.js';
 export {
   type MockEmbeddingOptions,
   MockEmbeddingProvider,

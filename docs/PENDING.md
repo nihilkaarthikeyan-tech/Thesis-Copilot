@@ -243,6 +243,22 @@ are left, each for a reason the agent should not settle alone:
 9. **OpenAlex key for the dev machine.** The free daily budget ran out during the 2026-10-04 test
    runs (HTTP 429 until 00:00 UTC) and three e2e specs failed on it (`gap-density`,
    `journal-filter`, `path-a`). Adding `OPENALEX_API_KEY` to the dev `.env` stops that.
+   **2026-10-10: the key's own $1 a day is spent by test runs too** (each suggestion on an empty
+   library starts a twelve-query search); every keyed request then answered 429 until midnight
+   UTC and a new thesis found no papers for eight minutes. The product now drops the key for
+   the rest of the day and uses the polite pool (ADR-0145 addendum), which has ~100 searches a
+   day for the whole site. Either fund the key (openalex.org/pricing) or keep real-model e2e
+   runs on the dev machine few; production shares the same key.
+   **2026-10-10 evening: the keyless pool is spent too.** By 12:30 UTC the same machine's
+   keyless requests answered `429` with `X-RateLimit-Limit-USD: 0.1`,
+   `X-RateLimit-Remaining-USD: 0` and a reset 11.5 h away: the polite pool is $0.10 a day per
+   address. With both spent a new thesis finds no OpenAlex papers at all, and arXiv and PubMed
+   alone kept nothing for a Karnataka rooftop-solar topic (eight minutes, 0 papers). **This is a
+   production risk, not only a test one:** the VPS has one key and one address for every
+   student, so a busy day spends both and every new thesis sits at "Finding papers…". Decide:
+   fund the key (openalex.org/pricing) to a size that covers the site's day, and/or have the
+   paper search lean on Crossref and Semantic Scholar (needs `SEMANTIC_SCHOLAR_API_KEY`) when
+   OpenAlex answers 429.
 ## Library collections and "Read beside" (2026-10-04)
 
 - [x] **Run the browser specs** — done 2026-10-05; both pass (the read-beside spec was rewritten

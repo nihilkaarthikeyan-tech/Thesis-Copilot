@@ -31,6 +31,7 @@ import {
   type Tier,
   type TokenUsage,
 } from '../types.js';
+import { callSignal } from './call-limit.js';
 
 export type AnthropicProviderOptions = {
   readonly apiKey: string;
@@ -122,7 +123,7 @@ export class AnthropicLlmProvider implements LlmProvider {
         messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
-        ...(req.signal ? { abortSignal: req.signal } : {}),
+        abortSignal: callSignal(req.signal),
       });
 
       for await (const delta of result.textStream) {
@@ -156,7 +157,7 @@ export class AnthropicLlmProvider implements LlmProvider {
         messages: this.messages(req),
         maxOutputTokens: req.maxTokens,
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
-        ...(req.signal ? { abortSignal: req.signal } : {}),
+        abortSignal: callSignal(req.signal),
       } as unknown as Parameters<typeof generateObject>[0]);
 
       object = result.object;

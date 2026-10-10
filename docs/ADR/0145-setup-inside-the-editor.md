@@ -95,3 +95,101 @@ no longer waits for the question.
 **Next step:** once OpenAI credit is back, run `MEASURE=1` `_measure/first-session` (Start writing
 now) on real models (budget ≤ ₹10), record the time against ADR-0070's ~14 s here and in the build
 log, and look at the real questions and real section headings in the card; then release.
+
+## Addendum (2026-10-09/10): the card on real models
+
+Two agents ran the card against the real models (gpt-5-mini for the questions and the plan,
+gpt-4.1-mini for the opener, Voyage for embeddings). What the mock stack had hidden:
+
+**Found on 2026-10-09 (first agent, commit 087f1b7):**
+- A first question that never arrived — OpenAI refused one call in six or so mid-stream while the
+  account's credit ran out — left the row at "Thinking of the first question…" over a shut answer
+  box for good. The row now says "The first question did not arrive." and offers **Try again**
+  (`setup-aim-retry`); a proposal turn carries a 60 s limit (`PROPOSAL_TURN_TIMEOUT_MS`); the
+  OpenAI adapter keeps the stream's own error so the call log says what OpenAI said.
+- A real A.6 question is long — eight lines at 360 px, or three lines and four long answers — and
+  pushed the chapter's heading below an 800 px screen. The question and its answers now scroll
+  together on a short screen (max 22vh under 820 px tall); the answer box and Skip stay outside.
+- A real model answers with a sharper working title than the one typed in row 1, and saving the
+  answers makes it the thesis's title (FR-1.4). The result now shows "Your title becomes …"
+  before Use.
+- The real model sometimes has enough after two answers; the spec took three for granted.
+
+**Found on 2026-10-10 (second agent):**
+- **Every search for papers was answering nothing: the OpenAlex key's day was spent.** OpenAlex
+  meters a key at $1 a day; a day of real-model test runs (each suggestion on an empty library
+  starts a twelve-query search) spent it, and from then on every keyed request answered
+  `429 {"message": "… you only have $0 remaining. Resets at midnight UTC", "retryAfter": 13177}`.
+  The worker logged "openalex search skipped: HTTP 429", the other indexes found nothing relevant
+  for a Karnataka rooftop-solar topic, and a new thesis sat at "Finding papers on your topic…"
+  for eight minutes with 0 papers (both agents' measure runs). The same request **without** the
+  key, in the polite pool, answered 200. `ScholarlyHttp` now treats a keyed 429 that asks for
+  longer than any request waits (`MAX_RETRY_AFTER_MS`, 2 min — ADR-0050's spent-budget case) as
+  "the key's day is spent": the same request goes again at once without the key, and every
+  request until the reset goes without it. An ordinary 429 is still waited out with the key.
+  Tests in `packages/retrieval/test/openalex-key.spec.ts`. The owner should still know the key
+  is being spent by test runs — `docs/PENDING.md`.
+- The other failures reported from the owner's stack (`#setup-aim-answer` never enabled, the
+  question stuck on its placeholder, the heading-in-view checks) did not reproduce on this branch:
+  `setup-card`, `start-writing-now` and `documents-beside` passed 11/12 on real models, the one
+  failure a 5 s `toHaveURL` on `/app/new` that the dev server was still compiling (now 30 s, as
+  the spec's other navigations). They were the first agent's faults above, seen on a stack
+  running main before 087f1b7, under an exhausted OpenAI credit.
+- The real first question put its choices inside one sentence ("Should the thesis focus on
+  financial barriers, technical/infrastructural barriers, … or something else?"), so
+  `questionOptions` found none to make buttons of and the row showed the answer box alone
+  (`real-3-aim.png`). Answering in the box works; the compact row's option buttons were seen on
+  the mock's enumerated question only.
+- Seen, not fixed: after Skip on the questions the editor asks for the opener **twice**, about a
+  second apart, and the first request is cancelled by the editor itself (`AiCallLog` row
+  `ASSIST ok=false "This operation was aborted"`, 0.6–1.3 s in, one per new thesis, a few more
+  through the five-row path). It costs a part-call and counts as a failed call in the admin's
+  numbers. The second request is the one the student sees. Which transaction cancels the first
+  (the card's `offerFirstLine` cursor move or the poked opener timer) is not yet pinned down.
+
+**Measured (2026-10-10, real models, `MEASURE=1 e2e/_measure/first-session`, Start writing
+now):** editor at 4.0 s, card taken (Next, Skip, Skip) at 5.0 s, the opener's cited first
+sentence at **19.3 s** from the press ("More than 70% of India's population resides in rural
+villages…", cited) — against ADR-0070's ~14 s without the card, and against 8+ minutes with the
+key spent. Three suggestion requests on the way: two answered "papers loading" (no model call),
+the third cited. Screenshots of the real questions and real section headings in the card:
+`docs/design/setup-in-editor/built/real-3-aim.png`, `real-4-chapters.png`, `real-360-aim.png`,
+`real-360-chapters.png`.
+
+Spent by the second agent's real-model runs: ₹12.51 in all (`AiCallLog` since the branch's
+stack started) — ₹8.24 before the fix, twelve outline plans at ₹0.67 each being most of it,
+₹4.27 for the measurement and the screenshots after.
+
+**Found on 2026-10-10 evening (third agent):**
+- **Standard chapters kept the old plan's section headings.** On real models the A.9 plan lands
+  while the opener's suggestion is still showing, so `SectionGuide` waits for the suggestion to
+  finish before laying out the planned sections, listening for the next transaction. Pressing
+  **Standard chapters** (or **No headings**) replaced the chapter with `setContent`; that
+  transaction ended the suggestion, and the waiting listener laid the *old* plan's four headings
+  ("Problem statement", "Objectives and research questions", …) into the new chapter.
+  `setup-card` → "Standard chapters replace the plan" failed on it (`h2` count 4, expected 0); the
+  mock never showed it because the mock's plan lands while the ghost is idle. The card's
+  replacement now carries `CHAPTER_REPLACED_META`, and a waiting layout that sees it drops itself.
+  2 of 2 passes after the fix, on real models.
+- **Every model call has a time limit now, in the adapter.** Sixteen call sites (outline scope,
+  style profile, cite, cite-role, proofread, comments, viva, coherence, cross-paper, draft-section
+  among them) passed no signal, so a call OpenAI never answered held its request or job open for
+  good. `callSignal` (`packages/ai/src/providers/call-limit.ts`) joins the caller's signal, if
+  any, with a 240 s ceiling (`MODEL_CALL_CEILING_MS`) on every `streamText` / `generateObject` in
+  both adapters. Every explicit limit in the product is shorter (180 s the longest), so it decides
+  nothing a caller already decided. The OpenAI strict-mode rules needed no change on the setup
+  path: the A.9 request schema is a single object, the proposal turn streams text.
+- The three specs on this branch's own real-model stack (API :3031, web :3030, worker on Redis
+  db 7, mail blanked): **11 of 12 passed**, the one failure the fault above; after the fix it
+  passed twice. No `toBeLessThan` or heading-in-view failure reproduced.
+- **Not measured: time to the first cited suggestion.** `MEASURE=1 _measure/first-session`
+  (Start writing now) reached the editor at 3.6 s and an uncited opener at 30.4 s, then gave up at
+  480 s with 0 papers. Both OpenAlex budgets were spent: the key had been commented out of
+  `.env`, and the **keyless** pool answered `429` with `X-RateLimit-Limit-USD: 0.1`,
+  `X-RateLimit-Remaining-USD: 0`, reset 11.5 h away. arXiv and PubMed returned works and none
+  were kept for the topic. So the 19.3 s above remains the last real measurement against
+  ADR-0070's ~14 s; a fresh run needs a funded key or tomorrow's pool (`docs/PENDING.md`). No new
+  `real-*.png` was taken: the earlier `real-3-aim.png`, `real-4-chapters.png`,
+  `real-360-aim.png` and `real-360-chapters.png` stand, and a cited screenshot was not possible.
+- Spent by the third agent: ₹15.42 (`AiCallLog`, e2e users since 12:10 UTC): OUTLINE ₹7.22
+  (11 plans), EMBED ₹5.35, ASSIST ₹1.95, PROPOSAL ₹0.90.

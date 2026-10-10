@@ -6499,3 +6499,49 @@ A real fault found on the way: the edit panel's Escape listener on the editor wa
 listener never fired. Only the browser showed it.
 Not proved in the browser: the undo after a real plan's headings land (the mock plan has none).
 Trial caps (finding 9) are in PENDING; no cap changed.
+## The setup card on real models (2026-10-10, ADR-0145 addendum)
+
+The card failed on the owner's real-model stack where the mock stack had passed: the answer box
+never enabled, the question stuck on "Thinking of the first question…", the chapter heading
+pushed off an 800 px screen. The first agent (087f1b7) found three product faults — a failed
+first turn with no way to ask again, A.6 questions eight lines long at 360 px, a sharper working
+title replacing the typed one unseen — and fixed them (Try again, a 60 s turn limit, the
+question scrolling with its answers, "Your title becomes …"). This session merged that and ran
+the three specs on this branch's own stack (API :3031, web :3030, worker on Redis db 7, real
+models): 11 of 12 passed, the one failure a 5 s `toHaveURL` on `/app/new` that the dev server
+was still compiling (30 s now).
+
+Then the measurement: **a new thesis found no papers at all.** `MEASURE=1 _measure/first-session`
+sat at "Finding papers on your topic…" with 0 papers for the whole eight minutes, exactly as the
+first agent's run had the evening before. The worker said why: `openalex search skipped: HTTP
+429`. The OpenAlex key's $1 daily budget was spent — a day of real-model test runs, each
+suggestion on an empty library starting a twelve-query search — and the body said so:
+`you only have $0 remaining. Resets at midnight UTC`, `retryAfter: 13177`. The same request
+without the key answered 200. `ScholarlyHttp` now drops the key for the rest of the day on
+that answer and retries the same request at once in the polite pool (two tests in
+`openalex-key.spec.ts`; an ordinary 429 still waits with the key). Measured again: the cited
+first sentence **19.3 s** after Start writing now (editor 4.0 s, card taken 5.0 s), against
+ADR-0070's ~14 s without the card. Screenshots of the real questions and headings in the card
+are in `docs/design/setup-in-editor/built/real-*.png`.
+
+Seen and left: the opener is asked for twice after Skip, a second apart, and the editor cancels
+the first (`ASSIST ok=false "This operation was aborted"`, one per new thesis) — a part-call
+spent and a failed call in the admin's count. Spent: ₹12.51 in all — ₹8.24 before the fix
+(twelve outline plans at ₹0.67 each), ₹4.27 for the measurement and the screenshots after.
+
+### The setup card on real models, third pass (2026-10-10 evening)
+
+Three specs on real models (API :3031, web :3030, Redis db 7, mail blanked): 11 of 12. The
+failure was real and mock-invisible: **Standard chapters put the old plan's section headings
+back.** The A.9 plan landed while the opener's suggestion was showing, `SectionGuide` waited for
+the next transaction to lay out the sections, and the card's own `setContent` was that
+transaction. The replacement is now marked (`CHAPTER_REPLACED_META`) and a waiting layout drops
+itself; 2/2 after. Separately, sixteen model call sites passed no signal; both adapters now add
+a 240 s ceiling to every call (`callSignal`, `packages/ai/src/providers/call-limit.ts`), longer
+than any explicit limit.
+
+The first-session measurement could not reach a cited sentence: OpenAlex's **keyless** pool is
+$0.10 a day per address and was spent (`X-RateLimit-Remaining-USD: 0`), the key was out of
+`.env`, and arXiv/PubMed kept nothing for the topic: 0 papers in eight minutes, an uncited
+opener at 30.4 s. That is a production risk too (one key, one address for every student):
+`docs/PENDING.md`. Spent: ₹15.42.

@@ -237,9 +237,12 @@ export async function readRefusal(response: Response): Promise<RefusalInfo> {
     .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
     .join(': ');
   const remainingUsd = response.headers.get('x-ratelimit-remaining-usd');
+  // The wording has varied ("Insufficient budget", "Insufficient credits"); the numbers decide
+  // first, and a prepaid balance left over means the key still answers.
+  const prepaidLeft = typeof body.prepaidRemainingUsd === 'number' && body.prepaidRemainingUsd > 0;
   const budgetSpent =
     remainingUsd === '0' ||
-    (body.dailyRemainingUsd === 0 && body.prepaidRemainingUsd === 0) ||
-    /insufficient budget/i.test(message);
+    (body.dailyRemainingUsd === 0 && !prepaidLeft) ||
+    /insufficient (budget|credits)|\$0 remaining/i.test(message);
   return { retryAfterMs, budgetSpent, message: message || `HTTP ${response.status}` };
 }

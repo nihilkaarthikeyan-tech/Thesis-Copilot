@@ -47,6 +47,7 @@ import {
   type TokenUsage,
 } from '../types.js';
 import { toTokenUsage } from './anthropic.js';
+import { callSignal } from './call-limit.js';
 import { makeRepairText } from './json-repair.js';
 
 /**
@@ -276,6 +277,10 @@ export class OpenAiLlmProvider implements LlmProvider {
   async *stream(req: LlmRequest): AsyncIterable<LlmChunk> {
     let usage: TokenUsage;
     let finishReason: string;
+    // An error event inside the stream (a 429 "insufficient_quota" arrives after
+    // `response.created`) ends `textStream` quietly and surfaces only as "No output generated".
+    // Kept here so the log and the call record say what OpenAI actually said (ADR-0145 addendum).
+    let streamError: unknown;
 
     try {
       const providerOptions = this.providerOptionsFor(req, true);
@@ -287,7 +292,10 @@ export class OpenAiLlmProvider implements LlmProvider {
         maxOutputTokens: this.outputBudget(req),
         providerOptions,
         ...(temperature !== undefined ? { temperature } : {}),
-        ...(req.signal ? { abortSignal: req.signal } : {}),
+        abortSignal: callSignal(req.signal),
+        onError: ({ error }) => {
+          streamError ??= error;
+        },
       });
 
       for await (const delta of result.textStream) {
@@ -299,7 +307,13 @@ export class OpenAiLlmProvider implements LlmProvider {
       usage = toTokenUsage(await result.usage);
       finishReason = await result.finishReason;
     } catch (cause) {
-      throw new LlmProviderError(req.action, 'OpenAI stream failed', cause);
+      const reason = streamError ?? cause;
+      const said = reason instanceof Error ? reason.message.slice(0, 300) : null;
+      throw new LlmProviderError(
+        req.action,
+        streamError && said ? `OpenAI stream failed: ${said}` : 'OpenAI stream failed',
+        reason,
+      );
     }
 
     yield { type: 'finish', usage, modelId: this.models[req.tier], finishReason };
@@ -330,7 +344,7 @@ export class OpenAiLlmProvider implements LlmProvider {
       maxOutputTokens: this.outputBudget(req),
       providerOptions,
       ...(temperature !== undefined ? { temperature } : {}),
-      ...(req.signal ? { abortSignal: req.signal } : {}),
+      abortSignal: callSignal(req.signal),
       // Same boundary as the Anthropic adapter: `generateObject`'s return type is conditional on
       // the schema's inferred output, which TS cannot resolve through a generic `z.ZodType<T>`.
       // The result is validated below, so nothing downstream trusts the cast.

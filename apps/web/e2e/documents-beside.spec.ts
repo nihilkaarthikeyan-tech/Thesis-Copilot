@@ -129,13 +129,15 @@ test('switch theses from the rail, and the New menu opens each start', async ({
   await page.goto('/app');
   await page.getByTestId('new-menu-button').click();
   await page.getByRole('menuitem', { name: /Upload a paper/ }).click();
-  await expect(page).toHaveURL(/\/app\/new\?start=paper/);
+  // 30 s, as the other navigations here: on a dev server the first visit to /app/new compiles
+  // the page, which took the whole of the 5 s default on the real-model stack (2026-10-10).
+  await expect(page).toHaveURL(/\/app\/new\?start=paper/, { timeout: 30_000 });
   await expect(page.getByLabel(/Start from a paper I have written/)).toBeChecked();
 
   await page.goto(`/app/d/${here.id}/write/${here.firstChapterId}`);
   await rail.getByTestId('rail-new-menu-button').click();
   await rail.getByRole('menuitem', { name: /Import from Word/ }).click();
-  await expect(page).toHaveURL(/\/app\/new\?start=word/);
+  await expect(page).toHaveURL(/\/app\/new\?start=word/, { timeout: 30_000 });
   await expect(page.getByTestId('new-word-start')).toBeVisible();
   // The Word button is first, so Enter in the title imports.
   await expect(page.locator('form [type="submit"]').first()).toHaveAttribute(

@@ -39,7 +39,7 @@ import { Check, Circle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import type { PlanState } from '@/components/editor/SectionGuide';
+import { CHAPTER_REPLACED_META, type PlanState } from '@/components/editor/SectionGuide';
 import { OPEN_WORD_IMPORT } from '@/components/editor/WordImport';
 import { LimitNotice, useLimit } from '@/components/LimitNotice';
 import {
@@ -332,17 +332,22 @@ export function SetupCard({
       // The chapter on screen is the new first chapter: its title and one empty line, saved by
       // autosave as the server now has it.
       if (editor && !editor.isDestroyed && first) {
-        editor.commands.setContent({
-          type: 'doc',
-          content: [
-            {
-              type: 'heading',
-              attrs: { level: 1 },
-              content: [{ type: 'text', text: first.title }],
-            },
-            { type: 'paragraph' },
-          ],
-        });
+        // Marked, so a section layout still waiting for the old plan drops itself (SectionGuide).
+        editor
+          .chain()
+          .setMeta(CHAPTER_REPLACED_META, true)
+          .setContent({
+            type: 'doc',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 1 },
+                content: [{ type: 'text', text: first.title }],
+              },
+              { type: 'paragraph' },
+            ],
+          })
+          .run();
       }
       setBusy(false);
       const view = await save({ chapters: structure, step: 'first' });

@@ -37,6 +37,13 @@ import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import type { SessionUser } from '../auth/current-user.decorator.js';
 
+/**
+ * No model call without a time limit (BUILD_LOG, 2026-10-01). A real turn took 2–5 s on
+ * gpt-5-mini (2026-10-09); the skeleton turn is the longest. The student is waiting in the setup
+ * card, which offers Try again when a turn fails (ADR-0145 addendum).
+ */
+export const PROPOSAL_TURN_TIMEOUT_MS = 60_000;
+
 const turnSchema = z.object({
   role: z.enum(['user', 'assistant']),
   text: z.string(),
@@ -242,14 +249,17 @@ export class ProposalService {
     history: ProposalTurn[],
     gapCheck: ProposalChat['gapCheck'],
   ) {
-    const request: LlmRequest = buildProposalRequest({
-      history,
-      // Sent even when empty or failed: the block then says so, and the model may not claim
-      // related work was found (docs/JENNI-FIX-LIST.md item 3).
-      gapCheck,
-      userId: user.id,
-      documentId,
-    });
+    const request: LlmRequest = {
+      ...buildProposalRequest({
+        history,
+        // Sent even when empty or failed: the block then says so, and the model may not claim
+        // related work was found (docs/JENNI-FIX-LIST.md item 3).
+        gapCheck,
+        userId: user.id,
+        documentId,
+      }),
+      signal: AbortSignal.timeout(PROPOSAL_TURN_TIMEOUT_MS),
+    };
     const startedAt = Date.now();
     let text = '';
     let usage: {
