@@ -6478,6 +6478,28 @@ findings and the lists of measured quantities the specificity rules ask for, in 
 words and order, and on the opener set the passage's own first sentence. `prompts/assist.md` and
 `prompts/draft.md` are unchanged; nothing changes for the student, so no changelog line.
 
+### ADR-0147 round 5 (2026-10-10, A.1 and A.2): the draft candidate adopted, Assist v5 not
+
+The owner said "fix this" to round 4 and settled the measure (ADR-0059): a six-word run is copying
+unless its words are a figure with its unit and the quantity measured. Built as `run6Figures` in
+`eval/copying.ts` (`passageFigureTokens`, `test/copying-figures.spec.ts`; names still count), with
+`run.ts --remeasure <file>` to read it on a stored run (round 4 re-measured: 4/6, 7/11, 4/7, so the
+measure alone passed nothing). Criterion committed before the runs; `--samples 2`; ₹27.88 spent,
+no refusal, no failed call.
+
+- Track A, `assist-academic5.md` (v4 + the owner's three lines + "one sentence, one marker inside
+  it"). Typed: 8–**9**–13, 7.78 → 7.92, cited **77.6%** (fails ≥ 90%), run6Figures 8 → 6,
+  hallucinated 0. Opener: 3–**14**–3, 7.26 → 8.34, run6Figures **8 → 12** (fails: the abstract's
+  first sentence restated, 16 and 22 words). Not adopted; not narrow, so no variant.
+- Track B, `draft-academic5.md` (`draft-academic3.md` + the three lines). 3–3–4, 8.20 → 8.35,
+  cited 78% → 99%, run6Figures 4 → 5 (limit 5), hallucinated 0, stock 0.77 → 0.54. **Adopted**:
+  `prompts/draft.md` now carries the six lines (a departure from Appendix A, ADR-0059);
+  `prompts.spec.ts` pins them; `packages/ai` 784 tests and the API's assist, draft and
+  chapter-build specs (41) pass. The chapter and literature review builds use it too.
+
+`packages/ai/tsconfig.json` lost its noEmit-only `rootDir` so a test can import
+`eval/copying.ts`. The API specs that sign in by printed OTP must run without the root `.env`
+(its SMTP sends the code instead of printing it).
 ## 2026-10-10 — Paper index budgets (ADR-0149)
 
 Side-by-side findings 1–2: production's OpenAlex key spent its free $1/day and every keyed

@@ -24,6 +24,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-10',
+    title: 'Drafted sections that read more like your own review',
+    changes: [
+      'A drafted section now opens each paragraph with what the studies found, cites every sentence on its own, names a tool by what it does rather than its product name, and puts the findings in its own order instead of repeating the paper’s list.',
+    ],
+  },
+  {
     version: 'v0.1.45',
     date: '2026-10-10',
     title: 'A faster, more honest first sentence, and a free trial with room to try things',
