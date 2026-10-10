@@ -10,9 +10,17 @@
  * wait as long as they need.
  */
 
-import { Inject, Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import type { Env } from '@tc/config';
-import { ARXIV, ArxivClient, PUBMED, PubMedClient, sharedGate } from '@tc/retrieval';
+import {
+  ARXIV,
+  ArxivClient,
+  openAlexMeter,
+  PUBMED,
+  PubMedClient,
+  scholarlyHealth,
+  sharedGate,
+} from '@tc/retrieval';
 import { Redis } from 'ioredis';
 import { ENV } from './env.token.js';
 
@@ -24,6 +32,16 @@ export class ScholarlyIndexes implements OnModuleDestroy {
 
   constructor(@Inject(ENV) env: Env) {
     this.redis = new Redis(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 2 });
+    // ADR-0149: every OpenAlex / Semantic Scholar client in this process (they are built per
+    // request) reads and writes the indexes' refusals and the day's OpenAlex count here, in the
+    // same Redis the worker uses, so a refusal one process met is not paid for again by the other.
+    const logger = new Logger('ScholarlyHealth');
+    scholarlyHealth.configure({
+      store: this.redis,
+      log: ({ msg, level, ...rest }) =>
+        level === 40 ? logger.warn({ ...rest }, String(msg)) : logger.log({ ...rest }, String(msg)),
+    });
+    openAlexMeter.configure({ store: this.redis });
     this.arxiv = new ArxivClient({
       mailto: env.OPENALEX_MAILTO,
       // One attempt: a retry means another three-second slot, and the student is waiting.

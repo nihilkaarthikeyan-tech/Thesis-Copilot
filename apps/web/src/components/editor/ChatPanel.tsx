@@ -96,6 +96,8 @@ type Turn = {
   offerResearch?: boolean;
   /** The question a refusal answered, so the offer can send it again. */
   question?: string;
+  /** ADR-0149: a paper index did not answer this question's search; the line says which. */
+  searchNotice?: string;
   /** ADR-0060: written from search abstracts; the line under the answer says so. */
   beyond?: { papers: number; outsideLibrary: number; note: string };
   /**
@@ -456,6 +458,8 @@ export function ChatPanel({
     }
   }
   const [webResults, setWebResults] = useState<WebResult[] | null>(null);
+  /** ADR-0149: the index that did not answer the last web search, said plainly. */
+  const [webNotice, setWebNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
   /** ADR-0060/0074: what a question is doing right now, in order. */
   const [steps, setSteps] = useState<Step[]>([]);
@@ -723,10 +727,11 @@ export function ChatPanel({
     // does not stream, and costs no cap unit — there is no model call behind it.
     if (askScope === 'web') {
       try {
-        const found = await api<{ results: WebResult[] }>('/chat/web', {
+        const found = await api<{ results: WebResult[]; notice?: string | null }>('/chat/web', {
           method: 'POST',
           body: JSON.stringify({ documentId, message }),
         });
+        setWebNotice(found.notice ?? null);
         setWebResults(found.results);
       } catch (e) {
         setError(
@@ -785,6 +790,7 @@ export function ChatPanel({
       const decoder = new TextDecoder();
       let buffer = '';
       let text = '';
+      let searchNotice: string | null = null;
       for (;;) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -797,6 +803,7 @@ export function ChatPanel({
           if (!eventName || !dataLine) continue;
           const data = JSON.parse(dataLine) as Record<string, unknown>;
           if (eventName === 'step') {
+            if (data.id === 'notice' && typeof data.text === 'string') searchNotice = data.text;
             // ADR-0060: searching, reading N abstracts, writing — each replaces "now" and the
             // earlier ones stay ticked.
             setSteps((list) => [
@@ -840,6 +847,7 @@ export function ChatPanel({
                 ...(research ? { research } : {}),
                 ...(data.offerBeyond === true ? { offerBeyond: true, question: message } : {}),
                 ...(data.offerResearch === true ? { offerResearch: true, question: message } : {}),
+                ...(searchNotice ? { searchNotice } : {}),
               },
             ]);
             setStreaming('');
@@ -1168,7 +1176,12 @@ export function ChatPanel({
           {webResults.length > 0 ? (
             <AddIntoPicker addInto={addInto} compact testId="chat-add-into" />
           ) : null}
-          {webResults.length === 0 ? (
+          {webNotice ? (
+            <p data-testid="web-search-notice" role="status" className="px-1 text-xs text-warn">
+              {webNotice}
+            </p>
+          ) : null}
+          {webResults.length === 0 && !webNotice ? (
             <p className="px-1 text-sm text-muted">
               Nothing came back for that. Try naming the method or the population rather than asking
               a question.
@@ -1378,6 +1391,15 @@ export function ChatPanel({
             {turn.skipped ? (
               <p data-testid="chat-search-beyond-skipped" className="mt-1.5 text-[11px] text-faint">
                 {t('chat.web.skipped')}
+              </p>
+            ) : null}
+            {turn.searchNotice ? (
+              <p
+                data-testid="chat-search-notice"
+                role="status"
+                className="mt-1.5 text-[11px] text-warn"
+              >
+                {turn.searchNotice}
               </p>
             ) : null}
             {turn.beyond ? (

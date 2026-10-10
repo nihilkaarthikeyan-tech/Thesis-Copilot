@@ -45,6 +45,7 @@ import {
   literatureNote,
   papersToAdd,
 } from './edit-literature.js';
+import { type SearchStatus, statusOf } from './search-status.js';
 import { type WebResult, WebScopeService } from './web-scope.service.js';
 
 /** One paper the edit added, as the panel lists it. */
@@ -64,6 +65,8 @@ export type EditLiterature = {
   collection: FilingTarget | null;
   outcome: LiteratureOutcome;
   note: string | null;
+  /** ADR-0149: how the search went, index by index; null when no search was made. */
+  searchStatus?: SearchStatus | null;
 };
 
 const raceTimeout = <T>(work: Promise<T>, ms: number, what: string): Promise<T> =>
@@ -103,6 +106,28 @@ export class EditLiteratureService {
     selection: string;
     instruction?: string;
   }): Promise<EditLiterature> {
+    // ADR-0149: an index that did not answer is said in the note, not hidden in "none relevant".
+    const seen: { status: SearchStatus | null } = { status: null };
+    const result = await this.findAndAddInner(input, seen);
+    const notice = seen.status?.notice ?? null;
+    return {
+      ...result,
+      searchStatus: seen.status,
+      note: notice ? [notice, result.note].filter(Boolean).join(' ') : result.note,
+    };
+  }
+
+  private async findAndAddInner(
+    input: {
+      userId: string;
+      documentId: string;
+      chapterTitle: string;
+      scopeNote?: string | null;
+      selection: string;
+      instruction?: string;
+    },
+    seen: { status: SearchStatus | null },
+  ): Promise<EditLiterature> {
     const none = (outcome: LiteratureOutcome): EditLiterature => ({
       added: [],
       passages: [],
@@ -125,14 +150,14 @@ export class EditLiteratureService {
     // 1. The indexes, on a clock. A failure is the library alone, said in one line.
     let results: WebResult[];
     try {
-      results = (
-        await this.web.searchPlan(
-          input.documentId,
-          plan.relevance,
-          plan,
-          AbortSignal.timeout(EDIT_LITERATURE.searchTimeoutMs),
-        )
-      )
+      const searched = await this.web.searchPlan(
+        input.documentId,
+        plan.relevance,
+        plan,
+        AbortSignal.timeout(EDIT_LITERATURE.searchTimeoutMs),
+      );
+      seen.status = statusOf(searched);
+      results = searched
         .filter((r) => !r.inLibrary && (r.abstract ?? '').trim().length >= 80 && r.title.trim())
         .slice(0, EDIT_LITERATURE.maxCandidates);
     } catch (error) {

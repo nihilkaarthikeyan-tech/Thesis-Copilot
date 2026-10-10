@@ -139,6 +139,12 @@ export type FindSourcesJob = {
    * papers rather than `perRun`, so a new thesis starts with a library to cite from, not five.
    */
   initial?: boolean;
+  /**
+   * ADR-0149: this run repeats one whose search was degraded (OpenAlex did not answer), and how
+   * many times it has. A degraded run adds fewer papers, on a higher bar, and is tried again
+   * once OpenAlex is expected back; the count stops that repeating for ever.
+   */
+  retry?: number;
 };
 
 /**
