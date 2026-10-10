@@ -528,3 +528,108 @@ order") added to these same candidates, or a decision by the owner on whether a 
 passage's measured quantities ("lower corrosion current density and lower corrosion rate") is
 copying at all. That second question is a change to the measure, not to a prompt, and is the
 owner's to make; it is not made here.
+
+## Round 5 (2026-10-10, A.1 Assist and A.2 Draft, two tracks)
+
+Asked by the owner after round 4, in two words: "fix this". Round 4's candidates won the judge on
+every set and failed on copying, on the typed set's cited sentences (86%) and on one hallucinated
+cite.
+
+### 1. The measure: `run6Figures` (the owner's decision, delegated under ADR-0059)
+
+Round 4 left one question to the owner: whether a run made of a passage's measured quantities is
+copying. The owner settled it ("fix this", delegating the wording of the rule under ADR-0059): a
+six-word run counts as copying **unless its words are a figure with its unit and the name of the
+quantity measured** ("a 0.016 point decrease in HbA1c"). Citing a figure exactly is normal
+academic practice. Ordinary phrasing, a list of findings in the passage's order, a product or study
+name, and an abstract's own sentence all still count.
+
+`eval/copying.ts` now reports **`run6Figures`** beside `run6` and `run6Names`
+(`passageFigureTokens`, `test/copying-figures.spec.ts`). The words discounted, by position in the
+passage, are the figure (tokens with a digit), up to three units or counted nouns after it ("per
+cent", "mg per day", "223 participants"), one direction or comparison word ("decrease", "lower",
+"mean"), then "in"/"of" and up to three words of the quantity's name; before it, an article, a
+currency or statistic symbol ("Rs 500", "p 0.05"), or up to two linking words ("of", "by", "of
+about") and up to three words of the quantity's name. A quantity's name stops at a function word.
+**Proper names are not discounted** (that is `run6Names`, which stays reported). As with
+`run6Names`, the remaining words of a run are counted against the threshold of six, so a figure
+phrase does not excuse the ordinary words around it.
+
+`run.ts --remeasure <file>` re-runs production's post-processing on a stored run's raw outputs and
+measures them again (no model call; it reproduces round 4's stored `run6` and `run6Names`
+exactly). Round 4, re-measured:
+
+| Set | run6 A / B | run6Names A / B | run6Figures A / B |
+|---|---|---|---|
+| Assist, typed (15 × 2) | 5 / 8 | 5 / 7 | 4 / 6 |
+| Assist, opener (10 × 2) | 7 / 11 | 5 / 8 | 7 / 11 |
+| Draft (5 × 2) | 4 / 7 | 4 / 7 | 4 / 7 |
+
+So the measure alone does not pass round 4's candidates: their extra runs are ordinary phrasing
+around a figure ("showed that each additional day of app use corresponded with"), the product and
+design phrase ("a pragmatic randomized controlled trial of the BlueStar mobile app"), lists in the
+passage's order ("a higher pitting potential, lower corrosion current density and lower corrosion
+rate than", the eight factor types) and an abstract's first sentence ("defined broadly as aquatic
+animals preserved using simple techniques such as sun drying, salting, fermentation and smoking").
+Those are what the prompt lines below address.
+
+### 2. Track A: Assist v5 `eval/candidates/assist-academic5.md`
+
+Round 4's v4 exactly, plus the owner's three lines, word for word:
+
+1. "Put each finding in your own sentence order; when the passage lists several results, say what
+   they show together rather than repeating the list."
+2. "Name the intervention by what it does (e.g. a diabetes self-management app), not by its
+   product name."
+3. "Open an empty section with the fact itself in your own words, not the abstract's first
+   sentence."
+
+and one citation line, for the ≥ 90% the owner asked for: "One sentence, one marker inside it:
+every sentence you write, the first as well as the second and a sentence that explains a mechanism
+or a cause, holds its own {{cite:ID}} before its full stop, with the id copied from the passage's
+id attribute (such as S1#c1). When only one sentence has a passage behind it, write that one
+sentence." (Round 4's misses were a first sentence of mechanism with no marker; its one
+hallucinated cite was `{{cite:Huis et al. 2017}}`, an author name in the marker.)
+
+Runs on the production models (`gpt-4.1-mini` fast, `gpt-5-mini` judge), judged blind in both
+orders, both sides post-processed by the same code, `--samples 2`:
+
+- `run.ts assist --candidate assist-academic5 --samples 2` (typed set, 15 cases, 30 runs);
+- `run.ts assist --candidate assist-academic5 --set opener --samples 2` (10 cases, 20 runs).
+
+"Current" is side A of the same run (the prompt on disk). Adopted only if **all** hold:
+
+1. **Judge**, on each set: candidate wins ≥ current wins, and candidate mean not more than 0.2
+   below current.
+2. **Cited sentences** ≥ 90% on the typed set (`measures.candidate.citedSentences / sentences`).
+3. **Stock phrases per 1,000 words** not above current on either set, on the text the student is
+   offered, after code (`style-measure.ts --processed --file <run>`).
+4. **`run6Figures`** not above current on either set; `run6` and `run6Names` reported on both
+   sides.
+5. **Hallucinated cites**: 0 for the candidate on both sets.
+6. **Offered-nothing and failed calls** not above current on either set.
+
+### 3. Track B: Draft `eval/candidates/draft-academic5.md`
+
+Round 4's `draft-academic3.md` exactly, plus the owner's three lines (1)–(3) above, word for word.
+Run on the production models (`gpt-5-mini` strong and judge), judged blind in both orders:
+`run.ts draft --candidate draft-academic5 --samples 2` (5 topics, 10 runs). Adopted only if **all**
+hold (round 4's track B criterion with `run6Figures` for `run6Names`):
+
+1. **Judge:** candidate wins ≥ current wins, and candidate mean not more than 0.2 below current.
+2. **Cited sentences** not lower than current, as a share of sentences.
+3. **`run6Figures`** not above current + 1; `run6` and `run6Names` reported.
+4. **Not up:** hallucinated cites, failed calls.
+5. **Chapter-build compatibility:** the output schema is unchanged by the prompt, and the existing
+   tests of the draft and chapter-build paths (`test/checks.spec.ts`, `test/academic-style.spec.ts`,
+   `test/prompts.spec.ts`, and the API's draft and chapter-build specs) pass with the candidate in
+   `prompts/draft.md`.
+
+### 4. Rules of the round
+
+Budget ≤ ₹50 for both tracks; a quota refusal stops the round and is reported. A track that misses
+**narrowly** (exactly one item fails, by one output or one win, by ≤ 2 percentage points of cited
+sentences, or by ≤ 0.1 of mean score) may try **one** more variant, against this same criterion,
+with its change recorded here before its run. A passing prompt goes into `prompts/assist.md` or
+`prompts/draft.md` as a departure from Appendix A under ADR-0059, with the tests pinning prompt
+text updated.
