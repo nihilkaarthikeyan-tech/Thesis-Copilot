@@ -258,51 +258,51 @@ export async function runFindSources(
   let openalexSkips = 0;
   // ADR-0050: a time budget per index, and one semantic search with the whole query.
   const perIndex = await Promise.all([
-      (async () => {
-        const began = Date.now();
-        const found = await searchWithinBudget(
-          [job.query.slice(0, 2_000)],
-          (q, signal) =>
-            deps.openalex.semanticSearch
-              ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal, filters)
-              : Promise.resolve([]),
-          {
-            ...SEARCH_BUDGET,
-            onSkip: (_q, reason) => {
-              openalexSkips += 1;
-              log({ level: 40, msg: 'openalex semantic skipped', reason });
-            },
+    (async () => {
+      const began = Date.now();
+      const found = await searchWithinBudget(
+        [job.query.slice(0, 2_000)],
+        (q, signal) =>
+          deps.openalex.semanticSearch
+            ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal, filters)
+            : Promise.resolve([]),
+        {
+          ...SEARCH_BUDGET,
+          onSkip: (_q, reason) => {
+            openalexSkips += 1;
+            log({ level: 40, msg: 'openalex semantic skipped', reason });
           },
-        );
-        log({
-          msg: 'index searched',
-          index: 'openalex-semantic',
-          ms: Date.now() - began,
-          works: found.flat().length,
-        });
-        return { name: 'openalex', found };
-      })(),
-      ...indexes.map(async ({ name, client }) => {
-        const began = Date.now();
-        const found = await searchWithinBudget(
-          searches,
-          (q, signal) => client.search(q, now, signal, filters),
-          {
-            ...SEARCH_BUDGET,
-            onSkip: (_q, reason) => {
-              if (name === 'openalex') openalexSkips += 1;
-              log({ level: 40, msg: `${name} search skipped`, reason });
-            },
+        },
+      );
+      log({
+        msg: 'index searched',
+        index: 'openalex-semantic',
+        ms: Date.now() - began,
+        works: found.flat().length,
+      });
+      return { name: 'openalex', found };
+    })(),
+    ...indexes.map(async ({ name, client }) => {
+      const began = Date.now();
+      const found = await searchWithinBudget(
+        searches,
+        (q, signal) => client.search(q, now, signal, filters),
+        {
+          ...SEARCH_BUDGET,
+          onSkip: (_q, reason) => {
+            if (name === 'openalex') openalexSkips += 1;
+            log({ level: 40, msg: `${name} search skipped`, reason });
           },
-        );
-        log({
-          msg: 'index searched',
-          index: name,
-          ms: Date.now() - began,
-          works: found.flat().length,
-        });
-        return { name, found };
-      }),
+        },
+      );
+      log({
+        msg: 'index searched',
+        index: name,
+        ms: Date.now() - began,
+        works: found.flat().length,
+      });
+      return { name, found };
+    }),
   ]);
   const lists = perIndex.flatMap((entry) => entry.found);
   const openalexWorks = perIndex
@@ -446,7 +446,11 @@ export async function runFindSources(
       DEGRADED_SOURCES.maxRetryMs,
       Math.max(DEGRADED_SOURCES.minRetryMs, wanted),
     );
-    await deps.enqueueRetry({ ...job, retry: attempt }, degradedRetryJobId(job, attempt), retryInMs);
+    await deps.enqueueRetry(
+      { ...job, retry: attempt },
+      degradedRetryJobId(job, attempt),
+      retryInMs,
+    );
     log({ level: 40, msg: 'find-sources degraded, retry scheduled', attempt, retryInMs });
   }
   return { status: 'degraded', added: added.length, searched: fresh.length, retryInMs };

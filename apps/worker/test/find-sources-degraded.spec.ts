@@ -10,11 +10,7 @@ import type { PrismaClient } from '@tc/db';
 import { type DiscoveredWork, ScholarlyError } from '@tc/retrieval';
 import type { FindSourcesJob } from '@tc/types';
 import { describe, expect, it } from 'vitest';
-import {
-  DEGRADED_SOURCES,
-  degradedRetryJobId,
-  runFindSources,
-} from '../src/jobs/find-sources.js';
+import { DEGRADED_SOURCES, degradedRetryJobId, runFindSources } from '../src/jobs/find-sources.js';
 
 const JOB: FindSourcesJob = {
   documentId: 'doc-1',

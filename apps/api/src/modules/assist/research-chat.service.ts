@@ -51,7 +51,6 @@ import { refusal, UsageService } from '../usage/usage.service.js';
 import {
   BEYOND,
   BEYOND_EMPTY_REPLY,
-  searchDownReply,
   BEYOND_NOT_ENOUGH_REPLY,
   type BeyondPaper,
   type BeyondPassages,
@@ -59,6 +58,7 @@ import {
   beyondSettingOf,
   passagesFromWebResults,
   readingStep,
+  searchDownReply,
   searchingStep,
   WRITING_STEP,
 } from './beyond-library.js';

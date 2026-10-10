@@ -68,9 +68,7 @@ export function outcomeOfCount(name: IndexName, count: number): IndexOutcome {
 }
 
 const list = (labels: readonly string[]): string =>
-  labels.length <= 1
-    ? (labels[0] ?? '')
-    : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;
+  labels.length <= 1 ? (labels[0] ?? '') : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;
 
 /**
  * The status of one search from its indexes' outcomes. Wording, in order of what the student
@@ -100,5 +98,5 @@ export function withStatus<T>(items: T[], status: SearchStatus): SearchedList<T>
   return Object.assign(items, { status });
 }
 
-export const statusOf = (list: { status?: SearchStatus } | undefined): SearchStatus | null =>
-  list?.status ?? null;
+export const statusOf = (list: unknown): SearchStatus | null =>
+  (list as { status?: SearchStatus } | null | undefined)?.status ?? null;

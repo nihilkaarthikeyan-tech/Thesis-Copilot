@@ -106,7 +106,7 @@ export function FindPapersPanel({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[] | null>(null);
   /** ADR-0149: the index that did not answer, said plainly instead of "nothing found". */
-  const [notice, setNotice] = useState<string | null>(null);
+  const [searchNotice, setSearchNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>('relevance');
@@ -153,7 +153,7 @@ export function FindPapersPanel({
           method: 'POST',
           body: JSON.stringify({ documentId, message: q }),
         });
-        setNotice(found.notice ?? null);
+        setSearchNotice(found.notice ?? null);
         setResults(found.results);
       } catch (e) {
         setError(
@@ -298,9 +298,9 @@ export function FindPapersPanel({
         </div>
       ) : null}
 
-      {results !== null && notice ? (
+      {results !== null && searchNotice ? (
         <p data-testid="papers-search-notice" role="status" className="text-xs text-warn">
-          {notice}
+          {searchNotice}
         </p>
       ) : null}
 

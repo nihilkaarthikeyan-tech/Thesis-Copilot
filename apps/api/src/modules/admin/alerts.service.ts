@@ -177,8 +177,9 @@ export class AlertsService {
           threshold: level,
         });
       }
-      const states = await (sources.states ?? (() =>
-        scholarlyHealth.snapshot(['openalex', 'semanticscholar'])))();
+      const states = await (
+        sources.states ?? (() => scholarlyHealth.snapshot(['openalex', 'semanticscholar']))
+      )();
       const t = now.getTime();
       for (const state of states) {
         if (

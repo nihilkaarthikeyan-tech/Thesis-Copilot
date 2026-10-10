@@ -9,7 +9,26 @@ The agent builds every phase it can (owner's instruction, 2026-09-04) and lists 
 that needs you. Each item says what, why, and exactly how. Do them in any order; nothing below
 blocks the agent from continuing to build against mocks.
 
-## URGENT: OpenAI credit ran out (2026-10-09 evening)
+## Paper index budgets (ADR-0149, 2026-10-10)
+
+Production's OpenAlex key ran out of its free $1 a day and every keyed search was refused until
+midnight UTC. The product now falls back to the keyless pool, remembers the refusal, tells the
+student plainly, and emails you (`ALERT_EMAILS`) at 70% and 90% of the day's budget. What only you
+can do:
+
+1. **Prepaid OpenAlex top-up — only if the 70%/90% alerts actually fire.** openalex.org → your
+   account → add prepaid credit. Do nothing until an `OPENALEX_BUDGET_70`/`_90` email arrives on
+   more than one day; one thesis creation is about $0.003 of the $1.
+2. **Free Semantic Scholar key** — https://www.semanticscholar.org/product/api → "Request API key".
+   Put it in the VPS `.env` as `SEMANTIC_SCHOLAR_API_KEY`, then restart api and worker. Without it
+   Semantic Scholar answers 429 under load (now backed off for 60 s instead of retried).
+3. **Free CORE key** — https://core.ac.uk/services/api → register; `.env` `CORE_API_KEY`.
+4. **Free NCBI (PubMed) key** — NCBI account → Settings → API Key Management; `.env`
+   `NCBI_API_KEY` (raises PubMed from 3 to 10 requests a second).
+5. **A separate OpenAlex key for development.** Dev and e2e runs spend the same $1 as production
+   when they share the key. Create a second key and put it only in the local `.env`.
+
+
 
 Every OpenAI call returns `credit_balance_exhausted`; production uses the same key, so every AI
 feature on the live site fails until the balance is topped up. Add credit at

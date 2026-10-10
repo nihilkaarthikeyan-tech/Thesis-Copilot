@@ -41,7 +41,10 @@ describe('search status (ADR-0149)', () => {
   it('says plainly when no index answered, rather than "no papers"', () => {
     const status = searchStatus([
       outcomeOfError('openalex', budgetSpent),
-      outcomeOfError('semanticscholar', new ScholarlyError('semanticscholar', 429, 'Too Many Requests', { refused: true })),
+      outcomeOfError(
+        'semanticscholar',
+        new ScholarlyError('semanticscholar', 429, 'Too Many Requests', { refused: true }),
+      ),
     ]);
     expect(status.notice).toMatch(/^None of the paper indexes is answering right now/);
   });

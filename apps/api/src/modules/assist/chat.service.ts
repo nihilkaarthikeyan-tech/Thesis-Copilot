@@ -54,7 +54,6 @@ import { refusal, UsageService } from '../usage/usage.service.js';
 import {
   BEYOND,
   BEYOND_EMPTY_REPLY,
-  searchDownReply,
   BEYOND_NOT_ENOUGH_REPLY,
   type BeyondPaper,
   type BeyondPassages,
@@ -64,6 +63,7 @@ import {
   beyondSettingOf,
   passagesFromWebResults,
   readingStep,
+  searchDownReply,
   searchingStep,
   WRITING_STEP,
 } from './beyond-library.js';
@@ -161,7 +161,7 @@ export type ChatEvent =
    */
   | {
       event: 'step';
-      data: { id: 'search' | 'read' | 'write'; text: string } | ResearchStep | DeepStep;
+      data: { id: 'search' | 'read' | 'write' | 'notice'; text: string } | ResearchStep | DeepStep;
     }
   | { event: 'token'; data: { t: string } }
   | {
@@ -1095,6 +1095,7 @@ export class ChatService {
     const filters = beyondFilters(input.filters ?? {});
     let built: ReturnType<typeof passagesFromWebResults>;
     let memory: Awaited<ReturnType<ContextService['memoryBlock']>>;
+    let notice: string | null = null;
     try {
       const [found, block] = await Promise.all([
         this.web.search(user.id, input.documentId, input.message, signal, BEYOND.candidates),
@@ -1102,12 +1103,13 @@ export class ChatService {
       ]);
       built = passagesFromWebResults(found.results, filters);
       memory = block;
-      // ADR-0149: an index that did not answer is said, not hidden in "no papers".
-      if (found.notice) yield { event: 'step', data: { id: 'notice', text: found.notice } };
+      notice = found.notice ?? null;
     } catch (error) {
       await this.usage.refund(user.id, 'CHAT');
       throw error;
     }
+    // ADR-0149: an index that did not answer is said, not hidden in "no papers".
+    if (notice) yield { event: 'step', data: { id: 'notice', text: notice } };
 
     if (built.passages.length === 0) {
       // Nothing to read, so no model call and no charge — the relevance floor's refund.
@@ -1116,7 +1118,7 @@ export class ChatService {
       yield {
         event: 'done',
         data: {
-          text: found.notice ? searchDownReply(found.notice) : BEYOND_EMPTY_REPLY,
+          text: notice ? searchDownReply(notice) : BEYOND_EMPTY_REPLY,
           outcome: 'beyond-empty',
           citations: [],
           passagesUsed: 0,

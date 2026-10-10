@@ -48,9 +48,9 @@ import {
   resolveByDoi,
   retrievePassages,
   SemanticScholarClient,
-  scholarlyHealth,
   SPRINGER_DAILY_LIMIT,
   SpringerNatureClient,
+  scholarlyHealth,
   sharedGate,
   UnpaywallClient,
 } from '@tc/retrieval';
