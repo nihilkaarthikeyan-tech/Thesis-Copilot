@@ -394,3 +394,66 @@ What it showed:
 For a next A.1 round: keep v2 (its specificity bullet and its citation rule) and add only the
 opening rule, with the study-naming rule narrowed to "not by its title or the product's name";
 run with `--samples 2`.
+
+## Round 4 (2026-10-10, A.1 Assist and A.2 Draft, two tracks)
+
+Asked by the owner after round 3: try round 3's own suggestion for A.1, and give the draft path
+the proper round its information run earned. Each track has its own criterion, written and
+committed before its runs; each is adopted or not on its own.
+
+### Track A: Assist (A.1), candidate v4 `eval/candidates/assist-academic4.md`
+
+Round 2's `assist-academic2.md` exactly (its specificity line, "Name what was studied and how:
+the material, method, population, setting, conditions, and the result", and its
+citation-in-every-sentence rule), with two lines added and nothing else:
+
+- **round 3's opening rule:** when `<text_before>` is empty or ends with a heading, the first
+  sentence is the most concrete fact the passages report (a figure, a measured effect, or what was
+  found in a named place), with its marker;
+- **a narrowed naming rule:** "Name a study by its finding and its marker, not by its title or the
+  name of the product it tested." Round 3's wider rule also told the model to leave the
+  population and design to the citation, and that removed the detail the judge rewards.
+
+Runs on the production models (`gpt-4.1-mini` fast, `gpt-5-mini` judge), judged blind in both
+orders, both sides post-processed by the same code, **`--samples 2`** (round 3 measured judge
+noise of ±0.8 on side A between rounds):
+
+- `run.ts assist --candidate assist-academic4 --samples 2` (typed-sentence set, 15 cases, 30 runs);
+- `run.ts assist --candidate assist-academic4 --set opener --samples 2` (10 cases, 20 runs).
+
+Adopted only if **all** hold:
+
+1. **Judge**, on each set: candidate wins ≥ current wins, and candidate mean not more than 0.2
+   below current.
+2. **Cited sentences** ≥ 90% on the typed set (`measures.candidate.citedSentences / sentences`).
+3. **Stock phrases per 1,000 words** not above current on either set, on the text the student is
+   offered (`style-measure.ts --processed --file <run>`).
+4. **Six-word copied runs, names discounted** (`measures.run6Names`) not above current on either
+   set; raw `run6` reported on both sides.
+5. **Not up** on either set: hallucinated cites, offered-nothing, failed calls.
+
+### Track B: Draft (A.2), candidate `eval/candidates/draft-academic3.md`
+
+The file round 3 ran for information, unchanged: the draft prompt on disk plus three lines (open
+each paragraph with a concrete finding with its marker; let the marker identify a study, not its
+title, programme or product, or the passage's description of its design; describe a thing by what
+was measured or what it does, with plain verbs). Round 3's one-sample run won 2–0–3 (mean
+8.0 → 8.4), cited every sentence (60/60 against 49/66), raw dashes 10 → 5, run6 3 → 4.
+
+Run on the production models (`gpt-5-mini` strong and judge), judged blind in both orders:
+`run.ts draft --candidate draft-academic3 --samples 2` (the default set, 5 topics, 10 runs).
+
+Adopted only if **all** hold:
+
+1. **Judge:** candidate wins ≥ current wins, and candidate mean not more than 0.2 below current.
+2. **Cited sentences** (`measures.citedSentences`) not lower than current, as a share of sentences.
+3. **Six-word copied runs, names discounted** (`measures.run6Names`) not above current + 1; raw
+   `run6` reported.
+4. **Not up:** hallucinated cites, failed calls.
+5. **Chapter-build compatibility:** the draft output schema is unchanged by the prompt (it is
+   Markdown with `###` headings and `[[NEEDS SOURCE: …]]` lines, which the candidate does not
+   touch), and the existing tests of the draft and chapter-build paths, including
+   `unchangedSentencesKept` (`test/checks.spec.ts`, `test/academic-style.spec.ts`) and
+   `test/prompts.spec.ts`, pass with the candidate in `prompts/draft.md`.
+
+Budget ≤ ₹45 for both tracks together; a quota refusal stops the round and is reported.
