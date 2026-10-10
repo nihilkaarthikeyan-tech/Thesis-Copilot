@@ -1,7 +1,8 @@
 # ADR-0147: Generated text reads as a careful academic writes (academic punctuation and style)
 
 **Date:** 2026-10-10 · **Status:** backstop shipped; the prompt candidate was measured against the
-criterion below (written before the runs) and **not adopted** · **Asked by:** the owner
+criterion below (written before the runs) and **not adopted**; rounds 2 and 3 (A.1 only) not
+adopted either · **Asked by:** the owner
 
 ## Context
 
@@ -345,3 +346,51 @@ narrowly, against this same criterion. The candidate is adopted only if **all** 
 As information only (not part of the criterion, no adoption): one draft run,
 `run.ts draft --candidate draft-academic3` (the draft prompt on disk plus round 3's three writing
 rules, one line each), to see whether the rules carry to the strong tier.
+
+### 4. Results (2026-10-10; ₹14.87 spent, no quota refusal, no failed call)
+
+`eval/results/assist-academic3-2026-10-10-13-10.json` (typed),
+`assist-academic3-opener-2026-10-10-13-09.json` and, as information,
+`draft-academic3-2026-10-10-13-09.json`. A is the prompt on disk, B the candidate; same models.
+
+| Set | Wins A–B–tie | Mean A → B | Cited sentences A / B | Stock per 1k, offered A / B | run6Names A / B (raw run6) | Hallucinated, nothing, failed |
+|---|---|---|---|---|---|---|
+| Typed (15) | **7**–3–5 | **7.93** → 7.37 | 21/29 / 21/30 (**70%**) | 4.43 / 2.42 | 3 / 2 (3 / 2) | 0 both sides |
+| Opener (10) | 3–3–4 | 7.60 → **7.95** | 15/20 / 16/19 | 7.04 / **7.87** (5 phrases each) | 2 / **3** (3 / 5) | 0 both sides |
+
+Against the criterion: 1 fails on the typed set (3 wins against 7, mean −0.56); 2 fails (70%);
+3 fails on the opener set (the same five phrases in fewer words); 4 fails on the opener set; 5
+passes. **Not adopted**; `prompts/assist.md` is unchanged. The typed-set misses are not narrow,
+so no extra variant was run.
+
+What it showed:
+
+- **Asking the model to let the marker name the study made it less specific, and the judge
+  punished that.** In the seven typed pairs A won, the judge's reasons are the same each time: A
+  kept the sample size (223 participants), the effect (a 50% rise in daily checks, 0.016 HbA1c
+  points per day of use) or a second corroborating source, and B dropped them. v3 also replaced
+  v2's "Name what was studied and how: the material, method, population, setting, conditions"
+  with "Say what was found and under what conditions"; together with "describe the population
+  briefly or leave it to the citation", that removed the very detail the judge rewards. Copying
+  did fall on the typed set (run6Names 3 → 2), and B dropped the product name A still copied
+  ("the BlueStar app", though it kept "one pragmatic randomized controlled trial"), but at that
+  price.
+- **Citations per sentence fell back** (round 2's 89.7% to 70%): B wrote more two-sentence
+  answers whose first sentence carried no marker. The extra instructions crowd the one the mini
+  followed best in round 2.
+- **The opener rule mostly did not take.** The judge preferred B's openings on the mean (+0.35),
+  but read side by side, most of B's first sentences are still a general statement about the
+  topic ("Dried fish is a crucial form of preservation in many coastal communities…"), as A's
+  are; both sides wrote "crucial" and "plays a vital role" on the same two dried-fish cases, and
+  both copied the passages' own lists ("sun drying, salting, fermentation and smoking", the eight
+  factor types).
+- **Judge noise is large on 15 cases.** Side A, the same prompt, scored 7.13 in round 2 and 7.93
+  here. A future round should run the typed set with `--samples 2` before reading a 0.2 margin.
+- **Draft, as information:** the three lines on the draft path won 2–0–3 (mean 8.0 → 8.4), and
+  every sentence cited its own passage (60/60 against 49/66; shared citations 17 → 0), stock
+  phrases unchanged (0.46 / 0.50 per 1k), raw dashes 10 → 5, run6 3 → 4. Five topics, one sample:
+  a candidate worth a proper draft round with its own criterion, not adopted here.
+
+For a next A.1 round: keep v2 (its specificity bullet and its citation rule) and add only the
+opening rule, with the study-naming rule narrowed to "not by its title or the product's name";
+run with `--samples 2`.
