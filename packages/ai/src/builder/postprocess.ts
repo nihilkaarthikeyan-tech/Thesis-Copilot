@@ -13,7 +13,7 @@
  * output that was nothing but a bad citation must end up EMPTY, not charged.
  */
 
-import { academicPunctuation } from './academic-style.js';
+import { academicPunctuation, dropConnectiveOpeners } from './academic-style.js';
 import {
   filterSentences,
   isAbbreviationStop,
@@ -281,7 +281,10 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   // a row of citations with no sentence is not a suggestion (prompt evaluation, 2026-09-30).
   const hasWords = /[\p{L}\p{N}]/u.test(filtered.text.replace(CITE_RE, ''));
   // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
-  const text = hasWords ? academicPunctuation(filtered.text).trim() : '';
+  // ADR-0147 round 2: a bare "Additionally,"/"Furthermore,"… opening a sentence is dropped.
+  const text = hasWords
+    ? academicPunctuation(dropConnectiveOpeners(filtered.text, input.before)).trim()
+    : '';
   const empty = text.length === 0;
 
   return {

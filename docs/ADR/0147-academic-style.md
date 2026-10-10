@@ -200,3 +200,81 @@ they did not write.
 - `eval/style-measure.ts` gives the dash and stock-phrase rates of any stored run without a
   model call, so a future prompt round can check the style rule as it checks copying.
 - Prompts are content (CLAUDE.md rule 6): the prompt files change only on the criterion above.
+
+## Round 2 (2026-10-10, A.1 Assist only)
+
+Asked by the owner after round 1: keep what round 1 gained, stop the padded opener in code, and
+try a prompt that says what to write instead of naming what not to write.
+
+### 1. Code: `dropConnectiveOpeners` (ships on its tests)
+
+`packages/ai/src/builder/academic-style.ts`, applied in `postProcessAssist` before
+`academicPunctuation`. A bare "Additionally,", "Furthermore,", "Moreover,", "In addition,",
+"Notably," or "Importantly," that opens a sentence is dropped and the next word capitalised. The
+suggestion's first sentence counts only when the text before the cursor ends a sentence (or a
+heading, or is empty); in a mid-sentence continuation the word joins the student's clause and is
+kept. A later sentence of the suggestion always counts, since round 1's openers were almost all
+on the second sentence. Kept as written: "In addition to…", "Notably higher…", an opener followed
+by a citation marker, anything after "et al."; a mixed-case next word ("pH", "mRNA") keeps its
+case; Hindi and every other script pass through. `test/connective-openers.spec.ts`.
+
+This is the one place the product removes words the model wrote. It is allowed here because the
+words carry no content (the sentence says the same without them) and because a prompt rule naming
+them made them more frequent, not less. Other stock phrases are still only counted.
+
+### 2. Prompt candidate v2: `eval/candidates/assist-academic2.md`
+
+The prompt on disk, with round 1's citation-in-every-sentence and specific-detail rules kept, and
+every negative word list replaced by a positive instruction: start each sentence with the subject
+of its claim; continue a half-written student sentence directly; restate the finding in your own
+sentence structure, keeping at most a short technical term verbatim, and quote longer wording in
+quotation marks; give the size or direction of an effect. No word to avoid is named.
+
+### 3. Pass criterion (written and committed before any run)
+
+Runs on the production models (`gpt-4.1-mini` fast, `gpt-5-mini` judge), judged blind in both
+orders, both sides post-processed by the same code (so both after step 1):
+
+- `run.ts assist --candidate assist-academic2` (the typed-sentence default set, 15 cases);
+- `run.ts assist --candidate assist-academic2 --set opener` (10 cases).
+
+Budget ₹30 in all; a quota refusal stops the round. One extra variant may be run if the first
+misses narrowly. The candidate is adopted only if **all** hold:
+
+1. **Judge**, on each set: candidate wins ≥ current wins, and candidate mean not more than 0.2
+   below current.
+2. **Cited sentences** ≥ 90% on the typed set (`measures.citedSentences / sentences`).
+3. **Stock phrases per 1,000 words** not above current on either set, counted on the text the
+   student is offered (`style-measure.ts --processed --file <run>`, so after step 1 on both
+   sides).
+4. **Six-word copied runs** (`measures.run6`) not above current on either set.
+5. **Not up** on either set: hallucinated cites, offered-nothing, failed calls.
+
+### 4. Results (2026-10-10; ₹11.54 spent, no quota refusal, no failed call)
+
+`eval/results/assist-academic2-2026-10-10-12-08.json` (typed) and
+`assist-academic2-opener-2026-10-10-12-10.json`. A is the prompt on disk, B candidate v2; both
+sides after `dropConnectiveOpeners`.
+
+| Set | Wins A–B–tie | Mean A → B | Cited sentences A / B | Stock per 1k, offered A / B | run6 A / B | Hallucinated, nothing, failed |
+|---|---|---|---|---|---|---|
+| Typed (15) | 3–**8**–4 | 7.13 → **8.20** | 20/28 / 26/29 (**89.7%**) | 1.17 / 1.04 | 2 / **5** | 0 both sides |
+| Opener (10) | **4**–3–3 | 7.42 → 7.53 | 12/20 / 17/17 | 4.32 / **7.45** | 7 / 5 | 0 both sides |
+
+Against the criterion: 1 fails on the opener set (3 wins against 4); 2 fails by one sentence
+(89.7%); 3 fails on the opener set; 4 fails on the typed set; 5 passes. **Not adopted**; the
+prompt file is unchanged. Four misses are not a narrow miss, so no extra variant was run.
+
+What it showed:
+
+- **The code does what the prompt could not.** The typed runs' raw outputs opened 6 (A) and 7 (B)
+  sentences with the padded connective; the offered text has none, and stock phrases on that set
+  fell from 6.1 and 7.8 per 1k words (raw) to 1.2 and 1.0. What remains is vocabulary
+  ("crucial", "foster", "plays a vital role"), mostly on the opener set.
+- **The judge prefers the citation-per-sentence shape again** (8–3–4, +1.07 on the typed set;
+  shared citations 8 → 3; every opener-set sentence cited). It is the copying that holds it back.
+- **The copied runs are names.** Four of B's five typed-set runs are a study's or population's
+  own phrase ("pragmatic randomized controlled trial of the BlueStar", "adolescents with type 1
+  diabetes"): the "keep a short technical term" and "one specific detail" instructions pull
+  toward the passage's wording. A next candidate would need a rule for naming a study without
+  its title, and the run6 measure may want to discount proper names; neither is done here.

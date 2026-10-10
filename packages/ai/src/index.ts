@@ -2,6 +2,7 @@ export {
   academicPunctuation,
   academicPunctuationUnlessStudents,
   countDashes,
+  dropConnectiveOpeners,
   STOCK_PHRASES,
   stockPhrases,
 } from './builder/academic-style.js';

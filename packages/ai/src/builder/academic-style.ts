@@ -119,6 +119,71 @@ export function stockPhrases(text: string): string[] {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Padded connective openers (ADR-0147 round 2, A.1 Assist only)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A connective that opens a sentence only to pad it. Round 1 of ADR-0147 found the mini opened its
+ * second sentence with "Additionally," in 7 of 15 outputs even when the prompt named the word; a
+ * rule in code holds where the prompt did not. "Bare" means the word and its comma and nothing
+ * else: "In addition to X," and "Notably higher yields…" are not openers and are kept.
+ */
+const OPENERS = 'Additionally|Furthermore|Moreover|In addition|Notably|Importantly';
+/** A sentence end: a terminator, closing quotes or brackets, and any citations that follow it. */
+const SENTENCE_END = String.raw`[.!?]["'”’)\]]*(?:\s*\{\{cite:[^}]+\}\})*`;
+const INNER_OPENER = new RegExp(String.raw`(${SENTENCE_END}\s+)(?:${OPENERS}),\s+(?=[^\s{])`, 'g');
+const LEADING_OPENER = new RegExp(String.raw`^(\s*)(?:${OPENERS}),\s+(?=[^\s{])`);
+
+/** Whether the student's text before the cursor ends a sentence (or a heading, or nothing). */
+export function endsSentence(before: string): boolean {
+  if (before.trim() === '' || /\n[ \t]*$/.test(before)) return true;
+  const trimmed = before.trimEnd();
+  const m = new RegExp(`${SENTENCE_END}$`).exec(trimmed);
+  if (!m) return false;
+  return !isAbbreviationStop(trimmed, m.index);
+}
+
+/** Capitalise a lower-case first word, unless it is mixed case ("pH", "mRNA", "eVTOL"). */
+function capitaliseFirstWord(text: string): string {
+  const word = /^[a-z][\p{L}\p{N}'’-]*/u.exec(text)?.[0];
+  if (!word || /\p{Lu}/u.test(word.slice(1))) return text;
+  return word.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * A.1 Assist: a bare "Additionally,", "Furthermore,", "Moreover,", "In addition,", "Notably," or
+ * "Importantly," that opens a sentence is dropped and the next word capitalised. The suggestion's
+ * first sentence counts only when `before` ends a sentence: in a mid-sentence continuation the
+ * word joins the student's clause and is kept. An opener followed by a citation marker is left as
+ * written, and nothing else in the text changes (Hindi and every other script pass through).
+ */
+export function dropConnectiveOpeners(text: string, before: string): string {
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(INNER_OPENER)) {
+    const at = m.index ?? 0;
+    const end = m[1] as string;
+    // "et al. Moreover," is not a sentence start; leave it.
+    if (isAbbreviationStop(text, at + end.search(/[.!?]/))) continue;
+    out += text.slice(last, at) + end;
+    last = at + m[0].length;
+    // The next word takes the capital; it is copied from `last` on.
+    const rest = text.slice(last);
+    const capped = capitaliseFirstWord(rest);
+    if (capped !== rest) {
+      out += capped.charAt(0);
+      last += 1;
+    }
+  }
+  out += text.slice(last);
+  if (endsSentence(before)) {
+    const m = LEADING_OPENER.exec(out);
+    if (m) out = m[1] + capitaliseFirstWord(out.slice(m[0].length));
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
 // The backstop
 // ---------------------------------------------------------------------------------------------
 
