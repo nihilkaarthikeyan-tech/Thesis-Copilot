@@ -1,0 +1,1121 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 20,
+    "wins": {
+      "current": 2,
+      "candidate": 13,
+      "tie": 5
+    },
+    "meanScore": {
+      "current": 6.95,
+      "candidate": 8.25
+    },
+    "answeredWithCitation": {
+      "current": 19,
+      "candidate": 20
+    },
+    "offeredNothing": {
+      "current": 0,
+      "candidate": 0
+    },
+    "sentencesFiltered": {
+      "current": 0,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 0
+    },
+    "candidateFile": "assist-academic4",
+    "set": "opener",
+    "judged": true,
+    "hallucinatedCites": {
+      "current": 0,
+      "candidate": 0
+    },
+    "setting": {
+      "current": {
+        "mismatched": 0,
+        "outputs": 0,
+        "firstOwn": 9,
+        "answered": 20
+      },
+      "candidate": {
+        "mismatched": 2,
+        "outputs": 2,
+        "firstOwn": 11,
+        "answered": 20
+      }
+    },
+    "measures": {
+      "current": {
+        "outputs": 20,
+        "run6": 7,
+        "run8": 5,
+        "run6Names": 5,
+        "flagged": 15,
+        "meanLongestRun": 6.75,
+        "sentences": 38,
+        "citedSentences": 24,
+        "sharedCitation": 13,
+        "citations": 46,
+        "claimsPerCitation": 0.8,
+        "intensifiers": 9,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 2,
+        "quotedWords": 0
+      },
+      "candidate": {
+        "outputs": 20,
+        "run6": 11,
+        "run8": 10,
+        "run6Names": 8,
+        "flagged": 17,
+        "meanLongestRun": 8.2,
+        "sentences": 35,
+        "citedSentences": 31,
+        "sharedCitation": 4,
+        "citations": 36,
+        "claimsPerCitation": 0.97,
+        "intensifiers": 4,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 2
+      }
+    },
+    "medianMs": {
+      "current": 1574,
+      "candidate": 1702
+    },
+    "spentRupees": 8.44
+  },
+  "rows": [
+    {
+      "case": "fresh-karnataka-solar-chapter1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "The adoption of rooftop solar photovoltaic (PV) systems is influenced by a complex interplay of economic, social, technical, and regulatory factors, which vary across different regional and demographic contexts. Studies show that while financial incentives and flexible payment options can enhance affordability and uptake, barriers such as regulatory uncertainty, lack of awareness, and infrastructural constraints continue to limit adoption, particularly among rural and low-income households in developing regions (Shakeel et al. 2023)(Aarakit et al. 2021)(Nath & Das 2026)(Mohammed. & Maheswari 2025).",
+      "b": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of economic, environmental, social, personal, demographic, technical, regulatory, and market-related factors, as identified from a comprehensive review of 146 studies (Shakeel et al. 2023).",
+      "aRaw": "The adoption of rooftop solar photovoltaic (PV) systems is influenced by a complex interplay of economic, social, technical, and regulatory factors, which vary across different regional and demographic contexts. Studies show that while financial incentives and flexible payment options can enhance affordability and uptake, barriers such as regulatory uncertainty, lack of awareness, and infrastructural constraints continue to limit adoption, particularly among rural and low-income households in developing regions {{cite:S1#c1}}{{cite:S2#c1}}{{cite:S5#c1}}{{cite:S6#c1}}.",
+      "bRaw": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of economic, environmental, social, personal, demographic, technical, regulatory, and market-related factors, as identified from a comprehensive review of 146 studies {{cite:S1#c1}}. In India, despite significant technical potential and government initiatives like PM Surya Ghar Muft Bijli Yojana, residential uptake remains limited due to barriers such as high upfront costs, regulatory uncertainty, and information asymmetries, with adoption predominantly occurring among late adopters constrained by awareness and financial challenges {{",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "adoption of rooftop solar",
+        "longestRunNames": 4,
+        "runTextNames": "adoption of rooftop solar",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 4,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 11,
+        "runText": "economic environmental social personal demographic technical regulatory and market related factors",
+        "longestRunNames": 11,
+        "runTextNames": "economic environmental social personal demographic technical regulatory and market related factors",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are factually correct and cite relevant literature, but the second is more specific and tightly grounded in a cited source: it accurately reports Shakeel et al.’s review finding (146 studies and the eight factor categories), which is a strong, concrete opening sentence for Chapter 1. The first sentence synthesizes multiple sources correctly (mentions flexible payments, regulatory uncertainty, awareness and infrastructural constraints, and rural/low-income relevance) but remains more generic and less tightly tied to specific, verifiable facts or numbers, so it is slightly weaker as a thesis opening.",
+      "reason2": "Both candidates are well-grounded and cite appropriate sources, but the second is stronger for this thesis opening: it synthesizes multiple sources to name specific barriers (financial, regulatory, awareness, infrastructure) and highlights rural/low-income relevance — all supported by the cited studies (Aarakit et al. 2021; Nath & Das 2026; Mohammed & Maheswari 2025; Shakeel et al. 2023). The first is accurate and concise, correctly reporting Shakeel et al.’s taxonomy, but is more limited in scope and less directly tied to the rural/affordability focus of the thesis."
+    },
+    {
+      "case": "fresh-karnataka-solar-chapter1",
+      "sample": 1,
+      "verdict": "B",
+      "a": "The transition from conventional energy systems to renewable sources is driven by concerns over climate change, rising energy demands, and environmental impacts, with solar energy offering potential for both commercial and household applications despite its limited current contribution to global energy supply. Studies have identified a wide range of factors influencing household adoption of solar photovoltaics (PV), including economic, social, technical, regulatory, and market-related barriers, highlighting the complexity of adoption behavior and the need for targeted interventions to enhance uptake (Shakeel et al. 2023).",
+      "b": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of economic, social, technical, and regulatory factors, as identified by a systematic review of 146 studies revealing 127 unique determinants grouped into eight categories (Shakeel et al. 2023).",
+      "aRaw": "The transition from conventional energy systems to renewable sources is driven by concerns over climate change, rising energy demands, and environmental impacts, with solar energy offering potential for both commercial and household applications despite its limited current contribution to global energy supply. Studies have identified a wide range of factors influencing household adoption of solar photovoltaics (PV), including economic, social, technical, regulatory, and market-related barriers, highlighting the complexity of adoption behavior and the need for targeted interventions to enhance uptake {{cite:S1#c1}}.",
+      "bRaw": "The adoption of rooftop solar photovoltaic (PV) systems at the household level is influenced by a complex interplay of economic, social, technical, and regulatory factors, as identified by a systematic review of 146 studies revealing 127 unique determinants grouped into eight categories {{cite:S1#c1}}. In the Indian context, despite ambitious national targets and government initiatives like PM Surya Ghar, rooftop solar uptake remains uneven, constrained by barriers such as high upfront costs, regulatory uncertainty, and information asymmetries, while innovations in subsidy mechanisms and business models show promise for expanding adoption {{cite:S6#",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "contribution to global energy supply",
+        "longestRunNames": 5,
+        "runTextNames": "contribution to global energy supply",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "at the household level",
+        "longestRunNames": 4,
+        "runTextNames": "at the household level",
+        "flagged": false,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates correctly draw on Shakeel et al. (2023). The first sentence is accurate and reads well, but is more general and slightly redundant (broad motivations + listing of barrier categories) without specific numeric detail. The second sentence is tighter, cites the exact scope of Shakeel et al. (146 studies, 127 determinants, eight categories), so it is more specific, technical and closer to what a strong thesis opening would offer.",
+      "reason2": "The first candidate is concise and makes a specific, verifiable claim (146 studies, 127 determinants, eight categories) that matches Shakeel et al. (2023) — this is the kind of precise, source-linked opening expected in a thesis. The second candidate is accurate but more generic and slightly repetitive, offering background-level statements without the same factual specificity; it reads as general context rather than a crisp thesis-opening sentence."
+    },
+    {
+      "case": "fresh-karnataka-solar-titled",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Despite India's progressive distributed solar policies and the capital subsidies available under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY), residential rooftop solar adoption in Karnataka remains significantly below its technical potential.",
+      "b": "Despite Karnataka’s progressive solar policies and substantial subsidies under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana, residential rooftop solar adoption remains significantly below its technical potential, particularly due to \"household friction\" encountered during the adoption process. Key barriers include space and roof-ownership constraints, information gaps, and upfront costs, while environmental concern motivates adopters, with nearly half indicating they would have adopted even without subsidies (Bagla 2026).",
+      "aRaw": "Despite India's progressive distributed solar policies and the capital subsidies available under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana (PMSGY), residential rooftop solar adoption in Karnataka remains significantly below its technical potential. This gap is largely due to \"household friction\" encountered by consumers throughout the adoption process, with barriers such as space and roof ownership constraints, information gaps, and upfront costs impeding uptake, while environmental concern motivates adopters; moreover, a \"subsidy paradox\" dilutes the subsidy’s effectiveness through panel restrictions, vendor empanelment, and paperwork {{",
+      "bRaw": "Despite Karnataka’s progressive solar policies and substantial subsidies under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana, residential rooftop solar adoption remains significantly below its technical potential, particularly due to \"household friction\" encountered during the adoption process {{cite:S1#c1}}. Key barriers include space and roof-ownership constraints, information gaps, and upfront costs, while environmental concern motivates adopters, with nearly half indicating they would have adopted even without subsidies {{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 20,
+        "runText": "capital subsidies available under the pradhan mantri surya ghar muft bijli yojana pmsgy residential rooftop solar adoption in karnataka remains",
+        "longestRunNames": 12,
+        "runTextNames": "capital subsidies available under the pradhan mantri surya ghar muft bijli yojana pmsgy residential rooftop solar adoption in karnataka remains",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 0,
+        "citations": 0,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 9,
+        "runText": "under the pradhan mantri surya ghar muft bijli yojana",
+        "longestRunNames": 6,
+        "runTextNames": "they would have adopted even without",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 2
+      },
+      "reason1": "The first candidate is a brief, generic statement that correctly notes the gap between policy and uptake but offers no citations, specifics, or thesis-ready detail. The second candidate is clearly superior: it cites Bagla (2026), uses the study’s concept of “household friction,” lists specific barriers (space/roof-ownership, information gaps, upfront cost), and notes the near‑half figure for adopters who would have installed without the subsidy — all claims that match the source. The second reads like a finished opening rather than vague filler and therefore better meets the examiner’s criteria.",
+      "reason2": "The first candidate is substantially stronger: it cites Bagla 2026, uses precise findings (mentions ‘household friction’, specific barriers: space/roof-ownership, information gaps, upfront cost) and reports a quantitative result (nearly half/adopters would have adopted without subsidy) that matches the source, reading like a finished thesis opening. The second candidate is generic and uncited, repeating the policy context without specific barriers, numbers, or linkage to the Karnataka evidence; it reads like filler and adds little beyond the thesis title."
+    },
+    {
+      "case": "fresh-karnataka-solar-titled",
+      "sample": 1,
+      "verdict": "B",
+      "a": "Rooftop solar adoption in India, particularly among residential households, remains significantly below its technical potential despite supportive policies and subsidies. Studies reveal that barriers such as high upfront costs, procedural complexities, information gaps, and structural constraints like roof ownership and space limitations play a major role in limiting uptake, while motivations often include environmental concerns and financial incentives (Bagla 2026)(Mohammed. & Maheswari 2025).",
+      "b": "Despite Karnataka’s progressive distributed solar policies and substantial subsidies under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana, residential rooftop solar adoption remains significantly below its technical potential, with barriers such as space and roof ownership constraints, information gaps, and upfront costs hindering uptake (Bagla 2026).",
+      "aRaw": "Rooftop solar adoption in India, particularly among residential households, remains significantly below its technical potential despite supportive policies and subsidies. Studies reveal that barriers such as high upfront costs, procedural complexities, information gaps, and structural constraints like roof ownership and space limitations play a major role in limiting uptake, while motivations often include environmental concerns and financial incentives {{cite:S1#c1}}{{cite:S2#c1}}.",
+      "bRaw": "Despite Karnataka’s progressive distributed solar policies and substantial subsidies under the Pradhan Mantri Surya Ghar: Muft Bijli Yojana, residential rooftop solar adoption remains significantly below its technical potential, with barriers such as space and roof ownership constraints, information gaps, and upfront costs hindering uptake {{cite:S1#c1}}. Studies across India and similar contexts reveal that affordability, procedural complexities, regulatory uncertainties, and lack of awareness are persistent obstacles, while innovations like flexible payment mechanisms and simplified subsidy processes show promise in enhancing adoption, especially among rural and income-constrained households {{cite:S2",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "rooftop solar adoption in india",
+        "longestRunNames": 4,
+        "runTextNames": "rooftop solar adoption in",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 9,
+        "runText": "under the pradhan mantri surya ghar muft bijli yojana",
+        "longestRunNames": 5,
+        "runTextNames": "space and roof ownership constraints",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately summarize evidence from the provided sources and avoid future-tense plans or filler. The first is correct and cites two sources, but is more general (national-level framing) and reads like an overview. The second is more specific to Karnataka and the PMSGY, directly reflecting Bagla (2026)’s focus and reported barriers, making it slightly stronger as an opening sentence for this thesis chapter.",
+      "reason2": "Both candidates accurately summarize source findings, but the first is stronger: it is specific to Karnataka, names the PMSGY subsidy program, and lists the leading barriers reported in Bagla 2026. The second is accurate but more generic and broad (pan-India phrasing, composite citation) and reads like a general literature-summary rather than a crisp opening sentence tied to the Karnataka case."
+    },
+    {
+      "case": "fresh-kerala-fish-drying-chapter1",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Dried fish plays a crucial role in food security and livelihoods, especially in coastal communities where it serves as a staple protein source and a significant economic activity. Various drying methods, including traditional sun-drying and modern solar-powered systems, have been developed to improve drying efficiency, product quality, and safety while reducing dependence on conventional energy sources (Belton et al. 2022)(Fitri et al. 2022)(Bustos et al. 2025)(Napitupulu et al. 2025).",
+      "b": "Dried fish remains a crucial food source and economic activity globally, especially in the Global South, where it supports millions of workers, predominantly women, despite challenges such as food safety and labor conditions (Belton et al. 2022). Various drying methods, including traditional sun-drying and modern solar-powered systems, affect the efficiency, quality, and safety of dried fish, with innovations like solar-powered dehydrators and microcontroller-based drying systems demonstrating significant improvements in drying time and product consistency (Bustos et al. 2025)(Guerrero et al. 2026).",
+      "aRaw": "Dried fish plays a crucial role in food security and livelihoods, especially in coastal communities where it serves as a staple protein source and a significant economic activity. Various drying methods, including traditional sun-drying and modern solar-powered systems, have been developed to improve drying efficiency, product quality, and safety while reducing dependence on conventional energy sources {{cite:S3#c1}}{{cite:S2#c1}}{{cite:S1#c1}}{{cite:S4#c1}}.",
+      "bRaw": "Dried fish remains a crucial food source and economic activity globally, especially in the Global South, where it supports millions of workers, predominantly women, despite challenges such as food safety and labor conditions {{cite:S3#c1}}. Various drying methods, including traditional sun-drying and modern solar-powered systems, affect the efficiency, quality, and safety of dried fish, with innovations like solar-powered dehydrators and microcontroller-based drying systems demonstrating significant improvements in drying time and product consistency {{cite:S1#c1}}{{cite:S5#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "traditional sun drying and",
+        "longestRunNames": 4,
+        "runTextNames": "traditional sun drying and",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 4,
+        "intensifiers": ["crucial"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "of dried fish with",
+        "longestRunNames": 4,
+        "runTextNames": "of dried fish with",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": ["crucial"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "The second candidate is stronger: it includes a specific, sourced claim about the global importance of dried fish (Belton et al. 2022) and explicitly links cited technological innovations to measurable benefits in drying time and consistency (Bustos et al. 2025; Guerrero et al. 2026), which matches what those sources report. The first candidate is accurate but more generic, with broad statements and multiple citations that are not tied to concrete, technical outcomes; it reads like a generic introduction rather than offering the more specific, evidence-linked opening expected in a strong thesis chapter.",
+      "reason2": "The first candidate is stronger: it makes specific, evidence-based claims about the global importance of dried fish and cites studies that demonstrate concrete technological improvements (Bustos et al. 2025; Guerrero et al. 2026) and situates the issue with a broad-sector citation (Belton et al. 2022). The sentences read as statements of fact rather than plans and the citations match the claims. The second candidate is accurate but more generic and less technical — it repeats broad points about food security and energy dependence and, while correctly citing relevant reviews and system studies, offers fewer specific outcomes (e.g., reductions in drying time, energy figures) and reads more like general background than a strong opening thesis sentence."
+    },
+    {
+      "case": "fresh-kerala-fish-drying-chapter1",
+      "sample": 1,
+      "verdict": "B",
+      "a": "Fish drying is a widely practiced method of preservation that extends shelf life by reducing moisture content, thereby limiting microbial spoilage and enzymatic activity. Various drying techniques exist, ranging from traditional sun-drying to more advanced solar-powered and microcontroller-based drying systems, each with differing efficiencies and impacts on product quality (Fitri et al. 2022)(Belton et al. 2022).",
+      "b": "Dried fish is a crucial food product preserved through methods such as sun-drying, salting, fermentation, and smoking, which allow for extended storage without specialized packaging and remain vital in many global diets, especially in the Global South. Despite its importance, dried fish production faces challenges including food safety concerns and exploitative labor conditions, highlighting the need for improved drying technologies and practices (Belton et al. 2022).",
+      "aRaw": "Fish drying is a widely practiced method of preservation that extends shelf life by reducing moisture content, thereby limiting microbial spoilage and enzymatic activity. Various drying techniques exist, ranging from traditional sun-drying to more advanced solar-powered and microcontroller-based drying systems, each with differing efficiencies and impacts on product quality {{cite:S2#c1}}{{cite:S3#c1}}.",
+      "bRaw": "Dried fish is a crucial food product preserved through methods such as sun-drying, salting, fermentation, and smoking, which allow for extended storage without specialized packaging and remain vital in many global diets, especially in the Global South {{cite:S3#c1}}. Despite its importance, dried fish production faces challenges including food safety concerns and exploitative labor conditions, highlighting the need for improved drying technologies and practices {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "traditional sun drying",
+        "longestRunNames": 3,
+        "runTextNames": "traditional sun drying",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 8,
+        "runText": "such as sun drying salting fermentation and smoking",
+        "longestRunNames": 8,
+        "runTextNames": "such as sun drying salting fermentation and smoking",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["crucial"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "The second candidate accurately and specifically reflects Belton et al. (2022)’s points about the definition, importance, and sector challenges for dried fish, and reads like a finished opening sentence. The first candidate is broadly correct and cites Fitri and Belton for general claims about drying and quality, but it introduces “microcontroller-based” systems without matching citation support and is slightly more generic, so it is weaker than the second.",
+      "reason2": "First: Concise, relevant opening that accurately reflects the global importance of dried fish and cites Belton et al. (2022), which specifically documents dried fish’s role, processing methods, and sectoral challenges (food safety, labour). The sentence is appropriate as a thesis opening—specific, supported, and not future‑tense filler. Second: Factually correct in broad terms (moisture reduction reduces spoilage; multiple drying techniques exist) and cites Fitri et al. (2022) and Belton et al. (2022), but it is more generic and mixes claims about advanced technologies (solar‑powered, microcontroller‑based systems) without citing the sources that document those specific technologies (e.g., Bustos, Napitupulu, Guerrero). Citation coverage is therefore weaker and the phrasing reads more like generic background than a strong, source‑rooted thesis opening."
+    },
+    {
+      "case": "fresh-kerala-fish-drying-titled",
+      "sample": 0,
+      "verdict": "A",
+      "a": "Dried fish, defined broadly as aquatic animals preserved by simple techniques such as sun-drying, salting, fermentation, and smoking, has historically been the main form of fish trade and consumption before refrigeration and continues to be a crucial component of production, trade, diets, and cuisines, especially in the Global South. This sector employs millions, predominantly women, but faces challenges including food safety and labor exploitation, with research largely focused on processing rather than primary production, highlighting significant gaps and questions in understanding dried fish within fisheries research (Belton et al. 2022).",
+      "b": "Dried fish, defined as aquatic animals preserved using simple techniques such as sun-drying, salting, fermentation, and smoking, remain a core component of production, trade, diets, and cuisines across the world, particularly in the Global South, despite receiving little direct attention in fisheries research. This sector provides employment for millions, especially women, but also faces significant challenges including food safety concerns and exploitative labor conditions (Belton et al. 2022).",
+      "aRaw": "Dried fish, defined broadly as aquatic animals preserved by simple techniques such as sun-drying, salting, fermentation, and smoking, has historically been the main form of fish trade and consumption before refrigeration and continues to be a crucial component of production, trade, diets, and cuisines, especially in the Global South. This sector employs millions, predominantly women, but faces challenges including food safety and labor exploitation, with research largely focused on processing rather than primary production, highlighting significant gaps and questions in understanding dried fish within fisheries research {{cite:S1#c1}}.",
+      "bRaw": "Dried fish, defined as aquatic animals preserved using simple techniques such as sun-drying, salting, fermentation, and smoking, remain a core component of production, trade, diets, and cuisines across the world, particularly in the Global South, despite receiving little direct attention in fisheries research {{cite:S1#c1}}. This sector provides employment for millions, especially women, but also faces significant challenges including food safety concerns and exploitative labor conditions {{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 10,
+        "runText": "simple techniques such as sun drying salting fermentation and smoking",
+        "longestRunNames": 10,
+        "runTextNames": "simple techniques such as sun drying salting fermentation and smoking",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["crucial"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 1,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 18,
+        "runText": "remain a core component of production trade diets and cuisines across the world particularly in the global south",
+        "longestRunNames": 16,
+        "runTextNames": "remain a core component of production trade diets and cuisines across the world particularly in the",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately summarize Belton et al. (2022) and provide properly matched citations; neither contains future-tense plans or unsupported claims. The first is slightly stronger because it adds specific, source-supported points about the historical centrality of dried fish trade and the literature’s focus on processing (and attendant gaps), making it a marginally more informative opening for Chapter 1. Neither is highly specific to Kerala or solar drying (limiting domain specificity), so scores are good but not maximal.",
+      "reason2": "Both candidates accurately summarize Belton et al. (2022) and provide appropriate citation, avoiding vague or unsupported claims. The second is marginally better: it includes additional, sourcing-supported context (historical role prior to refrigeration and the literature’s processing-focus and research gaps), which reads more like a finished thesis opening and adds useful framing for a chapter introduction. The first is concise and correct but less informative for setting the chapter’s scope."
+    },
+    {
+      "case": "fresh-kerala-fish-drying-titled",
+      "sample": 1,
+      "verdict": "B",
+      "a": "Dried fish, defined as aquatic animals preserved through simple techniques such as sun-drying, salting, fermentation, and smoking, have historically been a primary form of fish preservation and remain crucial in many food systems, especially in the Global South. Despite their importance in production, trade, and diets, dried fish have received limited direct attention in fisheries research, which has predominantly focused on ecology and governance rather than processing and value chains (Belton et al. 2022).",
+      "b": "Dried fish, defined broadly as aquatic animals preserved using simple techniques such as sun-drying, salting, fermentation, and smoking, remain a core component of production, trade, diets, and cuisines across the world, especially in the Global South, providing employment to millions, particularly women (Belton et al. 2022). However, traditional drying methods often expose fish to contamination and quality degradation due to environmental factors like dust, flies, and rain, which can be mitigated by adopting solar drying technologies that improve product quality and increase income for producers (Hin et al. 2024).",
+      "aRaw": "Dried fish, defined as aquatic animals preserved through simple techniques such as sun-drying, salting, fermentation, and smoking, have historically been a primary form of fish preservation and remain crucial in many food systems, especially in the Global South. Despite their importance in production, trade, and diets, dried fish have received limited direct attention in fisheries research, which has predominantly focused on ecology and governance rather than processing and value chains {{cite:S1#c1}}.",
+      "bRaw": "Dried fish, defined broadly as aquatic animals preserved using simple techniques such as sun-drying, salting, fermentation, and smoking, remain a core component of production, trade, diets, and cuisines across the world, especially in the Global South, providing employment to millions, particularly women {{cite:S1#c1}}. However, traditional drying methods often expose fish to contamination and quality degradation due to environmental factors like dust, flies, and rain, which can be mitigated by adopting solar drying technologies that improve product quality and increase income for producers {{cite:S2#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 10,
+        "runText": "simple techniques such as sun drying salting fermentation and smoking",
+        "longestRunNames": 10,
+        "runTextNames": "simple techniques such as sun drying salting fermentation and smoking",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["crucial"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 1,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 17,
+        "runText": "defined broadly as aquatic animals preserved using simple techniques such as sun drying salting fermentation and smoking",
+        "longestRunNames": 17,
+        "runTextNames": "defined broadly as aquatic animals preserved using simple techniques such as sun drying salting fermentation and smoking",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately cite Belton et al. (2022). The first is a clear, well-cited opening but is general and limited to literature framing. The second is preferable because it integrates Belton’s global framing with Hin et al. (2024) to link traditional drying problems (dust, flies, rain) to the specific technological solution (solar dryers) and associated benefits (better quality, higher income), which follows naturally from the thesis title and uses the sources correctly and usefully.",
+      "reason2": "The first candidate makes specific, sourced claims that directly support the thesis topic: it accurately cites Belton et al. (2022) on the global importance and workforce composition of dried fish and Hin et al. (2024) on contamination risks of traditional drying and benefits of solar dryers (quality and income). It reads as a finished opening rather than a plan. The second candidate is accurate and cites Belton correctly but is more generic and less directly connected to the study focus (solar drying in Kerala), offering less technical or actionable detail."
+    },
+    {
+      "case": "fresh-tamilnadu-microfinance-chapter1",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Microfinance through Self-Help Groups (SHGs) has emerged as a critical strategy for empowering rural women in India by enhancing their financial independence, entrepreneurial skills, and social participation. Studies from various regions, including Tamil Nadu and Assam, demonstrate that SHGs facilitate access to collateral-free loans, promote savings habits, and foster confidence and decision-making power among women, thereby contributing to their socio-economic upliftment and sustainable livelihoods (Al-Kubati & Selvaratnam 2021)(Pandhare et al. 2024)(Borthakur & Boruah 2023)(Mary & Merlin 2025)(YOGANANDHAM & VARALAKSHMI 2026).",
+      "b": "India’s Self-Help Group Bank Linkage Programme, the largest microfinance initiative globally, covers over 10 million self-help groups and has been instrumental in empowering rural women by facilitating entrepreneurial activities, enhancing confidence, and providing technical skills and market access (Al-Kubati & Selvaratnam 2021). Studies in Tamil Nadu and other regions demonstrate that microfinance and entrepreneurial engagement through SHGs significantly improve women’s financial independence, decision-making participation, social networks, and overall well-being, although challenges such as over-indebtedness and social barriers persist (Pandhare et al. 2024)",
+      "aRaw": "Microfinance through Self-Help Groups (SHGs) has emerged as a critical strategy for empowering rural women in India by enhancing their financial independence, entrepreneurial skills, and social participation. Studies from various regions, including Tamil Nadu and Assam, demonstrate that SHGs facilitate access to collateral-free loans, promote savings habits, and foster confidence and decision-making power among women, thereby contributing to their socio-economic upliftment and sustainable livelihoods {{cite:S1#c1}}{{cite:S2#c1}}{{cite:S4#c1}}{{cite:S5#c1}}{{cite:S6#c1}}.",
+      "bRaw": "India’s Self-Help Group Bank Linkage Programme, the largest microfinance initiative globally, covers over 10 million self-help groups and has been instrumental in empowering rural women by facilitating entrepreneurial activities, enhancing confidence, and providing technical skills and market access {{cite:S1#c1}}. Studies in Tamil Nadu and other regions demonstrate that microfinance and entrepreneurial engagement through SHGs significantly improve women’s financial independence, decision-making participation, social networks, and overall well-being, although challenges such as over-indebtedness and social barriers persist {{cite:S2#c1}}{{cite:S6#c",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "through self help groups shgs",
+        "longestRunNames": 4,
+        "runTextNames": "through self help groups",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 5,
+        "intensifiers": ["critical"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "self help group bank linkage programme",
+        "longestRunNames": 5,
+        "runTextNames": "technical skills and market access",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates correctly summarise the literature and cite appropriate sources, but the second is stronger: it includes a concrete, verifiable fact (the SHG Bank Linkage Programme’s scale from Al-Kubati & Selvaratnam) and acknowledges persistent challenges (matching other sources), so it reads more specific and thesis-ready. The first is accurate but more generic and lists many citations without giving any technical detail or distinctive factual claim, making it less effective as an opening sentence.",
+      "reason2": "The first candidate is more specific and tightly tied to the cited source (correctly noting the 10 million SHGs from Al-Kubati & Selvaratnam and summarising documented empowerment effects), and reads like a finished opening sentence rather than generic phrasing. Its only minor weakness is a slight blending of positive findings and persistent challenges under a single Pandhare citation, where the specific challenge wording more closely matches other sources. The second candidate is accurate and cites multiple relevant studies, but is more generic and summary-like (less precise metrics or concrete claims) and reads like a broad literature-summary sentence that could fit many topics rather than a strong, specific opening line for this thesis chapter."
+    },
+    {
+      "case": "fresh-tamilnadu-microfinance-chapter1",
+      "sample": 1,
+      "verdict": "B",
+      "a": "Microfinance through Self-Help Groups (SHGs) has emerged as a pivotal strategy in empowering rural women by enhancing their financial inclusion, entrepreneurial skills, and decision-making capacities, thereby contributing to sustainable development goals. Studies conducted in Tamil Nadu and other regions of India demonstrate that participation in SHGs leads to increased financial independence, social empowerment, and improved managerial skills among women, which collectively foster their socio-economic upliftment and community leadership roles (Al-Kubati & Selvaratnam 2021)(Pandhare et al. 2024)(R 2026)(Mary & Merlin 2025)",
+      "b": "India’s Self-Help Group Bank Linkage Programme is the largest microfinance initiative globally, covering over 10 million self-help groups and serving as a key strategy to empower rural women by facilitating entrepreneurial activities, enhancing confidence, and providing technical skills and market access (Al-Kubati & Selvaratnam 2021). Studies from Tamil Nadu and other regions show that microfinance through SHGs significantly improves women’s financial independence, decision-making participation, social networks, and overall empowerment, although challenges like over-indebtedness and social barriers persist (Pandhare et al. 2024)(YOGANANDHAM & VARALAKSHMI 2026).",
+      "aRaw": "Microfinance through Self-Help Groups (SHGs) has emerged as a pivotal strategy in empowering rural women by enhancing their financial inclusion, entrepreneurial skills, and decision-making capacities, thereby contributing to sustainable development goals. Studies conducted in Tamil Nadu and other regions of India demonstrate that participation in SHGs leads to increased financial independence, social empowerment, and improved managerial skills among women, which collectively foster their socio-economic upliftment and community leadership roles {{cite:S1#c1}}{{cite:S2#c1}}{{cite:S3#c1}}{{cite:S5#c1}}{{cite:S6#c",
+      "bRaw": "India’s Self-Help Group Bank Linkage Programme is the largest microfinance initiative globally, covering over 10 million self-help groups and serving as a key strategy to empower rural women by facilitating entrepreneurial activities, enhancing confidence, and providing technical skills and market access {{cite:S1#c1}}. Studies from Tamil Nadu and other regions show that microfinance through SHGs significantly improves women’s financial independence, decision-making participation, social networks, and overall empowerment, although challenges like over-indebtedness and social barriers persist {{cite:S2#c1}}{{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "through self help groups shgs",
+        "longestRunNames": 4,
+        "runTextNames": "through self help groups",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 4,
+        "intensifiers": ["pivotal"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 10,
+        "runText": "self help group bank linkage programme is the largest microfinance",
+        "longestRunNames": 5,
+        "runTextNames": "technical skills and market access",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "The second candidate is stronger: it includes a specific, verifiable factual claim (SHG Bank Linkage Programme covers over 10 million groups) that matches Al‑Kubati & Selvaratnam (2021), and it acknowledges documented challenges (citing Yoganandham & Varalakshmi 2026). Its claims are more concrete and better grounded in the provided sources. The first candidate is accurate and cites relevant studies but is more generic and high-level (broad claims about empowerment, skills, and managerial improvements) without concrete figures, programme names, or mention of limitations; it reads like a general summary rather than a sharper opening sentence for a thesis chapter.",
+      "reason2": "The first candidate is stronger: it includes a concrete, verifiable statistic (over 10 million SHGs) and ties specific outcomes and known challenges to appropriate sources, reading like a finished opening sentence rather than generic framing. The second candidate is more generic and formulaic, relying on broad claims and multiple citations without the same specificity or distinctive factual detail; it reads like conventional background rather than a precise thesis opening."
+    },
+    {
+      "case": "fresh-tamilnadu-microfinance-titled",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Microfinance initiatives, particularly through Self-Help Groups (SHGs), have significantly enhanced rural women's access to financial services, increased their income levels, and contributed to poverty reduction in Tamil Nadu. These programs foster economic independence, confidence, and leadership among women while promoting savings and community participation, although challenges such as over-indebtedness and social barriers persist (YOGANANDHAM & VARALAKSHMI 2026).",
+      "b": "Microfinance through Self-Help Groups (SHGs) in Tamil Nadu has significantly improved rural women's access to financial services, increased their income, and enhanced their economic independence, while also fostering their participation in community activities and leadership roles (YOGANANDHAM & VARALAKSHMI 2026). These interventions have empowered women by enabling them to save collectively, obtain collateral-free loans, and invest in income-generating activities such as tailoring, food processing, and agribusiness, thereby contributing to their socio-economic development and entrepreneurship (Mary & Merlin 2025).",
+      "aRaw": "Microfinance initiatives, particularly through Self-Help Groups (SHGs), have significantly enhanced rural women's access to financial services, increased their income levels, and contributed to poverty reduction in Tamil Nadu. These programs foster economic independence, confidence, and leadership among women while promoting savings and community participation, although challenges such as over-indebtedness and social barriers persist {{cite:S1#c1}}.",
+      "bRaw": "Microfinance through Self-Help Groups (SHGs) in Tamil Nadu has significantly improved rural women's access to financial services, increased their income, and enhanced their economic independence, while also fostering their participation in community activities and leadership roles {{cite:S1#c1}}. These interventions have empowered women by enabling them to save collectively, obtain collateral-free loans, and invest in income-generating activities such as tailoring, food processing, and agribusiness, thereby contributing to their socio-economic development and entrepreneurship {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "through self help groups shgs",
+        "longestRunNames": 4,
+        "runTextNames": "access to financial services",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "through self help groups shgs",
+        "longestRunNames": 4,
+        "runTextNames": "access to financial services",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are appropriate opening sentences and correctly cite Yoganandham & Varalakshmi 2026. The second is better because it adds specific, verifiable details (collective savings, collateral-free loans, examples of income-generating activities) drawn from Mary & Merlin 2025, so it is more technical and thesis-like. The first is accurate and concise but more general and less detailed, so it scores lower.",
+      "reason2": "FIRST is more specific and technical: it cites two sources and links SHG activities to concrete outcomes (collective saving, collateral-free loans, specific income-generating activities) that match the provided sources (Yoganandham & Varalakshmi 2026; Mary & Merlin 2025). It reads like a finished opening rather than filler. SECOND is accurate but more generic and repetitive, relying on one source and offering fewer specific, attributable details; it reads like broad summary rather than a strong thesis opening."
+    },
+    {
+      "case": "fresh-tamilnadu-microfinance-titled",
+      "sample": 1,
+      "verdict": "B",
+      "a": "Microfinance, particularly through Self-Help Groups (SHGs), has been shown to enhance rural women's access to financial services, increase their income, and promote economic independence in Tamil Nadu. These groups enable women to obtain collateral-free loans, save collectively, and invest in income-generating activities, which foster entrepreneurship and improve their social and economic status despite challenges like over-indebtedness and social barriers (YOGANANDHAM & VARALAKSHMI 2026)(Mary & Merlin 2025).",
+      "b": "Microfinance through Self-Help Groups (SHGs) in Tamil Nadu has significantly improved rural women's access to financial services, increased their income, and enhanced their economic independence by providing small, collateral-free loans for business and household needs (YOGANANDHAM & VARALAKSHMI 2026). These SHGs foster entrepreneurship, self-reliance, and social support among women, contributing to their empowerment and participation in income-generating activities such as tailoring, food processing, and agribusiness (Mary & Merlin 2025).",
+      "aRaw": "Microfinance, particularly through Self-Help Groups (SHGs), has been shown to enhance rural women's access to financial services, increase their income, and promote economic independence in Tamil Nadu. These groups enable women to obtain collateral-free loans, save collectively, and invest in income-generating activities, which foster entrepreneurship and improve their social and economic status despite challenges like over-indebtedness and social barriers {{cite:S1#c1}}{{cite:S3#c1}}.",
+      "bRaw": "Microfinance through Self-Help Groups (SHGs) in Tamil Nadu has significantly improved rural women's access to financial services, increased their income, and enhanced their economic independence by providing small, collateral-free loans for business and household needs {{cite:S1#c1}}. These SHGs foster entrepreneurship, self-reliance, and social support among women, contributing to their empowerment and participation in income-generating activities such as tailoring, food processing, and agribusiness {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "through self help groups shgs",
+        "longestRunNames": 4,
+        "runTextNames": "access to financial services",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "through self help groups shgs",
+        "longestRunNames": 4,
+        "runTextNames": "access to financial services",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates produce accurate, thesis-appropriate opening sentences that draw directly from the provided sources and include correct citations. The second is slightly stronger because it adds concrete examples of income-generating activities (tailoring, food processing, agribusiness) from Mary & Merlin (2025), making it more specific and grounded; the first correctly notes challenges (over-indebtedness) but is marginally more general.",
+      "reason2": "Both candidates accurately summarize findings from the provided sources and cite them. The first is stronger because it makes more specific, concrete claims (explicitly names Tamil Nadu, collateral-free loans, and concrete income-generating activities) and ties those claims to the cited studies, matching the sources’ content. The second is more generic and uses less specific detail, reads as a summary that could fit many contexts, and therefore is weaker relative to the first. Neither contains incorrect citations or obvious factual mismatches, but the first better meets the criterion of specific, thesis-ready writing rather than generic filler."
+    },
+    {
+      "case": "fresh-punjab-stubble-chapter1",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Crop residue burning in Punjab significantly contributes to particulate matter emissions that harm health, climate, and agricultural productivity, despite legal restrictions and available profitable alternatives (Downing et al. 2022). Studies show that while many farmers are aware of these adverse effects and some adopt sustainable crop residue management practices (SCRMPs), widespread burning persists due to systemic social-ecological feedbacks, economic motivations, and limited access to alternative technologies and learning opportunities (Raza et al. 2022)(Bhardwaj & Basera 2021)(Krishnapriya et al. 2024)(Parihar et al. 2023)",
+      "b": "Crop residue burning in Indian Punjab emits particulate matter that severely impacts health, climate, and agricultural production, despite existing legal and technological barriers and alternatives that are considered more profitable by farmers (Downing et al. 2022). A study of 2289 farmers in Punjab found a significant negative correlation between adoption of crop residue management machinery and residue burning, but social norms and traditional equipment ownership continue to strongly influence burning behavior, indicating that technology provision alone is insufficient to end the practice (Gupta et al. 2026).",
+      "aRaw": "Crop residue burning in Punjab significantly contributes to particulate matter emissions that harm health, climate, and agricultural productivity, despite legal restrictions and available profitable alternatives {{cite:S1#c1}}. Studies show that while many farmers are aware of these adverse effects and some adopt sustainable crop residue management practices (SCRMPs), widespread burning persists due to systemic social-ecological feedbacks, economic motivations, and limited access to alternative technologies and learning opportunities {{cite:S2#c1}}{{cite:S3#c1}}{{cite:S4#c1}}{{cite:S5#c1}}{{cite:S6#",
+      "bRaw": "Crop residue burning in Indian Punjab emits particulate matter that severely impacts health, climate, and agricultural production, despite existing legal and technological barriers and alternatives that are considered more profitable by farmers {{cite:S1#c1}}. A study of 2289 farmers in Punjab found a significant negative correlation between adoption of crop residue management machinery and residue burning, but social norms and traditional equipment ownership continue to strongly influence burning behavior, indicating that technology provision alone is insufficient to end the practice {{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 6,
+        "runText": "sustainable crop residue management practices scrmps",
+        "longestRunNames": 4,
+        "runTextNames": "crop residue burning in",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 5,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 9,
+        "runText": "crop residue burning in indian punjab emits particulate matter",
+        "longestRunNames": 7,
+        "runTextNames": "crop residue burning in indian punjab emits particulate matter",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": ["severely"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are strong, cite the provided literature accurately, and present finished opening sentences rather than plans. The first candidate synthesizes multiple sources well (Downing; Raza; Bhardwaj & Basera; Krishnapriya; Parihar) and correctly highlights awareness, systemic feedbacks, economic drivers, and access/learning constraints — however it is broader and less specific about empirical magnitudes. The second candidate is slightly stronger because it includes a clear, technical empirical detail (sample size and the negative correlation between CRM adoption and burning from Gupta et al. 2026) and draws a focused policy-relevant conclusion (technology provision alone is insufficient), making it more specific and thesis-ready.",
+      "reason2": "First candidate is more specific and technical: it cites a large Punjab sample (n=2289), reports the negative correlation between CRM adoption and burning, and correctly links the broader system issues to Downing et al. 2022. It reads like finished thesis prose and makes precise, evidence-backed claims. The second candidate is accurate and cites relevant studies but is more generic and summary-like, mixes evidence across studies (including one from Pakistan) without distinguishing contexts, and relies on broader statements about feedbacks and motivations rather than the specific empirical detail present in the first candidate."
+    },
+    {
+      "case": "fresh-punjab-stubble-chapter1",
+      "sample": 1,
+      "verdict": "A",
+      "a": "Crop residue burning in Punjab significantly contributes to particulate matter emissions, which adversely affect health, climate, and agricultural productivity, despite existing legal and technological measures and the availability of more profitable alternatives for farmers (Downing et al. 2022). Studies indicate that while many farmers are aware of the harmful effects of residue burning and some adopt sustainable crop residue management practices (SCRMPs), widespread burning persists due to systemic feedbacks, economic motivations, and social norms that reinforce the practice (Raza et al. 2022)(Bhardwaj & Basera 2021)(Gupta et al. 2026).",
+      "b": "Crop residue burning in Indian Punjab emits particulate matter that severely impacts health, climate, and agricultural production, and despite legal and technological barriers and more profitable alternatives, it persists due to reinforcing system feedbacks and limited financial incentives for corporate stakeholders to change (Downing et al. 2022).",
+      "aRaw": "Crop residue burning in Punjab significantly contributes to particulate matter emissions, which adversely affect health, climate, and agricultural productivity, despite existing legal and technological measures and the availability of more profitable alternatives for farmers {{cite:S1#c1}}. Studies indicate that while many farmers are aware of the harmful effects of residue burning and some adopt sustainable crop residue management practices (SCRMPs), widespread burning persists due to systemic feedbacks, economic motivations, and social norms that reinforce the practice {{cite:S2#c1}}{{cite:S3#c1}}{{cite:S6#c1}}.",
+      "bRaw": "Crop residue burning in Indian Punjab emits particulate matter that severely impacts health, climate, and agricultural production, and despite legal and technological barriers and more profitable alternatives, it persists due to reinforcing system feedbacks and limited financial incentives for corporate stakeholders to change {{cite:S1#c1}}. Studies in Punjab and neighboring regions highlight that farmers often resort to burning due to economic motivations, lack of awareness of alternatives, and structural constraints such as narrow sowing windows and traditional equipment ownership, while adoption of no-burn practices is influenced by farm size, access to equipment, and social learning dynamics {{cite:S3",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 6,
+        "runText": "sustainable crop residue management practices scrmps",
+        "longestRunNames": 5,
+        "runTextNames": "effects of residue burning and",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 4,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 9,
+        "runText": "crop residue burning in indian punjab emits particulate matter",
+        "longestRunNames": 7,
+        "runTextNames": "crop residue burning in indian punjab emits particulate matter",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["severely"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "FIRST: Presents two clear, source-aligned sentences that synthesize findings across multiple papers (Downing on emissions and systemic feedbacks; Raza on awareness and SCRMP adoption; Bhardwaj on economic motivation; Gupta on social norms). Citations match the claims and the phrasing reads like an opening to a thesis rather than a plan. Some statements are still high-level but are appropriately grounded in the provided sources. \n\nSECOND: Accurate and concise, and correctly reflects Downing’s conclusions about emissions and system lock-in, but is weaker because it relies on a single source, repeats Downing’s language without integrating empirical findings from the other studies, and is more generic. ",
+      "reason2": "Both candidates are accurate and appropriately cite Downing et al. (2022) on health/climate impacts and systemic feedbacks, but the second is stronger: it integrates additional, relevant evidence (Raza et al. on farmer awareness and SCRMP impacts; Bhardwaj & Basera on economic motivation; Gupta et al. on social norms) and makes more specific, supported claims about drivers of persistence. The first is correct but brief and less informative."
+    },
+    {
+      "case": "fresh-punjab-stubble-titled",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Crop residue burning in Punjab contributes significantly to air pollution, health problems, and climate change, despite existing bans and incentive schemes aimed at curbing this practice (Krishnapriya et al. 2024). Farmers face constraints such as limited access to appropriate machinery and economic alternatives, which sustain the reliance on burning as a residue management method (Parihar et al. 2023)(Anand & Kaur 2024).",
+      "b": "Crop residue burning in Punjab remains a major environmental and health challenge, contributing to air pollution, greenhouse gas emissions, and adverse health outcomes for local populations (Parihar et al. 2023). Despite national bans and incentive schemes, many farmers continue to burn residue due to constraints such as limited access to machinery, economic viability concerns, and strong social norms favoring burning (Krishnapriya et al. 2024)(Gupta et al. 2026).",
+      "aRaw": "Crop residue burning in Punjab contributes significantly to air pollution, health problems, and climate change, despite existing bans and incentive schemes aimed at curbing this practice {{cite:S1#c1}}. Farmers face constraints such as limited access to appropriate machinery and economic alternatives, which sustain the reliance on burning as a residue management method {{cite:S2#c1}}{{cite:S4#c1}}.",
+      "bRaw": "Crop residue burning in Punjab remains a major environmental and health challenge, contributing to air pollution, greenhouse gas emissions, and adverse health outcomes for local populations {{cite:S2#c1}}. Despite national bans and incentive schemes, many farmers continue to burn residue due to constraints such as limited access to machinery, economic viability concerns, and strong social norms favoring burning {{cite:S1#c1}}{{cite:S5#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "crop residue burning in",
+        "longestRunNames": 4,
+        "runTextNames": "crop residue burning in",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "crop residue burning in",
+        "longestRunNames": 4,
+        "runTextNames": "crop residue burning in",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are concise, fact-based opening sentences that cite relevant sources and avoid future-tense planning. The first correctly cites Krishnapriya for bans/incentives and Parihar/Anand & Kaur for machinery constraints, but is slightly more generic. The second adds the important role of social norms and economic viability and cites Gupta et al. 2026 (which provides evidence on peer networks and norms) alongside Krishnapriya, making it more specific and better grounded in the sources.",
+      "reason2": "Both openings are concise, factually supported by the provided sources and appropriate as first sentences for Chapter 1. The first candidate is slightly stronger: it cites Gupta et al. (2026) to highlight social norms and explicitly references national bans and incentive schemes (Krishnapriya et al. 2024), adding a concrete behavioral explanation that aligns closely with the sources. The second is accurate and well-cited but slightly more generic and duplicates the same high-level points without the additional behavioral nuance from Gupta et al."
+    },
+    {
+      "case": "fresh-punjab-stubble-titled",
+      "sample": 1,
+      "verdict": "=",
+      "a": "Crop residue burning in Punjab significantly contributes to air pollution, health problems, and climate change, despite existing legal bans and technological alternatives aimed at reducing this practice (Krishnapriya et al. 2024). Farmers face structural barriers such as limited access to machinery and social norms favoring burning, which complicate the transition to sustainable crop residue management practices (Gupta et al. 2026).",
+      "b": "Crop residue burning in Punjab, India, remains a significant environmental challenge, contributing to severe air pollution, health problems, and climate change impacts despite national bans and incentive schemes (Krishnapriya et al. 2024). Studies show that while alternatives such as no-burn agriculture and sustainable crop residue management practices exist, their adoption is hindered by factors like limited access to machinery, social norms favoring burning, and economic constraints, especially among small-scale farmers (Gupta et al. 2026)(Anand & Kaur 2024)(Parihar et al. 2023).",
+      "aRaw": "Crop residue burning in Punjab significantly contributes to air pollution, health problems, and climate change, despite existing legal bans and technological alternatives aimed at reducing this practice {{cite:S1#c1}}. Farmers face structural barriers such as limited access to machinery and social norms favoring burning, which complicate the transition to sustainable crop residue management practices {{cite:S5#c1}}.",
+      "bRaw": "Crop residue burning in Punjab, India, remains a significant environmental challenge, contributing to severe air pollution, health problems, and climate change impacts despite national bans and incentive schemes {{cite:S1#c1}}. Studies show that while alternatives such as no-burn agriculture and sustainable crop residue management practices exist, their adoption is hindered by factors like limited access to machinery, social norms favoring burning, and economic constraints, especially among small-scale farmers {{cite:S5#c1}}{{cite:S4#c1}}{{cite:S2#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "sustainable crop residue management practices",
+        "longestRunNames": 4,
+        "runTextNames": "crop residue burning in",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "sustainable crop residue management practices",
+        "longestRunNames": 4,
+        "runTextNames": "crop residue burning in",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 4,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are accurate and correctly cite the literature, but the first is tighter and more specific: it makes two clear, source-supported claims (health/climate impacts and structural barriers including machinery access and social norms) without adding slightly more general or redundant phrasing. The second is accurate but more generic and adds an extra claim about economic constraints and small-scale farmers that, while supported by sources, makes the opening less crisp.",
+      "reason2": "Both candidates are appropriate opening sentences and correctly cite the literature, but the first is stronger: it is slightly more specific (mentions national bans and incentive schemes, and highlights heterogeneity by farm size and barriers like access to machinery and social norms) and integrates multiple sources in a way that aligns with what those sources actually report. The second is accurate but more generic and less specific about policy instruments and small-farmer constraints."
+    },
+    {
+      "case": "fresh-kenya-mobile-money-chapter1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "Mobile money services have been shown to facilitate financial inclusion and improve agricultural productivity by enabling smallholder farmers to access inputs and increase output, as evidenced in northern Ghana where adopters of mobile money applied more fertilizer and herbicides and achieved higher farm output than nonadopters (Abdul‐Rahaman & Abdulai 2021). However, despite high overall mobile money usage among farmers in Kenya, the use of mobile financial services specifically for agricultural purposes remains limited, suggesting that mobile money has yet to fully transform smallholder farming practices (Parlasca et al. 2021).",
+      "b": "Mobile money technology adoption among smallholder farmers in sub-Saharan Africa has been shown to positively influence agricultural input use and farm output, with adopters applying significantly more fertilizer and herbicides and achieving higher production levels than nonadopters in northern Ghana (Abdul‐Rahaman & Abdulai 2021). Despite widespread mobile money usage among farmers in Kenya, its application specifically for agricultural payments and credit remains low, indicating that mobile financial services have yet to fully transform smallholder farming in the region (Parlasca et al. 2021).",
+      "aRaw": "Mobile money services have been shown to facilitate financial inclusion and improve agricultural productivity by enabling smallholder farmers to access inputs and increase output, as evidenced in northern Ghana where adopters of mobile money applied more fertilizer and herbicides and achieved higher farm output than nonadopters {{cite:S6#c1}}. However, despite high overall mobile money usage among farmers in Kenya, the use of mobile financial services specifically for agricultural purposes remains limited, suggesting that mobile money has yet to fully transform smallholder farming practices {{cite:S5#c1}}.",
+      "bRaw": "Mobile money technology adoption among smallholder farmers in sub-Saharan Africa has been shown to positively influence agricultural input use and farm output, with adopters applying significantly more fertilizer and herbicides and achieving higher production levels than nonadopters in northern Ghana {{cite:S6#c1}}. Despite widespread mobile money usage among farmers in Kenya, its application specifically for agricultural payments and credit remains low, indicating that mobile financial services have yet to fully transform smallholder farming in the region {{cite:S5#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 1,
+        "sentences": [
+          "Mobile money technology adoption among smallholder farmers in sub-Saharan Africa has been shown to positively influence agricultural input use and farm output, with adopters applying significantly more fertilizer and herbicides and achieving higher production levels than nonadopters in northern Ghana (Abdul‐Rahaman & Abdulai 2021)."
+        ],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "the use of mobile",
+        "longestRunNames": 4,
+        "runTextNames": "the use of mobile",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "input use and farm output",
+        "longestRunNames": 5,
+        "runTextNames": "input use and farm output",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates provide accurate, concise opening sentences that draw correctly on the cited sources (Abdul‑Rahaman & Abdulai 2021 on increased input use and output; Parlasca et al. 2021 on high overall mobile‑money penetration but low agricultural use in Kenya). They read as finished thesis statements rather than plans, avoid generic filler, and are appropriately cautious. They could be improved by adding the specific effect sizes (e.g., 18% more fertilizer, 13% more herbicide, ~4% higher output, and >80% overall usage but ~15% agricultural use) to make them more technical and source‑specific, but as offered both are solid and essentially equivalent.",
+      "reason2": "Both candidates accurately cite relevant studies and would make acceptable opening sentences for Chapter 1, avoiding future‑tense plans and unsupported claims. They are concise and grounded in the sources (Abdul‑Rahaman & Abdulai 2021; Parlasca et al. 2021). The second is slightly better stylistically and avoids the minor overgeneralization in the first (which refers to ‘sub‑Saharan Africa’ while the cited empirical evidence on input and output effects comes from northern Ghana), so the second is scored higher."
+    },
+    {
+      "case": "fresh-kenya-mobile-money-chapter1",
+      "sample": 1,
+      "verdict": "B",
+      "a": "Mobile money technology facilitates financial inclusion by enabling smallholder farmers to digitize transactions and access agricultural inputs more efficiently, which in turn increases input use and farm output, as shown in a study of rice farmers in northern Ghana where adopters applied 18% more fertilizer and 13% more herbicides, resulting in a 4% increase in output (Abdul‐Rahaman & Abdulai 2021).",
+      "b": "Mobile money technology has been shown to positively influence agricultural input use and farm output among smallholder farmers, with adopters applying significantly more fertilizer and herbicides and achieving higher output than nonadopters in northern Ghana (Abdul‐Rahaman & Abdulai 2021). Despite high overall mobile money usage among farmers in Kenya, its use specifically for agricultural payments and loans remains low, suggesting that mobile financial services have not yet transformed smallholder farming in practice (Parlasca et al. 2021).",
+      "aRaw": "Mobile money technology facilitates financial inclusion by enabling smallholder farmers to digitize transactions and access agricultural inputs more efficiently, which in turn increases input use and farm output, as shown in a study of rice farmers in northern Ghana where adopters applied 18% more fertilizer and 13% more herbicides, resulting in a 4% increase in output {{cite:S6#c1}}. However, despite widespread mobile money usage among farmers in Kenya, its use for agriculture-related payments and loans remains limited, indicating that mobile financial services have not yet fully transformed smallholder farming practices {{cite:S5#",
+      "bRaw": "Mobile money technology has been shown to positively influence agricultural input use and farm output among smallholder farmers, with adopters applying significantly more fertilizer and herbicides and achieving higher output than nonadopters in northern Ghana {{cite:S6#c1}}. Despite high overall mobile money usage among farmers in Kenya, its use specifically for agricultural payments and loans remains low, suggesting that mobile financial services have not yet transformed smallholder farming in practice {{cite:S5#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 1,
+        "sentences": [
+          "Mobile money technology has been shown to positively influence agricultural input use and farm output among smallholder farmers, with adopters applying significantly more fertilizer and herbicides and achieving higher output than nonadopters in northern Ghana (Abdul‐Rahaman & Abdulai 2021)."
+        ],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "input use and farm output",
+        "longestRunNames": 5,
+        "runTextNames": "input use and farm output",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "input use and farm output",
+        "longestRunNames": 5,
+        "runTextNames": "input use and farm output",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates cite the sources accurately and read as finished sentences, but the second is stronger for this Kenya-focused thesis: it combines specific empirical findings from Ghana (Abdul‑Rahaman & Abdulai 2021) with Kenya-specific evidence showing limited agricultural use of mobile money (Parlasca et al. 2021), giving both supportive and contextualizing information rather than a single, unqualified claim.",
+      "reason2": "First candidate provides a concise, accurate synthesis of two relevant sources and correctly characterises both the positive measured impacts from Ghana (Abdul‑Rahaman & Abdulai 2021) and the limited use of MFS for agricultural payments and loans in Kenya (Parlasca et al. 2021). It reads like finished thesis prose and situates the Kenyan context. The second candidate gives precise quantitative results from Abdul‑Rahaman & Abdulai (18% more fertilizer, 13% more herbicides, 4% output) which is good, but it is narrower in scope (omits the Kenyan evidence that tempers generalisation) and is slightly more generic in framing the mechanism, so it is marginally weaker for this chapter opening."
+    },
+    {
+      "case": "fresh-kenya-mobile-money-titled",
+      "sample": 0,
+      "verdict": "=",
+      "a": "The rapid expansion of mobile phones in rural Africa has sparked interest in mobile financial services (MFS) such as mobile money and mobile banking, which are seen as potential tools to improve agricultural finance for smallholders who are often excluded from traditional banking. However, despite high mobile money usage among farmers, the actual application of these services for agriculture-related payments and investments remains limited, with less than 15% using mobile money for agricultural payments and under 1% accessing mobile loans for farming purposes in Kenya (Parlasca et al. 2021).",
+      "b": "The recent proliferation of mobile phones in rural Africa has led to increased interest in mobile financial services (MFS), such as mobile money and mobile banking, which are often seen as promising tools to improve agricultural finance among smallholders who are typically underserved by traditional banks. However, empirical evidence from Kenya shows that while more than 80% of farmers use mobile money, only 15% use it for agriculture-related payments, and less than 1% use mobile loans for agricultural investments, indicating that MFS have not yet had a transformative impact on smallholder farming (Parlasca et al. 2021).",
+      "aRaw": "The rapid expansion of mobile phones in rural Africa has sparked interest in mobile financial services (MFS) such as mobile money and mobile banking, which are seen as potential tools to improve agricultural finance for smallholders who are often excluded from traditional banking. However, despite high mobile money usage among farmers, the actual application of these services for agriculture-related payments and investments remains limited, with less than 15% using mobile money for agricultural payments and under 1% accessing mobile loans for farming purposes in Kenya {{cite:S1#c1}}.",
+      "bRaw": "The recent proliferation of mobile phones in rural Africa has led to increased interest in mobile financial services (MFS), such as mobile money and mobile banking, which are often seen as promising tools to improve agricultural finance among smallholders who are typically underserved by traditional banks. However, empirical evidence from Kenya shows that while more than 80% of farmers use mobile money, only 15% use it for agriculture-related payments, and less than 1% use mobile loans for agricultural investments, indicating that MFS have not yet had a transformative impact on smallholder farming {{cite:S1#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 13,
+        "runText": "interest in mobile financial services mfs such as mobile money and mobile banking",
+        "longestRunNames": 9,
+        "runTextNames": "interest in mobile financial services mfs such as mobile money and mobile banking",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 16,
+        "runText": "led to increased interest in mobile financial services mfs such as mobile money and mobile banking",
+        "longestRunNames": 12,
+        "runTextNames": "led to increased interest in mobile financial services mfs such as mobile money and mobile banking",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates provide specific, correctly cited statistics from Parlasca et al. (2021), are concise finished-sentence openings (not plans), and avoid generic filler. They differ only in minor wording; neither adds unsupported claims. Both meet the criteria for a strong opening sentence. ",
+      "reason2": "Both candidates provide a concise, correctly cited opening that draws directly from Parlasca et al. (2021). The first is slightly better because it includes an additional precise statistic (»80% use mobile money) alongside the agriculture-specific usage rates, giving a more informative and technical opening. The second is accurate and well-cited but is marginally less informative."
+    },
+    {
+      "case": "fresh-kenya-mobile-money-titled",
+      "sample": 1,
+      "verdict": "=",
+      "a": "The rapid spread of mobile phones in rural Africa has sparked interest in mobile financial services (MFS) such as mobile money and banking, which are seen as potential tools to improve agricultural finance for smallholders who often lack access to traditional banking. However, despite high overall mobile money use among farmers, the adoption of MFS specifically for agricultural purposes remains low, with less than 15% using mobile payments for agriculture and under 1% using mobile loans for agricultural investments in Kenya, indicating limited transformative impact on smallholder farming (Parlasca et al. 2021).",
+      "b": "Mobile money usage among smallholder farmers in Kenya is widespread, with over 80% of farmers using mobile money services, yet only about 15% utilize these services for agriculture-related payments, and less than 1% use mobile loans for agricultural investments, indicating limited agricultural application despite high general adoption (Parlasca et al. 2021).",
+      "aRaw": "The rapid spread of mobile phones in rural Africa has sparked interest in mobile financial services (MFS) such as mobile money and banking, which are seen as potential tools to improve agricultural finance for smallholders who often lack access to traditional banking. However, despite high overall mobile money use among farmers, the adoption of MFS specifically for agricultural purposes remains low, with less than 15% using mobile payments for agriculture and under 1% using mobile loans for agricultural investments in Kenya, indicating limited transformative impact on smallholder farming {{cite:S1#c1}}.",
+      "bRaw": "Mobile money usage among smallholder farmers in Kenya is widespread, with over 80% of farmers using mobile money services, yet only about 15% utilize these services for agriculture-related payments, and less than 1% use mobile loans for agricultural investments, indicating limited agricultural application despite high general adoption {{cite:S1#c1}}. Factors such as education, farmer-based organization membership, access to credit, and location significantly influence the adoption of mobile money technology, which in turn positively impacts input use and farm output, as shown in studies of smallholder farmers in Ghana {{cite:S2#c",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "aMeasures": {
+        "longestRun": 11,
+        "runText": "interest in mobile financial services mfs such as mobile money and",
+        "longestRunNames": 7,
+        "runTextNames": "interest in mobile financial services mfs such as mobile money and",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "mobile loans for agricultural investments",
+        "longestRunNames": 5,
+        "runTextNames": "mobile loans for agricultural investments",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately cite Parlasca et al. (2021) and report the key, specific findings (80%+ mobile money use, ~15% use for agricultural payments, <1% use of mobile loans for agricultural investments). The first candidate is slightly stronger because it situates those facts in a brief interpretive sentence about MFS as a potential tool for agricultural finance, making the opening read more like a finished thesis paragraph rather than a standalone statistic. Neither contains unsupported claims or filler, and both match the source.",
+      "reason2": "Both candidates correctly cite Parlasca et al. (2021) and report the key statistics (≈80% mobile money use, ~15% agriculture payments, <1% agricultural loans). The first candidate is tighter, technical, and reads like a finished opening sentence that directly states empirically supported findings. The second candidate adds generic context about MFS interest and repeats similar claims in a more discursive way, making it less concise and slightly more generic; it still accurately cites the source but is weaker stylistically and contains more filler."
+    }
+  ]
+}
