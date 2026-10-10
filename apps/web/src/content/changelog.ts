@@ -26,18 +26,11 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
   {
     version: null,
     date: '2026-10-10',
-    title: 'An AI use statement written from your own record',
+    title: 'Writing that reads more naturally, honest paper search, and an AI use statement',
     changes: [
       'Editor ⋯ → AI use statement writes a first-person statement of how you used Thesis Copilot on this thesis: the features you actually used, how much of the text began as AI text you accepted and how much of that you have since edited, how your sources were added, and the dates. Every number comes from what the product recorded; where the record cannot tell, the statement says so.',
       'Edit it freely, add a per-chapter table, copy it, or insert it as an ordinary last chapter you can change or delete. English and Hindi.',
       'The export dialog can add it as an appendix to the whole thesis (off unless you tick it). Writing the statement uses no allowance.',
-    ],
-  },
-  {
-    version: null,
-    date: '2026-10-10',
-    title: 'No more dashes in what the assistant writes',
-    changes: [
       'Suggestions, drafts, chapter builds, edit actions, chat answers and revisions no longer come with dashes ("—") as punctuation: an aside is set off with commas or brackets, a list follows a colon, two clauses meet at a semicolon. Only the punctuation changes; the words, the figures and the citations stay exactly where they were.',
       'Your own dashes are yours: an edit or a tone rewrite of text you wrote with dashes keeps them, and proofreading never suggests one.',
       'Number ranges (2015–2020), hyphenated words, minus signs, quotations, equations, code and tables are left as they are.',
