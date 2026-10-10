@@ -1,3 +1,16 @@
+export {
+  AI_STATEMENT_FEATURES,
+  type AiStatementAppendix,
+  type AiStatementChapter,
+  type AiStatementFacts,
+  type AiStatementFeature,
+  type AiStatementTable,
+  type AiStatementText,
+  aiStatementAppendixSchema,
+  aiStatementTableSchema,
+  aiStatementTextSchema,
+  emptyAiStatementFeatures,
+} from './ai-statement.js';
 export * from './chapter-build.js';
 export {
   CHART_LIMITS,

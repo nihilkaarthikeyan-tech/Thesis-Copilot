@@ -26,6 +26,7 @@ import { NotFoundError } from '../../common/errors.js';
 import { aiCostMicroInr, capExceeded } from '../../common/metrics.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import { PROOFREAD_RUN_KIND } from '../documents/ai-statement.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { type CheckRange, sentencesInRange } from './check-range.js';
 
@@ -177,6 +178,21 @@ export class ProofreadService {
     }
     if (refused > 0)
       this.logger.log({ chapterId, refused }, 'proofread suggestions refused as rewrites');
+    // ADR-0148: proofreading shares the COMMAND log with edit commands, so the AI use statement
+    // can only name it if a run leaves its own mark — with the calls it made, which the statement
+    // takes back out of the edit count. Not a model call; must never fail the run.
+    await this.prisma.auditEvent
+      .create({
+        data: {
+          kind: PROOFREAD_RUN_KIND,
+          userId: user.id,
+          documentId: chapter.documentId,
+          detail: { chapterId, calls: served, checkedWords, corrections: corrections.length },
+        },
+      })
+      .catch((error: unknown) =>
+        this.logger.warn({ err: error, chapterId }, 'proofread run was not recorded'),
+      );
     return { corrections, checkedWords, totalWords, refused, nextSentence };
   }
 

@@ -6,6 +6,7 @@ import { AssistModule } from '../assist/assist.module.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
+import { AiStatementService } from './ai-statement.service.js';
 import { ClaimsService } from './claims.service.js';
 import { ClaimsDocumentService } from './claims-document.service.js';
 import { DocumentArchive } from './document-archive.service.js';
@@ -33,6 +34,7 @@ import { SetupCardService } from './setup-card.service.js';
     ClaimsDocumentService,
     RedisService,
     SetupCardService,
+    AiStatementService,
   ],
 })
 export class DocumentsModule {}

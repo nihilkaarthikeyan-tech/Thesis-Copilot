@@ -122,6 +122,7 @@ import { SetupCard } from '../onboarding/SetupCard';
 import { applyFontStyle, ThemeToggle } from '../theme';
 import { UsageMenu } from '../UsageMenu';
 import { Kbd } from '../ui/primitives';
+import { AiStatementDialog } from './AiStatementDialog';
 import { BlockMenu } from './BlockMenu';
 import { ChapterContents } from './ChapterContents';
 import { ChartDialog } from './ChartDialog';
@@ -533,6 +534,7 @@ function ChapterEditor({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [aiStatementOpen, setAiStatementOpen] = useState(false);
   /**
    * Below the widths where they fit beside the text, the chapter list and the tool panels open as
    * drawers over it. Before this they were simply hidden, and a student on a phone or a small
@@ -1532,6 +1534,18 @@ function ChapterEditor({
               >
                 {t('editor.history')}
               </button>
+              {/* ADR-0148: the statement a university asks for, from this thesis's own record. */}
+              <button
+                type="button"
+                data-testid="open-ai-statement"
+                className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setAiStatementOpen(true);
+                }}
+              >
+                {t('aiStatement.menu')}
+              </button>
               <button
                 type="button"
                 className="rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-sunk"
@@ -2293,6 +2307,9 @@ function ChapterEditor({
           }}
           onClose={() => setHistoryOpen(false)}
         />
+      ) : null}
+      {aiStatementOpen ? (
+        <AiStatementDialog open onClose={() => setAiStatementOpen(false)} documentId={doc.id} />
       ) : null}
 
       {feedbackOpen ? (

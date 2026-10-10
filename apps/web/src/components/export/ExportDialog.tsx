@@ -13,6 +13,7 @@
  */
 
 import {
+  type AiStatementFacts,
   type CitationMode,
   type ExportLayout,
   type FontStyle,
@@ -31,6 +32,8 @@ import {
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog } from '@/components/ui/dialog';
+import { useT } from '@/i18n/react';
+import { buildAiStatement, tableAsParagraphs } from '@/lib/ai-statement';
 import { ApiError, api } from '@/lib/api';
 import { templateName } from '@/lib/template-name';
 import { cn } from '@/lib/utils';
@@ -131,6 +134,10 @@ export function ExportDialog({
   const [needsReason, setNeedsReason] = useState(false);
   const [downloads, setDownloads] = useState<Download[]>([]);
   const [title, setTitle] = useState(documentTitle ?? '');
+  // ADR-0148: the AI use statement as an appendix. Off by default; built from the record when
+  // the file is, in the interface language, with the per-chapter table as lines.
+  const [aiStatement, setAiStatement] = useState(false);
+  const { t, language } = useT();
 
   // What the dialog needs, once it opens: the template, the font style, and a page of text.
   useEffect(() => {
@@ -201,6 +208,19 @@ export function ExportDialog({
         layout: choice,
         ...(format === 'docx' ? { citations } : {}),
       };
+      const appendix =
+        scope === 'thesis' && aiStatement
+          ? await api<AiStatementFacts>(`/documents/${documentId}/ai-statement`).then((facts) => {
+              const built = buildAiStatement(facts, language, { table: true });
+              return {
+                title: built.title,
+                paragraphs: [
+                  ...built.paragraphs,
+                  ...(built.table ? tableAsParagraphs(built.table) : []),
+                ],
+              };
+            })
+          : null;
       const result =
         scope === 'chapter' && chapter
           ? await api<Download>(`/documents/${documentId}/export`, {
@@ -212,6 +232,7 @@ export function ExportDialog({
               body: JSON.stringify({
                 ...body,
                 ...(format === 'pdf' && override.trim() ? { overrideReason: override.trim() } : {}),
+                ...(appendix ? { aiStatement: appendix } : {}),
               }),
             });
       setDownloads((prev) => [result, ...prev].slice(0, 5));
@@ -518,6 +539,22 @@ export function ExportDialog({
               <p className="border-t border-line p-3 text-xs text-muted">Loading…</p>
             )}
           </details>
+
+          {scope === 'thesis' ? (
+            <label className="flex min-w-0 items-start gap-2 text-[13px] text-ink">
+              <input
+                type="checkbox"
+                checked={aiStatement}
+                onChange={(e) => setAiStatement(e.target.checked)}
+                data-testid="export-ai-statement"
+                className="mt-0.5"
+              />
+              <span className="min-w-0">
+                {t('aiStatement.export')}
+                <span className="block text-xs text-muted">{t('aiStatement.exportHint')}</span>
+              </span>
+            </label>
+          ) : null}
 
           {scope === 'thesis' && layout ? (
             <div className="space-y-1 text-xs text-muted" data-testid="export-checks">

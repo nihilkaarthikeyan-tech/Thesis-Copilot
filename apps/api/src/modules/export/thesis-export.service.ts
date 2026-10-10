@@ -37,6 +37,7 @@ import {
   withoutPendingDrafts,
 } from '@tc/export';
 import {
+  type AiStatementText,
   applyLayout,
   type CitationMode,
   type ExportLayout,
@@ -309,6 +310,7 @@ export class ThesisExportService {
     overrideReason?: string,
     citations?: CitationMode,
     layoutChoice?: ExportLayout,
+    aiStatement?: AiStatementText,
   ): Promise<ThesisExportResult> {
     const document = await this.owned(user.id, documentId);
     const meta = (document.meta as Record<string, unknown> | null) ?? {};
@@ -333,12 +335,18 @@ export class ThesisExportService {
       : null;
     const spec = layout ? applyLayout(template, layout) : template;
     const comments = layout?.comments ? await this.openComments(documentId) : [];
-    const extras = layout
-      ? {
-          layout: { columns: layout.columns, pageNumbers: layout.pageNumbers },
-          ...(comments.length > 0 ? { comments } : {}),
-        }
-      : {};
+    const extras = {
+      ...(layout
+        ? {
+            layout: { columns: layout.columns, pageNumbers: layout.pageNumbers },
+            ...(comments.length > 0 ? { comments } : {}),
+          }
+        : {}),
+      // ADR-0148: the AI use statement the student edited, after the bibliography (D.3.1).
+      ...(aiStatement
+        ? { appendices: [{ title: aiStatement.title, paragraphs: aiStatement.paragraphs }] }
+        : {}),
+    };
 
     // FR-5.2: the bibliography and every label come from one citeproc pass over the whole
     // document, in the style the template demands rather than whatever the editor is showing.
