@@ -70,7 +70,10 @@ export default function PrivacyPage() {
         results as the page loads, inside your browser; it sends nothing until you press a button.
         Then it sends the paper&rsquo;s identifier (its DOI, arXiv id or PubMed id) to look it up
         and, when you choose <em>Save</em>, to add it — or, for a search result that has no
-        identifier, its title, authors and year as shown. It never contacts those sites itself.
+        identifier, its title, authors and year as shown. It never contacts those sites itself. From
+        version 0.3.1 it also keeps, in your browser only, the identifiers of the papers you saved
+        with those buttons, so a page you come back to shows them as saved; that list is never sent
+        anywhere.
       </p>
 
       <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">What we log</h2>

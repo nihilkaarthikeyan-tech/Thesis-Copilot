@@ -1,7 +1,7 @@
 /**
- * "Add to Thesis Copilot" inside the page — ADR-0125. The content script (`content.ts`) runs this
- * on the hosts in `hosts.ts` only: Google Scholar and PubMed results, PubMed and arXiv article
- * pages, arXiv listings and searches, MDPI articles.
+ * "Add to Thesis Copilot" inside the page — ADR-0125, ADR-0153. The content script (`content.ts`)
+ * runs this on the hosts in `hosts.ts` only: Google Scholar and PubMed results, PubMed and arXiv
+ * article pages, arXiv listings and searches, MDPI articles and MDPI search results.
  *
  * - **Where a button goes.** On an article page, beside the link to the article's own DOI (or
  *   under its title when the page shows no DOI link); on a results page, on every result. The
@@ -18,6 +18,8 @@
  *   the page's styles cannot reach in and its scripts cannot read the student's thesis titles;
  *   the button is an inline box that wraps like a word; the card is fixed, so it takes no room.
  *   Everything is written with `textContent`.
+ * - **What it remembers.** The identifiers of the papers its buttons saved, per thesis, in
+ *   `chrome.storage.local` only (`memory.ts`), so a page visited again marks them "Saved".
  */
 
 import {
@@ -29,6 +31,7 @@ import {
   saveRef,
 } from './card.js';
 import { itemFrom, type ListItem, type Site } from './lists.js';
+import { paperKeys, remember, SAVED_KEY, wasSaved } from './memory.js';
 import type {
   Collection,
   Preview,
@@ -50,6 +53,11 @@ export type PageFacts = {
   citedBy: number | null;
   /** The page links a PDF of it: Scholar's [PDF], arXiv's PDF link, a `citation_pdf_url` tag. */
   pdfOnPage: boolean;
+  /**
+   * Where the page itself says it is free to read: "Free in PubMed Central" (PubMed's PMCID link
+   * or "Free PMC article"), or a Creative Commons licence in the article's tags. Null: not stated.
+   */
+  access: string | null;
 };
 
 export type InpageItem = {
@@ -83,9 +91,15 @@ const visible = (element: Element): boolean => {
   return typeof check === 'function' ? check.call(element) : true;
 };
 
-/** The first visible link on the page to one of the article's own DOIs. */
+/**
+ * The visible link on the page to one of the article's own DOIs — the one that shows the DOI as
+ * its text when there is one ("DOI: 10.1038/…"), else the first. PubMed puts a publisher's
+ * full-text link to the same DOI (a logo, no text) in its side column first; a button there sat
+ * in a column too narrow for it (observed 2026-10-10).
+ */
 function doiLink(dois: readonly string[]): Element | null {
   if (dois.length === 0) return null;
+  let first: Element | null = null;
   for (const link of Array.from(document.querySelectorAll('a[href]'))) {
     let href = '';
     try {
@@ -94,9 +108,20 @@ function doiLink(dois: readonly string[]): Element | null {
       continue;
     }
     const doi = doiFromUrl(href)?.toLowerCase();
-    if (doi && dois.includes(doi) && visible(link)) return link;
+    if (!doi || !dois.includes(doi) || !visible(link)) continue;
+    if ((link.textContent ?? '').toLowerCase().includes(doi)) return link;
+    first ??= link;
   }
-  return null;
+  return first;
+}
+
+/** PubMed's article page names a free PubMed Central copy by its PMCID link. */
+function pmcOnPage(): boolean {
+  return Boolean(
+    document.querySelector(
+      '#full-view-identifiers a[href*="pmc.ncbi.nlm.nih.gov/articles/PMC"], #full-view-identifiers a[data-ga-action="PMCID"]',
+    ),
+  );
 }
 
 /** The page's heading that is the paper's title, when no DOI link is shown. */
@@ -124,12 +149,31 @@ function resultFacts(site: Site, node: Element): PageFacts {
     const pdf = Array.from(
       node.querySelectorAll('.gs_ggs a, .gs_or_ggsm a, h3.gs_rt .gs_ctc'),
     ).some((label) => /\[PDF\]/i.test(label.textContent ?? ''));
-    return { citedBy: scholarCitedBy(node), pdfOnPage: pdf };
+    return { citedBy: scholarCitedBy(node), pdfOnPage: pdf, access: null };
   }
   if (site === 'arxiv') {
-    return { citedBy: null, pdfOnPage: Boolean(node.querySelector('a[href*="/pdf/"]')) };
+    return {
+      citedBy: null,
+      pdfOnPage: Boolean(node.querySelector('a[href*="/pdf/"]')),
+      access: null,
+    };
   }
-  return { citedBy: null, pdfOnPage: false };
+  if (site === 'mdpi') {
+    // Each MDPI result has its PDF link (an icon) and its "Open Access" badge.
+    const open = Array.from(node.querySelectorAll('.article-icons, .label')).some((label) =>
+      /open access/i.test(label.textContent ?? ''),
+    );
+    return {
+      citedBy: null,
+      pdfOnPage: Boolean(node.querySelector('a.UD_Listings_ArticlePDF, a[href*="/pdf"]')),
+      access: open ? 'Open access (MDPI)' : null,
+    };
+  }
+  // PubMed: "Free PMC article." in the result's citation line.
+  const pmc = Array.from(node.querySelectorAll('.free-resources')).some((label) =>
+    /free pmc article/i.test(label.textContent ?? ''),
+  );
+  return { citedBy: null, pdfOnPage: false, access: pmc ? 'Free in PubMed Central' : null };
 }
 
 /** Where a result's button goes: in the row of links under it, as one more of them. */
@@ -148,6 +192,13 @@ function resultPlace(site: Site, node: Element): Pick<Spot, 'anchor' | 'where'> 
     const line =
       node.querySelector('.docsum-citation.full-citation') ?? node.querySelector('.docsum-content');
     return { anchor: line ?? node, where: 'append' };
+  }
+  if (site === 'mdpi') {
+    // After the result's own DOI link, in its "Journal 2025, 18(8), 1921; https://doi.org/…" line.
+    const doi = node.querySelector('a[href*="doi.org/10."]');
+    if (doi) return { anchor: doi, where: 'after' };
+    const title = node.querySelector('a.title-link');
+    return title ? { anchor: title, where: 'after' } : { anchor: node, where: 'append' };
   }
   // arXiv: a listing's <dt> (the id and its pdf/html links), or a search result's id line.
   const line = node.matches('dt') ? node : node.querySelector('p.list-title');
@@ -188,12 +239,16 @@ export function findSpots(url: string = location.href): Spot[] {
           origin: 'article',
           paper: article.paper,
           refs: article.refs,
-          facts: { citedBy: null, pdfOnPage: article.pdfOnPage },
+          facts: {
+            citedBy: null,
+            pdfOnPage: article.pdfOnPage,
+            access: article.licence ?? (pmcOnPage() ? 'Free in PubMed Central' : null),
+          },
         },
       },
     ];
   }
-  const listing = collectResultList(host, true);
+  const listing = collectResultList(host, true, new URL(url).pathname);
   if (!listing) return [];
   const spots: Spot[] = [];
   for (const raw of listing.items) {
@@ -505,6 +560,7 @@ const ORIGIN: Record<InpageItem['origin'], string> = {
   scholar: 'Google Scholar result',
   pubmed: 'PubMed result',
   arxiv: 'arXiv result',
+  mdpi: 'MDPI result',
 };
 
 const FOUND_IN: Record<Preview['kind'], string> = {
@@ -524,9 +580,25 @@ export function factRows(item: InpageItem, preview: Preview | null): Array<[stri
     rows.push(['Cited by', `${count(preview.citedBy)} (Crossref)`]);
   }
   if (preview?.openAccessVia === 'arXiv') rows.push(['Access', 'Open access on arXiv']);
-  if (preview?.openAccessVia === 'PubMed Central') rows.push(['Access', 'Free in PubMed Central']);
+  else if (preview?.openAccessVia === 'PubMed Central')
+    rows.push(['Access', 'Free in PubMed Central']);
+  else if (item.facts.access) rows.push(['Access', item.facts.access]);
   if (item.facts.pdfOnPage) rows.push(['PDF', 'Found on this page']);
   return rows;
+}
+
+/**
+ * What the saved card says about the PDF. A paper free on arXiv or in PubMed Central has its full
+ * text fetched by the library itself (seen 2026-10-10: both "Full text" within seconds), so the
+ * student is not sent to fetch it; any other PDF the page links is the student's to attach.
+ */
+export function pdfLine(item: InpageItem, preview: Preview | null): string | null {
+  const via =
+    preview?.openAccessVia ??
+    (item.facts.access === 'Free in PubMed Central' ? 'PubMed Central' : null);
+  if (via) return `Its free full text is fetched from ${via}.`;
+  if (!item.facts.pdfOnPage) return null;
+  return 'The PDF is not attached yet: open it and click the Thesis Copilot toolbar button, or use “Add a PDF” in the library.';
 }
 
 /**
@@ -786,9 +858,17 @@ export function createCard(deps: CardDeps): Card {
     const control = from;
     dispatch({ type: 'save-start' });
     void deps.storage.set({ lastDocumentId: job.documentId }).catch(() => undefined);
+    const saved = item;
+    const found = view.kind === 'ready' && view.lookup.state === 'found' ? view.lookup : null;
     const reply = await deps.ask<SaveOneResult>({ type: 'save-one', job });
     // The button says so even when the card was closed while it saved.
-    if (reply.ok && reply.value.status !== 'failed') control?.setState(reply.value.status);
+    if (reply.ok && reply.value.status !== 'failed') {
+      control?.setState(reply.value.status);
+      void rememberSaved(deps, job.documentId, [
+        ...paperKeys({ refs: saved.refs, doi: saved.paper.doi, title: saved.paper.title }),
+        ...(found ? paperKeys({ refs: [found.ref], doi: found.preview.doi }) : []),
+      ]);
+    }
     if (r !== run) return;
     dispatch({ type: 'save-done', reply });
     focusFid(view.kind === 'ready' && view.result?.sourceId ? 'open-source' : 'save');
@@ -912,10 +992,10 @@ export function createCard(deps: CardDeps): Card {
       }
       const named = ctx.collections.find((c) => c.id === ctx.collectionId);
       if (result.collection === 'added' && named) lines.push(`Filed in “${named.name}”.`);
-      if (current.facts.pdfOnPage && result.status === 'saved') {
-        lines.push(
-          'To attach the PDF from this site, open it and click the Thesis Copilot button.',
-        );
+      if (result.status === 'saved') {
+        const lookupState = v.lookup;
+        const pdf = pdfLine(current, lookupState.state === 'found' ? lookupState.preview : null);
+        if (pdf) lines.push(pdf);
       }
       const nodes: Node[] = [
         result.status === 'saved'
@@ -1065,6 +1145,39 @@ export function createCard(deps: CardDeps): Card {
   return api;
 }
 
+// ---- What this add-on saved before (memory.ts) ------------------------------------------------------
+
+async function rememberSaved(deps: CardDeps, documentId: string, keys: string[]): Promise<void> {
+  if (!keys.length) return;
+  try {
+    const stored = await deps.storage.get([SAVED_KEY]);
+    await deps.storage.set({ [SAVED_KEY]: remember(stored[SAVED_KEY], documentId, keys) });
+  } catch {
+    // Only the button's label on a later visit depends on it.
+  }
+}
+
+/** Buttons for papers already saved into the current thesis from this browser say so. */
+async function markSaved(
+  deps: CardDeps,
+  mounted: Array<{ item: InpageItem; control: ButtonControl }>,
+): Promise<void> {
+  let stored: Record<string, unknown>;
+  try {
+    stored = await deps.storage.get(['lastDocumentId', SAVED_KEY]);
+  } catch {
+    return;
+  }
+  const documentId = stored.lastDocumentId;
+  if (typeof documentId !== 'string') return;
+  for (const { item, control } of mounted) {
+    const keys = paperKeys({ refs: item.refs, doi: item.paper.doi, title: item.paper.title });
+    if (control.button.dataset.state === 'idle' && wasSaved(stored[SAVED_KEY], documentId, keys)) {
+      control.setState('saved');
+    }
+  }
+}
+
 // ---- Running on the page ---------------------------------------------------------------------------
 
 /**
@@ -1075,14 +1188,15 @@ export function startInpage(deps: CardDeps, url: () => string = () => location.h
   const card = createCard(deps);
   const done = new WeakSet<Element>();
   const scan = (): number => {
-    let added = 0;
+    const mounted: Array<{ item: InpageItem; control: ButtonControl }> = [];
     for (const spot of findSpots(url())) {
       if (done.has(spot.node)) continue;
       done.add(spot.node);
-      mountButton(spot, (item, control) => card.open(item, control), deps.mode);
-      added += 1;
+      const control = mountButton(spot, (item, c) => card.open(item, c), deps.mode);
+      mounted.push({ item: spot.item, control });
     }
-    return added;
+    if (mounted.length) void markSaved(deps, mounted);
+    return mounted.length;
   };
   scan();
   let timer: ReturnType<typeof setTimeout> | undefined;

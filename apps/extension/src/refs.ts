@@ -20,6 +20,8 @@ import {
   cleanDoi,
   cleanPmid,
   clip,
+  doiCandidates,
+  openLicence,
   type PageMeta,
   type Paper,
   paperFrom,
@@ -59,6 +61,19 @@ export function doiRef(value: string | null | undefined): PaperRef | null {
 }
 
 /**
+ * The DOI's ref, then the refs of the shorter DOIs an address may really mean (`doiCandidates`):
+ * a Scholar result linking `…/doi/10.1108/IJESM-05-2025-0048/1343209` is looked up as that, then
+ * as `10.1108/IJESM-05-2025-0048`, and the first one the library has a record for is saved.
+ */
+export function doiRefs(value: string | null | undefined): PaperRef[] {
+  const first = doiRef(value);
+  if (first?.kind !== 'doi') return first ? [first] : [];
+  return doiCandidates(first.id)
+    .map((doi) => doiRef(doi))
+    .filter((ref): ref is PaperRef => Boolean(ref));
+}
+
+/**
  * A ref from somewhere untrusted — a content script's message — or null. It is accepted only if
  * it is exactly what the cleaners would make of it, so nothing but an identifier gets through.
  */
@@ -95,7 +110,7 @@ const unique = (refs: Array<PaperRef | null>): PaperRef[] => {
 
 /** The refs of a result on a results page, strongest first. Empty: it is saved by its text. */
 export function refsOfItem(item: Pick<ListItem, 'doi' | 'pmid'>): PaperRef[] {
-  return unique([doiRef(item.doi), item.pmid ? pmidRef(item.pmid) : null]);
+  return unique([...doiRefs(item.doi), item.pmid ? pmidRef(item.pmid) : null]);
 }
 
 function pmidRef(value: string): PaperRef | null {
@@ -115,6 +130,8 @@ export type ArticleOnPage = {
   dois: string[];
   /** The page names a PDF of the article (`citation_pdf_url`). Never fetched by the add-on. */
   pdfOnPage: boolean;
+  /** "Open access (CC BY 4.0)" when the page's tags give it a Creative Commons licence. */
+  licence: string | null;
 };
 
 /**
@@ -134,7 +151,7 @@ export function articleOnPage(page: PageMeta): ArticleOnPage | null {
   const tagged = paperFrom(page);
   const refs = unique([
     arxivId ? { kind: 'arxiv', id: arxivId } : null,
-    doiRef(tagged?.doi),
+    ...doiRefs(tagged?.doi),
     pmid ? { kind: 'pmid', id: pmid } : null,
   ]);
   if (refs.length === 0) return null;
@@ -172,7 +189,13 @@ export function articleOnPage(page: PageMeta): ArticleOnPage | null {
     ),
   ];
   const pdf = metaValue(page, 'citation_pdf_url');
-  return { paper, refs, dois, pdfOnPage: Boolean(pdf && /^https?:\/\//i.test(pdf)) };
+  return {
+    paper,
+    refs,
+    dois,
+    pdfOnPage: Boolean(pdf && /^https?:\/\//i.test(pdf)),
+    licence: openLicence(page),
+  };
 }
 
 const onPubmed = (url: string): boolean => {
