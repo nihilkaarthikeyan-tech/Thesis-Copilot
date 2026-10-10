@@ -159,3 +159,37 @@ the third cited. Screenshots of the real questions and real section headings in 
 Spent by the second agent's real-model runs: ₹12.51 in all (`AiCallLog` since the branch's
 stack started) — ₹8.24 before the fix, twelve outline plans at ₹0.67 each being most of it,
 ₹4.27 for the measurement and the screenshots after.
+
+**Found on 2026-10-10 evening (third agent):**
+- **Standard chapters kept the old plan's section headings.** On real models the A.9 plan lands
+  while the opener's suggestion is still showing, so `SectionGuide` waits for the suggestion to
+  finish before laying out the planned sections, listening for the next transaction. Pressing
+  **Standard chapters** (or **No headings**) replaced the chapter with `setContent`; that
+  transaction ended the suggestion, and the waiting listener laid the *old* plan's four headings
+  ("Problem statement", "Objectives and research questions", …) into the new chapter.
+  `setup-card` → "Standard chapters replace the plan" failed on it (`h2` count 4, expected 0); the
+  mock never showed it because the mock's plan lands while the ghost is idle. The card's
+  replacement now carries `CHAPTER_REPLACED_META`, and a waiting layout that sees it drops itself.
+  2 of 2 passes after the fix, on real models.
+- **Every model call has a time limit now, in the adapter.** Sixteen call sites (outline scope,
+  style profile, cite, cite-role, proofread, comments, viva, coherence, cross-paper, draft-section
+  among them) passed no signal, so a call OpenAI never answered held its request or job open for
+  good. `callSignal` (`packages/ai/src/providers/call-limit.ts`) joins the caller's signal, if
+  any, with a 240 s ceiling (`MODEL_CALL_CEILING_MS`) on every `streamText` / `generateObject` in
+  both adapters. Every explicit limit in the product is shorter (180 s the longest), so it decides
+  nothing a caller already decided. The OpenAI strict-mode rules needed no change on the setup
+  path: the A.9 request schema is a single object, the proposal turn streams text.
+- The three specs on this branch's own real-model stack (API :3031, web :3030, worker on Redis
+  db 7, mail blanked): **11 of 12 passed**, the one failure the fault above; after the fix it
+  passed twice. No `toBeLessThan` or heading-in-view failure reproduced.
+- **Not measured: time to the first cited suggestion.** `MEASURE=1 _measure/first-session`
+  (Start writing now) reached the editor at 3.6 s and an uncited opener at 30.4 s, then gave up at
+  480 s with 0 papers. Both OpenAlex budgets were spent: the key had been commented out of
+  `.env`, and the **keyless** pool answered `429` with `X-RateLimit-Limit-USD: 0.1`,
+  `X-RateLimit-Remaining-USD: 0`, reset 11.5 h away. arXiv and PubMed returned works and none
+  were kept for the topic. So the 19.3 s above remains the last real measurement against
+  ADR-0070's ~14 s; a fresh run needs a funded key or tomorrow's pool (`docs/PENDING.md`). No new
+  `real-*.png` was taken: the earlier `real-3-aim.png`, `real-4-chapters.png`,
+  `real-360-aim.png` and `real-360-chapters.png` stand, and a cited screenshot was not possible.
+- Spent by the third agent: ₹15.42 (`AiCallLog`, e2e users since 12:10 UTC): OUTLINE ₹7.22
+  (11 plans), EMBED ₹5.35, ASSIST ₹1.95, PROPOSAL ₹0.90.

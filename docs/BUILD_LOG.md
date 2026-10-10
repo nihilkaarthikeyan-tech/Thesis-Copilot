@@ -6437,3 +6437,20 @@ Seen and left: the opener is asked for twice after Skip, a second apart, and the
 the first (`ASSIST ok=false "This operation was aborted"`, one per new thesis) — a part-call
 spent and a failed call in the admin's count. Spent: ₹12.51 in all — ₹8.24 before the fix
 (twelve outline plans at ₹0.67 each), ₹4.27 for the measurement and the screenshots after.
+
+### The setup card on real models, third pass (2026-10-10 evening)
+
+Three specs on real models (API :3031, web :3030, Redis db 7, mail blanked): 11 of 12. The
+failure was real and mock-invisible: **Standard chapters put the old plan's section headings
+back.** The A.9 plan landed while the opener's suggestion was showing, `SectionGuide` waited for
+the next transaction to lay out the sections, and the card's own `setContent` was that
+transaction. The replacement is now marked (`CHAPTER_REPLACED_META`) and a waiting layout drops
+itself; 2/2 after. Separately, sixteen model call sites passed no signal; both adapters now add
+a 240 s ceiling to every call (`callSignal`, `packages/ai/src/providers/call-limit.ts`), longer
+than any explicit limit.
+
+The first-session measurement could not reach a cited sentence: OpenAlex's **keyless** pool is
+$0.10 a day per address and was spent (`X-RateLimit-Remaining-USD: 0`), the key was out of
+`.env`, and arXiv/PubMed kept nothing for the topic: 0 papers in eight minutes, an uncited
+opener at 30.4 s. That is a production risk too (one key, one address for every student):
+`docs/PENDING.md`. Spent: ₹15.42.

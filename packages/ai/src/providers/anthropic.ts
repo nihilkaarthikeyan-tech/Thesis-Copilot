@@ -19,7 +19,6 @@ import {
   streamText,
 } from 'ai';
 import type { z } from 'zod';
-import { callSignal } from './call-limit.js';
 import {
   type EmbeddingProvider,
   type LlmChunk,
@@ -32,6 +31,7 @@ import {
   type Tier,
   type TokenUsage,
 } from '../types.js';
+import { callSignal } from './call-limit.js';
 
 export type AnthropicProviderOptions = {
   readonly apiKey: string;
