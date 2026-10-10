@@ -34,7 +34,9 @@ say what *this* student did. The FR-8.6 usage log is a table of numbers, not a s
    puts it on the clipboard; "Insert as an appendix" sends the *edited* text to
    `POST /documents/:id/ai-statement/appendix`, which makes it an ordinary chapter at the end of
    the outline (the claims-document pattern, ADR-0123) — editable, deletable, nothing special. The
-   optional per-chapter table becomes a real editor table.
+   optional per-chapter table becomes a real editor table. A chapter carrying the statement's
+   scope note is left out of the word counts, so a regenerated statement does not count its own
+   earlier copy as the student's writing.
 4. **Export.** The export dialog's "Add my AI use statement as an appendix" (whole thesis, off by
    default) builds the statement from the record at export time and sends it as `aiStatement`;
    `thesisExportBody` accepts it and `exportThesis` passes it through the existing `appendices`

@@ -84,7 +84,7 @@ export class AiStatementService {
         createdAt: true,
         chapters: {
           orderBy: { order: 'asc' },
-          select: { id: true, title: true, order: true, wordCounts: true },
+          select: { id: true, title: true, order: true, wordCounts: true, scopeNote: true },
         },
       },
     });
@@ -179,7 +179,10 @@ export class AiStatementService {
       else features.chapterBuild += row._count._all;
     }
 
-    const chapters: AiStatementChapter[] = document.chapters.map((chapter) => {
+    // A statement already inserted as an appendix is not part of the thesis it describes: counted,
+    // its own words would raise the "my own writing" share every time it was regenerated.
+    const thesisChapters = document.chapters.filter((chapter) => chapter.scopeNote !== SCOPE_NOTE);
+    const chapters: AiStatementChapter[] = thesisChapters.map((chapter) => {
       const c = countsOf(chapter.wordCounts);
       const aiUnedited = (c.ASSIST ?? 0) + (c.DRAFT ?? 0) + (c.COMMAND ?? 0);
       const aiEdited = c.HUMAN_EDITED ?? 0;

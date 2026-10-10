@@ -46,11 +46,19 @@ test('AI use statement: open, edit, insert as an appendix, export option, every 
       content: {
         type: 'doc',
         content: [
-          { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Introduction' }] },
+          {
+            type: 'heading',
+            attrs: { level: 1 },
+            content: [{ type: 'text', text: 'Introduction' }],
+          },
           {
             type: 'paragraph',
             content: [
-              { type: 'text', text: 'Night-time heat keeps outdoor workers from recovering', marks: mark('HUMAN') },
+              {
+                type: 'text',
+                text: 'Night-time heat keeps outdoor workers from recovering',
+                marks: mark('HUMAN'),
+              },
               { type: 'text', text: ' across the hottest months', marks: mark('ASSIST') },
               { type: 'text', text: ' of each year.', marks: mark('HUMAN_EDITED') },
             ],
@@ -73,8 +81,11 @@ test('AI use statement: open, edit, insert as an appendix, export option, every 
   const text = dialog.getByTestId('ai-statement-text');
   await expect(text).toHaveValue(/Thesis Copilot/, { timeout: 20_000 });
   const statement = await text.inputValue();
-  // Fourteen words saved, seven of them from accepted AI text, three since edited.
-  expect(statement).toContain('Of the 14 words in the thesis as it stands, 7 (50%) began as AI text');
+  // Fifteen words saved (the heading counts), seven of them from accepted AI text (four as
+  // accepted, three since edited).
+  expect(statement).toContain(
+    'Of the 15 words in the thesis as it stands, 7 (46.7%) began as AI text',
+  );
   expect(statement).toContain('edited at least 3');
   expect(statement).toContain('No sources were added');
   // Nothing was recorded against a feature the student did not use.
@@ -86,18 +97,24 @@ test('AI use statement: open, edit, insert as an appendix, export option, every 
   await dialog.getByTestId('ai-statement-table').check();
   const preview = dialog.getByTestId('ai-statement-table-preview');
   await expect(preview).toBeVisible();
-  await expect(preview).toContainText('Introduction');
+  await expect(preview).toContainText('Chapter 1');
   await text.fill(`${statement}\n\nI confirm the above.`);
 
   // Insert as an appendix: an ordinary last chapter, opened in the editor.
   await dialog.getByTestId('ai-statement-insert').click();
-  await page.waitForURL((url) => url.pathname.includes('/write/') && !url.pathname.endsWith(doc.firstChapterId), {
-    timeout: 30_000,
-  });
+  await page.waitForURL(
+    (url) => url.pathname.includes('/write/') && !url.pathname.endsWith(doc.firstChapterId),
+    {
+      timeout: 30_000,
+    },
+  );
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.thesis-editor h1').first()).toHaveText('Statement on the use of AI tools', {
-    timeout: 30_000,
-  });
+  await expect(page.locator('.thesis-editor h1').first()).toHaveText(
+    'Statement on the use of AI tools',
+    {
+      timeout: 30_000,
+    },
+  );
   await expect(page.locator('.thesis-editor')).toContainText('I confirm the above.');
   await expect(page.locator('.thesis-editor table')).toBeVisible();
   const chapters = (await (
@@ -132,6 +149,10 @@ test('AI use statement: open, edit, insert as an appendix, export option, every 
     });
     await open.getByTestId('ai-statement-table').check();
     await expect(open.getByTestId('ai-statement-table-preview')).toBeVisible();
+    // The statement inserted above is not counted as part of the thesis it describes.
+    await expect(open.getByTestId('ai-statement-table-preview')).not.toContainText(
+      'Statement on the use',
+    );
     await settle(page);
     const box = await open.boundingBox();
     expect(box && box.x >= 0 && box.x + box.width <= width, `${width} dialog inside`).toBe(true);

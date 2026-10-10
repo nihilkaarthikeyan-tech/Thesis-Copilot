@@ -358,6 +358,12 @@ describe('POST /documents/:id/ai-statement/appendix', () => {
     expect(heading?.content[0]?.text).toBe('Statement on the use of AI tools (2)');
   });
 
+  it('an inserted statement is not counted as part of the thesis it describes', async () => {
+    const facts = (await (await h.api(`/documents/${doc.id}/ai-statement`)).json()) as Facts;
+    expect(facts.chapters).toHaveLength(1);
+    expect(facts.words).toEqual({ total: 18, aiUnedited: 7, aiEdited: 6, own: 5 });
+  });
+
   it('refuses an empty statement', async () => {
     const res = await h.api(`/documents/${doc.id}/ai-statement/appendix`, {
       method: 'POST',

@@ -6407,3 +6407,33 @@ was committed before the runs (ADR-0147 §4). ₹17.28 spent, no refusal, no fai
 
 Lesson for the next round: a negative rule that names the word does not stop the mini writing
 it; say what to write instead. The citation-per-sentence rule is the part that worked.
+
+## AI use statement (2026-10-10, ADR-0148)
+
+A first-person statement of how the student used the product on this thesis, written in code from
+stored rows: no model call, no allowance. `GET /documents/:id/ai-statement`
+(`AiStatementService.facts`) counts suggestions shown and kept, drafts delivered and accepted,
+edit commands, proofreading runs, citations, chat, deep research, searches, planning, checks,
+chapter and literature-review builds, examiner reviews and viva (`ok` calls only, per document),
+the words by provenance per chapter, the library (total, auto-added, cited) and the date range.
+`apps/web/src/lib/ai-statement.ts` turns the facts into catalogue sentences (`aiStatement.*`,
+English and Hindi); a feature with a zero count is not mentioned, and the statement says plainly
+what the record cannot tell (pasted text counts as own writing; "edited" is a floor). It never
+speaks of detection, and the unit test refuses the words. Opened from ⋯ → AI use statement:
+editable textarea, optional per-chapter table, Copy, and "Insert as an appendix"
+(`POST /documents/:id/ai-statement/appendix`, an ordinary last chapter, the claims-document
+pattern). The export dialog's "Add my AI use statement as an appendix" (whole thesis, off by
+default) passes it through the existing `appendices` input after the bibliography. Proofreading
+now writes a `PROOFREAD_RUN` audit event with its call count, so the statement can name it and
+take those calls out of the edit count.
+
+Found while proving it in the browser: an inserted statement was counted as part of the thesis it
+describes, so regenerating the statement afterwards raised the "own writing" share by the
+statement's own words. Chapters carrying the statement's scope note are now left out of the counts
+(API test added). The e2e spec's own arithmetic was also wrong: the chapter heading is a counted
+word (15, not 14).
+
+Tests: `apps/web/test/ai-statement.spec.ts` (18), `apps/api/test/ai-statement.spec.ts` (9),
+`apps/web/e2e/ai-statement.spec.ts` (open, edit, table, insert as appendix, export option off by
+default and whole-thesis only, layout at 1440/1024/768/430/360 with no faults). Run against this
+branch's own mock stack (web :3020, API :3021, mock AI, Redis db 6).
