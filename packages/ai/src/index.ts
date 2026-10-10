@@ -71,6 +71,11 @@ export {
   WRITING_REDIRECT_PREFIX,
 } from './builder/chat.js';
 export {
+  dedupeCitationKeys,
+  moveTrailingCitationsInside,
+  placeCitations,
+} from './builder/citation-placement.js';
+export {
   buildCiteRequest,
   CITE,
   type CiteBuildInput,

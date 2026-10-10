@@ -14,6 +14,7 @@
  */
 
 import { academicPunctuation, dropConnectiveOpeners } from './academic-style.js';
+import { placeCitations } from './citation-placement.js';
 import {
   filterSentences,
   isAbbreviationStop,
@@ -282,8 +283,9 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   const hasWords = /[\p{L}\p{N}]/u.test(filtered.text.replace(CITE_RE, ''));
   // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
   // ADR-0147 round 2: a bare "Additionally,"/"Furthermore,"… opening a sentence is dropped.
+  // ADR-0150: then a marker goes inside its sentence's full stop, and one paper is cited once.
   const text = hasWords
-    ? academicPunctuation(dropConnectiveOpeners(filtered.text, input.before)).trim()
+    ? placeCitations(academicPunctuation(dropConnectiveOpeners(filtered.text, input.before))).trim()
     : '';
   const empty = text.length === 0;
 

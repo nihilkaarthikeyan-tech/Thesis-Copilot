@@ -43,6 +43,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'Number ranges (2015–2020), hyphenated words, minus signs, quotations, equations, code and tables are left as they are.',
       'Suggestions no longer open a sentence with a padding word such as "Additionally," or "Furthermore,": the sentence starts with what it is about. When you stop mid-sentence, the suggestion still continues your sentence as you began it.',
       'When a paper index is not answering, the search now says so by name and says where the results did come from, instead of showing "nothing found". Automatic sources add only a couple of closely matching papers from such a search and try again later.',
+      'The suggestion bar sits under the suggestion instead of over your paragraph; Refine and the evidence card no longer open on top of each other; Escape or Discard closes the edit menu; a suggested citation shows in your citation style from the start and sits before the full stop; the export preview shows every citation; the library header counts agree; and the first undo no longer removes your chapter’s section headings.',
     ],
   },
   {

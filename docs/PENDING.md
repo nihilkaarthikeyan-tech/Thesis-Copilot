@@ -320,6 +320,14 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       `pnpm --filter @tc/api research:thresholds --search` there if they do not.
 - [ ] **Owner: the cost model for the strong-tier chat** (the lead is doing it on main). What the
       research path adds per thin question is in ADR-0074, "Cost".
+## Trial caps bite in minutes (side-by-side 2026-10-10, finding 9; ADR-0150)
+
+- [ ] **Owner: decide with the usage-limit rebalance (option 1 recommended).** In the side-by-side
+      the trial's 2 section commands a month were gone after one Formalise and one Simplify, and
+      proofreading was then refused. Suggested shape: the trial is the paid plan at a tenth of the
+      size (e.g. 10 section commands), or a proofread counts on its own allowance. No cap was
+      changed in ADR-0150; `packages/config` plan tables are where it lands.
+
 ## The AI edit panel (ADR-0095, 2026-10-07)
 
 - [ ] **Owner: the COMMAND allowance.** The panel puts edits one key away (Ctrl+J), as Jenni

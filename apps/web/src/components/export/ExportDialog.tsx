@@ -111,7 +111,14 @@ export function ExportDialog({
   /** Known in the editor; fetched otherwise. */
   documentTitle?: string;
   /** The chapter open in the editor; absent on the submission page (whole thesis only). */
-  chapter?: { id: string; title: string; order: number; content: () => unknown };
+  chapter?: {
+    id: string;
+    title: string;
+    order: number;
+    content: () => unknown;
+    /** The editor's rendered citation labels by node key, for the preview (ADR-0150). */
+    labels?: () => Record<string, string>;
+  };
   initialScope: ExportScope;
 }) {
   const [scope, setScope] = useState<ExportScope>(initialScope);
@@ -126,6 +133,7 @@ export function ExportDialog({
   const [sample, setSample] = useState<{ title: string; order: number; content: unknown } | null>(
     null,
   );
+  const [labels, setLabels] = useState<Record<string, string>>({});
   const [compliance, setCompliance] = useState<Compliance | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +158,12 @@ export function ExportDialog({
     api<{ fontStyle?: unknown }>('/settings')
       .then((s) => setFontStyle(readFontStyle(s.fontStyle)))
       .catch(() => undefined);
+    // ADR-0150: the preview drew a paragraph without its citation ("…communities ."). The labels
+    // come from the same render the file is built from; the editor's own map, if there is one,
+    // covers a citation placed since the last save.
+    api<{ labels: Record<string, string> }>(`/documents/${documentId}/citations`)
+      .then((rendered) => setLabels({ ...rendered.labels, ...(chapter?.labels?.() ?? {}) }))
+      .catch(() => setLabels(chapter?.labels?.() ?? {}));
     if (chapter) {
       setSample({ title: chapter.title, order: chapter.order, content: chapter.content() });
     } else {
@@ -667,6 +681,7 @@ export function ExportDialog({
               chapterTitle={sample?.title ?? title}
               chapterNumber={sample?.order ?? 1}
               content={sample?.content}
+              labels={labels}
               scope={scope}
             />
           ) : (

@@ -911,6 +911,11 @@ function ChapterEditor({
       title: chapter.title,
       order: chapterOrder,
       content: () => editorRef.current?.getJSON() ?? null,
+      // ADR-0150: the export preview draws each citation with the label the editor shows.
+      labels: () => ({
+        ...((editorRef.current?.storage as { citation?: { renderedMap?: Record<string, string> } })
+          ?.citation?.renderedMap ?? {}),
+      }),
     }),
     [chapter.id, chapter.title, chapterOrder],
   );

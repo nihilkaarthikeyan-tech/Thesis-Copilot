@@ -22,7 +22,7 @@
 import { getGhostState } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import { findSectionHeading, headingSlot, scopeBullets, sectionEnd } from '@/lib/section-guide';
@@ -242,6 +242,55 @@ export function SectionGuide({
   const sectionsKey = (node?.children ?? [])
     .map((c) => [c.title, ...(c.children ?? []).map((g) => g.title)].join('>'))
     .join('|');
+  /** When the headings were last laid out on this screen (ADR-0150). */
+  const laidAt = useRef(0);
+  // ADR-0150: the caret starts on a line the student can write on. A chapter opens with the
+  // selection at the very start, in its title; typing then went into a heading. On load it moves
+  // to the first empty paragraph under a section heading (or the first empty paragraph at all).
+  // And for a moment after the headings are laid out, a click that lands in a heading because the
+  // page moved under the pointer (`ours-2a`) is taken as meant for the line below it.
+  useEffect(() => {
+    if (!editor) return;
+    const firstWritable = (): number | null => {
+      let afterHeading: number | null = null;
+      let any: number | null = null;
+      let prevHeading = false;
+      editor.state.doc.forEach((child, offset, index) => {
+        const empty = child.type.name === 'paragraph' && child.content.size === 0;
+        if (empty && any === null) any = offset + 1;
+        if (empty && prevHeading && index > 1 && afterHeading === null) afterHeading = offset + 1;
+        prevHeading = child.type.name === 'heading';
+      });
+      return afterHeading ?? any;
+    };
+    const { $from, empty } = editor.state.selection;
+    if (empty && $from.parent.type.name === 'heading') {
+      const at = firstWritable();
+      if (at !== null) {
+        const idle = typeof document !== 'undefined' && document.activeElement === document.body;
+        editor.chain().setTextSelection(at).run();
+        if (idle) editor.commands.focus();
+      }
+    }
+    const onUp = () => {
+      if (Date.now() - laidAt.current > 2_500 || editor.isDestroyed) return;
+      const sel = editor.state.selection;
+      if (!sel.empty || sel.$from.parent.type.name !== 'heading' || sel.$from.depth !== 1) return;
+      const index = sel.$from.index(0);
+      if (index === 0) return;
+      const next = editor.state.doc.maybeChild(index + 1);
+      if (next?.type.name !== 'paragraph') return;
+      const at = sel.$from.after(1) + 1;
+      editor
+        .chain()
+        .setTextSelection(at + next.content.size)
+        .run();
+    };
+    const dom = editor.view.dom;
+    dom.addEventListener('mouseup', onUp);
+    return () => dom.removeEventListener('mouseup', onUp);
+  }, [editor]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: `sectionsKey` stands for `sectionTitles`.
   useEffect(() => {
     if (!editor || sectionTitles.length === 0) return;
@@ -284,11 +333,17 @@ export function SectionGuide({
         .chain()
         .command(({ tr }) => {
           tr.replaceWith(from, doc.content.size, nodes);
+          // ADR-0150: the layout is ours, not an edit the student made, so it is not an undo
+          // step. Before, the first Ctrl+Z removed every section heading at once (side-by-side
+          // 2026-10-10, `ours-2b`); now it undoes the student's own last change and the
+          // headings stay.
+          tr.setMeta('addToHistory', false);
           return true;
         })
         .setTextSelection(cursor)
         .focus()
         .run();
+      laidAt.current = Date.now();
       setOpen(false);
       return true;
     };

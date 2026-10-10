@@ -11,7 +11,7 @@
  * warning is shown before the student can apply it.
  */
 
-import { aiTextToFragment, citationsInRange } from '@tc/ui';
+import { aiTextToFragment, citationsInRange, getGhostState } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { tNow } from '@/i18n';
@@ -399,6 +399,38 @@ export function CommandToolbar({
     setFollowUp('');
   }
 
+  /**
+   * ADR-0150: Discard and Escape close the panel. Before, Discard cleared the result and the
+   * selection stayed, so the menu stayed open over the page (side-by-side 2026-10-10, `ours-5c`);
+   * Escape only emptied the instruction box. The selection is collapsed to its end — the panel
+   * follows the selection, so an empty selection is the one state in which it is not shown — and
+   * the caret stays in the editor.
+   */
+  function close() {
+    reset();
+    setInstruction('');
+    if (editor && !editor.isDestroyed && !editor.state.selection.empty) {
+      editor.chain().focus().setTextSelection(editor.state.selection.to).run();
+    }
+    setSelection(null);
+  }
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  // Escape pressed in the editor itself, while the panel is open and nothing is running.
+  useEffect(() => {
+    if (!editor || !open) return;
+    const onKey = (e: KeyboardEvent) => {
+      // Not gated on `defaultPrevented`: ProseMirror's keymap marks every Escape handled before
+      // this listener runs (seen in the browser), so the gate made the listener dead code.
+      if (e.key !== 'Escape') return;
+      // A suggestion on screen takes Escape first (the ghost text dismisses on it).
+      if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return;
+      closeRef.current();
+    };
+    editor.view.dom.addEventListener('keydown', onKey);
+    return () => editor.view.dom.removeEventListener('keydown', onKey);
+  }, [editor, open]);
+
   /** The box's Enter: a preset whose name was typed in full, or the student's own instruction. */
   function submitBox() {
     const typed = instruction.trim();
@@ -561,6 +593,13 @@ export function CommandToolbar({
   return (
     <aside
       data-testid="command-toolbar"
+      onKeyDown={(e) => {
+        // ADR-0150: Escape anywhere in the panel closes it (the instruction box handles its own).
+        if (e.key === 'Escape' && !e.defaultPrevented) {
+          e.preventDefault();
+          close();
+        }
+      }}
       style={column ? { left: column.left, maxWidth: Math.max(320, column.width - 32) } : undefined}
       className="fixed bottom-16 left-1/2 z-30 w-[36rem] max-w-[92vw] -translate-x-1/2 lg:bottom-4 rounded-md border border-line bg-surface p-3 shadow-lg"
     >
@@ -692,7 +731,7 @@ export function CommandToolbar({
             </button>
           </form>
           <div className="mt-3 flex justify-end gap-3 text-sm">
-            <button type="button" className="underline" onClick={reset}>
+            <button type="button" className="underline" onClick={close}>
               {t('common.discard')}
             </button>
             {lastCommand ? (
@@ -753,7 +792,11 @@ export function CommandToolbar({
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') setInstruction('');
+                // ADR-0150: Escape empties the box, and closes the panel once it is empty.
+                if (e.key !== 'Escape') return;
+                e.preventDefault();
+                if (instruction) setInstruction('');
+                else close();
               }}
               maxLength={500}
               placeholder="Edit with AI: say what to change, or pick below (Ctrl+J)"
