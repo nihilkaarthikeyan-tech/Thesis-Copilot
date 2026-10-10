@@ -546,6 +546,7 @@ export {
   TieredLlmProvider,
   type Vendor,
 } from './providers/routing.js';
+export { callSignal, MODEL_CALL_CEILING_MS } from './providers/call-limit.js';
 export { renderTemplate, type TemplateData } from './template.js';
 export {
   type AiAction,

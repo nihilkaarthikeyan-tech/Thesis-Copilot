@@ -47,6 +47,7 @@ import {
   type TokenUsage,
 } from '../types.js';
 import { toTokenUsage } from './anthropic.js';
+import { callSignal } from './call-limit.js';
 import { makeRepairText } from './json-repair.js';
 
 /**
@@ -291,7 +292,7 @@ export class OpenAiLlmProvider implements LlmProvider {
         maxOutputTokens: this.outputBudget(req),
         providerOptions,
         ...(temperature !== undefined ? { temperature } : {}),
-        ...(req.signal ? { abortSignal: req.signal } : {}),
+        abortSignal: callSignal(req.signal),
         onError: ({ error }) => {
           streamError ??= error;
         },
@@ -343,7 +344,7 @@ export class OpenAiLlmProvider implements LlmProvider {
       maxOutputTokens: this.outputBudget(req),
       providerOptions,
       ...(temperature !== undefined ? { temperature } : {}),
-      ...(req.signal ? { abortSignal: req.signal } : {}),
+      abortSignal: callSignal(req.signal),
       // Same boundary as the Anthropic adapter: `generateObject`'s return type is conditional on
       // the schema's inferred output, which TS cannot resolve through a generic `z.ZodType<T>`.
       // The result is validated below, so nothing downstream trusts the cast.
