@@ -52,6 +52,26 @@ async function call(over: {
   });
 }
 
+/** One streamed suggestion as Assist records it: first token at `ttfbMs`, done at `latencyMs`. */
+async function suggestion(over: {
+  ttfbMs: number;
+  latencyMs?: number;
+  minutesAgo?: number;
+}): Promise<void> {
+  await h.prisma.suggestionEvent.create({
+    data: {
+      userId: h.userId,
+      documentId,
+      action: 'ASSIST',
+      shownChars: 120,
+      outcome: 'SHOWN',
+      latencyMs: over.latencyMs ?? over.ttfbMs + 400,
+      ttfbMs: over.ttfbMs,
+      createdAt: new Date(Date.now() - (over.minutesAgo ?? 1) * 60_000),
+    },
+  });
+}
+
 beforeAll(async () => {
   h = await startHarness('alerts@example.com');
   mailer = h.app.get<ConsoleMailer>(MAILER);
@@ -68,6 +88,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await h.prisma.aiCallLog.deleteMany({});
+  await h.prisma.suggestionEvent.deleteMany({});
   mailer.sent.length = 0;
   // Clear the once-per-breach memory between cases by letting every condition resolve.
   await evaluate();
@@ -128,13 +149,26 @@ describe('§14 alerts through the mock mailer', () => {
     expect((await evaluate()).map((b) => b.kind)).not.toContain('JOB_FAILURES');
   });
 
-  it('emails when Assist p95 latency passes 900 ms over 15 minutes (§14)', async () => {
-    for (let i = 0; i < 19; i++) await call({ latencyMs: 300 });
-    await call({ latencyMs: 1_500 });
-    // The slowest of twenty is the p95.
+  it('emails when Assist first-token p95 passes 900 ms over 15 minutes (§14)', async () => {
+    // Nineteen quick ones and a slow one is nineteen samples short of nothing, then twenty: the
+    // slowest of twenty is the p95.
+    for (let i = 0; i < 19; i++) await suggestion({ ttfbMs: 300 });
+    expect((await evaluate()).map((b) => b.kind)).not.toContain('TTFB_P95');
+    await suggestion({ ttfbMs: 1_500 });
     const breaches = await evaluate();
     expect(breaches.find((b) => b.kind === 'TTFB_P95')).toMatchObject({ value: 1_500 });
     expect(mailer.sent[0]?.subject).toContain('TTFB_P95');
+  });
+
+  it('stays quiet below the sample floor, however slow (2026-10-10)', async () => {
+    for (let i = 0; i < 9; i++) await suggestion({ ttfbMs: 2_500 });
+    expect((await evaluate()).map((b) => b.kind)).not.toContain('TTFB_P95');
+  });
+
+  it('judges the first token, not the whole call', async () => {
+    // Whole calls of 2.5 s whose first token came at 300 ms are fine.
+    for (let i = 0; i < 25; i++) await suggestion({ ttfbMs: 300, latencyMs: 2_500 });
+    expect((await evaluate()).map((b) => b.kind)).not.toContain('TTFB_P95');
   });
 
   it('sends each breach once, and again only after it has cleared', async () => {

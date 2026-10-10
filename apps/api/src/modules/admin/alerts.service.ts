@@ -43,6 +43,12 @@ export const ALERT = {
   jobFailureRate: 0.05,
   ttfbP95Ms: 900,
   windowMinutes: 15,
+  /**
+   * Fewer suggestions than this in the window and the p95 is one slow call, not a trend: with
+   * nine calls the slowest one *is* the p95 (2026-10-10, the alert fired on an add-on test's
+   * traffic). Twenty puts the p95 at the slowest-but-one of a real quarter hour.
+   */
+  ttfbMinSamples: 20,
 } as const;
 
 export type AlertKind =
@@ -278,29 +284,36 @@ export class AlertsService {
   }
 
   /**
-   * §14: Assist p95 latency over the last 15 minutes, computed from the logged latencies. The
-   * Prometheus histogram is the operational source; this is the same fact from the durable record.
+   * §14: Assist time-to-first-token p95 over the last 15 minutes, from the durable record. The
+   * Prometheus histogram (`aiTtfb`) is the operational source; this is the same fact from
+   * `SuggestionEvent.ttfbMs` — the first token, not the whole call: a finished suggestion takes
+   * 1.2–2.5 s end to end, so `AiCallLog.latencyMs` against a 900 ms bar fired on every quiet
+   * quarter hour (2026-10-10). Needs `ttfbMinSamples` events, or the p95 is one slow call.
    */
   private async ttfbBreach(now: Date): Promise<Breach[]> {
     const since = new Date(now.getTime() - ALERT.windowMinutes * 60_000);
     // The database counts and picks the one row, rather than every call in the window coming back
     // to be sorted here — a window that grows with traffic (2026-09-28). Same index as before.
-    const where = { action: 'ASSIST' as const, ok: true, createdAt: { gte: since, lte: now } };
-    const count = await this.prisma.aiCallLog.count({ where });
-    if (count === 0) return [];
-    const [row] = await this.prisma.aiCallLog.findMany({
+    const where = {
+      action: 'ASSIST' as const,
+      ttfbMs: { not: null },
+      createdAt: { gte: since, lte: now },
+    };
+    const count = await this.prisma.suggestionEvent.count({ where });
+    if (count < ALERT.ttfbMinSamples) return [];
+    const [row] = await this.prisma.suggestionEvent.findMany({
       where,
-      orderBy: { latencyMs: 'asc' },
+      orderBy: { ttfbMs: 'asc' },
       skip: Math.min(count - 1, Math.floor(count * 0.95)),
       take: 1,
-      select: { latencyMs: true },
+      select: { ttfbMs: true },
     });
-    const p95 = row?.latencyMs ?? 0;
+    const p95 = row?.ttfbMs ?? 0;
     if (p95 <= ALERT.ttfbP95Ms) return [];
     return [
       {
         kind: 'TTFB_P95',
-        detail: `Assist p95 latency is ${p95} ms over the last ${ALERT.windowMinutes} minutes`,
+        detail: `Assist first-token p95 is ${p95} ms over the last ${ALERT.windowMinutes} minutes (${count} suggestions)`,
         value: p95,
         threshold: ALERT.ttfbP95Ms,
       },

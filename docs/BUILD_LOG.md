@@ -6589,3 +6589,13 @@ $0.10 a day per address and was spent (`X-RateLimit-Remaining-USD: 0`), the key 
 `.env`, and arXiv/PubMed kept nothing for the topic: 0 papers in eight minutes, an uncited
 opener at 30.4 s. That is a production risk too (one key, one address for every student):
 `docs/PENDING.md`. Spent: ₹15.42.
+
+## The TTFB_P95 alert measures the first token and needs 20 samples (2026-10-10)
+
+The §14 alert fired three times in a minute on an add-on test's nine suggestions: it read
+`AiCallLog.latencyMs`, the whole call (1.2–2.5 s for a finished suggestion), against the 900 ms
+first-token bar, and with nine calls the slowest one *was* the p95. It now reads
+`SuggestionEvent.ttfbMs` — the first token, what the bar is about — and stays quiet below twenty
+suggestions in the window (`ALERT.ttfbMinSamples`). `alerts.spec.ts` covers the floor, the outlier
+and whole-call-slow-but-first-token-fast. OpenAI itself answered in 0.9–2.2 s to the first token
+from the office today against ~0.3 s usually; that is theirs.
