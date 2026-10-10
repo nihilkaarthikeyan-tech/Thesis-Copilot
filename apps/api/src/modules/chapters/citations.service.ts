@@ -493,6 +493,75 @@ export class CitationsService {
   }
 
   /**
+   * ADR-0150: the labels a suggestion's citations will carry once kept, rendered in the thesis's
+   * own style, so the grey text says "(Mutumbi et al., 2024)" from the first moment instead of a
+   * short reference that changes on accept. Rendered like `quoteLabel`: appended after the
+   * thesis's citations, so author-date disambiguation and numeric numbering are the thesis's. A
+   * note style gives nothing (its label is a whole footnote; the editor draws a note marker), so
+   * the caller keeps its short reference. Keyed by source id; a source that cannot be rendered is
+   * left out and the caller keeps its fallback.
+   */
+  async suggestionLabels(
+    ownerId: string,
+    documentId: string,
+    sourceIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    const wanted = [...new Set(sourceIds.filter(Boolean))];
+    const out = new Map<string, string>();
+    if (wanted.length === 0) return out;
+    const document = await this.owned(ownerId, documentId);
+    const [chapters, sources] = await Promise.all([
+      this.prisma.chapter.findMany({
+        where: { documentId },
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, content: true },
+      }),
+      this.prisma.source.findMany({
+        where: { documentId },
+        select: {
+          id: true,
+          title: true,
+          authors: true,
+          year: true,
+          venue: true,
+          doi: true,
+          cslJson: true,
+          isPreprint: true,
+          rawReference: true,
+        },
+      }),
+    ]);
+    const known = new Set(sources.map((s) => s.id));
+    const probes = wanted
+      .filter((id) => known.has(id))
+      .map((sourceId, i) => ({ key: `suggest-${i}`, sourceId, locator: null }));
+    if (probes.length === 0) return out;
+    const style = resolveStyle(document.citationStyle);
+    await this.styleStore.ensure(style.id);
+    const existing = chapters.flatMap((chapter) =>
+      citationNodesIn(chapter).map((node) => ({
+        key: node.nodeKey,
+        sourceId: node.sourceId,
+        locator: node.locator ?? null,
+      })),
+    );
+    const renderWith = (citations: Array<{ key: string; sourceId: string; locator: string | null }>) =>
+      renderCitations({
+        style: document.citationStyle,
+        locale: this.localeOf(document),
+        sources,
+        citations,
+      });
+    const rendered = renderWith([...existing, ...probes]);
+    if (rendered.noteStyle) return out;
+    for (const probe of probes) {
+      const label = rendered.labels[probe.key];
+      if (label) out.set(probe.sourceId, label);
+    }
+    return out;
+  }
+
+  /**
    * FR-5.2: "Style switch is global and instant." Instant because it changes one column and the
    * labels are recomputed from it — no chapter is written, so no autosave, no version bump, and
    * no chance of a switch losing a student's unsaved sentence.

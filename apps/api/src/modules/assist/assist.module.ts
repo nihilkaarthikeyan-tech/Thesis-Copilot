@@ -4,6 +4,7 @@ import { RedisService } from '../../common/redis.service.js';
 import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
 import { StorageService } from '../../common/storage.service.js';
 import { SessionGuard } from '../auth/session.guard.js';
+import { ChaptersModule } from '../chapters/chapters.module.js';
 import { FlagsModule } from '../flags/flags.module.js';
 import { UsageModule } from '../usage/usage.module.js';
 import { AssistController } from './assist.controller.js';
@@ -29,7 +30,7 @@ import { ToneService } from './tone.service.js';
 import { WebScopeService } from './web-scope.service.js';
 
 @Module({
-  imports: [UsageModule, FlagsModule],
+  imports: [UsageModule, FlagsModule, ChaptersModule],
   controllers: [
     AssistController,
     CitationsController,

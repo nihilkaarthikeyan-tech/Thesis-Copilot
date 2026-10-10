@@ -33,6 +33,7 @@ import {
 import { PrismaService } from '../../common/prisma.service.js';
 import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
+import { CitationsService } from '../chapters/citations.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { AutoSourcesService, enoughPapersOnTopic, sourcesQuery } from './auto-sources.service.js';
 import { ContextService } from './context.service.js';
@@ -126,6 +127,7 @@ export class AssistService {
     @Inject(PROVIDERS) private readonly providers: Providers,
     @Inject(ENV) private readonly env: Env,
     private readonly autoSources: AutoSourcesService,
+    private readonly citationLabels: CitationsService,
   ) {
     this.redis = redis.client;
   }
@@ -396,13 +398,27 @@ export class AssistService {
           : findingSources;
 
       // Each surviving key resolves to the real source and chunk it stood for in this request.
+      // ADR-0150: each label in the thesis's own citation style from the first moment; the short
+      // reference only when the style cannot give one (a note style, a render that failed).
+      const styled = await this.citationLabels
+        .suggestionLabels(
+          user.id,
+          chapter.documentId,
+          retrieved.passages.map((p) => p.sourceId),
+        )
+        .catch(() => new Map<string, string>());
+      const labelOf = (key: string): string => {
+        const real = retrieved.byKey.get(key);
+        if (!real) return '(Source)';
+        return (real.sourceId && styled.get(real.sourceId)) || `(${real.shortRef})`;
+      };
       const citations: SuggestCitation[] = processed.cited.map((key) => {
         const real = retrieved.byKey.get(key);
         return {
           key,
           sourceId: real?.sourceId ?? null,
           chunkId: real?.chunkId ?? null,
-          rendered: real ? `(${real.shortRef})` : '(Source)',
+          rendered: labelOf(key),
         };
       });
 
@@ -506,7 +522,7 @@ export class AssistService {
                 key,
                 sourceId: real?.sourceId ?? null,
                 chunkId: real?.chunkId ?? null,
-                rendered: real ? `(${real.shortRef})` : '(Source)',
+                rendered: labelOf(key),
               };
             });
             closeTo = stillClose
