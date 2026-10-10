@@ -31,6 +31,32 @@ describe('previewBlocks', () => {
     ]);
   });
 
+  // ADR-0150: the preview drew "…in these communities ." — the citation node has no text of
+  // its own, so the paragraph lost its marker. It is drawn with the rendered label now.
+  it('draws a citation with its rendered label, and names an unlabelled one', () => {
+    const content = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            text('Uptake is low in these communities '),
+            { type: 'citation', attrs: { key: 'k1', sourceId: 's1' } },
+            text('.'),
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [text('Costs dominate '), { type: 'citation', attrs: { key: 'k2' } }, text('.')],
+        },
+      ],
+    };
+    expect(previewBlocks(content, 14, { k1: '[1]' }).blocks).toEqual([
+      { kind: 'p', text: 'Uptake is low in these communities [1].' },
+      { kind: 'p', text: 'Costs dominate (Source).' },
+    ]);
+  });
+
   it('stops after a page’s worth, and copes with nothing at all', () => {
     const many = {
       type: 'doc',

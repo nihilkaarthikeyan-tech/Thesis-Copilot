@@ -33,6 +33,7 @@ export function LayoutPreview({
   chapterTitle,
   chapterNumber,
   content,
+  labels,
   scope,
 }: {
   layout: ResolvedLayout;
@@ -43,6 +44,8 @@ export function LayoutPreview({
   chapterTitle: string;
   chapterNumber: number;
   content: unknown;
+  /** ADR-0150: the rendered citation labels by node key, so a citation is drawn, not dropped. */
+  labels?: Readonly<Record<string, string>>;
   scope: 'chapter' | 'thesis';
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -74,7 +77,7 @@ export function LayoutPreview({
   const px = (mm: number) => mm * scale;
   const fontPx = layout.sizePt * PT_MM * scale;
   const lineHeight = 1.15 * layout.lineSpacing;
-  const sample = previewBlocks(content);
+  const sample = previewBlocks(content, undefined, labels);
   const title = sample.title || chapterTitle;
   const label = spec.headings.chapter.label.replace(/\{n\}/g, String(chapterNumber));
   const caps = (text: string) => (spec.headings.chapter.caps ? text.toUpperCase() : text);

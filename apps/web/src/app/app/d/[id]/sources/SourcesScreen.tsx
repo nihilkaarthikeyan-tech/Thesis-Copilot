@@ -184,8 +184,14 @@ export function SourcesScreen({ documentId }: { documentId: string }) {
       missing: rows.filter((s) => s.groundingLevel !== 'FULL_TEXT').length,
       unresolved: rows.filter((s) => s.status === 'UNRESOLVED').length,
       pending: rows.filter((s) => s.status === 'PENDING').length,
-      // R14: no PDF at all, so at most the abstract can be quoted.
-      noPdf: rows.filter((s) => !s.hasFile && s.status !== 'PENDING').length,
+      // R14: no PDF at all, so at most the abstract can be quoted. ADR-0150: counted the same
+      // way as "with full text" above and the Full text chip — by what was read, not by whether
+      // a file is held. A paper whose full text came from an open-access text source has no PDF
+      // and is still full text; before, the header said "3 with full text" over a banner saying
+      // one of the three had only its abstract.
+      noPdf: rows.filter(
+        (s) => !s.hasFile && s.groundingLevel !== 'FULL_TEXT' && s.status !== 'PENDING',
+      ).length,
     };
   }, [sources]);
 

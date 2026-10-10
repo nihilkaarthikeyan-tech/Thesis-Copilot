@@ -21,7 +21,7 @@ import {
 } from '@tc/ui';
 import type { Editor } from '@tiptap/react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { MessageKey } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { api } from '@/lib/api';
@@ -197,6 +197,91 @@ export function SuggestionBar({
       setEvidence(null);
     }
   }, [status]);
+  // ADR-0150: a refined suggestion is a new one; the card for the old one closes with it. (A
+  // refine dismisses and requests in one tick, so `status` never passes through `idle` here.)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the suggestion changes.
+  useEffect(() => {
+    setEvidence(null);
+    setMenu(false);
+  }, [currentId]);
+
+  /**
+   * ADR-0150: the bar sits under the suggestion's last line, not over the paragraph it belongs
+   * to (side-by-side 2026-10-10, `ours-1g`: it floated at the foot of the window, over the text).
+   * Measured from the ghost span itself, again on every scroll, resize and transaction; above the
+   * first line when there is no room below; the old place at the foot of the window only when the
+   * suggestion is off screen. `popDown`: whether a card or menu opens downward, away from the
+   * text, or upward because the window ends.
+   */
+  const barRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ top: number; left: number; popDown: boolean } | null>(null);
+  useLayoutEffect(() => {
+    if (!editor || status === 'idle') {
+      setPlace(null);
+      return;
+    }
+    const measure = () => {
+      const bar = barRef.current;
+      if (!bar || editor.isDestroyed) return;
+      const { view } = editor;
+      const ghost = view.dom.querySelector('span.ghost');
+      const rects = ghost
+        ? Array.from(ghost.getClientRects()).filter((r) => r.width > 0 || r.height > 0)
+        : [];
+      let first = rects[0] ?? null;
+      let last = rects[rects.length - 1] ?? null;
+      if (!first || !last) {
+        // Nothing drawn yet (requesting): the caret the suggestion will start at.
+        const anchor = getGhostState(editor)?.anchorPos ?? null;
+        if (anchor !== null) {
+          try {
+            const c = view.coordsAtPos(anchor);
+            first = last = new DOMRect(c.left, c.top, 1, c.bottom - c.top);
+          } catch {
+            // The position is stale for this document; fall back below.
+          }
+        }
+      }
+      if (!first || !last) {
+        setPlace(null);
+        return;
+      }
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const GAP = 8;
+      const EDGE = 16;
+      const h = bar.offsetHeight;
+      const w = bar.offsetWidth;
+      // Lined up with the paragraph's left edge, not with the last word.
+      const block = ghost?.closest('p, h1, h2, h3, h4, li, td, th, blockquote') ?? null;
+      const column = (block ?? view.dom).getBoundingClientRect();
+      const left = Math.max(EDGE, Math.min(column.left, vw - w - EDGE));
+      let top = last.bottom + GAP;
+      if (top + h > vh - GAP) top = first.top - GAP - h;
+      if (top < GAP || last.bottom < 0 || first.top > vh) {
+        setPlace(null);
+        return;
+      }
+      const popDown = top + h + 360 < vh;
+      setPlace((current) =>
+        current && current.top === top && current.left === left && current.popDown === popDown
+          ? current
+          : { top, left, popDown },
+      );
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    if (observer && barRef.current) observer.observe(barRef.current);
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    editor.on('transaction', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+      editor.off('transaction', measure);
+    };
+  }, [editor, status]);
 
   if (!editor) return null;
   if (status === 'idle') {
@@ -219,6 +304,7 @@ export function SuggestionBar({
 
   const ask = (instruction: string, citeMode?: CiteMode) => {
     setMenu(false);
+    setEvidence(null);
     // The model never sees a dismissed suggestion, so "shorter" alone meant nothing to it and it
     // wrote nothing (2026-10-04). The preset carries the text it revises, citation markers out.
     const current = (getGhostState(editor)?.text ?? '').replace(CITE_MARKER, '').trim();
@@ -263,6 +349,8 @@ export function SuggestionBar({
     (c, i) => c.sourceId && citations.findIndex((d) => d.sourceId === c.sourceId) === i,
   );
   const openEvidence = (citation: SuggestionCitation) => {
+    // ADR-0150: one floating layer at a time — the card closes the menu, and the menu the card.
+    setMenu(false);
     if (evidence?.key === citation.key) {
       setEvidence(null);
       return;
@@ -277,10 +365,22 @@ export function SuggestionBar({
   const button =
     'rounded-md border border-line px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-sunk disabled:opacity-40';
 
+  // A popover opens away from the text: downward under an anchored bar with room, else upward.
+  const pop = place?.popDown ? 'top-full mt-2' : 'bottom-full mb-2';
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-16 z-40 flex justify-center px-4 lg:bottom-6">
+    <div
+      className={
+        place
+          ? 'pointer-events-none fixed z-40 max-w-[calc(100vw-2rem)]'
+          : 'pointer-events-none fixed inset-x-0 bottom-16 z-40 flex justify-center px-4 lg:bottom-6'
+      }
+      style={place ? { top: place.top, left: place.left } : undefined}
+    >
       <div
+        ref={barRef}
         data-testid="suggestion-bar"
+        data-anchored={place ? 'true' : 'false'}
         className="pointer-events-auto relative flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 shadow-lg"
       >
         <span className="text-[12px] text-muted">
@@ -353,7 +453,10 @@ export function SuggestionBar({
           disabled={!shown}
           aria-expanded={menu}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setMenu((open) => !open)}
+          onClick={() => {
+            setEvidence(null);
+            setMenu((open) => !open);
+          }}
           className={button}
         >
           {t('suggest.refine')}
@@ -393,7 +496,7 @@ export function SuggestionBar({
         {evidence ? (
           <div
             data-testid="evidence-card"
-            className="absolute bottom-full left-0 mb-2 w-[min(32rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-[13px] shadow-lg"
+            className={`absolute left-0 ${pop} w-[min(32rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-[13px] shadow-lg`}
           >
             {evidence.loading ? (
               <p className="text-muted">{t('suggest.opening')}</p>
@@ -465,7 +568,8 @@ export function SuggestionBar({
         {menu ? (
           <div
             role="menu"
-            className="absolute bottom-full left-0 mb-2 w-64 rounded-md border border-line bg-surface p-2 shadow-lg"
+            data-testid="refine-menu"
+            className={`absolute left-0 ${pop} w-64 rounded-md border border-line bg-surface p-2 shadow-lg`}
           >
             {REFINE_PRESETS.map((preset, i) => [
               REFINE_GROUP_AT[i] ? (
