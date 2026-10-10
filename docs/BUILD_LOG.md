@@ -6457,6 +6457,27 @@ second source. "Let the marker name the study" and the softer specificity line c
 judge rewards. Not narrow, so no extra variant. Side A scored 7.13 in round 2 and 7.93 here with
 the same prompt; the next round should use `--samples 2`. The prompt file is unchanged.
 
+### ADR-0147 round 4 (2026-10-10, A.1 and A.2): neither track adopted
+
+Two tracks, each criterion committed before its runs (ADR-0147 round 4), `--samples 2` on every
+set, ₹27.47 spent, no refusal, no failed call.
+
+- Track A, `eval/candidates/assist-academic4.md` (round 2's v2 exactly, plus round 3's opening rule
+  and "name a study by its finding and its marker, not by its title or the name of the product it
+  tested"). Typed (30 runs): **4–17–9**, mean 7.28 → 8.27, cited 70% → **86.0%**, stock 2.31 →
+  2.27, run6Names **5 → 7** (raw 5 → 8), hallucinated **0 → 1**. Opener (20): **2–13–5**, mean
+  6.95 → 8.25, stock 8.35 → 3.85, run6Names **5 → 8** (raw 7 → 11). Fails on cited sentences,
+  copying and the hallucinated cite.
+- Track B, `eval/candidates/draft-academic3.md` (unchanged from round 3). Draft (10): **3–4–3**,
+  mean 7.95 → 8.20, cited 75% → 98% (shared 33 → 2), raw dashes 23 → 12, stock 6 → 0,
+  run6Names **4 → 7** against a limit of 5. Fails on copying only; chapter-build compatibility was
+  therefore not reached.
+
+Both candidates win the judge beyond the noise and both copy more: the extra runs are the
+findings and the lists of measured quantities the specificity rules ask for, in the passage's
+words and order, and on the opener set the passage's own first sentence. `prompts/assist.md` and
+`prompts/draft.md` are unchanged; nothing changes for the student, so no changelog line.
+
 ## 2026-10-10 — Paper index budgets (ADR-0149)
 
 Side-by-side findings 1–2: production's OpenAlex key spent its free $1/day and every keyed
