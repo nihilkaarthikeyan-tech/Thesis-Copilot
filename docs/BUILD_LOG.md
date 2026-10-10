@@ -6434,6 +6434,29 @@ mostly study and population names ("pragmatic randomized controlled trial of the
 "adolescents with type 1 diabetes"): the "keep the technical term" and "one specific detail"
 rules pull toward the passage's own phrase. The prompt file is unchanged.
 
+### ADR-0147 round 3 (2026-10-10, A.1 Assist): candidate v3 not adopted
+
+`eval/candidates/assist-academic3.md` (v2 plus: name a study by its marker and finding, not its
+title, product or design phrase; describe the population in the thesis's own words; keep only
+figures and proper names verbatim; open an empty chapter or section with a concrete fact; plain
+verbs over adjectives of importance). New measure `run6Names` in `eval/copying.ts`: a shared run
+counts only its words outside proper names, figures and the passage's own acronym-defined terms,
+threshold still six, raw `run6` kept beside it; on round 2's stored outputs it changed the typed
+set not at all and the opener set 7/5 → 5/4. Criterion committed first (ADR-0147 round 3 §3).
+₹14.87 spent, no refusal, no failed call.
+
+- Typed (15): current **7–3–5**, mean 7.93 → 7.37, cited 21/29 → **21/30 (70%)**, stock 4.43 →
+  2.42, run6Names 3 → 2 (raw 3 → 2). Fails on 1 and 2.
+- Opener (10): 3–3–4, mean 7.60 → 7.95, cited 15/20 → 16/19, stock **7.04 → 7.87**, run6Names
+  **2 → 3** (raw 3 → 5). Fails on 3 and 4.
+- Draft, information only (`draft-academic3.md`, the three writing lines added to the draft
+  prompt): candidate 2–0–3, mean 8.0 → 8.4, cited 49/66 → 60/60, raw dashes 10 → 5, run6 3 → 4.
+
+The judge's reasons for A's seven typed wins: B dropped the sample size, the effect size or a
+second source. "Let the marker name the study" and the softer specificity line cost the detail the
+judge rewards. Not narrow, so no extra variant. Side A scored 7.13 in round 2 and 7.93 here with
+the same prompt; the next round should use `--samples 2`. The prompt file is unchanged.
+
 ## 2026-10-10 — Paper index budgets (ADR-0149)
 
 Side-by-side findings 1–2: production's OpenAlex key spent its free $1/day and every keyed
