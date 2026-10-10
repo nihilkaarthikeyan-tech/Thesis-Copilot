@@ -30,6 +30,15 @@ export type Measures = {
   longestRunNames: number;
   /** That run, as words. */
   runTextNames: string;
+  /**
+   * ADR-0147 round 5 (the owner's "fix this"): the most words of a shared run that are not part
+   * of a figure stated with its unit and the name of the quantity measured (`passageFigureTokens`,
+   * "a 0.016 point decrease in HbA1c"). Proper names are *not* discounted here: a product or study
+   * name still counts, as do ordinary phrasing, lists of findings and an abstract's own sentence.
+   */
+  longestRunFigures: number;
+  /** That run, as words. */
+  runTextFigures: string;
   /** Production's ADR-0071 flag ("close to Bagla 2026's wording") would show. */
   flagged: boolean;
   /** Sentences of prose (headings and needs-source lines left out). */
@@ -179,6 +188,385 @@ export function passageTokens(text: string): Array<{ word: string; name: boolean
 }
 
 /**
+ * ADR-0147 round 5: what a figure is stated with. A unit (or the thing a count counts) directly
+ * after the figure; up to three in a row ("mg per day", "per cent").
+ */
+const FIGURE_UNITS = new Set([
+  // shares, ratios, scores
+  'percent',
+  'per',
+  'cent',
+  'percentage',
+  'pp',
+  'point',
+  'points',
+  'fold',
+  'times',
+  // length, area, volume, mass
+  'nm',
+  'μm',
+  'um',
+  'mm',
+  'cm',
+  'm',
+  'km',
+  'ha',
+  'hectare',
+  'hectares',
+  'acre',
+  'acres',
+  'ml',
+  'l',
+  'litre',
+  'litres',
+  'liter',
+  'liters',
+  'mg',
+  'g',
+  'kg',
+  't',
+  'tonne',
+  'tonnes',
+  'ton',
+  'tons',
+  'quintal',
+  'quintals',
+  // chemistry, physics, energy
+  'mol',
+  'mmol',
+  'μmol',
+  'ppm',
+  'ppb',
+  'c',
+  'k',
+  'pa',
+  'kpa',
+  'mpa',
+  'gpa',
+  'n',
+  'kn',
+  'j',
+  'kj',
+  'mj',
+  'kcal',
+  'cal',
+  'w',
+  'kw',
+  'mw',
+  'gw',
+  'wp',
+  'kwp',
+  'kwh',
+  'mwh',
+  'gwh',
+  'twh',
+  'v',
+  'kv',
+  'hz',
+  'khz',
+  'mhz',
+  'ghz',
+  'db',
+  'mmhg',
+  'bpm',
+  'iu',
+  // time
+  's',
+  'ms',
+  'sec',
+  'second',
+  'seconds',
+  'min',
+  'minute',
+  'minutes',
+  'h',
+  'hr',
+  'hrs',
+  'hour',
+  'hours',
+  'day',
+  'days',
+  'week',
+  'weeks',
+  'month',
+  'months',
+  'year',
+  'years',
+  'yr',
+  'yrs',
+  // money and magnitudes
+  'rs',
+  'inr',
+  'usd',
+  'rupees',
+  'dollars',
+  'crore',
+  'crores',
+  'lakh',
+  'lakhs',
+  'thousand',
+  'million',
+  'billion',
+  'trillion',
+  // what a count counts
+  'participants',
+  'patients',
+  'respondents',
+  'households',
+  'people',
+  'persons',
+  'individuals',
+  'students',
+  'women',
+  'men',
+  'children',
+  'adolescents',
+  'adults',
+  'farmers',
+  'villages',
+  'districts',
+  'studies',
+  'papers',
+  'articles',
+  'samples',
+  'specimens',
+  'cases',
+  'sites',
+  'wells',
+  'plots',
+  'firms',
+  'companies',
+  'schools',
+  'hospitals',
+  'trials',
+]);
+
+/** A unit or currency written before the figure ("Rs 500"), or a statistic's symbol ("p 0.05"). */
+const BEFORE_FIGURE = new Set(['rs', 'inr', 'usd', 'p', 'r', 'n', 'sd', 'se', 'ci']);
+
+/** The direction or comparison a figure is a size of ("a 0.016 point decrease", "30% lower"). */
+const FIGURE_CHANGE = new Set([
+  'increase',
+  'increases',
+  'decrease',
+  'decreases',
+  'reduction',
+  'reductions',
+  'rise',
+  'rises',
+  'drop',
+  'drops',
+  'fall',
+  'falls',
+  'decline',
+  'declines',
+  'gain',
+  'gains',
+  'loss',
+  'losses',
+  'improvement',
+  'improvements',
+  'change',
+  'changes',
+  'difference',
+  'differences',
+  'higher',
+  'lower',
+  'greater',
+  'less',
+  'more',
+  'fewer',
+  'larger',
+  'smaller',
+  'increment',
+  'growth',
+  'share',
+  'proportion',
+  'rate',
+  'mean',
+  'median',
+  'average',
+  'total',
+]);
+
+/** Words that link a quantity's name to its figure ("a mean age of 45", "fell by 12", "reached 22"). */
+const FIGURE_LINKS = new Set([
+  'of',
+  'by',
+  'to',
+  'at',
+  'from',
+  'was',
+  'were',
+  'is',
+  'are',
+  'about',
+  'approximately',
+  'around',
+  'nearly',
+  'almost',
+  'roughly',
+  'than',
+  'reached',
+  'averaged',
+  'totalled',
+  'totaled',
+  'below',
+  'above',
+  'up',
+  'only',
+  'just',
+]);
+
+/** Function words: a quantity's name stops at one. */
+const FUNCTION_WORDS = new Set([
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'nor',
+  'with',
+  'without',
+  'in',
+  'on',
+  'for',
+  'of',
+  'to',
+  'by',
+  'at',
+  'from',
+  'as',
+  'that',
+  'which',
+  'who',
+  'whose',
+  'this',
+  'these',
+  'those',
+  'it',
+  'its',
+  'their',
+  'they',
+  'was',
+  'were',
+  'is',
+  'are',
+  'be',
+  'been',
+  'being',
+  'has',
+  'have',
+  'had',
+  'than',
+  'among',
+  'between',
+  'while',
+  'whereas',
+  'after',
+  'before',
+  'over',
+  'under',
+  'during',
+  'per',
+  'when',
+  'where',
+  'if',
+  'not',
+  'no',
+  'each',
+  'every',
+  'all',
+  'both',
+  'also',
+  'into',
+  'onto',
+  'within',
+  'across',
+  'through',
+  'whether',
+  'there',
+  'such',
+  'so',
+]);
+
+/** Up to this many words of a quantity's name are discounted on either side of its figure. */
+const QUANTITY_NAME_WORDS = 3;
+
+/**
+ * ADR-0147 round 5, the owner's "fix this" (2026-10-10): the passage as `words()` tokenises it,
+ * each word marked `name` (here: discounted) when it belongs to a figure stated with its unit and
+ * the name of the quantity measured. Citing a figure exactly is normal academic practice, so
+ * "a 0.016 point decrease in HbA1c", "223 participants", "a mean age of 45 years" and "HbA1c fell
+ * by 0.5 per cent" are not copying. A figure phrase is:
+ *
+ * - the figure: consecutive tokens with a digit ("0.016" is "0" "016");
+ * - after it, up to three units (`FIGURE_UNITS`), then one direction or comparison word
+ *   (`FIGURE_CHANGE`), then "in" or "of" and up to three words of the quantity's name, stopping
+ *   at a function word;
+ * - before it, an article ("a 0.016…"), a currency or statistic symbol ("Rs 500", "p 0.05"), or
+ *   up to two linking words (`FIGURE_LINKS`: "of", "by", "of about") and up to three words of the
+ *   quantity's name before them, stopping at a function word.
+ *
+ * Nothing else is discounted, proper names included: ordinary phrasing, a list of findings in the
+ * passage's order ("higher pitting potential, lower corrosion current density and lower
+ * corrosion rate"), a product or study name ("the BlueStar mobile app") and an abstract's own
+ * first sentence all still count. Marked by position, like `passageTokens`.
+ */
+export function passageFigureTokens(text: string): Array<{ word: string; name: boolean }> {
+  const t = words(text);
+  const out = t.map((word) => ({ word, name: false }));
+  const mark = (k: number) => {
+    (out[k] as { name: boolean }).name = true;
+  };
+  const isFigure = (k: number) => k >= 0 && k < t.length && /\p{N}/u.test(t[k] as string);
+  const content = (k: number) => k >= 0 && k < t.length && !FUNCTION_WORDS.has(t[k] as string);
+
+  let s = 0;
+  while (s < t.length) {
+    if (!isFigure(s)) {
+      s++;
+      continue;
+    }
+    let e = s;
+    while (isFigure(e)) mark(e++);
+
+    // After the figure: units, a direction, then "in"/"of" and the quantity's name.
+    let k = e;
+    for (let u = 0; u < 3 && k < t.length && FIGURE_UNITS.has(t[k] as string); u++) mark(k++);
+    let changed = false;
+    if (k < t.length && FIGURE_CHANGE.has(t[k] as string)) {
+      mark(k++);
+      changed = true;
+    }
+    if ((t[k] === 'in' || t[k] === 'of') && content(k + 1)) {
+      mark(k++);
+      for (let q = 0; q < QUANTITY_NAME_WORDS && content(k); q++) mark(k++);
+    } else if (changed) {
+      for (let q = 0; q < QUANTITY_NAME_WORDS && content(k); q++) mark(k++);
+    }
+
+    // Before the figure: an article, a symbol, or links and the quantity's name.
+    let b = s - 1;
+    if (b >= 0 && BEFORE_FIGURE.has(t[b] as string)) mark(b--);
+    if (b >= 0 && (t[b] === 'a' || t[b] === 'an')) mark(b);
+    else {
+      let links = 0;
+      while (b >= 0 && links < 2 && FIGURE_LINKS.has(t[b] as string)) {
+        mark(b--);
+        links++;
+      }
+      if (links > 0) {
+        for (let q = 0; q < QUANTITY_NAME_WORDS && content(b); q++) mark(b--);
+      }
+    }
+    s = e;
+  }
+  return out;
+}
+
+/**
  * The shared run with the most words that are not names (`passageTokens`), and that count. Same
  * dynamic programme as `longestCommonRun`; a run's words must still match consecutively.
  */
@@ -225,6 +613,11 @@ export function measure(text: string, passages: readonly PromptPassage[]): Measu
     const run = longestRunOutsideNames(mine, passageTokens(p.text));
     if (run.count > outsideNames.count) outsideNames = run;
   }
+  let outsideFigures = { count: 0, aStart: 0, length: 0 };
+  for (const p of passages) {
+    const run = longestRunOutsideNames(mine, passageFigureTokens(p.text));
+    if (run.count > outsideFigures.count) outsideFigures = run;
+  }
 
   const flagged =
     closeToPassages(
@@ -253,6 +646,10 @@ export function measure(text: string, passages: readonly PromptPassage[]): Measu
     runTextNames: mine
       .slice(outsideNames.aStart, outsideNames.aStart + outsideNames.length)
       .join(' '),
+    longestRunFigures: outsideFigures.count,
+    runTextFigures: mine
+      .slice(outsideFigures.aStart, outsideFigures.aStart + outsideFigures.length)
+      .join(' '),
     flagged,
     sentences: sentences.length,
     citedSentences: sentences.filter((s) => /\{\{cite:[^}]+\}\}/.test(s)).length,
@@ -276,6 +673,11 @@ export type MeasureTotals = {
    * figures or the passage's own acronym-defined terms. The threshold is `run6`'s.
    */
   run6Names: number;
+  /**
+   * ADR-0147 round 5: outputs with a shared run holding 6+ words that are not part of a figure
+   * with its unit and the quantity measured (`passageFigureTokens`). Names still count.
+   */
+  run6Figures: number;
   /** Outputs production's own check would flag. */
   flagged: number;
   meanLongestRun: number;
@@ -303,6 +705,7 @@ export function totals(all: readonly Measures[]): MeasureTotals {
     run6: nonEmpty.filter((m) => m.longestRun >= 6).length,
     run8: nonEmpty.filter((m) => m.longestRun >= 8).length,
     run6Names: nonEmpty.filter((m) => (m.longestRunNames ?? m.longestRun) >= 6).length,
+    run6Figures: nonEmpty.filter((m) => (m.longestRunFigures ?? m.longestRun) >= 6).length,
     flagged: nonEmpty.filter((m) => m.flagged).length,
     meanLongestRun: nonEmpty.length ? +(sum((m) => m.longestRun) / nonEmpty.length).toFixed(2) : 0,
     sentences: sum((m) => m.sentences),

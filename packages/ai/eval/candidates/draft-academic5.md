@@ -1,13 +1,9 @@
 <!--
-  Thesis Copilot prompt, owned by the product (ADR-0038). It started as docs/PRD.md, "### A.2 Draft section — `draft.md`".
-  Change it only when a candidate wins the side-by-side evaluation on the real models
-  (packages/ai/eval/run.ts), and record the result in docs/BUILD_LOG.md.
-  2026-10-05: the "Paraphrase; never copy" rule added, the winner of the copying round
-  (ADR-0075, eval/candidates/draft-copying2.md; docs/BUILD_LOG.md).
-  2026-10-10: six writing lines added, the winner of ADR-0147 round 5
-  (eval/candidates/draft-academic5.md): open a paragraph with a concrete finding, an empty section
-  with the fact in your own words, a study by its finding not its title, the intervention by what
-  it does, plain verbs, and findings in your own order. A departure from Appendix A under ADR-0059.
+  CANDIDATE for draft.md, ADR-0147 round 5 (2026-10-10): draft-academic3.md exactly (the draft
+  prompt on disk plus round 3's three writing rules) with the owner's three round-5 lines added
+  verbatim (finding in your own order, the intervention by what it does, an opening in your own
+  words). Tested by eval/run.ts draft --candidate draft-academic5 --samples 2; it replaces the
+  prompt only if it passes the round-5 criterion written in the ADR before the run.
 -->
 
 ### A.2 Draft section — `draft.md`

@@ -80,6 +80,26 @@ describe('loadPrompt', () => {
     }
   });
 
+  // ADR-0147 round 5: the draft lines that won are pinned, so an edit cannot drop them unseen.
+  it('tells draft to open with a finding in its own words and to name what an intervention does', () => {
+    const system = loadPrompt('draft').system;
+    expect(system).toContain('Open each paragraph with a concrete finding from the passages');
+    expect(system).toContain(
+      "Open an empty section with the fact itself in your own words, not the abstract's first sentence.",
+    );
+    expect(system).toContain('Let the marker identify a study.');
+    expect(system).toContain(
+      'Name the intervention by what it does (e.g. a diabetes self-management app), not by its product name.',
+    );
+    expect(system).toContain(
+      'Put each finding in your own sentence order; when the passage lists several results, say what they show together rather than repeating the list.',
+    );
+    expect(system).toContain('Describe a thing by what was measured or what it does');
+    // The output contract the chapter build parses is untouched.
+    expect(system).toContain('[[NEEDS SOURCE:');
+    expect(system).toContain('Output Markdown: headings with "###"');
+  });
+
   it('every prompt has a non-empty system block', () => {
     for (const name of PROMPT_NAMES) {
       const prompt = loadPrompt(name);
