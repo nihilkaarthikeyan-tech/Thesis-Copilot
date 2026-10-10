@@ -1,6 +1,8 @@
 /**
- * The content script — ADR-0125. Chrome runs it on the pages in `hosts.ts` only (the manifest's
- * `content_scripts.matches`), in the top frame, once the page has loaded. It puts the
+ * The content script — ADR-0125. Chrome runs it on the pages in `hosts.ts` (the manifest's
+ * `content_scripts.matches`) and, only while the student has "Show Save buttons on every site"
+ * on, on other https pages too (ADR-0154, registered by `anywhere.ts`), in the top frame, once
+ * the page has loaded. It puts the
  * "Add to Thesis Copilot" buttons in (`inpage.ts`) and passes the card's requests to the service
  * worker, which alone talks to Thesis Copilot. It makes no request of its own, to the site or to
  * anywhere else.

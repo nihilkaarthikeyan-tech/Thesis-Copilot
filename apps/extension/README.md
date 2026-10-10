@@ -19,7 +19,12 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
    (or press Alt+Shift+S). Or right-click a DOI or arXiv link → "Add to Thesis Copilot".
 5. On Google Scholar (.com, .co.in), PubMed, arXiv (abstracts, listings, searches) and MDPI
    (articles and, since 0.3.1, search results), press the "Add to Thesis Copilot" button in the
-   page itself.
+   page itself. Since 0.3.2 the card on a results page has **Select several**: tick results and
+   **Save selected (n)**.
+6. Since 0.3.2 (ADR-0154): in the add-on's window, switch on **Show Save buttons on every site**
+   and accept Chrome's prompt. Reload a page: an article page anywhere gets its button, and each
+   DOI in a reference list (a Wikipedia article's references, say) gets a small **Save**. Switch
+   it off again in the same place.
 
 ## What it does, and does not
 
@@ -31,6 +36,16 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
   sends Thesis Copilot only the paper's identifier (`lookup-id`, `import-id`), or, for a Scholar
   result with none, the reference line the popup sends. A page whose tags name no article gets no
   button.
+- Everywhere else only if the student turns on "Show Save buttons on every site" (ADR-0154,
+  `src/anywhere.ts`): an optional host permission (`optional_host_permissions: https://*/*`),
+  requested on that press, never at install. While it is held, the service worker registers the
+  same content script for every https page except the five sites, Thesis Copilot and Jenni's
+  pages; it reads the article tags (`citation_doi`, `dc.identifier`, `prism.doi`, Highwire's
+  `citation_title`) and the doi.org links inside reference lists, and sends nothing until a press.
+  Switching it off removes the permission, and the script with it.
+- "Select several" in the card sends the ticked results in one `save-many` request, which the
+  service worker saves the popup's way (duplicates by DOI, then one resolve call with all of
+  them) and answers per result.
 - Uses the student's existing sign-in to the site. It has no password, token or account of its own.
 - Saves through the library's own routes — `POST /documents/:id/sources/resolve` (lookup, full-text
   fetch, indexing and monthly limits are the site's), `POST /sources/:id/upload` and
@@ -58,6 +73,8 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
 | `src/refs.ts` | Which identifier an in-page button saves: the page's own DOI, arXiv id or PMID — pure, tested |
 | `src/inpage.ts` | The in-page buttons and their card, in closed shadow roots — tested in jsdom |
 | `src/card.ts` | The card's states, as a pure state machine — tested |
+| `src/anywhere.ts` | The every-site switch's permission and the script it registers (ADR-0154) — tested with a fake Chrome |
+| `src/bulk.ts` | "Select several" in the card, as a pure state — tested |
 | `src/memory.ts` | Which papers the in-page buttons saved, per thesis, kept in the browser only — pure, tested |
 | `src/content.ts` | The content script: starts `inpage.ts`, passes its requests to the service worker |
 | `scripts/build.mjs` | TypeScript → `dist/`, `content.js` (esbuild, not minified), the manifest, the per-target `config.js`, the store zip |

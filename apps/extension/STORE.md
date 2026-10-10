@@ -1,4 +1,11 @@
-# Chrome Web Store listing — drafted for the owner to submit (version 0.3.1)
+# Chrome Web Store listing — drafted for the owner to submit (version 0.3.2)
+
+0.3.2 (2026-10-10, ADR-0154) replaces 0.3.1 before either is submitted: the same install-time
+permissions, plus one **optional** host permission (`https://*/*`) that is asked for only when the
+user turns on "Show Save buttons on every site" in the add-on's window. The install warning does
+not change. Submit `thesis-copilot-chrome-0.3.2.zip` wherever this file or `PUBLISHING.md` says
+0.3.1 or 0.3.0. What changed from 0.3.1 is marked **(new in 0.3.2)** below. The privacy page's
+"From version 0.3.2…" paragraph must be live before 0.3.2 is submitted.
 
 0.3.1 (2026-10-10, ADR-0153) replaces 0.3.0 before either is submitted: the same permissions, plus
 buttons on MDPI search results and a local note of the papers the buttons saved (the `storage`
@@ -19,7 +26,7 @@ Review the wording — it is your product's public description.
 pnpm --filter @tc/extension build
 ```
 
-This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.3.0.zip`** — the
+This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.3.2.zip`** — the
 contents of `dist/` and nothing else. Upload that zip. (It is not committed; build it fresh.)
 
 ## Store listing tab
@@ -46,6 +53,12 @@ fills it in from the zip) **(new in 0.3.0)**:
 > • A page of results: on PubMed, arXiv and Google Scholar results, tick the papers you want and
 >   save up to 50 at once. Each one is saved once; you see which were saved, which were already
 >   in your library, and retry any that failed.
+> • Several at once on the page: on a results page or a reference list, "Select several" in the
+>   card, tick the ones you want, and save them in one go — each one says whether it was saved,
+>   was already in your library, or why it was not.
+> • Anywhere, if you want it: switch on "Show Save buttons on every site" and article pages on
+>   any site get the button, and each DOI in a reference list (a Wikipedia article's, say) a small
+>   "Save". Off until you turn it on; Chrome asks you first.
 > • A PDF open in your browser: attach it, so the paper can be read straight away.
 > • Choose the thesis and, if you like, a collection — or make a new collection on the spot. The
 >   add-on remembers your last choice.
@@ -58,7 +71,9 @@ fills it in from the zip) **(new in 0.3.0)**:
 > from the right-click menu), and then only at the page's address, the tags that describe the
 > article, and on a results page the titles and identifiers of the results shown. On Google
 > Scholar, PubMed, arXiv and MDPI it reads the same things as the page loads, to put its buttons
-> in, and sends nothing until you press one. It never reads other tabs or your browsing history,
+> in, and sends nothing until you press one. If you switch on "Show Save buttons on every site",
+> it reads those same things on every page you open, for the same purpose, until you switch it
+> off. It never reads other tabs or your browsing history,
 > never contacts those sites itself, and sends nothing anywhere but your own Thesis Copilot
 > account.
 >
@@ -126,6 +141,19 @@ host permissions):
   page shows them. It makes no request to these sites and sends nothing until the user presses a
   button; then it sends the paper's identifier (DOI, arXiv id or PubMed id) to the user's own
   Thesis Copilot account. It runs on no other site; elsewhere the user clicks the toolbar button.
+
+- **Optional host permission `https://*/*`** **(new in 0.3.2)** — Not granted at install, and
+  never requested on its own. It is requested only when the user turns on "Show Save buttons on
+  every site" in the add-on's window, with Chrome's own prompt; turning the switch off removes it
+  (`chrome.permissions.remove`). While the user has granted it, the add-on registers its content
+  script (the same one the five sites above have) on https pages, in the top frame only, to put a
+  "Save" button beside a scholarly article's DOI (read from the page's `citation_doi`,
+  `dc.identifier` or `prism.doi` tags, or its `citation_title` tag) and beside each DOI link in
+  the page's reference list. It reads only those tags and links, makes no request to the site,
+  and sends nothing until the user presses a button; then it sends that paper's DOI or details
+  (or, for several ticked at once, theirs) to the user's own Thesis Copilot account. Students
+  read papers on thousands of publishers' and reference sites, so no list of hosts could cover
+  them; the switch keeps it the user's choice.
 
 Paste the content-script box into the host-permission justification as well if the dashboard has
 only one box for hosts. If the dashboard lists a permission or a site not named here, stop: the

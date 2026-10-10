@@ -870,7 +870,7 @@ async function anywhereSwitch(): Promise<void> {
   const say = (on: boolean) => {
     box.checked = on;
     note.textContent = on
-      ? 'On. Reload a page to see its buttons. Our site and Jenni’s get none.'
+      ? 'On. Reload a page to see its buttons there.'
       : 'Off. Chrome asks you first; you can turn it off here at any time.';
   };
   try {

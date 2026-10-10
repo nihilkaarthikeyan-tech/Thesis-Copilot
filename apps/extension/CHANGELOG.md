@@ -1,5 +1,24 @@
 # Changelog — Thesis Copilot for Chrome
 
+## 0.3.2 — 2026-10-10 (ADR-0154) — not yet submitted to the store
+
+The three things the side-by-side left for a decision, approved by the owner the same day.
+
+- **Save buttons on every site, if you want them.** A switch in the add-on's window, "Show Save
+  buttons on every site", off until you turn it on; Chrome asks you first, and turning it off
+  gives the access back. While it is on, an article page anywhere gets its button (found by its
+  `citation_doi`, `dc.identifier` or `prism.doi` tag, or Highwire's `citation_title`), and every
+  DOI in a page's reference list gets a small "Save" beside it — Wikipedia's references, for
+  example. Never on Thesis Copilot itself or on Jenni's pages. The install warning is unchanged:
+  the access is an optional permission, asked for only on your press.
+- **Save several results at once from the page.** On a results page (Google Scholar, PubMed,
+  arXiv, MDPI search) or a reference list, the card has "Select several": tick the ones you
+  want and "Save selected (n)" saves them into the chosen thesis and collection in one go. Each
+  one then says what became of it — saved, already in your library, or not saved and why — and
+  the ones not saved stay ticked for another try.
+- **MDPI papers get their PDF.** The library now fetches an MDPI paper's open-access PDF from
+  MDPI's file host (the add-on asks for nothing new for this; it is the server's fetch).
+
 ## 0.3.1 — 2026-10-10 (ADR-0153) — not yet submitted to the store
 
 Found by using it beside Jenni's add-on on the same live pages (Google Scholar, PubMed, arXiv,

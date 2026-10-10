@@ -20,6 +20,9 @@
  *   Everything is written with `textContent`.
  * - **What it remembers.** The identifiers of the papers its buttons saved, per thesis, in
  *   `chrome.storage.local` only (`memory.ts`), so a page visited again marks them "Saved".
+ * - **Elsewhere (ADR-0154).** Only when the student turned on "Show Save buttons on every site":
+ *   an article page's button by its tags, and a small "Save" beside each DOI in a reference list.
+ *   On a page with several buttons the card offers "Select several" (`bulk.ts`).
  */
 
 import { neverHere, ownHosts } from './anywhere.js';

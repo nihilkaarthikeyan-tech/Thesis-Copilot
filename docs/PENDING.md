@@ -368,6 +368,15 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       `thesis-copilot-chrome-0.3.0.zip` as an update, paste the new "Content script on …"
       justification and the STORE.md wording marked "new in 0.3.0", submit. Existing users accept the
       wider permission once. Try it on the live Scholar/PubMed/arXiv/MDPI pages first.
+      **Now 0.3.2 (ADR-0154, 2026-10-10)**: submit `thesis-copilot-chrome-0.3.2.zip` instead, with
+      STORE.md's "(new in 0.3.2)" box for the optional `https://*/*` permission; the site release
+      must carry /privacy's "From version 0.3.2…" paragraph. Before that, in your Chrome (reload
+      `apps/extension/dist`): turn on "Show Save buttons on every site" in the add-on's window and
+      accept Chrome's prompt (the tools cannot click it); a Wikipedia article's references get a
+      small "Save"; "Select several" on a Scholar page saves the ticked ones; turn it off again.
+      After the site release with the MDPI fetch, save one MDPI paper and check it reaches "Full
+      text" — the file host answered every request from the build machine, never tried from the
+      VPS.
 - [ ] **Word citations with several sources (R40, ADR-0117)** — open a "Word citations" .docx whose
       field holds two sources in Microsoft Word (Windows, Mac, web), change the style in
       References and update fields. No Word on the build machine.
