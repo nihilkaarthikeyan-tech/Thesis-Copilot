@@ -278,3 +278,70 @@ What it showed:
   diabetes"): the "keep a short technical term" and "one specific detail" instructions pull
   toward the passage's wording. A next candidate would need a rule for naming a study without
   its title, and the run6 measure may want to discount proper names; neither is done here.
+
+## Round 3 (2026-10-10, A.1 Assist only)
+
+Asked by the owner after round 2: keep round 2's gains (the judge's 8–3–4 and the
+citation-per-sentence shape), and fix what failed it: copied study and population names, and the
+framing opener on the Start-writing-now set.
+
+### 1. Prompt candidate v3: `eval/candidates/assist-academic3.md`
+
+Round 2's candidate with five changes, all said positively; no word to avoid is named:
+
+- **A study is named by its marker and its finding**, not by its title, the programme or product
+  it tested, or the passage's description of its own design ("one trial found…", or the finding
+  with its marker). The owner's wording was "by its author/year"; the prompt on disk already tells
+  the model not to write author names or years because the marker renders them, so "let the marker
+  identify the study" is the same instruction in this product's terms.
+- **The population is described briefly in the thesis's own words**, or left to the citation.
+- **Keep as written: figures and proper names only.** Round 2's "keep a short technical term
+  exactly as written" is narrowed; every other word is the writer's.
+- **At an opening** (empty text, or a heading), the first sentence is the most concrete fact the
+  passages report about the thesis's subject: a figure, a measured effect, or a finding in a named
+  place, with its marker.
+- **Things are described by what was measured or what they do**, with plain verbs, rather than by
+  how important or promising they are; one finding per sentence, about thirty words.
+
+### 2. The copying measure: names discounted, raw kept
+
+Round 2's copied runs were partly names ("the Pradhan Mantri Surya Ghar Muft Bijli Yojana",
+"BlueStar"), which the prompt itself tells the model to keep exactly as written. Counting them as
+copying penalises following the instruction. `eval/copying.ts` now also reports **`run6Names`**:
+outputs whose shared run with a passage holds six or more words that are *not* a proper name
+(capitalised other than at a sentence start, or an all-capitals acronym), a figure (any digit), or
+a word of a term the passage itself defines by an acronym in parentheses whose letters it spells
+("sustainable crop residue management practices (SCRMPs)"). The words are marked by their position
+in the passage (`passageTokens`), so the same word elsewhere still counts; the run must still match
+word for word; the threshold is still six. Nothing else is discounted: a design phrase ("pragmatic
+randomized controlled trial of the") and a population ("adolescents with type 1 diabetes", less
+its digit) still count.
+
+On round 2's stored outputs (re-measured on the raw text, no model call) the discount changes the
+typed set not at all (A 2 → 2, B 5 → 5: those runs were ordinary words) and the opener set
+A 7 → 5, B 5 → 4. So it removes the scheme names and acronyms and leaves the copying of ordinary
+wording in. **Pass is judged on `run6Names`**; raw `run6` is reported beside it on both sides.
+
+### 3. Pass criterion (written and committed before any run)
+
+Runs on the production models (`gpt-4.1-mini` fast, `gpt-5-mini` judge), judged blind in both
+orders, both sides post-processed by the same code:
+
+- `run.ts assist --candidate assist-academic3` (typed-sentence set, 15 cases);
+- `run.ts assist --candidate assist-academic3 --set opener` (10 cases).
+
+Budget ₹35 in all; a quota refusal stops the round. One extra variant may be run if v3 misses
+narrowly, against this same criterion. The candidate is adopted only if **all** hold:
+
+1. **Judge**, on each set: candidate wins ≥ current wins, and candidate mean not more than 0.2
+   below current.
+2. **Cited sentences** ≥ 90% on the typed set (`measures.candidate.citedSentences / sentences`).
+3. **Stock phrases per 1,000 words** not above current on either set, on the text the student is
+   offered (`style-measure.ts --processed --file <run>`).
+4. **Six-word copied runs, names discounted** (`measures.run6Names`) not above current on either
+   set; raw `run6` reported.
+5. **Not up** on either set: hallucinated cites, offered-nothing, failed calls.
+
+As information only (not part of the criterion, no adoption): one draft run,
+`run.ts draft --candidate draft-academic3` (the draft prompt on disk plus round 3's three writing
+rules, one line each), to see whether the rules carry to the strong tier.

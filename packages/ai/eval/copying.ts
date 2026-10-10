@@ -22,6 +22,14 @@ export type Measures = {
   longestRun: number;
   /** The run, as words, for the record. */
   runText: string;
+  /**
+   * ADR-0147 round 3: the most words of a shared run that are not a proper name, a figure or a
+   * term the passage defines with its own acronym (`passageTokens`). Reported beside `longestRun`,
+   * never instead of it.
+   */
+  longestRunNames: number;
+  /** That run, as words. */
+  runTextNames: string;
   /** Production's ADR-0071 flag ("close to Bagla 2026's wording") would show. */
   flagged: boolean;
   /** Sentences of prose (headings and needs-source lines left out). */
@@ -129,6 +137,78 @@ function prose(text: string): string {
     .join('\n');
 }
 
+/** Short words an acronym's letters skip ("Ministry of New and Renewable Energy (MNRE)"). */
+const ACRONYM_SKIPS = new Set(['of', 'and', 'the', 'for', 'in', 'on', 'to', 'a', 'an', 'de']);
+
+/**
+ * ADR-0147 round 3: the passage as `words()` tokenises it, each word marked `name` when the words
+ * a writer must keep as written: a proper name (capitalised other than at the start of a sentence,
+ * or an all-capitals acronym), a figure (any digit), or the words of a term the passage itself
+ * defines by an acronym in parentheses whose letters they spell ("sustainable crop residue
+ * management practices (SCRMPs)"). Marked by position, so the same word elsewhere in the passage
+ * still counts.
+ */
+export function passageTokens(text: string): Array<{ word: string; name: boolean }> {
+  const out: Array<{ word: string; name: boolean }> = [];
+  const re = /[\p{L}\p{N}]+/gu;
+  let last = 0;
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    const token = m[0];
+    const between = text.slice(last, m.index);
+    last = m.index + token.length;
+    const initial = out.length === 0 || /[.!?:]/.test(between);
+    const acronym = /^\p{Lu}{2,}s?$/u.test(token);
+    const name =
+      /\p{N}/u.test(token) || acronym || (!initial && /^\p{Lu}/u.test(token) && token.length > 1);
+    out.push({ word: token.toLowerCase(), name });
+    if (acronym && /\(\s*$/.test(between)) {
+      const letters = token.replace(/s$/, '').toLowerCase();
+      let li = letters.length - 1;
+      const marked: number[] = [];
+      for (let k = out.length - 2; k >= 0 && li >= 0; k--) {
+        const w = out[k] as { word: string; name: boolean };
+        if (w.word[0] === letters[li]) {
+          marked.push(k);
+          li--;
+        } else if (!ACRONYM_SKIPS.has(w.word)) break;
+      }
+      if (li < 0) for (const k of marked) (out[k] as { name: boolean }).name = true;
+    }
+  }
+  return out;
+}
+
+/**
+ * The shared run with the most words that are not names (`passageTokens`), and that count. Same
+ * dynamic programme as `longestCommonRun`; a run's words must still match consecutively.
+ */
+export function longestRunOutsideNames(
+  mine: readonly string[],
+  passage: ReadonlyArray<{ word: string; name: boolean }>,
+): { count: number; aStart: number; length: number } {
+  let prevLen = new Array<number>(passage.length + 1).fill(0);
+  let prevCount = new Array<number>(passage.length + 1).fill(0);
+  let best = { count: 0, aStart: 0, length: 0 };
+  for (let i = 1; i <= mine.length; i++) {
+    const curLen = new Array<number>(passage.length + 1).fill(0);
+    const curCount = new Array<number>(passage.length + 1).fill(0);
+    for (let j = 1; j <= passage.length; j++) {
+      const p = passage[j - 1] as { word: string; name: boolean };
+      if (mine[i - 1] !== p.word) continue;
+      curLen[j] = (prevLen[j - 1] ?? 0) + 1;
+      curCount[j] = (prevCount[j - 1] ?? 0) + (p.name ? 0 : 1);
+      const count = curCount[j] ?? 0;
+      if (count > best.count) {
+        const length = curLen[j] ?? 0;
+        best = { count, aStart: i - length, length };
+      }
+    }
+    prevLen = curLen;
+    prevCount = curCount;
+  }
+  return best;
+}
+
 export function measure(text: string, passages: readonly PromptPassage[]): Measures {
   const body = prose(text);
   const quoted = [...body.matchAll(/["“]([^"”]+)["”]/g)].map((m) => m[1] ?? '');
@@ -139,6 +219,11 @@ export function measure(text: string, passages: readonly PromptPassage[]): Measu
   for (const p of passages) {
     const run = longestCommonRun(mine, words(p.text));
     if (run.length > longest.length) longest = run;
+  }
+  let outsideNames = { count: 0, aStart: 0, length: 0 };
+  for (const p of passages) {
+    const run = longestRunOutsideNames(mine, passageTokens(p.text));
+    if (run.count > outsideNames.count) outsideNames = run;
   }
 
   const flagged =
@@ -164,6 +249,10 @@ export function measure(text: string, passages: readonly PromptPassage[]): Measu
   return {
     longestRun: longest.length,
     runText: mine.slice(longest.aStart, longest.aStart + longest.length).join(' '),
+    longestRunNames: outsideNames.count,
+    runTextNames: mine
+      .slice(outsideNames.aStart, outsideNames.aStart + outsideNames.length)
+      .join(' '),
     flagged,
     sentences: sentences.length,
     citedSentences: sentences.filter((s) => /\{\{cite:[^}]+\}\}/.test(s)).length,
@@ -182,6 +271,11 @@ export type MeasureTotals = {
   run6: number;
   /** …of 8+ words, the verbatim bar of ADR-0071. */
   run8: number;
+  /**
+   * ADR-0147 round 3: outputs with a shared run holding 6+ words that are not proper names,
+   * figures or the passage's own acronym-defined terms. The threshold is `run6`'s.
+   */
+  run6Names: number;
   /** Outputs production's own check would flag. */
   flagged: number;
   meanLongestRun: number;
@@ -208,6 +302,7 @@ export function totals(all: readonly Measures[]): MeasureTotals {
     outputs: nonEmpty.length,
     run6: nonEmpty.filter((m) => m.longestRun >= 6).length,
     run8: nonEmpty.filter((m) => m.longestRun >= 8).length,
+    run6Names: nonEmpty.filter((m) => (m.longestRunNames ?? m.longestRun) >= 6).length,
     flagged: nonEmpty.filter((m) => m.flagged).length,
     meanLongestRun: nonEmpty.length ? +(sum((m) => m.longestRun) / nonEmpty.length).toFixed(2) : 0,
     sentences: sum((m) => m.sentences),
