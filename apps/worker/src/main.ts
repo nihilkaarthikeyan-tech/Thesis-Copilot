@@ -123,6 +123,14 @@ import {
 } from './queues.js';
 import { captureException, initSentry } from './sentry.js';
 
+/**
+ * ADR-0152: `ledgerPeriodFor` (apps/api `usage.service.ts`) in SQL, for the refunds below: a free
+ * trial counts on the ledger row of the month it started, everything else on this month's ($2).
+ * The worker cannot reach the API's service, so it says it here, as it does the refund itself.
+ */
+const LEDGER_PERIOD_SQL = `(CASE WHEN u."plan" = 'FREE_TRIAL' AND u."trialStartsAt" IS NOT NULL
+    AND u."trialEndsAt" IS NOT NULL THEN to_char(u."trialStartsAt", 'YYYY-MM') ELSE $2 END)`;
+
 const log = (event: Record<string, unknown>): void => {
   console.log(JSON.stringify({ level: 30, time: Date.now(), ...event }));
 };
@@ -483,9 +491,12 @@ async function main(): Promise<void> {
     refund: async (userId) => {
       const now = new Date();
       const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      // ADR-0152: the row the API charged — a free trial's is the month the trial started.
       await prisma.$executeRawUnsafe(
-        `UPDATE "UsageLedger" SET "count" = "count" - 1
-         WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = $3::"AiAction" AND "count" > 0`,
+        `UPDATE "UsageLedger" l SET "count" = l."count" - 1
+         FROM "User" u
+         WHERE u."id" = $1::uuid AND l."userId" = u."id" AND l."action" = $3::"AiAction"
+           AND l."count" > 0 AND l."period" = ${LEDGER_PERIOD_SQL}`,
         userId,
         period,
         action,
@@ -878,9 +889,12 @@ async function main(): Promise<void> {
           refund: async (userId, action) => {
             const now = new Date();
             const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+            // ADR-0152: the row the API charged — a free trial's is the month it started.
             await prisma.$executeRawUnsafe(
-              `UPDATE "UsageLedger" SET "count" = "count" - 1
-               WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = $3::"AiAction" AND "count" > 0`,
+              `UPDATE "UsageLedger" l SET "count" = l."count" - 1
+               FROM "User" u
+               WHERE u."id" = $1::uuid AND l."userId" = u."id" AND l."action" = $3::"AiAction"
+                 AND l."count" > 0 AND l."period" = ${LEDGER_PERIOD_SQL}`,
               userId,
               period,
               action,

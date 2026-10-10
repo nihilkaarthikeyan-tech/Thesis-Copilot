@@ -15,7 +15,7 @@ import {
 } from '@tc/config';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
 import { SessionGuard } from '../auth/session.guard.js';
-import { periodFor, resetsAtFor, UsageService } from './usage.service.js';
+import { resetsAtFor, UsageService } from './usage.service.js';
 
 @Controller('usage')
 @UseGuards(SessionGuard)
@@ -27,7 +27,10 @@ export class UsageController {
     const plan: Plan = (PLANS as readonly string[]).includes(user.plan)
       ? (user.plan as Plan)
       : 'FREE_TRIAL';
-    const rows = await this.usage.usageFor(user.id);
+    const now = new Date();
+    // ADR-0152: a free trial's usage is the whole trial's, on the trial's own row.
+    const period = await this.usage.periodOf(user.id, now, plan);
+    const rows = await this.usage.usageFor(user.id, now, plan);
     // ADR-0144: an allowance that counts kept suggestions shows the ones kept as used; the calls
     // and their ceiling travel beside it.
     const used = Object.fromEntries(
@@ -55,9 +58,12 @@ export class UsageController {
       (action) => offeredOnSomePlan(action) || (bonus[action] ?? 0) > 0 || (used[action] ?? 0) > 0,
     );
 
+    // ADR-0152: a running trial's allowances last until the trial ends; they do not renew.
+    const trialAllowance = Boolean(trial && !trial.ended);
     return {
-      period: periodFor(),
-      resetsAt: resetsAtFor().toISOString(),
+      period,
+      resetsAt: trialAllowance && trial ? trial.endsAt : resetsAtFor(now).toISOString(),
+      trialAllowance,
       plan,
       trial,
       actions: listed.map((action) => ({

@@ -71,6 +71,11 @@ export type ConsumeResult =
       /** When the free trial ended, present when that is what refused (ADR-0036). */
       readonly trialEndedAt?: Date;
       /**
+       * ADR-0152: the refused allowance is the free trial's, counted over the whole trial and
+       * ending on this date rather than renewing on the 1st. `resetsAt` is the same date.
+       */
+      readonly trialEndsAt?: Date;
+      /**
        * ADR-0144: the month's calls hit the call ceiling of an allowance that counts kept
        * suggestions, before the student kept the whole allowance. `cap` and `used` are still the
        * allowance and the suggestions kept.
@@ -89,6 +94,37 @@ export function periodFor(now: Date = new Date()): string {
 /** Start of the next UTC month — what a capped response reports as `resetsAt`. */
 export function resetsAtFor(now: Date = new Date()): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+}
+
+/** What decides which ledger row an account's metered actions count on (ADR-0152). */
+export type LedgerAccount = {
+  readonly plan: string;
+  readonly trialStartsAt?: Date | null;
+  readonly trialEndsAt?: Date | null;
+};
+
+/**
+ * ADR-0152: the ledger row a metered action counts on. A paid plan counts by the calendar month
+ * (PRD §0.2). A free trial counts once over the whole trial, on the row of the month it started:
+ * a trial that starts on 25 October goes on counting on October's row on 2 November, so crossing
+ * the 1st no longer gives it a second month's allowance. After `trialEndsAt` the trial's allowance
+ * is 0 (ADR-0036), so the trial's row covers [trialStartsAt, trialEndsAt]. An account with no
+ * trial dates (none should be left) counts by the month, as before.
+ */
+export function ledgerPeriodFor(account: LedgerAccount, now: Date = new Date()): string {
+  return account.plan === 'FREE_TRIAL' && account.trialStartsAt && account.trialEndsAt
+    ? periodFor(account.trialStartsAt)
+    : periodFor(now);
+}
+
+/**
+ * `ledgerPeriodFor` in SQL, for the statements that find the row themselves (`refund`, `keep`,
+ * and the worker's refunds): `u` is the joined "User" row, `fallback` the SQL for the month's key.
+ */
+export function ledgerPeriodSql(u: string, fallback: string): string {
+  return `(CASE WHEN ${u}."plan" = 'FREE_TRIAL' AND ${u}."trialStartsAt" IS NOT NULL
+             AND ${u}."trialEndsAt" IS NOT NULL
+           THEN to_char(${u}."trialStartsAt", 'YYYY-MM') ELSE ${fallback} END)`;
 }
 
 @Injectable()
@@ -110,10 +146,15 @@ export class UsageService {
     action: MeteredAction,
     now: Date = new Date(),
   ): Promise<ConsumeResult> {
-    const period = periodFor(now);
+    // ADR-0152: a trial counts on the row of the month it started, for the whole trial.
+    const trial = plan === 'FREE_TRIAL' ? await this.trialWindow(userId) : null;
+    const period = ledgerPeriodFor({ plan, ...trial }, now);
     // ADR-0036: a free trial past its end date has no plan allowance. The student keeps every
     // thesis; an admin's extra allowance still counts, so a grant can help someone finish.
-    const trialEndedAt = plan === 'FREE_TRIAL' ? await this.trialEndedAt(userId, now) : null;
+    const ends = trial?.trialEndsAt ?? null;
+    const trialEndedAt = ends && ends.getTime() <= now.getTime() ? ends : null;
+    // ADR-0152: a running trial's allowance does not renew on the 1st; it lasts until the end.
+    const trialEndsAt = ends && trial?.trialStartsAt && !trialEndedAt ? ends : null;
     const cap = trialEndedAt ? 0 : capFor(plan, action);
     const refusedFor: RefusalReason = trialEndedAt ? 'trial' : 'cap';
     const capRefusal = (shown: number, used: number) => ({
@@ -121,8 +162,9 @@ export class UsageService {
       reason: refusedFor,
       cap: shown,
       used,
-      resetsAt: resetsAtFor(now),
+      resetsAt: trialEndsAt ?? resetsAtFor(now),
       ...(trialEndedAt ? { trialEndedAt } : {}),
+      ...(trialEndsAt ? { trialEndsAt } : {}),
     });
 
     // A cap of 0 must refuse without touching the table: the INSERT branch would otherwise create
@@ -234,12 +276,15 @@ export class UsageService {
    */
   async keep(userId: string, suggestionId: string): Promise<boolean> {
     const actions = Object.keys(CALLS_PER_KEPT);
+    // ADR-0152: a trial's suggestion counts on the trial's row, whichever month it was shown in.
     const rows = await this.prisma.$queryRawUnsafe<Array<{ kept: number }>>(
       `WITH counted AS (
-         UPDATE "SuggestionEvent" SET "countedAt" = now()
-         WHERE "id" = $1::uuid AND "userId" = $2::uuid AND "countedAt" IS NULL
-           AND "action"::text = ANY($3::text[])
-         RETURNING "userId", "action", to_char("createdAt", 'YYYY-MM') AS period
+         UPDATE "SuggestionEvent" e SET "countedAt" = now()
+         FROM "User" u
+         WHERE e."id" = $1::uuid AND e."userId" = $2::uuid AND e."countedAt" IS NULL
+           AND e."action"::text = ANY($3::text[]) AND u."id" = e."userId"
+         RETURNING e."userId", e."action",
+           ${ledgerPeriodSql('u', `to_char(e."createdAt", 'YYYY-MM')`)} AS period
        )
        UPDATE "UsageLedger" l SET "kept" = l."kept" + 1
        FROM counted
@@ -309,6 +354,29 @@ export class UsageService {
     };
   }
 
+  /** The account's trial dates (ADR-0036, ADR-0152); null when the user is not found. */
+  async trialWindow(
+    userId: string,
+  ): Promise<{ trialStartsAt: Date | null; trialEndsAt: Date | null } | null> {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { trialStartsAt: true, trialEndsAt: true },
+    });
+  }
+
+  /**
+   * ADR-0152: the ledger row this user's metered actions count on now — the trial's row for a
+   * free trial, this month's otherwise. Reads the plan from the account unless it is given.
+   */
+  async periodOf(userId: string, now: Date = new Date(), plan?: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true, trialStartsAt: true, trialEndsAt: true },
+    });
+    if (!user) return periodFor(now);
+    return ledgerPeriodFor({ ...user, plan: plan ?? user.plan }, now);
+  }
+
   /** The end of this account's free trial if it has passed, otherwise null. */
   async trialEndedAt(userId: string, now: Date = new Date()): Promise<Date | null> {
     const user = await this.prisma.user.findUnique({
@@ -344,7 +412,8 @@ export class UsageService {
     reason: string,
     now: Date = new Date(),
   ): Promise<{ action: MeteredAction; bonus: number; period: string }> {
-    const period = periodFor(now);
+    // ADR-0152: on a free trial the grant goes on the trial's row, which is the one it counts on.
+    const period = await this.periodOf(userId, now);
     const [row] = await this.prisma.$transaction([
       this.prisma.usageLedger.upsert({
         where: { userId_period_action: { userId, period, action } },
@@ -425,23 +494,31 @@ export class UsageService {
    * zero.
    */
   async refund(userId: string, action: MeteredAction, now: Date = new Date()): Promise<void> {
+    // ADR-0152: the row `consume` charged — the trial's for a free trial.
     await this.prisma.$executeRawUnsafe(
-      `UPDATE "UsageLedger"
-       SET "count" = "count" - 1
-       WHERE "userId" = $1::uuid AND "period" = $2 AND "action" = $3::"AiAction" AND "count" > 0`,
+      `UPDATE "UsageLedger" l
+       SET "count" = l."count" - 1
+       FROM "User" u
+       WHERE u."id" = $1::uuid AND l."userId" = u."id" AND l."action" = $3::"AiAction"
+         AND l."count" > 0 AND l."period" = ${ledgerPeriodSql('u', '$2')}`,
       userId,
       periodFor(now),
       action,
     );
   }
 
-  /** Current usage for one user in the current period — powers `GET /usage/me` (PRD §9.4). */
+  /**
+   * Current usage for one user in the current period — powers `GET /usage/me` (PRD §9.4). On a
+   * free trial, the whole trial's (ADR-0152).
+   */
   async usageFor(
     userId: string,
     now: Date = new Date(),
+    plan?: string,
   ): Promise<Array<{ action: string; count: number; bonus: number; kept: number }>> {
+    const period = await this.periodOf(userId, now, plan);
     const rows = await this.prisma.usageLedger.findMany({
-      where: { userId, period: periodFor(now) },
+      where: { userId, period },
       select: { action: true, count: true, bonus: true, kept: true },
     });
     return rows.map((r) => ({ action: r.action, count: r.count, bonus: r.bonus, kept: r.kept }));
@@ -480,6 +557,15 @@ export function refusal(
       result.spentInr ?? MONTHLY_CEILING_INR,
       MONTHLY_CEILING_INR,
       result.resetsAt,
+    );
+  }
+  if (result.trialEndsAt && result.callCeiling === undefined) {
+    return new CapExceededError(
+      action,
+      result.cap,
+      result.resetsAt,
+      result.used ?? result.cap,
+      result.trialEndsAt,
     );
   }
   if (result.callCeiling !== undefined) {
