@@ -32,6 +32,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'Your own dashes are yours: an edit or a tone rewrite of text you wrote with dashes keeps them, and proofreading never suggests one.',
       'Number ranges (2015–2020), hyphenated words, minus signs, quotations, equations, code and tables are left as they are.',
       'Suggestions no longer open a sentence with a padding word such as "Additionally," or "Furthermore,": the sentence starts with what it is about. When you stop mid-sentence, the suggestion still continues your sentence as you began it.',
+      'When a paper index is not answering, the search now says so by name and says where the results did come from, instead of showing "nothing found". Automatic sources add only a couple of closely matching papers from such a search and try again later.',
     ],
   },
   {

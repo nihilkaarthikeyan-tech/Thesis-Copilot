@@ -6433,3 +6433,22 @@ A miss on four criteria is not narrow, so the extra variant was not run. The cop
 mostly study and population names ("pragmatic randomized controlled trial of the BlueStar",
 "adolescents with type 1 diabetes"): the "keep the technical term" and "one specific detail"
 rules pull toward the passage's own phrase. The prompt file is unchanged.
+
+## 2026-10-10 — Paper index budgets (ADR-0149)
+
+Side-by-side findings 1–2: production's OpenAlex key spent its free $1/day and every keyed
+request got HTTP 429 (`Insufficient budget… $0 remaining. Resets at midnight UTC`) while keyless
+requests still answered; `web-scope.service.ts` hid it as `[]`, and `find-sources` filled
+libraries with off-topic papers from the indexes still answering. Built: a once-only keyless
+retry with the spent-key state remembered in Redis until `retry-after`/midnight UTC; refusal
+memory and a 60 s backoff for an index that sends no `Retry-After` (Semantic Scholar); a per-UTC-day
+OpenAlex meter; `OPENALEX_BUDGET_70/90`, `OPENALEX_KEY_SPENT` and `INDEX_REFUSING` alerts through
+the existing mailer, once per incident; a typed `SearchStatus` on every search path (web scope,
+Papers panel, chat beyond, research chat, "On" research, deep research, edit literature) with the
+notice shown in the UI; and a degraded `find-sources` (higher bar, two papers, marked, retried at
+most twice, job id `find-sources-retry-<chapter>-<digest>-<n>`). Searches per action are counted
+in the ADR (thesis creation 3, a beyond question 1, a deep research run 6–10). A fault found on
+the way: the carried-over chat-beyond code read `found` outside the `try` that declared it, so
+the empty-search reply never reached `done`; `chat-beyond-api.spec.ts` caught it. Tests: recorded
+429 bodies only, no live calls (`index-health`, `search-status`, `alerts-scholarly`,
+`find-sources-degraded`).

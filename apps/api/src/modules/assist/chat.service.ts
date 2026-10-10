@@ -63,6 +63,7 @@ import {
   beyondSettingOf,
   passagesFromWebResults,
   readingStep,
+  searchDownReply,
   searchingStep,
   WRITING_STEP,
 } from './beyond-library.js';
@@ -106,6 +107,7 @@ import {
 import { ChatThreadsService, type OpenThread } from './chat-threads.service.js';
 import { ContextService } from './context.service.js';
 import { passagesFromChapters } from './document-scope.js';
+import { statusOf } from './search-status.js';
 import { type WebResult, WebScopeService } from './web-scope.service.js';
 
 /**
@@ -159,7 +161,7 @@ export type ChatEvent =
    */
   | {
       event: 'step';
-      data: { id: 'search' | 'read' | 'write'; text: string } | ResearchStep | DeepStep;
+      data: { id: 'search' | 'read' | 'write' | 'notice'; text: string } | ResearchStep | DeepStep;
     }
   | { event: 'token'; data: { t: string } }
   | {
@@ -669,6 +671,7 @@ export class ChatService {
     // ADR-0074's budget per part, so the whole search is bounded by the number of parts.
     const retrievals: Retrieved[] = [];
     const found: WebResult[][] = [];
+    let searchNotice: string | null = null;
     for (const [i, part] of plan.entries()) {
       yield { event: 'step', data: partStep(i, plan.length, part) };
       const [retrieved, results] = await Promise.all([
@@ -694,6 +697,12 @@ export class ChatService {
       ]);
       retrievals.push(retrieved);
       found.push(results);
+      // ADR-0149: an index that did not answer is said once, after the first part that saw it.
+      const notice = statusOf(results)?.notice ?? null;
+      if (notice && !searchNotice) {
+        searchNotice = notice;
+        yield { event: 'step', data: { id: 'notice', text: notice } };
+      }
     }
     // The question as asked, too, so a part the planner missed still has the library's best.
     retrievals.push(await this.context.retrieve(chapter, input.message, 'CHAT'));
@@ -976,9 +985,11 @@ export class ChatService {
 
     let found: BeyondPassages;
     try {
-      const results = researchCandidates(
-        await this.web.searchPlan(input.documentId, input.message, plan, signal),
-      );
+      const searched = await this.web.searchPlan(input.documentId, input.message, plan, signal);
+      // ADR-0149: an index that did not answer is said, not hidden in "nothing found".
+      const notice = statusOf(searched)?.notice ?? null;
+      if (notice) yield { event: 'step', data: { id: 'notice', text: notice } };
+      const results = researchCandidates(searched);
       yield { event: 'step', data: readStep(results.length) };
       if (results.length === 0) {
         yield { event: 'step', data: keptStep(0, 0) };
@@ -1084,6 +1095,7 @@ export class ChatService {
     const filters = beyondFilters(input.filters ?? {});
     let built: ReturnType<typeof passagesFromWebResults>;
     let memory: Awaited<ReturnType<ContextService['memoryBlock']>>;
+    let notice: string | null = null;
     try {
       const [found, block] = await Promise.all([
         this.web.search(user.id, input.documentId, input.message, signal, BEYOND.candidates),
@@ -1091,10 +1103,13 @@ export class ChatService {
       ]);
       built = passagesFromWebResults(found.results, filters);
       memory = block;
+      notice = found.notice ?? null;
     } catch (error) {
       await this.usage.refund(user.id, 'CHAT');
       throw error;
     }
+    // ADR-0149: an index that did not answer is said, not hidden in "no papers".
+    if (notice) yield { event: 'step', data: { id: 'notice', text: notice } };
 
     if (built.passages.length === 0) {
       // Nothing to read, so no model call and no charge — the relevance floor's refund.
@@ -1103,7 +1118,7 @@ export class ChatService {
       yield {
         event: 'done',
         data: {
-          text: BEYOND_EMPTY_REPLY,
+          text: notice ? searchDownReply(notice) : BEYOND_EMPTY_REPLY,
           outcome: 'beyond-empty',
           citations: [],
           passagesUsed: 0,

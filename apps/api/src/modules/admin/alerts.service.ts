@@ -14,6 +14,13 @@
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Env } from '@tc/config';
+import {
+  OPENALEX_USD,
+  OPENALEX_WARN_SHARES,
+  type OpenAlexDay,
+  openAlexMeter,
+  scholarlyHealth,
+} from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
 import { MAILER, type Mailer } from '../../common/mailer.js';
 import { PrismaService } from '../../common/prisma.service.js';
@@ -45,7 +52,14 @@ export type AlertKind =
   | 'PLATFORM_BUDGET_WARNING'
   | 'PLATFORM_BUDGET_REACHED'
   | 'JOB_FAILURES'
-  | 'TTFB_P95';
+  | 'TTFB_P95'
+  /** ADR-0149: the day's OpenAlex use has passed 70% / 90% of the key's free daily budget. */
+  | 'OPENALEX_BUDGET_70'
+  | 'OPENALEX_BUDGET_90'
+  /** ADR-0149: the key's budget is spent; searches go to the (smaller) keyless pool. */
+  | 'OPENALEX_KEY_SPENT'
+  /** ADR-0149: a paper index is refusing every request. */
+  | 'INDEX_REFUSING';
 
 export type Breach = { kind: AlertKind; detail: string; value: number; threshold: number };
 
@@ -80,6 +94,7 @@ export class AlertsService {
       ...(await this.costBreaches(now)),
       ...(await this.jobFailureBreach(now)),
       ...(await this.ttfbBreach(now)),
+      ...(await this.scholarlyBreaches(now)),
     ];
 
     const current = new Set(breaches.map((b) => b.kind));
@@ -133,6 +148,67 @@ export class AlertsService {
       ];
     }
     return [];
+  }
+
+  /**
+   * ADR-0149: the paper indexes. The day's OpenAlex count (ours, in Redis, shared with the
+   * worker) against the key's free $1, at 70% and at 90% — only the higher is open at a time,
+   * and the day turning clears it; the key's budget spent; an index refusing every request. Each
+   * is one email per incident, like every other alert here.
+   */
+  async scholarlyBreaches(
+    now: Date,
+    sources: {
+      today?: () => Promise<OpenAlexDay>;
+      states?: () => ReturnType<typeof scholarlyHealth.snapshot>;
+    } = {},
+  ): Promise<Breach[]> {
+    const out: Breach[] = [];
+    try {
+      const day = await (sources.today ?? (() => openAlexMeter.today(now.getTime())))();
+      const share = day.shareOfKeyedBudget;
+      const [warn70, warn90] = OPENALEX_WARN_SHARES;
+      const level = share >= warn90 ? 90 : share >= warn70 ? 70 : null;
+      if (level !== null) {
+        out.push({
+          kind: level === 90 ? 'OPENALEX_BUDGET_90' : 'OPENALEX_BUDGET_70',
+          detail: `OpenAlex use today (${day.date} UTC) is about $${day.usd.toFixed(3)} of the key's free $${OPENALEX_USD.keyedDailyBudget}: ${day.searches} searches, ${day.lists} list requests, ${day.lookups} free lookups. Past the budget OpenAlex refuses the key until midnight UTC and searches fall back to the shared keyless pool ($${OPENALEX_USD.keylessDailyBudget}/day).`,
+          value: Math.round(share * 100),
+          threshold: level,
+        });
+      }
+      const states = await (
+        sources.states ?? (() => scholarlyHealth.snapshot(['openalex', 'semanticscholar']))
+      )();
+      const t = now.getTime();
+      for (const state of states) {
+        if (
+          state.service === 'openalex' &&
+          state.keyedExhaustedUntil !== null &&
+          state.keyedExhaustedUntil > t
+        ) {
+          out.push({
+            kind: 'OPENALEX_KEY_SPENT',
+            detail: `OpenAlex refused the key until ${new Date(state.keyedExhaustedUntil).toISOString()} ("${state.reason ?? 'budget spent'}"). Searches go without the key until then. A prepaid top-up is the remedy if this repeats (docs/PENDING.md).`,
+            value: 0,
+            threshold: 0,
+          });
+        }
+        if (state.refusedUntil !== null && state.refusedUntil > t) {
+          const minutes = state.refusingSince ? Math.round((t - state.refusingSince) / 60_000) : 0;
+          out.push({
+            kind: 'INDEX_REFUSING',
+            detail: `${state.service} has refused every request for ${minutes} min, until ${new Date(state.refusedUntil).toISOString()} ("${state.reason ?? 'HTTP 429'}"). Students see a notice naming it; searches use the other indexes.`,
+            value: minutes,
+            threshold: 0,
+          });
+        }
+      }
+    } catch (error) {
+      // Redis down is not a reason to stop the other alerts.
+      this.logger.warn({ err: error }, 'scholarly alert check failed');
+    }
+    return out;
   }
 
   /** §11.5: month-to-date, per user and platform-wide. */

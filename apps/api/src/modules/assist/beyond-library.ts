@@ -167,6 +167,14 @@ export const BEYOND_EMPTY_REPLY =
   'from. Try naming the method, the material or the population rather than asking a question.';
 
 /**
+ * ADR-0149: the search came back empty because an index did not answer, which is not the same
+ * as "no papers on this". `notice` is `searchStatus`'s line, naming the index.
+ */
+export function searchDownReply(notice: string): string {
+  return `${notice} Nothing could be read for this question, so there is no answer from the literature yet.`;
+}
+
+/**
  * A.4's "not enough" reply names the library, which is wrong here: the passages were abstracts
  * the search found. The scripted reply is recognised and replaced, as the panel already treats it
  * as a state rather than as prose.

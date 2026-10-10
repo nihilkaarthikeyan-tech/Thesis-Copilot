@@ -58,6 +58,7 @@ import {
   beyondSettingOf,
   passagesFromWebResults,
   readingStep,
+  searchDownReply,
   searchingStep,
   WRITING_STEP,
 } from './beyond-library.js';
@@ -234,6 +235,7 @@ export class ResearchChatService {
     } else {
       yield { event: 'step', data: { id: 'search', text: searchingStep(this.web.indexNames()) } };
       let built: BeyondPassages;
+      let notice: string | null = null;
       try {
         const found = await this.web.search(
           user.id,
@@ -243,14 +245,17 @@ export class ResearchChatService {
           BEYOND.candidates,
         );
         built = passagesFromWebResults(found.results, filters);
+        notice = found.notice ?? null;
       } catch (error) {
         await this.usage.refund(user.id, 'CHAT');
         throw error;
       }
+      // ADR-0149: an index that did not answer is said, not hidden in "no papers".
+      if (notice) yield { event: 'step', data: { id: 'notice', text: notice } };
       if (built.passages.length === 0) {
         // Nothing to read: no model call, no charge.
         await this.usage.refund(user.id, 'CHAT');
-        yield refused(BEYOND_EMPTY_REPLY, 'beyond-empty');
+        yield refused(notice ? searchDownReply(notice) : BEYOND_EMPTY_REPLY, 'beyond-empty');
         return;
       }
       const kept = await this.relevant(user.id, input.message, built, signal);

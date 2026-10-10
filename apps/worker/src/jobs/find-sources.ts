@@ -38,6 +38,8 @@ import {
   credibility,
   type DiscoveredWork,
   mergeWorks,
+  nextMidnightUtc,
+  scholarlyHealth,
   searchWithinBudget,
   type WorkFilters,
 } from '@tc/retrieval';
@@ -81,16 +83,67 @@ export type FindSourcesDeps = {
     ok: boolean;
     error?: string;
   }) => Promise<void>;
+  /**
+   * ADR-0149: schedules this search again, `delayMs` from now, under `jobId`. A degraded run
+   * calls it; without it a degraded run simply is not repeated.
+   */
+  enqueueRetry?: (job: FindSourcesJob, jobId: string, delayMs: number) => Promise<unknown>;
+  /** ADR-0149: when OpenAlex is expected to answer again (ms), if anything said. */
+  openalexBackAt?: () => Promise<number | null>;
   now?: () => Date;
   log?: (event: Record<string, unknown>) => void;
 };
 
 export type FindSourcesResult = {
-  /** `off`: the student turned web search off for this thesis (ADR-0087). */
-  status: 'added' | 'none-relevant' | 'capped' | 'gone' | 'off';
+  /**
+   * `off`: the student turned web search off for this thesis (ADR-0087). `degraded`: OpenAlex
+   * did not answer (ADR-0149), so at most `DEGRADED_SOURCES.perRun` papers on a higher bar
+   * were added and the search is tried again later.
+   */
+  status: 'added' | 'none-relevant' | 'capped' | 'gone' | 'off' | 'degraded';
   added: number;
   searched: number;
+  /** ADR-0149: the search is repeated after this many ms; null when it is not. */
+  retryInMs?: number | null;
 };
+
+/**
+ * ADR-0149: what a search does when OpenAlex, the one index that covers every field, did not
+ * answer. The other indexes still answer, but for an engineering or humanities thesis what they
+ * find is mostly off topic, and an automatic library fills with it. So: a higher bar, fewer
+ * papers, and the search again once OpenAlex should be back.
+ */
+export const DEGRADED_SOURCES = {
+  /** Added to `AUTO_SOURCES.addCosine`. */
+  extraCosine: 0.05,
+  perRun: 2,
+  /** Tried again at most this many times. */
+  maxRetries: 2,
+  /** When nothing said when OpenAlex is back. */
+  retryMs: 30 * 60_000,
+  minRetryMs: 5 * 60_000,
+  maxRetryMs: 12 * 60 * 60_000,
+} as const;
+
+/**
+ * The retry's BullMQ id: keyed on what it will read (the chapter and the query, by digest) and
+ * the attempt, never on what it writes. No `:` (BullMQ refuses it).
+ */
+export function degradedRetryJobId(job: FindSourcesJob, attempt: number): string {
+  let h = 0;
+  for (const ch of job.query) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return `find-sources-retry-${job.chapterId}-${(h >>> 0).toString(36)}-${attempt}`;
+}
+
+/** When OpenAlex should answer again, from the shared memory of its refusals. */
+export async function openalexBackAt(now: number = Date.now()): Promise<number | null> {
+  const until = await scholarlyHealth.refusedUntil('openalex');
+  if (until !== null) return until;
+  const state = await scholarlyHealth.state('openalex');
+  return state.keyedExhaustedUntil !== null && state.keyedExhaustedUntil > now
+    ? Math.min(state.keyedExhaustedUntil, nextMidnightUtc(now))
+    : null;
+}
 
 /** Searches this user has had this calendar month (UTC), from the log. */
 export async function autoSearchesThisMonth(
@@ -199,50 +252,63 @@ export async function runFindSources(
   // finds the field; the section's own words find the part being written. Every result is still
   // scored against the whole of `query` below, so the short searches cost no relevance.
   const searches = [thesis, job.query.slice(0, 300)].filter((q) => q.trim().length > 0);
+  // ADR-0149: whether OpenAlex answered at all. `searchWithinBudget` reports each failed query
+  // through `onSkip`; OpenAlex is down for this run when it returned nothing and failed at least
+  // once.
+  let openalexSkips = 0;
   // ADR-0050: a time budget per index, and one semantic search with the whole query.
-  const lists = (
-    await Promise.all([
-      (async () => {
-        const began = Date.now();
-        const found = await searchWithinBudget(
-          [job.query.slice(0, 2_000)],
-          (q, signal) =>
-            deps.openalex.semanticSearch
-              ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal, filters)
-              : Promise.resolve([]),
-          {
-            ...SEARCH_BUDGET,
-            onSkip: (_q, reason) => log({ level: 40, msg: 'openalex semantic skipped', reason }),
+  const perIndex = await Promise.all([
+    (async () => {
+      const began = Date.now();
+      const found = await searchWithinBudget(
+        [job.query.slice(0, 2_000)],
+        (q, signal) =>
+          deps.openalex.semanticSearch
+            ? deps.openalex.semanticSearch(`${thesis}. ${q}`, now, signal, filters)
+            : Promise.resolve([]),
+        {
+          ...SEARCH_BUDGET,
+          onSkip: (_q, reason) => {
+            openalexSkips += 1;
+            log({ level: 40, msg: 'openalex semantic skipped', reason });
           },
-        );
-        log({
-          msg: 'index searched',
-          index: 'openalex-semantic',
-          ms: Date.now() - began,
-          works: found.flat().length,
-        });
-        return found;
-      })(),
-      ...indexes.map(async ({ name, client }) => {
-        const began = Date.now();
-        const found = await searchWithinBudget(
-          searches,
-          (q, signal) => client.search(q, now, signal, filters),
-          {
-            ...SEARCH_BUDGET,
-            onSkip: (_q, reason) => log({ level: 40, msg: `${name} search skipped`, reason }),
+        },
+      );
+      log({
+        msg: 'index searched',
+        index: 'openalex-semantic',
+        ms: Date.now() - began,
+        works: found.flat().length,
+      });
+      return { name: 'openalex', found };
+    })(),
+    ...indexes.map(async ({ name, client }) => {
+      const began = Date.now();
+      const found = await searchWithinBudget(
+        searches,
+        (q, signal) => client.search(q, now, signal, filters),
+        {
+          ...SEARCH_BUDGET,
+          onSkip: (_q, reason) => {
+            if (name === 'openalex') openalexSkips += 1;
+            log({ level: 40, msg: `${name} search skipped`, reason });
           },
-        );
-        log({
-          msg: 'index searched',
-          index: name,
-          ms: Date.now() - began,
-          works: found.flat().length,
-        });
-        return found;
-      }),
-    ])
-  ).flat();
+        },
+      );
+      log({
+        msg: 'index searched',
+        index: name,
+        ms: Date.now() - began,
+        works: found.flat().length,
+      });
+      return { name, found };
+    }),
+  ]);
+  const lists = perIndex.flatMap((entry) => entry.found);
+  const openalexWorks = perIndex
+    .filter((entry) => entry.name === 'openalex')
+    .reduce((n, entry) => n + entry.found.flat().length, 0);
+  const degraded = openalexWorks === 0 && openalexSkips > 0;
 
   // 2. Not already in the library, and with an abstract: a paper with nothing to read cannot be
   // cited, and adding it would only lengthen the library.
@@ -286,11 +352,13 @@ export async function runFindSources(
     const [queryVector, ...workVectors] = vectors;
     added = fresh
       .map((w, i) => ({ ...w, score: cosine(queryVector ?? [], workVectors[i] ?? []) }))
-      .filter((w) => w.score >= AUTO_SOURCES.addCosine)
+      .filter(
+        (w) => w.score >= AUTO_SOURCES.addCosine + (degraded ? DEGRADED_SOURCES.extraCosine : 0),
+      )
       // ADR-0076: among papers on topic, the better-established first. Relevance (the filter
       // above) still decides what is eligible; standing only orders the few that are.
       .sort((a, b) => b.score + credibility(b, now) - (a.score + credibility(a, now)))
-      .slice(0, perRun);
+      .slice(0, degraded ? Math.min(perRun, DEGRADED_SOURCES.perRun) : perRun);
   }
 
   // 4. Into the library, then the path every picked paper takes: resolve, then read.
@@ -350,6 +418,7 @@ export async function runFindSources(
         chapterId: job.chapterId,
         query: query.slice(0, 300),
         searched: fresh.length,
+        ...(degraded ? { degraded: true, retry: job.retry ?? 0 } : {}),
         added: added.map((w) => ({
           title: w.title,
           doi: w.doi,
@@ -358,12 +427,33 @@ export async function runFindSources(
       },
     },
   });
-  log({ msg: 'find-sources done', added: added.length, searched: fresh.length });
-  return {
-    status: added.length > 0 ? 'added' : 'none-relevant',
-    added: added.length,
-    searched: fresh.length,
-  };
+  log({ msg: 'find-sources done', added: added.length, searched: fresh.length, degraded });
+  if (!degraded) {
+    return {
+      status: added.length > 0 ? 'added' : 'none-relevant',
+      added: added.length,
+      searched: fresh.length,
+    };
+  }
+
+  // ADR-0149: again once OpenAlex should be back, a bounded number of times.
+  const attempt = (job.retry ?? 0) + 1;
+  let retryInMs: number | null = null;
+  if (deps.enqueueRetry && attempt <= DEGRADED_SOURCES.maxRetries) {
+    const backAt = await (deps.openalexBackAt ?? (() => openalexBackAt(now.getTime())))();
+    const wanted = backAt !== null ? backAt - now.getTime() + 60_000 : DEGRADED_SOURCES.retryMs;
+    retryInMs = Math.min(
+      DEGRADED_SOURCES.maxRetryMs,
+      Math.max(DEGRADED_SOURCES.minRetryMs, wanted),
+    );
+    await deps.enqueueRetry(
+      { ...job, retry: attempt },
+      degradedRetryJobId(job, attempt),
+      retryInMs,
+    );
+    log({ level: 40, msg: 'find-sources degraded, retry scheduled', attempt, retryInMs });
+  }
+  return { status: 'degraded', added: added.length, searched: fresh.length, retryInMs };
 }
 
 /**

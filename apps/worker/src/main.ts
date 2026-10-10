@@ -42,6 +42,7 @@ import {
   extractDocument,
   OpenAlexClient,
   OpenAlexDiscovery,
+  openAlexMeter,
   PUBMED,
   PubMedClient,
   resolveByDoi,
@@ -49,6 +50,7 @@ import {
   SemanticScholarClient,
   SPRINGER_DAILY_LIMIT,
   SpringerNatureClient,
+  scholarlyHealth,
   sharedGate,
   UnpaywallClient,
 } from '@tc/retrieval';
@@ -260,6 +262,10 @@ async function main(): Promise<void> {
   const connection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
   const prisma = new PrismaClient();
   await prisma.$connect();
+  // ADR-0149: the indexes' refusals and the day's OpenAlex count are shared with the API.
+  const scholarlyStore = connection.duplicate();
+  scholarlyHealth.configure({ store: scholarlyStore, log });
+  openAlexMeter.configure({ store: scholarlyStore });
 
   const providers = providersFor(env);
 
@@ -907,6 +913,9 @@ async function main(): Promise<void> {
               jobId: jobId('resolve-reference', input.documentId, jobKeyDigest(input.rawReference)),
             }),
           logEmbed: logEmbed(prisma, env),
+          // ADR-0149: a degraded search is tried again once OpenAlex should be back.
+          enqueueRetry: (payload, id, delayMs) =>
+            findSourcesQueue.add('find-sources', payload, { jobId: id, delay: delayMs }),
           log: (event) => log({ jobId: job.id, ...event }),
         });
         log({ msg: 'find-sources finished', jobId: job.id, ...result });

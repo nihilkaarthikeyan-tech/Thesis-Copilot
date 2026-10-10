@@ -36,13 +36,41 @@ import {
   mergeWorks,
   OpenAlexDiscovery,
   type ResearchPlan,
+  type SearchFn,
   SemanticScholarClient,
   searchWithinBudget,
+  type WorkFilters,
 } from '@tc/retrieval';
 import { ENV } from '../../common/env.token.js';
 import { NotFoundError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
 import { ScholarlyIndexes } from '../../common/scholarly-indexes.service.js';
+import {
+  type IndexName,
+  type IndexOutcome,
+  outcomeOfCount,
+  outcomeOfError,
+  type SearchedList,
+  type SearchStatus,
+  searchStatus,
+  withStatus,
+} from './search-status.js';
+
+type Searcher = (
+  query: string,
+  now?: Date,
+  signal?: AbortSignal,
+  filters?: WorkFilters,
+) => Promise<DiscoveredWork[]>;
+
+/** The outcomes in the order the indexes are asked, whatever order they answered in. */
+function sortOutcomes(
+  outcomes: readonly IndexOutcome[],
+  order: ReadonlyArray<{ name: IndexName }>,
+): IndexOutcome[] {
+  const rank = new Map(order.map(({ name }, i) => [name, i]));
+  return [...outcomes].sort((a, b) => (rank.get(a.name) ?? 0) - (rank.get(b.name) ?? 0));
+}
 
 /** One candidate, with everything the panel needs to show it and to add it. */
 export type WebResult = {
@@ -142,7 +170,7 @@ export class WebScopeService {
     signal?: AbortSignal,
     /** ADR-0060 asks for more, so eight with abstracts usually survive its filter. */
     limit: number = WEB_SCOPE.maxResults,
-  ): Promise<{ results: WebResult[]; query: string }> {
+  ): Promise<{ results: WebResult[]; query: string; status: SearchStatus; notice: string | null }> {
     if (documentId !== null) {
       const document = await this.prisma.document.findFirst({
         where: { id: documentId, ownerId },
@@ -168,29 +196,39 @@ export class WebScopeService {
     const s2 = this.env.SEMANTIC_SCHOLAR_API_KEY
       ? new SemanticScholarClient(this.env.SEMANTIC_SCHOLAR_API_KEY, options)
       : null;
-    const clients = [
-      { name: 'openalex', client: openalex },
-      { name: 'semanticscholar', client: s2 },
-      { name: 'pubmed', client: this.indexes.pubmed },
-      { name: 'arxiv', client: this.indexes.arxiv },
+    const clients: Array<{ name: IndexName; client: { search: Searcher } }> = [
+      { name: 'openalex' as const, client: openalex },
+      { name: 'semanticscholar' as const, client: s2 },
+      { name: 'pubmed' as const, client: this.indexes.pubmed },
+      { name: 'arxiv' as const, client: this.indexes.arxiv },
     ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
 
     // All at once, each on its own clock: a failure or a timeout loses that index's results only.
+    // ADR-0149: and is named, so the student is told which index did not answer.
+    const outcomes: IndexOutcome[] = [];
     const lists = await Promise.all(
       clients.map(async ({ name, client }): Promise<DiscoveredWork[]> => {
         const timeout = AbortSignal.timeout(WEB_SCOPE.timeoutMs);
         try {
-          return await client.search(
+          const found = await client.search(
             searchText,
             new Date(),
             signal ? AbortSignal.any([signal, timeout]) : timeout,
           );
+          outcomes.push(outcomeOfCount(name, found.length));
+          return found;
         } catch (error) {
-          this.logger.warn({ err: error, index: name }, 'web scope search failed');
+          const outcome = outcomeOfError(name, error);
+          outcomes.push(outcome);
+          this.logger.warn(
+            { err: error, index: name, reason: outcome.reason, until: outcome.until },
+            'web scope search failed',
+          );
           return [];
         }
       }),
     );
+    const status = searchStatus(sortOutcomes(outcomes, clients));
 
     // Taken in turn, so each index that answered is on the page — eight results would otherwise
     // be eight of OpenAlex's.
@@ -202,6 +240,9 @@ export class WebScopeService {
     return {
       query: question,
       results: works.map((work) => webResultOf(work, question, have)),
+      status,
+      // The one line for the panel; `status` has the detail.
+      notice: status.notice,
     };
   }
 
@@ -218,7 +259,7 @@ export class WebScopeService {
     plan: ResearchPlan,
     signal?: AbortSignal,
     limit: number = CHAT_RESEARCH.maxCandidates,
-  ): Promise<WebResult[]> {
+  ): Promise<SearchedList<WebResult>> {
     const openalex = new OpenAlexDiscovery({
       mailto: this.env.OPENALEX_MAILTO ?? this.env.CROSSREF_MAILTO ?? '',
       ...(this.env.OPENALEX_API_KEY ? { apiKey: this.env.OPENALEX_API_KEY } : {}),
@@ -228,26 +269,39 @@ export class WebScopeService {
           mailto: this.env.OPENALEX_MAILTO ?? '',
         })
       : null;
-    const keywordIndexes = [
-      { name: 'openalex', client: openalex },
-      { name: 'semanticscholar', client: s2 },
-      { name: 'pubmed', client: this.indexes.pubmed },
-      { name: 'arxiv', client: this.indexes.arxiv },
+    const keywordIndexes: Array<{ name: IndexName; client: { search: Searcher } }> = [
+      { name: 'openalex' as const, client: openalex },
+      { name: 'semanticscholar' as const, client: s2 },
+      { name: 'pubmed' as const, client: this.indexes.pubmed },
+      { name: 'arxiv' as const, client: this.indexes.arxiv },
     ].flatMap(({ name, client }) => (client ? [{ name, client }] : []));
 
     const withSignal = (own: AbortSignal) => (signal ? AbortSignal.any([signal, own]) : own);
     const onSkip = (index: string) => (query: string, reason: string) =>
       this.logger.warn({ index, query, reason }, 'chat research search skipped');
+    // ADR-0149: `searchWithinBudget` keeps the run going past a failure; the failure itself is
+    // kept here, by index, so the status can say what happened and not only that nothing came.
+    const errors = new Map<IndexName, unknown>();
+    const noting =
+      (name: IndexName, search: SearchFn): SearchFn =>
+      async (q, own) => {
+        try {
+          return await search(q, own);
+        } catch (error) {
+          if (!errors.has(name)) errors.set(name, error);
+          throw error;
+        }
+      };
     const lists = await Promise.all([
       searchWithinBudget(
         [plan.semantic],
-        (q, own) => openalex.semanticSearch(q, new Date(), withSignal(own)),
+        noting('openalex', (q, own) => openalex.semanticSearch(q, new Date(), withSignal(own))),
         { ...CHAT_RESEARCH.budget, onSkip: onSkip('openalex-semantic') },
       ),
       ...keywordIndexes.map(({ name, client }) =>
         searchWithinBudget(
           plan.keyword,
-          (q, own) => client.search(q, new Date(), withSignal(own)),
+          noting(name, (q, own) => client.search(q, new Date(), withSignal(own))),
           {
             ...CHAT_RESEARCH.budget,
             onSkip: onSkip(name),
@@ -255,13 +309,29 @@ export class WebScopeService {
         ),
       ),
     ]);
+    // An index is "answering" when any of its queries came back; one that failed every query
+    // (OpenAlex: the semantic search and every keyword one) is reported with its first error.
+    const counts = new Map<IndexName, number>();
+    counts.set('openalex', (lists[0] ?? []).flat().length);
+    keywordIndexes.forEach(({ name }, i) => {
+      counts.set(name, (counts.get(name) ?? 0) + (lists[i + 1] ?? []).flat().length);
+    });
+    const outcomes = [...counts].map(([name, count]) =>
+      count === 0 && errors.has(name)
+        ? outcomeOfError(name, errors.get(name))
+        : outcomeOfCount(name, count),
+    );
+    const status = searchStatus(outcomes);
     // Each index's lists in turn, so one index's twenty-five do not crowd out the others.
     const works = mergeWorks([interleave(lists.map((perIndex) => interleave(perIndex)))]).slice(
       0,
       limit * 2,
     );
     const have = await this.libraryKeys(documentId);
-    return works.map((work) => webResultOf(work, question, have));
+    return withStatus(
+      works.map((work) => webResultOf(work, question, have)),
+      status,
+    );
   }
 
   /** What the library already holds, to mark a result "already yours". */
