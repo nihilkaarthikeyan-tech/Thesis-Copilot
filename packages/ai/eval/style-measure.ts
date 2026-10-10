@@ -2,11 +2,15 @@
  * ADR-0147: dashes used as punctuation and stock phrases in the stored evaluation outputs, by
  * generation path. No model call; reads `eval/results/*.json`.
  *
- *   pnpm --filter @tc/ai exec tsx eval/style-measure.ts [--since 2026-10-09] [--file <name>]
+ *   pnpm --filter @tc/ai exec tsx eval/style-measure.ts [--since 2026-10-09] [--file <name>] [--processed]
  *
  * Counted on what the model wrote (`aRaw`/`bRaw`: before post-processing, so the prompt's own
  * behaviour), and on what the student would see after `academicPunctuation` (the backstop).
  * Side A is the prompt on disk at the time of the run; side B a candidate or another model.
+ *
+ * `--processed` (ADR-0147 round 2) counts the text the student was offered instead (`a`/`b`: after
+ * post-processing, so after `dropConnectiveOpeners`), with its rendered "(Author year)" citations
+ * left out of the word count.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -19,6 +23,7 @@ const arg = (flag: string) =>
   process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : undefined;
 const since = arg('--since');
 const onlyFile = arg('--file');
+const processed = process.argv.includes('--processed');
 
 /** Paths whose output is thesis prose or an answer in prose. */
 const PROSE = new Set(['assist', 'draft', 'chat', 'chat_deep', 'command', 'revise']);
@@ -64,7 +69,9 @@ for (const file of readdirSync(join(here, 'results')).sort()) {
     if (side === 'a' && bOnly) continue;
     entry[side].files++;
     for (const row of data.rows ?? []) {
-      const raw = String(row[`${side}Raw`] ?? '');
+      const raw = processed
+        ? String(row[side] ?? '').replace(/\([^()]*\b(?:\d{4}|n\.d\.)[a-z]?\)/g, ' ')
+        : String(row[`${side}Raw`] ?? '');
       if (!raw.trim() || raw.startsWith('FAILED')) continue;
       const t = entry[side];
       t.outputs++;

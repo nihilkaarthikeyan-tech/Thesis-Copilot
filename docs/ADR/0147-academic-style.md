@@ -200,3 +200,52 @@ they did not write.
 - `eval/style-measure.ts` gives the dash and stock-phrase rates of any stored run without a
   model call, so a future prompt round can check the style rule as it checks copying.
 - Prompts are content (CLAUDE.md rule 6): the prompt files change only on the criterion above.
+
+## Round 2 (2026-10-10, A.1 Assist only)
+
+Asked by the owner after round 1: keep what round 1 gained, stop the padded opener in code, and
+try a prompt that says what to write instead of naming what not to write.
+
+### 1. Code: `dropConnectiveOpeners` (ships on its tests)
+
+`packages/ai/src/builder/academic-style.ts`, applied in `postProcessAssist` before
+`academicPunctuation`. A bare "Additionally,", "Furthermore,", "Moreover,", "In addition,",
+"Notably," or "Importantly," that opens a sentence is dropped and the next word capitalised. The
+suggestion's first sentence counts only when the text before the cursor ends a sentence (or a
+heading, or is empty); in a mid-sentence continuation the word joins the student's clause and is
+kept. A later sentence of the suggestion always counts, since round 1's openers were almost all
+on the second sentence. Kept as written: "In addition to…", "Notably higher…", an opener followed
+by a citation marker, anything after "et al."; a mixed-case next word ("pH", "mRNA") keeps its
+case; Hindi and every other script pass through. `test/connective-openers.spec.ts`.
+
+This is the one place the product removes words the model wrote. It is allowed here because the
+words carry no content (the sentence says the same without them) and because a prompt rule naming
+them made them more frequent, not less. Other stock phrases are still only counted.
+
+### 2. Prompt candidate v2: `eval/candidates/assist-academic2.md`
+
+The prompt on disk, with round 1's citation-in-every-sentence and specific-detail rules kept, and
+every negative word list replaced by a positive instruction: start each sentence with the subject
+of its claim; continue a half-written student sentence directly; restate the finding in your own
+sentence structure, keeping at most a short technical term verbatim, and quote longer wording in
+quotation marks; give the size or direction of an effect. No word to avoid is named.
+
+### 3. Pass criterion (written and committed before any run)
+
+Runs on the production models (`gpt-4.1-mini` fast, `gpt-5-mini` judge), judged blind in both
+orders, both sides post-processed by the same code (so both after step 1):
+
+- `run.ts assist --candidate assist-academic2` (the typed-sentence default set, 15 cases);
+- `run.ts assist --candidate assist-academic2 --set opener` (10 cases).
+
+Budget ₹30 in all; a quota refusal stops the round. One extra variant may be run if the first
+misses narrowly. The candidate is adopted only if **all** hold:
+
+1. **Judge**, on each set: candidate wins ≥ current wins, and candidate mean not more than 0.2
+   below current.
+2. **Cited sentences** ≥ 90% on the typed set (`measures.citedSentences / sentences`).
+3. **Stock phrases per 1,000 words** not above current on either set, counted on the text the
+   student is offered (`style-measure.ts --processed --file <run>`, so after step 1 on both
+   sides).
+4. **Six-word copied runs** (`measures.run6`) not above current on either set.
+5. **Not up** on either set: hallucinated cites, offered-nothing, failed calls.
