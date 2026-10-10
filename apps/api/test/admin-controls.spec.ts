@@ -99,7 +99,8 @@ afterAll(async () => {
 describe('extra allowance', () => {
   it('raises this month’s cap inside the atomic check, and is logged with the reason', async () => {
     await h.prisma.usageLedger.create({
-      data: { userId: studentId, period: periodFor(), action: 'DRAFT', count: 2 },
+      // The trial's drafted-section cap (3 since ADR-0152), used in full.
+      data: { userId: studentId, period: periodFor(), action: 'DRAFT', count: 3 },
     });
     expect((await usage.consume(studentId, 'FREE_TRIAL', 'DRAFT')).ok).toBe(false);
 
@@ -110,10 +111,10 @@ describe('extra allowance', () => {
     expect(granted.status).toBe(200);
 
     const first = await usage.consume(studentId, 'FREE_TRIAL', 'DRAFT');
-    expect(first).toMatchObject({ ok: true, cap: 4, remaining: 1 });
+    expect(first).toMatchObject({ ok: true, cap: 5, remaining: 1 });
     expect((await usage.consume(studentId, 'FREE_TRIAL', 'DRAFT')).ok).toBe(true);
     const refused = await usage.consume(studentId, 'FREE_TRIAL', 'DRAFT');
-    expect(refused).toMatchObject({ ok: false, reason: 'cap', cap: 4, used: 4 });
+    expect(refused).toMatchObject({ ok: false, reason: 'cap', cap: 5, used: 5 });
 
     const logged = await h.prisma.auditEvent.findFirst({
       where: { kind: 'ALLOWANCE_GRANTED', userId: studentId },
@@ -128,7 +129,7 @@ describe('extra allowance', () => {
     const meter = (await (await asStudent(studentCookie, '/usage/me')).json()) as {
       actions: Array<{ action: string; cap: number; used: number }>;
     };
-    expect(meter.actions.find((a) => a.action === 'DRAFT')).toMatchObject({ cap: 4, used: 4 });
+    expect(meter.actions.find((a) => a.action === 'DRAFT')).toMatchObject({ cap: 5, used: 5 });
   });
 
   it('opens an action the plan gives none of, for exactly the units given', async () => {

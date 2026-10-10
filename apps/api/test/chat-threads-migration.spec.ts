@@ -80,9 +80,13 @@ beforeAll(async () => {
   prisma = new PrismaClient({ datasources: { db: { url: container.getConnectionUri() } } });
   await prisma.$connect();
 
-  const user = await prisma.user.create({
-    data: { email: 'threads-migration@example.com', role: 'STUDENT', plan: 'FREE_TRIAL' },
-  });
+  // Plain SQL: the client is today's and writes columns added after 0045 (0057's
+  // `trialStartsAt`, with its client-side default), which the schema at BEFORE does not have.
+  const [user] = await prisma.$queryRaw<Array<{ id: string }>>`
+    INSERT INTO "User" (email, role, plan)
+    VALUES ('threads-migration@example.com', 'STUDENT', 'FREE_TRIAL')
+    RETURNING id`;
+  if (!user) throw new Error('the user was not created');
   // Written as the old code wrote them: the chat inside `meta`, beside the thesis's other keys.
   const make = async (title: string, meta: unknown) =>
     (
