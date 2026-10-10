@@ -936,6 +936,82 @@ export const en = {
   'chat.filters.title': 'Filters: year, citations, journal, preprints',
   'chat.sources.one': '{count} source',
   'chat.sources.many': '{count} sources',
+  // ---- AI use statement (ADR-0148) --------------------------------------------------------------
+  'aiStatement.menu': 'AI use statement',
+  'aiStatement.title': 'AI use statement',
+  'aiStatement.intro':
+    'Written from the record this thesis keeps: which features you used, what share of the text began as accepted AI text, and how sources were added. No model wrote it. Edit it so it says only what you did, and check it against your university’s policy on AI use.',
+  'aiStatement.loading': 'Reading the record…',
+  'aiStatement.loadError': 'The record could not be read. Try again in a minute.',
+  'aiStatement.table': 'Add a per-chapter table',
+  'aiStatement.copy': 'Copy',
+  'aiStatement.copied': 'Copied',
+  'aiStatement.insert': 'Insert as an appendix',
+  'aiStatement.inserting': 'Inserting…',
+  'aiStatement.insertError': 'The appendix was not added. Try again in a minute.',
+  'aiStatement.editLabel': 'The statement (edit freely; a blank line starts a new paragraph)',
+  'aiStatement.heading': 'Statement on the use of AI tools',
+  'aiStatement.export': 'Add my AI use statement as an appendix',
+  'aiStatement.exportHint':
+    'Written from this thesis’s record, in the interface language. Edit it first under ⋯ → AI use statement if you want your own wording in the file.',
+  // The statement itself. First person, one sentence a fact; a feature with no recorded use is
+  // left out, and what the record cannot tell is said plainly. No detector language (§12.3).
+  'aiStatement.p.open':
+    'In preparing this thesis, “{title}”, I used Thesis Copilot, a writing tool with AI features, between {from} and {to}.',
+  'aiStatement.p.openNone':
+    'In preparing this thesis, “{title}”, I used Thesis Copilot, a writing tool with AI features. Its record shows no use of those features: no suggestion, draft, edit or search.',
+  'aiStatement.p.openNoDates':
+    'In preparing this thesis, “{title}”, I used Thesis Copilot, a writing tool with AI features.',
+  'aiStatement.f.suggestions.kept':
+    'It offered {shown} sentence suggestions while I wrote, of which I kept {kept}, in whole or in part.',
+  'aiStatement.f.suggestions.none':
+    'It offered {shown} sentence suggestions while I wrote, and I kept none of them.',
+  'aiStatement.f.drafting':
+    'I asked it to draft {n} sections from the papers in my library and accepted {accepted} of those drafts.',
+  'aiStatement.f.edits':
+    'I used its edit commands on passages I had selected {n} times, for example to reword, expand or shorten them.',
+  'aiStatement.f.proofreading':
+    'I ran its proofreading {n} times; it corrects spelling, grammar and punctuation and is not allowed to put a different word in.',
+  'aiStatement.f.citations': 'It suggested citations from my library {n} times.',
+  'aiStatement.f.chat': 'I asked it {n} questions about my thesis and the papers in my library.',
+  'aiStatement.f.research':
+    'I used its deep research {n} times; it searches my library and the scholarly indexes and answers from the passages it finds, with their citations.',
+  'aiStatement.f.literatureSearch':
+    'It wrote the queries for {n} literature searches of the scholarly indexes; I chose which papers to keep.',
+  'aiStatement.f.planning':
+    'It proposed the chapter plan and the proposal’s questions ({n} requests), which I changed as I saw fit.',
+  'aiStatement.f.checks':
+    'I ran its coherence and cross-paper checks {n} times; they flag problems for me to decide on and change nothing themselves.',
+  'aiStatement.f.chapterBuild':
+    'I had it build {n} chapters whole from my library, delivered as drafts section by section, each of which I accepted, edited or discarded.',
+  'aiStatement.f.litReviewBuild':
+    'I had it build the literature review whole, delivered as drafts theme by theme, each of which I accepted, edited or discarded.',
+  'aiStatement.f.examinerReview':
+    'I asked for an examiner’s review of my writing {n} times; it returned comments, not text.',
+  'aiStatement.f.viva': 'I used its viva preparation {n} times to practise questions.',
+  'aiStatement.p.action':
+    'No AI text entered the thesis without my action: every suggestion and draft was shown to me first, and I accepted, edited or rejected each one. Every suggestion and citation it made was drawn from the papers in my own library.',
+  'aiStatement.p.share':
+    'Of the {total} words in the thesis as it stands, {ai} ({aiPct}%) began as AI text I accepted; of those I have since edited at least {edited} ({editedPct}% of that text). The remaining {own} words ({ownPct}%) are recorded as my own writing.',
+  'aiStatement.p.shareNone':
+    'None of the {total} words in the thesis as it stands began as AI text; all are recorded as my own writing.',
+  'aiStatement.p.shareEmpty': 'The thesis has no text yet, so there is no share to report.',
+  'aiStatement.p.limits':
+    'These figures come from the record Thesis Copilot keeps as each chapter is saved: every run of text carries a mark saying where it came from. The record cannot tell text I pasted in from outside from text I typed, so both count as my own writing; and it counts an edit only where I changed text inside an accepted passage, so the edited figure is a floor. It is a record of how I used the tool, not an assessment of the text.',
+  'aiStatement.p.sources':
+    'My library in Thesis Copilot held {total} sources, of which {cited} are cited in the thesis. {auto} were added by Thesis Copilot on its own where nothing in my library covered what I was writing, and I reviewed each before keeping it; the rest I added myself, by search, by reference, by file or by import.',
+  'aiStatement.p.sourcesOwn':
+    'My library in Thesis Copilot held {total} sources, of which {cited} are cited in the thesis. I added every one myself, by search, by reference, by file or by import.',
+  'aiStatement.p.sourcesNone': 'No sources were added to my library in Thesis Copilot.',
+  'aiStatement.p.close':
+    'The research, the arguments and the conclusions are my own, and I take full responsibility for the content of this thesis, including the accuracy of every citation.',
+  'aiStatement.t.chapter': 'Chapter',
+  'aiStatement.t.words': 'Words',
+  'aiStatement.t.ai': 'Began as AI text',
+  'aiStatement.t.edited': 'Of which edited since',
+  'aiStatement.t.own': 'Own writing',
+  'aiStatement.t.actions': 'AI suggestions and drafts',
+  'aiStatement.t.total': 'Total',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

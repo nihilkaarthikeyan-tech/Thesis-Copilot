@@ -6,7 +6,12 @@
  */
 
 import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { citationModeSchema, exportLayoutSchema, thesisDetailsSchema } from '@tc/types';
+import {
+  aiStatementTextSchema,
+  citationModeSchema,
+  exportLayoutSchema,
+  thesisDetailsSchema,
+} from '@tc/types';
 import { z } from 'zod';
 import { ValidationError } from '../../common/errors.js';
 import { CurrentUser, type SessionUser } from '../auth/current-user.decorator.js';
@@ -33,6 +38,8 @@ const thesisExportBody = z.object({
   citations: citationModeSchema.optional(),
   /** R27 (ADR-0121): the export dialog's preset and options. Absent is the template. */
   layout: exportLayoutSchema.optional(),
+  /** ADR-0148: the student's AI use statement, as edited, as an appendix. Off unless sent. */
+  aiStatement: aiStatementTextSchema.optional(),
 });
 
 /** A calendar date, or null to clear it. Shape checked here; meaning checked in the service. */
@@ -125,6 +132,7 @@ export class ExportController {
       parsed.data.overrideReason,
       parsed.data.citations,
       parsed.data.layout,
+      parsed.data.aiStatement,
     );
   }
 

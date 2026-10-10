@@ -25,6 +25,7 @@ import {
 import { TEMPLATE_SPECS } from '@tc/config';
 import type { Prisma } from '@tc/db';
 import {
+  aiStatementAppendixSchema,
   isUntouchedNewThesis,
   newSetupCard,
   type SourcePrefs,
@@ -42,6 +43,7 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { emptyChapterDoc } from '../chapters/word-counts.js';
 import { FlagsService } from '../flags/flags.service.js';
 import { OutlineService } from '../memory/outline.service.js';
+import { AiStatementService } from './ai-statement.service.js';
 import { ClaimsService } from './claims.service.js';
 import { ClaimsDocumentService } from './claims-document.service.js';
 import { DocumentArchive } from './document-archive.service.js';
@@ -173,6 +175,7 @@ export class DocumentsController {
     private readonly outline: OutlineService,
     private readonly claimsMap: ClaimsService,
     private readonly claimsDocument: ClaimsDocumentService,
+    private readonly aiStatement: AiStatementService,
     private readonly setupCard: SetupCardService,
   ) {}
 
@@ -483,6 +486,29 @@ export class DocumentsController {
   @HttpCode(200)
   openClaimsDocument(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.claimsDocument.open(user, id);
+  }
+
+  /**
+   * ADR-0148: the recorded facts an AI use statement is written from — counts of this thesis's
+   * own rows, no model call, no allowance. The sentences are the web app's, in the student's
+   * interface language, and the student edits them before use.
+   */
+  @Get(':id/ai-statement')
+  aiStatementFacts(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.aiStatement.facts(user.id, id);
+  }
+
+  /** ADR-0148: the statement, as edited, becomes an ordinary chapter at the end of the outline. */
+  @Post(':id/ai-statement/appendix')
+  @HttpCode(200)
+  insertAiStatement(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = aiStatementAppendixSchema.safeParse(body);
+    if (!parsed.success) throw new ValidationError('Check the statement', parsed.error.issues);
+    return this.aiStatement.insertAppendix(user.id, id, parsed.data);
   }
 
   @Post(':id/copy')
