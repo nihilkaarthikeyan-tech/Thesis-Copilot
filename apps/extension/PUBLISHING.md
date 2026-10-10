@@ -100,7 +100,7 @@ The email names the policy. The common ones, and why this add-on should pass the
 
 | Reason | Where this add-on stands |
 |---|---|
-| **Permissions not justified, or broader than needed** | Five permissions, each explained in `STORE.md`; no `<all_urls>`, no `tabs`. From 0.3.0, one content script on five named scholarly sites (no wildcard host), justified in `STORE.md`. If a reviewer queries one, reply quoting the justification. |
+| **Permissions not justified, or broader than needed** | Five permissions, each explained in `STORE.md`; no `<all_urls>`, no `tabs`. From 0.3.0, one content script on five named scholarly sites, justified in `STORE.md`. From 0.3.2, one optional host permission (`https://*/*`), never granted at install, requested only by the "Show Save buttons on every site" switch; its own box in `STORE.md`. Expect a reviewer to ask about it, and reply quoting that box. If a reviewer queries one, reply quoting the justification. |
 | **Misleading or keyword-stuffed description** | The description says only what the add-on does; no other product's name is used to attract searches. Keep it that way when you edit it. |
 | **Missing or inadequate privacy policy** | The `/privacy` page must be live and must mention the add-on, results pages and PDFs (it does from the release carrying ADR-0069). |
 | **Single purpose unclear** | "Save scholarly papers you are viewing to your Thesis Copilot library" — every feature is a way of doing that. |

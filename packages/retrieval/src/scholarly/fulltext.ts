@@ -24,6 +24,22 @@ export type FullTextFetchOptions = {
   fetch?: FetchLike;
   maxBytes?: number;
   timeoutMs?: number;
+  /**
+   * ADR-0154: the only hosts the fetch may touch, every hop included (https only). A redirect to
+   * any other host ends the fetch as `not-ok` before that host is asked anything. Unset: any host.
+   */
+  allowHosts?: readonly string[];
+  /**
+   * ADR-0154: the response must say it is a PDF — `application/pdf`, or a download with no real
+   * type (none, or `application/octet-stream`) whose `content-disposition` names a `.pdf` file.
+   * The `%PDF-` check applies either way.
+   */
+  requirePdfType?: boolean;
+  /**
+   * ADR-0154: text the file's bytes must contain (case-insensitively) — the paper's DOI — so an
+   * address built by rule can never attach some other paper's PDF.
+   */
+  mustContain?: string;
 };
 
 export type FullTextResult =
@@ -63,9 +79,19 @@ export async function fetchOpenAccessPdf(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetchFollowingCookies(doFetch, url, controller.signal);
+    const response = await fetchFollowingCookies(
+      doFetch,
+      url,
+      controller.signal,
+      options.allowHosts,
+    );
+    if (response === OFF_HOST) return { ok: false, reason: 'not-ok' };
 
     if (!response.ok) return { ok: false, reason: 'not-ok' };
+    if (options.requirePdfType && !saysPdf(response.headers)) {
+      await response.body?.cancel().catch(() => undefined);
+      return { ok: false, reason: 'not-a-pdf' };
+    }
 
     // Trust the declared length when it rules the file out, but never when it says the file is
     // small: a server can lie or omit it, so the body is measured as it arrives.
@@ -77,6 +103,12 @@ export async function fetchOpenAccessPdf(
     const bytes = await readCapped(response, maxBytes);
     if (!bytes) return { ok: false, reason: 'too-large' };
     if (!looksLikePdf(bytes)) return { ok: false, reason: 'not-a-pdf' };
+    if (
+      options.mustContain &&
+      !bytes.toString('latin1').toLowerCase().includes(options.mustContain.toLowerCase())
+    ) {
+      return { ok: false, reason: 'not-a-pdf' };
+    }
 
     return {
       ok: true,
@@ -92,6 +124,34 @@ export async function fetchOpenAccessPdf(
   }
 }
 
+/** A hop left the allowed hosts: the fetch stopped before asking that host anything. */
+const OFF_HOST = Symbol('off-host');
+
+/** True when an address is https on one of `hosts` (compared lower case, exactly). */
+export function onAllowedHost(url: string, hosts: readonly string[]): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && hosts.includes(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The response's headers say it is a PDF: `application/pdf`, or a download without a real type
+ * whose file name ends `.pdf` (MDPI's own address answered with no content-type at all and
+ * `attachment; filename="energies-18-01921.pdf"`, observed 2026-10-10).
+ */
+export function saysPdf(headers: Headers): boolean {
+  const type = (headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+  if (type === 'application/pdf') return true;
+  if (type !== '' && type !== 'application/octet-stream' && type !== 'binary/octet-stream') {
+    return false;
+  }
+  const disposition = headers.get('content-disposition') ?? '';
+  return /filename\*?=(?:UTF-8'')?"?[^";]*\.pdf"?/i.test(disposition);
+}
+
 /**
  * Follows redirects by hand, carrying the cookies each hop sets — as a browser does and Node's
  * `fetch` does not. Some publishers set a cookie on the first request and serve the PDF only to a
@@ -105,10 +165,12 @@ async function fetchFollowingCookies(
   doFetch: FetchLike,
   startUrl: string,
   signal: AbortSignal,
-): Promise<Response> {
+  allowHosts?: readonly string[],
+): Promise<Response | typeof OFF_HOST> {
   const jar = new Map<string, Map<string, string>>();
   let url = startUrl;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (allowHosts && !onAllowedHost(url, allowHosts)) return OFF_HOST;
     const host = new URL(url).host;
     const cookies = jar.get(host);
     const response = await doFetch(url, {

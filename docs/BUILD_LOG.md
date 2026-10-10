@@ -6648,3 +6648,17 @@ and `limit-refusal.spec.ts` 15 (proofreading runs with every section command use
 refusal members; a paid refusal still resets on the 1st); `caps`, `admin-users`, `week1` and
 `trial` specs 37; web `limit`, `usage-menu`, `action-names`, `changelog` 30. The e2e
 `limit-message.spec.ts` was updated for the new words but not run (needs the dev stack).
+
+## Add-on 0.3.2 and MDPI's PDF (2026-10-10, ADR-0154)
+
+The three items ADR-0153 left for a decision, approved by the owner: Save buttons on every site
+behind an opt-in switch (an optional `https://*/*` permission requested on the press, a dynamic
+content script kept in step with it, never on our site or Jenni's; reference-list DOIs get a
+compact "Save"), "Select several" in the in-page card (one `save-many`, one resolve call, an
+outcome per row), and MDPI's PDF fetched by the worker from MDPI's file host (`mdpi-res.com`)
+because MDPI's own address sits behind a bot check that answered by turns with the file, a
+"verify" page and 403 — hops kept on MDPI's hosts, the file checked to be a PDF that names the
+DOI. Tests: extension 158 (25 new), retrieval `mdpi.spec.ts`, worker `index-source.spec.ts`
+(+4); real Chromium for the registration, the buttons' layout at two widths and a bulk save
+against a stubbed API. Accepting Chrome's own prompt and the fetch from the VPS are the owner's
+(PENDING).

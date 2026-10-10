@@ -97,6 +97,16 @@ export type SaveOneResult = ItemResult & {
   via: 'id' | 'details';
 };
 
+/**
+ * Several results ticked in the in-page card (ADR-0154): saved like the popup's ticked results,
+ * through one resolve call with every reference. No PDF; at most `BULK_MAX` papers.
+ */
+export type SaveManyJob = {
+  documentId: string;
+  collectionId: string | null;
+  papers: Paper[];
+};
+
 export type Request =
   | { type: 'theses' }
   | { type: 'collections'; documentId: string }
@@ -104,7 +114,11 @@ export type Request =
   | { type: 'save'; job: SaveJob }
   /** The in-page card: what the library finds for one identifier (`lookup-id`). Free. */
   | { type: 'lookup'; documentId: string; ref: PaperRef }
-  | { type: 'save-one'; job: SaveOneJob };
+  | { type: 'save-one'; job: SaveOneJob }
+  /** The in-page card's "Save selected": results keyed `r0`, `r1`… in the order sent. */
+  | { type: 'save-many'; job: SaveManyJob }
+  /** The popup: bring the every-site buttons in step with the access Chrome holds (ADR-0154). */
+  | { type: 'anywhere-sync' };
 
 /** What a content script may ask. Everything else is for the add-on's own pages. */
 export const INPAGE_REQUESTS: ReadonlyArray<Request['type']> = [
@@ -112,6 +126,7 @@ export const INPAGE_REQUESTS: ReadonlyArray<Request['type']> = [
   'collections',
   'lookup',
   'save-one',
+  'save-many',
 ];
 
 /** Sent by the service worker while a save runs; the popup listens if it is still open. */

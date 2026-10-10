@@ -52,11 +52,13 @@ describe('who the service worker answers', () => {
   });
 
   it('a content script, only the card’s requests, only from an in-page host', () => {
-    expect(INPAGE_REQUESTS).toEqual(['theses', 'collections', 'lookup', 'save-one']);
+    // ADR-0154 added 'save-many': ticked results, no PDF, checked like 'save-one'.
+    expect(INPAGE_REQUESTS).toEqual(['theses', 'collections', 'lookup', 'save-one', 'save-many']);
     for (const type of INPAGE_REQUESTS)
       expect(senderMay(scholarTab, type, OWN, INPAGE_REQUESTS)).toBe(true);
     // The popup's bulk save can fetch a PDF from any address: never on a content script's word.
     expect(senderMay(scholarTab, 'save', OWN, INPAGE_REQUESTS)).toBe(false);
+    expect(senderMay(scholarTab, 'anywhere-sync', OWN, INPAGE_REQUESTS)).toBe(false);
     expect(senderMay(scholarTab, 'create-collection', OWN, INPAGE_REQUESTS)).toBe(false);
     expect(
       senderMay({ tab: {}, url: 'https://example.org/' }, 'theses', OWN, INPAGE_REQUESTS),

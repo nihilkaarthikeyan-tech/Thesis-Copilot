@@ -21,9 +21,13 @@ import {
   type ExtractedDocument,
   FIRST_PAGE_CHARS,
   type FullTextFailure,
+  fetchMdpiPdf,
   fetchOpenAccessPdf,
   groundingLevelFor,
+  isMdpiDoi,
   isSpringerNatureDoi,
+  mdpiArticleFromUrl,
+  mdpiPdfCandidates,
   type ResolvedSource,
   readableFullTextReason,
   readableSpringerReason,
@@ -93,7 +97,7 @@ export type IndexSourceResult = {
   /** Where the indexed text came from, so the log says what was actually read. */
   from: 'stored-pdf' | 'open-access-pdf' | 'open-access-xml' | 'abstract' | 'nothing';
   /** Which service located an open-access PDF, when one was fetched. */
-  via?: 'unpaywall' | 'core' | 'europepmc' | 'springer' | 'arxiv';
+  via?: 'unpaywall' | 'core' | 'europepmc' | 'springer' | 'arxiv' | 'mdpi';
   fullTextFailure?: FullTextFailure;
 };
 
@@ -117,6 +121,8 @@ export async function runIndexSource(
       title: true,
       fileKey: true,
       cslJson: true,
+      // ADR-0154: an MDPI paper's journal names its file host's folder.
+      venue: true,
       groundingLevel: true,
       // R20 (ADR-0107): an upload nobody has identified yet.
       status: true,
@@ -134,7 +140,7 @@ export async function runIndexSource(
   let sections: Array<{ section: string; start: number; end: number }> | undefined;
   let from: IndexSourceResult['from'] = 'nothing';
   let fullTextFailure: FullTextFailure | undefined;
-  let via: 'unpaywall' | 'core' | 'europepmc' | 'springer' | 'arxiv' | undefined;
+  let via: 'unpaywall' | 'core' | 'europepmc' | 'springer' | 'arxiv' | 'mdpi' | undefined;
   let fileKey = source.fileKey;
 
   // 1. A PDF we already hold — the student's own upload (FR-2.3), or one fetched by an earlier run.
@@ -193,7 +199,13 @@ export async function runIndexSource(
 
   // 2. Otherwise ask Unpaywall for an open-access copy and fetch it.
   if (!text && source.doi) {
-    const outcome = await fetchFromOpenAccess(source.doi, deps, log, source.id);
+    const outcome = await fetchFromOpenAccess(
+      source.doi,
+      deps,
+      log,
+      source.id,
+      recordPlace(source.cslJson, source.venue),
+    );
     if (outcome.ok) {
       try {
         const extracted = await deps.extract(outcome.bytes);
@@ -448,8 +460,25 @@ export async function embedAndStoreChunks(
   );
 }
 
+/** The journal, volume and article number a stored record names (ADR-0154, for MDPI). */
+type RecordPlace = { journal: string | null; volume: string | null; article: string | null };
+
+/** Crossref's `container-title`, `volume` and `article-number` (or `page`), else the venue. */
+export function recordPlace(cslJson: unknown, venue: string | null | undefined): RecordPlace {
+  const csl = cslJson && typeof cslJson === 'object' ? (cslJson as Record<string, unknown>) : {};
+  const text = (value: unknown): string | null => {
+    const first = Array.isArray(value) ? value[0] : value;
+    return typeof first === 'string' && first.trim() ? first.trim() : null;
+  };
+  return {
+    journal: text(csl['container-title']) ?? (venue?.trim() || null),
+    volume: text(csl.volume),
+    article: text(csl['article-number']) ?? text(csl.page),
+  };
+}
+
 type OpenAccessOutcome =
-  | { ok: true; bytes: Buffer; via: 'unpaywall' | 'core' | 'arxiv' }
+  | { ok: true; bytes: Buffer; via: 'unpaywall' | 'core' | 'arxiv' | 'mdpi' }
   | { ok: false; reason: FullTextFailure };
 
 /**
@@ -461,6 +490,7 @@ async function fetchFromOpenAccess(
   deps: IndexSourceDeps,
   log: (event: Record<string, unknown>) => void,
   sourceId: string,
+  place: RecordPlace = { journal: null, volume: null, article: null },
 ): Promise<OpenAccessOutcome> {
   // An arXiv paper is always free at a known address. Unpaywall does not list arXiv's own DOIs
   // (10.48550/arxiv.*), so "Attention Is All You Need" came back abstract-only (2026-10-05).
@@ -488,10 +518,39 @@ async function fetchFromOpenAccess(
     unpaywallFailure = 'network';
   }
 
+  // ADR-0154: an MDPI paper. Its PDF is fetched from MDPI's file host first (MDPI's own address
+  // sits behind a bot check that answers a server by turns with the file, a "verify" page and
+  // 403), every hop kept on MDPI's hosts, the answer a PDF that names the paper's DOI.
+  let mdpiFailure: FullTextFailure | null = null;
+  if (isMdpiDoi(doi)) {
+    for (const candidate of mdpiPdfCandidates({
+      doi,
+      pdfUrls,
+      journal: place.journal,
+      volume: place.volume,
+      article: place.article,
+    })) {
+      const result = await fetchMdpiPdf(candidate.url, doi, candidate.checkDoi);
+      if (result.ok) {
+        log({ msg: 'full text from mdpi', sourceId, url: candidate.url });
+        return { ok: true, bytes: result.bytes, via: 'mdpi' };
+      }
+      log({
+        msg: 'mdpi pdf could not be fetched',
+        sourceId,
+        url: candidate.url,
+        reason: result.reason,
+      });
+      mdpiFailure ??= result.reason;
+    }
+    // MDPI's own addresses have had their turn under MDPI's rules.
+    pdfUrls = pdfUrls.filter((url) => mdpiArticleFromUrl(url) === null);
+  }
+
   if (!unpaywallFailure) {
     // ADR-0050: every copy Unpaywall lists, best first, until one is a real PDF (at most four,
     // so a paper with a dozen mirrors does not cost a dozen downloads).
-    if (pdfUrls.length === 0) unpaywallFailure = 'no-location';
+    if (pdfUrls.length === 0) unpaywallFailure = mdpiFailure ?? 'no-location';
     for (const url of pdfUrls.slice(0, 4)) {
       const result = await fetchOpenAccessPdf(url);
       if (result.ok) {

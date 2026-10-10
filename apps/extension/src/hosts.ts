@@ -11,7 +11,8 @@
  * - MDPI: its article pages (an MDPI issue or journal page gets no button: it names no article).
  *
  * Every other article page keeps the toolbar button (`activeTab`), which reads the same tags
- * when the student clicks: putting a button on every site would need access to every site.
+ * when the student clicks — unless the student turns on "Show Save buttons on every site"
+ * (ADR-0154, `anywhere.ts`), an optional permission asked for on their press.
  */
 
 export const INPAGE_MATCHES = [
@@ -39,9 +40,30 @@ export function senderMay(
   type: string,
   ownOrigin: string,
   allowed: readonly string[],
+  /**
+   * ADR-0154: the student turned on "Show Save buttons on every site", so a content script may
+   * ask from any https tab — never from one of `never` (this add-on's site, Jenni's).
+   */
+  anywhere: { never: (hostname: string) => boolean } | null = null,
 ): boolean {
   if (typeof sender.url === 'string' && sender.url.startsWith(ownOrigin)) return true;
-  return Boolean(sender.tab) && isInpageUrl(sender.url) && allowed.includes(type);
+  if (!sender.tab || !allowed.includes(type)) return false;
+  if (isInpageUrl(sender.url)) return true;
+  return anywhere !== null && isAnywhereUrl(sender.url, anywhere.never);
+}
+
+/** True for an https address the every-site buttons may run on. */
+export function isAnywhereUrl(
+  url: string | undefined,
+  never: (hostname: string) => boolean,
+): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !never(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 /** True for an https address on one of the in-page hosts. */

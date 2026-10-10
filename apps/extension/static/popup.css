@@ -339,6 +339,75 @@ button {
   cursor: default;
 }
 
+/* ---- "Show Save buttons on every site" (ADR-0154) ---------------------------------- */
+
+.anywhere {
+  display: grid;
+  gap: 3px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.anywhere[hidden] {
+  display: none;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.switch input {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 0.15s;
+}
+
+.switch input:checked {
+  background: var(--accent);
+}
+
+.switch input:checked::after {
+  transform: translateX(12px);
+}
+
+.switch input:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch input,
+  .switch input::after {
+    transition: none;
+  }
+}
+
 .link-button {
   padding: 2px 4px;
   border: 0;
@@ -572,4 +641,9 @@ progress::-webkit-progress-value {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* After the general focus rule, so it wins (ADR-0154). */
+.switch input:focus-visible {
+  box-shadow: var(--focus);
 }

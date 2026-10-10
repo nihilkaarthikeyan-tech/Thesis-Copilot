@@ -18,15 +18,17 @@
 
 import type { Api } from './api.js';
 import { isId } from './api.js';
+import { BULK_MAX } from './lists.js';
 import type {
   ItemResult,
   PdfOutcome,
   SaveJob,
+  SaveManyJob,
   SaveOneJob,
   SaveOneResult,
   SaveResult,
 } from './messages.js';
-import { checkPaper, doiCandidates } from './paper.js';
+import { checkPaper, doiCandidates, type Paper } from './paper.js';
 import { checkRef, refQuery } from './refs.js';
 
 /**
@@ -53,6 +55,49 @@ export function checkSaveOneJob(value: unknown): SaveOneJob | null {
   return { documentId: v.documentId, collectionId, ref, paper };
 }
 
+/**
+ * Several results ticked in the in-page card (ADR-0154), checked like `checkSaveOneJob`: the ids
+ * UUIDs, 1 to `BULK_MAX` papers, each checked field by field. One bad paper refuses the whole
+ * job — the content script cleans what it sends, so a bad one means the message was tampered with.
+ */
+export function checkSaveManyJob(value: unknown): SaveManyJob | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  if (!isId(v.documentId)) return null;
+  let collectionId: string | null = null;
+  if (v.collectionId !== null && v.collectionId !== undefined) {
+    if (!isId(v.collectionId)) return null;
+    collectionId = v.collectionId;
+  }
+  if (!Array.isArray(v.papers) || v.papers.length === 0 || v.papers.length > BULK_MAX) return null;
+  const papers: Paper[] = [];
+  for (const raw of v.papers) {
+    const paper = checkPaper(raw);
+    if (!paper) return null;
+    papers.push(paper);
+  }
+  return { documentId: v.documentId, collectionId, papers };
+}
+
+/**
+ * The in-page card's "Save selected" (ADR-0154): the popup's bulk save, with the results keyed
+ * `r0`, `r1`… in the order sent and every new reference in one resolve call.
+ */
+export function saveMany(job: SaveManyJob, deps: Pick<SaveDeps, 'api'>): Promise<SaveResult> {
+  return runSave(
+    {
+      runId: 'in-page-many',
+      documentId: job.documentId,
+      collectionId: job.collectionId,
+      items: job.papers.map((paper, i) => ({ key: `r${i}`, paper })),
+      pdf: null,
+    },
+    { api: deps.api, fetchPdf: async () => ({ ok: false, message: 'No PDF from the page.' }) },
+    () => undefined,
+    BULK_MAX,
+  );
+}
+
 export const RESOLVE_BATCH = 10;
 
 export type SaveDeps = {
@@ -64,6 +109,8 @@ export async function runSave(
   job: SaveJob,
   deps: SaveDeps,
   progress: (results: ItemResult[]) => void = () => undefined,
+  /** References per resolve call: ten for the popup's progress, all of them for the card's. */
+  batchSize: number = RESOLVE_BATCH,
 ): Promise<SaveResult> {
   const results = new Map<string, ItemResult>();
   const report = () =>
@@ -147,8 +194,8 @@ export async function runSave(
   }
   report();
 
-  for (let start = 0; start < fresh.length; start += RESOLVE_BATCH) {
-    const batch = fresh.slice(start, start + RESOLVE_BATCH);
+  for (let start = 0; start < fresh.length; start += batchSize) {
+    const batch = fresh.slice(start, start + batchSize);
     const reply = await deps.api.resolve(
       job.documentId,
       batch.map(({ paper }) => ({

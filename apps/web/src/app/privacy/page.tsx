@@ -75,6 +75,16 @@ export default function PrivacyPage() {
         with those buttons, so a page you come back to shows them as saved; that list is never sent
         anywhere.
       </p>
+      <p className="mt-2 text-muted">
+        From version 0.3.2 you can also switch on <em>Show Save buttons on every site</em> in the
+        add-on&rsquo;s window. It is off until you turn it on, and Chrome asks you first. While it
+        is on, the add-on reads every https page you open in the same way, inside your browser: the
+        tags that describe an article and the DOI links in a page&rsquo;s reference list (on
+        Wikipedia, for example), to put a small <em>Save</em> button beside them — never on this
+        site. It still sends nothing until you press a button, and then only that paper&rsquo;s DOI
+        or details (or, when you tick several, theirs). Turn the switch off and Chrome takes the
+        access away again.
+      </p>
 
       <h2 className="mt-8 text-balance text-[17px] font-bold leading-snug text-ink">What we log</h2>
       <p className="mt-2 text-muted">

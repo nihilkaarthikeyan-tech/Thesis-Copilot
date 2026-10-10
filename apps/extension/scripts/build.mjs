@@ -90,6 +90,7 @@ writeFileSync(
 // 2b. The content script: one classic script, joined by esbuild (see the header). Its
 //     `./config.js` is the one just written for this target.
 const { INPAGE_MATCHES } = await import(pathToFileURL(join(out, 'hosts.js')).href);
+const { ANYWHERE_ORIGINS } = await import(pathToFileURL(join(out, 'anywhere.js')).href);
 await build({
   // The file names esbuild writes as comments are relative to the package, not this machine.
   absWorkingDir: root,
@@ -146,6 +147,10 @@ const manifest = {
   },
   permissions: ['activeTab', 'scripting', 'storage', 'contextMenus'],
   host_permissions: [`${target.api}/*`, ...values['extra-host']],
+  // ADR-0154: asked for only when the student turns on "Show Save buttons on every site" in the
+  // popup (`chrome.permissions.request`), so the install warning does not change. Never granted
+  // at install; given back when the switch is turned off.
+  optional_host_permissions: [...ANYWHERE_ORIGINS],
   // ADR-0125: the "Add to Thesis Copilot" buttons, on these pages only (src/hosts.ts), in the top
   // frame, once the page has loaded. Each host is justified in STORE.md.
   content_scripts: [

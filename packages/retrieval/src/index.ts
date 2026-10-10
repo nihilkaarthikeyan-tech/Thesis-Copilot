@@ -225,7 +225,9 @@ export {
   type FullTextResult,
   fetchOpenAccessPdf,
   MAX_PDF_BYTES,
+  onAllowedHost,
   readableFullTextReason,
+  saysPdf,
 } from './scholarly/fulltext.js';
 export {
   type HealthLog,
@@ -259,6 +261,17 @@ export {
   validIsbn,
 } from './scholarly/ids.js';
 export { keywordsOf, openAlexSearchText, topicSearchTerms } from './scholarly/keywords.js';
+export {
+  fetchMdpiPdf,
+  isMdpiDoi,
+  MDPI_DOI_PREFIX,
+  MDPI_HOSTS,
+  type MdpiArticle,
+  mdpiArticleFromUrl,
+  mdpiFileUrl,
+  mdpiJournalCode,
+  mdpiPdfCandidates,
+} from './scholarly/mdpi.js';
 export {
   classifyOpenAlexRequest,
   type MeterStore,

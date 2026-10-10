@@ -1,0 +1,54 @@
+<!doctype html>
+<!--
+  HAND-WRITTEN STRUCTURAL FIXTURE (ADR-0154). Not a copy of a Wikipedia page: written by hand to
+  the reference markup Wikipedia articles use (seen on live articles, 2026-10-10) — the article
+  body with superscript citation links, then `div.reflist` holding `ol.references`, one
+  `li#cite_note-N` per note, each `span.reference-text` with a `cite.citation` whose DOI is a
+  `doi.org` link (percent-encoded slash, as Wikipedia writes it) whose text is the DOI. The
+  article, the journals, the people and the DOIs are invented (Crossref's test prefix 10.5555).
+
+  Shapes covered: a journal citation with a quoted title and a DOI; a note citing two works, each
+  in its own <cite>, each with a DOI; a book citation with no DOI; a DOI link in the body text,
+  outside the reference list (no button); a reference hidden from view (no button); a second
+  doi.org link to the same DOI inside one citation (one button).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rooftop solar in villages - Sample Encyclopedia</title>
+    <meta property="og:title" content="Rooftop solar in villages" />
+  </head>
+  <body>
+    <main id="content">
+      <h1 id="firstHeading">Rooftop solar in villages</h1>
+      <div id="bodyContent">
+        <p>
+          Rooftop systems spread fastest where installers offered credit.<sup class="reference" id="cite_ref-1"><a href="#cite_note-1">[1]</a></sup>
+          A later survey disagreed (see <a class="external text" href="https://doi.org/10.5555%2Fbody.2024.0001">this survey</a>).
+        </p>
+        <h2 id="References">References</h2>
+        <div class="reflist">
+          <div class="mw-references-wrap">
+            <ol class="references">
+              <li id="cite_note-1">
+                <span class="mw-cite-backlink"><b><a href="#cite_ref-1">^</a></b></span>
+                <span class="reference-text"><cite class="citation journal cs1">Rao, Asha; Iyer, Bina (2021). <a class="external text" href="https://journal.example.org/a/1">"Credit and rooftop solar uptake in rural districts"</a>. <i>Sample Journal of Energy Access</i>. <b>12</b> (3): 45–67. <a href="/wiki/Doi_(identifier)" title="Doi (identifier)">doi</a>:<a class="external text" rel="nofollow" href="https://doi.org/10.5555%2Fsjea.2021.0045"><span class="id-lock-free">10.5555/sjea.2021.0045</span></a>. <a class="external text" rel="nofollow" href="https://doi.org/10.5555/sjea.2021.0045">Archived copy</a>.</cite></span>
+              </li>
+              <li id="cite_note-2">
+                <span class="mw-cite-backlink"><b><a href="#cite_ref-2">^</a></b></span>
+                <span class="reference-text"><cite class="citation journal cs1">Das, Chitra (2019). "Village microgrids and household demand". <i>Sample Grid Studies</i>. <b>4</b>: 1–19. <a href="/wiki/Doi_(identifier)">doi</a>:<a class="external text" rel="nofollow" href="https://doi.org/10.5555%2Fsgs.2019.0004">10.5555/sgs.2019.0004</a>.</cite>; <cite class="citation journal cs1">Menon, Dev (2020). "Net metering in practice". <i>Sample Policy Review</i>. <b>7</b>: 88–101. <a href="/wiki/Doi_(identifier)">doi</a>:<a class="external text" rel="nofollow" href="https://doi.org/10.5555%2Fspr.2020.0088">10.5555/spr.2020.0088</a>.</cite></span>
+              </li>
+              <li id="cite_note-3">
+                <span class="mw-cite-backlink"><b><a href="#cite_ref-3">^</a></b></span>
+                <span class="reference-text"><cite class="citation book cs1">Shah, Esha (2018). <i>Sample Book of Solar Villages</i>. Sample Press. p. 12.</cite></span>
+              </li>
+              <li id="cite_note-4" hidden>
+                <span class="reference-text"><cite class="citation journal cs1">Hidden, Ref (2017). "Not shown". doi:<a class="external text" href="https://doi.org/10.5555%2Fhidden.2017.0001">10.5555/hidden.2017.0001</a>.</cite></span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

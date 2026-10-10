@@ -7,6 +7,7 @@
  * never as HTML. The only markup is the static `popup.html`.
  */
 
+import { ANYWHERE_ORIGINS } from './anywhere.js';
 import { WEB_URL } from './config.js';
 import { BULK_MAX, itemsFrom, type RawListing, siteName } from './lists.js';
 import type {
@@ -851,11 +852,62 @@ async function footer(): Promise<void> {
   }
 }
 
+/**
+ * ADR-0154: "Show Save buttons on every site". Off until the student turns it on; turning it on
+ * asks Chrome for every https site (Chrome shows its own prompt), turning it off gives that back.
+ * The service worker registers or removes the buttons' script when the access changes; the
+ * message here only makes sure of it while the window is open.
+ */
+async function anywhereSwitch(): Promise<void> {
+  const slot = document.getElementById('anywhere');
+  if (!slot || !chrome.permissions) return;
+  const origins = [...ANYWHERE_ORIGINS];
+  const box = el('input', { testId: 'anywhere-switch' });
+  box.type = 'checkbox';
+  box.setAttribute('role', 'switch');
+  box.id = 'anywhere-switch';
+  const note = el('p', { className: 'faint small', testId: 'anywhere-note' });
+  const say = (on: boolean) => {
+    box.checked = on;
+    note.textContent = on
+      ? 'On. Reload a page to see its buttons there.'
+      : 'Off. Chrome asks you first; you can turn it off here at any time.';
+  };
+  try {
+    say(await chrome.permissions.contains({ origins }));
+  } catch {
+    return;
+  }
+  box.addEventListener('change', () => {
+    const wanted = box.checked;
+    box.disabled = true;
+    // Asked for in the press itself: Chrome shows its prompt only for a user's gesture.
+    const change = wanted
+      ? chrome.permissions.request({ origins })
+      : chrome.permissions.remove({ origins }).then((removed) => !removed);
+    void change
+      .catch(() => !wanted)
+      .then(async (on) => {
+        say(on);
+        await ask<boolean>({ type: 'anywhere-sync' });
+      })
+      .finally(() => {
+        box.disabled = false;
+      });
+  });
+  const label = el('label', { className: 'switch' });
+  label.htmlFor = 'anywhere-switch';
+  label.append(el('span', { text: 'Show Save buttons on every site' }), box);
+  slot.replaceChildren(label, note);
+  slot.hidden = false;
+}
+
 async function main(): Promise<void> {
   (document.getElementById('open-app') as HTMLButtonElement).addEventListener('click', () =>
     openSite(context.documentId ? `${docPath(context.documentId)}/sources` : '/app'),
   );
   void footer();
+  void anywhereSwitch();
   const { target, restricted } = await readTarget();
   dispatch({ type: 'read', target, restricted });
   if (view.kind === 'loading') await loadTheses();
