@@ -503,7 +503,13 @@ describe('PHASES 1.4 — /assist/suggest over SSE', () => {
     const problem = (await res.json()) as { type: string; cap: number; resetsAt: string };
     expect(problem.type).toBe('CAP_EXCEEDED');
     expect(problem.cap).toBe(cap);
-    expect(new Date(problem.resetsAt).getUTCDate()).toBe(1);
+    // ADR-0152: the account is on the free trial, whose allowance lasts until the trial ends
+    // rather than renewing on the 1st.
+    const account = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { trialEndsAt: true },
+    });
+    expect(problem.resetsAt).toBe(account.trialEndsAt?.toISOString());
     expect(mock.calls.length).toBe(calls);
 
     // The call ceiling refuses too, with nothing kept, and names it.

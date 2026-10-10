@@ -1,14 +1,15 @@
 /**
  * Proofreading through its real HTTP path — ADR-0026.
  *
- * The cap test every metered action has: a run is one `COMMAND` unit, charged before the model is
- * called, and at the cap the refusal comes with no call made. Around it, the things only the
+ * The cap test every metered action has: a run is one `PROOFREAD` unit (ADR-0152; a `COMMAND`
+ * unit until then), charged before the model is called, and at the cap the refusal comes with no call made. Around it, the things only the
  * endpoint can show: the corrections come back as data and the chapter is untouched; a chapter
  * with nothing to read costs nothing; a pending AI draft is not read, because it is not the
  * student's text yet; and a chapter longer than one run is read in parts, each saying where the
  * next one starts. R26 (ADR-0126): a range reads one paragraph only, for the same one unit.
  */
 
+import { PLAN_LIMITS } from '@tc/config';
 import type { Prisma } from '@tc/db';
 import { blocksOf } from '@tc/retrieval';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -19,8 +20,8 @@ let h: Harness;
 let documentId: string;
 let chapterId: string;
 
-/** FREE_TRIAL's `COMMAND` cap (PRD §11.3). */
-const CAP = 2;
+/** FREE_TRIAL's `PROOFREAD` allowance (ADR-0152: ten runs of 2,000 words). */
+const CAP = PLAN_LIMITS.FREE_TRIAL.caps.PROOFREAD;
 
 const paragraph = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
 
@@ -37,20 +38,20 @@ const rangesOf = (content: unknown[]) =>
 
 async function commandUnits(): Promise<number> {
   const row = await h.prisma.usageLedger.findFirst({
-    where: { userId: h.userId, action: 'COMMAND', period: periodFor() },
+    where: { userId: h.userId, action: 'PROOFREAD', period: periodFor() },
   });
   return row?.count ?? 0;
 }
 
 async function setCommandUnits(count: number): Promise<void> {
   await h.prisma.usageLedger.upsert({
-    where: { userId_period_action: { userId: h.userId, period: periodFor(), action: 'COMMAND' } },
-    create: { userId: h.userId, period: periodFor(), action: 'COMMAND', count },
+    where: { userId_period_action: { userId: h.userId, period: periodFor(), action: 'PROOFREAD' } },
+    create: { userId: h.userId, period: periodFor(), action: 'PROOFREAD', count },
     update: { count },
   });
 }
 
-const calls = () => h.prisma.aiCallLog.count({ where: { userId: h.userId, action: 'COMMAND' } });
+const calls = () => h.prisma.aiCallLog.count({ where: { userId: h.userId, action: 'PROOFREAD' } });
 
 const proofread = (body: Record<string, unknown>) =>
   h.api('/proofread', { method: 'POST', body: JSON.stringify(body) });
@@ -105,7 +106,7 @@ describe('POST /proofread', () => {
     const chapter = await h.prisma.chapter.findUniqueOrThrow({ where: { id: chapterId } });
     expect(JSON.stringify(chapter.content)).toContain('recieved');
     expect(
-      await h.prisma.aiCallLog.count({ where: { documentId, action: 'COMMAND', ok: true } }),
+      await h.prisma.aiCallLog.count({ where: { documentId, action: 'PROOFREAD', ok: true } }),
     ).toBeGreaterThan(0);
   });
 
@@ -116,8 +117,37 @@ describe('POST /proofread', () => {
 
     const response = await proofread({ chapterId });
     expect(response.status).toBe(429);
+    expect(await response.json()).toMatchObject({
+      type: 'CAP_EXCEEDED',
+      action: 'PROOFREAD',
+      allowance: 'Proofreading runs',
+      used: CAP,
+      cap: CAP,
+    });
     expect(await calls()).toBe(before);
     expect(await commandUnits()).toBe(CAP);
+  });
+
+  it('does not use the section commands, and runs when they are all used (ADR-0152)', async () => {
+    await setChapter([paragraph('The farmers recieved the subsidy late in the season.')]);
+    await setCommandUnits(0);
+    const commandsAtCap = PLAN_LIMITS.FREE_TRIAL.caps.COMMAND;
+    await h.prisma.usageLedger.upsert({
+      where: {
+        userId_period_action: { userId: h.userId, period: periodFor(), action: 'COMMAND' },
+      },
+      create: { userId: h.userId, period: periodFor(), action: 'COMMAND', count: commandsAtCap },
+      update: { count: commandsAtCap },
+    });
+
+    const response = await proofread({ chapterId });
+    expect(response.status).toBe(200);
+    expect(await commandUnits()).toBe(1);
+    const commands = await h.prisma.usageLedger.findFirstOrThrow({
+      where: { userId: h.userId, period: periodFor(), action: 'COMMAND' },
+    });
+    expect(commands.count).toBe(commandsAtCap);
+    await h.prisma.usageLedger.deleteMany({ where: { userId: h.userId, action: 'COMMAND' } });
   });
 
   it('charges nothing when there is nothing to read', async () => {

@@ -19,6 +19,7 @@ import { PrismaClient } from '@tc/db';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  ledgerPeriodFor,
   periodFor,
   refusal,
   resetsAtFor,
@@ -367,5 +368,146 @@ describe('an allowance that counts only kept suggestions (ADR-0144)', () => {
     await usage.refund(userId, 'ASSIST');
     const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'ASSIST' } });
     expect(row).toMatchObject({ count: 0, kept: 1 });
+  });
+});
+
+/**
+ * ADR-0152 (Option B): proofreading is its own allowance, behind the same one atomic statement;
+ * and a free trial counts once over the whole trial, on the row of the month it started, so a
+ * trial that crosses the 1st does not get a second month's allowance.
+ */
+describe('proofreading and the trial period (ADR-0152)', () => {
+  const day = (month: number, date: number) => new Date(Date.UTC(2026, month, date, 12));
+  // 25 October to 8 November 2026: a trial that crosses the 1st.
+  const trialStartsAt = day(9, 25);
+  const trialEndsAt = day(10, 8);
+  const october = day(9, 28);
+  const november = day(10, 2);
+
+  const onTrial = () =>
+    prisma.user.update({
+      where: { id: userId },
+      data: { plan: 'FREE_TRIAL', trialStartsAt, trialEndsAt },
+    });
+
+  it('20 parallel proofreading runs on the trial let exactly its 10 through', async () => {
+    const cap = PLAN_LIMITS.FREE_TRIAL.caps.PROOFREAD;
+    expect(cap).toBe(10);
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => usage.consume(userId, 'FREE_TRIAL', 'PROOFREAD')),
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(cap);
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'PROOFREAD' } });
+    expect(row?.count).toBe(cap);
+    // Proofreading takes nothing from the section commands.
+    expect(await prisma.usageLedger.count({ where: { userId, action: 'COMMAND' } })).toBe(0);
+  });
+
+  it('20 parallel proofreading runs at the paid cap − 1 let exactly 1 through', async () => {
+    const cap = PLAN_LIMITS.STUDENT_MONTHLY.caps.PROOFREAD;
+    expect(cap).toBe(30);
+    await prisma.usageLedger.create({
+      data: { userId, period: periodFor(), action: 'PROOFREAD', count: cap - 1 },
+    });
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => usage.consume(userId, 'STUDENT_MONTHLY', 'PROOFREAD')),
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    const row = await prisma.usageLedger.findFirst({ where: { userId, action: 'PROOFREAD' } });
+    expect(row?.count).toBe(cap);
+  });
+
+  it('the ledger key: the trial start month on a trial, this month otherwise', () => {
+    const trial = { plan: 'FREE_TRIAL', trialStartsAt, trialEndsAt };
+    expect(ledgerPeriodFor(trial, october)).toBe('2026-10');
+    expect(ledgerPeriodFor(trial, november)).toBe('2026-10');
+    expect(ledgerPeriodFor({ ...trial, plan: 'STUDENT_MONTHLY' }, november)).toBe('2026-11');
+    // An account with no trial dates counts by the month, as before.
+    expect(ledgerPeriodFor({ plan: 'FREE_TRIAL' }, november)).toBe('2026-11');
+  });
+
+  it('a trial that crosses the 1st gets one allowance, not two', async () => {
+    await onTrial();
+    const cap = PLAN_LIMITS.FREE_TRIAL.caps.COMMAND; // 10
+    const before = await Promise.all(
+      Array.from({ length: 6 }, () => usage.consume(userId, 'FREE_TRIAL', 'COMMAND', october)),
+    );
+    expect(before.every((r) => r.ok)).toBe(true);
+    const after = await Promise.all(
+      Array.from({ length: 6 }, () => usage.consume(userId, 'FREE_TRIAL', 'COMMAND', november)),
+    );
+    expect(after.filter((r) => r.ok)).toHaveLength(cap - 6);
+
+    const rows = await prisma.usageLedger.findMany({ where: { userId, action: 'COMMAND' } });
+    expect(rows.map((r) => [r.period, r.count])).toEqual([['2026-10', cap]]);
+
+    // The refusal says the allowance lasts until the trial ends; it does not renew on the 1st.
+    const refused = after.find((r) => !r.ok);
+    expect(refused).toMatchObject({ ok: false, reason: 'cap', cap, used: cap, trialEndsAt });
+    if (refused && !refused.ok) {
+      expect(refused.resetsAt).toEqual(trialEndsAt);
+      const error = refusal('COMMAND', refused);
+      expect(error.getResponse()).toMatchObject({
+        title: 'Trial limit reached',
+        trialAllowance: true,
+        trialEndsAt: trialEndsAt.toISOString(),
+        detail: `You have used all ${cap} of your free trial's section commands.`,
+      });
+    }
+  });
+
+  it('a paid account does start again on the 1st', async () => {
+    const cap = PLAN_LIMITS.STUDENT_MONTHLY.caps.COMMAND; // 40
+    await prisma.usageLedger.create({
+      data: { userId, period: '2026-10', action: 'COMMAND', count: cap },
+    });
+    expect((await usage.consume(userId, 'STUDENT_MONTHLY', 'COMMAND', october)).ok).toBe(false);
+    const next = await usage.consume(userId, 'STUDENT_MONTHLY', 'COMMAND', november);
+    expect(next).toMatchObject({ ok: true, count: 1, remaining: cap - 1 });
+  });
+
+  it('after the trial ends, nothing more, from either month', async () => {
+    await onTrial();
+    const result = await usage.consume(userId, 'FREE_TRIAL', 'PROOFREAD', day(10, 9));
+    expect(result).toMatchObject({ ok: false, reason: 'trial', cap: 0 });
+  });
+
+  it('a refund, a kept suggestion and an admin grant all reach the trial’s row', async () => {
+    await onTrial();
+    await usage.consume(userId, 'FREE_TRIAL', 'PROOFREAD', october);
+    await usage.consume(userId, 'FREE_TRIAL', 'PROOFREAD', november);
+    await usage.refund(userId, 'PROOFREAD', november);
+    expect(
+      await prisma.usageLedger.findMany({
+        where: { userId, action: 'PROOFREAD' },
+        select: { period: true, count: true },
+      }),
+    ).toEqual([{ period: '2026-10', count: 1 }]);
+
+    // A suggestion shown in November, kept: counted on October's (the trial's) row.
+    await usage.consume(userId, 'FREE_TRIAL', 'ASSIST', november);
+    const shown = await prisma.suggestionEvent.create({
+      data: {
+        userId,
+        documentId: '01a00000-0000-7000-8000-000000000000',
+        action: 'ASSIST',
+        shownChars: 80,
+        outcome: 'ACCEPTED',
+        keptChars: 80,
+        latencyMs: 1,
+        createdAt: november,
+      },
+    });
+    expect(await usage.keep(userId, shown.id)).toBe(true);
+    const assist = await prisma.usageLedger.findFirstOrThrow({
+      where: { userId, action: 'ASSIST' },
+    });
+    expect(assist).toMatchObject({ period: '2026-10', count: 1, kept: 1 });
+
+    // An admin's extra allowance goes on the row the trial counts on.
+    const granted = await usage.grantBonus(userId, userId, 'PROOFREAD', 5, 'test', november);
+    expect(granted).toMatchObject({ period: '2026-10', bonus: 5 });
+    expect(await usage.periodOf(userId, november)).toBe('2026-10');
+    await prisma.suggestionEvent.deleteMany();
   });
 });

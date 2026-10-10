@@ -7,6 +7,7 @@
  * gives its unit back, because the student was never served (§11.5).
  */
 
+import { PLAN_LIMITS } from '@tc/config';
 import { EMBEDDING_DIMENSIONS, type RawClient, replaceSourceChunks } from '@tc/retrieval';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { periodFor } from '../src/modules/usage/usage.service.js';
@@ -17,8 +18,11 @@ let documentId: string;
 let chapterId: string;
 let outlineNodeId: string;
 
-/** The FREE_TRIAL caps a fresh account starts on (PRD §11.3). */
-const CAPS = { CITE: 10, DRAFT: 2 } as const;
+/** The FREE_TRIAL caps a fresh account starts on (PRD §11.3; ADR-0152: 20 and 3). */
+const CAPS = {
+  CITE: PLAN_LIMITS.FREE_TRIAL.caps.CITE,
+  DRAFT: PLAN_LIMITS.FREE_TRIAL.caps.DRAFT,
+} as const;
 
 async function usedUnits(action: keyof typeof CAPS): Promise<number> {
   const row = await h.prisma.usageLedger.findFirst({
