@@ -1,0 +1,800 @@
+{
+  "summary": {
+    "prompt": "assist",
+    "runs": 15,
+    "wins": {
+      "current": 3,
+      "candidate": 8,
+      "tie": 4
+    },
+    "meanScore": {
+      "current": 7.13,
+      "candidate": 8.2
+    },
+    "answeredWithCitation": {
+      "current": 15,
+      "candidate": 15
+    },
+    "offeredNothing": {
+      "current": 0,
+      "candidate": 0
+    },
+    "sentencesFiltered": {
+      "current": 1,
+      "candidate": 0
+    },
+    "failedCalls": {
+      "current": 0,
+      "candidate": 0
+    },
+    "candidateFile": "assist-academic2",
+    "set": "default",
+    "judged": true,
+    "hallucinatedCites": {
+      "current": 0,
+      "candidate": 0
+    },
+    "setting": {
+      "current": {
+        "mismatched": 0,
+        "outputs": 0,
+        "firstOwn": 1,
+        "answered": 15
+      },
+      "candidate": {
+        "mismatched": 0,
+        "outputs": 0,
+        "firstOwn": 0,
+        "answered": 15
+      }
+    },
+    "measures": {
+      "current": {
+        "outputs": 15,
+        "run6": 2,
+        "run8": 0,
+        "flagged": 5,
+        "meanLongestRun": 4.27,
+        "sentences": 28,
+        "citedSentences": 20,
+        "sharedCitation": 8,
+        "citations": 30,
+        "claimsPerCitation": 0.93,
+        "intensifiers": 4,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "candidate": {
+        "outputs": 15,
+        "run6": 5,
+        "run8": 3,
+        "flagged": 7,
+        "meanLongestRun": 5.47,
+        "sentences": 29,
+        "citedSentences": 26,
+        "sharedCitation": 3,
+        "citations": 31,
+        "claimsPerCitation": 0.94,
+        "intensifiers": 2,
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      }
+    },
+    "medianMs": {
+      "current": 1591,
+      "candidate": 1681
+    },
+    "spentRupees": 6.98
+  },
+  "rows": [
+    {
+      "case": "edm-hastelloy-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "Graphite electrodes have gained popularity in EDM of Hastelloy C-22 due to their low cost, good machinability, and high sublimation temperature, with studies showing that finer grain graphite improves surface finish while coarser grain enhances material removal rate at the expense of increased tool wear (Nowicki et al. 2022)(Nowicki et al. 2024). Process parameters such as discharge current and pulse duration significantly influence both material removal rate and surface roughness, highlighting the importance of optimizing these factors for effective machining (Nowicki et al. 2022)(Nowicki et al. 2024)",
+      "b": "Graphite electrodes with larger grain size have been shown to increase the material removal rate but also result in higher relative tool wear during EDM of Hastelloy C-22, while finer grain graphite produces lower surface roughness (Nowicki et al. 2022). EDM with fine-grained graphite electrodes enhances process efficiency and reduces tool wear, as the detachment of graphite grains influences discharge stability and machining effectiveness (Nowicki et al. 2024).",
+      "aRaw": "Graphite electrodes have gained popularity in EDM of Hastelloy C-22 due to their low cost, good machinability, and high sublimation temperature, with studies showing that finer grain graphite improves surface finish while coarser grain enhances material removal rate at the expense of increased tool wear {{cite:S1#c1}}{{cite:S3#c1}}. Additionally, process parameters such as discharge current and pulse duration significantly influence both material removal rate and surface roughness, highlighting the importance of optimizing these factors for effective machining {{cite:S1#c1}}{{cite:S3#c1}}",
+      "bRaw": "Graphite electrodes with larger grain size have been shown to increase the material removal rate but also result in higher relative tool wear during EDM of Hastelloy C-22, while finer grain graphite produces lower surface roughness {{cite:S1#c1}}. Additionally, EDM with fine-grained graphite electrodes enhances process efficiency and reduces tool wear, as the detachment of graphite grains influences discharge stability and machining effectiveness {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 6,
+        "runText": "good machinability and high sublimation temperature",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 4,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 6,
+        "runText": "process efficiency and reduces tool wear",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately summarize the cited Nowicki sources and avoid generic filler; they state specific, verifiable findings about graphite grain size effects and the influence of discharge current and pulse duration. The first is slightly stronger because it also notes practical reasons for graphite use (cost, machinability, sublimation temperature) and explicitly links process-parameter optimization to machining outcomes, making it a bit more informative and closer to finished literature-review prose. The second is accurate and concise but a touch less comprehensive.",
+      "reason2": "Both candidates correctly cite Nowicki et al. and accurately summarize its findings, but the first is more concise and makes specific, technical statements that directly follow the student text (explicitly contrasting grain-size effects on MRR, TWR and Ra and noting the mechanism of grain detachment). The second is accurate but more generic and slightly repetitive (adds general reasons like cost and sublimation temperature and restates parameter influence without the more precise mechanistic link), so it is weaker as a literature-review sentence."
+    },
+    {
+      "case": "edm-hastelloy-2",
+      "sample": 0,
+      "verdict": "A",
+      "a": "Graphite electrodes with larger grain sizes tend to increase the material removal rate but also cause higher relative tool wear, while finer grains reduce wear and improve surface roughness in EDM of Hastelloy C-22 (Nowicki et al. 2022)(Nowicki et al. 2024). Process parameters such as discharge current and pulse duration significantly influence both material removal and electrode wear rates (Nowicki et al. 2022).",
+      "b": "Graphite electrodes with larger grain size exhibit higher material removal rates but also experience greater relative tool wear, while finer-grained graphite results in lower surface roughness and reduced wear during EDM of Hastelloy C-22 (Nowicki et al. 2022). Electrical discharge machining with fine-grained graphite electrodes enhances process efficiency and decreases tool wear, as the detachment of graphite grains influences discharge stability and machining effectiveness (Nowicki et al. 2024).",
+      "aRaw": "Graphite electrodes with larger grain sizes tend to increase the material removal rate but also cause higher relative tool wear, while finer grains reduce wear and improve surface roughness in EDM of Hastelloy C-22 {{cite:S1#c1}}{{cite:S3#c1}}. Additionally, process parameters such as discharge current and pulse duration significantly influence both material removal and electrode wear rates {{cite:S1#c1}}.",
+      "bRaw": "Graphite electrodes with larger grain size exhibit higher material removal rates but also experience greater relative tool wear, while finer-grained graphite results in lower surface roughness and reduced wear during EDM of Hastelloy C-22 {{cite:S1#c1}}. Additionally, electrical discharge machining with fine-grained graphite electrodes enhances process efficiency and decreases tool wear, as the detachment of graphite grains influences discharge stability and machining effectiveness {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "discharge current and pulse duration",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 3,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 8,
+        "runText": "electrical discharge machining with fine grained graphite electrodes",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately summarize findings from Nowicki et al. (2022, 2024) about graphite grain size effects on MRR, TWR and surface roughness and correctly attribute the role of fine vs coarse grains. The first candidate is marginally better because it adds a specific, relevant process-parameter statement (discharge current and pulse duration) that is supported by Nowicki et al. 2022, making it slightly more informative and thesis-ready. The second is accurate and cites the 2024 point about grain detachment affecting discharge stability, but is marginally more redundant and less specific about machining parameters.",
+      "reason2": "Both candidates accurately summarize Nowicki et al. (2022, 2024) and state specific, technical findings (grain size effects on MRR, TWR, Ra, and the role of grain detachment). The second is slightly better because it adds another correct, specific point from Nowicki et al. (2022) about the dominant EDM process parameters (discharge current and pulse duration), making it more informative while remaining concise and correctly cited."
+    },
+    {
+      "case": "edm-hastelloy-3",
+      "sample": 0,
+      "verdict": "A",
+      "a": "Surface integrity in EDM is influenced by the machining parameters and the electrode material, which affect surface roughness and the formation of recast layers. Studies have shown that optimizing pulse duration and peak current can improve surface quality, while the choice of electrode material, such as fine-grained graphite, can reduce tool wear and enhance surface finish on Hastelloy alloys (Nowicki et al. 2022)(Nowicki et al. 2024)(Nas & Kara 2022)(Shastri et al. 2022).",
+      "b": "Surface integrity in EDM of nickel-based superalloys is influenced by process parameters such as peak current and pulse duration, which affect surface roughness and the formation of recast layers. Studies have shown that optimizing these parameters, along with electrode material selection, can improve surface quality and reduce defects like micro-cracks and heat-affected zones (Nowicki et al. 2022)(Nas & Kara 2022)(Shastri et al. 2022).",
+      "aRaw": "Surface integrity in EDM is influenced by the machining parameters and the electrode material, which affect surface roughness and the formation of recast layers. Studies have shown that optimizing pulse duration and peak current can improve surface quality, while the choice of electrode material, such as fine-grained graphite, can reduce tool wear and enhance surface finish on Hastelloy alloys {{cite:S1#c1}}{{cite:S3#c1}}{{cite:S2#c1}}{{cite:S6#c1}}.",
+      "bRaw": "Surface integrity in EDM of nickel-based superalloys is influenced by process parameters such as peak current and pulse duration, which affect surface roughness and the formation of recast layers. Studies have shown that optimizing these parameters, along with electrode material selection, can improve surface quality and reduce defects like micro-cracks and heat-affected zones {{cite:S1#c1}}{{cite:S2#c1}}{{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "the machining parameters",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 4,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "current and pulse duration",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are concise and relevant, but the first is stronger: it names specific process parameters (pulse duration, peak current) and correctly links fine-grained graphite to improved surface finish and reduced tool wear as reported by Nowicki et al. (2022, 2024) and aligns with Nas & Kara (2022) and Shastri et al. (2022) on parameter importance. It reads as a finished statement rather than a plan. The second is more generic and adds terms (micro-cracks, heat-affected zones) that are not clearly supported by the provided source excerpts, making it less precise and slightly more speculative.",
+      "reason2": "Both candidates are brief and somewhat generic rather than making specific, technical statements (no numerical conditions, methods or quantified outcomes). The second is marginally better because it correctly links fine-grained graphite to reduced tool wear and improved finish using Nowicki et al. 2024, and still references relevant parameter effects (pulse duration, peak current). The first introduces micro-cracks and heat-affected zones without a direct supporting citation from the provided Nowicki 2022 source, making it slightly weaker."
+    },
+    {
+      "case": "slm-maraging-1",
+      "sample": 0,
+      "verdict": "=",
+      "a": "This process achieves near full density and extremely fine microstructures due to rapid cooling rates, typically around $10^7$ K/s, resulting in submicron grain sizes and the formation of nanoscale Ni₃X precipitates that contribute to age hardening. Heat treatments applied to these parts not only enhance strength through precipitation but also reduce residual stresses and partially mitigate mechanical anisotropy inherent to the layer-wise build process (Yap et al. 2015)(Tan et al. 2018).",
+      "b": "This process achieves near full density and an extremely fine submicron grain size due to rapid cooling rates up to 10⁷ K/s, resulting in a martensitic matrix with nanoscale precipitates that contribute to age hardening and high strength. The unique microstructural features formed during selective laser melting enhance wear and corrosion resistance compared to conventionally produced maraging steels, although challenges remain in optimizing ductility and fatigue performance (Yap et al. 2015)(Tan et al. 2018)(Haghdadi et al. 2020).",
+      "aRaw": "This process achieves near full density and extremely fine microstructures due to rapid cooling rates, typically around $10^7$ K/s, resulting in submicron grain sizes and the formation of nanoscale Ni₃X precipitates that contribute to age hardening. Heat treatments applied to these parts not only enhance strength through precipitation but also reduce residual stresses and partially mitigate mechanical anisotropy inherent to the layer-wise build process {{cite:S1#c1}}, {{cite:S3#c1}}.",
+      "bRaw": "This process achieves near full density and an extremely fine submicron grain size due to rapid cooling rates up to 10⁷ K/s, resulting in a martensitic matrix with nanoscale precipitates that contribute to age hardening and high strength. Additionally, the unique microstructural features formed during selective laser melting enhance wear and corrosion resistance compared to conventionally produced maraging steels, although challenges remain in optimizing ductility and fatigue performance {{cite:S1#c1}}{{cite:S3#c1}}{{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "near full density",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "wear and corrosion resistance",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 3,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates produce accurate, technically specific sentences supported by the cited sources (Yap 2015 and Tan 2018 for cooling rates, density, submicron grains, martensitic matrix and nanoprecipitates). The first is slightly stronger: it names the Ni3X precipitates and explicitly links heat treatment to reduced residual stress and mitigation of build-direction anisotropy, which is directly supported by Tan et al. The second is also correct and adds a justified claim about improved wear/corrosion from AM (supported by Haghdadi et al.), but is marginally more general than the first. Citations match the statements in both candidates and there is no unsupported speculation.",
+      "reason2": "Both candidates are well supported and specific, citing appropriate sources. The first is slightly stronger: it gives concrete numbers (cooling rate), links microstructure (submicron grains, martensitic matrix, nanoscale precipitates) to age hardening and high strength, and explicitly notes improved wear/corrosion resistance and remaining challenges, with citations that match the claims. The second is accurate and specific but slightly less comprehensive (omits the corrosion/wear claim and remaining challenges) and therefore ranks marginally lower."
+    },
+    {
+      "case": "slm-maraging-2",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Heat treatments induce precipitation of Ni3X (X = Ti, Al, Mo) nanoprecipitates within the martensitic matrix, which contribute to age hardening and relieve residual stresses, thereby enhancing strength and reducing mechanical anisotropy. Intercritical tempering near the austenite formation temperature promotes reversed austenite formation along martensite lath boundaries, which improves pitting corrosion resistance in chloride environments (Tan et al. 2018)(Khan et al. 2022).",
+      "b": "Heat treatments such as aging and solution treatment induce precipitation of Ni3X (X = Ti, Al, Mo) nanoprecipitates within the martensitic matrix, which significantly strengthen the material through Orowan bowing and coherency strain hardening mechanisms (Tan et al. 2018). Intercritical tempering near the austenite formation temperature promotes reversed austenite formation along martensite lath boundaries, enhancing pitting corrosion resistance by locally enriching Ni (Khan et al. 2022).",
+      "aRaw": "Heat treatments induce precipitation of Ni3X (X = Ti, Al, Mo) nanoprecipitates within the martensitic matrix, which contribute to age hardening and relieve residual stresses, thereby enhancing strength and reducing mechanical anisotropy. Additionally, intercritical tempering near the austenite formation temperature promotes reversed austenite formation along martensite lath boundaries, which improves pitting corrosion resistance in chloride environments {{cite:S3#c1}}{{cite:S4#c1}}.",
+      "bRaw": "Heat treatments such as aging and solution treatment induce precipitation of Ni3X (X = Ti, Al, Mo) nanoprecipitates within the martensitic matrix, which significantly strengthen the material through Orowan bowing and coherency strain hardening mechanisms {{cite:S3#c1}}. Additionally, intercritical tempering near the austenite formation temperature promotes reversed austenite formation along martensite lath boundaries, enhancing pitting corrosion resistance by locally enriching Ni {{cite:S4#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "ni3x x ti al mo",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "ni3x x ti al mo",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately summarize and cite the provided sources. They make specific technical statements (Ni3X precipitates, martensitic matrix, reversed austenite, effects on corrosion) that match the cited papers. The second is slightly stronger because it explicitly states the strengthening mechanisms (Orowan bowing and coherency strain hardening) reported by Tan et al. (2018) and links the Ni enrichment mechanism for reversed austenite nucleation to improved pitting resistance from Khan et al. (2022). The first is correct but somewhat less specific about strengthening mechanisms, though it correctly notes residual stress relief and reduced anisotropy as reported by Tan et al. (2018).",
+      "reason2": "Both candidates are accurate and properly cited, but the first is slightly stronger: it makes more specific, technical statements (names the precipitate and explicit strengthening mechanisms) and cites sources that support those points. The second is accurate and cites relevant papers, but is a bit more general (less mechanistic detail) and repeats some broader effects (residual stress relief, anisotropy) that are less specific than the mechanisms given in the first."
+    },
+    {
+      "case": "slm-maraging-3",
+      "sample": 0,
+      "verdict": "B",
+      "a": "The unique microstructural features produced by additive manufacturing, such as hierarchical subgrains and fine precipitates, have been shown to enhance corrosion resistance compared to conventionally produced steels. However, the impact of heat treatments and phase transformations, including reversed austenite formation, on corrosion behavior requires further investigation to fully understand their effects in selective laser melted maraging steels (Haghdadi et al. 2020)(Khan et al. 2022).",
+      "b": "The study by Khan et al. 2022 demonstrates that intercritical heat treatment inducing reversed austenite formation along martensite lath boundaries improves pitting resistance in selective laser melted maraging steel, as shown by higher pitting potential and lower corrosion current density in a chloride environment (Khan et al. 2022). Similarly, Godec et al. 2021 found that plasma nitriding after prior heat treatments enhances corrosion resistance compared to untreated or conventionally produced maraging steels, although nitriding without prior aging causes cracks in the nitride layer (Godec et al. 2021)",
+      "aRaw": "The unique microstructural features produced by additive manufacturing, such as hierarchical subgrains and fine precipitates, have been shown to enhance corrosion resistance compared to conventionally produced steels. However, the impact of heat treatments and phase transformations, including reversed austenite formation, on corrosion behavior requires further investigation to fully understand their effects in selective laser melted maraging steels {{cite:S6#c1}}{{cite:S4#c1}}.",
+      "bRaw": "The study by Khan et al. 2022 demonstrates that intercritical heat treatment inducing reversed austenite formation along martensite lath boundaries improves pitting resistance in selective laser melted maraging steel, as shown by higher pitting potential and lower corrosion current density in a chloride environment {{cite:S4#c1}}. Similarly, Godec et al. 2021 found that plasma nitriding after prior heat treatments enhances corrosion resistance compared to untreated or conventionally produced maraging steels, although nitriding without prior aging causes cracks in the nitride layer {{cite:S2#c1",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "the unique microstructural features",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "lower corrosion current density",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "The second candidate is more specific and technical, correctly citing experimental findings (improved pitting resistance with reversed austenite from Khan et al. 2022; effects of plasma nitriding and cracking without prior aging from Godec et al. 2021). The first candidate is accurate in citing a review (Haghdadi et al. 2020) and Khan et al., but is more generic and hedges that heat-treatment effects ‘require further investigation’ despite available specific findings; it therefore reads as less substantial and thesis-ready than the second.",
+      "reason2": "The first candidate makes specific, verifiable technical claims tied to the sources (Khan et al. showing reversed austenite improves pitting resistance in NaCl and Godec et al. reporting benefits of nitriding after prior heat treatment and cracks when nitriding without aging). It reads like finished literature-review sentences and cites appropriately. The second candidate is more generic and partially misleading: it restates broad claims about AM microstructure improving corrosion resistance (from Haghdadi) but then suggests the effects of heat treatments are insufficiently understood despite Khan et al. providing concrete findings on reversed austenite and pitting—thus it is vaguer and less useful as literature-review text."
+    },
+    {
+      "case": "rooftop-solar-india-1",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Despite India's abundant solar resources and strong policy support, several barriers hinder residential rooftop solar adoption, including high upfront costs, limited awareness, and technical challenges. Studies show that government subsidies help mitigate initial investment risks, while financial concerns and knowledge gaps continue to inhibit household decisions to invest in rooftop PV systems (Parsad et al. 2020).",
+      "b": "Household investment decisions in rooftop PV are influenced by multiple factors including government subsidies, which act as a primary motivator by reducing the initial investment risk, as well as low prices and maintenance costs that mitigate long-term financial concerns (Parsad et al. 2020). However, technical barriers and lack of knowledge and awareness also significantly inhibit adoption, highlighting the complex interplay of financial and non-financial factors in household solar investment (Parsad et al. 2020).",
+      "aRaw": "Despite India's abundant solar resources and strong policy support, several barriers hinder residential rooftop solar adoption, including high upfront costs, limited awareness, and technical challenges. Studies show that government subsidies help mitigate initial investment risks, while financial concerns and knowledge gaps continue to inhibit household decisions to invest in rooftop PV systems {{cite:S3#c1}}.",
+      "bRaw": "Household investment decisions in rooftop PV are influenced by multiple factors including government subsidies, which act as a primary motivator by reducing the initial investment risk, as well as low prices and maintenance costs that mitigate long-term financial concerns {{cite:S3#c1}}. However, technical barriers and lack of knowledge and awareness also significantly inhibit adoption, highlighting the complex interplay of financial and non-financial factors in household solar investment {{cite:S3#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": true
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "to invest in",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 3,
+        "runText": "in rooftop pv",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately cite Parsad et al. (2020) on subsidies, costs, and knowledge barriers, but the second is more specific and closely mirrors the paper’s findings (subsidies as primary motivator; low prices/maintenance reducing long-term concerns; technical and awareness barriers). The first is more generic and offers less detailed, thesis-ready content.",
+      "reason2": "The first candidate makes concrete, source-consistent claims about motivators (subsidies, low prices, maintenance costs) and inhibitors (technical barriers, knowledge gaps) and cites Parsad et al. (2020) appropriately; it reads like a finished literature-synthesis sentence. The second candidate is more generic and partly repetitive—its opening clause is broad and uncited—then it repeats the Parsad (2020) point; it lacks the slightly more specific detail and tighter synthesis present in the first candidate."
+    },
+    {
+      "case": "rooftop-solar-india-2",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Government subsidies are identified as a primary motivator that helps overcome the initial investment risk in rooftop solar technology, while low prices and maintenance costs further alleviate concerns about long-term returns. Technical barriers and lack of knowledge and awareness significantly influence household investment decisions in rooftop PV systems (Parsad et al. 2020).",
+      "b": "Government subsidies serve as a primary motivator that helps households overcome the initial investment risk associated with rooftop PV systems, while low prices and maintenance costs further mitigate concerns about long-term returns and upkeep (Parsad et al. 2020). However, perceived risks and upfront costs negatively affect willingness to adopt solar PV, as shown in a study of 683 households in Pakistan, where social norms and perceived benefits positively influenced adoption but perceived risk and cost acted as barriers (Tanveer et al. 2021).",
+      "aRaw": "Government subsidies are identified as a primary motivator that helps overcome the initial investment risk in rooftop solar technology, while low prices and maintenance costs further alleviate concerns about long-term returns. Additionally, technical barriers and lack of knowledge and awareness significantly influence household investment decisions in rooftop PV systems {{cite:S3#c1}}.",
+      "bRaw": "Government subsidies serve as a primary motivator that helps households overcome the initial investment risk associated with rooftop PV systems, while low prices and maintenance costs further mitigate concerns about long-term returns and upkeep {{cite:S3#c1}}. However, perceived risks and upfront costs negatively affect willingness to adopt solar PV, as shown in a study of 683 households in Pakistan, where social norms and perceived benefits positively influenced adoption but perceived risk and cost acted as barriers {{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "low prices and",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "683 households in pakistan",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates correctly cite Parsad et al. (2020) about subsidies, low prices, maintenance and the importance of technical/knowledge barriers. The first is accurate and concise but limited to Parsad’s findings. The second is more useful for the literature review: it repeats Parsad’s points and correctly brings in Tanveer et al. (2021) with specific sample size and findings (perceived risk and cost as barriers; social norms and perceived benefits as positive drivers), thereby adding comparative empirical evidence and greater specificity. Neither contains unsupported claims or erroneous citations.",
+      "reason2": "The first candidate makes specific, correctly cited claims and brings in corroborating empirical evidence (Parsad et al. 2020; Tanveer et al. 2021), including the Pakistan sample size and the distinct role of perceived risk and cost — improving the literature-review value. The second candidate is accurate in citing Parsad for subsidies, low costs, and technical/awareness barriers, but is vaguer, provides less cross-study support, and reads more like generic summary rather than a stronger, evidence-linked thesis sentence."
+    },
+    {
+      "case": "rooftop-solar-india-3",
+      "sample": 0,
+      "verdict": "=",
+      "a": "Households’ decisions to invest in rooftop PV are influenced not only by financial factors such as subsidies and maintenance costs but also by non-financial elements including technical barriers and knowledge gaps, which significantly affect investor behavior (Parsad et al. 2020). Social norms and perceived self-efficacy play a positive role in willingness to adopt solar PV, while perceived risks and costs negatively impact adoption decisions (Tanveer et al. 2021).",
+      "b": "Households considering rooftop PV adoption are influenced by knowledge and awareness factors, which significantly forecast investment decisions alongside technical barriers (Parsad et al. 2020). Social norms and perceptions of self-efficacy positively affect willingness to adopt solar PV, while perceived risk and cost negatively impact it (Tanveer et al. 2021).",
+      "aRaw": "Households’ decisions to invest in rooftop PV are influenced not only by financial factors such as subsidies and maintenance costs but also by non-financial elements including technical barriers and knowledge gaps, which significantly affect investor behavior {{cite:S3#c1}}. Additionally, social norms and perceived self-efficacy play a positive role in willingness to adopt solar PV, while perceived risks and costs negatively impact adoption decisions {{cite:S6#c1}}.",
+      "bRaw": "Households considering rooftop PV adoption are influenced by knowledge and awareness factors, which significantly forecast investment decisions alongside technical barriers {{cite:S3#c1}}. Additionally, social norms and perceptions of self-efficacy positively affect willingness to adopt solar PV, while perceived risk and cost negatively impact it {{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 3,
+        "runText": "to invest in",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "knowledge and awareness factors",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": ["significantly"],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately cite Parsad et al. (2020) and Tanveer et al. (2021) and make appropriate claims. The first is slightly stronger: it links non-financial and financial motivators and explicitly names subsidies and maintenance costs (which Parsad et al. identify), so it is more specific and substantive. The second is accurate but a bit more narrowly phrased and less informative.",
+      "reason2": "Both candidates accurately cite Parsad et al. (2020) and Tanveer et al. (2021) and make specific, evidence-based claims that match those sources. The first is slightly stronger: it concisely states that knowledge/awareness and technical barriers significantly forecast investment decisions (aligning with Parsad’s SEM/ANN findings) and separately summarizes Tanveer’s behavioral results, without adding extra, broader phrasing. The second is accurate but more generic in tone (mixing financial and non-financial elements in a single sentence) and therefore reads as slightly less crisp and thesis-ready than the first."
+    },
+    {
+      "case": "mhealth-diabetes-1",
+      "sample": 0,
+      "verdict": "B",
+      "a": "However, evidence on their impact on glycemic control, measured by HbA1c, remains mixed, with some trials showing no significant difference between app users and controls, partly due to variability in app usage and contextual factors across clinical sites (Cafazzo et al. 2012)(Agarwal et al. 2018).",
+      "b": "These apps have demonstrated potential to improve health outcomes, such as increased frequency of blood glucose monitoring in adolescents with type 1 diabetes through gamification incentives, although evidence for sustained glycemic control remains limited and requires further study. However, real-world trials with adults with type 2 diabetes have shown mixed results, with some indicating no significant difference in HbA1c levels between app users and controls, partly due to variable app engagement influenced by contextual factors like clinical site.(Cafazzo et al. 2012)(Agarwal et al. 2018)",
+      "aRaw": "Studies have demonstrated that some mobile apps can increase self-monitoring behaviors, such as blood glucose testing frequency, especially when incorporating features like gamification and automated data transfer. However, evidence on their impact on glycemic control, measured by HbA1c, remains mixed, with some trials showing no significant difference between app users and controls, partly due to variability in app usage and contextual factors across clinical sites {{cite:S2#c1}}{{cite:S6#c1}}.",
+      "bRaw": "These apps have demonstrated potential to improve health outcomes, such as increased frequency of blood glucose monitoring in adolescents with type 1 diabetes through gamification incentives, although evidence for sustained glycemic control remains limited and requires further study. However, real-world trials with adults with type 2 diabetes have shown mixed results, with some indicating no significant difference in HbA1c levels between app users and controls, partly due to variable app engagement influenced by contextual factors like clinical site.{{cite:S2#c1}}{{cite:S6#c1}}",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "glycemic control measured by hba1c",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 11,
+        "runText": "frequency of blood glucose monitoring in adolescents with type 1 diabetes",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "First candidate makes an accurate general point about mixed effects and correctly cites Agarwal et al. 2018 on null HbA1c findings and contextual site-related usage variability, but it incorrectly cites Cafazzo et al. 2012 to support the claim about trials showing no significant difference in glycaemic outcomes—Cafazzo is a small adolescent type 1 pilot that reported increased monitoring, not null HbA1c results—so the citation use is misleading and the sentence is only partially supported. \n\nThe second candidate correctly attributes the adolescent blood‑glucose monitoring improvement to Cafazzo et al. 2012 and correctly summarises Agarwal et al. 2018’s real‑world randomized trial showing no overall HbA1c benefit and the role of variable engagement by site. It therefore makes specific, evidence‑linked statements that match the sources and avoids unsupported generalities, so it is substantially stronger.",
+      "reason2": "The first candidate makes specific, evidence-based statements and correctly links Cafazzo (increased blood‑glucose monitoring via gamification in adolescents) and Agarwal (pragmatic RCT in adults with no overall HbA1c benefit and site-dependent engagement). It reads like finished review text. The second candidate is briefer and more generic and misuses Cafazzo as a source for trials showing no HbA1c benefit (Cafazzo reported increased monitoring in adolescents, not null glycaemic outcomes), so it is less accurate and less useful."
+    },
+    {
+      "case": "mhealth-diabetes-2",
+      "sample": 0,
+      "verdict": "=",
+      "a": "One pragmatic randomized controlled trial of the BlueStar app involving 223 participants found no significant difference in HbA1c levels between the intervention and control groups at 3 months; however, an exploratory analysis revealed that increased app usage was associated with a small reduction in HbA1c, with usage varying significantly by clinical site (Agarwal et al. 2018).",
+      "b": "One pragmatic randomized controlled trial of the BlueStar app involving 223 participants found no significant difference in HbA1c levels between intervention and control groups at 3 months, although greater app usage was associated with a small decrease in HbA1c, and usage varied significantly by clinical site (Agarwal et al. 2018).",
+      "aRaw": "One pragmatic randomized controlled trial of the BlueStar app involving 223 participants found no significant difference in HbA1c levels between the intervention and control groups at 3 months; however, an exploratory analysis revealed that increased app usage was associated with a small reduction in HbA1c, with usage varying significantly by clinical site {{cite:S6#c1}}. Another study focusing on adolescents with type 1 diabetes demonstrated that a gamified app increased the frequency of blood glucose monitoring by 50%, although improvements in HbA1c were not confirmed without longer, powered studies {{cite:S2#",
+      "bRaw": "One pragmatic randomized controlled trial of the BlueStar app involving 223 participants found no significant difference in HbA1c levels between intervention and control groups at 3 months, although greater app usage was associated with a small decrease in HbA1c, and usage varied significantly by clinical site {{cite:S6#c1}}. Another study piloting a gamified app for adolescents with type 1 diabetes showed a 50% increase in daily blood glucose monitoring frequency, suggesting that tailored features and adherence mechanisms may improve self-management behaviors, though evidence of HbA1c improvement requires longer studies {{cite",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 7,
+        "runText": "pragmatic randomized controlled trial of the bluestar",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 7,
+        "runText": "pragmatic randomized controlled trial of the bluestar",
+        "flagged": true,
+        "sentences": 1,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates are concise, specific, and accurately reflect Agarwal et al. (2018): they report study design (pragmatic RCT), sample size (223), outcome (no significant difference in HbA1c at 3 months), and the exploratory finding that greater app use correlated with a small HbA1c reduction and that usage varied by site. Neither contains unsupported claims or future‑tense plans, and both read as finished statements. The two sentences are effectively equivalent in quality and accuracy.",
+      "reason2": "Both candidates are accurate, specific, and appropriately cite Agarwal et al. (2018), reporting sample size, primary null result for HbA1c at 3 months, and the exploratory association between greater app usage and small HbA1c reductions plus site variation. The second sentence is marginally clearer in structure (explicitly labels the exploratory analysis) and therefore slightly stronger. Both read like finished thesis text and are supported by the source, so scores are high."
+    },
+    {
+      "case": "mhealth-diabetes-3",
+      "sample": 0,
+      "verdict": "B",
+      "a": "This decline in engagement is influenced by several factors, including the perceived relevance of app features, usability issues, and lack of sustained motivation or personalized feedback. For example, one study found that app usage varied significantly by clinical site, with some participants using the app much less frequently, which was linked to contextual factors affecting continued use (Agarwal et al. 2018).",
+      "b": "A pragmatic randomized controlled trial of the BlueStar app found that although there was no significant difference in HbA1c levels between intervention and control groups at 3 months, each additional day of app use was associated with a 0.016-point decrease in HbA1c, indicating that higher engagement may improve glycemic control (Agarwal et al. 2018). However, app usage varied significantly by clinical site, suggesting that contextual factors strongly influence sustained engagement (Agarwal et al. 2018).",
+      "aRaw": "This decline in engagement is influenced by several factors, including the perceived relevance of app features, usability issues, and lack of sustained motivation or personalized feedback. For example, one study found that app usage varied significantly by clinical site, with some participants using the app much less frequently, which was linked to contextual factors affecting continued use {{cite:S6#c1}}.",
+      "bRaw": "A pragmatic randomized controlled trial of the BlueStar app found that although there was no significant difference in HbA1c levels between intervention and control groups at 3 months, each additional day of app use was associated with a 0.016-point decrease in HbA1c, indicating that higher engagement may improve glycemic control {{cite:S6#c1}}. However, app usage varied significantly by clinical site, suggesting that contextual factors strongly influence sustained engagement {{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 5,
+        "runText": "app usage varied significantly by",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 8,
+        "runText": "a pragmatic randomized controlled trial of the bluestar",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "The second candidate cites a specific trial (Agarwal et al. 2018) and reports precise, verifiable results (no significant difference in HbA1c at 3 months; a 0.016-point HbA1c decrease per additional day of app use) and notes site-level variation in usage — this is technical, evidence-based, and directly relevant. The first candidate is accurate and cites Agarwal for site-level variation but is more generic (lists common factors like usability and motivation without numeric detail or direct linkage to the specific studies) and reads more like summary rather than the precise, evidence-linked statement expected in a strong literature review.",
+      "reason2": "The first candidate makes specific, technical statements pulled directly from Agarwal et al. (2018): it correctly reports the null primary outcome at 3 months, the quantified association of 0.016 HbA1c points per additional day of use, and the important between-site variation in usage — all verifiable and relevant to the claim that engagement drops and matters. The second candidate is largely generic (perceived relevance, usability, motivation) without citations for those claims; it only correctly references site variation from Agarwal et al. while leaving the rest uncited and vague. Thus the first is a strong, well‑supported thesis sentence, and the second is weaker and more general."
+    },
+    {
+      "case": "microfinance-women-1",
+      "sample": 0,
+      "verdict": "B",
+      "a": "Evidence shows that women entrepreneurs supported by microfinance exhibit greater economic, psychological, and some social empowerment compared to non-entrepreneurs, although political empowerment remains limited (Khan et al. 2022). However, the effectiveness of microfinance in fostering empowerment varies across personal, relational, and societal dimensions, influenced by time, culture, and the design of interventions (Huis et al. 2017).",
+      "b": "Evidence from a mixed-method study involving 132 female entrepreneurs and 238 non-entrepreneurs found that women engaged in entrepreneurship through microfinance showed improvements across economic, social, political, and psychological empowerment indicators, though the effects were weaker for political and social empowerment (Khan et al. 2022). However, other research highlights that microfinance can also increase indebtedness and exacerbate vulnerabilities, suggesting that credit alone may not be sufficient to achieve holistic empowerment (Banerjee & Jackson 2016).",
+      "aRaw": "Evidence shows that women entrepreneurs supported by microfinance exhibit greater economic, psychological, and some social empowerment compared to non-entrepreneurs, although political empowerment remains limited {{cite:S1#c1}}. However, the effectiveness of microfinance in fostering empowerment varies across personal, relational, and societal dimensions, influenced by time, culture, and the design of interventions {{cite:S6#c1}}.",
+      "bRaw": "Evidence from a mixed-method study involving 132 female entrepreneurs and 238 non-entrepreneurs found that women engaged in entrepreneurship through microfinance showed improvements across economic, social, political, and psychological empowerment indicators, though the effects were weaker for political and social empowerment {{cite:S1#c1}}. However, other research highlights that microfinance can also increase indebtedness and exacerbate vulnerabilities, suggesting that credit alone may not be sufficient to achieve holistic empowerment {{cite:S5#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "the effectiveness of microfinance",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "economic social political and psychological",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates correctly summarize the cited studies and avoid generic claims, but the second is slightly stronger: it includes the study sample sizes from Khan et al. (specific technical detail) and pairs that finding with a clear, contrasting citation (Banerjee & Jackson) that supports the point that credit alone can exacerbate vulnerabilities. The first is accurate and cites Huis et al. for the empowerment dimensions, but is somewhat more general and contains less specific empirical detail.",
+      "reason2": "Both candidates accurately cite and summarize relevant sources and avoid generic filler, but the first is slightly stronger: it includes the study sample sizes and directly balances positive findings (Khan et al. 2022) with documented harms (Banerjee & Jackson 2016), making a more specific, evidence-linked claim about limits of credit alone. The second is accurate and references Huis et al.’s three-dimensional framework, but it is slightly less specific (no sample sizes or concrete trade-offs) and reads at a more general, interpretive level."
+    },
+    {
+      "case": "microfinance-women-2",
+      "sample": 0,
+      "verdict": "A",
+      "a": "While microfinance-supported entrepreneurship can enhance women's economic and psychological empowerment, its effects on social and political empowerment are often limited, indicating that credit alone does not fully address these dimensions (Khan et al. 2022). Empowerment unfolds across multiple levels (personal, relational, and societal) and is influenced by time and cultural context, suggesting that interventions must be designed to target these distinct dimensions for more comprehensive impact (Huis et al. 2017).",
+      "b": "Microfinance-backed entrepreneurship improves women's economic, social, political, and psychological empowerment, but its impact on political and social empowerment is relatively limited, and non-entrepreneurs also show some social empowerment (Khan et al. 2022). The effectiveness of microfinance in empowering women varies across personal, relational, and societal dimensions and is influenced by factors such as time, culture, and the type of intervention employed (Huis et al. 2017).",
+      "aRaw": "While microfinance-supported entrepreneurship can enhance women's economic and psychological empowerment, its effects on social and political empowerment are often limited, indicating that credit alone does not fully address these dimensions {{cite:S1#c1}}. Furthermore, empowerment unfolds across multiple levels—personal, relational, and societal—and is influenced by time and cultural context, suggesting that interventions must be designed to target these distinct dimensions for more comprehensive impact {{cite:S6#c1}}.",
+      "bRaw": "Microfinance-backed entrepreneurship improves women's economic, social, political, and psychological empowerment, but its impact on political and social empowerment is relatively limited, and non-entrepreneurs also show some social empowerment {{cite:S1#c1}}. Additionally, the effectiveness of microfinance in empowering women varies across personal, relational, and societal dimensions and is influenced by factors such as time, culture, and the type of intervention employed {{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "personal relational and societal",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 5,
+        "runText": "economic social political and psychological",
+        "flagged": true,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates correctly cite Khan et al. (2022) and Huis et al. (2017) and summarize relevant findings, but the first is more precise and appropriately cautious. It accurately highlights that microfinance-supported entrepreneurship strengthens economic and psychological outcomes while having limited effects on social and political empowerment, and it connects this to Huis et al.’s multi-level framework and contextual factors. The second overstates by saying microfinance improves social empowerment (Khan reports relatively lesser impact on social and political empowerment and that non-entrepreneurs also show social empowerment), so it is less accurate and slightly less careful in nuance.",
+      "reason2": "Both candidates accurately summarize Khan et al. (2022) and Huis et al. (2017) and cite appropriate findings. They are concise, relevant, and avoid vague filler. The second is slightly stronger for the literature-review prompt because it explicitly links the evidence to the thesis statement (“credit alone does not fully address these dimensions”), making the implication for microfinance interventions clearer. The first is also good but is marginally more descriptive than interpretive."
+    },
+    {
+      "case": "microfinance-women-3",
+      "sample": 0,
+      "verdict": "B",
+      "a": "These groups often provide women with access to microfinance services, which can improve their economic status and contribute to empowerment across multiple dimensions, including personal, relational, and societal levels. However, the extent and timing of empowerment effects vary depending on cultural context and the specific nature of the intervention, suggesting that credit alone may not fully address the complexities of women's empowerment (Huis et al. 2017).",
+      "b": "Self-help groups often facilitate access to microfinance services, which aim to empower women by improving their economic, social, and psychological well-being, although impacts on political and social empowerment tend to be less pronounced (Khan et al. 2022). However, the effectiveness of these interventions varies over time and across cultural contexts, with empowerment occurring on personal, relational, and societal levels that may manifest sequentially and differently depending on the program design and evaluation timing (Huis et al. 2017).",
+      "aRaw": "These groups often provide women with access to microfinance services, which can improve their economic status and contribute to empowerment across multiple dimensions, including personal, relational, and societal levels. However, the extent and timing of empowerment effects vary depending on cultural context and the specific nature of the intervention, suggesting that credit alone may not fully address the complexities of women's empowerment {{cite:S6#c1}}.",
+      "bRaw": "Self-help groups often facilitate access to microfinance services, which aim to empower women by improving their economic, social, and psychological well-being, although impacts on political and social empowerment tend to be less pronounced {{cite:S1#c1}}. However, the effectiveness of these interventions varies over time and across cultural contexts, with empowerment occurring on personal, relational, and societal levels that may manifest sequentially and differently depending on the program design and evaluation timing {{cite:S6#c1}}.",
+      "aSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "bSetting": {
+        "mismatched": 0,
+        "sentences": [],
+        "firstOwn": false
+      },
+      "aMeasures": {
+        "longestRun": 4,
+        "runText": "access to microfinance services",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 1,
+        "citations": 1,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "bMeasures": {
+        "longestRun": 4,
+        "runText": "access to microfinance services",
+        "flagged": false,
+        "sentences": 2,
+        "citedSentences": 2,
+        "citations": 2,
+        "intensifiers": [],
+        "selfDescribing": 0,
+        "ownStudy": 0,
+        "aims": 0,
+        "quotedWords": 0
+      },
+      "reason1": "Both candidates accurately link SHGs to microfinance and women's empowerment and cite relevant literature rather than making unsupported claims. The second is stronger because it cites Khan et al. (2022) for the more specific finding that impacts on political and social empowerment are less pronounced and uses Huis et al. (2017) to justify the temporal/cultural variability and the three-dimensional sequencing — details that match the source content. The first correctly invokes Huis et al. (2017) on dimensions and limits of credit alone but is more generic and omits the more specific empirical nuance about weaker political/social effects reported by Khan et al. (2022).",
+      "reason2": "The first candidate makes specific, sourced claims that match the cited studies (it correctly notes Khan et al. 2022’s finding of stronger economic/psychological impacts and relatively weaker political/social effects and Huis et al. 2017’s three-dimensional/time-sensitive framing). It reads like substantive literature-review text rather than generic filler. The second candidate is accurate in broad outline and cites Huis et al. 2017 appropriately, but is more generic, less precise (e.g., asserting economic improvement without directly citing Khan et al. 2022) and reads as a higher-level summary rather than a specific, evidence-linked statement."
+    }
+  ]
+}

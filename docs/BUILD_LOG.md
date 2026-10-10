@@ -6407,3 +6407,29 @@ was committed before the runs (ADR-0147 §4). ₹17.28 spent, no refusal, no fai
 
 Lesson for the next round: a negative rule that names the word does not stop the mini writing
 it; say what to write instead. The citation-per-sentence rule is the part that worked.
+
+### ADR-0147 round 2 (2026-10-10, A.1 Assist): opener rule shipped, candidate v2 not adopted
+
+**Code, shipped.** `dropConnectiveOpeners` in `postProcessAssist`: a bare "Additionally,",
+"Furthermore,", "Moreover,", "In addition,", "Notably," or "Importantly," that opens a sentence
+is dropped and the next word capitalised (the first sentence only when the text before the
+cursor ends a sentence; kept mid-sentence, before a marker, after "et al."; "pH" keeps its case;
+Hindi untouched). 22 cases in `test/connective-openers.spec.ts`. On the round-2 typed runs the
+raw outputs carried 6 and 7 padded openers (current, candidate); the offered text carries none,
+and stock phrases fell from 6.1 and 7.8 per 1k words (raw) to 1.2 and 1.0 (offered).
+
+**Candidate v2, not adopted** (`eval/candidates/assist-academic2.md`: positive instructions in
+place of every word list; criterion committed first, ADR-0147 round 2 §3). ₹11.54 spent, no
+refusal, no failed call; results `assist-academic2-2026-10-10-12-08.json` and
+`assist-academic2-opener-2026-10-10-12-10.json`.
+
+- Typed (15): candidate **8–3–4**, mean 7.13 → 8.20, cited sentences 20/28 → **26/29 (89.7%,
+  criterion 90%)**, shared citations 8 → 3, stock (offered) 1.17 → 1.04; but six-word runs
+  **2 → 5**. Fails on criteria 2 and 4.
+- Opener (10): current **4–3–3**, mean 7.42 → 7.53, cited 12/20 → 17/17, run6 7 → 5; stock
+  (offered) **4.32 → 7.45** ("crucial", "plays a vital role", "transformative"). Fails on 1 and 3.
+
+A miss on four criteria is not narrow, so the extra variant was not run. The copied runs are
+mostly study and population names ("pragmatic randomized controlled trial of the BlueStar",
+"adolescents with type 1 diabetes"): the "keep the technical term" and "one specific detail"
+rules pull toward the passage's own phrase. The prompt file is unchanged.

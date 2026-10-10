@@ -249,3 +249,32 @@ misses narrowly. The candidate is adopted only if **all** hold:
    sides).
 4. **Six-word copied runs** (`measures.run6`) not above current on either set.
 5. **Not up** on either set: hallucinated cites, offered-nothing, failed calls.
+
+### 4. Results (2026-10-10; ₹11.54 spent, no quota refusal, no failed call)
+
+`eval/results/assist-academic2-2026-10-10-12-08.json` (typed) and
+`assist-academic2-opener-2026-10-10-12-10.json`. A is the prompt on disk, B candidate v2; both
+sides after `dropConnectiveOpeners`.
+
+| Set | Wins A–B–tie | Mean A → B | Cited sentences A / B | Stock per 1k, offered A / B | run6 A / B | Hallucinated, nothing, failed |
+|---|---|---|---|---|---|---|
+| Typed (15) | 3–**8**–4 | 7.13 → **8.20** | 20/28 / 26/29 (**89.7%**) | 1.17 / 1.04 | 2 / **5** | 0 both sides |
+| Opener (10) | **4**–3–3 | 7.42 → 7.53 | 12/20 / 17/17 | 4.32 / **7.45** | 7 / 5 | 0 both sides |
+
+Against the criterion: 1 fails on the opener set (3 wins against 4); 2 fails by one sentence
+(89.7%); 3 fails on the opener set; 4 fails on the typed set; 5 passes. **Not adopted**; the
+prompt file is unchanged. Four misses are not a narrow miss, so no extra variant was run.
+
+What it showed:
+
+- **The code does what the prompt could not.** The typed runs' raw outputs opened 6 (A) and 7 (B)
+  sentences with the padded connective; the offered text has none, and stock phrases on that set
+  fell from 6.1 and 7.8 per 1k words (raw) to 1.2 and 1.0. What remains is vocabulary
+  ("crucial", "foster", "plays a vital role"), mostly on the opener set.
+- **The judge prefers the citation-per-sentence shape again** (8–3–4, +1.07 on the typed set;
+  shared citations 8 → 3; every opener-set sentence cited). It is the copying that holds it back.
+- **The copied runs are names.** Four of B's five typed-set runs are a study's or population's
+  own phrase ("pragmatic randomized controlled trial of the BlueStar", "adolescents with type 1
+  diabetes"): the "keep a short technical term" and "one specific detail" instructions pull
+  toward the passage's wording. A next candidate would need a rule for naming a study without
+  its title, and the run6 measure may want to discount proper names; neither is done here.
