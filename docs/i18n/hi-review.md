@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**830** strings are translated; **1** are deliberately
+**834** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -702,6 +702,7 @@ English. Write corrections in the last column.
 | `account.razorpay` | Payment is handled by Razorpay. We never see your card or UPI details. | भुगतान Razorpay के ज़रिए होता है। आपके कार्ड या UPI का ब्योरा हम कभी नहीं देखते। | |
 | `account.refundPolicy` | Refund policy | रिफ़ंड नीति | |
 | `account.resets` | Resets on {date}. A suggestion counts when it is generated, whether you keep it or dismiss it — the tokens were spent either way. Nothing you type counts. | {date} को फिर से शुरू होगा। सुझाव बनते ही गिना जाता है, चाहे आप उसे रखें या हटाएँ — टोकन दोनों हालत में खर्च हुए। आप जो खुद टाइप करते हैं, वह नहीं गिना जाता। | |
+| `account.trialAllowance` | These are for your whole free trial, which ends on {date}; they do not start again on the 1st. Proofreading reads up to 2,000 words a run. Nothing you type counts. | ये आपके पूरे मुफ़्त trial के लिए हैं, जो {date} को ख़त्म होगा; ये 1 तारीख़ को फिर से शुरू नहीं होते। proofreading एक बार में 2,000 शब्द तक पढ़ता है। आप जो खुद टाइप करते हैं, वह नहीं गिना जाता। | |
 | `account.invoices` | Invoices | इनवॉइस | |
 | `account.invoiceError` | That invoice could not be produced. | वह इनवॉइस नहीं बन सका। | |
 | `account.emailTitle` | Email address | ईमेल पता | |
@@ -903,6 +904,9 @@ English. Write corrections in the last column.
 | `limit.cap.callCeiling` | {allowance}: you asked for {ceiling} this month, the most one month allows. You kept {used} of your {cap}. | {allowance}: इस महीने आपने {ceiling} माँगे, जो एक महीने में सबसे ज़्यादा है। आपने अपने {cap} में से {used} रखे। | |
 | `limit.resetsOn` | Resets on {date}. | {date} को फिर से शुरू होगी। | |
 | `limit.resetsNextMonth` | Resets on the 1st of next month. | अगले महीने की 1 तारीख़ को फिर से शुरू होगी। | |
+| `limit.trialCap.title` | Trial limit reached | trial की सीमा पूरी हो गई | |
+| `limit.trialCap.used` | {allowance}: {used} of {cap} used in your free trial. | {allowance}: आपके मुफ़्त trial में {cap} में से {used} इस्तेमाल हुए। | |
+| `limit.trialCap.endsOn` | The trial’s allowances are for the whole trial and do not start again on the 1st; your trial ends on {date}. | trial की सीमाएँ पूरे trial के लिए हैं और 1 तारीख़ को फिर से शुरू नहीं होतीं; आपका trial {date} को ख़त्म होगा। | |
 | `limit.notIncluded.title` | Not in your plan | आपके प्लान में नहीं है | |
 | `limit.notIncluded.body` | {allowance}: none included in your plan. | {allowance}: आपके प्लान में शामिल नहीं। | |
 | `limit.trial.title` | Free trial ended | मुफ़्त trial ख़त्म हो गया | |
