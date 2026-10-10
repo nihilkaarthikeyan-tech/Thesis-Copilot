@@ -26,7 +26,7 @@ import type {
   SaveOneResult,
   SaveResult,
 } from './messages.js';
-import { checkPaper } from './paper.js';
+import { checkPaper, doiCandidates } from './paper.js';
 import { checkRef, refQuery } from './refs.js';
 
 /**
@@ -129,7 +129,13 @@ export async function runSave(
   const queued = new Set<string>();
   for (const item of job.items) {
     const doi = item.paper.doi?.toLowerCase();
-    const known = doi ? byDoi.get(doi) : undefined;
+    // A DOI read from an address may carry a publisher's path part after it (`doiCandidates`):
+    // the library row under the shorter DOI is the same paper.
+    const known = doi
+      ? doiCandidates(doi)
+          .map((candidate) => byDoi.get(candidate))
+          .find(Boolean)
+      : undefined;
     if (known) {
       results.set(item.key, { key: item.key, status: 'present', sourceId: known.id });
     } else if (doi && queued.has(doi)) {

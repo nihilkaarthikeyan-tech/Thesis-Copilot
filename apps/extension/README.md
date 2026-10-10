@@ -18,7 +18,8 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
 4. Open an article page, a PubMed/arXiv/Scholar results page or a paper's PDF, and click the icon
    (or press Alt+Shift+S). Or right-click a DOI or arXiv link → "Add to Thesis Copilot".
 5. On Google Scholar (.com, .co.in), PubMed, arXiv (abstracts, listings, searches) and MDPI
-   articles, press the "Add to Thesis Copilot" button in the page itself.
+   (articles and, since 0.3.1, search results), press the "Add to Thesis Copilot" button in the
+   page itself.
 
 ## What it does, and does not
 
@@ -35,7 +36,10 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
   fetch, indexing and monthly limits are the site's), `POST /sources/:id/upload` and
   `POST /documents/:id/sources/upload` for a PDF, `POST /collections/:id/sources` for a collection.
 - Remembers the last thesis and collection (`chrome.storage.local`); a right-clicked link waits in
-  memory (`chrome.storage.session`) for at most two minutes. Nothing else is stored.
+  memory (`chrome.storage.session`) for at most two minutes. Since 0.3.1 it also keeps, in
+  `chrome.storage.local` only, the identifiers of the papers its in-page buttons saved, per thesis
+  (`src/memory.ts`, at most 1,000 per thesis), so their buttons say "Saved" on a later visit; that
+  list is never sent anywhere. Nothing else is stored.
 
 ## Code
 
@@ -54,6 +58,7 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
 | `src/refs.ts` | Which identifier an in-page button saves: the page's own DOI, arXiv id or PMID — pure, tested |
 | `src/inpage.ts` | The in-page buttons and their card, in closed shadow roots — tested in jsdom |
 | `src/card.ts` | The card's states, as a pure state machine — tested |
+| `src/memory.ts` | Which papers the in-page buttons saved, per thesis, kept in the browser only — pure, tested |
 | `src/content.ts` | The content script: starts `inpage.ts`, passes its requests to the service worker |
 | `scripts/build.mjs` | TypeScript → `dist/`, `content.js` (esbuild, not minified), the manifest, the per-target `config.js`, the store zip |
 | `scripts/icons.mjs` | Draws `static/icons/icon.svg` (the LogoMark) as the PNG sizes; the PNGs are committed |

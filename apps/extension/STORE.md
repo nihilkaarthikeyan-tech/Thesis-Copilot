@@ -1,4 +1,9 @@
-# Chrome Web Store listing — drafted for the owner to submit (version 0.3.0)
+# Chrome Web Store listing — drafted for the owner to submit (version 0.3.1)
+
+0.3.1 (2026-10-10, ADR-0153) replaces 0.3.0 before either is submitted: the same permissions, plus
+buttons on MDPI search results and a local note of the papers the buttons saved (the `storage`
+box below says so). Submit `thesis-copilot-chrome-0.3.1.zip` wherever this file or `PUBLISHING.md`
+says 0.3.0.
 
 0.3.0 adds the in-page buttons (ADR-0125) and with them one new permission: a content script on
 five sites. Submit it only after 0.2.1's review is approved, as an update to the same item
@@ -103,8 +108,10 @@ host permissions):
   clicked on. Apart from the content script on the five sites below, no script runs on any page
   otherwise.
 - **`storage`** — To remember which of the user's theses, and which collection, they saved to
-  last; and, for at most two minutes and in memory only, a link the user right-clicked, so the
-  window that opens can show that paper.
+  last; for at most two minutes and in memory only, a link the user right-clicked, so the
+  window that opens can show that paper; and (new in 0.3.1), on the user's computer only, the
+  identifiers (DOI, arXiv id or PubMed id) of the papers the in-page buttons saved, so a button on
+  a page the user comes back to says "Saved to Thesis Copilot". That list is never sent anywhere.
 - **`contextMenus`** — To add "Add to Thesis Copilot" to the right-click menu of links that point at
   a paper (a DOI link, a publisher's /doi/ page or an arXiv abstract or PDF). It appears on no other
   links.

@@ -4,8 +4,8 @@
  * not refer to anything outside itself — no imports, no module-level names, helpers declared
  * inside.
  *
- * They return the address, the title, the meta tags and — on a results page of PubMed, arXiv or
- * Google Scholar — the identifiers and titles of the results shown (ADR-0069). Never the page's
+ * They return the address, the title, the meta tags and — on a results page of PubMed, arXiv,
+ * MDPI's search or Google Scholar — the identifiers and titles of the results shown (ADR-0069). Never the page's
  * text otherwise. Every value is untrusted and is checked again by the pure code in `paper.ts`
  * and `lists.ts` before anything is sent anywhere.
  */
@@ -45,6 +45,7 @@ export function collectPageMeta(): PageMeta {
 export function collectResultList(
   host: string = location.hostname,
   withNodes = false,
+  path: string = location.pathname,
 ): RawListing | null {
   const MAX = 100;
   const text = (node: Element | null | undefined, max = 600): string =>
@@ -117,6 +118,27 @@ export function collectResultList(
       });
     }
     return items.length ? { site: 'arxiv', items } : null;
+  }
+
+  if ((lower === 'www.mdpi.com' || lower === 'mdpi.com') && /^\/search(?:[/?#]|$)/.test(path)) {
+    // MDPI's search results (observed 2026-10-10): one `div.article-item` per article, with its
+    // title link, its authors, and a citation line carrying the article's own DOI as a doi.org
+    // link. Only the search page: an issue's contents keep no buttons (ADR-0125).
+    for (const result of Array.from(document.querySelectorAll('div.article-item'))) {
+      const title = result.querySelector('a.title-link');
+      if (!title) continue;
+      items.push({
+        title: text(title),
+        byline: text(result.querySelector('.authors')).replace(/^by\s+/i, ''),
+        citation: text(result.querySelector('.color-grey-dark'), 300),
+        pmid: '',
+        arxivId: '',
+        href: href(result.querySelector('a[href*="doi.org/10."]')),
+        ...(withNodes ? { node: result } : {}),
+      });
+      if (items.length >= MAX) break;
+    }
+    return items.length ? { site: 'mdpi', items } : null;
   }
 
   if (/^scholar\.google\.[a-z.]+$/.test(lower)) {

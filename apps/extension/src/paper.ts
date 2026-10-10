@@ -115,6 +115,33 @@ export function cleanDoi(value: string): string | null {
   return isDoi(doi) ? doi : null;
 }
 
+/**
+ * Path parts publishers put after a DOI in an article's address: Emerald's and other Silverchair
+ * sites' numeric article id (`/article/doi/10.1108/IJESM-05-2025-0048/1343209`, seen on a Google
+ * Scholar result on 2026-10-10), and view names like `/full` or `/abstract`.
+ */
+const TRAILING_PART =
+  /^(?:\d+|full|fulltext|abstract|abs|summary|html|pdf|epdf|figures|references|meta)$/i;
+
+/**
+ * The DOI as read, then the shorter DOIs it may really be when it was read from an address, most
+ * likely last. A DOI may itself contain a slash, so nothing is dropped: the lookup tries each in
+ * turn and the first one with a record wins; with none, the DOI as read is kept.
+ */
+export function doiCandidates(doi: string): string[] {
+  const out = [doi];
+  let current = doi;
+  for (let i = 0; i < 3; i += 1) {
+    const cut = current.lastIndexOf('/');
+    if (cut <= current.indexOf('/')) break;
+    if (!TRAILING_PART.test(current.slice(cut + 1))) break;
+    current = current.slice(0, cut);
+    if (!isDoi(current)) break;
+    out.push(current);
+  }
+  return out;
+}
+
 /** The DOI arXiv registers for an e-print: the same string `@tc/retrieval`'s `arxivDoi` makes. */
 export function arxivDoi(id: string): string {
   return `10.48550/arxiv.${id.toLowerCase()}`;
@@ -198,6 +225,31 @@ const first = (meta: PageMeta['meta'], names: readonly string[]): string | null 
 
 const all = (meta: PageMeta['meta'], name: string): string[] =>
   meta.filter(([key, value]) => key === name && value.trim()).map(([, value]) => value.trim());
+
+/** Tags a page states its licence in; a Creative Commons one says the article is open access. */
+const RIGHTS_TAGS = [
+  'dc.rights',
+  'dcterms.rights',
+  'dc.rights.license',
+  'dcterms.license',
+  'citation_license',
+];
+
+/**
+ * "Open access (CC BY 4.0)" when the page's own tags give the article a Creative Commons licence
+ * (MDPI writes `dc.rights`), else null. Only what the page states; nothing is inferred from a
+ * publisher's name.
+ */
+export function openLicence(page: PageMeta): string | null {
+  for (const name of RIGHTS_TAGS) {
+    for (const value of all(page.meta, name)) {
+      const by = /creativecommons\.org\/licenses\/(by(?:-nc)?(?:-nd|-sa)?)\/(\d\.\d)/i.exec(value);
+      if (by?.[1] && by[2]) return `Open access (CC ${by[1].toUpperCase()} ${by[2]})`;
+      if (/creativecommons\.org\/publicdomain\/zero\//i.test(value)) return 'Open access (CC0)';
+    }
+  }
+  return null;
+}
 
 /** The paper on the page, or null when the page is not about one paper. */
 export function paperFrom(page: PageMeta): Paper | null {

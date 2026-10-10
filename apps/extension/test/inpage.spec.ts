@@ -140,7 +140,7 @@ describe('an article page', () => {
       doi: '10.5555/ojgs14121570',
       year: '2017',
     });
-    expect(spot?.item.facts).toEqual({ citedBy: null, pdfOnPage: true });
+    expect(spot?.item.facts).toEqual({ citedBy: null, pdfOnPage: true, access: null });
   });
 
   it('MDPI issue: no button at all — it lists articles and is none itself', () => {
@@ -197,10 +197,10 @@ describe('a results page', () => {
       [],
     ]);
     expect(spots.map((s) => s.item.facts)).toEqual([
-      { citedBy: 1234, pdfOnPage: false },
-      { citedBy: 150000, pdfOnPage: true },
-      { citedBy: null, pdfOnPage: false },
-      { citedBy: null, pdfOnPage: false },
+      { citedBy: 1234, pdfOnPage: false, access: null },
+      { citedBy: 150000, pdfOnPage: true, access: null },
+      { citedBy: null, pdfOnPage: false, access: null },
+      { citedBy: null, pdfOnPage: false, access: null },
     ]);
     // In the row with Save · Cite · Cited by — not the PDF box, also a .gs_fl.
     expect(spots[1]?.anchor.classList.contains('gs_flb')).toBe(true);
@@ -544,21 +544,23 @@ describe('the facts the card shows', () => {
   });
 
   it('are only those the page or the lookup stated, each saying where it came from', () => {
-    expect(factRows(item({ citedBy: null, pdfOnPage: false }), null)).toEqual([]);
-    expect(factRows(item({ citedBy: 1234, pdfOnPage: true }), { ...PREVIEW, citedBy: 9 })).toEqual([
+    expect(factRows(item({ citedBy: null, pdfOnPage: false, access: null }), null)).toEqual([]);
+    expect(
+      factRows(item({ citedBy: 1234, pdfOnPage: true, access: null }), { ...PREVIEW, citedBy: 9 }),
+    ).toEqual([
       ['Cited by', '1,234 on Google Scholar'],
       ['PDF', 'Found on this page'],
     ]);
     expect(
-      factRows(item({ citedBy: null, pdfOnPage: false }), {
+      factRows(item({ citedBy: null, pdfOnPage: false, access: null }), {
         ...PREVIEW,
         kind: 'arxiv',
         citedBy: null,
         openAccessVia: 'arXiv',
       }),
     ).toEqual([['Access', 'Open access on arXiv']]);
-    expect(factRows(item({ citedBy: null, pdfOnPage: false }), { ...PREVIEW, citedBy: 0 })).toEqual(
-      [['Cited by', '0 (Crossref)']],
-    );
+    expect(
+      factRows(item({ citedBy: null, pdfOnPage: false, access: null }), { ...PREVIEW, citedBy: 0 }),
+    ).toEqual([['Cited by', '0 (Crossref)']]);
   });
 });

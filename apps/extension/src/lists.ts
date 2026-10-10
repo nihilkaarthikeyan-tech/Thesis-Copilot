@@ -27,7 +27,7 @@ import {
   referenceLine,
 } from './paper.js';
 
-export type Site = 'pubmed' | 'arxiv' | 'scholar';
+export type Site = 'pubmed' | 'arxiv' | 'scholar' | 'mdpi';
 
 /** One result as `collectResultList` read it: raw strings, any of them possibly empty. */
 export type RawResult = {
@@ -65,6 +65,7 @@ const SITE_NAMES: Record<Site, string> = {
   pubmed: 'PubMed',
   arxiv: 'arXiv',
   scholar: 'Google Scholar',
+  mdpi: 'MDPI',
 };
 
 export const siteName = (site: Site): string => SITE_NAMES[site];
@@ -155,9 +156,41 @@ function fromScholar(raw: RawResult): ListItem | null {
   };
 }
 
+/**
+ * An MDPI result: its title, "by A, B and C", and the citation line "Energies 2025, 18(8), 1921;
+ * https://doi.org/10.3390/en18081921 - 10 Apr 2025", whose doi.org link is `href`. Only a DOI
+ * read from that link counts; a result without one is saved by its text.
+ */
+function fromMdpi(raw: RawResult): ListItem | null {
+  const title = clip(raw.title, 500);
+  if (!title) return null;
+  const doi = raw.href ? doiFromUrl(raw.href) : null;
+  const citation = clip(raw.citation, 300);
+  const year = yearIn(citation);
+  const venue = clip(citation.split(/\s+(?:1[89]\d\d|20\d\d)\b/)[0], 200) || null;
+  // "A, B and C", the last "and" sometimes run into the name by the markup ("andC").
+  const authors = byline(clip(raw.byline, 2_000).replace(/(?:^|[\s,])and(?=\s|[A-Z])\s*/g, ', '));
+  return {
+    key: doi ?? `title:${title.toLowerCase()}`,
+    title,
+    doi,
+    byline: authors,
+    year,
+    venue,
+    reference: referenceLine({ byline: authors, year, title, venue, doi }),
+  };
+}
+
 /** One result as a paper, or null when nothing in it checks out. */
 export function itemFrom(site: Site, raw: RawResult): ListItem | null {
-  const read = site === 'pubmed' ? fromPubmed : site === 'arxiv' ? fromArxiv : fromScholar;
+  const read =
+    site === 'pubmed'
+      ? fromPubmed
+      : site === 'arxiv'
+        ? fromArxiv
+        : site === 'mdpi'
+          ? fromMdpi
+          : fromScholar;
   return read(raw);
 }
 

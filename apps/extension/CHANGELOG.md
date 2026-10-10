@@ -1,5 +1,27 @@
 # Changelog — Thesis Copilot for Chrome
 
+## 0.3.1 — 2026-10-10 (ADR-0153) — not yet submitted to the store
+
+Found by using it beside Jenni's add-on on the same live pages (Google Scholar, PubMed, arXiv,
+MDPI, Springer, ScienceDirect, Wikipedia).
+
+- **The right DOI from a Google Scholar link that carries more than the DOI.** Emerald's
+  `…/article/doi/10.1108/IJESM-05-2025-0048/1343209` was read with the article id on the end, so
+  the card said "No record found" and saving it again said "Saved" for a paper already in the
+  library. The shorter DOI is now looked up next, and a library row under it is "already there".
+- **PubMed article: the button sits beside the DOI** in the identifiers line, not beside the
+  publisher's logo in the narrow "Full text links" column.
+- **The card says when a paper is free to read**, as the page states it: "Free in PubMed
+  Central" (PubMed's PMCID link, or "Free PMC article"), "Open access (CC BY 4.0)" from an
+  article's licence tag, MDPI's "Open Access" badge.
+- **No needless "attach the PDF" step.** For a paper free on arXiv or in PubMed Central the card
+  now says its free full text is fetched (the library did so within seconds in every test);
+  for any other PDF on the page it names the two ways that work.
+- **MDPI search results** have a button on each result, by that result's own DOI (Jenni's add-on
+  had them; ours had none). An MDPI issue's contents still get none.
+- **Buttons remember what you saved**: a page you come back to shows "Saved to Thesis Copilot" on
+  the papers you saved from it into the current thesis. Kept in this browser only, never sent.
+
 ## 0.3.0 — 2026-10-08 (ADR-0125) — not yet submitted to the store
 
 - **"Add to Thesis Copilot" inside the page**, with no toolbar step: on every Google Scholar
