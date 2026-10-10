@@ -67,3 +67,70 @@ describe('the NCBI key, through the same mechanism', () => {
     expect(url.searchParams.get('email')).toBe('test@example.com');
   });
 });
+
+describe('a key whose day is spent (ADR-0145 addendum, 2026-10-10)', () => {
+  // What OpenAlex answered on 2026-10-10 to every keyed request, once a day of real-model test
+  // runs had spent the key's $1: no Retry-After header, the seconds to midnight in the body.
+  const spent = () =>
+    new Response(
+      JSON.stringify({
+        error: 'Insufficient credits',
+        message:
+          'This request costs $0.001 but you only have $0 remaining. Resets at midnight UTC.',
+        retryAfter: 13177,
+        dailyRemainingUsd: 0,
+      }),
+      { status: 429, headers: { 'content-type': 'application/json' } },
+    );
+  const found = () =>
+    new Response(JSON.stringify({ results: [], meta: { count: 0 } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+
+  it('is dropped at once for the same request, and stays out until the reset', async () => {
+    const urls: string[] = [];
+    const client = new OpenAlexClient({
+      ...base,
+      apiKey: 'spent-key',
+      fetch: async (url: string) => {
+        urls.push(url);
+        return url.includes('api_key') ? spent() : found();
+      },
+    });
+    // The first search: refused with the key, answered without it — one request, not three
+    // attempts and a failure, and no wait at all.
+    const first = await client.searchTopic('rooftop solar adoption');
+    expect(first.count).toBe(0);
+    expect(urls).toHaveLength(2);
+    expect(urls[0]).toContain('api_key=spent-key');
+    expect(urls[1]).not.toContain('api_key');
+    expect(urls[1]).toContain('mailto=');
+    // The next search does not try the key again: the day is known to be spent.
+    await client.search('Deep learning');
+    expect(urls).toHaveLength(3);
+    expect(urls[2]).not.toContain('api_key');
+  });
+
+  it('is kept for an ordinary 429, which is waited out and retried with the key', async () => {
+    const urls: string[] = [];
+    const waits: number[] = [];
+    const client = new OpenAlexClient({
+      ...base,
+      apiKey: 'busy-key',
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+      fetch: async (url: string) => {
+        urls.push(url);
+        return urls.length === 1
+          ? new Response('', { status: 429, headers: { 'retry-after': '2' } })
+          : found();
+      },
+    });
+    await client.search('Deep learning');
+    expect(urls).toHaveLength(2);
+    for (const url of urls) expect(url).toContain('api_key=busy-key');
+    expect(waits).toContain(2_000);
+  });
+});

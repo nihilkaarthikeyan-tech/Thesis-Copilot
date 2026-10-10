@@ -224,6 +224,12 @@ are left, each for a reason the agent should not settle alone:
 9. **OpenAlex key for the dev machine.** The free daily budget ran out during the 2026-10-04 test
    runs (HTTP 429 until 00:00 UTC) and three e2e specs failed on it (`gap-density`,
    `journal-filter`, `path-a`). Adding `OPENALEX_API_KEY` to the dev `.env` stops that.
+   **2026-10-10: the key's own $1 a day is spent by test runs too** (each suggestion on an empty
+   library starts a twelve-query search); every keyed request then answered 429 until midnight
+   UTC and a new thesis found no papers for eight minutes. The product now drops the key for
+   the rest of the day and uses the polite pool (ADR-0145 addendum), which has ~100 searches a
+   day for the whole site. Either fund the key (openalex.org/pricing) or keep real-model e2e
+   runs on the dev machine few; production shares the same key.
 ## Library collections and "Read beside" (2026-10-04)
 
 - [x] **Run the browser specs** — done 2026-10-05; both pass (the read-beside spec was rewritten
