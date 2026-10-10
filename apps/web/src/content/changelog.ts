@@ -24,6 +24,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-10',
+    title: 'A faster, more honest first sentence',
+    changes: [
+      'Setting up a new thesis takes four steps instead of five: your field and university are now an optional line under the title, guessed from the title for you.',
+      'As soon as you name the thesis, the chapters are planned and the first sentence is on its way. The questions about your aim stay open beside it and are still optional: your answers become the aim and objectives.',
+      'If no paper in your library is about the place your title names (say, Karnataka), the first sentence is not offered, so you never start with a sentence that cites another country. The card says so and Find papers is one press away.',
+    ],
+  },
+  {
     version: 'v0.1.42',
     date: '2026-10-10',
     title: 'Writing that reads more naturally, honest paper search, and an AI use statement',

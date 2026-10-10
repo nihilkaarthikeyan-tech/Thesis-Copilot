@@ -6545,3 +6545,19 @@ $0.10 a day per address and was spent (`X-RateLimit-Remaining-USD: 0`), the key 
 `.env`, and arXiv/PubMed kept nothing for the topic: 0 papers in eight minutes, an uncited
 opener at 30.4 s. That is a production risk too (one key, one address for every student):
 `docs/PENDING.md`. Spent: ₹15.42.
+
+### A faster, honest first sentence (2026-10-10, ADR-0151)
+
+From the side-by-side study (ours ~70–85 s to the first cited sentence against Jenni's ~51 s, and
+a South African citation for a Karnataka thesis). The setup card is four rows: field and
+university fold into the title row as an optional line, and the title's Next starts the paper
+search, the plan from the title and the opener together; the questions only refine the aim and
+objectives (no second outline run). A chapter's first sentence for a title naming a place no
+citable paper names is not offered (`settingWithoutPapers`, no model call, unit back) and the card
+says "No paper on Karnataka yet" with Find papers.
+
+Before → after, presses to the first sentence being asked for: 4 → 2; card rows 3 → 1 (mock
+stack, `setup-card.spec.ts`). Real models: the first request 0.9 s after Next; the cited time not
+measurable, OpenAlex's keyless pool spent (0 papers in 8 min). Mock e2e 14/14 with the layout
+audit at five widths; the audit caught the waiting first-line row pushing the heading to 813 px
+at 360/430, so that row now shows from its own step. Spent ₹1.59.
