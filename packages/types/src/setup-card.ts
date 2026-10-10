@@ -1,14 +1,17 @@
 /**
  * ADR-0145: the "Set up this thesis" card inside the editor. A new thesis opens on its first
- * chapter at once, and the card sets it up in five rows (title and sources, field, aim, chapters,
- * first line). Its state lives on `Document.meta.setup`, so it follows the student to another
+ * chapter at once, and the card sets it up in four rows (title, sources, field and university;
+ * aim; chapters; first line — ADR-0151 folded the field row into the first). Its state lives on `Document.meta.setup`, so it follows the student to another
  * device and is never shown on a thesis made before it existed (no `setup` key, no card).
  */
 
 import { z } from 'zod';
 import { sourcePrefsSchema } from './source-prefs.js';
 
-/** The five rows, in order. */
+/**
+ * Every step a card can be on, in order. `field` is kept for a card saved before ADR-0151 folded
+ * the field and university into the title row; no card is moved onto it now.
+ */
 export const SETUP_STEPS = ['title', 'field', 'aim', 'chapters', 'first'] as const;
 export type SetupStep = (typeof SETUP_STEPS)[number];
 
@@ -45,9 +48,20 @@ export function readSetupCard(meta: unknown): SetupCard | null {
   return parsed.success ? parsed.data : null;
 }
 
-/** "2 of 5": the open row's place, counting from one. */
+/** The rows the card shows (ADR-0151): the field and university are part of the title row. */
+export const SETUP_ROWS = ['title', 'aim', 'chapters', 'first'] as const;
+export type SetupRow = (typeof SETUP_ROWS)[number];
+/** How many rows the card has: "n of 4". */
+export const SETUP_ROW_COUNT = SETUP_ROWS.length;
+
+/** The row a step shows: a card saved on the old field step shows the title row's next, the aim. */
+export function setupRow(step: SetupStep): SetupRow {
+  return step === 'field' ? 'aim' : step;
+}
+
+/** "2 of 4": the open row's place, counting from one. */
 export function setupStepNumber(step: SetupStep): number {
-  return SETUP_STEPS.indexOf(step) + 1;
+  return SETUP_ROWS.indexOf(setupRow(step)) + 1;
 }
 
 /**

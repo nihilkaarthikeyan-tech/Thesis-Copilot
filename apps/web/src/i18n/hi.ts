@@ -300,11 +300,10 @@ export const hi: Partial<Record<MessageKey, string>> = {
   // ---- Set up this thesis, inside the editor (ADR-0145) ----------------------------------------
   'setup.title': 'इस थीसिस को सेट अप करें',
   'setup.titleDone': 'सेट अप हो गया',
-  'setup.count': '5 में से {n}',
+  'setup.count': '4 में से {n}',
   'setup.finishLater': 'बाद में पूरा करें',
   'setup.continue': 'सेट अप जारी रखें',
   'setup.next': 'आगे',
-  'setup.skip': 'छोड़ें',
   'setup.save': 'सेव करें',
   'setup.saving': 'सेव हो रहा है…',
   'setup.change': 'बदलें',
@@ -334,10 +333,12 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'setup.link.paper': 'मेरे लिखे paper से शुरू करें',
   'setup.link.word': 'Word से अध्याय import करें',
   'setup.link.proposal': 'पूरे proposal के साथ योजना बनाएँ',
-  'setup.field.question': 'आपका विषय और विश्वविद्यालय',
   'setup.field.hint': 'दोनों वैकल्पिक हैं। इनसे अध्यायों का ढाँचा और बाद में formatting के नियम तय होते हैं।',
   'setup.field.label': 'विषय',
-  'setup.field.guessed': 'आपके शीर्षक से अनुमान लगाया गया।',
+  'setup.fieldLine.label': 'विषय और विश्वविद्यालय:',
+  'setup.field.guessedShort': '{field} (आपके शीर्षक से अनुमान)',
+  'setup.settingGap':
+    '{place} पर अभी कोई पेपर नहीं है, इसलिए पहला वाक्य नहीं सुझाया गया: किसी दूसरी जगह का हवाला देने वाला वाक्य भ्रामक होगा। {place} पर पेपर खोजें, या पहला वाक्य खुद लिखें।',
   'setup.field.none': 'सूची में नहीं है या पक्का नहीं',
   'setup.field.notSet': 'विषय तय नहीं',
   'setup.university.label': 'विश्वविद्यालय',
@@ -348,20 +349,17 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'setup.aim.retry': 'फिर से कोशिश करें',
   'setup.aim.newTitle': 'आपका शीर्षक होगा',
   'setup.aim.own': 'या अपना जवाब लिखें',
-  'setup.aim.skip': 'छोड़ें — शीर्षक से मेरे अध्यायों की योजना बनाएँ',
+  'setup.aim.skip': 'सवाल छोड़ें',
   'setup.aim.result': 'आपके जवाबों से',
   'setup.aim.objectives': '{n} उद्देश्य',
-  'setup.aim.use': 'इससे मेरे अध्यायों की योजना बनाएँ',
+  'setup.aim.use': 'यही लक्ष्य रखें',
   'setup.aim.fromTitle': 'अध्यायों की योजना शीर्षक से बनी',
   'setup.aim.noPlan': 'बिना योजना के शुरू करें',
   'setup.aim.noPlanHint':
     'आप अब भी सवालों के जवाब दे सकते हैं, या एक अध्याय से शुरू करके बाद में योजना बना सकते हैं।',
   'setup.aim.error': 'आपके जवाब सेव नहीं हो सके। फिर से कोशिश करें, या छोड़ दें।',
-  'setup.chapters.planningAnswers': 'आपके जवाबों से अध्यायों की योजना बन रही है…',
   'setup.chapters.planningTitle': 'आपके शीर्षक से अध्यायों की योजना बन रही है…',
   'setup.chapters.planningDetail': 'लगभग आधे मिनट में ये अध्याय-सूची में और नीचे पन्ने पर दिखने लगेंगे।',
-  'setup.chapters.plannedAnswers':
-    'आपके जवाबों से {n} अध्याय, उनके खंडों के साथ: बाईं सूची में, और इस अध्याय के खंड नीचे पन्ने पर।',
   'setup.chapters.plannedTitle':
     'आपके शीर्षक से {n} अध्याय, उनके खंडों के साथ: बाईं सूची में, और इस अध्याय के खंड नीचे पन्ने पर।',
   'setup.chapters.failed': 'इस बार आपके अध्यायों की योजना नहीं बन सकी।',
@@ -378,7 +376,7 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'setup.first.suggest': 'एक सुझाएँ',
   'setup.first.written': 'लिखा गया',
   'setup.line.done': 'सेट अप हो गया',
-  'setup.line.later': 'सेट अप 5 में से {n}',
+  'setup.line.later': 'सेट अप 4 में से {n}',
   'setup.next.title': 'थीसिस का नाम दें',
   'setup.next.field': 'आपका विषय',
   'setup.next.aim': 'कुछ सवाल',
@@ -394,6 +392,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
     'सुझाव सेवा ने लगातार दो बार जवाब नहीं दिया। आपका लिखा सेव है; एक मिनट बाद फिर कोशिश करें।',
   'editor.notice.findingSources':
     'आपकी लाइब्रेरी का कोई स्रोत अभी इसे कवर नहीं करता{gap}। हम इस पर पेपर खोजकर आपकी लाइब्रेरी में जोड़ रहे हैं — साइटेशन वाले टेक्स्ट के लिए एक मिनट बाद फिर पूछें।',
+  'editor.notice.settingGap':
+    '{place} पर अभी कोई पेपर नहीं है, इसलिए पहला वाक्य नहीं सुझाया गया: किसी दूसरी जगह का हवाला देने वाला वाक्य भ्रामक होगा। {place} पर पेपर खोजें, या उसे खुद लिखें।',
   'editor.notice.papersLoading':
     'आपके पेपर अभी पढ़े जा रहे हैं, इसलिए अभी साइट करने को कुछ नहीं है। जैसे ही एक तैयार होगा, आपका पहला साइटेशन वाला सुझाव यहीं अपने आप आ जाएगा।',
   'editor.notice.reworded':

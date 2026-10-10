@@ -51,3 +51,21 @@ export function docToText(doc: unknown): string {
     .replace(/\n{2,}/g, '\n')
     .trim();
 }
+
+/**
+ * ADR-0151: words written in a chapter outside its headings, the server's copy of the setup
+ * card's `bodyWords`. Under three, the chapter has no first sentence yet.
+ */
+export function proseWords(doc: unknown): number {
+  let words = 0;
+  const visit = (node: PmNode): void => {
+    if (node.type === 'heading') return;
+    if (typeof node.text === 'string') {
+      words += node.text.trim().split(/\s+/).filter(Boolean).length;
+      return;
+    }
+    for (const child of node.content ?? []) visit(child);
+  };
+  if (doc && typeof doc === 'object') visit(doc as PmNode);
+  return words;
+}

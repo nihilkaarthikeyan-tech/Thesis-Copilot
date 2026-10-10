@@ -7,6 +7,7 @@ import {
   marksAnotherSetting,
   ownPlaces,
   placesIn,
+  settingWithoutPapers,
   unmarkedOtherSettings,
 } from '../src/builder/setting.js';
 
@@ -125,5 +126,46 @@ describe('marksAnotherSetting', () => {
     expect(marksAnotherSetting('In Kerala, the state leads adoption.')).toBe(false);
     expect(marksAnotherSetting('Compared with Kerala, uptake is slower.')).toBe(true);
     expect(marksAnotherSetting('Studies in Kerala report high trust.')).toBe(true);
+  });
+});
+
+describe('settingWithoutPapers (ADR-0151)', () => {
+  const SOUTH_AFRICA =
+    'Barriers to rooftop solar in South Africa: a scoping review. Households in South Africa face …';
+  it('names the thesis place when no paper names it', () => {
+    expect(settingWithoutPapers(KARNATAKA, [SOUTH_AFRICA, 'Solar photovoltaics: a review'])).toBe(
+      'Karnataka',
+    );
+    expect(settingWithoutPapers(KARNATAKA, [])).toBe('Karnataka');
+  });
+
+  it('is satisfied by a paper on the place, or on the country it lies in', () => {
+    expect(
+      settingWithoutPapers(KARNATAKA, [
+        SOUTH_AFRICA,
+        'Rooftop solar uptake in Bengaluru, Karnataka',
+      ]),
+    ).toBeNull();
+    expect(
+      settingWithoutPapers(KARNATAKA, ['Net metering and solar adoption in India']),
+    ).toBeNull();
+    // A thesis on India owns every state in it.
+    expect(
+      settingWithoutPapers('Rooftop solar among rural households in India', [
+        'A survey of 400 households in Tamil Nadu',
+      ]),
+    ).toBeNull();
+  });
+
+  it('never asks for a place when the title names none', () => {
+    expect(
+      settingWithoutPapers('Corrosion of maraging steel produced by laser melting', [SOUTH_AFRICA]),
+    ).toBeNull();
+  });
+
+  it('names the most specific place the title names', () => {
+    expect(settingWithoutPapers('Solar adoption in Karnataka, India', [SOUTH_AFRICA])).toBe(
+      'Karnataka',
+    );
   });
 });
