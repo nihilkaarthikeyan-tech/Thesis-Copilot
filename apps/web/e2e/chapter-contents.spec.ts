@@ -35,7 +35,12 @@ test('a heading typed in the chapter is listed beside it, and pressing it goes t
   const contents = page.getByTestId('chapter-contents');
   await expect(contents.getByTestId('section-go')).toHaveText(['Study area', 'Rainfall']);
   await contents.getByRole('button', { name: 'Study area', exact: true }).click();
-  // The cursor is now in that heading: what is typed lands there.
+  // The cursor is now in that heading: what is typed lands there. The editor takes the keyboard
+  // on the next frame (TipTap's `focus()`), so a key pressed before then went to the button and
+  // the words landed at the heading's start on a loaded CI runner.
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.classList.contains('ProseMirror')))
+    .toBe(true);
   await page.keyboard.press('End');
   await page.keyboard.type(' and data');
   await expect(editor.getByRole('heading', { name: 'Study area and data' })).toBeVisible();

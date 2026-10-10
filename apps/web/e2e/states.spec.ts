@@ -96,7 +96,7 @@ test.describe('§6.2 states, forced through the mock', () => {
     await expect(page.getByTestId('notice')).toContainText('Your writing is saved');
   });
 
-  test('cap exceeded: the fifty-first Assist says when the cap resets, in local time', async ({
+  test('cap exceeded: the fifty-first Assist says when the trial ends, in local time', async ({
     page,
     request,
   }) => {
@@ -144,15 +144,17 @@ test.describe('§6.2 states, forced through the mock', () => {
     await page.keyboard.press('Control+/');
     const notice = page.getByTestId('notice');
     // R31 (ADR-0122): the limit message every screen shows — the allowance, used of how many.
-    await expect(notice).toContainText('Assist suggestions: 50 of 50 used this month', {
-      timeout: 15_000,
-    });
-    // The reset moment is 00:00 UTC on the 1st, rendered through Intl in the browser's timezone:
-    // a real date, not the ISO string the API sent.
-    await expect(notice).toContainText(/Resets on .*\d{4}/);
+    // ADR-0152: this account is on the free trial, whose allowances are for the whole trial, so
+    // the message names the trial and its end rather than a reset on the 1st.
+    await expect(notice).toContainText('Trial limit reached', { timeout: 15_000 });
+    await expect(notice).toContainText('Assist suggestions: 50 of 50 used in your free trial');
+    // The trial's end, rendered through Intl in the browser's timezone: a real date, not the ISO
+    // string the API sent.
+    await expect(notice).toContainText(/your trial ends on .*\d{4}/);
+    await expect(notice).not.toContainText('Resets on');
     await expect(notice).not.toContainText('T00:00:00');
     await expect(notice).toContainText('Writing, editing and exporting still work');
-    await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/app/account');
+    await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/pricing');
   });
 
   test('call ceiling: asked for the most a month allows, kept fewer, says both (ADR-0144)', async ({

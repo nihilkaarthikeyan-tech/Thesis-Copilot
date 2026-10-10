@@ -101,11 +101,13 @@ test('spelling and grammar on one paragraph opens its one correction in the text
 }) => {
   test.setTimeout(180_000);
   const { cookie, editor } = await openChapter(page, request, 'block-proofread');
-  const before = await used(request, cookie, 'COMMAND');
+  // Proofreading is its own allowance (ADR-0152): one PROOFREAD unit, no section command.
+  const before = await used(request, cookie, 'PROOFREAD');
+  const commandsBefore = await used(request, cookie, 'COMMAND');
 
   const menu = await openBlockMenu(page, 'Dealers described');
   await menu.getByTestId('block-menu-review').click();
-  await expect(menu.getByTestId('block-menu-checks')).toContainText('one command each');
+  await expect(menu.getByTestId('block-menu-checks')).toContainText('one proofreading run');
   await menu.getByTestId('block-menu-review-proofread').click();
   await expect(menu).toHaveCount(0);
 
@@ -127,7 +129,8 @@ test('spelling and grammar on one paragraph opens its one correction in the text
   await expect(page.getByTestId('review-mode-rerun')).toHaveText('Proofread it again');
   await page.keyboard.press('Escape');
 
-  expect(await used(request, cookie, 'COMMAND')).toBe(before + 1);
+  expect(await used(request, cookie, 'PROOFREAD')).toBe(before + 1);
+  expect(await used(request, cookie, 'COMMAND')).toBe(commandsBefore);
 });
 
 test('the tone review of one paragraph is refused for nothing when there is no sample', async ({

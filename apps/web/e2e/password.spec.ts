@@ -78,7 +78,7 @@ test('forgot password: the emailed link sets a new one', async ({ page, request 
   // browser would.
   const signedIn = await request.post(`${API_URL}/api/v1/auth/sign-in/email`, {
     data: { email: session.email, password: NEW_PASSWORD },
-    headers: { origin: 'http://localhost:3000' },
+    headers: { origin: new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000').origin },
   });
   expect(signedIn.ok(), `sign-in with the new password: ${signedIn.status()}`).toBe(true);
 

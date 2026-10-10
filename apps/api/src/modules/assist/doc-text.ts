@@ -69,3 +69,19 @@ export function proseWords(doc: unknown): number {
   if (doc && typeof doc === 'object') visit(doc as PmNode);
   return words;
 }
+
+/**
+ * Words the student has in the block under the cursor, from the request itself: the last line of
+ * `before` and the first of `after` (B.3 joins blocks with a newline). The saved chapter can lag
+ * the editor by an autosave, so a sentence typed a second ago and then Ctrl+/ would otherwise
+ * still read as "no first sentence yet" (ADR-0151). A heading's own words never count.
+ */
+export function cursorBlockWords(before: string, after: string, blockType?: string): number {
+  if (blockType === 'heading') return 0;
+  const line = `${before.split('\n').pop() ?? ''} ${after.split('\n')[0] ?? ''}`;
+  return line
+    .replace(/\{\{cite:[^}]*\}\}/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}

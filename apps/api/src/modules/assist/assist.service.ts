@@ -38,7 +38,7 @@ import { CitationsService } from '../chapters/citations.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { AutoSourcesService, enoughPapersOnTopic, sourcesQuery } from './auto-sources.service.js';
 import { ContextService } from './context.service.js';
-import { docToText, proseWords } from './doc-text.js';
+import { cursorBlockWords, docToText, proseWords } from './doc-text.js';
 
 export type SuggestInput = {
   chapterId: string;
@@ -245,7 +245,10 @@ export class AssistService {
       if (
         input.citeMode === undefined &&
         retrieved.passages.length > 0 &&
-        proseWords(chapter.content) < FIRST_SENTENCE_WORDS
+        Math.max(
+          proseWords(chapter.content),
+          cursorBlockWords(input.before, input.after, input.cursorContext?.blockType),
+        ) < FIRST_SENTENCE_WORDS
       ) {
         const gap = await this.settingGap(chapter.documentId, chapter.document.title);
         if (gap) {

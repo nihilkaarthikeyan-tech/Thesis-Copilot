@@ -1035,6 +1035,17 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
       dom.addEventListener('click', onTap);
       document.addEventListener('pointerdown', onPressElsewhere, true);
 
+      /**
+       * The label is the element's own text, and the card is a child of the same element, so
+       * setting `textContent` alone would take an open card out of the page while `popover` still
+       * pointed at it: a re-render (the server's labels arriving after a save, B.5) during a hover
+       * left the card gone until the pointer left and came back. The card goes back after the text.
+       */
+      const setLabel = (text: string) => {
+        dom.textContent = text;
+        if (popover) dom.appendChild(popover);
+      };
+
       const render = () => {
         const a = current.attrs as CitationAttrs;
         dom.setAttribute('data-key', a.key);
@@ -1064,13 +1075,13 @@ export const Citation = Node.create<CitationOptions, CitationStorage>({
         }
         dom.removeAttribute('aria-hidden');
         if (cluster) {
-          dom.textContent = storage.noteStyle ? '' : cluster.label;
+          setLabel(storage.noteStyle ? '' : cluster.label);
           dom.classList.remove('citation--removed');
           dom.title = storage.noteStyle ? cluster.label : `${cluster.keys.length} sources`;
           return;
         }
 
-        dom.textContent = storage.noteStyle ? '' : labelFor(current, storage);
+        setLabel(storage.noteStyle ? '' : labelFor(current, storage));
         const removed = a.sourceId === null || storage.removedSourceIds.has(a.sourceId);
         dom.classList.toggle('citation--removed', removed);
         const meta = a.sourceId ? storage.meta[a.sourceId] : undefined;

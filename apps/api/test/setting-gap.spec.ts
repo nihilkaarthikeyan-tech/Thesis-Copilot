@@ -36,12 +36,14 @@ function streamOf(text: string): AsyncIterable<LlmChunk> {
   })();
 }
 
-async function suggestDone(): Promise<Record<string, unknown>> {
+// The cursor in the empty paragraph under the chapter's heading: B.3 sends the heading's line, then
+// the paragraph's (empty) text after a newline.
+async function suggestDone(before = 'Chapter 1 Introduction\n'): Promise<Record<string, unknown>> {
   const res = await h.api('/assist/suggest', {
     method: 'POST',
     body: JSON.stringify({
       chapterId,
-      before: 'Chapter 1 Introduction',
+      before,
       after: '',
       cursorContext: { blockType: 'paragraph' },
     }),
@@ -164,6 +166,15 @@ describe('the first sentence and the thesis setting (ADR-0151)', () => {
     expect(stream).toHaveBeenCalledOnce();
     expect(done.settingGap ?? null).toBeNull();
     await setChapterText('');
+  });
+
+  it('a sentence typed but not saved yet is not held to it either', async () => {
+    // The autosave lags the editor: the saved chapter is still empty, the request has the words.
+    await setChapterText('');
+    const stream = vi.spyOn(providers.llm, 'stream').mockImplementation(() => streamOf(ANSWER));
+    const done = await suggestDone('Chapter 1 Introduction\nPrior studies of rooftop solar found ');
+    expect(stream).toHaveBeenCalledOnce();
+    expect(done.settingGap ?? null).toBeNull();
   });
 
   it('is offered once a paper names the country the place lies in, by its abstract', async () => {

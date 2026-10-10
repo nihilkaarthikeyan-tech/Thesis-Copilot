@@ -1402,7 +1402,16 @@ function ChapterEditor({
       if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'j') return;
       event.preventDefault();
       const { from, to, empty } = editor.state.selection;
-      if (!empty && editor.state.doc.textBetween(from, to, ' ').trim().length >= 20) {
+      // A selection made by the keyboard (Shift+Home) reaches ProseMirror on the browser's
+      // `selectionchange`, which can come after a Ctrl+J pressed straight after it; the page's
+      // own selection already has it. The edit box keeps the wish until the selection renders.
+      const dom = window.getSelection();
+      const domSelected =
+        dom && !dom.isCollapsed && editor.view.dom.contains(dom.anchorNode)
+          ? dom.toString().trim().length
+          : 0;
+      const selected = empty ? 0 : editor.state.doc.textBetween(from, to, ' ').trim().length;
+      if (Math.max(selected, domSelected) >= 20) {
         window.dispatchEvent(new Event(AI_EDIT_FOCUS));
         return;
       }
