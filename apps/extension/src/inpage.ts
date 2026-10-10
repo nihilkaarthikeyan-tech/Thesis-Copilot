@@ -22,6 +22,19 @@
  *   `chrome.storage.local` only (`memory.ts`), so a page visited again marks them "Saved".
  */
 
+import { neverHere, ownHosts } from './anywhere.js';
+import {
+  type BulkState,
+  bulkDone,
+  bulkSaving,
+  bulkStart,
+  bulkSummary,
+  canSaveBulk,
+  clearAll,
+  outcomeText,
+  selectAll,
+  toggleRow,
+} from './bulk.js';
 import {
   type CardEvent,
   type CardView,
@@ -30,7 +43,8 @@ import {
   reduceCard,
   saveRef,
 } from './card.js';
-import { itemFrom, type ListItem, type Site } from './lists.js';
+import { INPAGE_HOSTS } from './hosts.js';
+import { BULK_MAX, itemFrom, type ListItem, type Site } from './lists.js';
 import { paperKeys, remember, SAVED_KEY, wasSaved } from './memory.js';
 import type {
   Collection,
@@ -39,11 +53,19 @@ import type {
   Request,
   SaveOneJob,
   SaveOneResult,
+  SaveResult,
   Thesis,
 } from './messages.js';
 import { collectPageMeta, collectResultList } from './page.js';
-import { doiFromUrl, type Paper } from './paper.js';
-import { articleOnPage, type PaperRef, refLabel, refsOfItem } from './refs.js';
+import { clip, doiFromUrl, openLicence, type PageMeta, type Paper, paperFrom } from './paper.js';
+import {
+  type ArticleOnPage,
+  articleOnPage,
+  doiRefs,
+  type PaperRef,
+  refLabel,
+  refsOfItem,
+} from './refs.js';
 
 // ---- What a button saves ---------------------------------------------------------------------
 
@@ -61,7 +83,8 @@ export type PageFacts = {
 };
 
 export type InpageItem = {
-  origin: 'article' | Site;
+  /** `reference`: a DOI link in a page's reference list, on any site (ADR-0154). */
+  origin: 'article' | 'reference' | Site;
   paper: Paper;
   /** Identifiers to look up, strongest first. Empty: saved by its details. */
   refs: PaperRef[];
@@ -74,6 +97,8 @@ export type Spot = {
   anchor: Element;
   where: 'after' | 'append';
   item: InpageItem;
+  /** A small "Save" button, for a line of a reference list (ADR-0154). */
+  compact?: boolean;
 };
 
 const MARK = 'data-tc-addon';
@@ -214,39 +239,159 @@ const paperOf = (item: ListItem): Paper => ({
   venue: item.venue ?? null,
 });
 
+// ---- Any other site (ADR-0154) ---------------------------------------------------------------------
+
+/**
+ * What a reference list is made of, on the sites students read: Wikipedia's `ol.references` and
+ * `.reflist`, publishers' `.ref-list`/`#references`/`.bibliography`, and the DPUB-ARIA roles.
+ */
+const REFERENCE_LISTS = [
+  'ol.references',
+  '.reflist',
+  '.references',
+  '.ref-list',
+  '.reference-list',
+  '.citation-list',
+  '.bibliography',
+  '#references',
+  '#bibliography',
+  '[role="doc-bibliography"]',
+  '[role="doc-endnotes"]',
+].join(', ');
+
+/** One reference in such a list: Wikipedia's `<cite>`, else the list item. */
+const REFERENCE_ENTRY = 'cite, li, .citation, .ref, p';
+
+/** The most reference buttons one page gets. */
+export const MAX_REFERENCE_BUTTONS = 200;
+
+/** A title in quotation marks in a reference line — how Wikipedia's citations write one. */
+function quotedTitle(text: string): string | null {
+  const match = /[“"]([^”"]{8,400})[”"]/.exec(text);
+  return match?.[1] ? clip(match[1].replace(/[.,]+$/, ''), 500) : null;
+}
+
+/**
+ * A Save button beside each DOI link (doi.org) inside a reference list, one per reference; never
+ * beside the page's own DOI (`skip`). The paper is that DOI; the reference line, as the page
+ * shows it, goes with it for the library's matcher.
+ */
+export function referenceSpots(skip: readonly string[] = []): Spot[] {
+  const spots: Spot[] = [];
+  const seen = new Set<Element>();
+  for (const link of Array.from(document.querySelectorAll('a[href]'))) {
+    if (spots.length >= MAX_REFERENCE_BUTTONS) break;
+    let href: URL;
+    try {
+      href = new URL(link.getAttribute('href') ?? '', document.baseURI);
+    } catch {
+      continue;
+    }
+    if (!/^(?:dx\.)?doi\.org$/i.test(href.hostname)) continue;
+    const doi = doiFromUrl(href.href);
+    if (!doi || skip.includes(doi.toLowerCase())) continue;
+    const list = link.closest(REFERENCE_LISTS);
+    if (!list || !visible(link)) continue;
+    const entry = link.closest(REFERENCE_ENTRY);
+    const node = entry && list.contains(entry) ? entry : link;
+    if (seen.has(node)) continue;
+    seen.add(node);
+    const line = clip(node.textContent, 900);
+    const title = quotedTitle(line);
+    spots.push({
+      node,
+      anchor: link,
+      where: 'after',
+      compact: true,
+      item: {
+        origin: 'reference',
+        paper: {
+          title: title ?? `DOI ${doi}`,
+          doi,
+          reference: line.includes(doi) ? line : `${line} https://doi.org/${doi}`.trim(),
+          byline: null,
+          year: /\b(1[89]\d\d|20\d\d)\b/.exec(line)?.[1] ?? null,
+          venue: null,
+        },
+        refs: doiRefs(doi),
+        facts: { citedBy: null, pdfOnPage: false, access: null },
+      },
+    });
+  }
+  return spots;
+}
+
+/**
+ * A page that names its article only by Highwire Press tags (`citation_title` with an author,
+ * a date or a journal) and no DOI: saved by its details, matched by the library. Only on other
+ * sites; `dc.title` alone (common on blogs) is not enough.
+ */
+function highwireArticle(page: PageMeta): ArticleOnPage | null {
+  const has = (name: string) => page.meta.some(([key, value]) => key === name && value.trim());
+  if (!has('citation_title')) return null;
+  if (
+    ![
+      'citation_author',
+      'citation_publication_date',
+      'citation_date',
+      'citation_journal_title',
+    ].some(has)
+  )
+    return null;
+  const paper = paperFrom(page);
+  if (!paper) return null;
+  return { paper, refs: [], dois: [], pdfOnPage: false, licence: openLicence(page) };
+}
+
+/** An article page's button: beside its DOI link, else under its title heading. */
+function articleSpot(article: ArticleOnPage): Spot | null {
+  const at = doiLink(article.dois) ?? titleHeading(article.paper.title);
+  if (!at) return null;
+  return {
+    node: at,
+    anchor: at,
+    where: 'after',
+    item: {
+      origin: 'article',
+      paper: article.paper,
+      refs: article.refs,
+      facts: {
+        citedBy: null,
+        pdfOnPage: article.pdfOnPage,
+        access: article.licence ?? (pmcOnPage() ? 'Free in PubMed Central' : null),
+      },
+    },
+  };
+}
+
 /**
  * Where the buttons go on this page, and what each one saves. An article page gets one button,
  * only when its own metadata names the article; a results page one per result; anything else
  * (an issue's contents, a journal's home, a robot check) none.
+ *
+ * On any other site (ADR-0154, only when the student turned that on): the article the page's
+ * tags name (`citation_doi`, `dc.identifier`, `prism.doi`, or Highwire's `citation_title`), and
+ * a small Save button beside each DOI in its reference list. Never on `own` (this add-on's site)
+ * or Jenni's pages.
  */
-export function findSpots(url: string = location.href): Spot[] {
+export function findSpots(url: string = location.href, own: readonly string[] = []): Spot[] {
   let host: string;
   try {
     host = new URL(url).hostname.toLowerCase();
   } catch {
     return [];
   }
-  const article = articleOnPage({ ...collectPageMeta(), url });
+  if (neverHere(host, own)) return [];
+  const meta = { ...collectPageMeta(), url };
+  if (!INPAGE_HOSTS.includes(host)) {
+    const article = articleOnPage(meta) ?? highwireArticle(meta);
+    const spot = article ? articleSpot(article) : null;
+    return [...(spot ? [spot] : []), ...referenceSpots(article?.dois ?? [])];
+  }
+  const article = articleOnPage(meta);
   if (article) {
-    const at = doiLink(article.dois) ?? titleHeading(article.paper.title);
-    if (!at) return [];
-    return [
-      {
-        node: at,
-        anchor: at,
-        where: 'after',
-        item: {
-          origin: 'article',
-          paper: article.paper,
-          refs: article.refs,
-          facts: {
-            citedBy: null,
-            pdfOnPage: article.pdfOnPage,
-            access: article.licence ?? (pmcOnPage() ? 'Free in PubMed Central' : null),
-          },
-        },
-      },
-    ];
+    const spot = articleSpot(article);
+    return spot ? [spot] : [];
   }
   const listing = collectResultList(host, true, new URL(url).pathname);
   if (!listing) return [];
@@ -336,7 +481,9 @@ const BUTTON_CSS = `
   background: var(--ok-soft); color: var(--ok); border-color: var(--line);
 }
 .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tc-add.compact { gap: 4px; padding: 0 7px 0 3px; font-size: 11px; line-height: 16px; }
 svg { flex: none; width: 14px; height: 14px; }
+.compact svg { width: 12px; height: 12px; }
 .mark-tile { fill: var(--logo-tile); } .mark-glyph { fill: var(--logo-glyph); }
 .mark-dot { fill: var(--logo-dot); }
 `;
@@ -401,6 +548,23 @@ select { width: 100%; min-width: 0; height: 32px; padding: 0 8px; border: 1px so
   vertical-align: -2px; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+.links { display: flex; gap: 12px; margin-top: 4px; }
+.link { all: unset; color: var(--accent-hover); font-size: 12px; font-weight: 500; cursor: pointer; }
+.link:hover { text-decoration: underline; }
+.link:disabled { opacity: 0.55; cursor: default; }
+.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+@media (prefers-color-scheme: dark) { .link { color: var(--accent); } }
+.rows { list-style: none; margin: 0; padding: 0; max-height: 40vh; max-height: 40dvh;
+  overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 10px; }
+.rows li + li { border-top: 1px solid var(--line); }
+.row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; cursor: pointer;
+  color: var(--ink); font-size: 12.5px; font-weight: 400; }
+.row input { flex: none; margin: 2px 0 0; width: 15px; height: 15px; accent-color: var(--accent); }
+.row-text { display: grid; gap: 1px; min-width: 0; }
+.row-title { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.row .id { margin: 0; color: var(--muted); }
+.row .status { margin: 0; }
+.status.bad { color: var(--danger); }
 .panel.sheet { max-height: 50vh; max-height: 50dvh; border-width: 1px 0 0;
   border-radius: 14px 14px 0 0; box-shadow: 0 -12px 32px rgba(15, 23, 36, 0.2); }
 .panel.sheet.at-top { border-width: 0 0 1px; border-radius: 0 0 14px 14px;
@@ -481,6 +645,13 @@ const LABELS: Record<ButtonState, string> = {
   present: 'In your library',
 };
 
+/** A reference line's button: short, so the line it sits in barely moves (ADR-0154). */
+const COMPACT_LABELS: Record<ButtonState, string> = {
+  idle: 'Save',
+  saved: 'Saved',
+  present: 'In library',
+};
+
 export type ButtonControl = {
   host: HTMLElement;
   button: HTMLButtonElement;
@@ -511,12 +682,14 @@ export function mountButton(
   button.setAttribute('aria-expanded', 'false');
   button.append(logo(), label);
   const title = spot.item.paper.title.slice(0, 160);
+  if (spot.compact) button.classList.add('compact');
   const control: ButtonControl = {
     host,
     button,
     setState(state) {
       button.dataset.state = state;
-      label.textContent = LABELS[state];
+      label.textContent = (spot.compact ? COMPACT_LABELS : LABELS)[state];
+      // The full words for a screen reader, whichever label is shown.
       button.setAttribute('aria-label', title ? `${LABELS[state]}: ${title}` : LABELS[state]);
     },
   };
@@ -557,6 +730,7 @@ export type Card = {
 
 const ORIGIN: Record<InpageItem['origin'], string> = {
   article: 'This page',
+  reference: 'Reference on this page',
   scholar: 'Google Scholar result',
   pubmed: 'PubMed result',
   arxiv: 'arXiv result',
@@ -634,7 +808,14 @@ export function scrollToClear(target: { top: number; bottom: number }, clear: Cl
   return 0;
 }
 
-export function createCard(deps: CardDeps): Card {
+/** A button on the page and what it saves — what "Select several" lists. */
+export type Row = { item: InpageItem; control: ButtonControl };
+
+export function createCard(deps: CardDeps, rows: () => Row[] = () => []): Card {
+  /** "Select several": its state, the rows it lists, and the rows of its last save. */
+  let bulk: BulkState | null = null;
+  let bulkList: Row[] = [];
+  let bulkSent: number[] = [];
   let host: HTMLElement | null = null;
   let root: ShadowRoot | null = null;
   let body: HTMLElement | null = null;
@@ -1035,7 +1216,207 @@ export function createCard(deps: CardDeps): Card {
     primary.setAttribute('aria-busy', String(saving));
     if (saving) primary.prepend(el('span', { className: 'spinner' }));
     primary.addEventListener('click', () => void save());
-    nodes.push(el('div', { className: 'actions' }, primary));
+    const actions = el('div', { className: 'actions' }, primary);
+    // ADR-0154: on a page with several results (or references), tick several and save them once.
+    const several = listRows();
+    if (current.origin !== 'article' && several.length >= 2 && !saving) {
+      const more = el('button', {
+        className: 'btn secondary',
+        text: `Select several (${several.length})`,
+        testId: 'tc-several',
+        fid: 'several',
+      });
+      more.type = 'button';
+      more.addEventListener('click', () => openBulk());
+      actions.append(more);
+    }
+    nodes.push(actions);
+    return nodes;
+  }
+
+  // ---- Select several (ADR-0154) -------------------------------------------------------------------
+
+  /** The results (or references) the page's buttons are on; not an article page's own button. */
+  const listRows = (): Row[] => rows().filter((row) => row.item.origin !== 'article');
+
+  /** Rows this browser already saved into the chosen thesis (their buttons say so). */
+  const savedRows = (): Set<number> =>
+    new Set(bulkList.flatMap((row, i) => (row.control.button.dataset.state !== 'idle' ? [i] : [])));
+
+  function openBulk(): void {
+    bulkList = listRows();
+    const pressed = item ? bulkList.findIndex((row) => row.item === item) : -1;
+    bulk = bulkStart(pressed >= 0 ? pressed : null, savedRows());
+    bulkSent = [];
+    draw();
+    focusFid('bulk-save');
+  }
+
+  function setBulk(next: BulkState): void {
+    bulk = next;
+    draw();
+  }
+
+  async function saveBulk(): Promise<void> {
+    if (!bulk || !canSaveBulk(bulk) || view.kind !== 'ready') return;
+    const r = run;
+    const list = bulkList;
+    const sent = [...bulk.selected];
+    const documentId = ctx.documentId;
+    bulkSent = sent;
+    setBulk(bulkSaving(bulk));
+    void deps.storage.set({ lastDocumentId: documentId }).catch(() => undefined);
+    const reply = await deps.ask<SaveResult>({
+      type: 'save-many',
+      job: {
+        documentId,
+        collectionId: ctx.collectionId || null,
+        papers: sent.map((row) => (list[row] as Row).item.paper),
+      },
+    });
+    // The buttons say so, and this browser remembers, even when the card was closed meanwhile.
+    if (reply.ok) {
+      const keys: string[] = [];
+      for (const result of reply.value.results) {
+        const at = /^r(\d+)$/.exec(result.key)?.[1];
+        const row = at === undefined ? undefined : list[sent[Number(at)] as number];
+        if (!row || result.status === 'failed') continue;
+        row.control.setState(result.status);
+        const { refs, paper } = row.item;
+        keys.push(...paperKeys({ refs, doi: paper.doi, title: paper.title }));
+      }
+      void rememberSaved(deps, documentId, keys);
+    }
+    if (r !== run || !bulk) return;
+    const next = bulkDone(bulk, sent, reply);
+    if (next.signedOut) {
+      bulk = null;
+      dispatch({ type: 'signed-out' });
+      settle('site');
+      return;
+    }
+    setBulk(next);
+    focusFid(next.selected.length ? 'bulk-save' : 'open-library');
+  }
+
+  function bulkNodes(v: Extract<CardView, { kind: 'ready' }>, state: BulkState): Node[] {
+    const saving = state.phase === 'saving';
+    const already = savedRows();
+    const references = bulkList.every((row) => row.item.origin === 'reference');
+    const head = el(
+      'section',
+      { testId: 'tc-bulk' },
+      el('p', {
+        className: 'eyebrow',
+        text: `${references ? 'References' : 'Results'} on this page (${bulkList.length})`,
+      }),
+      el('p', {
+        className: 'muted',
+        text: `Tick the ones to save — up to ${BULK_MAX} at a time. ${state.selected.length} ticked.`,
+      }),
+    );
+    const all = el('button', { className: 'link', text: 'Select all', fid: 'select-all' });
+    all.type = 'button';
+    all.disabled = saving;
+    all.addEventListener('click', () => setBulk(selectAll(state, bulkList.length, already)));
+    const none = el('button', { className: 'link', text: 'Clear', fid: 'clear' });
+    none.type = 'button';
+    none.disabled = saving;
+    none.addEventListener('click', () => setBulk(clearAll(state)));
+    head.append(el('div', { className: 'links' }, all, none));
+
+    const list = el('ul', { className: 'rows', testId: 'tc-rows' });
+    bulkList.forEach((row, i) => {
+      const box = el('input', { fid: `row-${i}` });
+      box.type = 'checkbox';
+      box.checked = state.selected.includes(i);
+      box.disabled = saving;
+      box.addEventListener('change', () => setBulk(toggleRow(state, i, box.checked)));
+      const { paper, refs } = row.item;
+      const outcome = state.outcomes[i];
+      const said = outcomeText(outcome);
+      const line = el(
+        'label',
+        { className: 'row' },
+        box,
+        el(
+          'span',
+          { className: 'row-text' },
+          el('span', { className: 'row-title', text: paper.title || 'Untitled paper' }),
+          el('span', {
+            className: 'id',
+            text: refs[0] ? refLabel(refs[0]) : 'No DOI — matched by its title',
+          }),
+          said
+            ? el('span', {
+                className: `status ${outcome?.status === 'failed' ? 'bad' : 'ok'}`,
+                text: said,
+                testId: 'tc-row-outcome',
+              })
+            : already.has(i)
+              ? el('span', { className: 'status muted', text: 'Saved before from this browser' })
+              : null,
+        ),
+      );
+      list.append(el('li', { testId: 'tc-row' }, line));
+    });
+
+    const nodes: Node[] = [head, list, pickers(v.theses, saving)];
+    if (state.error) nodes.push(notice('error', 'Not saved', state.error));
+    else if (state.phase === 'done' && bulkSent.length) {
+      const failedCount = bulkSent.filter((row) => state.outcomes[row]?.status === 'failed').length;
+      const title = v.theses.find((t) => t.id === ctx.documentId)?.title || 'your thesis';
+      nodes.push(
+        notice(
+          failedCount ? 'warn' : 'ok',
+          failedCount === bulkSent.length ? 'Not saved' : `Saved to “${title}”`,
+          bulkSummary(state, bulkSent),
+          failedCount ? 'The ones not saved are still ticked: press Save to try them again.' : '',
+        ),
+      );
+    }
+    const n = state.selected.length;
+    const label = saving
+      ? `Saving ${bulkSent.length}…`
+      : state.phase === 'done' &&
+          n > 0 &&
+          state.selected.every((row) => state.outcomes[row]?.status === 'failed')
+        ? `Try again (${n})`
+        : `Save selected (${n})`;
+    const primary = el('button', {
+      className: 'btn',
+      text: label,
+      testId: 'tc-bulk-save',
+      fid: 'bulk-save',
+    });
+    primary.type = 'button';
+    primary.disabled = !canSaveBulk(state);
+    primary.setAttribute('aria-busy', String(saving));
+    if (saving) primary.prepend(el('span', { className: 'spinner' }));
+    primary.addEventListener('click', () => void saveBulk());
+    const back = el('button', {
+      className: 'btn secondary',
+      text: 'Back',
+      testId: 'tc-back',
+      fid: 'back',
+    });
+    back.type = 'button';
+    back.disabled = saving;
+    back.addEventListener('click', () => {
+      bulk = null;
+      draw();
+      focusFid('save');
+    });
+    const actions = el('div', { className: 'actions' }, primary, back);
+    if (state.phase === 'done') {
+      actions.append(
+        siteLink('Open the library', `${docPath(ctx.documentId)}/sources`, {
+          secondary: true,
+          fid: 'open-library',
+        }),
+      );
+    }
+    nodes.push(actions);
     return nodes;
   }
 
@@ -1043,6 +1424,13 @@ export function createCard(deps: CardDeps): Card {
     if (!body || !item) return;
     const current = item;
     const focused = (root?.activeElement as HTMLElement | null)?.dataset?.fid;
+    if (bulk && view.kind === 'ready') {
+      body.replaceChildren(...bulkNodes(view, bulk));
+      body.setAttribute('aria-busy', String(bulk.phase === 'saving'));
+      if (focused) focusFid(focused);
+      keepResultInSight();
+      return;
+    }
     const nodes: Node[] = [paperSection(current)];
     switch (view.kind) {
       case 'loading':
@@ -1115,6 +1503,7 @@ export function createCard(deps: CardDeps): Card {
       item = next;
       run += 1;
       view = cardInitial;
+      bulk = null;
       // Each opening starts on the bottom edge, for whichever result it is.
       edge = 'bottom';
       ensureHost();
@@ -1133,6 +1522,7 @@ export function createCard(deps: CardDeps): Card {
       panel = null;
       item = null;
       view = cardInitial;
+      bulk = null;
       const back = from;
       from = null;
       back?.button.setAttribute('aria-expanded', 'false');
@@ -1185,16 +1575,20 @@ async function markSaved(
  * buttons going in are not news, so the page is not rescanned for them.
  */
 export function startInpage(deps: CardDeps, url: () => string = () => location.href) {
-  const card = createCard(deps);
+  /** Every button put in so far, in page order — what "Select several" lists. */
+  const all: Row[] = [];
+  const card = createCard(deps, () => all.filter((row) => row.control.host.isConnected));
+  const own = ownHosts([deps.webUrl]);
   const done = new WeakSet<Element>();
   const scan = (): number => {
-    const mounted: Array<{ item: InpageItem; control: ButtonControl }> = [];
-    for (const spot of findSpots(url())) {
+    const mounted: Row[] = [];
+    for (const spot of findSpots(url(), own)) {
       if (done.has(spot.node)) continue;
       done.add(spot.node);
       const control = mountButton(spot, (item, c) => card.open(item, c), deps.mode);
       mounted.push({ item: spot.item, control });
     }
+    all.push(...mounted);
     if (mounted.length) void markSaved(deps, mounted);
     return mounted.length;
   };

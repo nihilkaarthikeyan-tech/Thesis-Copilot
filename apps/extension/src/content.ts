@@ -9,7 +9,8 @@
  * this file and what it imports into one readable `content.js` (esbuild, not minified).
  */
 
-import { INPAGE_SHADOW, WEB_URL } from './config.js';
+import { neverHere, ownHosts } from './anywhere.js';
+import { API_URL, INPAGE_SHADOW, WEB_URL } from './config.js';
 import { startInpage } from './inpage.js';
 import type { Reply, Request } from './messages.js';
 
@@ -34,12 +35,19 @@ async function ask<T>(request: Request): Promise<Reply<T>> {
   }
 }
 
-startInpage({
-  ask,
-  storage: {
-    get: (keys) => chrome.storage.local.get(keys),
-    set: (values) => chrome.storage.local.set(values),
-  },
-  webUrl: WEB_URL,
-  mode: INPAGE_SHADOW,
-});
+// ADR-0154: the same file also runs on every site when the student turns that on. Once per page
+// (the two registrations exclude each other, and this makes sure of it), and never on this
+// add-on's own site or on Jenni's pages.
+const flag = globalThis as { __thesisCopilotInpage?: boolean };
+if (!flag.__thesisCopilotInpage && !neverHere(location.hostname, ownHosts([API_URL, WEB_URL]))) {
+  flag.__thesisCopilotInpage = true;
+  startInpage({
+    ask,
+    storage: {
+      get: (keys) => chrome.storage.local.get(keys),
+      set: (values) => chrome.storage.local.set(values),
+    },
+    webUrl: WEB_URL,
+    mode: INPAGE_SHADOW,
+  });
+}
