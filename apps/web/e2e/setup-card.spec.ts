@@ -7,9 +7,11 @@ import { signInAs } from './_session.js';
 
 /**
  * Setting a thesis up inside the editor (ADR-0145): New opens the first chapter at once with the
- * "Set up this thesis" card above the toolbar. Its five rows — title and sources, field, aim,
- * chapters, first line — each fold to one line when done; Finish later folds the card into the
- * status line, whose Show and ⋯ → First steps bring it back. Against the mock stack.
+ * "Set up this thesis" card above the toolbar. Its four rows (ADR-0151) — title with sources,
+ * field and university; aim; chapters; first line — each fold to one line when done; Finish later
+ * folds the card into the status line, whose Show and ⋯ → First steps bring it back. The plan
+ * and the first sentence start at the title row's Next, not after the questions. Against the
+ * mock stack.
  *
  * `SETUP_SHOTS=1` saves screenshots to `<repo>/qa-shots/setup-*.png`.
  */
@@ -45,22 +47,20 @@ async function newThesis(page: Page, request: APIRequestContext) {
   return card;
 }
 
-/** Row 1 and row 2, taken quickly. */
-async function nameAndSkipField(page: Page) {
+/** Row 1, taken quickly: the questions open next (ADR-0151, no field row). */
+async function nameIt(page: Page) {
   await page.getByTestId('setup-title-input').fill(TITLE);
   await page.getByTestId('setup-title-next').click();
-  await expect(page.getByTestId('setup-row-field')).toHaveAttribute('data-state', 'open');
-  await page.getByTestId('setup-field-skip').click();
   await expect(page.getByTestId('setup-row-aim')).toHaveAttribute('data-state', 'open');
 }
 
-test('the card takes a new thesis through its five rows, in the editor', async ({
+test('the card takes a new thesis through its four rows, in the editor', async ({
   page,
   request,
 }) => {
   test.setTimeout(240_000);
   const card = await newThesis(page, request);
-  await expect(page.getByTestId('setup-count')).toHaveText('1 of 5');
+  await expect(page.getByTestId('setup-count')).toHaveText('1 of 4');
   await expect(page.getByTestId('status-line-text')).toContainText('next: name your thesis');
   // One guide at a time: the four-step guide and the proposal prompt wait.
   await expect(page.getByTestId('first-session-guide')).toHaveCount(0);
@@ -75,19 +75,22 @@ test('the card takes a new thesis through its five rows, in the editor', async (
   await page.getByTestId('setup-sources-change').click();
   await expect(page.getByTestId('setup-web-search')).toBeVisible();
   await page.getByTestId('setup-sources-change').click();
+  // ADR-0151: the field (guessed from the title) and the university are a folded, optional line
+  // of the same row, no longer a row of their own.
+  await expect(page.getByTestId('setup-field-line')).toContainText('university not set');
+  await page.getByTestId('setup-field-change').click();
+  await page.getByTestId('setup-university').selectOption('anna_university_v1');
+  await expect(page.getByTestId('setup-field-line')).toContainText('Anna University');
+  await shot(page, '2-field');
   await page.getByTestId('setup-title-next').click();
 
-  // Row 2: the field is guessed from the title; both are optional.
-  await expect(page.getByTestId('setup-row-field')).toHaveAttribute('data-state', 'open');
+  // Row 2: the start questions, while the plan and the first sentence are already on their way.
+  await expect(page.getByTestId('setup-row-aim')).toHaveAttribute('data-state', 'open');
   await expect(page.getByTestId('setup-row-title')).toContainText(TITLE);
   await expect(page.getByTestId('setup-row-sources')).toContainText('IEEE');
-  await expect(page.getByTestId('setup-count')).toHaveText('2 of 5');
-  await page.getByTestId('setup-university').selectOption('anna_university_v1');
-  await shot(page, '2-field');
-  await page.getByTestId('setup-field-next').click();
   await expect(page.getByTestId('setup-row-field')).toContainText('Anna University');
-
-  // Row 3: the start questions, one at a time, until the answers make the proposal. A.6 allows
+  await expect(page.getByTestId('setup-count')).toHaveText('2 of 4');
+  // The same question row as before, one at a time, until the answers make the proposal. A.6 allows
   // two to four model turns and never more than three questions: the mock always asks three, a
   // real model (2026-10-09) sometimes had enough after two. Either way the result must arrive.
   await expect(page.getByTestId('setup-row-aim')).toHaveAttribute('data-state', 'open');
@@ -127,7 +130,7 @@ test('the card takes a new thesis through its five rows, in the editor', async (
       : TITLE;
   await page.getByTestId('setup-aim-use').click();
 
-  // Row 4: the chapters arrive in place, in the chapter list and as headings on the page.
+  // Row 3: the chapters arrive in place, in the chapter list and as headings on the page.
   await expect(page.getByTestId('setup-row-chapters')).toHaveAttribute('data-state', 'open');
   await expect(page.getByTestId('setup-row-aim')).toContainText('Household finance');
   await expect(page.getByTestId('setup-planned')).toBeVisible({ timeout: 90_000 });
@@ -137,7 +140,7 @@ test('the card takes a new thesis through its five rows, in the editor', async (
   await shot(page, '4-chapters');
   await page.getByTestId('setup-keep').click();
 
-  // Row 5: the first line. Writing a sentence finishes the card, which folds into the line.
+  // Row 4: the first line. Writing a sentence finishes the card, which folds into the line.
   await expect(page.getByTestId('setup-row-first')).toHaveAttribute('data-state', 'open');
   await expect(page.getByTestId('setup-row-chapters')).toContainText('planned');
   await shot(page, '5-first');
@@ -160,6 +163,35 @@ test('the card takes a new thesis through its five rows, in the editor', async (
   await expect(page.getByTestId('status-line-text')).toContainText('set up');
 });
 
+test('the plan and the first sentence start at the title row, with the questions open', async ({
+  page,
+  request,
+}) => {
+  // ADR-0151, measured as clicks: before it, Start writing now → Next → Skip (field) → Skip
+  // (questions) was four presses and three rows before the first sentence was asked for. Now it
+  // is New → Next, two presses and one row; nothing after the title waits on the questions.
+  test.setTimeout(180_000);
+  await newThesis(page, request);
+  await page.getByTestId('setup-title-input').fill(TITLE);
+  const asked = page.waitForRequest((r) => r.url().includes('/assist/suggest'), {
+    timeout: 30_000,
+  });
+  const planned = page.waitForRequest(
+    (r) => r.url().includes('/outline/plan-from-title') && r.method() === 'POST',
+    { timeout: 30_000 },
+  );
+  await page.getByTestId('setup-title-next').click();
+  await planned;
+  await asked;
+  // Asked for with the questions still open, nothing else pressed.
+  await expect(page.getByTestId('setup-card')).toHaveAttribute('data-step', 'aim');
+  await expect(page.getByTestId('setup-row-aim')).toHaveAttribute('data-state', 'open');
+  // The chapters arrive while the questions wait; Skip then goes straight to them.
+  await page.getByTestId('setup-aim-skip').click();
+  await expect(page.getByTestId('setup-planned')).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByTestId('setup-count')).toHaveText('3 of 4');
+});
+
 test('Finish later folds the card into the line; Show and First steps bring it back', async ({
   page,
   request,
@@ -168,7 +200,7 @@ test('Finish later folds the card into the line; Show and First steps bring it b
   await newThesis(page, request);
   await page.getByTestId('setup-finish-later').click();
   await expect(page.getByTestId('setup-card')).toBeHidden();
-  await expect(page.getByTestId('status-line-text')).toContainText('set up 1 of 5');
+  await expect(page.getByTestId('status-line-text')).toContainText('set up 1 of 4');
 
   // Show: the card, inside the line, can be carried on there or put back on top.
   await page.getByTestId('status-line-toggle').click();
@@ -195,7 +227,7 @@ test('skipping the questions plans from the title; Standard chapters replace the
 }) => {
   test.setTimeout(180_000);
   await newThesis(page, request);
-  await nameAndSkipField(page);
+  await nameIt(page);
   await page.getByTestId('setup-aim-skip').click();
   await expect(page.getByTestId('setup-row-aim')).toContainText('planned from the title');
   await expect(page.getByTestId('setup-planned')).toBeVisible({ timeout: 90_000 });
@@ -229,7 +261,7 @@ test('a first question that does not arrive says so, and Try again asks it again
     }
     await route.continue();
   });
-  await nameAndSkipField(page);
+  await nameIt(page);
   await expect(page.getByTestId('setup-aim-question')).toHaveText(
     'The first question did not arrive.',
     { timeout: 30_000 },
@@ -264,8 +296,12 @@ for (const width of [360, 430, 768, 1024, 1440]) {
       await noLayoutFaults(page);
       await headingInView();
       await page.getByTestId('setup-sources-change').click();
+      await page.getByTestId('setup-field-change').click();
+      await noLayoutFaults(page);
+      await headingInView();
+      await page.getByTestId('setup-field-change').click();
       await shot(page, `${width}-title`);
-      await nameAndSkipField(page);
+      await nameIt(page);
       await expect(page.getByTestId('setup-aim-question')).not.toHaveText(/Thinking/, {
         timeout: 30_000,
       });

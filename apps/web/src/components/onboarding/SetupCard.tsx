@@ -319,8 +319,22 @@ export function SetupCard({
   function offerFirstLine() {
     if (!editor || editor.isDestroyed) return;
     if (bodyWords(editor.state.doc) >= FIRST_LINE_WORDS) return;
-    // A suggestion already on its way or on screen stays: moving the cursor would end it.
-    if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return;
+    // ADR-0151: the questions are open beside it now. A student typing an answer keeps the
+    // keyboard; the suggestion is asked for without taking focus from the field.
+    const typing = () => {
+      const active = document.activeElement;
+      return (
+        active instanceof HTMLElement &&
+        /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) &&
+        !editor.view.dom.contains(active)
+      );
+    };
+    // A suggestion already on its way or on screen stays where it is: moving the cursor would
+    // end it. The editor only takes the keyboard back, so Tab and Esc reach the suggestion.
+    if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') {
+      if (!editor.view.hasFocus() && !typing()) editor.commands.focus();
+      return;
+    }
     const at = firstLinePosition(editor.state.doc);
     if (at === null) return;
     editor.chain().setTextSelection(at).focus().scrollIntoView().run();
@@ -328,14 +342,7 @@ export function SetupCard({
       if (editor.isDestroyed) return;
       if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return;
       if (bodyWords(editor.state.doc) >= FIRST_LINE_WORDS) return;
-      // ADR-0151: the questions are open beside it now. A student typing an answer keeps the
-      // keyboard; the suggestion is asked for without taking focus from the field.
-      const active = document.activeElement;
-      const typing =
-        active instanceof HTMLElement &&
-        /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) &&
-        !editor.view.dom.contains(active);
-      if (typing) editor.commands.requestSuggestion();
+      if (typing()) editor.commands.requestSuggestion();
       else editor.chain().focus().requestSuggestion().run();
     };
     // With automatic suggestions the opener asks on its own; this is the fallback if it did not.
@@ -826,8 +833,12 @@ export function SetupCard({
           )
         ) : null}
 
-        {/* Row 4: the first line, shown (waiting) from row 3 on. */}
-        {index(card.step) >= 3 || card.done ? (
+        {/*
+          Row 4: the first line, from its own step on, like every other row. ADR-0151: the
+          sentence itself is on the page from the title's Next, so a waiting line here only
+          pushed the chapter's heading off a 360 px phone at the chapters row.
+        */}
+        {index(card.step) >= 4 || card.done ? (
           state('first') === 'open' ? (
             <Row id="first" state="open" label={t('setup.row.first')}>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">

@@ -68,6 +68,13 @@ async function untilCitedSuggestion(
   let lastLine = '';
   let lastPress = 0;
   while (Date.now() < end) {
+    // ADR-0151: no paper names the thesis's place, and the card says so instead of a sentence
+    // citing another country. Recorded, and the run stops: there is nothing cited to time.
+    const gap = page.getByTestId('setup-setting-gap');
+    if (await gap.count()) {
+      c.mark(`setting gap shown: ${(await gap.innerText()).slice(0, 90)}`);
+      return;
+    }
     const shown = page.locator('.thesis-editor span.ghost[data-status="shown"]');
     if (await shown.count()) {
       const cited = (await page.getByTestId('suggestion-evidence').count()) > 0;
@@ -168,9 +175,9 @@ test('first session, Start writing now', async ({ page, request }) => {
     ]);
   await page.goto('/app');
   await page.getByLabel('Working title').fill(TOPIC);
-  // ADR-0145: the clock starts at the press; the editor opens with the setup card, whose rows
-  // are taken as a quick student would: title (typed already) Next, Skip the field, Skip the
-  // questions (chapters planned from the title), then the opener under the chapter's title.
+  // ADR-0145: the clock starts at the press; the editor opens with the setup card. ADR-0151:
+  // the quickest student presses Next on the title (typed already) and nothing else; the plan
+  // and the opener start at that Next, with the questions left open beside them.
   const c = clock();
   // Every suggestion request and how it ended, on the same clock.
   page.on('request', (r) => {
@@ -194,9 +201,7 @@ test('first session, Start writing now', async ({ page, request }) => {
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 60_000 });
   c.mark('IN THE EDITOR');
   await page.getByTestId('setup-title-next').click();
-  await page.getByTestId('setup-field-skip').click();
-  await page.getByTestId('setup-aim-skip').click();
-  c.mark('setup card: title, field skipped, questions skipped');
+  c.mark('setup card: title Next (2 clicks from the list; the questions stay open)');
   const documentId = /\/app\/d\/([0-9a-f-]{36})\//.exec(page.url())?.[1] ?? '';
   await untilCitedSuggestion(page, c, cookie, documentId, 8 * 60);
   if (!process.env.ACCEPT) return;
