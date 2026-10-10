@@ -7,6 +7,9 @@
  * assumes an API shape that has not been checked against a recorded response).
  */
 
+import { type IndexHealth, nextMidnightUtc, readRefusal, scholarlyHealth } from './health.js';
+import { type OpenAlexMeter, openAlexMeter } from './meter.js';
+
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export type ScholarlyClientOptions = {
@@ -33,6 +36,14 @@ export type ScholarlyClientOptions = {
    * whose limit is per operator rather than per process (arXiv, NCBI). See `sharedGate`.
    */
   gate?: () => Promise<void>;
+  /**
+   * ADR-0149: where this client reads and records the index's refusals. Defaults to the shared
+   * `scholarlyHealth`; a test passes its own.
+   */
+  health?: IndexHealth;
+  /** ADR-0149: where OpenAlex requests are counted against the day's budget. */
+  meter?: OpenAlexMeter;
+  now?: () => number;
 };
 
 export const DEFAULT_REQUESTS_PER_SECOND = 5;
@@ -63,19 +74,30 @@ export class RateLimiter {
 }
 
 export class ScholarlyError extends Error {
+  /**
+   * ADR-0149: the index is refusing us (a rate limit or a spent budget), as opposed to a fault
+   * or a timeout — the difference between "try again later" and "something broke".
+   */
+  readonly refused: boolean;
+  /** When the refusal is expected to end (ms), if the index said. */
+  readonly until: number | null;
+
   constructor(
     readonly service: string,
     readonly status: number | null,
     message: string,
+    options: { refused?: boolean; until?: number | null } = {},
   ) {
     super(`${service}: ${message}`);
     this.name = 'ScholarlyError';
+    this.refused = options.refused ?? false;
+    this.until = options.until ?? null;
   }
 }
 
-/** Status codes worth another attempt: rate limiting and transient server faults. */
+/** Status codes worth another attempt: transient server faults (429 has its own path). */
 function retryable(status: number): boolean {
-  return status === 429 || status === 408 || status >= 500;
+  return status === 408 || status >= 500;
 }
 
 export class ScholarlyHttp {
@@ -86,6 +108,9 @@ export class ScholarlyHttp {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly userAgent: string;
   private readonly apiKey: string | undefined;
+  private readonly health: IndexHealth;
+  private readonly meter: OpenAlexMeter;
+  private readonly now: () => number;
 
   constructor(
     private readonly service: string,
@@ -93,6 +118,9 @@ export class ScholarlyHttp {
   ) {
     this.mailto = options.mailto;
     this.apiKey = options.apiKey || undefined;
+    this.health = options.health ?? scholarlyHealth;
+    this.meter = options.meter ?? openAlexMeter;
+    this.now = options.now ?? Date.now;
     this.doFetch = options.fetch ?? ((url, init) => fetch(url, init));
     this.sleep = options.sleep ?? defaultSleep;
     this.attempts = options.attempts ?? DEFAULT_ATTEMPTS;
@@ -140,19 +168,36 @@ export class ScholarlyHttp {
 
   private async get(url: string, accept: string, signal?: AbortSignal): Promise<Response | null> {
     let lastError: ScholarlyError | null = null;
+    // ADR-0149: an index known to be refusing is not asked again before it said to come back.
+    // One request gets the first refusal; every other one in the window is answered from here.
+    const refusedUntil = await this.health.refusedUntil(this.service);
+    if (refusedUntil !== null) {
+      throw new ScholarlyError(
+        this.service,
+        429,
+        `refusing requests until ${new Date(refusedUntil).toISOString()}`,
+        { refused: true, until: refusedUntil },
+      );
+    }
     // Added here, the one place every request passes, so no URL builder can forget it. Errors
-    // carry the service and status only, so the key never reaches a log.
-    const target = this.apiKey
-      ? `${url}${url.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(this.apiKey)}`
-      : url;
+    // carry the service and status only, so the key never reaches a log. ADR-0149: not while the
+    // key's daily budget is known to be spent — the polite pool still answers then.
+    let withKey = Boolean(this.apiKey) && (await this.health.keyUsable(this.service));
+    const targetFor = (keyed: boolean) =>
+      keyed && this.apiKey
+        ? `${url}${url.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(this.apiKey)}`
+        : url;
 
-    for (let attempt = 1; attempt <= this.attempts; attempt++) {
+    let attempt = 0;
+    let keylessRetry = false;
+    while (attempt < this.attempts) {
+      attempt += 1;
       await this.acquire();
       if (signal?.aborted) throw new ScholarlyError(this.service, null, 'aborted');
 
       let response: Response;
       try {
-        response = await this.doFetch(target, {
+        response = await this.doFetch(targetFor(withKey), {
           headers: { accept, 'user-agent': this.userAgent },
           ...(signal ? { signal } : {}),
         });
@@ -166,7 +211,43 @@ export class ScholarlyHttp {
         continue;
       }
 
+      // ADR-0149: anything OpenAlex answered (a refusal is not billed) counts against the day.
+      if (this.service === 'openalex' && response.status !== 429) {
+        void this.meter.record(url, withKey);
+      }
+
       if (response.status === 404) return null;
+
+      if (response.status === 429) {
+        const refusal = await readRefusal(response);
+        const now = this.now();
+        const resetAt = now + (refusal.retryAfterMs ?? 0);
+        if (withKey && refusal.budgetSpent && !keylessRetry) {
+          // The key's budget is spent; the polite pool is a separate pool that still answers.
+          // Once, at once, and remembered, so no other request pays for the lesson.
+          await this.health.markKeyedExhausted(
+            this.service,
+            refusal.retryAfterMs ? resetAt : nextMidnightUtc(now),
+            refusal.message,
+          );
+          withKey = false;
+          keylessRetry = true;
+          attempt -= 1;
+          continue;
+        }
+        const waitMs = refusal.retryAfterMs ?? 2 ** (attempt - 1) * 500;
+        // ADR-0050: a service that says "come back in an hour" (OpenAlex when the day's budget
+        // is spent answers 429 with the seconds to midnight UTC) is a failure now, not a wait:
+        // honouring it left a literature search on "Searching…" for as long as it asked.
+        // ADR-0149: and it is remembered, so nothing hammers the index until then.
+        if (waitMs > MAX_RETRY_AFTER_MS || attempt >= this.attempts) {
+          const until = refusal.retryAfterMs ? resetAt : now + REFUSAL_BACKOFF_MS;
+          await this.health.markRefused(this.service, until, refusal.message);
+          throw new ScholarlyError(this.service, 429, refusal.message, { refused: true, until });
+        }
+        await this.pause(waitMs, signal);
+        continue;
+      }
 
       if (!response.ok) {
         lastError = new ScholarlyError(this.service, response.status, `HTTP ${response.status}`);
@@ -176,9 +257,6 @@ export class ScholarlyHttp {
             Number.isFinite(retryAfter) && retryAfter > 0
               ? retryAfter * 1000
               : 2 ** (attempt - 1) * 500;
-          // ADR-0050: a service that says "come back in an hour" (OpenAlex when the day's budget
-          // is spent answers 429 with the seconds to midnight UTC) is a failure now, not a wait:
-          // honouring it left a literature search on "Searching…" for as long as it asked.
           if (waitMs > MAX_RETRY_AFTER_MS) throw lastError;
           await this.pause(waitMs, signal);
           continue;
@@ -186,12 +264,19 @@ export class ScholarlyHttp {
         throw lastError;
       }
 
+      await this.health.markAnswered(this.service);
       return response;
     }
 
     throw lastError ?? new ScholarlyError(this.service, null, 'exhausted retries');
   }
 }
+
+/**
+ * ADR-0149: how long an index that answered 429 to every attempt without saying when to return
+ * (Semantic Scholar sends no `Retry-After`) is left alone before the next request tries it.
+ */
+export const REFUSAL_BACKOFF_MS = 60_000;
 
 /**
  * The longest `Retry-After` a request will wait out; anything longer fails the request. Two

@@ -228,10 +228,22 @@ export {
   readableFullTextReason,
 } from './scholarly/fulltext.js';
 export {
+  type HealthLog,
+  type HealthStore,
+  IndexHealth,
+  type IndexHealthOptions,
+  type IndexState,
+  nextMidnightUtc,
+  type RefusalInfo,
+  readRefusal,
+  scholarlyHealth,
+} from './scholarly/health.js';
+export {
   DEFAULT_ATTEMPTS,
   DEFAULT_REQUESTS_PER_SECOND,
   type FetchLike,
   RateLimiter,
+  REFUSAL_BACKOFF_MS,
   type ScholarlyClientOptions,
   ScholarlyError,
   ScholarlyHttp,
@@ -247,6 +259,17 @@ export {
   validIsbn,
 } from './scholarly/ids.js';
 export { keywordsOf, openAlexSearchText, topicSearchTerms } from './scholarly/keywords.js';
+export {
+  classifyOpenAlexRequest,
+  type MeterStore,
+  OPENALEX_USD,
+  OPENALEX_WARN_SHARES,
+  type OpenAlexDay,
+  OpenAlexMeter,
+  type OpenAlexRequestKind,
+  openAlexMeter,
+  utcDay,
+} from './scholarly/meter.js';
 export { personName } from './scholarly/names.js';
 export {
   type MatchedPassage,
