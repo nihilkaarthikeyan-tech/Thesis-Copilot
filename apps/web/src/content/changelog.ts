@@ -24,6 +24,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-10',
+    title: 'A free trial with room to try things, and proofreading of its own',
+    changes: [
+      'The free trial now has 10 section commands (Formalise, Simplify, Expand and the rest), 10 questions to your library, 20 citation suggestions and 3 drafted sections, so a first session no longer runs out after two edits.',
+      'Proofreading has its own allowance: one run reads up to 2,000 words, 10 runs on the trial and 30 a month on a paid plan. It no longer uses up your section commands.',
+      'Paid plans now have 40 section commands a month instead of 4.',
+      'The free trial’s allowances are for the whole 14-day trial and do not start again on the 1st. The usage menu, your Account page and the limit message say so, with the date your trial ends.',
+    ],
+  },
+  {
     version: 'v0.1.42',
     date: '2026-10-10',
     title: 'Writing that reads more naturally, honest paper search, and an AI use statement',

@@ -6568,3 +6568,38 @@ $0.10 a day per address and was spent (`X-RateLimit-Remaining-USD: 0`), the key 
 `.env`, and arXiv/PubMed kept nothing for the topic: 0 papers in eight minutes, an uncited
 opener at 30.4 s. That is a production risk too (one key, one address for every student):
 `docs/PENDING.md`. Spent: ₹15.42.
+
+## Trial limits, Option B (2026-10-10, ADR-0152)
+
+The owner chose Option B of `docs/TRIAL-LIMIT-OPTIONS.md` in full. Built on this branch, not
+merged or released.
+
+- **Numbers.** Trial: section commands 2 → 10, questions 5 → 10, citation suggestions 10 → 20,
+  drafts 2 → 3. Paid and institution: section commands 4 → 40.
+- **`PROOFREAD`**, a new metered action (migration 0057): one run of up to 2,000 words, 10 on the
+  trial, 30 a month paid, priced at ₹0.4844 on `gpt-4.1-mini` (5,040 in, 2,220 out). `POST
+  /proofread` consumes, refunds and logs it and no longer touches `COMMAND`; the AI use statement
+  stops subtracting new runs from the edit count (their mark says `action: 'PROOFREAD'`).
+- **The trial counts over its 14 days.** `User.trialStartsAt`; a trialing account counts on the
+  ledger row of the month its trial started (`ledgerPeriodFor`), so a trial from 25 October to
+  8 November has one allowance, not two. The key stays `YYYY-MM`, so a trial started this month
+  has the key it always had, and the many API specs that read `periodFor()` for the harness's
+  trial account are unchanged. Refunds (API and both worker refunds), `keep`, admin grants,
+  resets and the admin's usage view find the same row. A trial's refusal says "Trial limit
+  reached … used in your free trial … your trial ends on {date}" (en + hi), with `trialAllowance`,
+  `trialEndsAt` and `resetsAt` at the trial's end; the usage menu, Account, pricing and help say
+  the trial's numbers are for the whole trial.
+- **Cost** (`computeMonthlyBudget`, offline): trial ₹39.90 → **₹50.23**, paid ₹145.62 →
+  **₹165.79** (₹104.93 with `gpt-5-nano` fast), both matching the options page. The PRD's
+  reference-price six-row table goes from ₹99.17 to ₹149.92, so the Appendix E.2 test now asserts
+  the projection limit (₹175) there, as ADR-0143 did for the production budget. The ₹100 runtime
+  stop is unchanged. `docs/COSTING.md` has the table.
+
+Tests run (touched files only): `packages/config` all 87; `cap-concurrency.spec.ts` 26 on real
+Postgres, among them 20 racing proofreading runs on the trial (exactly 10 through) and at the
+paid cap − 1 (exactly 1), the trial crossing the 1st, a paid account starting again on the 1st,
+and a refund, a kept suggestion and an admin grant landing on the trial's row; `proofread.spec.ts`
+and `limit-refusal.spec.ts` 15 (proofreading runs with every section command used; the trial's
+refusal members; a paid refusal still resets on the 1st); `caps`, `admin-users`, `week1` and
+`trial` specs 37; web `limit`, `usage-menu`, `action-names`, `changelog` 30. The e2e
+`limit-message.spec.ts` was updated for the new words but not run (needs the dev stack).
