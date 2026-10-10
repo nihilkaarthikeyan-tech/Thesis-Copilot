@@ -33,6 +33,7 @@ type SourceRow = {
   fileKey: string | null;
   cslJson: Record<string, unknown> | null;
   groundingLevel: string;
+  venue?: string | null;
 };
 
 const embedding = () => new Array(EMBEDDING_DIMENSIONS).fill(0.01);
@@ -194,6 +195,67 @@ describe('runIndexSource', () => {
     expect(source.groundingLevel).toBe('FULL_TEXT');
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('https://arxiv.org/pdf/1706.03762');
     expect(deps.unpaywall.bestOpenAccess).not.toHaveBeenCalled();
+  });
+
+  describe('an MDPI paper (ADR-0154)', () => {
+    const OWN = 'https://www.mdpi.com/1996-1073/18/8/1921/pdf?version=1744253740';
+    const FILE =
+      'https://mdpi-res.com/d_attachment/energies/energies-18-01921/article_deploy/energies-18-01921.pdf';
+    const MDPI_PDF = Buffer.from(
+      '%PDF-1.7 <</URI(https://www.mdpi.com/article/10.3390/en18081921?type=check_update)>>',
+    );
+    const mdpiSource = {
+      doi: '10.3390/en18081921',
+      cslJson: { 'container-title': ['Energies'], volume: '18', page: '1921' },
+    };
+
+    it('reads the PDF from MDPI’s file host before MDPI’s bot-checked address', async () => {
+      const { deps, source, logs } = fakeDeps({
+        oaPdfUrl: OWN,
+        fetchedPdf: MDPI_PDF,
+        source: mdpiSource,
+      });
+      const result = await runIndexSource(job(), deps);
+      expect(result.groundingLevel).toBe('FULL_TEXT');
+      expect(result.via).toBe('mdpi');
+      expect(source.groundingLevel).toBe('FULL_TEXT');
+      expect(vi.mocked(fetch).mock.calls.map((c) => c[0])).toEqual([FILE]);
+      expect(logs.some((l) => l.msg === 'full text from mdpi' && l.url === FILE)).toBe(true);
+    });
+
+    it('falls back to MDPI’s own address when the file host has no such file', async () => {
+      const { deps } = fakeDeps({
+        oaPdfUrl: OWN,
+        fetchedPdf: MDPI_PDF,
+        failUrls: [FILE],
+        source: mdpiSource,
+      });
+      const result = await runIndexSource(job(), deps);
+      expect(result.groundingLevel).toBe('FULL_TEXT');
+      expect(vi.mocked(fetch).mock.calls.map((c) => c[0])).toEqual([FILE, OWN]);
+    });
+
+    it('never attaches a built address’s file that does not name the DOI', async () => {
+      // The fake answers every address with the same PDF, which names no DOI: the file host's
+      // copy is refused, MDPI's own (listed by Unpaywall, so not checked) is taken.
+      const { deps } = fakeDeps({ oaPdfUrl: OWN, source: mdpiSource });
+      const result = await runIndexSource(job(), deps);
+      expect(vi.mocked(fetch).mock.calls.map((c) => c[0])).toEqual([FILE, OWN]);
+      expect(result.groundingLevel).toBe('FULL_TEXT');
+    });
+
+    it('says why when neither MDPI address gives the PDF, and asks no other host', async () => {
+      const { deps, source } = fakeDeps({
+        oaPdfUrl: OWN,
+        fetchedPdf: 'fail',
+        source: mdpiSource,
+      });
+      const result = await runIndexSource(job(), deps);
+      expect(result.groundingLevel).not.toBe('FULL_TEXT');
+      expect(result.fullTextFailure).toBe('not-ok');
+      expect(source.groundingLevel).not.toBe('FULL_TEXT');
+      expect(vi.mocked(fetch).mock.calls.map((c) => c[0])).toEqual([FILE, OWN]);
+    });
   });
 
   it('names the arXiv PDF only for an arXiv DOI', () => {
