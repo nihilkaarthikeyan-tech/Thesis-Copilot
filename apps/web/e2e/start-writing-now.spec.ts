@@ -47,7 +47,7 @@ test('from the thesis list, with no title typed: an untitled thesis opens in the
   await editor.locator('p').first().click();
   await page.keyboard.type('Fish drying in coastal villages loses a fifth of the catch.');
   await expect(editor).toContainText('Fish drying in coastal villages');
-  await expect(page.getByTestId('status-line-text')).toContainText('set up 1 of 5');
+  await expect(page.getByTestId('status-line-text')).toContainText('set up 1 of 4');
 
   // Back on the list, the thesis is "Untitled thesis" and still offers the proposal.
   await page.goto('/app');

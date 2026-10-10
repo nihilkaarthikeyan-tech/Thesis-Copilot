@@ -304,11 +304,10 @@ export const en = {
   // ---- Set up this thesis, inside the editor (ADR-0145) ----------------------------------------
   'setup.title': 'Set up this thesis',
   'setup.titleDone': 'Set up',
-  'setup.count': '{n} of 5',
+  'setup.count': '{n} of 4',
   'setup.finishLater': 'Finish later',
   'setup.continue': 'Continue setting up',
   'setup.next': 'Next',
-  'setup.skip': 'Skip',
   'setup.save': 'Save',
   'setup.saving': 'Saving…',
   'setup.change': 'Change',
@@ -341,11 +340,13 @@ export const en = {
   'setup.link.paper': 'start from a paper I wrote',
   'setup.link.word': 'import chapters from Word',
   'setup.link.proposal': 'plan with a full proposal',
-  'setup.field.question': 'Your field and university',
   'setup.field.hint':
     'Both are optional. They set the chapter pattern and, later, the formatting rules.',
   'setup.field.label': 'Field',
-  'setup.field.guessed': 'Guessed from your title.',
+  'setup.fieldLine.label': 'Field and university:',
+  'setup.field.guessedShort': '{field} (guessed from your title)',
+  'setup.settingGap':
+    'No paper on {place} yet, so no first sentence is offered: one citing another place would mislead. Find papers on {place}, or write the first sentence yourself.',
   'setup.field.none': 'Not listed or not sure',
   'setup.field.notSet': 'field not set',
   'setup.university.label': 'University',
@@ -356,21 +357,18 @@ export const en = {
   'setup.aim.retry': 'Try again',
   'setup.aim.newTitle': 'Your title becomes',
   'setup.aim.own': 'Or type your own answer',
-  'setup.aim.skip': 'Skip — plan my chapters from the title',
+  'setup.aim.skip': 'Skip the questions',
   'setup.aim.result': 'From your answers',
   'setup.aim.objectives': '{n} objectives',
-  'setup.aim.use': 'Plan my chapters from this',
+  'setup.aim.use': 'Use this aim',
   'setup.aim.fromTitle': 'chapters planned from the title',
   'setup.aim.noPlan': 'Start without a plan',
   'setup.aim.noPlanHint':
     'You can still answer the questions, or start with one chapter and plan it later.',
   'setup.aim.error': 'Your answers could not be saved. Try again, or skip.',
-  'setup.chapters.planningAnswers': 'Planning your chapters from your answers…',
   'setup.chapters.planningTitle': 'Planning your chapters from your title…',
   'setup.chapters.planningDetail':
     'They appear in the chapter list and on the page below as soon as they arrive, in about half a minute.',
-  'setup.chapters.plannedAnswers':
-    '{n} chapters with sections, planned from your answers: in the list on the left, and this chapter’s on the page below.',
   'setup.chapters.plannedTitle':
     '{n} chapters with sections, planned from your title: in the list on the left, and this chapter’s on the page below.',
   'setup.chapters.failed': 'Your chapters could not be planned this time.',
@@ -387,7 +385,7 @@ export const en = {
   'setup.first.suggest': 'Suggest one',
   'setup.first.written': 'written',
   'setup.line.done': 'set up',
-  'setup.line.later': 'set up {n} of 5',
+  'setup.line.later': 'set up {n} of 4',
   'setup.next.title': 'name your thesis',
   'setup.next.field': 'your field',
   'setup.next.aim': 'a few questions',
@@ -404,6 +402,8 @@ export const en = {
     'The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute.',
   'editor.notice.findingSources':
     'No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text.',
+  'editor.notice.settingGap':
+    'No paper on {place} yet, so no first sentence was offered: one citing another place would mislead. Find papers on {place}, or write it yourself.',
   'editor.notice.papersLoading':
     'Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready.',
   'editor.notice.reworded':

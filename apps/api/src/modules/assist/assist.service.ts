@@ -15,6 +15,7 @@ import {
   type Providers,
   postProcessAssist,
   REWORD_INSTRUCTION,
+  settingWithoutPapers,
 } from '@tc/ai';
 import { computeCallCost, type Env } from '@tc/config';
 import { closeToPassages, isOffTopic } from '@tc/retrieval';
@@ -37,7 +38,7 @@ import { CitationsService } from '../chapters/citations.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
 import { AutoSourcesService, enoughPapersOnTopic, sourcesQuery } from './auto-sources.service.js';
 import { ContextService } from './context.service.js';
-import { docToText } from './doc-text.js';
+import { docToText, proseWords } from './doc-text.js';
 
 export type SuggestInput = {
   chapterId: string;
@@ -83,6 +84,12 @@ export type SuggestEvent =
          * says citations will follow, and asks again by itself once a paper is ready.
          */
         papersLoading?: boolean;
+        /**
+         * ADR-0151: the place the thesis's title names that no paper in the library names, when
+         * a chapter's first sentence was asked for and nothing more is on its way. Nothing was
+         * written; the setup card says "No paper on Karnataka yet" with Find papers.
+         */
+        settingGap?: string | null;
         /** ADR-0071: the suggestion reuses the wording of a passage it cites. */
         closeTo?: {
           shortRef: string;
@@ -110,6 +117,9 @@ export const OUTCOMES = [
   'DISCARDED',
 ] as const;
 export type Outcome = (typeof OUTCOMES)[number];
+
+/** ADR-0151: a chapter with fewer words than this outside its headings has no first sentence. */
+const FIRST_SENTENCE_WORDS = 3;
 
 /** B.3 / B.8: one open suggestion per user; a second request answers 409. */
 const IN_FLIGHT_TTL_SECONDS = 60;
@@ -154,7 +164,8 @@ export class AssistService {
         outlineNodeId: true,
         content: true,
         // §2.2: the prompts answer in the document's language.
-        document: { select: { language: true } },
+        // ADR-0151: the title, for the place a first sentence must be about.
+        document: { select: { language: true, title: true } },
       },
     });
     if (!chapter) throw new NotFoundError('That chapter');
@@ -225,6 +236,46 @@ export class AssistService {
           },
         };
         return;
+      }
+      // ADR-0151: a chapter's first sentence, for a thesis whose title names a place no paper in
+      // the library names. Offering it would cite another country for this one (production,
+      // 2026-10-10: South Africa for Karnataka). No model call and the unit goes back: while
+      // papers are still arriving the editor waits for the next one, as for an empty library;
+      // once nothing more is coming the card says which place has no paper yet.
+      if (
+        input.citeMode === undefined &&
+        retrieved.passages.length > 0 &&
+        proseWords(chapter.content) < FIRST_SENTENCE_WORDS
+      ) {
+        const gap = await this.settingGap(chapter.documentId, chapter.document.title);
+        if (gap) {
+          await this.usage.refund(user.id, 'ASSIST');
+          await this.prisma.suggestionEvent.update({
+            where: { id: event.id },
+            data: { outcome: 'CANCELLED', latencyMs: Date.now() - startedAt },
+          });
+          this.logger.log({ suggestionId: event.id, ...gap }, 'SETTING_WITHOUT_PAPERS');
+          yield {
+            event: 'done',
+            data: {
+              suggestionId: event.id,
+              text: '',
+              citations: [],
+              grounded: false,
+              pinned: retrieved.pinned,
+              findingSources: false,
+              papersLoading: gap.loading,
+              settingGap: gap.loading ? null : gap.place,
+              closeTo: null,
+              needsSource: null,
+              usage: null,
+              ttfbMs: Date.now() - startedAt,
+              latencyMs: Date.now() - startedAt,
+              empty: true,
+            },
+          };
+          return;
+        }
       }
       // Fix list A21 (2026-10-04): under a sub-section heading, that section's own note is read
       // after the chapter's, so a suggestion in "2.3 Credit" is about credit.
@@ -572,6 +623,33 @@ export class AssistService {
     } finally {
       await this.redis.del(inFlightKey);
     }
+  }
+
+  /**
+   * ADR-0151: whether a first sentence for this thesis would have to cite another setting. Null
+   * when the title names no place, or a paper that can be cited (it has chunks) names the place
+   * in its title or abstract. Otherwise the place, and whether papers are still arriving (a search
+   * running or papers being read), in which case the editor waits for the next one.
+   */
+  private async settingGap(
+    documentId: string,
+    title: string,
+  ): Promise<{ place: string; loading: boolean } | null> {
+    if (settingWithoutPapers(title, []) === null) return null;
+    const sources = await this.prisma.source.findMany({
+      where: { documentId, chunks: { some: {} } },
+      select: { title: true, cslJson: true },
+    });
+    const papers = sources.map((s) => {
+      const csl = (s.cslJson ?? {}) as { abstract?: unknown };
+      return [s.title ?? '', typeof csl.abstract === 'string' ? csl.abstract : ''].join('. ');
+    });
+    const place = settingWithoutPapers(title, papers);
+    if (!place) return null;
+    const progress = await this.autoSources
+      .progress(documentId)
+      .catch(() => ({ searching: false, reading: 0 }));
+    return { place, loading: progress.searching || progress.reading > 0 };
   }
 
   /** `POST /assist/outcome` — B.3 outcome reporting into `SuggestionEvent` (FR-9.4). */

@@ -184,3 +184,26 @@ export function unmarkedOtherSettings(sentence: string, scopeText: string): stri
   if (others.length === 0 || marksAnotherSetting(sentence)) return [];
   return others;
 }
+
+/**
+ * ADR-0151: the place a thesis's title names that no paper in its library names, or null.
+ *
+ * Seen on production (2026-10-10, the side-by-side study): a thesis on rooftop solar among rural
+ * households in Karnataka, and the first cited sentence the setup card offered cited a South
+ * African scoping review — the only paper with full text the automatic search had kept. A first
+ * sentence is the student's first look at the product, so a thesis whose title names a place gets
+ * one only when some paper's title or abstract names that place, or a place the thesis owns
+ * (`ownPlaces`: a Karnataka thesis owns India, an India thesis owns every Indian state). Null
+ * when the title names no place (nothing can be mismatched) or a paper names one of them. The
+ * place returned is the most specific the title names: a state before its country.
+ */
+export function settingWithoutPapers(title: string, papers: ReadonlyArray<string>): string | null {
+  const named = placesIn(title);
+  if (named.size === 0) return null;
+  const own = ownPlaces(named);
+  for (const paper of papers) {
+    for (const place of placesIn(paper)) if (own.has(place)) return null;
+  }
+  const list = [...named];
+  return list.find((place) => PARENT[place] !== undefined) ?? list[0] ?? null;
+}

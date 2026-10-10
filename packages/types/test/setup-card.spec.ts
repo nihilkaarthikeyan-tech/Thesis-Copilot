@@ -26,7 +26,10 @@ describe('the setup card state (ADR-0145)', () => {
     expect(later.dismissedAt).toBe(now.toISOString());
     expect(later.step).toBe('field');
     expect(applySetupUpdate(later, { dismissed: false }).dismissedAt).toBeNull();
-    expect(setupStepNumber('chapters')).toBe(4);
+    expect(setupStepNumber('chapters')).toBe(3);
+    // ADR-0151: a card saved on the old field row counts as the aim row, the title row's next.
+    expect(setupStepNumber('field')).toBe(2);
+    expect(setupStepNumber('first')).toBe(4);
   });
 
   it('a title names a topic with three real words, never as a placeholder', () => {

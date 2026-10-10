@@ -1,12 +1,18 @@
 'use client';
 
 /**
- * ADR-0145, the setup card's third row: today's start questions (ADR-0091, the evaluated A.6
+ * ADR-0145, the setup card's aim row: today's start questions (ADR-0091, the evaluated A.6
  * proposal conversation) one at a time, each with the answers the AI suggests as buttons, or
- * "Skip — plan my chapters from the title". The same routes as `StartQuestions` and `PathAChat`:
- * `GET/POST /documents/:id/proposal`, then the answers saved as the proposal
- * (`PUT /memory/scope`) and the chapters planned from them (`POST /outline/generate`), or
- * `POST /outline/plan-from-title` on Skip. No new prompt and no new metered action.
+ * Skip. The same routes as `StartQuestions` and `PathAChat`: `GET/POST /documents/:id/proposal`,
+ * then the answers saved as the proposal (`PUT /memory/scope`). No new prompt and no new metered
+ * action.
+ *
+ * ADR-0151: the chapters are planned from the title when the title row is confirmed, so they and
+ * the first sentence never wait for these questions. The answers become the aim and objectives
+ * (and the plan reads them, if its job has not started yet); they no longer plan the chapters a
+ * second time, which cost a second outline run and could replace headings the student had
+ * already written under. Skip asks for the title plan only in case the first request was refused
+ * (a plan already there or on its way answers 409 or "the same plan", and costs nothing).
  *
  * A refusal (an allowance used up) is said inside the card with the limit message (ADR-0122),
  * with "Start without a plan" kept.
@@ -129,7 +135,6 @@ export function SetupAim({
         method: 'PUT',
         body: JSON.stringify(skeleton),
       });
-      await api(`/documents/${documentId}/outline/generate`, { method: 'POST', body: '{}' });
       await onPlanned({ focus, objectives: skeleton.objectives.length, fromTitle: false });
     } catch (e) {
       if (limit.take(e)) setRefused(true);
@@ -147,6 +152,9 @@ export function SetupAim({
       await api(`/documents/${documentId}/outline/plan-from-title`, {
         method: 'POST',
         body: '{}',
+      }).catch((e: unknown) => {
+        // The plan the title row started is there already: nothing more to ask for.
+        if (!(e instanceof ApiError && e.problem.status === 409)) throw e;
       });
       await onPlanned({ focus: null, objectives: 0, fromTitle: true });
     } catch (e) {

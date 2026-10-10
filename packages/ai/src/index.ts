@@ -427,6 +427,7 @@ export {
   sectionScopeSchema,
   sectionScopeUserMessage,
 } from './builder/section-scope.js';
+export { settingWithoutPapers } from './builder/setting.js';
 export {
   buildStyleRequest,
   humanText,

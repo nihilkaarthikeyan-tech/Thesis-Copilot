@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**831** strings are translated; **1** are deliberately
+**830** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -327,11 +327,10 @@ English. Write corrections in the last column.
 |---|---|---|---|
 | `setup.title` | Set up this thesis | इस थीसिस को सेट अप करें | |
 | `setup.titleDone` | Set up | सेट अप हो गया | |
-| `setup.count` | {n} of 5 | 5 में से {n} | |
+| `setup.count` | {n} of 4 | 4 में से {n} | |
 | `setup.finishLater` | Finish later | बाद में पूरा करें | |
 | `setup.continue` | Continue setting up | सेट अप जारी रखें | |
 | `setup.next` | Next | आगे | |
-| `setup.skip` | Skip | छोड़ें | |
 | `setup.save` | Save | सेव करें | |
 | `setup.saving` | Saving… | सेव हो रहा है… | |
 | `setup.change` | Change | बदलें | |
@@ -361,10 +360,11 @@ English. Write corrections in the last column.
 | `setup.link.paper` | start from a paper I wrote | मेरे लिखे paper से शुरू करें | |
 | `setup.link.word` | import chapters from Word | Word से अध्याय import करें | |
 | `setup.link.proposal` | plan with a full proposal | पूरे proposal के साथ योजना बनाएँ | |
-| `setup.field.question` | Your field and university | आपका विषय और विश्वविद्यालय | |
 | `setup.field.hint` | Both are optional. They set the chapter pattern and, later, the formatting rules. | दोनों वैकल्पिक हैं। इनसे अध्यायों का ढाँचा और बाद में formatting के नियम तय होते हैं। | |
 | `setup.field.label` | Field | विषय | |
-| `setup.field.guessed` | Guessed from your title. | आपके शीर्षक से अनुमान लगाया गया। | |
+| `setup.fieldLine.label` | Field and university: | विषय और विश्वविद्यालय: | |
+| `setup.field.guessedShort` | {field} (guessed from your title) | {field} (आपके शीर्षक से अनुमान) | |
+| `setup.settingGap` | No paper on {place} yet, so no first sentence is offered: one citing another place would mislead. Find papers on {place}, or write the first sentence yourself. | {place} पर अभी कोई पेपर नहीं है, इसलिए पहला वाक्य नहीं सुझाया गया: किसी दूसरी जगह का हवाला देने वाला वाक्य भ्रामक होगा। {place} पर पेपर खोजें, या पहला वाक्य खुद लिखें। | |
 | `setup.field.none` | Not listed or not sure | सूची में नहीं है या पक्का नहीं | |
 | `setup.field.notSet` | field not set | विषय तय नहीं | |
 | `setup.university.label` | University | विश्वविद्यालय | |
@@ -375,18 +375,16 @@ English. Write corrections in the last column.
 | `setup.aim.retry` | Try again | फिर से कोशिश करें | |
 | `setup.aim.newTitle` | Your title becomes | आपका शीर्षक होगा | |
 | `setup.aim.own` | Or type your own answer | या अपना जवाब लिखें | |
-| `setup.aim.skip` | Skip — plan my chapters from the title | छोड़ें — शीर्षक से मेरे अध्यायों की योजना बनाएँ | |
+| `setup.aim.skip` | Skip the questions | सवाल छोड़ें | |
 | `setup.aim.result` | From your answers | आपके जवाबों से | |
 | `setup.aim.objectives` | {n} objectives | {n} उद्देश्य | |
-| `setup.aim.use` | Plan my chapters from this | इससे मेरे अध्यायों की योजना बनाएँ | |
+| `setup.aim.use` | Use this aim | यही लक्ष्य रखें | |
 | `setup.aim.fromTitle` | chapters planned from the title | अध्यायों की योजना शीर्षक से बनी | |
 | `setup.aim.noPlan` | Start without a plan | बिना योजना के शुरू करें | |
 | `setup.aim.noPlanHint` | You can still answer the questions, or start with one chapter and plan it later. | आप अब भी सवालों के जवाब दे सकते हैं, या एक अध्याय से शुरू करके बाद में योजना बना सकते हैं। | |
 | `setup.aim.error` | Your answers could not be saved. Try again, or skip. | आपके जवाब सेव नहीं हो सके। फिर से कोशिश करें, या छोड़ दें। | |
-| `setup.chapters.planningAnswers` | Planning your chapters from your answers… | आपके जवाबों से अध्यायों की योजना बन रही है… | |
 | `setup.chapters.planningTitle` | Planning your chapters from your title… | आपके शीर्षक से अध्यायों की योजना बन रही है… | |
 | `setup.chapters.planningDetail` | They appear in the chapter list and on the page below as soon as they arrive, in about half a minute. | लगभग आधे मिनट में ये अध्याय-सूची में और नीचे पन्ने पर दिखने लगेंगे। | |
-| `setup.chapters.plannedAnswers` | {n} chapters with sections, planned from your answers: in the list on the left, and this chapter’s on the page below. | आपके जवाबों से {n} अध्याय, उनके खंडों के साथ: बाईं सूची में, और इस अध्याय के खंड नीचे पन्ने पर। | |
 | `setup.chapters.plannedTitle` | {n} chapters with sections, planned from your title: in the list on the left, and this chapter’s on the page below. | आपके शीर्षक से {n} अध्याय, उनके खंडों के साथ: बाईं सूची में, और इस अध्याय के खंड नीचे पन्ने पर। | |
 | `setup.chapters.failed` | Your chapters could not be planned this time. | इस बार आपके अध्यायों की योजना नहीं बन सकी। | |
 | `setup.chapters.retry` | Try again | फिर से कोशिश करें | |
@@ -402,7 +400,7 @@ English. Write corrections in the last column.
 | `setup.first.suggest` | Suggest one | एक सुझाएँ | |
 | `setup.first.written` | written | लिखा गया | |
 | `setup.line.done` | set up | सेट अप हो गया | |
-| `setup.line.later` | set up {n} of 5 | सेट अप 5 में से {n} | |
+| `setup.line.later` | set up {n} of 4 | सेट अप 4 में से {n} | |
 | `setup.next.title` | name your thesis | थीसिस का नाम दें | |
 | `setup.next.field` | your field | आपका विषय | |
 | `setup.next.aim` | a few questions | कुछ सवाल | |
@@ -420,6 +418,7 @@ English. Write corrections in the last column.
 | `editor.snapshotFailed` | Snapshot failed | स्नैपशॉट सेव नहीं हुआ | |
 | `editor.notice.serviceDown` | The suggestion service did not answer twice in a row. Your writing is saved; try again in a minute. | सुझाव सेवा ने लगातार दो बार जवाब नहीं दिया। आपका लिखा सेव है; एक मिनट बाद फिर कोशिश करें। | |
 | `editor.notice.findingSources` | No source in your library covers this yet{gap}. We are finding papers on it and adding them to your library now — ask again in a minute for cited text. | आपकी लाइब्रेरी का कोई स्रोत अभी इसे कवर नहीं करता{gap}। हम इस पर पेपर खोजकर आपकी लाइब्रेरी में जोड़ रहे हैं — साइटेशन वाले टेक्स्ट के लिए एक मिनट बाद फिर पूछें। | |
+| `editor.notice.settingGap` | No paper on {place} yet, so no first sentence was offered: one citing another place would mislead. Find papers on {place}, or write it yourself. | {place} पर अभी कोई पेपर नहीं है, इसलिए पहला वाक्य नहीं सुझाया गया: किसी दूसरी जगह का हवाला देने वाला वाक्य भ्रामक होगा। {place} पर पेपर खोजें, या उसे खुद लिखें। | |
 | `editor.notice.papersLoading` | Your papers are still being read, so there is nothing to cite yet. Your first cited suggestion will appear here by itself as soon as one is ready. | आपके पेपर अभी पढ़े जा रहे हैं, इसलिए अभी साइट करने को कुछ नहीं है। जैसे ही एक तैयार होगा, आपका पहला साइटेशन वाला सुझाव यहीं अपने आप आ जाएगा। | |
 | `editor.notice.reworded` | The first answer followed a paper’s wording, so it was asked for again in its own words. | पहला जवाब एक paper के शब्दों पर चल रहा था, इसलिए उसे अपने शब्दों में दोबारा माँगा गया। | |
 | `editor.notice.closeTo` | This suggestion follows {ref}’s wording closely (“{words}…”). Put it in your own words, or quote it, before keeping it. | यह सुझाव {ref} के शब्दों के बहुत करीब है (“{words}…”)। रखने से पहले इसे अपने शब्दों में लिखें, या उद्धरण चिह्न लगाएँ। | |

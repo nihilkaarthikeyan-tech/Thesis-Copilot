@@ -1,5 +1,9 @@
 # ADR-0145: Set up a new thesis inside the editor
 
+> **Changed by ADR-0151 (2026-10-10):** four rows (the field and university are a line of the
+> title row); the plan and the opener start at the title's Next instead of after the questions;
+> the answers make the aim and objectives, not a second plan.
+
 **Date:** 2026-10-09 · **Decided by:** the owner delegated the design calls (2026-10-09) after seeing
 `docs/design/setup-in-editor/`; the lead agent took the four open ones listed below.
 

@@ -3,18 +3,23 @@
 /**
  * ADR-0145: "Set up this thesis", inside the editor, as Jenni sets a new document up in its own
  * editor. New opens the first chapter at once; this card sits at the top of the empty chapter,
- * between the status line and the toolbar, and takes the student through five rows:
+ * between the status line and the toolbar, and takes the student through four rows (ADR-0151
+ * folded the field row into the first, and starts the plan and the first sentence at its Next):
  *
- * 1. **Title** — the working title, the citation style chips and a folded Sources line whose
- *    Change opens today's `SourcePrefsFields`; links to the other starts (a paper, Word, a full
- *    proposal). Next names the thesis, which starts the paper search (ADR-0070).
- * 2. **Field** — field (guessed from the title in code, no model) and university; optional.
- * 3. **Aim** — today's start questions (ADR-0091), one at a time (`SetupAim`).
- * 4. **Chapters** — the plan appears in place: the chapter list fills and Chapter 1's sections
+ * 1. **Title** — the working title, the citation style chips, a folded Sources line whose Change
+ *    opens today's `SourcePrefsFields`, and a folded Field and university line (the field guessed
+ *    from the title in code, no model; both optional); links to the other starts (a paper, Word,
+ *    a full proposal). Next names the thesis, which starts the paper search (ADR-0070), the
+ *    chapter plan from the title (ADR-0072) and the cited opener, all at once.
+ * 2. **Aim** — today's start questions (ADR-0091), one at a time (`SetupAim`), while the plan and
+ *    the first sentence are on their way. Their answers become the aim and objectives; nothing
+ *    waits for them.
+ * 3. **Chapters** — the plan appears in place: the chapter list fills and Chapter 1's sections
  *    become headings on the page (the section guide lays them). Keep these chapters · Standard
  *    chapters · No headings · Edit the outline.
- * 5. **First line** — the cited opener (ADR-0078) waits under the first heading; accepting it or
- *    writing a sentence finishes the card.
+ * 4. **First line** — the cited opener (ADR-0078) waits under the first heading; accepting it or
+ *    writing a sentence finishes the card. If no paper names the place the title names, the card
+ *    says so with Find papers instead of offering a sentence set somewhere else.
  *
  * Each finished row folds to one line with Edit or Change. Finish later folds the whole card into
  * the status line, whose Show (and ⋯ → First steps) brings it back. The state is
@@ -30,6 +35,7 @@ import {
   type SetupStep,
   type SetupUpdate,
   type SourcePrefs,
+  setupRow,
   setupStepNumber,
   UNTITLED_THESIS,
 } from '@tc/types';
@@ -174,6 +180,8 @@ export function SetupCard({
   plan,
   autoSuggest,
   placement,
+  settingGap = null,
+  onFindPapers,
 }: {
   doc: SetupDoc;
   chapterId: string;
@@ -190,11 +198,15 @@ export function SetupCard({
   autoSuggest: boolean;
   /** Above the toolbar while it is being set up; inside the status line's Show once folded. */
   placement: 'top' | 'line';
+  /** ADR-0151: the place the title names that no paper names; the first line says so. */
+  settingGap?: string | null;
+  /** ADR-0151: Find papers, from the first line's "no paper on … yet". */
+  onFindPapers?: () => void;
 }) {
   const { t } = useT();
   const router = useRouter();
   /** A finished row reopened with Edit or Change; null shows the card's own open row. */
-  const [reopened, setReopened] = useState<'title' | 'field' | null>(null);
+  const [reopened, setReopened] = useState<'title' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const limit = useLimit();
@@ -209,20 +221,26 @@ export function SetupCard({
   const [prefs, setPrefs] = useState<SourcePrefs>(() => readSourcePrefs(doc.meta));
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefsValid, setPrefsValid] = useState(true);
+  /** ADR-0151: the folded Field and university line, opened with its Change. */
+  const [fieldOpen, setFieldOpen] = useState(false);
   const guessed = suggestDiscipline(null, doc.title);
+  /** The guess for the title as typed now, for the "(guessed)" mark on the folded line. */
+  const guessedNow = suggestDiscipline(null, title);
   const [field, setField] = useState<string>(doc.field ?? guessed?.displayName ?? '');
+  /** The student chose a field themselves: the guess stops following the title. */
+  const [fieldChosen, setFieldChosen] = useState(false);
   const [universityId, setUniversityId] = useState<string>(
     typeof meta.universityId === 'string' ? meta.universityId : '',
   );
-  // The guess follows the title until the field row has been answered.
+  // The guess follows the title until the student chooses a field or the title row is done.
   useEffect(() => {
-    if (card.step === 'title' && !doc.field) {
+    if (card.step === 'title' && !doc.field && !fieldChosen) {
       setField(suggestDiscipline(null, title)?.displayName ?? '');
     }
-  }, [title, card.step, doc.field]);
+  }, [title, card.step, doc.field, fieldChosen]);
 
   /** The one open row: one reopened with Edit or Change, else the card's own, none when done. */
-  const open: SetupStep | null = reopened ?? (card.done ? null : card.step);
+  const open: SetupStep | null = reopened ?? (card.done ? null : setupRow(card.step));
 
   async function save(update: SetupUpdate): Promise<SetupView | null> {
     setBusy(true);
@@ -248,15 +266,40 @@ export function SetupCard({
     event?.preventDefault();
     if (!titleReady || !prefsValid) return;
     await saveStartingStyle(doc.id, style);
+    const first = !reopened && card.step === 'title';
     const view = await save({
       title: title.trim(),
       sourcePrefs: prefs,
-      ...(reopened ? {} : { step: 'field' as const }),
+      field: field || null,
+      universityId: universityId || null,
+      ...(reopened ? {} : { step: 'aim' as const }),
     });
     if (!view) return;
     setReopened(null);
     setPrefsOpen(false);
+    setFieldOpen(false);
     onDocChanged();
+    if (!first) return;
+    // ADR-0151: the plan and the first sentence start now, not after the questions.
+    void startPlan();
+    offerFirstLine();
+  }
+
+  /**
+   * ADR-0151: the chapters planned from the title the moment it is set (the same A.9 job as
+   * "Skip — plan my chapters from the title", ADR-0072). A plan already there or on its way is
+   * the same plan (409, or the server's "same plan"); a refusal shows the limit in the card, and
+   * the chapters row offers Try again, Standard chapters and No headings.
+   */
+  async function startPlan() {
+    limit.clear();
+    try {
+      await api(`/documents/${doc.id}/outline/plan-from-title`, { method: 'POST', body: '{}' });
+      onPlanStarted();
+    } catch (e) {
+      if (e instanceof ApiError && e.problem.status === 409) return;
+      limit.take(e);
+    }
   }
 
   async function toProposal() {
@@ -265,18 +308,7 @@ export function SetupCard({
     router.push(`/app/d/${doc.id}/proposal`);
   }
 
-  // ---- Row 2: field and university ---------------------------------------------------------
-  async function confirmField(skip: boolean) {
-    const view = await save({
-      ...(skip ? {} : { field: field || null, universityId: universityId || null }),
-      ...(reopened ? {} : { step: 'aim' as const }),
-    });
-    if (!view) return;
-    setReopened(null);
-    if (!skip) onDocChanged();
-  }
-
-  // ---- Row 3 → 4: the chapters are on their way --------------------------------------------
+  // ---- Row 2 → 3: the answers are in, the chapters on their way ------------------------------
   const autoSuggestRef = useRef(autoSuggest);
   autoSuggestRef.current = autoSuggest;
   /**
@@ -287,6 +319,22 @@ export function SetupCard({
   function offerFirstLine() {
     if (!editor || editor.isDestroyed) return;
     if (bodyWords(editor.state.doc) >= FIRST_LINE_WORDS) return;
+    // ADR-0151: the questions are open beside it now. A student typing an answer keeps the
+    // keyboard; the suggestion is asked for without taking focus from the field.
+    const typing = () => {
+      const active = document.activeElement;
+      return (
+        active instanceof HTMLElement &&
+        /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) &&
+        !editor.view.dom.contains(active)
+      );
+    };
+    // A suggestion already on its way or on screen stays where it is: moving the cursor would
+    // end it. The editor only takes the keyboard back, so Tab and Esc reach the suggestion.
+    if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') {
+      if (!editor.view.hasFocus() && !typing()) editor.commands.focus();
+      return;
+    }
     const at = firstLinePosition(editor.state.doc);
     if (at === null) return;
     editor.chain().setTextSelection(at).focus().scrollIntoView().run();
@@ -294,12 +342,14 @@ export function SetupCard({
       if (editor.isDestroyed) return;
       if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return;
       if (bodyWords(editor.state.doc) >= FIRST_LINE_WORDS) return;
-      editor.chain().focus().requestSuggestion().run();
+      if (typing()) editor.commands.requestSuggestion();
+      else editor.chain().focus().requestSuggestion().run();
     };
     // With automatic suggestions the opener asks on its own; this is the fallback if it did not.
     window.setTimeout(ask, autoSuggestRef.current ? 2_500 : 300);
   }
 
+  /** The questions are answered or skipped; the plan started at the title row's Next. */
   async function planned(aim: NonNullable<SetupState['aim']>) {
     const view = await save({ aim, step: 'chapters' });
     if (!view) return;
@@ -394,13 +444,16 @@ export function SetupCard({
 
   // ---- Drawing -------------------------------------------------------------------------------
   const sources = sourcesLine(prefs, styleLabel(style || doc.citationStyle), t);
+  /** "Economics (guessed) · university not set": the folded Field and university line. */
   const fieldValue = [
-    doc.field ?? (card.step === 'title' ? null : t('setup.field.notSet')),
-    UNIVERSITY_PROFILES.find((u) => u.id === meta.universityId)?.displayName ??
+    field
+      ? !doc.field && guessedNow && field === guessedNow.displayName
+        ? t('setup.field.guessedShort', { field })
+        : field
+      : t('setup.field.notSet'),
+    UNIVERSITY_PROFILES.find((u) => u.id === universityId)?.displayName ??
       t('setup.university.notSet'),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].join(' · ');
   const aimValue = card.aim
     ? card.aim.fromTitle
       ? t('setup.aim.fromTitle')
@@ -417,9 +470,12 @@ export function SetupCard({
   const index = (step: SetupStep) => setupStepNumber(step);
   const state = (step: SetupStep): 'done' | 'open' | 'pending' =>
     step === open ? 'open' : card.done || index(step) < index(card.step) ? 'done' : 'pending';
-  const edit = (row: 'title' | 'field', words: string, testId: string) => (
+  const edit = (row: 'title', words: string, testId: string, openField = false) => (
     <LinkButton
-      onClick={() => setReopened(row)}
+      onClick={() => {
+        setReopened(row);
+        setFieldOpen(openField);
+      }}
       disabled={busy || reopened !== null}
       testId={testId}
     >
@@ -427,7 +483,6 @@ export function SetupCard({
     </LinkButton>
   );
 
-  const planFrom = card.aim?.fromTitle === false ? 'answers' : 'title';
   /** Long steps scroll inside the card on a short screen, so the first heading stays in view. */
   const body =
     'min-w-0 [@media(max-height:820px)]:max-h-[40vh] [@media(max-height:820px)]:overflow-y-auto [@media(max-height:820px)]:pr-1';
@@ -517,6 +572,71 @@ export function SetupCard({
                     />
                   </div>
                 ) : null}
+                {/* ADR-0151: the field and university, once a row of their own, folded here. */}
+                <p
+                  className="mt-1.5 text-[12.5px] text-muted [overflow-wrap:anywhere]"
+                  data-testid="setup-field-line"
+                >
+                  {t('setup.fieldLine.label')} {fieldValue}{' '}
+                  <LinkButton onClick={() => setFieldOpen((v) => !v)} testId="setup-field-change">
+                    {fieldOpen ? t('setup.sources.done') : t('setup.change')}
+                  </LinkButton>
+                </p>
+                {fieldOpen ? (
+                  <div className="mt-1 grid gap-2 rounded-md border border-line bg-surface px-3 py-2 sm:grid-cols-2">
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="setup-field"
+                        className="block text-[13px] font-semibold text-ink"
+                      >
+                        {t('setup.field.label')}
+                      </label>
+                      <select
+                        id="setup-field"
+                        value={field}
+                        onChange={(e) => {
+                          setField(e.target.value);
+                          setFieldChosen(true);
+                        }}
+                        data-testid="setup-field"
+                        className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
+                      >
+                        <option value="">{t('setup.field.none')}</option>
+                        {DISCIPLINE_PROFILES.map((d) => (
+                          <option key={d.id} value={d.displayName}>
+                            {d.displayName}
+                          </option>
+                        ))}
+                        {field && !DISCIPLINE_PROFILES.some((d) => d.displayName === field) ? (
+                          <option value={field}>{field}</option>
+                        ) : null}
+                      </select>
+                    </div>
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="setup-university"
+                        className="block text-[13px] font-semibold text-ink"
+                      >
+                        {t('setup.university.label')}
+                      </label>
+                      <select
+                        id="setup-university"
+                        value={universityId}
+                        onChange={(e) => setUniversityId(e.target.value)}
+                        data-testid="setup-university"
+                        className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
+                      >
+                        <option value="">{t('setup.field.none')}</option>
+                        {UNIVERSITY_PROFILES.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-[12px] text-muted sm:col-span-2">{t('setup.field.hint')}</p>
+                  </div>
+                ) : null}
                 {reopened ? null : (
                   <p className="mt-2 text-[12.5px] text-muted">
                     {t('setup.or')}{' '}
@@ -573,98 +693,18 @@ export function SetupCard({
               value={sources}
               action={edit('title', t('setup.change'), 'setup-change-sources')}
             />
+            <Row
+              id="field"
+              state={state('title')}
+              label={t('setup.row.field')}
+              value={fieldValue}
+              action={edit('title', t('setup.change'), 'setup-change-field', true)}
+            />
           </>
         )}
 
-        {/* Row 2: field and university. */}
+        {/* Row 2: the start questions, while the plan and the first sentence are on their way. */}
         {index(card.step) >= 2 || card.done ? (
-          state('field') === 'open' ? (
-            <Row id="field" state="open" label={t('setup.row.field')}>
-              <div className="min-w-0">
-                <div className={body}>
-                  <p className="text-[14px] font-semibold text-ink">{t('setup.field.question')}</p>
-                  <p className="mt-0.5 text-[12.5px] text-muted">{t('setup.field.hint')}</p>
-                  <label
-                    htmlFor="setup-field"
-                    className="mt-2.5 block text-[13px] font-semibold text-ink"
-                  >
-                    {t('setup.field.label')}
-                  </label>
-                  <select
-                    id="setup-field"
-                    value={field}
-                    onChange={(e) => setField(e.target.value)}
-                    data-testid="setup-field"
-                    className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
-                  >
-                    <option value="">{t('setup.field.none')}</option>
-                    {DISCIPLINE_PROFILES.map((d) => (
-                      <option key={d.id} value={d.displayName}>
-                        {d.displayName}
-                      </option>
-                    ))}
-                    {field && !DISCIPLINE_PROFILES.some((d) => d.displayName === field) ? (
-                      <option value={field}>{field}</option>
-                    ) : null}
-                  </select>
-                  {guessed && field === guessed.displayName && !doc.field ? (
-                    <p className="mt-1 text-[12px] text-muted">{t('setup.field.guessed')}</p>
-                  ) : null}
-                  <label
-                    htmlFor="setup-university"
-                    className="mt-2.5 block text-[13px] font-semibold text-ink"
-                  >
-                    {t('setup.university.label')}
-                  </label>
-                  <select
-                    id="setup-university"
-                    value={universityId}
-                    onChange={(e) => setUniversityId(e.target.value)}
-                    data-testid="setup-university"
-                    className="mt-1 h-9 w-full min-w-0 rounded-md border border-line-strong bg-surface px-2 text-[13.5px] text-ink"
-                  >
-                    <option value="">{t('setup.field.none')}</option>
-                    {UNIVERSITY_PROFILES.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mt-3 flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => (reopened ? setReopened(null) : void confirmField(true))}
-                    data-testid="setup-field-skip"
-                  >
-                    {reopened ? t('common.cancel') : t('setup.skip')}
-                  </Button>
-                  <Button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void confirmField(false)}
-                    data-testid="setup-field-next"
-                  >
-                    {busy ? t('setup.saving') : reopened ? t('setup.save') : t('setup.next')}
-                  </Button>
-                </div>
-              </div>
-            </Row>
-          ) : (
-            <Row
-              id="field"
-              state={state('field')}
-              label={t('setup.row.field')}
-              value={fieldValue}
-              action={edit('field', t('setup.change'), 'setup-change-field')}
-            />
-          )
-        ) : null}
-
-        {/* Row 3: the start questions. */}
-        {index(card.step) >= 3 || card.done ? (
           state('aim') === 'open' ? (
             <Row id="aim" state="open" label={t('setup.row.aim')}>
               <div className="min-w-0">
@@ -695,17 +735,15 @@ export function SetupCard({
           )
         ) : null}
 
-        {/* Row 4: the chapters, filling in place. */}
-        {index(card.step) >= 4 || card.done ? (
+        {/* Row 3: the chapters, filling in place. */}
+        {index(card.step) >= 3 || card.done ? (
           state('chapters') === 'open' ? (
             <Row id="chapters" state="open" label={t('setup.row.chapters')}>
               <div className="min-w-0" data-plan={plan ?? 'unknown'}>
                 {plan === 'planning' ? (
                   <div role="status" aria-busy="true" data-testid="setup-planning">
                     <p className="text-[14px] font-semibold text-ink">
-                      {planFrom === 'answers'
-                        ? t('setup.chapters.planningAnswers')
-                        : t('setup.chapters.planningTitle')}
+                      {t('setup.chapters.planningTitle')}
                     </p>
                     <p className="mt-0.5 text-[12.5px] text-muted">
                       {t('setup.chapters.planningDetail')}
@@ -722,9 +760,7 @@ export function SetupCard({
                 ) : (
                   <p className="text-[13.5px] text-ink" data-testid="setup-planned">
                     <span className="font-semibold">{t('setup.row.chapters')}</span>{' '}
-                    {planFrom === 'answers'
-                      ? t('setup.chapters.plannedAnswers', { n: doc.chapters.length })
-                      : t('setup.chapters.plannedTitle', { n: doc.chapters.length })}
+                    {t('setup.chapters.plannedTitle', { n: doc.chapters.length })}
                   </p>
                 )}
                 {plan === 'planning' ? null : (
@@ -797,7 +833,11 @@ export function SetupCard({
           )
         ) : null}
 
-        {/* Row 5: the first line, shown (waiting) from row 4 on. */}
+        {/*
+          Row 4: the first line, from its own step on, like every other row. ADR-0151: the
+          sentence itself is on the page from the title's Next, so a waiting line here only
+          pushed the chapter's heading off a 360 px phone at the chapters row.
+        */}
         {index(card.step) >= 4 || card.done ? (
           state('first') === 'open' ? (
             <Row id="first" state="open" label={t('setup.row.first')}>
@@ -827,6 +867,29 @@ export function SetupCard({
           )
         ) : null}
       </div>
+
+      {settingGap && !card.done ? (
+        // ADR-0151: no paper names the place the title names, so no first sentence was offered.
+        <div
+          className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line px-4 py-2.5"
+          data-testid="setup-setting-gap"
+          role="status"
+        >
+          <p className="min-w-0 flex-1 text-[13px] text-ink [overflow-wrap:anywhere]">
+            {t('setup.settingGap', { place: settingGap })}
+          </p>
+          {onFindPapers ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onFindPapers}
+              data-testid="setup-setting-gap-find"
+            >
+              {t('common.findPapers')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {error || limit.value ? (
         <div className="px-4 pb-3">

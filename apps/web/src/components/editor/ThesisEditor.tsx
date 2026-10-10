@@ -503,8 +503,17 @@ function ChapterEditor({
   const [setup, setSetup] = useState<SetupState | null>(() => readSetupCard(doc.meta));
   const setupWaiting = setup !== null && !setup.done;
   const setupOnTop = setupWaiting && setup?.dismissedAt === null;
-  const holdOpener =
-    setupOnTop && (setup?.step === 'title' || setup?.step === 'field' || setup?.step === 'aim');
+  // ADR-0151: held only until the thesis has a title. The questions are optional, so the first
+  // sentence no longer waits for them (it waited for the aim row under ADR-0145).
+  const holdOpener = setupOnTop && (setup?.step === 'title' || setup?.step === 'field');
+  /**
+   * ADR-0151: the place the title names that no paper in the library names, from the last
+   * first-sentence request; the setup card says so with Find papers. Read through a ref by the
+   * suggestion callbacks, which are built once.
+   */
+  const [settingGap, setSettingGap] = useState<string | null>(null);
+  const setupOnTopRef = useRef(setupOnTop);
+  setupOnTopRef.current = setupOnTop;
   const [allKeys, setAllKeys] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
@@ -706,6 +715,18 @@ function ChapterEditor({
           onIneligible: (reason) => setNotice(reason),
           onDone: (info) => {
             retriedRef.current = false;
+            setSettingGap(info.settingGap);
+            // ADR-0151: no paper on the thesis's place, so no first sentence was offered. The
+            // setup card says so when it is on screen; otherwise the notice does, with Find papers.
+            if (info.settingGap) {
+              if (!setupOnTopRef.current) {
+                setNotice({
+                  text: tNow('editor.notice.settingGap', { place: info.settingGap }),
+                  action: 'findPapers',
+                });
+              }
+              return;
+            }
             // ADR-0037: nothing in the library covers this, and a search has started. Said
             // first, because it is what will actually change the next suggestion.
             // A.1 (2026-09-30): with no source for what comes next, the model writes nothing and
@@ -937,6 +958,8 @@ function ChapterEditor({
         plan={planState}
         autoSuggest={autoSuggest}
         placement={placement}
+        settingGap={settingGap}
+        onFindPapers={() => findPapersFor(doc.title)}
       />
     ) : null;
   // R28 (ADR-0119): the contents block's words in the interface language, read live.
