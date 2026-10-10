@@ -103,6 +103,12 @@ function placeCursorInSection(editor: Editor, title: string): void {
     .run();
 }
 
+/**
+ * Transaction meta set when the setup card replaces the chapter wholesale; a section layout still
+ * waiting for that chapter drops itself (ADR-0145 addendum, 2026-10-10).
+ */
+export const CHAPTER_REPLACED_META = 'tcChapterReplaced';
+
 /** ADR-0137: the plan's state, for the editor's one-line status above the text. */
 export type PlanState = 'planning' | 'planned' | 'notPlanned' | null;
 
@@ -293,8 +299,14 @@ export function SectionGuide({
       return true;
     };
     if (lay()) return;
-    const retry = () => {
-      if (lay()) editor.off('transaction', retry);
+    // A layout waiting for a suggestion to finish belongs to the chapter it was planned for. When
+    // the setup card replaces the chapter (Standard chapters / No headings), that plan is gone,
+    // and laying it out on the next transaction put the old plan's headings into the new chapter
+    // (seen on real models only, where the plan lands while the opener is still showing).
+    const retry = ({ transaction }: { transaction: { getMeta: (key: string) => unknown } }) => {
+      if (transaction.getMeta(CHAPTER_REPLACED_META) === true || lay()) {
+        editor.off('transaction', retry);
+      }
     };
     editor.on('transaction', retry);
     return () => {
