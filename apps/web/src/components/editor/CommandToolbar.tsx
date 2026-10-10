@@ -420,7 +420,9 @@ export function CommandToolbar({
   useEffect(() => {
     if (!editor || !open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // Not gated on `defaultPrevented`: ProseMirror's keymap marks every Escape handled before
+      // this listener runs (seen in the browser), so the gate made the listener dead code.
+      if (e.key !== 'Escape') return;
       // A suggestion on screen takes Escape first (the ghost text dismisses on it).
       if ((getGhostState(editor)?.status ?? 'idle') !== 'idle') return;
       closeRef.current();

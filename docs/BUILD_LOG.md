@@ -6407,3 +6407,22 @@ was committed before the runs (ADR-0147 §4). ₹17.28 spent, no refusal, no fai
 
 Lesson for the next round: a negative rule that names the word does not stop the mini writing
 it; say what to write instead. The citation-per-sentence rule is the part that worked.
+
+## Side-by-side editor fixes, ADR-0150 (2026-10-10)
+
+Eight faults from `docs/research/SIDE-BY-SIDE-2026-10-10.md`, fixed and proved on a mock stack
+(API :3041, web :3040, Redis db 8) with `apps/web/e2e/_measure/adr-0150.spec.ts`:
+suggestion bar anchored under its text (no overlap, measured), Refine closes the evidence card and
+a refined suggestion opens without one, the refine menu stays inside the window, the ghost label is
+the CSL label ("(Jumper et al., 2021)" in grey and on the kept node alike), the export preview
+prints the citation, the edit panel closes on Escape and on Discard, a chapter with headings opens
+with the caret under the first section and Ctrl+Z after typing leaves every heading.
+`placeCitations()` (citation inside the full stop, one paper once) runs after
+`academicPunctuation()`; the two were a merge conflict in `postprocess.ts` and now compose.
+Layout audit at 360/430/768/1024/1440: 150 screens, 0 faults.
+
+A real fault found on the way: the edit panel's Escape listener on the editor was gated on
+`defaultPrevented`, and ProseMirror marks every Escape handled before a DOM listener runs, so the
+listener never fired. Only the browser showed it.
+Not proved in the browser: the undo after a real plan's headings land (the mock plan has none).
+Trial caps (finding 9) are in PENDING; no cap changed.

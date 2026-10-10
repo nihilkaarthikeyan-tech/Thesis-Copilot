@@ -31,6 +31,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       'Suggestions, drafts, chapter builds, edit actions, chat answers and revisions no longer come with dashes ("—") as punctuation: an aside is set off with commas or brackets, a list follows a colon, two clauses meet at a semicolon. Only the punctuation changes; the words, the figures and the citations stay exactly where they were.',
       'Your own dashes are yours: an edit or a tone rewrite of text you wrote with dashes keeps them, and proofreading never suggests one.',
       'Number ranges (2015–2020), hyphenated words, minus signs, quotations, equations, code and tables are left as they are.',
+      'The suggestion bar sits under the suggestion instead of over your paragraph; Refine and the evidence card no longer open on top of each other; Escape or Discard closes the edit menu; a suggested citation shows in your citation style from the start and sits before the full stop; the export preview shows every citation; the library header counts agree; and the first undo no longer removes your chapter’s section headings.',
     ],
   },
   {

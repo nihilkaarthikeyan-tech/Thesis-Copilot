@@ -281,7 +281,10 @@ export function SectionGuide({
       const next = editor.state.doc.maybeChild(index + 1);
       if (next?.type.name !== 'paragraph') return;
       const at = sel.$from.after(1) + 1;
-      editor.chain().setTextSelection(at + next.content.size).run();
+      editor
+        .chain()
+        .setTextSelection(at + next.content.size)
+        .run();
     };
     const dom = editor.view.dom;
     dom.addEventListener('mouseup', onUp);

@@ -545,7 +545,9 @@ export class CitationsService {
         locator: node.locator ?? null,
       })),
     );
-    const renderWith = (citations: Array<{ key: string; sourceId: string; locator: string | null }>) =>
+    const renderWith = (
+      citations: Array<{ key: string; sourceId: string; locator: string | null }>,
+    ) =>
       renderCitations({
         style: document.citationStyle,
         locale: this.localeOf(document),

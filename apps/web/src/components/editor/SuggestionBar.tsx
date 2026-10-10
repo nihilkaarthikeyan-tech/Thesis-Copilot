@@ -214,7 +214,12 @@ export function SuggestionBar({
    * text, or upward because the window ends.
    */
   const barRef = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<{ top: number; left: number; popDown: boolean } | null>(null);
+  const [place, setPlace] = useState<{
+    top: number;
+    left: number;
+    popDown: boolean;
+    room: number;
+  } | null>(null);
   useLayoutEffect(() => {
     if (!editor || status === 'idle') {
       setPlace(null);
@@ -262,11 +267,20 @@ export function SuggestionBar({
         setPlace(null);
         return;
       }
-      const popDown = top + h + 360 < vh;
+      // Downward when there is more room below the bar than above it; either way the popover is
+      // held to the room it has (`room`) and scrolls inside, so it never runs off the window.
+      const below = vh - (top + h) - 2 * GAP;
+      const above = top - 2 * GAP;
+      const popDown = below >= above;
+      const room = Math.max(160, Math.floor(popDown ? below : above));
       setPlace((current) =>
-        current && current.top === top && current.left === left && current.popDown === popDown
+        current &&
+        current.top === top &&
+        current.left === left &&
+        current.popDown === popDown &&
+        current.room === room
           ? current
-          : { top, left, popDown },
+          : { top, left, popDown, room },
       );
     };
     measure();
@@ -366,7 +380,8 @@ export function SuggestionBar({
     'rounded-md border border-line px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-sunk disabled:opacity-40';
 
   // A popover opens away from the text: downward under an anchored bar with room, else upward.
-  const pop = place?.popDown ? 'top-full mt-2' : 'bottom-full mb-2';
+  const pop = `${place?.popDown ? 'top-full mt-2' : 'bottom-full mb-2'} overflow-y-auto`;
+  const popStyle = { maxHeight: place?.room ?? 'calc(100vh - 8rem)' };
 
   return (
     <div
@@ -496,6 +511,7 @@ export function SuggestionBar({
         {evidence ? (
           <div
             data-testid="evidence-card"
+            style={popStyle}
             className={`absolute left-0 ${pop} w-[min(32rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-3 text-[13px] shadow-lg`}
           >
             {evidence.loading ? (
@@ -569,6 +585,7 @@ export function SuggestionBar({
           <div
             role="menu"
             data-testid="refine-menu"
+            style={popStyle}
             className={`absolute left-0 ${pop} w-64 rounded-md border border-line bg-surface p-2 shadow-lg`}
           >
             {REFINE_PRESETS.map((preset, i) => [
