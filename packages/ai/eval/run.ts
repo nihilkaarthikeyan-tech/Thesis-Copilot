@@ -1122,6 +1122,51 @@ async function main(): Promise<void> {
               ? openerCases(name, true)
               : casesFor(name)
   ).filter((c) => !only || c.id.includes(only));
+  // ADR-0147 round 5: --remeasure <results file> re-runs production's post-processing on a stored
+  // run's raw outputs and measures them again with the current `copying.ts`, so a new measure
+  // (`run6Figures`) can be read on an old run. No model call. Pass the run's own --set.
+  const remeasure = arg('--remeasure');
+  if (remeasure) {
+    const stored = JSON.parse(readFileSync(join(here, 'results', remeasure), 'utf8')) as {
+      rows: Array<{ case: string; aRaw?: string; bRaw?: string }>;
+    };
+    const byId = new Map(cases.map((c) => [c.id, c]));
+    const again = { a: [] as Measures[], b: [] as Measures[] };
+    for (const row of stored.rows) {
+      const c = byId.get(row.case);
+      if (!c) throw new Error(`--remeasure: no case ${row.case} in this set`);
+      for (const k of ['a', 'b'] as const) {
+        const raw = k === 'a' ? row.aRaw : row.bRaw;
+        if (!raw || raw.startsWith('FAILED')) continue;
+        const text =
+          c.kind === 'assist'
+            ? postProcessAssist({
+                output: raw,
+                passageIds: c.passages.map((p) => p.id),
+                before: c.context,
+                existingText: c.context,
+              }).text
+            : postProcessDraft(raw, c.passages, 400, '').result.markdown;
+        again[k].push(measure(text, c.passages));
+      }
+    }
+    const runs = (k: 'a' | 'b') =>
+      again[k]
+        .filter((m) => m.sentences > 0 && (m.longestRun >= 6 || m.longestRunFigures >= 6))
+        .map((m) => ({ run6: m.runText, run6Figures: m.runTextFigures, n: m.longestRunFigures }));
+    console.log(
+      JSON.stringify(
+        {
+          file: remeasure,
+          measures: { current: totals(again.a), candidate: totals(again.b) },
+          runs: { current: runs('a'), candidate: runs('b') },
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
   const measured = { a: [] as Measures[], b: [] as Measures[] };
   const hallucinated = { a: 0, b: 0 };
   // ADR-0135: mismatched sentences, outputs with one, and first sentences set in the thesis's place.
