@@ -205,6 +205,18 @@ export const ACTION_PROFILES: Readonly<Record<MeteredAction, ActionProfile>> = {
     cachedInputTokens: 50 * 4_000,
     outputTokens: 20 * (930 + 1_540) + 10 * 970,
   },
+  /**
+   * ADR-0152. One unit is one proofreading run of up to 2,000 words (`PROOFREAD.maxWords`), on
+   * the fast tier, at the tokens per word measured for proofreading (`PROOFREAD_TOKENS_PER_WORD`
+   * in `@tc/ai`: 2.52 in, 1.11 out): 5,040 in, 2,220 out, no cached block. ₹0.48 a run on
+   * `gpt-4.1-mini`. Until ADR-0152 a run drew on the section commands, priced as an edit.
+   */
+  PROOFREAD: {
+    tier: 'fast',
+    inputTokens: Math.ceil(2_000 * 2.52),
+    cachedInputTokens: 0,
+    outputTokens: Math.ceil(2_000 * 1.11),
+  },
 };
 
 /** The most sections one examiner review sends (ADR-0056); the cost row above is priced on it. */
@@ -368,6 +380,7 @@ export function computeMonthlyBudget(plan: Plan, options: BudgetOptions = {}): M
       ['Examiner reviews', 'EXAMINER_REVIEW'],
       ['Deep research', 'RESEARCH'],
       ['Literature review builds', 'LIT_REVIEW_BUILD'],
+      ['Proofreading', 'PROOFREAD'],
     ] as const
   )
     .filter(([, action]) => !options.actions || options.actions.includes(action))

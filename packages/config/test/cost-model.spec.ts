@@ -12,6 +12,7 @@ import {
   isMetered,
   METERED_ACTIONS,
   PRD_METERED_ACTIONS,
+  PROOFREAD_WORDS_PER_UNIT,
   UNMETERED_ACTIONS,
 } from '../src/actions.js';
 import {
@@ -47,7 +48,7 @@ describe('Appendix E.2 — cost self-check', () => {
   // reference prices — stays within ₹100 on its own; and the whole budget, every metered action
   // included, stays within ₹100 at the models production runs. At the reference prices the six
   // rows already came to ₹98.92, so nothing could be added and still be checked there.
-  it('the PRD’s own STUDENT table stays within the ₹100 ceiling at its reference prices', () => {
+  it('the PRD’s own STUDENT table, at its reference prices, is inside the projection limit', () => {
     const budget = computeMonthlyBudget('STUDENT_MONTHLY', {
       actions: PRD_METERED_ACTIONS,
       profiles: PRD_ACTION_PROFILES,
@@ -58,15 +59,21 @@ describe('Appendix E.2 — cost self-check', () => {
     // Printed so the §11.4 table appears in CI output and can be pasted into the build log.
     console.log(`\n${formatBudget(budget)}\n`);
 
-    expect(budget.withinCeiling).toBe(true);
-    expect(budget.totalInr).toBeLessThanOrEqual(100);
+    // ADR-0152 (Option B, the owner, 2026-10-10): forty section commands a month, at §11.2's
+    // reference ₹1.41 a command, take the six rows to ₹149.92. Over ₹100 on paper,
+    // as ADR-0143 accepted for the production budget; the runtime stop holds real spend at ₹100.
+    expect(budget.totalInr).toBeCloseTo(149.92, 2);
+    expect(budget.withinCeiling).toBe(false);
+    expect(budget.withinProjectionLimit).toBe(true);
   });
 
-  it('the whole STUDENT budget, viva included, stays within ₹100 with gpt-5-nano on the fast tier', () => {
+  it('the whole STUDENT budget, viva included, with gpt-5-nano on the fast tier (ADR-0152)', () => {
     const budget = computeMonthlyBudget('STUDENT_MONTHLY', { models: PRODUCTION_MODELS });
     console.log(`\n${formatBudget(budget)}\n`);
     expect(budget.lines.map((line) => line.label)).toContain('Viva preparation');
-    expect(budget.withinCeiling).toBe(true);
+    // ADR-0152: ₹96.32 → ₹104.93 (36 more commands ₹5.64, 30 proofreading runs ₹2.98).
+    expect(budget.withinCeiling).toBe(false);
+    expect(budget.withinProjectionLimit).toBe(true);
   });
 
   it('examiner reviews are priced and the whole budget still fits (ADR-0056)', () => {
@@ -79,8 +86,9 @@ describe('Appendix E.2 — cost self-check', () => {
     // ADR-0077 + ADR-0074: chat on the strong tier, researching a thin library (₹0.4850 a
     // question) took this from ₹63.89 to ₹70.73; ADR-0080's deep research adds ₹3.27; ADR-0131
     // ₹1.43 more; ADR-0143's one literature review a month ₹17.39 (to ₹92.81); ADR-0144's Assist
-    // call ceiling, three calls per kept suggestion, ₹3.51 more.
-    expect(budget.totalInr).toBeCloseTo(96.32, 2);
+    // call ceiling, three calls per kept suggestion, ₹3.51 more; ADR-0152's forty commands and
+    // thirty proofreading runs ₹8.61 more.
+    expect(budget.totalInr).toBeCloseTo(104.93, 2);
     // ADR-0051 moved the fast tier to gpt-4.1-mini, which is what production runs.
     const assistModel = computeMonthlyBudget('STUDENT_MONTHLY', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
@@ -88,9 +96,10 @@ describe('Appendix E.2 — cost self-check', () => {
     // ADR-0077 + ADR-0074: from ₹85.82; ADR-0080's three deep research questions (₹1.09 each)
     // from ₹89.85 to ₹93.13; ADR-0131's strengths and questions to ₹94.55; ADR-0143's one
     // literature review a month (₹17.39) to ₹111.94 — over ₹100, which the owner accepted (2026-10-09);
-    // ADR-0144's call ceiling (540 Assist calls for 180 kept) to ₹145.62.
+    // ADR-0144's call ceiling (540 Assist calls for 180 kept) to ₹145.62; ADR-0152's forty
+    // commands (₹5.64 more) and thirty proofreading runs at ₹0.48 (₹14.53) to ₹165.79.
     // The runtime stop still holds real spend at ₹100; the projection must stay under its limit.
-    expect(assistModel.totalInr).toBeCloseTo(145.62, 2);
+    expect(assistModel.totalInr).toBeCloseTo(165.79, 2);
     expect(assistModel.withinCeiling).toBe(false);
     expect(assistModel.withinProjectionLimit).toBe(true);
     expect(assistModel.projectionLimitInr).toBe(PROJECTION_LIMIT_INR);
@@ -151,9 +160,10 @@ describe('Appendix E.2 — cost self-check', () => {
         // ADR-0144: §11.4 prints one call per unit.
         callCeilings: false,
       });
-      expect(prd.totalInr, plan).toBeLessThanOrEqual(100);
+      // ADR-0152: over ₹100 on paper (forty commands), inside the projection limit.
+      expect(prd.withinProjectionLimit, plan).toBe(true);
       const production = computeMonthlyBudget(plan, { models: PRODUCTION_MODELS });
-      expect(production.totalInr, plan).toBeLessThanOrEqual(100);
+      expect(production.withinProjectionLimit, plan).toBe(true);
       // ADR-0143: at the fast tier production runs, over ₹100 but inside the projection limit.
       const live = computeMonthlyBudget(plan, {
         models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
@@ -175,11 +185,44 @@ describe('Appendix E.2 — cost self-check', () => {
       expect(printed?.count, plan).toBe(PLAN_LIMITS[plan].caps.ASSIST);
       expect(printed?.label, plan).toBe('Assist');
     }
-    // The trial at the production fast tier: ₹30.55 → ₹39.90.
+    // The trial at the production fast tier: ₹30.55 → ₹39.90 (ADR-0144) → ₹50.23 (ADR-0152).
     const trial = computeMonthlyBudget('FREE_TRIAL', {
       models: { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong },
     });
-    expect(trial.totalInr).toBeCloseTo(39.9, 2);
+    expect(trial.totalInr).toBeCloseTo(50.23, 2);
+    expect(trial.withinCeiling).toBe(true);
+  });
+
+  it('proofreading is its own allowance, priced at 2,000 words a run (ADR-0152)', () => {
+    expect(isMetered('PROOFREAD')).toBe(true);
+    expect(PROOFREAD_WORDS_PER_UNIT).toBe(2_000);
+    expect(ACTION_PROFILES.PROOFREAD).toEqual({
+      tier: 'fast',
+      inputTokens: 5_040,
+      cachedInputTokens: 0,
+      outputTokens: 2_220,
+    });
+    expect(capFor('FREE_TRIAL', 'PROOFREAD')).toBe(10);
+    for (const plan of ['STUDENT_MONTHLY', 'STUDENT_ANNUAL', 'INSTITUTION_SEAT'] as const) {
+      expect(capFor(plan, 'PROOFREAD'), plan).toBe(30);
+    }
+    const live = { fast: 'gpt-4.1-mini', strong: PRODUCTION_MODELS.strong };
+    for (const [plan, runs] of [
+      ['FREE_TRIAL', 10],
+      ['STUDENT_MONTHLY', 30],
+    ] as const) {
+      const line = computeMonthlyBudget(plan, { models: live }).lines.find(
+        (l) => l.label === 'Proofreading',
+      );
+      expect(line?.count, plan).toBe(runs);
+      // 5,040 in and 2,220 out on gpt-4.1-mini: ₹0.4844 a run.
+      expect(microToInr(line?.unitMicroInr ?? 0), plan).toBeCloseTo(0.4844, 4);
+    }
+    // Option B's figure for a paid student, every allowance used in full.
+    expect(computeMonthlyBudget('STUDENT_MONTHLY', { models: live }).totalInr).toBeCloseTo(
+      165.79,
+      2,
+    );
   });
 
   it('a runaway configuration still fails the projection limit (ADR-0143)', () => {
@@ -240,10 +283,11 @@ describe('§11.3 — plan caps match the PRD table', () => {
   it('FREE_TRIAL', () => {
     expect(PLAN_LIMITS.FREE_TRIAL.caps).toEqual({
       ASSIST: 50,
-      DRAFT: 2,
-      CITE: 10,
-      CHAT: 5,
-      COMMAND: 2,
+      // ADR-0152 (Option B): drafts 2 → 3, citations 10 → 20, questions 5 → 10, commands 2 → 10.
+      DRAFT: 3,
+      CITE: 20,
+      CHAT: 10,
+      COMMAND: 10,
       COHERENCE: 0,
       // ADR-0030: not a §11.3 row.
       VIVA: 3,
@@ -255,6 +299,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       RESEARCH: 1,
       // ADR-0124; ADR-0143 keeps it off the trial.
       LIT_REVIEW_BUILD: 0,
+      // ADR-0152: ten proofreading runs of 2,000 words over the trial.
+      PROOFREAD: 10,
     });
     expect(PLAN_LIMITS.FREE_TRIAL.seedPapers).toBe(1);
     expect(PLAN_LIMITS.FREE_TRIAL.libraryPdfs).toBe(10);
@@ -274,7 +320,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       // ADR-0008 lowered this from §11.3's 5: FR-3.6's per-section scope rewrite is metered
       // against the same cap, and each unit now buys a longer response, so five would not fit
       // under the ₹100 ceiling. The ceiling test below is what caught it.
-      COMMAND: 4,
+      // ADR-0152 (Option B, the owner, 2026-10-10): 4 → 40, the projection over ₹100 accepted.
+      COMMAND: 40,
       COHERENCE: 1,
       // ADR-0030: not a §11.3 row.
       VIVA: 30,
@@ -286,6 +333,8 @@ describe('§11.3 — plan caps match the PRD table', () => {
       RESEARCH: 3,
       // ADR-0124, ADR-0143: one whole literature review a month (₹17.39 a build).
       LIT_REVIEW_BUILD: 1,
+      // ADR-0152: thirty proofreading runs of 2,000 words (60,000 words) a month.
+      PROOFREAD: 30,
     });
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxBytes).toBe(50 * 1024 * 1024);
     expect(PLAN_LIMITS.STUDENT_MONTHLY.pdfMaxPages).toBe(500);

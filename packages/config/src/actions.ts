@@ -37,6 +37,9 @@ export const AI_ACTIONS = [
   // ADR-0124: the whole literature-review chapter from one press — the chapter build's pipeline
   // run over every theme of the review, delivered as drafts the student accepts.
   'LIT_REVIEW_BUILD',
+  // ADR-0152: proofreading, metered on its own allowance (one unit is up to 2,000 words); it was
+  // a COMMAND unit until then.
+  'PROOFREAD',
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -63,6 +66,8 @@ export const METERED_ACTIONS = [
   // ADR-0124. One unit is one whole literature review (up to 20 sections). ADR-0143: one a month
   // on the paid plans, none on the trial; the flag is on.
   'LIT_REVIEW_BUILD',
+  // ADR-0152. One unit is one proofreading run: up to 2,000 words (`PROOFREAD.maxWords`).
+  'PROOFREAD',
 ] as const satisfies readonly AiAction[];
 
 /** The six §11.3 rows — what the PRD's own budget table (§11.4) prices. */
@@ -126,13 +131,23 @@ export const ALLOWANCE_NAMES: Readonly<Record<string, string>> = {
   EXAMINER_REVIEW: 'Examiner reviews',
   RESEARCH: 'Deep research questions',
   LIT_REVIEW_BUILD: 'Literature review builds',
+  // ADR-0152: one run reads up to 2,000 words.
+  PROOFREAD: 'Proofreading runs',
   // ADR-0072: not a metered action, but bounded per month, and refused in these words.
   OUTLINE_FROM_TITLE: 'Chapter plans from a title',
 };
 
-/** A refused metered action, said plainly: not on the plan at all, or used up this month. */
-export function capRefusalDetail(action: string, cap: number): string {
+/** ADR-0152: the words one proofreading unit reads (`PROOFREAD.maxWords` in `@tc/ai`). */
+export const PROOFREAD_WORDS_PER_UNIT = 2_000;
+
+/**
+ * A refused metered action, said plainly: not on the plan at all, or used up this month — or,
+ * on the free trial (ADR-0152), used up for the whole trial, which does not renew on the 1st.
+ */
+export function capRefusalDetail(action: string, cap: number, trial = false): string {
   const name = ALLOWANCE_NAMES[action] ?? 'AI actions of this kind';
   if (cap <= 0) return `${name} are not included in your plan.`;
-  return `You have used all ${cap} of this month's ${name.toLowerCase()}.`;
+  return trial
+    ? `You have used all ${cap} of your free trial's ${name.toLowerCase()}.`
+    : `You have used all ${cap} of this month's ${name.toLowerCase()}.`;
 }
