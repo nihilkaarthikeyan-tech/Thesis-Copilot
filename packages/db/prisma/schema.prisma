@@ -90,6 +90,7 @@ enum AiAction {
   EXAMINER_REVIEW // ADR-0056: a strict examiner's reading of a chapter the student wrote
   RESEARCH      // ADR-0080: deep research in chat — plan, searches and a part-by-part answer
   LIT_REVIEW_BUILD // ADR-0124: a whole literature review, delivered as drafts to accept
+  PROOFREAD     // ADR-0152: a proofreading run of up to 2,000 words, its own allowance
 }
 enum FlagType {
   TERM_DRIFT
@@ -176,6 +177,12 @@ model User {
    * The 14 matches `PLAN_LIMITS.FREE_TRIAL.trialDays`.
    */
   trialEndsAt         DateTime?  @default(dbgenerated("(now() + '14 days'::interval)"))
+  /**
+   * When the free trial started (ADR-0152). The trial's allowances count once over the whole
+   * trial, on the ledger row of this month, so a trial that crosses the 1st does not get a second
+   * month's. An admin extending the trial moves `trialEndsAt`, never this.
+   */
+  trialStartsAt       DateTime?  @default(now())
   @@index([deletionRequestedAt])
 }
 

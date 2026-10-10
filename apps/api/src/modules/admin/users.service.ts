@@ -14,7 +14,7 @@ import { type AiAction, METERED_ACTIONS, PLAN_LIMITS, PLANS, type Plan } from '@
 import type { Prisma } from '@tc/db';
 import { NotFoundError, ValidationError } from '../../common/errors.js';
 import { PrismaService } from '../../common/prisma.service.js';
-import { periodFor } from '../usage/usage.service.js';
+import { ledgerPeriodFor } from '../usage/usage.service.js';
 
 const toInr = (microInr: bigint | number): number => Math.round(Number(microInr) / 10_000) / 100;
 
@@ -97,6 +97,7 @@ const statusSelect = {
   deletionRequestedAt: true,
   deletedAt: true,
   trialEndsAt: true,
+  trialStartsAt: true,
 } as const;
 
 export type UserPage = {
@@ -159,7 +160,6 @@ export class UsersService {
   ): Promise<UserPage> {
     const limit = Math.min(Math.max(options.limit ?? USERS_PAGE_SIZE, 1), USERS_MAX_PAGE_SIZE);
     const offset = Math.max(options.offset ?? 0, 0);
-    const period = periodFor(now);
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const where = whereFor(options);
     const [total, users] = await Promise.all([
@@ -178,7 +178,9 @@ export class UsersService {
           createdAt: true,
           ...statusSelect,
           _count: { select: { documents: true } },
-          usage: { where: { period }, select: { action: true, count: true, bonus: true } },
+          // ADR-0152: a free trial counts on the row of the month it started, so the row shown is
+          // picked per user below; the latest rows cover it.
+          usage: { orderBy: { period: 'desc' }, take: 60, select: ledgerSelect },
         },
       }),
     ]);
@@ -221,7 +223,7 @@ export class UsersService {
       lastActiveAt: lastByUser.get(u.id) ?? null,
       documents: u._count.documents,
       costInr: toInr(costByUser.get(u.id) ?? 0n),
-      usage: usageWithCaps(u.plan, u.usage, trialOver(u.plan, u.trialEndsAt, now)),
+      usage: usageWithCaps(u.plan, ownRows(u, now), trialOver(u.plan, u.trialEndsAt, now)),
       status: statusOf(u),
       trialEndsAt: u.trialEndsAt,
     }));
@@ -236,7 +238,6 @@ export class UsersService {
    * about the one now.
    */
   async get(userId: string, now: Date = new Date()): Promise<UserDetail> {
-    const period = periodFor(now);
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
     const user = await this.prisma.user.findUnique({
@@ -252,7 +253,8 @@ export class UsersService {
         suspendedReason: true,
         // ADR-0132: research chats asked with no thesis are counted, never read here.
         _count: { select: { documents: true, sessions: true, researchChats: true } },
-        usage: { where: { period }, select: { action: true, count: true, bonus: true } },
+        // ADR-0152: every row; the one this account counts on now is picked below.
+        usage: { select: ledgerSelect },
         accounts: { select: { providerId: true } },
       },
     });
@@ -281,7 +283,11 @@ export class UsersService {
         : null,
       documents: user._count.documents,
       costInr: toInr(cost._sum.costMicroInr ?? 0n),
-      usage: usageWithCaps(user.plan, user.usage, trialOver(user.plan, user.trialEndsAt, now)),
+      usage: usageWithCaps(
+        user.plan,
+        ownRows(user, now),
+        trialOver(user.plan, user.trialEndsAt, now),
+      ),
       status: statusOf(user),
       trialEndsAt: user.trialEndsAt,
     };
@@ -367,14 +373,17 @@ export class UsersService {
     userId: string,
     now: Date = new Date(),
   ): Promise<{ reset: Array<{ action: string; was: number }> }> {
-    const period = periodFor(now);
+    const account = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true, trialStartsAt: true, trialEndsAt: true },
+    });
+    if (!account) throw new NotFoundError('That user');
+    // ADR-0152: a free trial's row is the month it started, which is the one it counts on.
+    const period = ledgerPeriodFor(account, now);
     const before = await this.prisma.usageLedger.findMany({
       where: { userId, period },
       select: { action: true, count: true },
     });
-    if (!(await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } }))) {
-      throw new NotFoundError('That user');
-    }
     const reset = before
       .filter((r) => r.count > 0)
       .map((r) => ({ action: r.action, was: r.count }));
@@ -439,6 +448,22 @@ export class UsersService {
 }
 
 export const PLAN_NAMES = PLANS;
+
+const ledgerSelect = { action: true, count: true, bonus: true, period: true } as const;
+
+/** ADR-0152: the ledger rows an account counts on now (the trial's row on a free trial). */
+function ownRows<R extends { period: string }>(
+  user: {
+    plan: string;
+    trialStartsAt: Date | null;
+    trialEndsAt: Date | null;
+    usage: readonly R[];
+  },
+  now: Date,
+): R[] {
+  const period = ledgerPeriodFor(user, now);
+  return user.usage.filter((row) => row.period === period);
+}
 
 /** This period's use against the plan's cap plus any extra an admin gave (2026-09-29). */
 function trialOver(plan: Plan, endsAt: Date | null, now: Date): boolean {

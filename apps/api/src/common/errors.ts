@@ -63,13 +63,24 @@ export class SectionNeedsTopicError extends AppError {
  * `resetsAt`, 00:00 UTC on the 1st, which the web app shows as the student's own local date.
  */
 export class CapExceededError extends AppError {
-  constructor(action: string, cap: number, resetsAt: Date, used: number = cap) {
+  /**
+   * `trialEndsAt` (ADR-0152): the allowance is the free trial's, counted over the whole trial; it
+   * does not renew on the 1st, and the refusal says so. `resetsAt` is then the trial's end.
+   */
+  constructor(action: string, cap: number, resetsAt: Date, used: number = cap, trialEndsAt?: Date) {
     super(
       'CAP_EXCEEDED',
-      'Monthly limit reached',
+      trialEndsAt ? 'Trial limit reached' : 'Monthly limit reached',
       HttpStatus.TOO_MANY_REQUESTS,
-      capRefusalDetail(action, cap),
-      { action, allowance: allowanceOf(action), used, cap, resetsAt: resetsAt.toISOString() },
+      capRefusalDetail(action, cap, Boolean(trialEndsAt)),
+      {
+        action,
+        allowance: allowanceOf(action),
+        used,
+        cap,
+        resetsAt: resetsAt.toISOString(),
+        ...(trialEndsAt ? { trialAllowance: true, trialEndsAt: trialEndsAt.toISOString() } : {}),
+      },
     );
   }
 }

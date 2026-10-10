@@ -8,7 +8,7 @@
  * `caps.spec.ts`, `week1.spec.ts`): these refusals all happen before any provider call.
  */
 
-import { MONTHLY_CEILING_INR } from '@tc/config';
+import { MONTHLY_CEILING_INR, PLAN_LIMITS } from '@tc/config';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { periodFor, resetsAtFor } from '../src/modules/usage/usage.service.js';
 import { type Harness, startHarness } from './_harness.js';
@@ -17,8 +17,8 @@ let h: Harness;
 let documentId: string;
 let chapterId: string;
 
-/** The FREE_TRIAL caps a fresh account starts on (PRD §11.3). */
-const COMMAND_CAP = 2;
+/** The FREE_TRIAL caps a fresh account starts on (PRD §11.3; ADR-0152 made it ten). */
+const COMMAND_CAP = PLAN_LIMITS.FREE_TRIAL.caps.COMMAND;
 
 const runCommand = () =>
   h.api('/commands/run', {
@@ -52,12 +52,16 @@ beforeAll(async () => {
   chapterId = doc.firstChapterId;
 }, 300_000);
 
+let trialEndsAt: Date;
+
 beforeEach(async () => {
   await h.prisma.usageLedger.deleteMany({ where: { userId: h.userId } });
   await h.prisma.aiCallLog.deleteMany({ where: { userId: h.userId } });
+  trialEndsAt = new Date(Date.now() + 7 * 86_400_000);
+  // The trial started now, so its ledger row is this month's (ADR-0152).
   await h.prisma.user.update({
     where: { id: h.userId },
-    data: { trialEndsAt: new Date(Date.now() + 7 * 86_400_000) },
+    data: { trialEndsAt, trialStartsAt: new Date() },
   });
 });
 
@@ -66,7 +70,8 @@ afterAll(async () => {
 });
 
 describe('a cap refusal names the allowance, the count and the reset', () => {
-  it('says how many were used of how many, and the next 1st at 00:00 UTC', async () => {
+  it('on the free trial: how many were used of how many, and the trial’s end, not the 1st', async () => {
+    // ADR-0152: a trial's allowance is for the whole trial; it does not renew on the 1st.
     await setLedger('COMMAND', COMMAND_CAP);
     const response = await runCommand();
     expect(response.status).toBe(429);
@@ -75,23 +80,53 @@ describe('a cap refusal names the allowance, the count and the reset', () => {
     expect(problem).toMatchObject({
       type: 'CAP_EXCEEDED',
       status: 429,
+      title: 'Trial limit reached',
       action: 'COMMAND',
       allowance: 'Section commands',
       used: COMMAND_CAP,
       cap: COMMAND_CAP,
-      resetsAt: resetsAtFor().toISOString(),
+      trialAllowance: true,
+      trialEndsAt: trialEndsAt.toISOString(),
+      resetsAt: trialEndsAt.toISOString(),
+      detail: `You have used all ${COMMAND_CAP} of your free trial's section commands.`,
     });
-    const resets = new Date(String(problem.resetsAt));
-    expect(resets.getUTCDate()).toBe(1);
-    expect(resets.getUTCHours()).toBe(0);
     // Refused before the provider: the counter did not move.
     expect(await commandsUsed()).toBe(COMMAND_CAP);
+  });
+
+  it('a paid plan: the next 1st at 00:00 UTC', async () => {
+    await h.prisma.user.update({ where: { id: h.userId }, data: { plan: 'STUDENT_MONTHLY' } });
+    const { UsageService } = await import('../src/modules/usage/usage.service.js');
+    const usage = h.app.get(UsageService);
+    try {
+      await h.prisma.usageLedger.create({
+        data: {
+          userId: h.userId,
+          period: periodFor(),
+          action: 'COMMAND',
+          count: PLAN_LIMITS.STUDENT_MONTHLY.caps.COMMAND,
+        },
+      });
+      const result = await usage.consume(h.userId, 'STUDENT_MONTHLY', 'COMMAND');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.resetsAt).toEqual(resetsAtFor());
+      expect(result.trialEndsAt).toBeUndefined();
+      expect(result.resetsAt.getUTCDate()).toBe(1);
+      expect(result.resetsAt.getUTCHours()).toBe(0);
+    } finally {
+      await h.prisma.user.update({ where: { id: h.userId }, data: { plan: 'FREE_TRIAL' } });
+    }
   });
 
   it('counts an admin’s extra allowance in the total', async () => {
     await setLedger('COMMAND', COMMAND_CAP + 1, 1);
     const problem = (await (await runCommand()).json()) as Record<string, unknown>;
-    expect(problem).toMatchObject({ type: 'CAP_EXCEEDED', used: 3, cap: 3 });
+    expect(problem).toMatchObject({
+      type: 'CAP_EXCEEDED',
+      used: COMMAND_CAP + 1,
+      cap: COMMAND_CAP + 1,
+    });
   });
 
   it('reports an allowance the plan does not include as 0 of 0', async () => {

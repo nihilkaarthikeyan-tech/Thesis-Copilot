@@ -18,6 +18,8 @@ import { barTone } from '@/lib/usage';
 
 type Usage = {
   resetsAt: string;
+  /** ADR-0152: the free trial's allowances, for the whole trial, until `resetsAt`. */
+  trialAllowance?: boolean;
   trial?: { ended: boolean; endsAt?: string | null } | null;
   actions: Array<{
     action: string;
@@ -92,7 +94,9 @@ export function UsageMenu(props: {
           className="absolute top-full right-0 z-50 mt-1 w-72 max-w-[calc(100vw-1rem)] rounded-md border border-line bg-surface p-3 text-left text-[12.5px] text-ink shadow-lg"
           data-testid="usage-panel"
         >
-          <p className="font-semibold">This month</p>
+          <p className="font-semibold">
+            {usage?.trialAllowance ? 'Your free trial' : 'This month'}
+          </p>
           {failed ? (
             <p className="mt-2 text-muted">Your usage could not be read. Try again in a moment.</p>
           ) : !usage ? (
@@ -135,6 +139,11 @@ export function UsageMenu(props: {
                           Only the ones you keep count.
                         </span>
                       ) : null}
+                      {line.action === 'PROOFREAD' ? (
+                        <span className="mt-0.5 block text-[11.5px] text-muted">
+                          Each run reads up to 2,000 words.
+                        </span>
+                      ) : null}
                     </li>
                   );
                 })}
@@ -144,7 +153,9 @@ export function UsageMenu(props: {
               ) : null}
               <p className="mt-2 text-[11.5px] text-muted">
                 {/* R31: the same date, in the same words, as a refused action's message. */}
-                Renews {formatResetDate(usage.resetsAt)}.{' '}
+                {usage.trialAllowance
+                  ? `For the whole trial, which ends ${formatResetDate(usage.resetsAt)}; they do not renew on the 1st.`
+                  : `Renews ${formatResetDate(usage.resetsAt)}.`}{' '}
                 <Link href="/app/account" className="underline">
                   Account and plans
                 </Link>

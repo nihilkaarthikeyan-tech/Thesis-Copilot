@@ -5,8 +5,8 @@
  * Nothing here changes the chapter. The corrections go back as data, and only the editor, on the
  * student's click, applies one — "flag, don't fix", the rule every AI feature in the product keeps.
  *
- * One `COMMAND` unit a run, charged before the first call and refunded if nothing was served
- * (§11.5). A run reads up to `PROOFREAD.maxWords` words, in batches; a long chapter is read in
+ * One `PROOFREAD` unit a run (ADR-0152; a `COMMAND` unit until then), charged before the first
+ * call and refunded if nothing was served (§11.5). A run reads up to `PROOFREAD.maxWords` words, in batches; a long chapter is read in
  * more than one run, and the response says how far this one got.
  */
 
@@ -111,11 +111,11 @@ export class ProofreadService {
     const cap = await this.usage.consume(
       user.id,
       user.plan as Parameters<UsageService['consume']>[1],
-      'COMMAND',
+      'PROOFREAD',
     );
     if (!cap.ok) {
-      capExceeded.inc({ action: 'COMMAND' });
-      throw refusal('COMMAND', cap);
+      capExceeded.inc({ action: 'PROOFREAD' });
+      throw refusal('PROOFREAD', cap);
     }
 
     const corrections: ProofreadCorrection[] = [];
@@ -173,21 +173,28 @@ export class ProofreadService {
       }
     } catch (error) {
       // §11.5: the student was never served, so the unit goes back.
-      await this.usage.refund(user.id, 'COMMAND');
+      await this.usage.refund(user.id, 'PROOFREAD');
       throw error;
     }
     if (refused > 0)
       this.logger.log({ chapterId, refused }, 'proofread suggestions refused as rewrites');
-    // ADR-0148: proofreading shares the COMMAND log with edit commands, so the AI use statement
-    // can only name it if a run leaves its own mark — with the calls it made, which the statement
-    // takes back out of the edit count. Not a model call; must never fail the run.
+    // ADR-0148: the AI use statement names proofreading from the runs' own marks. Since ADR-0152
+    // the calls are logged as PROOFREAD, not COMMAND, and the mark says so (`action`), so the
+    // statement takes only older runs' calls back out of the edit count. Not a model call; must
+    // never fail the run.
     await this.prisma.auditEvent
       .create({
         data: {
           kind: PROOFREAD_RUN_KIND,
           userId: user.id,
           documentId: chapter.documentId,
-          detail: { chapterId, calls: served, checkedWords, corrections: corrections.length },
+          detail: {
+            chapterId,
+            calls: served,
+            checkedWords,
+            corrections: corrections.length,
+            action: 'PROOFREAD',
+          },
         },
       })
       .catch((error: unknown) =>
@@ -214,12 +221,12 @@ export class ProofreadService {
       ok && usage && this.env.AI_PROVIDER !== 'mock'
         ? computeCallCost({ tier: 'fast', modelId: model, usage })
         : 0;
-    if (cost > 0) aiCostMicroInr.inc({ action: 'COMMAND' }, cost);
+    if (cost > 0) aiCostMicroInr.inc({ action: 'PROOFREAD' }, cost);
     await this.prisma.aiCallLog.create({
       data: {
         userId,
         documentId,
-        action: 'COMMAND',
+        action: 'PROOFREAD',
         model,
         inputTokens: usage?.inputTokens ?? 0,
         cachedInputTokens: usage?.cachedInputTokens ?? 0,

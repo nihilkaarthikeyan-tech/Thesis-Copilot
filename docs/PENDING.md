@@ -338,17 +338,21 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       research path adds per thin question is in ADR-0074, "Cost".
 ## Trial caps bite in minutes (side-by-side 2026-10-10, finding 9; ADR-0150)
 
-- [ ] **Owner: decide with the usage-limit rebalance (option 1 recommended).** In the side-by-side
-      the trial's 2 section commands a month were gone after one Formalise and one Simplify, and
-      proofreading was then refused. Suggested shape: the trial is the paid plan at a tenth of the
-      size (e.g. 10 section commands), or a proofread counts on its own allowance. No cap was
-      changed in ADR-0150; `packages/config` plan tables are where it lands.
+- [x] **Decided: Option B** (the owner, 2026-10-10; `docs/TRIAL-LIMIT-OPTIONS.md`). Built as
+      ADR-0152 on its branch, not merged or released: trial 10 section commands, 10 questions, 20
+      citation suggestions, 3 drafts; paid 40 section commands; proofreading its own allowance
+      (10 trial, 30 paid, 2,000 words a run); the trial counted over its 14 days.
+- [ ] **Release ADR-0152 when you say so.** It carries migration 0057 (the `PROOFREAD` value and
+      `User.trialStartsAt`, with a backfill that folds a running trial's later months into its
+      start month). Take the usual backup first.
+- [ ] **Raise the site-wide budget before any campaign** (Admin → Settings, ₹2,000 when last
+      set). Under ADR-0152 that covers about 40 trial students using everything; real use is far
+      below the worst case.
 
 ## The AI edit panel (ADR-0095, 2026-10-07)
 
-- [ ] **Owner: the COMMAND allowance.** The panel puts edits one key away (Ctrl+J), as Jenni
-      does, and each follow-up is a run — but the allowance is still 4 a month on a paid plan and
-      2 on the trial. Decide it with the usage-limit rebalance; nothing else in R8 needs a person.
+- [x] **Owner: the COMMAND allowance.** Decided with Option B (ADR-0152): 40 a month on a paid
+      plan, 10 on the trial, and proofreading no longer draws on it.
 - [ ] **A native reader for the panel's words in Hindi** (group names, presets beyond the five
       A.11 commands, "What changed and why", the follow-up box) — English for now, as the other
       screens added this week.

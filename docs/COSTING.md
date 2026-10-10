@@ -93,6 +93,34 @@ Recomputed 2026-09-13 against the models actually configured: `gpt-5-nano` on th
 > CI run now prints the over-₹100 figure and fails only above `PROJECTION_LIMIT_INR` (₹175), so a
 > runaway configuration is still caught. The tables further down predate these notes.
 >
+> **2026-10-10 — trial limits, Option B (ADR-0152), the owner's choice.** Section commands 2 → 10
+> on the trial and 4 → 40 on the paid plans; on the trial, questions 5 → 10, citation suggestions
+> 10 → 20 and drafted sections 2 → 3; and proofreading becomes its own allowance (`PROOFREAD`, one
+> run reads up to 2,000 words): 10 runs on the trial, 30 a month on the paid plans. A run is
+> priced on the fast tier at the tokens per word measured for proofreading (2.52 in, 1.11 out):
+> 5,040 in, 2,220 out, **₹0.4844** on `gpt-4.1-mini`. Proofreading no longer draws on the
+> section commands. `pnpm ai:verify`'s tables at the production configuration:
+>
+> | Worst case | Trial student | Paid student / month |
+> |---|---|---|
+> | Before (ADR-0144) | ₹39.90 | ₹145.62 |
+> | **Option B (ADR-0152)** | **₹50.23** | **₹165.79** |
+> | `gpt-5-nano` on the fast tier, for comparison | ₹31.12 | ₹104.93 |
+> | All-in, with the notes outside the table (≤ ₹148.73 before) | | **≤ ₹168.90** |
+>
+> The trial's ₹10.33 more is proofreading ₹4.84, questions ₹2.43, citations ₹1.53, commands
+> ₹1.25 and drafts ₹0.28; the paid plan's ₹20.17 is proofreading ₹14.53 and commands ₹5.64. The
+> PRD's own six-row table at its reference prices (Appendix E.2) goes from ₹99.17 to ₹149.92,
+> because forty commands at §11.2's ₹1.41 are ₹56.38; it is checked against the projection limit
+> now, as the production budget has been since ADR-0143. Every figure stays under the ₹175
+> projection limit, and the ₹100 runtime stop in `UsageService.consume` is unchanged.
+>
+> The trial's allowances now count once over its 14 days, on the ledger row of the month the
+> trial started, instead of once per calendar month. Before, a trial that crossed the 1st got a
+> second month's allowance, up to ₹92.77 under Option B; now ₹50.23 is the whole trial's worst
+> case wherever its dates fall. The ₹100 stop is still per calendar month, which only matters
+> above ₹100. Paid plans count by the month, as before.
+>
 > **2026-09-25 — Voyage's price.** `voyage-3` now lists at USD 0.06 per million tokens (Voyage
 > calls it an older model; no free tokens), not the 0.02 this file used. Embedding a library costs
 > ₹1.57 instead of ₹0.52, the one-time line becomes ₹0.70 a month, and the worst case **₹25.60**.

@@ -250,8 +250,13 @@ describe('a cap refusal leaves an audit row (ADR-0004)', () => {
     });
     await h.prisma.usageLedger.upsert({
       where: { userId_period_action: { userId: h.userId, period: periodFor(), action: 'DRAFT' } },
-      create: { userId: h.userId, period: periodFor(), action: 'DRAFT', count: 2 },
-      update: { count: 2 },
+      create: {
+        userId: h.userId,
+        period: periodFor(),
+        action: 'DRAFT',
+        count: capFor('FREE_TRIAL', 'DRAFT'),
+      },
+      update: { count: capFor('FREE_TRIAL', 'DRAFT') },
     });
     const chapter = (await (await h.api(`/chapters/${firstChapterId}`)).json()) as {
       outlineNodeId: string;
@@ -270,7 +275,10 @@ describe('a cap refusal leaves an audit row (ADR-0004)', () => {
       where: { userId: h.userId, kind: 'CAP_EXCEEDED' },
     });
     expect(after).toHaveLength(before + 1);
-    expect(after.at(-1)?.detail).toMatchObject({ action: 'DRAFT', cap: 2 });
+    expect(after.at(-1)?.detail).toMatchObject({
+      action: 'DRAFT',
+      cap: capFor('FREE_TRIAL', 'DRAFT'),
+    });
 
     const detail = (await (await h.api(`/admin/users/${h.userId}`)).json()) as {
       capExceeded: number;

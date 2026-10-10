@@ -676,6 +676,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'account.refundPolicy': 'रिफ़ंड नीति',
   'account.resets':
     '{date} को फिर से शुरू होगा। सुझाव बनते ही गिना जाता है, चाहे आप उसे रखें या हटाएँ — टोकन दोनों हालत में खर्च हुए। आप जो खुद टाइप करते हैं, वह नहीं गिना जाता।',
+  'account.trialAllowance':
+    'ये आपके पूरे मुफ़्त trial के लिए हैं, जो {date} को ख़त्म होगा; ये 1 तारीख़ को फिर से शुरू नहीं होते। proofreading एक बार में 2,000 शब्द तक पढ़ता है। आप जो खुद टाइप करते हैं, वह नहीं गिना जाता।',
   'account.invoices': 'इनवॉइस',
   'account.invoiceError': 'वह इनवॉइस नहीं बन सका।',
   'account.emailTitle': 'ईमेल पता',
@@ -884,6 +886,10 @@ export const hi: Partial<Record<MessageKey, string>> = {
     '{allowance}: इस महीने आपने {ceiling} माँगे, जो एक महीने में सबसे ज़्यादा है। आपने अपने {cap} में से {used} रखे।',
   'limit.resetsOn': '{date} को फिर से शुरू होगी।',
   'limit.resetsNextMonth': 'अगले महीने की 1 तारीख़ को फिर से शुरू होगी।',
+  'limit.trialCap.title': 'trial की सीमा पूरी हो गई',
+  'limit.trialCap.used': '{allowance}: आपके मुफ़्त trial में {cap} में से {used} इस्तेमाल हुए।',
+  'limit.trialCap.endsOn':
+    'trial की सीमाएँ पूरे trial के लिए हैं और 1 तारीख़ को फिर से शुरू नहीं होतीं; आपका trial {date} को ख़त्म होगा।',
   'limit.notIncluded.title': 'आपके प्लान में नहीं है',
   'limit.notIncluded.body': '{allowance}: आपके प्लान में शामिल नहीं।',
   'limit.trial.title': 'मुफ़्त trial ख़त्म हो गया',

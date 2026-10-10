@@ -7,6 +7,7 @@ export {
   METERED_ACTIONS,
   type MeteredAction,
   PRD_METERED_ACTIONS,
+  PROOFREAD_WORDS_PER_UNIT,
   type Tier,
   UNMETERED_ACTIONS,
   type UnmeteredAction,

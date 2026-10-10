@@ -203,3 +203,69 @@ describe('the limit message in Hindi (Round 2 strings)', () => {
     }
   });
 });
+
+describe('a free trial’s allowance (ADR-0152)', () => {
+  const ENDS = '2026-11-08T12:00:00.000Z';
+  const trialProblem = {
+    type: 'CAP_EXCEEDED',
+    title: 'Trial limit reached',
+    status: 429,
+    detail: "You have used all 10 of your free trial's proofreading runs.",
+    action: 'PROOFREAD',
+    allowance: 'Proofreading runs',
+    used: 10,
+    cap: 10,
+    resetsAt: ENDS,
+    trialAllowance: true,
+    trialEndsAt: ENDS,
+  };
+
+  it('reads the trial’s end from the refusal', () => {
+    expect(limitRefusal(trialProblem)).toEqual({
+      kind: 'cap',
+      allowance: 'Proofreading runs',
+      used: 10,
+      cap: 10,
+      resetsAt: ENDS,
+      trialEndsAt: ENDS,
+    });
+  });
+
+  it('says it is for the whole trial, ends with it, and does not start again on the 1st', () => {
+    const limit = limitRefusal(trialProblem);
+    if (!limit) throw new Error('not a limit');
+    const text = limitText(limit, INDIA);
+    expect(text.title).toBe('Trial limit reached');
+    expect(text.body).toContain('Proofreading runs: 10 of 10 used in your free trial.');
+    expect(text.body).toContain('do not start again on the 1st');
+    expect(text.body).toContain('8 Nov 2026');
+    expect(text.body).not.toContain('Resets on');
+    expect(text.link?.href).toBe('/pricing');
+  });
+
+  it('names proofreading as its own allowance', () => {
+    expect(
+      limitRefusal({ type: 'CAP_EXCEEDED', action: 'PROOFREAD', cap: 30, resetsAt: RESETS }),
+    ).toMatchObject({ kind: 'cap', allowance: 'Proofreading runs', cap: 30 });
+  });
+
+  it('in Hindi too', async () => {
+    const { setCurrentLanguage } = await import('../src/i18n');
+    setCurrentLanguage('hi');
+    try {
+      const text = limitText({
+        kind: 'cap',
+        allowance: 'Section commands',
+        used: 10,
+        cap: 10,
+        resetsAt: ENDS,
+        trialEndsAt: ENDS,
+      });
+      expect(text.title).toBe('trial की सीमा पूरी हो गई');
+      expect(text.body).toContain('Section commands: आपके मुफ़्त trial में 10 में से 10 इस्तेमाल हुए।');
+      expect(text.body).toContain('1 तारीख़ को फिर से शुरू नहीं होतीं');
+    } finally {
+      setCurrentLanguage('en');
+    }
+  });
+});

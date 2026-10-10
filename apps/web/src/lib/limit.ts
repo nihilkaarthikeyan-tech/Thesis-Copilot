@@ -26,6 +26,11 @@ export type LimitRefusal =
       resetsAt: string | null;
       /** ADR-0144: the calls hit their ceiling before the kept allowance was used up. */
       callCeiling?: number;
+      /**
+       * ADR-0152: the free trial's allowance, counted over the whole trial; it does not renew on
+       * the 1st, and lasts until this moment (the trial's end).
+       */
+      trialEndsAt?: string;
     }
   /** An allowance the plan does not include at all (a cap of 0). */
   | { kind: 'notIncluded'; allowance: string }
@@ -76,6 +81,7 @@ export function limitRefusal(source: unknown): LimitRefusal | null {
   if (cap <= 0) return { kind: 'notIncluded', allowance };
   // An API from before R31 sends no `used`; a refusal at the cap means every unit was used.
   const ceiling = num(problem.callCeiling);
+  const trialEndsAt = problem.trialAllowance === true ? str(problem.trialEndsAt) : null;
   return {
     kind: 'cap',
     allowance,
@@ -83,6 +89,7 @@ export function limitRefusal(source: unknown): LimitRefusal | null {
     cap,
     resetsAt,
     ...(ceiling !== null ? { callCeiling: ceiling } : {}),
+    ...(trialEndsAt ? { trialEndsAt } : {}),
   };
 }
 
@@ -131,6 +138,18 @@ export function limitText(
     iso ? tNow(on, { date: formatResetDate(iso, options) }) : tNow(nextMonth);
   switch (limit.kind) {
     case 'cap':
+      // ADR-0152: a trial's allowance is for the whole trial, so it ends with it, not on the 1st.
+      if (limit.trialEndsAt && limit.callCeiling === undefined) {
+        return {
+          title: tNow('limit.trialCap.title'),
+          body: `${tNow('limit.trialCap.used', {
+            allowance: limit.allowance,
+            used: limit.used,
+            cap: limit.cap,
+          })} ${tNow('limit.trialCap.endsOn', { date: formatDay(limit.trialEndsAt, options) })} ${stillWorks}`,
+          link: plansLink,
+        };
+      }
       return {
         title: tNow('limit.cap.title'),
         body: `${

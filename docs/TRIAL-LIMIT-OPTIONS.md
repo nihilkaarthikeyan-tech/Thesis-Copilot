@@ -2,6 +2,9 @@
 
 Date: 2026-10-10. For the owner. Nothing in the product has changed; this page is for deciding.
 
+**Decided: Option B, in full (the owner, 2026-10-10).** Built as ADR-0152
+(`docs/ADR/0152-trial-limits-option-b.md`); the cost model reproduces ₹50.23 and ₹165.79.
+
 **The problem.** In the side-by-side on 2026-10-10 the free trial allows 2 "section commands" a
 month. One Formalise and one Simplify used both, and then proofreading was refused ("Monthly limit
 reached — Section commands 2 of 2 used"). A new student reaches that in about five minutes.

@@ -47,6 +47,8 @@ type Deletion = {
 type Usage = {
   plan: string;
   resetsAt: string;
+  /** ADR-0152: the allowances are the free trial's, for the whole trial, until `resetsAt`. */
+  trialAllowance?: boolean;
   actions: Array<{ action: string; used: number; cap: number; remaining: number }>;
 };
 
@@ -455,7 +457,9 @@ export default function AccountPage() {
               </p>
             ) : null}
             <p className="mt-3 text-xs text-muted">
-              {t('account.resets', { date: formatResetDate(usage.resetsAt) })}
+              {usage.trialAllowance
+                ? t('account.trialAllowance', { date: formatResetDate(usage.resetsAt) })
+                : t('account.resets', { date: formatResetDate(usage.resetsAt) })}
             </p>
           </>
         ) : (

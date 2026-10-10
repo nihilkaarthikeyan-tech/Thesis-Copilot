@@ -17,6 +17,8 @@ export const ACTION_NAMES: Record<string, string> = {
   EXAMINER_REVIEW: 'Examiner reviews',
   RESEARCH: 'Deep research',
   LIT_REVIEW_BUILD: 'Literature review builds',
+  // ADR-0152: its own allowance; a COMMAND call before that.
+  PROOFREAD: 'Proofreading',
   PROPOSAL: 'Proposal conversation',
   OUTLINE: 'Outline',
   STYLE_PROFILE: 'Writing profile',

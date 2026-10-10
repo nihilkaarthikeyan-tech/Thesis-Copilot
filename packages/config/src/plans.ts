@@ -1,7 +1,9 @@
 /**
- * Plan caps — PRD §11.3, copied exactly.
+ * Plan caps — PRD §11.3, copied exactly, then changed by ADRs (each change says which).
  *
  * Caps are per user per calendar month and reset at 00:00 UTC on the 1st (PRD §0.2, §11.5).
+ * ADR-0152: except the free trial's, which count once over the whole 14-day trial (the ledger
+ * row of the month the trial started), so a trial that crosses the 1st does not get two months.
  * A missing cap is treated as zero, which makes the endpoint unusable — intentional, and it fails
  * loudly (PRD Appendix E.2).
  */
@@ -41,7 +43,9 @@ const STUDENT: PlanLimits = {
     DRAFT: 10,
     CITE: 30,
     CHAT: 15,
-    COMMAND: 4,
+    // ADR-0152 (Option B, the owner, 2026-10-10): 4 → 40. Edits are the cheapest strong-model
+    // action (about 16 paise); four a month was a wall within the first session.
+    COMMAND: 40,
     COHERENCE: 1,
     VIVA: 30,
     CHAPTER_BUILD: 3,
@@ -52,6 +56,9 @@ const STUDENT: PlanLimits = {
     // a full rewrite every month, and the chapter build (3 a month) still writes it section by
     // section.
     LIT_REVIEW_BUILD: 1,
+    // ADR-0152: proofreading's own allowance, 30 runs of 2,000 words (60,000 words, a whole
+    // thesis a month). It used to draw on the section commands.
+    PROOFREAD: 30,
   },
   seedPapers: 3,
   libraryPdfs: 60,
@@ -65,10 +72,13 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
   FREE_TRIAL: {
     caps: {
       ASSIST: 50,
-      DRAFT: 2,
-      CITE: 10,
-      CHAT: 5,
-      COMMAND: 2,
+      // ADR-0152 (Option B, the owner, 2026-10-10): drafts 2 → 3, citation suggestions 10 → 20,
+      // questions 5 → 10, section commands 2 → 10. Two commands were used up within minutes of a
+      // first session; these are enough for a trial's first week.
+      DRAFT: 3,
+      CITE: 20,
+      CHAT: 10,
+      COMMAND: 10,
       COHERENCE: 0,
       VIVA: 3,
       CHAPTER_BUILD: 1,
@@ -78,6 +88,8 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
       // a review is twenty sections, a fifth of the ceiling in one press, for an account that may
       // never pay.
       LIT_REVIEW_BUILD: 0,
+      // ADR-0152: ten proofreading runs of 2,000 words (20,000 words) over the trial.
+      PROOFREAD: 10,
     },
     seedPapers: 1,
     libraryPdfs: 10,
@@ -94,13 +106,15 @@ export const PLAN_LIMITS: Readonly<Record<Plan, PlanLimits>> = {
       DRAFT: 10,
       CITE: 30,
       CHAT: 15,
-      COMMAND: 4,
+      // ADR-0152: the student plan's numbers.
+      COMMAND: 40,
       COHERENCE: 1,
       VIVA: 30,
       CHAPTER_BUILD: 3,
       EXAMINER_REVIEW: 6,
       RESEARCH: 3,
       LIT_REVIEW_BUILD: 1,
+      PROOFREAD: 30,
     },
     seedPapers: 3,
     libraryPdfs: 60,

@@ -22,6 +22,8 @@ const ACTION_LABEL: Record<string, string> = {
   COMMAND: 'Section commands (expand, formalise, shorten…)',
   COHERENCE: 'Coherence checks across chapters',
   RESEARCH: 'Deep research questions (planned, searched part by part, answered at length)',
+  // ADR-0152: proofreading has its own allowance.
+  PROOFREAD: 'Proofreading runs (up to 2,000 words each)',
 };
 
 const PLANS = ['FREE_TRIAL', 'STUDENT_MONTHLY', 'STUDENT_ANNUAL'] as const;
@@ -73,7 +75,8 @@ export default function PricingPage() {
       </h2>
       <p className="mt-1 text-sm text-muted">
         These are the real limits the software enforces, not marketing numbers. An action counts
-        when the AI generates something, whether you keep it or throw it away.
+        when the AI generates something, whether you keep it or throw it away. The free trial's
+        numbers are for the whole 14-day trial, not for each month.
       </p>
       <div className="mt-4 overflow-x-auto rounded-md border border-line bg-surface">
         <table className="w-full text-sm">

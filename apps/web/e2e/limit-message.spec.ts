@@ -21,7 +21,8 @@ let cookie = '';
 let doc: { id: string; firstChapterId: string };
 
 /** The FREE_TRIAL caps a fresh account starts on (PRD §11.3). */
-const TRIAL = { COMMAND: 2, CHAT: 5 } as const;
+// ADR-0152 (Option B): ten of each on the trial.
+const TRIAL = { PROOFREAD: 10, CHAT: 10 } as const;
 
 const CHAPTER = {
   type: 'doc',
@@ -77,11 +78,12 @@ test.beforeAll(async ({ request }) => {
   expect(saved.ok(), `save: ${saved.status()}`).toBe(true);
 });
 
-test('the Check tab: a proofread past the allowance names it, the count and the reset date', async ({
+test('the Check tab: a proofread past the allowance names it, the count and the trial’s end', async ({
   page,
 }) => {
   test.setTimeout(120_000);
-  await setAllowanceUsed(session.email, 'COMMAND', TRIAL.COMMAND);
+  // ADR-0152: proofreading has its own allowance.
+  await setAllowanceUsed(session.email, 'PROOFREAD', TRIAL.PROOFREAD);
   await signIn(page);
   await page.setViewportSize({ width: 1366, height: 800 });
   await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
@@ -93,12 +95,14 @@ test('the Check tab: a proofread past the allowance names it, the count and the 
   const notice = panel.getByTestId('limit-notice');
   await expect(notice).toBeVisible({ timeout: 20_000 });
   await expect(notice).toHaveAttribute('data-kind', 'cap');
-  await expect(notice).toContainText('Monthly limit reached');
-  await expect(notice).toContainText(`Section commands: ${TRIAL.COMMAND} of ${TRIAL.COMMAND} used`);
-  // 00:00 UTC on the 1st, in the browser's own calendar: a real date, not the ISO string.
-  await expect(notice).toContainText(/Resets on .*\d{4}/);
-  await expect(notice).not.toContainText('T00:00:00');
-  await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/app/account');
+  // ADR-0152: a trial's allowance is for the whole trial and ends with it, not on the 1st.
+  await expect(notice).toContainText('Trial limit reached');
+  await expect(notice).toContainText(
+    `Proofreading runs: ${TRIAL.PROOFREAD} of ${TRIAL.PROOFREAD} used in your free trial`,
+  );
+  await expect(notice).toContainText(/your trial ends on .*\d{4}/);
+  await expect(notice).not.toContainText('Resets on');
+  await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/pricing');
 
   // Inside the 288 px side panel, and nothing in it sticks out.
   const side = await page.getByTestId('tool-panel').boundingBox();
@@ -136,8 +140,8 @@ test.describe('on a phone', () => {
     const notice = chat.getByTestId('limit-notice');
     await expect(notice).toBeVisible({ timeout: 20_000 });
     await expect(notice).toContainText(`Questions to your library: ${TRIAL.CHAT} of ${TRIAL.CHAT}`);
-    await expect(notice).toContainText(/Resets on .*\d{4}/);
-    await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/app/account');
+    await expect(notice).toContainText(/your trial ends on .*\d{4}/);
+    await expect(notice.getByTestId('limit-notice-link')).toHaveAttribute('href', '/pricing');
 
     const box = await notice.boundingBox();
     expect(box).toBeTruthy();

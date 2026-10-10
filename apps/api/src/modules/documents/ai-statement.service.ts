@@ -134,11 +134,13 @@ export class AiStatementService {
     const callsOf = (...actions: string[]) =>
       actions.reduce((sum, action) => sum + (callCount.get(action) ?? 0), 0);
 
-    // Proofreading goes through the COMMAND allowance and log (§11.5). Its runs record how many
-    // calls they made, so the edit-command count is what is left after them. Runs before
-    // ADR-0148 recorded nothing and stay inside "edits".
+    // Proofreading went through the COMMAND allowance and log (§11.5) until ADR-0152. Those runs
+    // record how many calls they made, so the edit-command count is what is left after them.
+    // Runs before ADR-0148 recorded nothing and stay inside "edits"; runs since ADR-0152 are
+    // logged as PROOFREAD (their mark says `action`) and are not in the COMMAND count at all.
     const proofreadCalls = proofreads.reduce((sum, row) => {
-      const detail = row.detail as { calls?: unknown } | null;
+      const detail = row.detail as { calls?: unknown; action?: unknown } | null;
+      if (detail?.action === 'PROOFREAD') return sum;
       return sum + (typeof detail?.calls === 'number' ? detail.calls : 0);
     }, 0);
 
