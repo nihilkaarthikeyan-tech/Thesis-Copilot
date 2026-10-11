@@ -95,3 +95,24 @@ place the browser suite must pass, and the only place it used to be possible to 
 - If branch protection ever requires the `ci` checks on pull requests, a docs-only pull request
   will wait forever for checks that never start (the path filter). Today nothing is required.
 - `ci.yml` asks for `actions: read` (to find the last green run); the release's `ci` job grants it.
+
+## Addendum 2026-10-11: a release in about 20 minutes, the owner's request
+
+A release took ~40 minutes: `checks` (~15–20), THEN the Playwright smoke (~15), THEN the images
+(~5), THEN the deploy (~3–5). The owner asked for faster releases. With no test dropped:
+- the Playwright smoke no longer waits for `checks` (both must still pass; `deploy` needs the
+  whole `ci`);
+- it is split over three runners (`--shard=n/3`);
+- the images build in parallel with `ci` and push only the version tag. `latest` moves in a new
+  `promote-latest` job after a successful deploy, so a release with red tests never moves it.
+
+Expected: max(checks ~18, the slowest shard ~6) + deploy ~4 ≈ 22 minutes. More runner-minutes per
+release (three Playwright runners), the same number of tests.
+
+**Then, the same day (the owner: "why can't you use the old method"):** every push to main runs
+the full CI again (`FULL: 'true'`; docs-only pushes still skip it). A release first asks whether
+the tagged commit already passed it, with the checks and all three Playwright shards green
+(`already-green`). If it did, the release skips `ci` and only builds and deploys, ~10 min.
+Otherwise `ci` runs first, as before. Since a release is tagged on a commit already pushed and
+green, a release is ~10 minutes again, and nothing reaches production untested. The cost is
+runner-minutes on every push; with the repo private, that is paid.

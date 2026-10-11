@@ -55,9 +55,10 @@ env:
   # Matches the runtime image (node:22-alpine) rather than whatever a laptop runs.
   NODE_VERSION: 22
   PNPM_VERSION: 9.15.9
-  # 'true' unless this is an ordinary push to main. Jobs cannot read `env` in `if:`, so the e2e
-  # job repeats this expression; keep the two the same.
-  FULL: ${{ github.event_name != 'push' || inputs.full == true || startsWith(github.ref, 'refs/tags/') }}
+  # 2026-10-11, the owner: every run is full again (every suite and the Playwright smoke), so a
+  # release can skip the tests when its commit already passed here (release.yml, `already-green`).
+  # Docs-only pushes still skip CI through the path filter.
+  FULL: 'true'
 
 jobs:
   checks:
@@ -148,16 +149,18 @@ jobs:
         run: pnpm audit --audit-level=high
 
   e2e-smoke:
-    name: playwright smoke
+    name: playwright smoke (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
+    # 2026-10-11, the owner: a release took ~40 min. The suite is split over three runners, and no
+    # longer waits for `checks` (both must still pass for a release, which `needs: ci` holds).
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     # The suite itself runs in about ten minutes. The headroom is for failures: each one retries
     # once and several wait out a two-minute timeout before they do, so a bad run costs far more
     # than a good one. Twenty-five was not enough to reach the end of a bad run and report it.
     timeout-minutes: 40
-    needs: checks
-    # Not on an ordinary push to main (ADR-0141): on a pull request, a manual run and every release.
-    # The same expression as `env.FULL`, which `if:` cannot read.
-    if: ${{ github.event_name != 'push' || inputs.full == true || startsWith(github.ref, 'refs/tags/') }}
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -246,7 +249,7 @@ jobs:
           fi
 
       - name: playwright
-        run: pnpm --filter @tc/web e2e
+        run: pnpm --filter @tc/web e2e -- --shard=${{ matrix.shard }}/3
 
       - name: logs on failure
         if: failure()
@@ -258,7 +261,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.shard }}
           path: apps/web/test-results/
           retention-days: 7
           if-no-files-found: ignore

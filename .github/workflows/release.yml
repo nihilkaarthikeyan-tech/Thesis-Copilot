@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: read
 
 env:
   REGISTRY: ghcr.io
@@ -23,8 +24,34 @@ jobs:
   # this is the gate that does. Called rather than looked up (`gh api .../check-runs`) because a
   # lookup can only find a result if someone remembered to produce one for that exact commit; a
   # call produces it, and a red one stops the release by `needs:` with nothing else to get right.
+  # 2026-10-11, the owner: when the tagged commit already passed the full CI on its push (every
+  # suite and all three Playwright shards), the release does not run it again — build and deploy
+  # only, ~10 min. Otherwise `ci` below runs first, as before.
+  already-green:
+    name: did ${{ github.sha }} already pass the full CI?
+    runs-on: ubuntu-latest
+    outputs:
+      green: ${{ steps.look.outputs.green }}
+    steps:
+      - id: look
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runs=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${{ github.sha }}&status=success&per_page=10" --jq '.workflow_runs[].id')
+          green=false
+          for id in $runs; do
+            shards=$(gh api "repos/${{ github.repository }}/actions/runs/$id/jobs?per_page=50" --jq '[.jobs[] | select((.name | startswith("playwright smoke")) and .conclusion == "success")] | length')
+            checks=$(gh api "repos/${{ github.repository }}/actions/runs/$id/jobs?per_page=50" --jq '[.jobs[] | select((.name | startswith("lint")) and .conclusion == "success")] | length')
+            if [ "$shards" -ge 3 ] && [ "$checks" -ge 1 ]; then green=true; echo "full CI run $id passed: $shards shards"; break; fi
+          done
+          echo "green=$green" >> "$GITHUB_OUTPUT"
+          echo "already green: $green"
+
   ci:
     name: full ci on ${{ github.ref_name }}
+    needs: already-green
+    if: ${{ needs.already-green.outputs.green != 'true' }}
     uses: ./.github/workflows/ci.yml
     with:
       full: true
@@ -36,9 +63,9 @@ jobs:
   images:
     name: build + push ${{ matrix.image }}
     runs-on: ubuntu-latest
-    # Not in parallel with ci: the images are tagged `latest` as well as the version, and a release
-    # that fails its tests must not have moved `latest`.
-    needs: ci
+    # 2026-10-11, the owner: built in parallel with ci to save time. Safe because only the version
+    # tag is pushed here; nothing runs an image until `deploy`, which needs ci green, and `latest`
+    # is moved only after the deploy succeeds (`promote latest` below).
     strategy:
       matrix:
         include:
@@ -62,7 +89,6 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:${{ github.ref_name }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:latest
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_SITE_URL=https://${{ secrets.DOMAIN }}
@@ -72,8 +98,9 @@ jobs:
   deploy:
     name: deploy ${{ github.ref_name }} to the VPS
     runs-on: ubuntu-latest
-    # `ci` is listed as well as `images` so the gate is explicit here, not only inherited.
-    needs: [ci, images]
+    # Deploys only with the images built and the tests green: on this commit's push, or in `ci`.
+    needs: [already-green, ci, images]
+    if: ${{ always() && needs.images.result == 'success' && (needs.already-green.outputs.green == 'true' || needs.ci.result == 'success') }}
     environment: production
     steps:
       # A release is images *and* files, and only the images were ever shipped.
@@ -170,3 +197,24 @@ jobs:
               echo "::warning::the host nginx vhost differs from infra/nginx/thesis.rademics.ai.conf — copy it over, run 'nginx -t', then 'systemctl reload nginx'"
               diff -u "${LIVE}" "${REPO}" || true
             fi
+
+  # `latest` follows only a release that passed its tests and deployed.
+  promote-latest:
+    name: promote ${{ matrix.image }}:latest
+    runs-on: ubuntu-latest
+    needs: deploy
+    strategy:
+      matrix:
+        image: [tc-api, tc-web, tc-backup, tc-gotenberg]
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: tag ${{ github.ref_name }} as latest
+        run: >-
+          docker buildx imagetools create
+          -t ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:latest
+          ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:${{ github.ref_name }}
