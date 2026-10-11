@@ -332,12 +332,16 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
   // ADR-0147 round 2: a bare "Additionally,"/"Furthermore,"… opening a sentence is dropped.
   // ADR-0150: then a marker goes inside its sentence's full stop, and one paper is cited once.
-  // ADR-0147 round 6: then an uncited first sentence before a cited one is dropped.
+  // ADR-0147 round 6: an uncited first sentence before a cited one is dropped. Decided before
+  // `placeCitations`, whose one-paper-once rule removes a marker the model did attach to the
+  // first sentence when the second cites the same paper: that sentence was cited, and stays.
   const text = hasWords
-    ? dropUncitedLead(
-        placeCitations(academicPunctuation(dropConnectiveOpeners(filtered.text, input.before))),
-        input.before,
-        input.guided === true || input.keepUncitedLead === true,
+    ? placeCitations(
+        dropUncitedLead(
+          academicPunctuation(dropConnectiveOpeners(filtered.text, input.before)),
+          input.before,
+          input.guided === true || input.keepUncitedLead === true,
+        ),
       ).trim()
     : '';
   const empty = text.length === 0;

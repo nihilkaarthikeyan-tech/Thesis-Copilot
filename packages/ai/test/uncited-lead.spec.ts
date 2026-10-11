@@ -139,6 +139,14 @@ describe('postProcessAssist with dropUncitedLead (A.1, ADR-0147 round 6)', () =>
     expect(result.text).toBe('Upfront cost was the barrier most households named {{cite:S1#c1}}.');
   });
 
+  it('a first sentence the model cited stays, even when one-paper-once later removes its marker', () => {
+    const output =
+      'High upfront costs remain the main barrier to household adoption {{cite:S1#c1}}. Lack of awareness further slows household adoption {{cite:S1#c1}}.';
+    const result = run(output);
+    expect(result.text).toContain('High upfront costs');
+    expect(result.text).toContain('Lack of awareness');
+  });
+
   it('a first sentence whose only marker was hallucinated is uncited, and goes', () => {
     const result = run(`${LEAD.replace('.', ' {{cite:Kumar 2017}}.')} ${CITED}`);
     expect(result.hallucinated).toEqual(['Kumar 2017']);
