@@ -24,18 +24,12 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    version: null,
-    date: '2026-10-10',
-    title: 'Drafted sections that read more like your own review',
+    version: 'v0.1.46',
+    date: '2026-10-11',
+    title:
+      'A faster, more honest first sentence, a free trial with room to try things, and better drafts',
     changes: [
       'A drafted section now opens each paragraph with what the studies found, cites every sentence on its own, names a tool by what it does rather than its product name, and puts the findings in its own order instead of repeating the paper’s list.',
-    ],
-  },
-  {
-    version: 'v0.1.45',
-    date: '2026-10-10',
-    title: 'A faster, more honest first sentence, and a free trial with room to try things',
-    changes: [
       'Setting up a new thesis takes four steps instead of five: your field and university are now an optional line under the title, guessed from the title for you.',
       'As soon as you name the thesis, the chapters are planned and the first sentence is on its way. The questions about your aim stay open beside it and are still optional: your answers become the aim and objectives.',
       'If no paper in your library is about the place your title names (say, Karnataka), the first sentence is not offered, so you never start with a sentence that cites another country. The card says so and Find papers is one press away.',
