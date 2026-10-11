@@ -12,6 +12,7 @@ import {
   EMBEDDING_DIMENSIONS,
   EmbeddingShapeError,
   findCandidates,
+  keptChunkIds,
   replaceSourceChunks,
   shortReference,
   toVectorLiteral,
@@ -92,6 +93,40 @@ describe('replaceSourceChunks', () => {
     // The text is a parameter, never interpolated: it is a passage from someone else's paper.
     expect(insert?.values).toContain('chunk 0');
     expect(insert?.values.at(-1)).toBe(toVectorLiteral(vector()));
+  });
+
+  it('keeps the id of an old chunk whose passage the new set carries, so citations still open', async () => {
+    const abstract =
+      'Proteins are essential to life, and understanding their structure can facilitate a ' +
+      'mechanistic understanding of their function. Through an enormous experimental effort 1–4 , ' +
+      'the structures of around 100,000 unique proteins have been determined 5 .';
+    const { db, executed } = fakeDb([
+      { id: '01a1265a-5396-770e-945e-89a81c3138c4', text: abstract },
+      { id: '01a1265a-5396-770e-945e-89a81c3138c5', text: 'chunk unrelated to anything new' },
+    ]);
+    // The full text has the same abstract with its numerals set tight, then a passage of its own.
+    const fullText = abstract.replace(' 1–4 ,', '1–4,').replace(' 5 .', '5.');
+    await replaceSourceChunks(db, 'src-1', [
+      { ...chunk(0), text: fullText },
+      { ...chunk(1), text: 'The development of computational methods to predict structure.' },
+    ]);
+    expect(executed[1]?.values[0]).toBe('01a1265a-5396-770e-945e-89a81c3138c4');
+    expect(executed[2]?.values[0]).toBeNull();
+  });
+
+  it('a short or different passage gets a fresh id', () => {
+    expect(
+      keptChunkIds(
+        [
+          { id: 'a', text: 'Results' },
+          {
+            id: 'b',
+            text: 'An entirely different paragraph about rural electrification in Karnataka.',
+          },
+        ],
+        [{ text: 'Results' }, { text: 'Households reported that upfront cost was the barrier.' }],
+      ),
+    ).toEqual([null, null]);
   });
 
   it('still clears the old chunks when there are no new ones', async () => {

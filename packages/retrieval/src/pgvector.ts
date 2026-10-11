@@ -69,6 +69,11 @@ export type ChunkRow = {
  * Replaces a source's chunks with a new set, in one transaction-shaped pair of statements: the old
  * rows go first so re-indexing a source cannot leave two generations of chunks behind, which would
  * quietly double every retrieval result.
+ *
+ * A citation names the chunk it stands on by id, so a new chunk that carries the same passage as
+ * an old one keeps the old one's id (`keptChunkIds`). Without it, a paper read again — the
+ * abstract indexed first and the full text a few seconds later (ADR-0070) — left every citation
+ * written in between pointing at a chunk that no longer existed, and its card never opened.
  */
 export async function replaceSourceChunks(
   db: RawClient,
@@ -76,19 +81,26 @@ export async function replaceSourceChunks(
   chunks: readonly ChunkRow[],
   dimensions = EMBEDDING_DIMENSIONS,
 ): Promise<number> {
+  const previous = await db.$queryRawUnsafe<Array<{ id: string; text: string }>>(
+    'SELECT "id", "text" FROM "SourceChunk" WHERE "sourceId" = $1::uuid ORDER BY "ordinal"',
+    sourceId,
+  );
   await db.$executeRawUnsafe('DELETE FROM "SourceChunk" WHERE "sourceId" = $1::uuid', sourceId);
   if (chunks.length === 0) return 0;
+  const ids = keptChunkIds(Array.isArray(previous) ? previous : [], chunks);
 
   let written = 0;
   // Inserted one at a time rather than in a single multi-row statement: a 1024-float vector is
   // around 12 KB of literal, and a batch of 64 would build a 750 KB query string.
-  for (const chunk of chunks) {
+  for (const [index, chunk] of chunks.entries()) {
     const literal = toVectorLiteral(chunk.embedding, dimensions);
     await db.$executeRawUnsafe(
       `INSERT INTO "SourceChunk"
          ("id", "sourceId", "ordinal", "page", "charStart", "charEnd", "section", "text",
           "tokenCount", "embedding")
-       VALUES (uuid_generate_v7(), $1::uuid, $2, $3, $4, $5, $6, $7, $8, $9::vector)`,
+       VALUES (COALESCE($1::uuid, uuid_generate_v7()), $2::uuid, $3, $4, $5, $6, $7, $8, $9,
+               $10::vector)`,
+      ids[index] ?? null,
       chunk.sourceId,
       chunk.ordinal,
       chunk.page,
@@ -102,6 +114,40 @@ export async function replaceSourceChunks(
     written++;
   }
   return written;
+}
+
+/** Letters only, lower-cased: the same passage from two sources differs in spacing and numerals. */
+function passageKey(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}]+/gu, '');
+}
+
+/** Below this many letters a match says nothing about the passage being the same one. */
+const MIN_KEPT_LETTERS = 80;
+
+/**
+ * For each new chunk, the id of an old chunk with the same passage, or null for a fresh id. The
+ * same passage means one contains the other once both are reduced to their letters, so the
+ * citation's card shows text that holds what it was written on, or a part of it. Each old id is
+ * used once, by the first new chunk that matches it.
+ */
+export function keptChunkIds(
+  previous: ReadonlyArray<{ id: string; text: string }>,
+  next: ReadonlyArray<{ text: string }>,
+): Array<string | null> {
+  const old = previous.map((row) => ({ id: row.id, key: passageKey(row.text) }));
+  const used = new Set<string>();
+  return next.map((chunk) => {
+    const key = passageKey(chunk.text);
+    const match = old.find(
+      (row) =>
+        !used.has(row.id) &&
+        Math.min(row.key.length, key.length) >= MIN_KEPT_LETTERS &&
+        (row.key.includes(key) || key.includes(row.key)),
+    );
+    if (!match) return null;
+    used.add(match.id);
+    return match.id;
+  });
 }
 
 export type CandidateQuery = {

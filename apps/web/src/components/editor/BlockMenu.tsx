@@ -324,7 +324,8 @@ export function BlockMenu(props: {
             Find a source for it
           </button>
           <p className="px-2.5 pt-0.5 pb-1 text-[11px] leading-snug text-muted">
-            The three checks take one command each. Finding a source is free.
+            Spelling and grammar takes one proofreading run; the other two take one command each.
+            Finding a source is free.
           </p>
         </div>
       ) : null}

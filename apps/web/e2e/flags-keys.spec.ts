@@ -44,7 +44,9 @@ test('J and K move between flags, and R resolves the focused one', async ({ page
   ];
   const actions: Array<{ id: string; action: string }> = [];
   const cors = {
-    'access-control-allow-origin': 'http://localhost:3000',
+    'access-control-allow-origin': new URL(
+      process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
+    ).origin,
     'access-control-allow-credentials': 'true',
   };
   await page.route(`${API_URL}/api/v1/documents/${doc.id}/coherence/flags**`, async (route) => {

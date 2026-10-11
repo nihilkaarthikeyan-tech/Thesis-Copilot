@@ -125,10 +125,13 @@ function Row({
       {state === 'open' ? (
         <div className="min-w-0 flex-1">{children}</div>
       ) : (
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5 sm:flex-nowrap">
+        // One line on a phone too (CI, 2026-10-10): with the label on a line of its own, four
+        // finished rows and the chapters row pushed the chapter's heading below an 800-px screen
+        // at 360 px wide, and the first sentence under the suggestion bar.
+        <div className="flex min-w-0 flex-1 items-baseline gap-x-3">
           <span
             className={cn(
-              'w-full shrink-0 text-[13px] sm:w-20',
+              'w-16 shrink-0 text-[13px] sm:w-20',
               state === 'done' ? 'text-muted' : 'text-faint',
             )}
           >
