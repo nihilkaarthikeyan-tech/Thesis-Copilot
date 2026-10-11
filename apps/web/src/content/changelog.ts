@@ -24,6 +24,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: 'v0.1.49',
+    date: '2026-10-11',
+    title: 'Signing in opens your theses',
+    changes: [
+      'Signing in opens the list of your theses, with Continue writing at the top for the chapter you had open. The browser’s Back button from a chapter brings you back to the list.',
+      'Start another thesis is now above your theses, not below them.',
+    ],
+  },
+  {
     version: 'v0.1.48',
     date: '2026-10-11',
     title: 'Grey suggestions that say what the papers found',

@@ -45,12 +45,7 @@ import { tNow } from '@/i18n';
 import { useT } from '@/i18n/react';
 import { ApiError, api } from '@/lib/api';
 import { signOut, useSession } from '@/lib/auth-client';
-import {
-  enteredThisSession,
-  type LastChapter,
-  markEnteredThisSession,
-  readLastChapter,
-} from '@/lib/last-chapter';
+import { type LastChapter, readLastChapter } from '@/lib/last-chapter';
 import { createThesisForSetup, setupHref } from '@/lib/setup-card';
 import { useStayInWindow } from '@/lib/stay-in-window';
 import { thesisWriteHref } from '@/lib/thesis-href';
@@ -124,7 +119,7 @@ export default function DocumentListPage() {
   const [deleting, setDeleting] = useState<DocumentSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   /**
-   * With theses on the list, the new-thesis form waits behind "Start another thesis" below them
+   * With theses on the list, the new-thesis form waits behind "Start another thesis" above them
    * (2026-10-04, from the Jenni journey study): a returning student came back to a form, not to
    * their work. `?new=1` opens it, so a link can still go straight to creating one. Read from
    * `window` after mount rather than `useSearchParams`, which would need a Suspense boundary.
@@ -155,23 +150,9 @@ export default function DocumentListPage() {
     if (isAdmin) router.replace('/admin');
   }, [isAdmin, router]);
 
-  // ADR-0073: arriving in the app, go back to the chapter last open — once per browser session,
-  // and only to a thesis that still exists. The list is one click away (the "Theses" crumb).
-  const [resuming, setResuming] = useState<boolean | null>(null);
-  useEffect(() => {
-    setResuming(!enteredThisSession() && readLastChapter() !== null);
-    markEnteredThisSession();
-  }, []);
-  useEffect(() => {
-    if (resuming && error) setResuming(false);
-    if (!resuming || documents === null || isAdmin) return;
-    const last = readLastChapter();
-    if (last && documents.some((d) => d.id === last.documentId)) {
-      router.replace(`/app/d/${last.documentId}/write/${last.chapterId}`);
-    } else {
-      setResuming(false);
-    }
-  }, [resuming, documents, isAdmin, router, error]);
+  // ADR-0073 used to jump from here to the chapter last open. The owner (2026-10-11) wants
+  // signing in to land on this list, as it used to, so the browser's Back from a chapter comes
+  // here too: the "Continue writing" card at the top is the one-click way back to that chapter.
 
   const load = useCallback(async () => {
     try {
@@ -426,7 +407,7 @@ export default function DocumentListPage() {
 
   // Until the session says who this is, show nothing rather than flash a student's list at an
   // administrator on their way to /admin.
-  if (session.isPending || isAdmin || resuming !== false) {
+  if (session.isPending || isAdmin) {
     // ADR-0071: a spinner, not a blank screen, while the session is read (about 3 s on
     // production looked like a broken page). Still no list, so an administrator never sees one.
     return (
@@ -567,6 +548,28 @@ export default function DocumentListPage() {
           </p>
         ) : null}
 
+        {/* 2026-10-11, the owner: starting a new thesis sits above the list, not under it. */}
+        {documents && documents.length > 0 ? (
+          <section className="mt-6" data-testid="start-another">
+            {formOpen ? (
+              <>
+                <h2 className="text-[15px] font-semibold text-ink">{t('list.startAnother')}</h2>
+                {createForm}
+              </>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFormOpen(true);
+                  setFocusForm(true);
+                }}
+              >
+                {t('list.startAnother')}
+              </Button>
+            )}
+          </section>
+        ) : null}
+
         <section className="mt-8" aria-live="polite">
           {documents === null ? (
             <p className="text-[13px] text-muted">{t('common.loading')}</p>
@@ -686,27 +689,6 @@ export default function DocumentListPage() {
             </>
           )}
         </section>
-
-        {documents && documents.length > 0 ? (
-          <section className="mt-8" data-testid="start-another">
-            {formOpen ? (
-              <>
-                <h2 className="text-[15px] font-semibold text-ink">{t('list.startAnother')}</h2>
-                {createForm}
-              </>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setFormOpen(true);
-                  setFocusForm(true);
-                }}
-              >
-                {t('list.startAnother')}
-              </Button>
-            )}
-          </section>
-        ) : null}
 
         {/* R29 (ADR-0114): the archive, last on the page and folded, as the least-used part of it.
             Jenni's is a popover; a section keeps it readable on a phone. */}
