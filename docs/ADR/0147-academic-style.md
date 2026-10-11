@@ -3,7 +3,8 @@
 **Date:** 2026-10-10 · **Status:** backstop shipped; the prompt candidate was measured against the
 criterion below (written before the runs) and **not adopted**; rounds 2 and 3 (A.1 only) not
 adopted either; round 4 (A.1 v4 and the A.2 draft candidate) won the judge on every set and was
-not adopted, both tracks failing on copying; round 5 adopted the A.2 draft candidate (`draft-academic5.md`) and not A.1 v5 · **Asked by:** the owner
+not adopted, both tracks failing on copying; round 5 adopted the A.2 draft candidate (`draft-academic5.md`) and not A.1 v5; round 6 (A.1 code for the uncited first sentence and the abstract's opening
+line, then v5 with it) passed neither track, and nothing shipped · **Asked by:** the owner
 
 ## Context
 
@@ -796,3 +797,80 @@ had the code on both sides). A track that misses **narrowly** (exactly one item,
 one win, by ≤ 2 percentage points of cited sentences, or by ≤ 0.1 of mean) may run **one** more
 variant against this same criterion, its change recorded here before its run. Budget ≤ ₹45 for the
 round; a quota refusal stops it and is reported.
+
+### 5. Results (2026-10-11; ₹36.70 spent, no quota refusal, no failed call)
+
+`eval/results/assist-academic5-2026-10-11-08-01.json` (V5, typed),
+`assist-academic5-opener-2026-10-11-08-00.json` (V5, opener),
+`assist-code-only-2026-10-11-08-00.json` (CODE, typed) and
+`assist-code-only-opener-2026-10-11-08-00.json` (CODE, opener). Each run had a `--max-rupees 11`
+guard; the V5 typed run reached it after **26 of its 30 runs** (13 of 15 cases, both samples), so
+that row is 26 runs. Its outcome cannot change with the last four: V5 fails on the opener set
+independently. Stock phrases are per 1,000 words of the offered text (`style-measure.ts
+--processed`).
+
+| Track, set | Wins A–B–tie | Mean A → B | Cited sentences A / B | Stock per 1k A / B | run6Figures A / B | run6Names A / B | run6 A / B | Hallucinated A / B | Nothing, failed |
+|---|---|---|---|---|---|---|---|---|---|
+| V5, typed (26) | 6–**18**–2 | 6.88 → **8.15** | 35/37 (95%) / 41/50 (**82%**) | 2.72 / **3.73** | 4 / **5** | 4 / 5 | 4 / 5 | 0 / 0 | 0 both sides |
+| V5, opener (20) | 6–**12**–2 | 6.91 → **7.95** | 25/31 / 33/36 | 8.69 / 6.59 | 8 / **10** | 8 / 5 | 9 / 10 | 2 / 0 | 0 both sides |
+| CODE, typed (30) | **7**–0–23 | **7.63** → 7.13 | 44/59 (75%) / 44/50 (**88%**) | 2.20 / 2.57 | 4 / 3 | 4 / 3 | 4 / 3 | 0 / 0 | 0 both sides |
+| CODE, opener (20) | 5–**9**–6 | 7.15 → **7.67** | 22/38 / 26/33 | 6.97 / 5.80 | 8 / 8 | 6 / 7 | 8 / 8 | 0 / 0 | 0 both sides |
+
+In V5, A is the prompt on disk and B v5, both with the round's code. In CODE, A is the prompt on
+disk without the code and B the same prompt with it; on the typed set B post-processed A's own
+answers, so the 23 ties are the answers the code left alone.
+
+Against the criterion:
+
+| | Track V5 | Track CODE |
+|---|---|---|
+| Judge | passes on both sets (18–6, 12–6) | **fails on the typed set: 0 wins against 7, mean −0.50** (opener 9–5, +0.52) |
+| Cited sentences | **82% on the typed set, fails** (≥ 90%) | 88% against 75%, passes |
+| Stock phrases | **typed 3.73 against 2.72, fails**; opener passes | (not in the criterion) |
+| `run6Figures` | **typed 5 against 4, opener 10 against 8, fails** | 3 against 4, 8 against 8, passes |
+| Hallucinated | 0, passes | 0, passes |
+| Nothing, failed | passes | passes |
+
+**Neither track passes, and nothing changes for the student.** CODE fails one item but not
+narrowly (seven wins), and V5 fails three, so no extra variant was run. Under the round's rule
+the code does not ship and v5 is not adopted. `prompts/assist.md` is unchanged. The two functions
+stay in `packages/ai` with their tests, opt-in (`dropUncitedFirst`, `withholdAbstractOpening`),
+set only by `run.ts` (`--code-only`; `--round6-code` for both sides, as the V5 runs were made).
+The API and retrieval wiring was reverted, so production builds the same request and offers the
+same text as before this round.
+
+What it showed:
+
+- **The uncited first sentence is usually the best one.** In all seven pairs the judge gave to
+  the uncut suggestion, its reason is the dropped sentence: "names specific surface-integrity
+  aspects (recast layer, subsurface damage)", "Ni3X precipitates … Orowan bowing and coherency
+  strain hardening", "near-full density, submicron grain size". The judge reads the marker at the
+  end of the second sentence as covering both, and the passages bear it out: the first sentence
+  came from the paper cited at the end. That is ADR-0150's own convention (a citation at the end
+  of the passage covers what precedes it). So the 90% bar on "a marker in every sentence" measures
+  marker placement, not grounding, and enforcing it in code removes grounded, specific text. A
+  rule that would serve both, adding the second sentence's marker to the first when the first's
+  wording is in that passage, places a citation on a claim the model did not attach it to, which
+  §10.6 does not allow without a support check; it is not done here.
+- **Withholding the abstract's opening line stopped that copy and the copying moved.** No
+  restatement of an abstract's first sentence survived on B in either opener run (the Kerala
+  definition, which side A of CODE still wrote twice, the Karnataka scheme sentence, the Punjab
+  emissions sentence). But `run6Figures` did not fall (8 / 8 in CODE; 10 in V5), because the model
+  took the next sentence's list instead ("high upfront costs, affordability gaps, regulatory
+  uncertainty, procedural delays, information asymmetries and built environment constraints", 15
+  words; the eight factor types in both samples). On the opener set the judge preferred the code
+  (9–5, +0.52), but the criterion bundled both changes and the typed set decides it.
+- **v5 still loses on copying and cited sentences with the code on both sides.** It wins the judge
+  clearly again (18–6, 12–6) and writes longer answers (1,609 words against 1,104 on 26 typed
+  runs), with more stock phrases on the typed set; its uncited sentences are again mostly the first
+  of a pair on one paper, which one-paper-once leaves unmarked.
+- **Judge noise on side A stays large:** the prompt on disk scored 6.88 and 6.91 here (with the
+  code), 7.63 and 7.15 in CODE (without), 7.78 and 7.26 in round 5.
+
+For a next round, if the owner wants one: the measure, not the model, is now the binding question.
+"Cited sentences" counts a sentence covered by a following marker as uncited; a measure of
+grounding (is each sentence's content in a passage cited in the suggestion) would separate the
+fault the owner saw (an unsupported first sentence) from ADR-0150's citation placement. That is a
+change to the criterion and is the owner's to make. Withholding the abstract's opening could be
+measured on its own (`--code-only` with only `withholdAbstractOpening`), against copying of the
+abstract's other sentences.

@@ -6684,3 +6684,31 @@ DOI. Tests: extension 158 (25 new), retrieval `mdpi.spec.ts`, worker `index-sour
 (+4); real Chromium for the registration, the buttons' layout at two widths and a bulk save
 against a stubbed API. Accepting Chrome's own prompt and the fetch from the VPS are the owner's
 (PENDING).
+
+### ADR-0147 round 6 (2026-10-11, A.1 Assist): the two failures moved into code; neither track passes
+
+Round 5's two A.1 failures built as code, not prompt: `dropUncitedLead` (`postprocess.ts`: an
+uncited first sentence before a cited one is dropped when the rest stands alone; never on a
+continuation, a guided suggestion, a pointing-back pair or a non-Latin script; decided before
+ADR-0150's one-paper-once so a sentence the model cited stays; two existing tests caught that
+ordering) and `withheldOpening` (`assist.ts`: at an opening, a passage that opens its abstract
+goes without its first sentence; id and reference kept). `run.ts --code-only` compares the prompt
+on disk with and without the code, side B reusing side A's raw answer where the request is the
+same. Criterion committed before the runs; `--samples 2`; ₹36.70, no refusal, no failed call (the
+V5 typed run stopped at its own ₹11 guard after 26 of 30 runs).
+
+- V5 (v5 against the prompt on disk, code on both): judge 18–6 and 12–6, but cited sentences 82%
+  (≥ 90% fails), stock phrases 3.73 against 2.72 (typed), run6Figures 5/4 and 10/8. Not adopted.
+- CODE (the prompt on disk with the code against without): cited 75% → 88%, run6Figures 4 → 3 and
+  8 → 8, opener judge 9–5; but the typed judge **0–7** (mean 7.63 → 7.13). Every one of the seven
+  reasons is the dropped sentence: it was the specific one, supported by the paper cited at the end.
+  Does not ship.
+
+Production is unchanged: both functions are opt-in (`dropUncitedFirst`,
+`withholdAbstractOpening`) and set only by the evaluation; the API and retrieval wiring
+(`opensAbstract` from the first chunk of the Abstract section, verified on the dev database:
+1,965 of 70,943 chunks, one per paper) was reverted. `test/uncited-lead.spec.ts` keeps both
+rules tested (Hindi, guided, continuations, the one-paper-once case). Withholding did stop every
+restatement of an abstract's first sentence; the copying moved to the abstract's next list. The
+finding for the owner: "a marker in every sentence" counts a sentence covered by the following
+marker as uncited, so the bar measures placement, not grounding (ADR-0147 round 6 §5).
