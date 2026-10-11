@@ -16,6 +16,7 @@ import { loadPrompt } from '../prompts.js';
 import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
 import { nameTheSource } from './own-study.js';
+import { isHeadingLine, splitSentences } from './quality.js';
 import { headByTokens, tailByTokens } from './tokens.js';
 
 /** A.1's parameters, kept together so a test can pin them. */
@@ -48,6 +49,12 @@ export type PromptPassage = {
    * marks it in the prompt; every other builder ignores it.
    */
   origin?: 'search';
+  /**
+   * ADR-0147 round 6: the passage starts at the first sentence of the paper's abstract. Set by
+   * the evaluation on its abstract passages; read only by `withheldOpening`, and only when the
+   * request asks for it (`withholdAbstractOpening`).
+   */
+  opensAbstract?: boolean;
 };
 
 export type AssistBuildInput = {
@@ -59,6 +66,12 @@ export type AssistBuildInput = {
   after: string;
   /** The guided instruction (Shift+→), or nothing. */
   instruction?: string | null;
+  /**
+   * ADR-0147 round 6: at an opening, send each `opensAbstract` passage without its first
+   * sentence (`withheldOpening`). Off unless set; only the evaluation sets it, since the round's
+   * code did not pass its criterion and production is unchanged.
+   */
+  withholdAbstractOpening?: boolean;
   userId: string;
   documentId: string;
   signal?: AbortSignal;
@@ -74,10 +87,39 @@ export function assistCachedBlock(memoryBlock: string): string {
   return [preamble, memoryBlock.trim(), task].join(CACHED_JOIN);
 }
 
+/**
+ * ADR-0147 round 6: the cursor opens an empty chapter or section. Nothing is written before it,
+ * or the cursor is on a new line under a heading (`before` ends in a line break and its last line
+ * is a heading, not a sentence). A new paragraph after a finished one is not an opening, and a
+ * half-written sentence never is: it does not end in a line break.
+ */
+export function isOpening(before: string): boolean {
+  if (before.trim() === '') return true;
+  if (!/\n[ \t]*$/.test(before)) return false;
+  const last = before.trimEnd().split('\n').pop() ?? '';
+  return isHeadingLine(last);
+}
+
+/**
+ * ADR-0147 round 6: a passage's text without its first sentence, when the passage opens the
+ * abstract and the cursor opens a section. Five prompt rounds found the fast model restating a
+ * fresh paper's opening line at an opening (22 words of one abstract, word for word), and a prompt
+ * line forbidding it made it more frequent. A passage of one sentence is left whole, and so is
+ * every passage on any other request. The id, reference and page do not change, and the copying
+ * check (`closeToPassages`) still compares against the whole passage.
+ */
+export function withheldOpening(passage: PromptPassage, opening: boolean): string {
+  if (!opening || passage.opensAbstract !== true) return passage.text;
+  const sentences = splitSentences(passage.text);
+  if (sentences.length < 2) return passage.text;
+  return sentences.slice(1).join(' ');
+}
+
 /** A.1's user message, with `before`/`after` cut to FR-4.3's windows. */
 export function assistUserMessage(input: AssistBuildInput): string {
   const template = loadPrompt('assist').user;
   if (!template) throw new Error('assist.md has no user message block');
+  const opening = input.withholdAbstractOpening === true && isOpening(input.before);
 
   return renderTemplate(template, {
     chapter: { title: input.chapter.title, scopeNote: input.chapter.scopeNote ?? '' },
@@ -86,7 +128,7 @@ export function assistUserMessage(input: AssistBuildInput): string {
       shortRef: passage.shortRef,
       page: passage.page ?? '',
       // ADR-0078: a paper's "this study" about itself, named, so it never reaches the thesis.
-      text: nameTheSource(passage.text, passage.shortRef),
+      text: nameTheSource(withheldOpening(passage, opening), passage.shortRef),
     })),
     before: tailByTokens(input.before, ASSIST.beforeTokens),
     after: headByTokens(input.after, ASSIST.afterTokens),
