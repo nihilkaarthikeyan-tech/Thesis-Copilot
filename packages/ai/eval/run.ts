@@ -378,6 +378,8 @@ function openerCases(name: string, keralaInRequest = false): Case[] {
           shortRef: shortRefOf(paper),
           page: null,
           text: paper.abstract,
+          // A whole abstract, as `index-abstract` stores a fresh paper (ADR-0147 round 6).
+          opensAbstract: true,
         };
       });
       cases.push({
@@ -630,6 +632,11 @@ async function proposalConversation(llm: LlmProvider, topic: Topic): Promise<Out
   return { raw: '', text: '', shown: '', cited: 0, empty: true, dropped: 0 };
 }
 
+/** ADR-0147 round 6: `--code-only` (live prompt with the round's code against without it). */
+let codeOnly = false;
+/** `--code-only`: side A's raw answer, by request, for side B to post-process when identical. */
+const sharedRaw = new Map<string, string>();
+
 async function produce(
   llm: LlmProvider,
   c: Case,
@@ -781,21 +788,31 @@ async function produce(
       : c.emptySection
         ? `${c.topic.chapter.scopeNote}\nThis section, "${c.topic.section.title}": ${c.topic.section.scopeNote}`
         : c.topic.chapter.scopeNote;
+    // ADR-0147 round 6, `--code-only`: side A is the same prompt without the round's code (no
+    // passage withholds its abstract's first sentence; an uncited first sentence is kept).
+    const codeOff = codeOnly && side === 'current';
     const request = buildAssistRequest({
       memoryBlock: c.opener ? openerMemory(c.topic) : memoryFor(c.topic, c.context),
       chapter: { title: c.topic.chapter.title, scopeNote },
-      passages: c.passages,
+      passages: codeOff ? c.passages.map((p) => ({ ...p, opensAbstract: false })) : c.passages,
       before: c.context,
       after: '',
       userId: 'eval',
       documentId: 'eval',
     });
-    const { text } = await streamText(llm, request);
+    // Where the code leaves the request unchanged (every typed-set case), side B post-processes
+    // side A's own answer, so the comparison measures the code and not a second sample.
+    const key = JSON.stringify([request.system, request.messages]);
+    const reused = codeOnly && side === 'candidate' ? sharedRaw.get(key) : undefined;
+    sharedRaw.delete(key);
+    const text = reused ?? (await streamText(llm, request)).text;
+    if (codeOff) sharedRaw.set(key, text);
     const processed = postProcessAssist({
       output: text,
       passageIds: c.passages.map((p) => p.id),
       before: c.context,
       existingText: c.context,
+      keepUncitedLead: codeOff,
     });
     const dropped = Object.values(processed.drops).reduce((a, b) => a + b, 0);
     return {
@@ -1083,9 +1100,14 @@ async function main(): Promise<void> {
   const set = arg('--set');
   const bOnly = process.argv.includes('--b-only');
   const noJudge = bOnly || process.argv.includes('--no-judge');
+  // ADR-0147 round 6: --code-only runs the prompt on disk on both sides, A without the round's
+  // code and B with it, so what the code alone does is measured.
+  codeOnly = process.argv.includes('--code-only');
   const candidatePath = join(here, 'candidates', `${candidateName}.md`);
-  if (!modelB && !existsSync(candidatePath)) throw new Error(`No candidate at ${candidatePath}`);
-  const candidate = modelB ? null : readFileSync(candidatePath, 'utf8');
+  if (!modelB && !codeOnly && !existsSync(candidatePath)) {
+    throw new Error(`No candidate at ${candidatePath}`);
+  }
+  const candidate = modelB || codeOnly ? null : readFileSync(candidatePath, 'utf8');
 
   const env = loadEnv();
   const providers = createProviders(env).llm;
@@ -1376,7 +1398,7 @@ async function main(): Promise<void> {
     join(
       here,
       'results',
-      `${candidateName}${modelB ? `-vs-${modelB}` : ''}${set ? `-${set}` : ''}${noJudge ? '-measured' : ''}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`,
+      `${codeOnly ? `${name}-code-only` : candidateName}${modelB ? `-vs-${modelB}` : ''}${set ? `-${set}` : ''}${noJudge ? '-measured' : ''}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`,
     ),
     `${JSON.stringify({ summary, rows }, null, 2)}\n`,
   );

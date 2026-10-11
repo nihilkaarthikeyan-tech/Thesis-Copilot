@@ -412,6 +412,7 @@ export class AssistService {
         passageIds: retrieved.passages.map((p) => p.id),
         before: input.before,
         autoCite,
+        guided: Boolean(input.guided?.trim()),
         // The chapter as it stands, so a sentence already in it is not offered again.
         existingText: docToText(chapter.content),
       });
@@ -545,6 +546,7 @@ export class AssistService {
             passageIds: retrieved.passages.map((p) => p.id),
             before: input.before,
             autoCite,
+            guided: Boolean(input.guided?.trim()),
             existingText: docToText(chapter.content),
           });
           const redoneCited = new Set(redone.cited);

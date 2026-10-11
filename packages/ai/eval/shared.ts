@@ -37,7 +37,15 @@ export function shortRef(p: Paper): string {
 export function passagesFor(topic: Topic, count: number): PromptPassage[] {
   return papersFor(topic)
     .slice(0, count)
-    .map((p, i) => ({ id: `S${i + 1}#c1`, shortRef: shortRef(p), page: null, text: p.abstract }));
+    .map((p, i) => ({
+      id: `S${i + 1}#c1`,
+      shortRef: shortRef(p),
+      page: null,
+      text: p.abstract,
+      // A whole abstract, as `index-abstract` stores it: at an opening A.1 withholds its first
+      // sentence (ADR-0147 round 6). The typed-sentence cases are never an opening.
+      opensAbstract: true,
+    }));
 }
 
 export function memoryFor(topic: Topic, chapterText: string): string {

@@ -13,7 +13,7 @@
  * output that was nothing but a bad citation must end up EMPTY, not charged.
  */
 
-import { academicPunctuation, dropConnectiveOpeners } from './academic-style.js';
+import { academicPunctuation, dropConnectiveOpeners, endsSentence } from './academic-style.js';
 import { placeCitations } from './citation-placement.js';
 import {
   filterSentences,
@@ -42,6 +42,16 @@ export type PostProcessInput = {
    * (`quality.ts`). Empty or absent: only the answer itself and `before` are checked.
    */
   existingText?: string;
+  /**
+   * The student asked for this suggestion with an instruction (Shift+→). `dropUncitedLead` leaves
+   * a guided suggestion whole, since its uncited sentence may be the thing asked for.
+   */
+  guided?: boolean;
+  /**
+   * The prompt evaluation's "without the code" side (ADR-0147 round 6, `run.ts --code-only`):
+   * keep an uncited first sentence. Production never sets it.
+   */
+  keepUncitedLead?: boolean;
 };
 
 export type PostProcessResult = {
@@ -254,6 +264,44 @@ export function dropUnfinishedTail(output: string, passageIds: readonly string[]
   return sentences.slice(0, -1).join(' ');
 }
 
+/**
+ * A word that ties a sentence to the one before it: a pronoun or determiner pointing back, or a
+ * connective. A sentence that opens with one does not stand alone once its predecessor is gone
+ * ("These findings…", "However,…", "For example,…"), so `dropUncitedLead` keeps the pair then.
+ */
+const POINTS_BACK =
+  /^(this|these|that|those|it|its|they|their|them|such|both|here|the (former|latter|same)|as a result|in (turn|contrast|particular|this|these|that|such|both)|by contrast|despite (this|these|that|it|them|such)|for (example|instance)|also|and|but|or|so|yet|still|thus|hence|therefore|consequently|accordingly|however|nevertheless|nonetheless|instead|conversely|similarly|likewise|meanwhile|specifically|rather|then|again|indeed|otherwise|even so|on the other hand|in other words|that is|together)\b/i;
+
+/**
+ * ADR-0147 round 6: a suggestion whose first sentence carries no citation while a later one does
+ * is offered without that first sentence, so every sentence the student is offered cites its
+ * source. Five prompt rounds asked the fast model for a marker in every sentence and it stopped
+ * short of 90% each time; the misses were one shape, an uncited sentence of background or
+ * mechanism and then the marker on the second. No citation is added or moved (§10.6): the
+ * uncited sentence is removed, and only when what is left stands alone.
+ *
+ * Left exactly as written:
+ *   - a mid-sentence continuation (`before` does not end a sentence, a heading or nothing), whose
+ *     first "sentence" is the end of the student's own;
+ *   - a first sentence that starts in lower case, which continues something too;
+ *   - a second sentence that points back to the first ("This…", "However,…"), or that does not
+ *     start in the Latin alphabet (Hindi and other scripts: the pointing-back test is English);
+ *   - a guided suggestion, where the uncited sentence may be what the student asked for;
+ *   - a single sentence, cited or not, and a suggestion with no citation at all.
+ */
+export function dropUncitedLead(text: string, before: string, guided = false): string {
+  if (guided || !endsSentence(before)) return text;
+  const sentences = splitSentences(text);
+  if (sentences.length < 2) return text;
+  const [first, ...rest] = sentences as [string, ...string[]];
+  const cites = (s: string) => /\{\{cite:[^}]+\}\}/.test(s);
+  if (cites(first) || !rest.some(cites)) return text;
+  if (!/^["'“‘(]?\p{Lu}/u.test(first)) return text;
+  const next = rest.join(' ');
+  if (!/^["'“‘(]?[A-Z]/.test(next) || POINTS_BACK.test(next.replace(/^["'“‘(]/, ''))) return text;
+  return next;
+}
+
 export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   let needsSource: string | null = null;
   for (const match of input.output.matchAll(NEEDS_SOURCE)) {
@@ -284,8 +332,13 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
   // ADR-0147 round 2: a bare "Additionally,"/"Furthermore,"… opening a sentence is dropped.
   // ADR-0150: then a marker goes inside its sentence's full stop, and one paper is cited once.
+  // ADR-0147 round 6: then an uncited first sentence before a cited one is dropped.
   const text = hasWords
-    ? placeCitations(academicPunctuation(dropConnectiveOpeners(filtered.text, input.before))).trim()
+    ? dropUncitedLead(
+        placeCitations(academicPunctuation(dropConnectiveOpeners(filtered.text, input.before))),
+        input.before,
+        input.guided === true || input.keepUncitedLead === true,
+      ).trim()
     : '';
   const empty = text.length === 0;
 
