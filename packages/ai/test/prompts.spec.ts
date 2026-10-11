@@ -71,13 +71,25 @@ describe('loadPrompt', () => {
   });
 
   // ADR-0075, the copying round: the rule that won is pinned, so an edit cannot drop it unseen.
-  it('tells assist and draft to paraphrase, and to quote what they keep word for word', () => {
-    for (const name of ['assist', 'draft'] as const) {
-      const system = loadPrompt(name).system;
-      expect(system, name).toContain('Paraphrase; never copy.');
-      expect(system, name).toContain('six or more consecutive words');
-      expect(system, name).toContain('double quotation marks');
-    }
+  it('tells draft to paraphrase, and to quote what it keeps word for word', () => {
+    const system = loadPrompt('draft').system;
+    expect(system).toContain('Paraphrase; never copy.');
+    expect(system).toContain('six or more consecutive words');
+    expect(system).toContain('double quotation marks');
+  });
+
+  // ADR-0147 round 6 (the owner's decision, 2026-10-11): assist says the same in v5's own words.
+  it('tells assist to restate in its own structure, and to quote what it keeps word for word', () => {
+    const system = loadPrompt('assist').system;
+    expect(system).toContain('Restate the finding in your own sentence structure');
+    expect(system).toContain(
+      'put any longer wording you keep in double quotation marks and cite it',
+    );
+    expect(system).toContain('no run of six words matching the passage outside quotation marks');
+    expect(system).toContain('One sentence, one marker inside it');
+    expect(system).toContain(
+      'Name the intervention by what it does (e.g. a diabetes self-management app), not by its product name.',
+    );
   });
 
   // ADR-0147 round 5: the draft lines that won are pinned, so an edit cannot drop them unseen.

@@ -24,6 +24,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-11',
+    title: 'Grey suggestions that say what the papers found',
+    changes: [
+      'A suggestion now opens with a concrete finding (a figure, a measured effect, or what was found in a named place), puts the citation inside each sentence, and names a tool by what it does rather than its product name.',
+    ],
+  },
+  {
     version: 'v0.1.47',
     date: '2026-10-11',
     title:

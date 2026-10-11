@@ -6712,3 +6712,16 @@ rules tested (Hindi, guided, continuations, the one-paper-once case). Withholdin
 restatement of an abstract's first sentence; the copying moved to the abstract's next list. The
 finding for the owner: "a marker in every sentence" counts a sentence covered by the following
 marker as uncited, so the bar measures placement, not grounding (ADR-0147 round 6 §5).
+
+## ADR-0147 round 6 decision: Assist v5 adopted (2026-10-11, the owner)
+
+The owner chose to ship `eval/candidates/assist-academic5.md` as `prompts/assist.md` after round 6.
+The blind judge preferred it 18–6 on the typed set (6.88 → 8.15) and 12–6 on the opener set
+(6.91 → 7.95), with 0 invented citations. It missed three bars set before the runs: own-marker
+sentences at 82% (the bar was 90%), stock phrases up about 1 per 1,000 words, and six-word runs
+up by 1 and 2. Round 6 also showed that the 90% bar partly measures where a marker sits rather
+than whether a sentence is supported. The code-only option (`dropUncitedFirst`,
+`withholdAbstractOpening`) lost on the judge and stays opt-in for the eval only. The prompt pin
+in `test/prompts.spec.ts` now pins v5's own copying lines, and the cached-block snapshot is
+updated. The final side-by-side test (`docs/research/side-by-side-final-plan.md`, Part Q) checks
+the result against Jenni.
