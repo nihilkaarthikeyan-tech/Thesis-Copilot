@@ -147,7 +147,7 @@ export default function PricingPage() {
       </h2>
       <dl className="mt-3 space-y-4">
         <div>
-          <dt className="font-medium">How is this different from Jenni?</dt>
+          <dt className="font-medium">How is this different from other AI writing tools?</dt>
           <dd className="mt-1 text-muted">
             Three things. Its citations come from a library you curated, and it cannot cite outside
             it. It knows your whole thesis — outline, glossary, the way you write — not just the
