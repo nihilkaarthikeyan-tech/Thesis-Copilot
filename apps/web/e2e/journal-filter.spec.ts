@@ -61,9 +61,14 @@ test('a journal figure is shown, and the chat filter keeps to it', async ({ page
             headers: { cookie },
           })
         ).json()) as Source[];
+        // ADR-0136: the journal lookup runs after a paper is marked readable, so "resolved and
+        // read" can be true a few seconds before the Nature figure is written. Wait for it too.
+        // The preprint resolves in a job queued at the same moment, so its lookup has had the
+        // same time to write a figure; it must still have none.
         return (
           library.length === 2 &&
-          library.every((s) => s.status === 'RESOLVED' && s.groundingLevel !== 'NONE')
+          library.every((s) => s.status === 'RESOLVED' && s.groundingLevel !== 'NONE') &&
+          typeof library.find((s) => s.year === 2021)?.venueCitedness === 'number'
         );
       },
       { timeout: 180_000, intervals: [3_000], message: 'the library never finished reading' },
