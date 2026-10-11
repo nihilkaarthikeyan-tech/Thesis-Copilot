@@ -712,3 +712,87 @@ placement and its copying of a fresh paper's first sentence. A code check after 
 suggestion whose first sentence has no marker while the second has two is offered as its second
 sentence alone, or not at all) would address the first without another prompt line; the second
 may need the opener's passages passed without the abstract's first sentence. Neither is done here.
+
+## Round 6 (2026-10-11, A.1 Assist only): the two failures moved into code
+
+Asked by the owner after round 5: fix the grey suggestions by moving round 5's two failures, the
+uncited first sentence and the restated abstract opening, into code, which does not depend on the
+model obeying; then measure v5 again with the code on both sides.
+
+### 1. Code: `dropUncitedLead` (`builder/postprocess.ts`, in `postProcessAssist`)
+
+When the student's text ends a sentence, a heading or nothing (`endsSentence`), a suggestion of
+two or more sentences whose first carries no `{{cite:…}}` while a later one does is offered
+without the first sentence. Decided after `dropConnectiveOpeners` and `academicPunctuation` and
+**before** `placeCitations`, so a first sentence the model did cite keeps its place when ADR-0150's
+one-paper-once rule later removes its marker in favour of the second's. Nothing is cited that was
+not: no marker is added or moved (§10.6); the uncited sentence is removed. Left exactly as before:
+
+- a mid-sentence continuation (`before` does not end a sentence), whose first "sentence" is the
+  end of the student's own, and a first sentence starting in lower case;
+- a pair whose cited sentence points back to the first ("This…", "These…", "It…", "However,",
+  "For example,", "Despite this,", "Consequently,"…), which would not stand alone;
+- a cited sentence not starting in the Latin alphabet (Hindi and other scripts: the pointing-back
+  test is English), and a first sentence in a script without case;
+- a guided suggestion (Shift+→): its uncited sentence may be what the student asked for;
+- a single sentence, cited or not, and a suggestion with no citation (citations off included).
+
+Remeasured on round 5's stored typed-set outputs (no model call, production post-processing):
+the prompt on disk 42/58 → 42/49 cited sentences (72% → 86%), v5 45/58 → 45/55 (78% → 82%). Most
+of v5's remaining misses are ADR-0150's: a two-sentence suggestion on one paper shows one marker,
+on the second sentence, and the measure counts the first as uncited.
+
+### 2. Code: `withheldOpening` (`builder/assist.ts`, in `assistUserMessage`)
+
+At an opening (`isOpening`: `before` is empty, or ends in a line break after a heading line), a
+passage that starts at its paper's abstract's first sentence goes to the model without that
+sentence. Retrieval marks such a passage (`opensAbstract`: the first chunk of the source's
+"Abstract" section, `findCandidates`; on the dev database 1,965 of 70,943 chunks, one per paper).
+The passage keeps its id, reference and page; a one-sentence abstract is sent whole; the copying
+check (`closeToPassages`) and the evaluation's copying measure still compare against the whole
+passage. Every other request is unchanged. No prompt text changes.
+
+### 3. Evaluation
+
+`run.ts --code-only` runs the prompt on disk on both sides: A without the round's code (passages
+whole, uncited first sentence kept: `keepUncitedLead`, an evaluation-only input), B with it. Where
+the code leaves the request unchanged (every typed-set case: none is an opening) B post-processes
+A's own answer, so the comparison measures the code and not a second sample. The evaluation's
+abstract passages carry `opensAbstract`, as a fresh library's abstracts do in production.
+
+Runs, production models (`gpt-4.1-mini` fast, `gpt-5-mini` judge), judged blind in both orders,
+`--samples 2`, typed set (15 cases, 30 runs) and opener set (10 cases, 20 runs):
+
+- **Track V5:** `run.ts assist --candidate assist-academic5 --samples 2` and the same with
+  `--set opener`. "Current" is the prompt on disk; the round's code runs on both sides.
+- **Track CODE:** `run.ts assist --code-only --samples 2` and the same with `--set opener`.
+  "Current" is the prompt on disk without the code; the candidate is the same prompt with it.
+
+### 4. Pass criterion (written and committed before any run)
+
+**Track V5** (`prompts/assist.md` becomes `assist-academic5.md` only if **all** hold):
+
+1. **Judge**, on each set: candidate wins ≥ current wins, and candidate mean not more than 0.2
+   below current.
+2. **Cited sentences** ≥ 90% on the typed set (`measures.candidate.citedSentences / sentences`,
+   counted on the offered text, as in rounds 1–5).
+3. **Stock phrases per 1,000 words** not above current on either set, on the offered text
+   (`style-measure.ts --processed --file <run>`).
+4. **`run6Figures`** not above current on either set; raw `run6` and `run6Names` reported.
+5. **Hallucinated cites:** 0 for the candidate on both sets.
+6. **Offered-nothing and failed calls** not above current on either set.
+
+**Track CODE** (the code ships only if **all** hold; it ships even if Track V5 fails):
+
+1. **Judge:** on each set, candidate wins ≥ current wins and candidate mean not more than 0.2 below
+   current; and on at least one set candidate wins > current wins.
+2. **Cited sentences** on the typed set strictly higher than current.
+3. **`run6Figures`** not above current on either set (raw `run6` reported).
+4. **Hallucinated cites** 0 for the candidate; **offered-nothing and failed calls** not above
+   current on either set.
+
+If the code fails Track CODE it does not ship, and Track V5 is then not adopted either (its runs
+had the code on both sides). A track that misses **narrowly** (exactly one item, by one output or
+one win, by ≤ 2 percentage points of cited sentences, or by ≤ 0.1 of mean) may run **one** more
+variant against this same criterion, its change recorded here before its run. Budget ≤ ₹45 for the
+round; a quota refusal stops it and is reported.
