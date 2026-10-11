@@ -35,6 +35,14 @@ feature on the live site fails until the balance is topped up. Add credit at
 https://platform.openai.com/settings/organization/billing/ and turn on auto-recharge with a
 monthly limit above the site budget (₹2,000). Nothing to redeploy: calls work again at once.
 
+## Re-read papers that lost their text to a NUL byte (after v0.1.48, 2026-10-11)
+
+Some real PDFs (seen on arXiv) extract with NUL bytes, which PostgreSQL refuses. Before v0.1.48 the
+indexer deleted a paper's old passages and then failed to insert the new ones, so such a paper
+could end at grounding NONE. The fix (`chunkText` turns NUL into a space) stops it happening
+again; papers already hit need re-reading. The agent can find them (sources with grounding NONE
+and an `index-source` failure mentioning `0x00`) and re-queue them once the release is live.
+
 ## Scopus, Web of Science and UGC-CARE as indexing filters (ADR-0087, 2026-10-07)
 
 The start step's Indexing filter offers the journal lists OpenAlex records (core international
