@@ -130,7 +130,7 @@ test('the home page header stays on one line at about 800px wide', async ({ page
   await expect(header.getByRole('link', { name: 'Questions' })).toBeHidden();
 });
 
-test('a returning student sees their theses first, with the new-thesis form behind a button below', async ({
+test('a returning student sees their theses, with the new-thesis form behind a button above them', async ({
   page,
   request,
 }) => {
@@ -147,10 +147,10 @@ test('a returning student sees their theses first, with the new-thesis form behi
   await expect(page.getByLabel('Working title')).toHaveCount(0);
   const another = page.getByRole('button', { name: 'Start another thesis' });
   await expect(another).toBeVisible();
-  // Below the list, not above it.
+  // Above the list (the owner, 2026-10-11: "it must come up, not after the old thesis").
   const listBox = await page.getByRole('link', { name: title }).boundingBox();
   const buttonBox = await another.boundingBox();
-  expect(buttonBox?.y ?? 0).toBeGreaterThan(listBox?.y ?? 0);
+  expect(buttonBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(listBox?.y ?? 0);
   await another.click();
   await expect(page.getByLabel('Working title')).toBeFocused();
 
