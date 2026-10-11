@@ -10,8 +10,8 @@
  * every wake of the service worker and whenever Chrome says the access changed, so a student who
  * takes the access away at chrome://extensions loses the buttons too.
  *
- * Never on: the five sites that have the script already (it would run twice), this add-on's own
- * site, and Jenni's pages (`neverHere`).
+ * Never on: the five sites that have the script already (it would run twice) and this add-on's
+ * own site (`neverHere`).
  */
 
 import { INPAGE_MATCHES } from './hosts.js';
@@ -21,9 +21,6 @@ export const ANYWHERE_ORIGINS = ['https://*/*'] as const;
 
 /** The registered script's id (must not start with "_"). */
 export const ANYWHERE_SCRIPT_ID = 'tc-anywhere';
-
-/** Hosts the buttons never go on, whatever the switch says: Jenni's own pages. */
-const NEVER_DOMAINS = ['jenni.ai'];
 
 /** The hosts of this add-on's own site (the build's API and web addresses). */
 export function ownHosts(urls: readonly string[]): string[] {
@@ -38,20 +35,17 @@ export function ownHosts(urls: readonly string[]): string[] {
   return [...hosts];
 }
 
-/** True for a host the buttons must never go on: ours, or Jenni's (and their subdomains). */
+/** True for a host the buttons must never go on: this add-on's own site (and its subdomains). */
 export function neverHere(hostname: string, own: readonly string[]): boolean {
   const host = hostname.toLowerCase();
-  return [...own, ...NEVER_DOMAINS].some(
-    (domain) => host === domain || host.endsWith(`.${domain}`),
-  );
+  return own.some((domain) => host === domain || host.endsWith(`.${domain}`));
 }
 
-/** The registration's `excludeMatches`: the five sites, our own site, Jenni's. */
+/** The registration's `excludeMatches`: the five sites and our own site. */
 export function anywhereExcludes(own: readonly string[]): string[] {
   return [
     ...INPAGE_MATCHES,
     ...own.flatMap((host) => [`https://${host}/*`, `https://*.${host}/*`]),
-    ...NEVER_DOMAINS.flatMap((domain) => [`https://${domain}/*`, `https://*.${domain}/*`]),
   ];
 }
 

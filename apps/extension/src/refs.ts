@@ -7,7 +7,7 @@
  * metadata or address names the article — `citation_doi` and the other tags `paperFrom` reads,
  * the arXiv id in an abstract's address, the PMID in a PubMed article's address. A title alone
  * is not enough, and links on the page are never followed or guessed from: an MDPI issue page,
- * which lists 172 articles and is no article itself, gets no button (Jenni saved the issue).
+ * which lists 172 articles and is no article itself, gets no button (an issue page is not a paper).
  *
  * Pure, so it is tested without a browser.
  */

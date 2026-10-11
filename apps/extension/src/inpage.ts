@@ -374,8 +374,7 @@ function articleSpot(article: ArticleOnPage): Spot | null {
  *
  * On any other site (ADR-0154, only when the student turned that on): the article the page's
  * tags name (`citation_doi`, `dc.identifier`, `prism.doi`, or Highwire's `citation_title`), and
- * a small Save button beside each DOI in its reference list. Never on `own` (this add-on's site)
- * or Jenni's pages.
+ * a small Save button beside each DOI in its reference list. Never on `own` (this add-on's site).
  */
 export function findSpots(url: string = location.href, own: readonly string[] = []): Spot[] {
   let host: string;

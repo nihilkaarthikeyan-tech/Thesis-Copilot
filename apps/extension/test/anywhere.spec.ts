@@ -6,7 +6,7 @@
  *
  * Pinned:
  * - the switch's access is an optional permission, and the buttons' script is registered only
- *   while it is held, never on the five sites (they have it already), our own site or Jenni's;
+ *   while it is held, never on the five sites (they have it already), or our own site;
  * - a content script on another site is answered only while the student has it on;
  * - on any other site a paper is found by its tags (`citation_doi`, `dc.identifier`, `prism.doi`,
  *   Highwire's `citation_title`) and by the DOI links of a reference list — one small button per
@@ -91,16 +91,14 @@ describe('the every-site switch', () => {
     });
   });
 
-  it('never on the five sites (they have the script), our own site or Jenni’s', () => {
+  it('never on the five sites (they have the script) or our own site', () => {
     const excludes = anywhereExcludes(OWN);
     for (const pattern of INPAGE_MATCHES) expect(excludes).toContain(pattern);
     expect(excludes).toContain('https://thesis.rademics.ai/*');
-    expect(excludes).toContain('https://jenni.ai/*');
-    expect(excludes).toContain('https://*.jenni.ai/*');
-    expect(neverHere('app.jenni.ai', OWN)).toBe(true);
-    expect(neverHere('jenni.ai', OWN)).toBe(true);
+    expect(excludes).toContain('https://*.thesis.rademics.ai/*');
+    expect(neverHere('app.thesis.rademics.ai', OWN)).toBe(true);
     expect(neverHere('thesis.rademics.ai', OWN)).toBe(true);
-    expect(neverHere('notjenni.ai', OWN)).toBe(false);
+    expect(neverHere('notthesis.rademics.ai', OWN)).toBe(false);
     expect(neverHere('en.wikipedia.org', OWN)).toBe(false);
     expect(ownHosts(['https://thesis.rademics.ai', 'not a url'])).toEqual(OWN);
   });
@@ -156,13 +154,13 @@ describe('who the service worker answers, with the switch on', () => {
     expect(senderMay(wiki, 'anywhere-sync', ownOrigin, INPAGE_REQUESTS, anywhere)).toBe(false);
   });
 
-  it('not with the switch off, not over http, not from our site or Jenni’s', () => {
+  it('not with the switch off, not over http, not from our own site', () => {
     expect(senderMay(wiki, 'lookup', ownOrigin, INPAGE_REQUESTS)).toBe(false);
     const from = (url: string) =>
       senderMay({ tab: {}, url }, 'lookup', ownOrigin, INPAGE_REQUESTS, anywhere);
     expect(from('http://en.wikipedia.org/wiki/X')).toBe(false);
     expect(from('https://thesis.rademics.ai/app')).toBe(false);
-    expect(from('https://app.jenni.ai/library')).toBe(false);
+    expect(from('https://www.example.org/paper')).toBe(true);
   });
 });
 
@@ -217,10 +215,9 @@ describe('a reference list (Wikipedia’s structure)', () => {
     run.stop();
   });
 
-  it('nothing at all on our own site or on Jenni’s, whatever the page holds', () => {
+  it('nothing at all on our own site, whatever the page holds', () => {
     load('wikipedia-references.html');
     expect(findSpots('https://thesis.rademics.ai/app/d/x/sources', OWN)).toEqual([]);
-    expect(findSpots('https://app.jenni.ai/library', OWN)).toEqual([]);
   });
 });
 

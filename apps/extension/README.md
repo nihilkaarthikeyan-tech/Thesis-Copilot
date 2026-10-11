@@ -39,7 +39,7 @@ the step-by-step for publishing; `CHANGELOG.md` the versions.
 - Everywhere else only if the student turns on "Show Save buttons on every site" (ADR-0154,
   `src/anywhere.ts`): an optional host permission (`optional_host_permissions: https://*/*`),
   requested on that press, never at install. While it is held, the service worker registers the
-  same content script for every https page except the five sites, Thesis Copilot and Jenni's
+  same content script for every https page except the five sites, and Thesis Copilot itself
   pages; it reads the article tags (`citation_doi`, `dc.identifier`, `prism.doi`, Highwire's
   `citation_title`) and the doi.org links inside reference lists, and sends nothing until a press.
   Switching it off removes the permission, and the script with it.

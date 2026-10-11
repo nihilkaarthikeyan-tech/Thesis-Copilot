@@ -42,7 +42,7 @@ export function senderMay(
   allowed: readonly string[],
   /**
    * ADR-0154: the student turned on "Show Save buttons on every site", so a content script may
-   * ask from any https tab — never from one of `never` (this add-on's site, Jenni's).
+   * ask from any https tab — never from one of `never` (this add-on's own site).
    */
   anywhere: { never: (hostname: string) => boolean } | null = null,
 ): boolean {
