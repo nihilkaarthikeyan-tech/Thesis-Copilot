@@ -9,7 +9,7 @@ The three things the side-by-side left for a decision, approved by the owner the
   gives the access back. While it is on, an article page anywhere gets its button (found by its
   `citation_doi`, `dc.identifier` or `prism.doi` tag, or Highwire's `citation_title`), and every
   DOI in a page's reference list gets a small "Save" beside it — Wikipedia's references, for
-  example. Never on Thesis Copilot itself or on Jenni's pages. The install warning is unchanged:
+  example. Never on Thesis Copilot itself. The install warning is unchanged:
   the access is an optional permission, asked for only on your press.
 - **Save several results at once from the page.** On a results page (Google Scholar, PubMed,
   arXiv, MDPI search) or a reference list, the card has "Select several": tick the ones you
@@ -21,7 +21,7 @@ The three things the side-by-side left for a decision, approved by the owner the
 
 ## 0.3.1 — 2026-10-10 (ADR-0153) — not yet submitted to the store
 
-Found by using it beside Jenni's add-on on the same live pages (Google Scholar, PubMed, arXiv,
+Found by using it on the same live pages (Google Scholar, PubMed, arXiv,
 MDPI, Springer, ScienceDirect, Wikipedia).
 
 - **The right DOI from a Google Scholar link that carries more than the DOI.** Emerald's
@@ -36,7 +36,7 @@ MDPI, Springer, ScienceDirect, Wikipedia).
 - **No needless "attach the PDF" step.** For a paper free on arXiv or in PubMed Central the card
   now says its free full text is fetched (the library did so within seconds in every test);
   for any other PDF on the page it names the two ways that work.
-- **MDPI search results** have a button on each result, by that result's own DOI (Jenni's add-on
+- **MDPI search results** have a button on each result, by that result's own DOI (another add-on
   had them; ours had none). An MDPI issue's contents still get none.
 - **Buttons remember what you saved**: a page you come back to shows "Saved to Thesis Copilot" on
   the papers you saved from it into the current thesis. Kept in this browser only, never sent.
@@ -63,7 +63,7 @@ MDPI, Springer, ScienceDirect, Wikipedia).
 
 ## 0.2.1 — 2026-10-06
 
-Found by using the add-on on eighteen live sites against Jenni's own list of what its extension
+Found by using the add-on on eighteen live sites against a list of what such add-ons
 does (`apps/web/e2e/_measure/extension-parity.spec.ts`).
 
 - **A PDF whose address carries its DOI** (`…/article/file?id=10.1371/…`, `?doi=10.…`) is now

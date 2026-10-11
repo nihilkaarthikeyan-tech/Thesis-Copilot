@@ -1,7 +1,7 @@
 /**
  * Which papers the in-page buttons have saved, per thesis — kept in `chrome.storage.local`, on
  * this computer only, so a button on a page the student comes back to says "Saved to Thesis
- * Copilot" instead of offering the same paper again (Jenni's button does the same; ours forgot on
+ * Copilot" instead of offering the same paper again (it used to forget on
  * every reload — observed 2026-10-10). Nothing is sent anywhere for it: the buttons are marked
  * from what this add-on itself saved, never by asking Thesis Copilot about the page.
  *

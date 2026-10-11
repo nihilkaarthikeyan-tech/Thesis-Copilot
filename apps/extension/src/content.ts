@@ -39,7 +39,7 @@ async function ask<T>(request: Request): Promise<Reply<T>> {
 
 // ADR-0154: the same file also runs on every site when the student turns that on. Once per page
 // (the two registrations exclude each other, and this makes sure of it), and never on this
-// add-on's own site or on Jenni's pages.
+// add-on's own site.
 const flag = globalThis as { __thesisCopilotInpage?: boolean };
 if (!flag.__thesisCopilotInpage && !neverHere(location.hostname, ownHosts([API_URL, WEB_URL]))) {
   flag.__thesisCopilotInpage = true;

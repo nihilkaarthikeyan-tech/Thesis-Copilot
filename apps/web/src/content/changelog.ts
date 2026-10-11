@@ -110,7 +110,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
   {
     version: 'v0.1.32',
     date: '2026-10-08',
-    title: 'Replies, reviews in the text, and more of what Jenni has',
+    title: 'Replies, reviews in the text, and more ways to work',
     changes: [
       'Your guide and you can reply to each other under a comment, with a thumbs-up on any reply.',
       'Proofreading, the tone review and the examiner now show their fixes in the text: Y accepts, N rejects, Accept all takes them all (one Undo brings them back). Examiner points are tagged Major or Minor.',
@@ -128,7 +128,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
   {
     version: 'v0.1.31',
     date: '2026-10-07',
-    title: 'A setup like Jenni’s, and citations from more papers',
+    title: 'A quicker setup, and citations from more papers',
     changes: [
       'After the title, two short steps: your sources and citations (style, web search, library search, publish year, indexing and preprints), then how to structure the thesis (Smart headings, Standard thesis chapters, or none).',
       'Indexing: papers found for you can be limited to core international journals, PubMed (MEDLINE), DOAJ, ABDC, ERIH PLUS or SciELO. Scopus, Web of Science and UGC-CARE are coming.',

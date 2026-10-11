@@ -26,7 +26,7 @@ const TOO_SLOW = 'Thesis Copilot took too long to answer. Try again in a moment.
 
 /**
  * Time limits for the in-page card's two calls (ADR-0125). The server gives each outside lookup
- * 15 s (ADR-0103); a card must never wait for ever on "Saving…", as Jenni's did on "Processing
+ * 15 s (ADR-0103); a card must never wait for ever on "Saving…", as a stuck save did on "Processing
  * PDF…".
  */
 export const LOOKUP_TIMEOUT_MS = 25_000;
