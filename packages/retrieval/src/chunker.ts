@@ -67,6 +67,29 @@ function pageAt(offset: number, pages: readonly PageSpan[] | undefined): number 
   return pages[pages.length - 1]?.page ?? null;
 }
 
+/**
+ * PostgreSQL `text` cannot hold U+0000, and some PDFs (arXiv's among them) extract with NUL bytes
+ * in them. One such chunk failed the whole `SourceChunk` write, and because the old chunks are
+ * deleted first, the paper lost the abstract chunks it had as well. A NUL becomes a space, which
+ * keeps every offset (`charStart`, page and section spans) pointing at the same place.
+ */
+function withoutNul(input: ChunkInput): ChunkInput {
+  if (!input.text.includes('\u0000') && !input.sections?.some((s) => s.section.includes('\u0000')))
+    return input;
+  return {
+    ...input,
+    text: input.text.replaceAll('\u0000', ' '),
+    ...(input.sections
+      ? {
+          sections: input.sections.map((s) => ({
+            ...s,
+            section: s.section.replaceAll('\u0000', ''),
+          })),
+        }
+      : {}),
+  };
+}
+
 /** Section spans covering the whole text; gaps between headings become unlabelled spans. */
 function sectionSpans(input: ChunkInput): SectionSpan[] {
   const provided = [...(input.sections ?? [])].sort((a, b) => a.start - b.start);
@@ -84,7 +107,8 @@ function sectionSpans(input: ChunkInput): SectionSpan[] {
   return spans.filter((s) => s.end > s.start);
 }
 
-export function chunkText(input: ChunkInput, options: ChunkOptions = {}): Chunk[] {
+export function chunkText(raw: ChunkInput, options: ChunkOptions = {}): Chunk[] {
+  const input = withoutNul(raw);
   const target = options.targetTokens ?? DEFAULT_TARGET_TOKENS;
   const overlapTokens = Math.round(target * (options.overlapRatio ?? DEFAULT_OVERLAP_RATIO));
   const minTokens = options.minTokens ?? Math.max(1, Math.round(target * 0.1));

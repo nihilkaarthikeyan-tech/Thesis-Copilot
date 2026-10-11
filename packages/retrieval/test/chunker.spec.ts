@@ -149,6 +149,24 @@ describe('chunker (FR-2.4)', () => {
     const single = `${'x'.repeat(2000)}. ${'y'.repeat(2000)}.`;
     expect(chunkText({ text: single })).toHaveLength(1);
   });
+
+  it('never emits a NUL byte, which PostgreSQL text refuses, and keeps the offsets', () => {
+    // Seen on arXiv PDFs: one NUL failed the SourceChunk write and the paper lost every chunk.
+    const text =
+      'The model\u0000 was trained on twelve thousand labelled images from three hospitals. ' +
+      'Its accuracy on the held-out set was ninety-one per cent across every class we measured.';
+    const result = chunkText(
+      { text, sections: [{ section: 'Res\u0000ults', start: 0, end: text.length }] },
+      { keepNonProse: true },
+    );
+    expect(result.length).toBeGreaterThan(0);
+    for (const chunk of result) {
+      expect(chunk.text.includes('\u0000')).toBe(false);
+      expect(chunk.section).toBe('Results');
+      expect(chunk.charEnd - chunk.charStart).toBe(chunk.text.length);
+    }
+    expect(result[0]?.text.startsWith('The model  was trained')).toBe(true);
+  });
 });
 
 describe('batched', () => {
