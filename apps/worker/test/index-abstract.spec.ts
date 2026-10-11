@@ -66,7 +66,8 @@ function world(over: Partial<Row> = {}) {
     $executeRawUnsafe: vi.fn(async (statement: string, ...values: unknown[]) => {
       sql.push(statement.trim().split(/\s+/)[0] ?? '');
       if (statement.startsWith('DELETE')) chunks.length = 0;
-      else chunks.push({ section: values[5], text: values[6] });
+      // The kept passage id is $1 (ADR-0150's keptChunkIds), so section and text are $7 and $8.
+      else chunks.push({ section: values[6], text: values[7] });
       return 1;
     }),
     $queryRawUnsafe: vi.fn(async () => [] as never),
