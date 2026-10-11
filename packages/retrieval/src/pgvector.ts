@@ -176,7 +176,6 @@ type CandidateRow = {
   citationCount: number | null;
   isPreprint: boolean | null;
   venueCitedness: number | null;
-  opensAbstract?: boolean | null;
 };
 
 /**
@@ -207,19 +206,7 @@ export async function findCandidates(
            s."authors"        AS "authors",
            s."citationCount"  AS "citationCount",
            s."isPreprint"     AS "isPreprint",
-           s."venueCitedness" AS "venueCitedness",
-           -- ADR-0147 round 6: the first chunk of the paper's "Abstract" section, whose first
-           -- sentence is the abstract's own opening line: no earlier chunk of that section.
-           COALESCE(
-             lower(btrim(c."section")) = 'abstract'
-               AND NOT EXISTS (
-                 SELECT 1 FROM "SourceChunk" e
-                  WHERE e."sourceId" = c."sourceId"
-                    AND e."section" = c."section"
-                    AND e."ordinal" < c."ordinal"
-               ),
-             false
-           ) AS "opensAbstract"`;
+           s."venueCitedness" AS "venueCitedness"`;
   const from = `
       FROM "SourceChunk" c
       JOIN "Source" s ON s."id" = c."sourceId"
@@ -276,7 +263,6 @@ export async function findCandidates(
     isPreprint: row.isPreprint ?? false,
     venueCitedness: row.venueCitedness,
     year: row.year,
-    ...(row.opensAbstract === true ? { opensAbstract: true } : {}),
   }));
 }
 

@@ -6,6 +6,9 @@
  *      added or moved (§10.6).
  *   2. `withheldOpening`: at an opening (an empty chapter or section), a passage that starts at its
  *      abstract's first sentence goes to the model without that sentence; id and reference stay.
+ *
+ * Neither passed the round's criterion, so both are opt-in (`dropUncitedFirst`,
+ * `withholdAbstractOpening`), set only by the evaluation; production behaviour is unchanged.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -123,7 +126,14 @@ describe('dropUncitedLead', () => {
 describe('postProcessAssist with dropUncitedLead (A.1, ADR-0147 round 6)', () => {
   const ids = ['S1#c1', 'S2#c1'];
   const run = (output: string, before = ENDS, extra: Record<string, unknown> = {}) =>
-    postProcessAssist({ output, passageIds: ids, before, existingText: before, ...extra });
+    postProcessAssist({
+      output,
+      passageIds: ids,
+      before,
+      existingText: before,
+      dropUncitedFirst: true,
+      ...extra,
+    });
 
   it('offers only the cited sentence, and reports only its citation', () => {
     const result = run(`${LEAD} ${CITED}`);
@@ -167,8 +177,10 @@ describe('postProcessAssist with dropUncitedLead (A.1, ADR-0147 round 6)', () =>
     expect(run(`${LEAD} ${CITED}`, ENDS, { guided: true }).text).toBe(`${LEAD} ${CITED}`);
   });
 
-  it('the evaluation’s without-code side keeps both sentences', () => {
-    expect(run(`${LEAD} ${CITED}`, ENDS, { keepUncitedLead: true }).text).toBe(`${LEAD} ${CITED}`);
+  it('production does not apply it: without dropUncitedFirst both sentences are offered', () => {
+    expect(run(`${LEAD} ${CITED}`, ENDS, { dropUncitedFirst: undefined }).text).toBe(
+      `${LEAD} ${CITED}`,
+    );
   });
 
   it('a mid-sentence continuation keeps the end of the student’s sentence', () => {
@@ -249,8 +261,9 @@ describe('withheldOpening and the A.1 message', () => {
     expect(withheldOpening(p, true)).toBe('Cost was the main barrier.');
   });
 
-  const message = (before: string, passages: PromptPassage[]) =>
+  const message = (before: string, passages: PromptPassage[], withhold = true) =>
     assistUserMessage({
+      withholdAbstractOpening: withhold,
       memoryBlock: '',
       chapter: { title: 'Chapter 1', scopeNote: null },
       passages,
@@ -267,6 +280,12 @@ describe('withheldOpening and the A.1 message', () => {
     expect(m).toContain('S1#c1');
     expect(m).toContain('Bagla 2026');
     expect(m).toContain('Households in Bengaluru cited roof ownership.');
+  });
+
+  it('production does not ask for it: without the option the opener request sends it whole', () => {
+    expect(message('Chapter 1\n', [opener], false)).toContain(
+      'remains well below its technical potential',
+    );
   });
 
   it('a typed sentence’s request sends the abstract whole', () => {

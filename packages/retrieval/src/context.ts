@@ -279,7 +279,6 @@ export async function retrievePassages(
       chunkId: candidate.chunkId,
       score: candidate.score,
       cosine: candidate.cosine,
-      ...(candidate.opensAbstract ? { opensAbstract: true } : {}),
     };
   });
 

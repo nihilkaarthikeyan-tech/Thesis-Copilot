@@ -42,8 +42,8 @@ export function passagesFor(topic: Topic, count: number): PromptPassage[] {
       shortRef: shortRef(p),
       page: null,
       text: p.abstract,
-      // A whole abstract, as `index-abstract` stores it: at an opening A.1 withholds its first
-      // sentence (ADR-0147 round 6). The typed-sentence cases are never an opening.
+      // A whole abstract, as `index-abstract` stores it. Read only under ADR-0147 round 6's
+      // `--round6-code`/`--code-only`, at an opening; the typed-sentence cases are never one.
       opensAbstract: true,
     }));
 }

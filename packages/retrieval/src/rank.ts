@@ -48,8 +48,6 @@ export type Candidate = {
   isPreprint?: boolean;
   venueCitedness?: number | null;
   year?: number | null;
-  /** ADR-0147 round 6: the first chunk of the paper's "Abstract" section. */
-  opensAbstract?: boolean;
 };
 
 /**

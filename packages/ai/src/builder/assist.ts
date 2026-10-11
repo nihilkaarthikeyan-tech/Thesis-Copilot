@@ -50,9 +50,9 @@ export type PromptPassage = {
    */
   origin?: 'search';
   /**
-   * ADR-0147 round 6: the passage starts at the first sentence of the paper's abstract (the first
-   * chunk of its "Abstract" section). At an opening, A.1 withholds that sentence; nothing else
-   * reads this.
+   * ADR-0147 round 6: the passage starts at the first sentence of the paper's abstract. Set by
+   * the evaluation on its abstract passages; read only by `withheldOpening`, and only when the
+   * request asks for it (`withholdAbstractOpening`).
    */
   opensAbstract?: boolean;
 };
@@ -66,6 +66,12 @@ export type AssistBuildInput = {
   after: string;
   /** The guided instruction (Shift+→), or nothing. */
   instruction?: string | null;
+  /**
+   * ADR-0147 round 6: at an opening, send each `opensAbstract` passage without its first
+   * sentence (`withheldOpening`). Off unless set; only the evaluation sets it, since the round's
+   * code did not pass its criterion and production is unchanged.
+   */
+  withholdAbstractOpening?: boolean;
   userId: string;
   documentId: string;
   signal?: AbortSignal;
@@ -113,7 +119,7 @@ export function withheldOpening(passage: PromptPassage, opening: boolean): strin
 export function assistUserMessage(input: AssistBuildInput): string {
   const template = loadPrompt('assist').user;
   if (!template) throw new Error('assist.md has no user message block');
-  const opening = isOpening(input.before);
+  const opening = input.withholdAbstractOpening === true && isOpening(input.before);
 
   return renderTemplate(template, {
     chapter: { title: input.chapter.title, scopeNote: input.chapter.scopeNote ?? '' },

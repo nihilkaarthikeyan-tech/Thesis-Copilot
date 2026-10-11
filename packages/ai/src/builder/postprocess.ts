@@ -48,10 +48,12 @@ export type PostProcessInput = {
    */
   guided?: boolean;
   /**
-   * The prompt evaluation's "without the code" side (ADR-0147 round 6, `run.ts --code-only`):
-   * keep an uncited first sentence. Production never sets it.
+   * ADR-0147 round 6: apply `dropUncitedLead`. Off unless set, and production does not set it: the
+   * round's blind judge preferred the suggestion with its uncited first sentence (0 wins against 7
+   * on the typed set), so the rule is kept for the evaluation (`run.ts --code-only`,
+   * `--round6-code`) and not shipped.
    */
-  keepUncitedLead?: boolean;
+  dropUncitedFirst?: boolean;
 };
 
 export type PostProcessResult = {
@@ -273,10 +275,14 @@ const POINTS_BACK =
   /^(this|these|that|those|it|its|they|their|them|such|both|here|the (former|latter|same)|as a result|in (turn|contrast|particular|this|these|that|such|both)|by contrast|despite (this|these|that|it|them|such)|for (example|instance)|also|and|but|or|so|yet|still|thus|hence|therefore|consequently|accordingly|however|nevertheless|nonetheless|instead|conversely|similarly|likewise|meanwhile|specifically|rather|then|again|indeed|otherwise|even so|on the other hand|in other words|that is|together)\b/i;
 
 /**
- * ADR-0147 round 6: a suggestion whose first sentence carries no citation while a later one does
- * is offered without that first sentence, so every sentence the student is offered cites its
- * source. Five prompt rounds asked the fast model for a marker in every sentence and it stopped
- * short of 90% each time; the misses were one shape, an uncited sentence of background or
+ * ADR-0147 round 6 (measured, not shipped: `postProcessAssist` applies it only when
+ * `dropUncitedFirst` is set, which only the evaluation does). A suggestion whose first sentence
+ * carries no citation while a later one does is offered without that first sentence, so every
+ * sentence the student is offered cites its source. The round's judge preferred the pair: the
+ * uncited sentence was usually the most specific one, supported by the passage cited at the end.
+ *
+ * Why it was tried: five prompt rounds asked the fast model for a marker in every sentence and it
+ * stopped short of 90% each time; the misses were one shape, an uncited sentence of background or
  * mechanism and then the marker on the second. No citation is added or moved (§10.6): the
  * uncited sentence is removed, and only when what is left stands alone.
  *
@@ -332,16 +338,15 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   // ADR-0147: dashes used as punctuation become a thesis's punctuation; the wording is unchanged.
   // ADR-0147 round 2: a bare "Additionally,"/"Furthermore,"… opening a sentence is dropped.
   // ADR-0150: then a marker goes inside its sentence's full stop, and one paper is cited once.
-  // ADR-0147 round 6: an uncited first sentence before a cited one is dropped. Decided before
-  // `placeCitations`, whose one-paper-once rule removes a marker the model did attach to the
-  // first sentence when the second cites the same paper: that sentence was cited, and stays.
+  // ADR-0147 round 6 (evaluation only, `dropUncitedFirst`): an uncited first sentence before a
+  // cited one is dropped. Decided before `placeCitations`, whose one-paper-once rule removes a
+  // marker the model did attach to the first sentence when the second cites the same paper.
+  const punctuated = academicPunctuation(dropConnectiveOpeners(filtered.text, input.before));
   const text = hasWords
     ? placeCitations(
-        dropUncitedLead(
-          academicPunctuation(dropConnectiveOpeners(filtered.text, input.before)),
-          input.before,
-          input.guided === true || input.keepUncitedLead === true,
-        ),
+        input.dropUncitedFirst === true
+          ? dropUncitedLead(punctuated, input.before, input.guided === true)
+          : punctuated,
       ).trim()
     : '';
   const empty = text.length === 0;

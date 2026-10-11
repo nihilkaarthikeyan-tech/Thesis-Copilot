@@ -634,6 +634,8 @@ async function proposalConversation(llm: LlmProvider, topic: Topic): Promise<Out
 
 /** ADR-0147 round 6: `--code-only` (live prompt with the round's code against without it). */
 let codeOnly = false;
+/** ADR-0147 round 6: `--round6-code`, the round's code on both sides. */
+let round6Code = false;
 /** `--code-only`: side A's raw answer, by request, for side B to post-process when identical. */
 const sharedRaw = new Map<string, string>();
 
@@ -788,17 +790,19 @@ async function produce(
       : c.emptySection
         ? `${c.topic.chapter.scopeNote}\nThis section, "${c.topic.section.title}": ${c.topic.section.scopeNote}`
         : c.topic.chapter.scopeNote;
-    // ADR-0147 round 6, `--code-only`: side A is the same prompt without the round's code (no
-    // passage withholds its abstract's first sentence; an uncited first sentence is kept).
+    // ADR-0147 round 6's code (not shipped): `--round6-code` applies it on both sides (how the
+    // round's v5 runs were made); `--code-only` on side B only, so side A is the prompt as it is.
+    const codeOn = codeOnly ? side === 'candidate' : round6Code;
     const codeOff = codeOnly && side === 'current';
     const request = buildAssistRequest({
       memoryBlock: c.opener ? openerMemory(c.topic) : memoryFor(c.topic, c.context),
       chapter: { title: c.topic.chapter.title, scopeNote },
-      passages: codeOff ? c.passages.map((p) => ({ ...p, opensAbstract: false })) : c.passages,
+      passages: c.passages,
       before: c.context,
       after: '',
       userId: 'eval',
       documentId: 'eval',
+      withholdAbstractOpening: codeOn,
     });
     // Where the code leaves the request unchanged (every typed-set case), side B post-processes
     // side A's own answer, so the comparison measures the code and not a second sample.
@@ -812,7 +816,7 @@ async function produce(
       passageIds: c.passages.map((p) => p.id),
       before: c.context,
       existingText: c.context,
-      keepUncitedLead: codeOff,
+      dropUncitedFirst: codeOn,
     });
     const dropped = Object.values(processed.drops).reduce((a, b) => a + b, 0);
     return {
@@ -1103,6 +1107,7 @@ async function main(): Promise<void> {
   // ADR-0147 round 6: --code-only runs the prompt on disk on both sides, A without the round's
   // code and B with it, so what the code alone does is measured.
   codeOnly = process.argv.includes('--code-only');
+  round6Code = process.argv.includes('--round6-code');
   const candidatePath = join(here, 'candidates', `${candidateName}.md`);
   if (!modelB && !codeOnly && !existsSync(candidatePath)) {
     throw new Error(`No candidate at ${candidatePath}`);
@@ -1167,6 +1172,7 @@ async function main(): Promise<void> {
                 passageIds: c.passages.map((p) => p.id),
                 before: c.context,
                 existingText: c.context,
+                dropUncitedFirst: round6Code,
               }).text
             : postProcessDraft(raw, c.passages, 400, '').result.markdown;
         again[k].push(measure(text, c.passages));
