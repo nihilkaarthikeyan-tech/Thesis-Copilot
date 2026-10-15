@@ -12,10 +12,13 @@
  * fix" rule from the PRD's hard constraints, applied to the largest thing the AI writes.
  */
 
+import { headingKey, type OutlineNode, walkOutline } from '@tc/types';
 import { findDraft, sectionUnderCursor } from '@tc/ui';
 import type { Editor } from '@tiptap/core';
-import { useCallback, useEffect, useState } from 'react';
-import { API_URL, ApiError, type ProblemDetails } from '@/lib/api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useT } from '@/i18n/react';
+import { API_URL, ApiError, api, type ProblemDetails } from '@/lib/api';
 import { type LimitRefusal, limitRefusal } from '@/lib/limit';
 import { parseSse } from '@/lib/sse';
 import { LimitNotice } from '../LimitNotice';
@@ -26,6 +29,39 @@ import { LimitNotice } from '../LimitNotice';
  * heading and dispatches it on the editor's DOM (ADR-0072). Draft mode listens on both.
  */
 export const DRAFT_SECTION_EVENT = 'tc:draft-section';
+
+/**
+ * ADR-0155 (the Word test, 2026-10-16): "Draft a section" started at once, without saying what it
+ * would draft; Jenni shows an editable note per section first. The key bar's button and
+ * Ctrl+Shift+D now open a small confirm: the section's name, its note (what it should cover,
+ * editable, saved as the section's note), and Draft. One extra click; Ctrl+Enter, or Ctrl+Shift+D
+ * again, drafts from it. A trigger that has just shown the note (the Sections panel, the section
+ * guide) sends `{ detail: { confirmed: true } }` and drafts at once, as before.
+ */
+export type DraftSectionDetail = { confirmed?: boolean };
+
+type OutlineView = {
+  outline: OutlineNode[];
+  chapters: Array<{ id: string; outlineNodeId: string }>;
+};
+
+/**
+ * The note the confirm shows: the planned section's under a heading, else the chapter's. It can
+ * be changed only under a heading of a chapter that is in the plan, which is where the section's
+ * note is kept (`PUT /documents/:id/outline/section-note`).
+ */
+export function noteFor(
+  view: OutlineView | null,
+  chapterId: string,
+  heading: string | null,
+): { note: string; editable: boolean } {
+  const row = view?.chapters.find((c) => c.id === chapterId);
+  const chapterNode = row ? view?.outline.find((n) => n.id === row.outlineNodeId) : undefined;
+  if (!heading) return { note: chapterNode?.scopeNote ?? '', editable: false };
+  const key = headingKey(heading);
+  const section = walkOutline(chapterNode?.children ?? []).find((n) => headingKey(n.title) === key);
+  return { note: section?.scopeNote ?? '', editable: chapterNode !== undefined };
+}
 
 type DraftCitation = { key: string; sourceId: string; chunkId?: string; rendered?: string };
 
@@ -38,6 +74,18 @@ type DraftResult = {
 
 type State =
   | { phase: 'idle' }
+  /** ADR-0155: what will be drafted, before anything is spent. */
+  | {
+      phase: 'confirm';
+      heading: string | null;
+      note: string;
+      original: string;
+      /** The note can be changed: a heading in a chapter that is in the plan. */
+      editable: boolean;
+      loading: boolean;
+      saving: boolean;
+      error: string | null;
+    }
   | { phase: 'working'; stage: string }
   | { phase: 'refused'; reason: string; title?: string }
   | { phase: 'error'; message: string }
@@ -57,16 +105,24 @@ type CloseTo = { shortRef: string; page: number | null; overlapText: string; kin
 
 export function DraftMode({
   editor,
+  documentId,
   chapterId,
+  chapterTitle,
   outlineNodeId,
   onUsageChange,
 }: {
   editor: Editor | null;
+  documentId: string;
   chapterId: string;
+  chapterTitle: string;
   outlineNodeId: string;
   onUsageChange: () => void;
 }) {
+  const { t } = useT();
   const [state, setState] = useState<State>({ phase: 'idle' });
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   /** The draft this panel is about, so the panel can close itself once it is resolved. */
   const [draftId, setDraftId] = useState<string | null>(null);
 
@@ -157,6 +213,66 @@ export function DraftMode({
     }
   }, [editor, chapterId, outlineNodeId, onUsageChange, state.phase]);
 
+  /** ADR-0155: the confirm, with the section's name and its note, before anything is spent. */
+  const ask = useCallback(() => {
+    if (!editor || stateRef.current.phase === 'working') return;
+    const { heading } = sectionUnderCursor(editor.state.doc, editor.state.selection.from);
+    const under = heading?.trim() || null;
+    setState({
+      phase: 'confirm',
+      heading: under,
+      note: '',
+      original: '',
+      editable: false,
+      loading: true,
+      saving: false,
+      error: null,
+    });
+    void api<OutlineView>(`/documents/${documentId}/outline`)
+      .catch(() => null)
+      .then((view) => {
+        const { note, editable } = noteFor(view, chapterId, under);
+        setState((current) =>
+          current.phase === 'confirm' && current.loading
+            ? { ...current, note, original: note, editable, loading: false }
+            : current,
+        );
+      });
+  }, [editor, documentId, chapterId]);
+
+  /** Draft, from the confirm: the note saved first when the student changed it. */
+  const confirm = useCallback(async () => {
+    const current = stateRef.current;
+    if (current.phase !== 'confirm' || current.saving || current.loading) return;
+    if (current.editable && current.heading && current.note.trim() !== current.original.trim()) {
+      setState({ ...current, saving: true, error: null });
+      try {
+        await api(`/documents/${documentId}/outline/section-note`, {
+          method: 'PUT',
+          body: JSON.stringify({ chapterId, title: current.heading, scopeNote: current.note }),
+        });
+      } catch (e) {
+        setState({
+          ...current,
+          saving: false,
+          error:
+            e instanceof ApiError
+              ? (e.problem.detail ?? e.problem.title)
+              : t('draft.confirm.saveError'),
+        });
+        return;
+      }
+    }
+    setState({ phase: 'idle' });
+    await run();
+  }, [documentId, chapterId, run, t]);
+
+  // The note box takes the keyboard once the note is in.
+  const loaded = state.phase === 'confirm' && !state.loading;
+  useEffect(() => {
+    if (loaded) noteRef.current?.focus();
+  }, [loaded]);
+
   // ADR-0071: once the student accepts or discards the draft, this panel has nothing left to say
   // (it stayed up saying "Draft inserted" after a discard).
   useEffect(() => {
@@ -178,14 +294,20 @@ export function DraftMode({
   // typing in a panel input.
   useEffect(() => {
     if (!editor) return;
+    // ADR-0155: the shortcut opens the confirm; pressed again there, it drafts.
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'd' || !event.ctrlKey || !event.shiftKey) return;
       event.preventDefault();
-      void run();
+      if (stateRef.current.phase === 'confirm') void confirm();
+      else ask();
     };
-    const onDraftSection = () => void run();
+    const fromEvent = (event: Event) => {
+      if ((event as CustomEvent<DraftSectionDetail | null>).detail?.confirmed) void run();
+      else ask();
+    };
+    const onDraftSection = fromEvent;
     const dom = editor.view.dom;
-    const onAsk = () => void run();
+    const onAsk = fromEvent;
     dom.addEventListener('keydown', onKeyDown);
     // ADR-0073 / ADR-0072: asked for from a window event (the key bar) or the editor's own DOM
     // (the section guide).
@@ -196,9 +318,100 @@ export function DraftMode({
       window.removeEventListener(DRAFT_SECTION_EVENT, onAsk);
       dom.removeEventListener(DRAFT_SECTION_EVENT, onDraftSection);
     };
-  }, [editor, run]);
+  }, [editor, run, ask, confirm]);
 
   if (state.phase === 'idle') return null;
+
+  if (state.phase === 'confirm') {
+    const title = state.heading ?? chapterTitle;
+    return (
+      <aside
+        data-testid="draft-confirm"
+        aria-label={t('draft.confirm.title')}
+        className="fixed bottom-20 left-1/2 z-30 w-[30rem] max-w-[92vw] -translate-x-1/2 overflow-hidden rounded-lg border border-line bg-surface text-sm shadow-lg"
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void confirm();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setState({ phase: 'idle' });
+            const ctrl = event.ctrlKey || event.metaKey;
+            if (
+              (event.key === 'Enter' && ctrl) ||
+              (event.key.toLowerCase() === 'd' && event.ctrlKey && event.shiftKey)
+            ) {
+              event.preventDefault();
+              void confirm();
+            }
+          }}
+          className="p-4"
+        >
+          <p className="text-[14px] font-semibold text-ink">{t('draft.confirm.title')}</p>
+          <p
+            className="mt-0.5 text-[13px] text-muted [overflow-wrap:anywhere]"
+            data-testid="draft-confirm-section"
+          >
+            {title}
+          </p>
+          <label
+            htmlFor="draft-confirm-note"
+            className="mt-3 block text-[12.5px] font-semibold text-ink"
+          >
+            {t('draft.confirm.noteLabel')}
+          </label>
+          <textarea
+            id="draft-confirm-note"
+            ref={noteRef}
+            data-testid="draft-confirm-note"
+            rows={3}
+            maxLength={1_000}
+            value={state.loading ? '' : state.note}
+            readOnly={!state.editable}
+            disabled={state.loading || state.saving}
+            placeholder={
+              state.loading ? t('draft.confirm.loading') : t('draft.confirm.notePlaceholder')
+            }
+            onChange={(e) => {
+              const note = e.target.value;
+              setState((current) => (current.phase === 'confirm' ? { ...current, note } : current));
+            }}
+            className="mt-1 w-full min-w-0 resize-y rounded-md border border-line-strong bg-surface px-3 py-2 text-[13px] text-ink focus:border-accent focus:outline-none disabled:opacity-70"
+          />
+          <p className="mt-1 text-[12px] text-muted">
+            {state.heading
+              ? state.editable
+                ? t('draft.confirm.hint')
+                : t('draft.confirm.unplannedHint')
+              : t('draft.confirm.chapterHint')}
+          </p>
+          {state.error ? (
+            <p role="alert" className="mt-1 text-[12.5px] text-warn">
+              {state.error}
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setState({ phase: 'idle' })}
+              data-testid="draft-confirm-cancel"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              disabled={state.loading || state.saving}
+              data-testid="draft-confirm-go"
+            >
+              {t('draft.confirm.draft')}
+            </Button>
+          </div>
+        </form>
+      </aside>
+    );
+  }
 
   return (
     <aside

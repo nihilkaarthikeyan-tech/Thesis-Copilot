@@ -38,6 +38,11 @@ export type SetupView = {
   universityId: string | null;
   /** A paper search was started by this call (or one for this title is already running). */
   searching: boolean;
+  /**
+   * ADR-0155: the search this call wanted was refused because the month's automatic searches
+   * are used up (a thesis's first search never is). The card says so, with Find papers.
+   */
+  searchLimit: boolean;
 };
 
 @Injectable()
@@ -91,6 +96,7 @@ export class SetupCardService {
 
     // ADR-0070, from the card: the search starts the moment the thesis has a title to search on.
     let searching = false;
+    let searchLimit = false;
     const firstChapter = document.chapters[0];
     if (
       update.title !== undefined &&
@@ -98,8 +104,8 @@ export class SetupCardService {
       firstChapter &&
       namesATopic(update.title)
     ) {
-      searching = await this.autoSources
-        .start({
+      const outcome = await this.autoSources
+        .startSearch({
           documentId,
           userId,
           chapterId: firstChapter.id,
@@ -107,11 +113,13 @@ export class SetupCardService {
           initial: true,
           named: true,
         })
-        .catch(() => false);
+        .catch(() => 'off' as const);
+      searching = outcome === 'started';
+      searchLimit = outcome === 'limit';
     }
 
     const setup = applySetupUpdate(readSetupCard(meta), update);
     await setMetaKey(this.prisma, documentId, 'setup', setup);
-    return { setup, title, field, universityId, searching };
+    return { setup, title, field, universityId, searching, searchLimit };
   }
 }

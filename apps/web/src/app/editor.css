@@ -114,6 +114,16 @@
   opacity: 0.7;
 }
 
+/*
+ * ADR-0155: the block a suggestion is in makes room under itself for the suggestion bar, which
+ * sits there (SuggestionBar sets `--tc-suggest-bar-h` to its own height), so the bar never covers
+ * the next heading or paragraph. Padding, not margin, so it does not collapse into the next
+ * block's top margin.
+ */
+.thesis-editor .ghost-host {
+  padding-bottom: calc(var(--tc-suggest-bar-h, 2.75rem) + 16px);
+}
+
 /* Accepted text: 400 ms background fade so the student sees what was inserted (§6.2). */
 .thesis-editor .ghost-accepted {
   animation: ghost-accept-fade 400ms ease-out forwards;

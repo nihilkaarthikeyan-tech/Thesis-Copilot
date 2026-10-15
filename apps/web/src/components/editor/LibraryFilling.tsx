@@ -23,6 +23,8 @@ export type LibraryProgress = {
   found: number;
   ready: number;
   reading: number;
+  /** ADR-0155: a search was refused because the month's automatic searches are used up. */
+  limitReached?: boolean;
 };
 type Progress = LibraryProgress;
 
@@ -37,12 +39,15 @@ export function LibraryFilling({
   documentId,
   onFirstReady,
   onProgress,
+  onFindPapers,
 }: {
   documentId: string;
   /** The student asked for a suggestion while nothing could be cited, and now something can. */
   onFirstReady: () => void;
   /** ADR-0137: every reading, for the editor's one-line status above the text. */
   onProgress?: (progress: LibraryProgress) => void;
+  /** ADR-0155: Find papers, from the "automatic search is used up" line. */
+  onFindPapers?: () => void;
 }) {
   const { t } = useT();
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -111,6 +116,29 @@ export function LibraryFilling({
   }, [documentId, poll]);
 
   if (!progress) return null;
+  // ADR-0155: the search this thesis wanted was refused for the month. Said, with Find papers.
+  if (progress.limitReached && !progress.searching && progress.reading === 0) {
+    return (
+      <div
+        data-testid="library-limit"
+        role="status"
+        aria-live="polite"
+        className="mx-auto mb-3 flex min-w-0 max-w-[72ch] flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-line bg-sunk px-3 py-2 text-xs text-ink"
+      >
+        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{t('sources.limitReached')}</span>
+        {onFindPapers ? (
+          <button
+            type="button"
+            onClick={onFindPapers}
+            data-testid="library-limit-find"
+            className="shrink-0 rounded bg-accent px-2 py-1 font-medium text-paper"
+          >
+            {t('common.findPapers')}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
   let text: string | null = null;
   if (progress.searching && progress.found === 0) text = t('editor.filling.searching');
   else if (progress.reading > 0)

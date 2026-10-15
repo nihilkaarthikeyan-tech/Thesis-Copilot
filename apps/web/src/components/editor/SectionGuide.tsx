@@ -512,7 +512,9 @@ export function SectionGuide({
                           onClick={() => {
                             if (!editor) return;
                             placeCursorInSection(editor, child.title);
-                            editor.view.dom.dispatchEvent(new CustomEvent(DRAFT_SECTION_EVENT));
+                            editor.view.dom.dispatchEvent(
+                              new CustomEvent(DRAFT_SECTION_EVENT, { detail: { confirmed: true } }),
+                            );
                           }}
                         >
                           {t('sections.draft')}

@@ -105,6 +105,7 @@ export async function* assistRequest(
           ...(typeof parsed.needsSource === 'string' ? { needsSource: parsed.needsSource } : {}),
           ...(parsed.papersLoading === true ? { papersLoading: true } : {}),
           ...(typeof parsed.settingGap === 'string' ? { settingGap: parsed.settingGap } : {}),
+          ...(parsed.searchLimit === true ? { searchLimit: true } : {}),
           ...(parsed.closeTo && typeof parsed.closeTo === 'object'
             ? { closeTo: parsed.closeTo as CloseTo }
             : {}),

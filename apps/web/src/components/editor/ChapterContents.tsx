@@ -249,7 +249,9 @@ export function ChapterContents({
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           intoSection(entry.pos);
-                          editor.view.dom.dispatchEvent(new CustomEvent(DRAFT_SECTION_EVENT));
+                          editor.view.dom.dispatchEvent(
+                            new CustomEvent(DRAFT_SECTION_EVENT, { detail: { confirmed: true } }),
+                          );
                         }}
                         data-testid="section-draft"
                       >

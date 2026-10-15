@@ -46,6 +46,23 @@ function sideBySide(siblings: readonly ExportCitationNode[], start: number, keys
   return start >= 0 && keys.every((key, j) => keyOf(siblings[start + j]) === key);
 }
 
+/**
+ * ADR-0155 (the Word test, 2026-10-16): "challenges(Mohammed & Maheswari, 2025)". A bracketed
+ * label straight after a word gets a space before it; one after a space, an opening bracket or
+ * quote, a dash or a slash does not, and nor does a label that is not bracketed (a superscript
+ * number sits on the word).
+ */
+export function spaceBeforeCitation(
+  siblings: readonly ExportCitationNode[],
+  index: number,
+  label: string | undefined,
+): boolean {
+  if (!label || !/^[([]/.test(label)) return false;
+  const previous = siblings[index - 1] as { type?: string; text?: unknown } | undefined;
+  if (previous?.type !== 'text' || typeof previous.text !== 'string') return false;
+  return /[^\s([{"“'‘/\-–—]$/u.test(previous.text);
+}
+
 /** What the citation at `siblings[index]` prints. */
 export function printCitation(
   siblings: readonly ExportCitationNode[],

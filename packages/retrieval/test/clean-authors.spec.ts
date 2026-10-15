@@ -44,6 +44,20 @@ describe('cleanAuthors', () => {
   });
 });
 
+describe('a family name with a stray full stop (ADR-0155, the Word test)', () => {
+  it('"Mohammed." becomes "Mohammed"; a short abbreviation keeps its stop', () => {
+    expect(cleanAuthors([{ given: 'S.', family: 'Mohammed.' }])).toEqual([
+      { given: 'S.', family: 'Mohammed' },
+    ]);
+    expect(shortReference([{ given: 'S.', family: 'Mohammed.' }], 2025, 'Power on the Roof')).toBe(
+      'Mohammed 2025',
+    );
+    expect(cleanAuthors([{ given: 'Sneha', family: 'St.' }])).toEqual([
+      { given: 'Sneha', family: 'St.' },
+    ]);
+  });
+});
+
 describe('shortReference on records stored before the repair', () => {
   it('names the first person, not the college or a dash', () => {
     expect(

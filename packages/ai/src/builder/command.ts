@@ -16,6 +16,7 @@ import { renderTemplate } from '../template.js';
 import type { LlmRequest } from '../types.js';
 import { academicPunctuationUnlessStudents } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
+import { spaceBeforeMarkers } from './citation-placement.js';
 import { CITE_RE, collapseSameSourceRuns, normalizeBareCitations } from './postprocess.js';
 
 /**
@@ -432,7 +433,7 @@ export function postProcessCommand(
   // One paper's passages side by side print as one label repeated (2026-10-04). The selection's
   // own citations carry editor keys with no `#`, so they never merge with each other here.
   const text = collapseSameSourceRuns(
-    citationsBeforeStop(normalizeBareCitations(raw))
+    citationsBeforeStop(spaceBeforeMarkers(normalizeBareCitations(raw)))
       .replace(CITE_RE, (match, id: string) => {
         const key = id.trim();
         if (allowed.has(key)) return match;

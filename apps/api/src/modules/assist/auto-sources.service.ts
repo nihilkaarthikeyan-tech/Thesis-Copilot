@@ -68,12 +68,45 @@ export type SourcesProgress = {
   found: number;
   ready: number;
   reading: number;
+  /**
+   * ADR-0155: a search this thesis wanted was refused because the month's automatic searches are
+   * used up, and nothing is running. The editor and the setup card say so, with Find papers.
+   */
+  limitReached: boolean;
 };
 
 /** A paper not read within this long after it was added is not "still being read". */
 const READING_WINDOW_MS = 5 * 60_000;
 
 const searchKey = (documentId: string) => `sources:search:${documentId}`;
+/** Word test 2026-10-16 (ADR-0155): a search this thesis wanted was refused for the month. */
+const refusedKey = (documentId: string) => `sources:refused:${documentId}`;
+
+/**
+ * What `startSearch` did: `started` (a search is running, new or already), `limit` (refused:
+ * the month's automatic searches are used up), `off` (the switch, the thesis's web-search choice
+ * or the student's setting).
+ */
+export type SearchOutcome = 'started' | 'limit' | 'off';
+
+/**
+ * ADR-0155: whether this is the thesis's first search, the one made when it is created or named
+ * (ADR-0087/0145). That one always runs: it is counted against the month, but never refused for
+ * it, or a student whose automatic searches are used up starts a new thesis with no papers and
+ * no word why (the Word test, 2026-10-16). Later searches, a renamed thesis's included, are
+ * limited as before. The worker's `isFirstSearchOfThesis` makes the same check.
+ */
+export async function firstSearchOfThesis(
+  prisma: {
+    auditEvent: { count(args: { where: Record<string, unknown> }): Promise<number> };
+  },
+  documentId: string,
+): Promise<boolean> {
+  const before = await prisma.auditEvent.count({
+    where: { documentId, kind: 'SOURCES_FOUND', detail: { path: ['initial'], equals: true } },
+  });
+  return before === 0;
+}
 
 @Injectable()
 export class AutoSourcesService {
@@ -86,6 +119,14 @@ export class AutoSourcesService {
 
   /** Starts a search for this chapter if allowed. True when one is running (new or already). */
   async start(
+    input: Parameters<AutoSourcesService['startSearch']>[0],
+    now: Date = new Date(),
+  ): Promise<boolean> {
+    return (await this.startSearch(input, now)) === 'started';
+  }
+
+  /** `start`, saying why when nothing started (ADR-0155). */
+  async startSearch(
     input: {
       documentId: string;
       userId: string;
@@ -102,25 +143,27 @@ export class AutoSourcesService {
       section?: string | null;
     },
     now: Date = new Date(),
-  ): Promise<boolean> {
-    if (!(await this.flags.isEnabled(AUTO_SOURCES_FLAG))) return false;
+  ): Promise<SearchOutcome> {
+    if (!(await this.flags.isEnabled(AUTO_SOURCES_FLAG))) return 'off';
     const document = await this.prisma.document.findUnique({
       where: { id: input.documentId },
       select: { meta: true },
     });
     // ADR-0087: the student turned web search off for this thesis.
-    if (!readSourcePrefs(document?.meta).webSearch) return false;
+    if (!readSourcePrefs(document?.meta).webSearch) return 'off';
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
       select: { plan: true, settings: true },
     });
-    if (!user) return false;
-    if ((user.settings as { autoSources?: unknown } | null)?.autoSources === false) return false;
-    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const used = await this.prisma.auditEvent.count({
-      where: { userId: input.userId, kind: 'SOURCES_FOUND', createdAt: { gte: from } },
-    });
-    if (used >= monthlyAutoSearches(user.plan)) return false;
+    if (!user) return 'off';
+    if ((user.settings as { autoSources?: unknown } | null)?.autoSources === false) return 'off';
+    const free =
+      input.initial === true && (await firstSearchOfThesis(this.prisma, input.documentId));
+    if (!free && (await this.usedUp(input.userId, user.plan, now))) {
+      // ADR-0155: said, never silent. The editor's progress line and the setup card read it.
+      await this.redis.client.set(refusedKey(input.documentId), '1', 'EX', 24 * 60 * 60);
+      return 'limit';
+    }
     const jobId = input.initial
       ? initialSourcesJobKey(input.documentId, input.named ? input.query : null)
       : autoSourcesJobKey(input.chapterId, now, input.section);
@@ -137,7 +180,17 @@ export class AutoSourcesService {
     );
     // ADR-0070: which search the editor's progress line should watch for this thesis.
     await this.redis.client.set(searchKey(input.documentId), jobId, 'EX', 15 * 60);
-    return true;
+    await this.redis.client.del(refusedKey(input.documentId));
+    return 'started';
+  }
+
+  /** Whether this user's automatic searches for the calendar month (UTC) are used up. */
+  private async usedUp(userId: string, plan: string, now: Date): Promise<boolean> {
+    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const used = await this.prisma.auditEvent.count({
+      where: { userId, kind: 'SOURCES_FOUND', createdAt: { gte: from } },
+    });
+    return used >= monthlyAutoSearches(plan);
   }
 
   /**
@@ -146,7 +199,10 @@ export class AutoSourcesService {
    * nothing is computed that the database does not already hold.
    */
   async progress(documentId: string, now: Date = new Date()): Promise<SourcesProgress> {
-    const jobId = await this.redis.client.get(searchKey(documentId));
+    const [jobId, refused] = await Promise.all([
+      this.redis.client.get(searchKey(documentId)),
+      this.redis.client.get(refusedKey(documentId)),
+    ]);
     const searching = jobId ? await this.queue.pending('find-sources', jobId) : false;
     const recent = new Date(now.getTime() - READING_WINDOW_MS);
     const [found, ready, waiting] = await Promise.all([
@@ -174,6 +230,6 @@ export class AutoSourcesService {
     const reading = waiting.filter(
       (s) => s.status === 'PENDING' || indexing === null || indexing.has(s.id),
     ).length;
-    return { searching, found, ready, reading };
+    return { searching, found, ready, reading, limitReached: refused !== null && !searching };
   }
 }

@@ -543,6 +543,20 @@ export function mockFixFor(req: LlmRequest): string {
     const correction = (match[2] ?? '').split(' — ')[1]?.trim();
     if (sentence && text.includes(sentence)) {
       text = text.replace(sentence, correction ? `${correction}` : '').replace(/ {2,}/g, ' ');
+      continue;
+    }
+    // ADR-0155: a code check's sentence has its markers stripped, and a marker now sits inside
+    // the full stop ("recorded {{cite:S1#c1}}."), so the sentence is found with them allowed back.
+    const withMarkers = new RegExp(
+      [...sentence]
+        .map((ch) => {
+          const escaped = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          return /[.,;:!?]/.test(ch) ? `(?:\\s*\\{\\{cite:[^}]+\\}\\})*${escaped}` : escaped;
+        })
+        .join(''),
+    );
+    if (sentence && withMarkers.test(text)) {
+      text = text.replace(withMarkers, correction ?? '').replace(/ {2,}/g, ' ');
     }
   }
   return text;

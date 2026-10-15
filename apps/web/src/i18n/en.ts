@@ -275,6 +275,20 @@ export const en = {
   'editor.key.fewer': 'Fewer keys',
   'editor.key.all': 'Keyboard shortcuts',
   'editor.draftButton': 'Draft a section',
+  // ADR-0155: what "Draft a section" will draft, before it starts.
+  'draft.confirm.title': 'Draft this section',
+  'draft.confirm.noteLabel': 'What it should cover',
+  'draft.confirm.notePlaceholder':
+    'A sentence or two on what this section should argue. The draft follows it.',
+  'draft.confirm.loading': 'Reading the section’s note…',
+  'draft.confirm.hint':
+    'Your note is kept with the section. The draft arrives as a block you accept or discard. Ctrl+Enter drafts.',
+  'draft.confirm.chapterHint':
+    'No heading above the cursor, so the whole chapter is drafted from its plan. Ctrl+Enter drafts.',
+  'draft.confirm.unplannedHint':
+    'This chapter has no plan yet, so the draft follows the heading and what you have written under it. Ctrl+Enter drafts.',
+  'draft.confirm.draft': 'Draft',
+  'draft.confirm.saveError': 'The note was not saved, so nothing was drafted. Try again.',
   'guide.howItWorks': 'How suggestions work (90 seconds)',
   'editor.tools': 'Tools',
   'editor.tab.sources': 'sources',
@@ -381,6 +395,10 @@ export const en = {
   'setup.chapters.foldedStandard': 'standard thesis chapters',
   'setup.chapters.foldedNone': 'one chapter, no headings',
   'setup.first.waiting': 'A cited first sentence is waiting under the first heading.',
+  // ADR-0155: never "cited" for a sentence that cites nothing, nor before one is there.
+  'setup.first.waitingUncited':
+    'A first sentence is waiting under the first heading. It cites no paper yet.',
+  'setup.first.coming': 'A first sentence is on its way under the first heading.',
   'setup.first.hint': 'Accept it, or write your own first sentence.',
   'setup.first.suggest': 'Suggest one',
   'setup.first.written': 'written',
@@ -417,6 +435,8 @@ export const en = {
   'editor.filling.searching': 'Finding papers on your topic…',
   'editor.filling.reading': 'Found {found} papers · reading {reading}…',
   'editor.filling.ready': '{ready} papers ready — suggestions will cite them.',
+  // ADR-0155: a search was refused for the month; said, never silent.
+  'sources.limitReached': 'Automatic paper search is used up for this month — use Find papers.',
   'guide.title': 'Getting started',
   'guide.write': 'Write',
   'guide.writeDetail':

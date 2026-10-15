@@ -122,10 +122,16 @@ export function rerank(
 export function topK(
   ranked: readonly RankedCandidate[],
   action: RetrievalAction,
+  /** ADR-0155: how often the chapter already cites each paper (`citedSourceCounts`). */
+  citedCount: ReadonlyMap<string, number> = new Map(),
 ): RankedCandidate[] {
   const k = TOP_K[action];
-  const cap = PER_SOURCE_CAP[action];
-  if (cap === undefined) return ranked.slice(0, k);
+  const base = PER_SOURCE_CAP[action];
+  if (base === undefined) return ranked.slice(0, k);
+  // ADR-0155: a paper the chapter already leans on offers one passage, not two, while other
+  // papers have candidates (the Word test: one paper cited ten times in ~890 words).
+  const capOf = (sourceId: string) =>
+    (citedCount.get(sourceId) ?? 0) >= DOMINANT_CITATIONS ? 1 : base;
   // ADR-0078: a section draft synthesises across papers. In rank order, each paper keeps at most
   // `cap` places while another paper's passages wait; slots no other paper can fill go back to
   // the best of the rest, so a library of one paper still fills the request.
@@ -134,12 +140,15 @@ export function topK(
   const count = new Map<string, number>();
   for (const candidate of ranked) {
     const n = count.get(candidate.sourceId) ?? 0;
-    if (n < cap) {
+    if (n < capOf(candidate.sourceId)) {
       chosen.push(candidate);
       count.set(candidate.sourceId, n + 1);
     } else held.push(candidate);
   }
-  return [...chosen, ...held].slice(0, k);
+  // ADR-0155: a slot left over goes to another paper's next passage before the leaned-on paper's.
+  const dominant = (c: RankedCandidate) => capOf(c.sourceId) < base;
+  const rest = [...held.filter((c) => !dominant(c)), ...held.filter(dominant)];
+  return [...chosen, ...rest].slice(0, k);
 }
 
 /**
@@ -159,7 +168,18 @@ export const PER_SOURCE_CAP: Partial<Record<RetrievalAction, number>> = { DRAFT:
  * off-topic paper ahead of an on-topic one (the floor of `SPREAD_FLOOR` stops it compounding).
  */
 export const CITED_PENALTY = 0.03;
-export const SPREAD_FLOOR = 0.85;
+/**
+ * ADR-0155: 0.85 → 0.80. The Word test (2026-10-16) cited one paper ten times in ~890 words: a
+ * Karnataka-specific paper out-scored the other six on-topic papers by more than the old 0.15
+ * ceiling, so after five citations nothing more stepped it back. The ceiling is now 0.20, still
+ * well under the gap between an on-topic and an off-topic passage.
+ */
+export const SPREAD_FLOOR = 0.8;
+/**
+ * ADR-0155: from this many citations in the chapter, a paper offers one passage to a suggestion
+ * or a draft instead of `PER_SOURCE_CAP`'s two, while other papers have candidates.
+ */
+export const DOMINANT_CITATIONS = 3;
 
 /** Lowers each candidate's score by how often the chapter already cites its paper, then re-sorts. */
 export function spreadCitations(

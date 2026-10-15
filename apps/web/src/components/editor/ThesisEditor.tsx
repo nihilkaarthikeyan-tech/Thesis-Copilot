@@ -512,8 +512,20 @@ function ChapterEditor({
    * suggestion callbacks, which are built once.
    */
   const [settingGap, setSettingGap] = useState<string | null>(null);
+  /**
+   * ADR-0155: whether the last suggestion shown cited a paper (null before one came), so the
+   * setup card never calls an uncited sentence "cited".
+   */
+  const [firstCited, setFirstCited] = useState<boolean | null>(null);
   const setupOnTopRef = useRef(setupOnTop);
   setupOnTopRef.current = setupOnTop;
+  /**
+   * ADR-0155 (the Word test, 2026-10-16): the setup card is asking for the title. The editor does
+   * not take the keyboard then: it used to, a moment after the card showed, so a student typing
+   * the title at once had half of it land in the chapter.
+   */
+  const holdOpenerRef = useRef(holdOpener);
+  holdOpenerRef.current = holdOpener;
   const [allKeys, setAllKeys] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
@@ -716,6 +728,7 @@ function ChapterEditor({
           onDone: (info) => {
             retriedRef.current = false;
             setSettingGap(info.settingGap);
+            if (!info.empty) setFirstCited(info.cited);
             // ADR-0151: no paper on the thesis's place, so no first sentence was offered. The
             // setup card says so when it is on screen; otherwise the notice does, with Find papers.
             if (info.settingGap) {
@@ -726,6 +739,15 @@ function ChapterEditor({
                 });
               }
               return;
+            }
+            // ADR-0155: a search was wanted and the month's automatic searches are used up.
+            // Said plainly, with Find papers, never silent. The progress line keeps saying it.
+            if (info.searchLimit) {
+              window.dispatchEvent(new Event(LIBRARY_CHANGED));
+              if (!info.grounded || info.empty) {
+                setNotice({ text: tNow('sources.limitReached'), action: 'findPapers' });
+                return;
+              }
             }
             // ADR-0037: nothing in the library covers this, and a search has started. Said
             // first, because it is what will actually change the next suggestion.
@@ -959,6 +981,8 @@ function ChapterEditor({
         autoSuggest={autoSuggest}
         placement={placement}
         settingGap={settingGap}
+        searchLimit={libraryProgress?.limitReached === true}
+        firstCited={firstCited}
         onFindPapers={() => findPapersFor(doc.title)}
       />
     ) : null;
@@ -1249,6 +1273,7 @@ function ChapterEditor({
     // cursor then would take it from wherever the student had put it.
     if (
       focusedChapterRef.current !== chapter.id &&
+      !holdOpenerRef.current &&
       editor.state.doc.childCount <= 2 &&
       editor.state.doc.textContent.trim().length < 80
     ) {
@@ -1886,6 +1911,7 @@ function ChapterEditor({
             )}
             <LibraryFilling
               documentId={doc.id}
+              onFindPapers={() => findPapersFor(doc.title)}
               onProgress={setLibraryProgress}
               onFirstReady={() => {
                 setNotice(null);
@@ -2451,7 +2477,9 @@ function ChapterEditor({
 
       <DraftMode
         editor={editor}
+        documentId={doc.id}
         chapterId={chapter.id}
+        chapterTitle={chapter.title}
         outlineNodeId={chapter.outlineNodeId}
         onUsageChange={onUsageChange}
       />

@@ -20,6 +20,8 @@ import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
 import { academicPunctuation } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
+import { rewriteBareAuthorYear } from './author-year.js';
+import { placeDraftCitations } from './citation-placement.js';
 import { displayEquationOf, tokenizeNotation } from './notation.js';
 import { nameTheSource } from './own-study.js';
 import { collapseSameSourceRuns, stripUnknownCitations } from './postprocess.js';
@@ -254,7 +256,8 @@ export function postProcessDraft(
 
   const unknownStripped = stripUnknownCitations(markdown, passageIds);
   // One paper's passages side by side print as one label repeated (2026-10-04).
-  const collapsedText = collapseSameSourceRuns(unknownStripped.text);
+  // ADR-0155: a marker after its sentence's full stop goes inside it, as Assist's does (ADR-0150).
+  const collapsedText = placeDraftCitations(collapseSameSourceRuns(unknownStripped.text));
   const stripped = {
     ...unknownStripped,
     text: collapsedText,
@@ -283,11 +286,13 @@ export function postProcessDraft(
     ),
   );
 
-  const words = countDraftWords(cleaned);
+  // ADR-0155: an author and year written bare into the prose, where that paper is cited too.
+  const named = rewriteBareAuthorYear(cleaned, passages).text;
+  const words = countDraftWords(named);
 
   return {
     result: {
-      markdown: cleaned,
+      markdown: named,
       // Prompt ids only. `sourceId` is filled by the caller, which alone holds the map back to the
       // real ids for this request.
       citations: stripped.cited.map((key) => ({ key, sourceId: '' })),
@@ -433,10 +438,18 @@ export function mockDraftFor(req: LlmRequest): string {
     if (heading) blocks.push(`### ${heading}`);
     const passage = passages[index % passages.length];
     if (!passage) return;
+    // ADR-0155: a passage already restated under an earlier heading is not restated again (the
+    // duplicate check would rightly drop it, and the heading with it); this heading's own short
+    // sentence cites it instead.
+    if (index >= passages.length && heading) {
+      blocks.push(`The same evidence bears on ${heading.toLowerCase()} {{cite:${passage.id}}}.`);
+      return;
+    }
     // Two sentences per section: one restating the passage, one connective. Padded so the result
     // clears A.2's 60% SHORT threshold at the default target and the happy path is testable.
+    // The marker sits inside the passage's own full stop, where A.2 asks for it.
     blocks.push(
-      `${passage.text} {{cite:${passage.id}}}. ` +
+      `${passage.text.replace(/[.!?]+$/, '')} {{cite:${passage.id}}}. ` +
         `This bears directly on what this section sets out to establish, and the evidence is ` +
         `reported consistently across the sources pinned for this chapter, which together give ` +
         `the section its factual basis and shape the argument that follows in the next part.`,

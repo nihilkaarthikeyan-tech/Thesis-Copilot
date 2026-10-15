@@ -55,7 +55,7 @@ import {
   finishCitationLinks,
   noteChildren,
 } from './citation-links.js';
-import { printCitation } from './clusters.js';
+import { printCitation, spaceBeforeCitation } from './clusters.js';
 import { docxColors, hasContentsBlock } from './colors.js';
 import { footnoteRun, notesFor } from './footnotes.js';
 import { docxSpans } from './table-grid.js';
@@ -244,6 +244,10 @@ function runsFrom(
           ),
         );
         continue;
+      }
+      // ADR-0155: "challenges(Mohammed…" gets the space a bracketed citation needs.
+      if (spaceBeforeCitation(nodes, index, print.label)) {
+        out.push(new TextRun({ text: ' ', font: spec.font.body, size: pt(spec.font.sizePt) }));
       }
       // ADR-0055: plain text, a link to the entry, or a Word `CITATION` field — the same label.
       out.push(

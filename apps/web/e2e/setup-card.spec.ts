@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
 import { openHeaderMenu } from './_editor.js';
 import { measureLayout, settle } from './_layout.js';
-import { signInAs } from './_session.js';
+import { API_URL, signInAs } from './_session.js';
 
 /**
  * Setting a thesis up inside the editor (ADR-0145): New opens the first chapter at once with the
@@ -161,6 +161,75 @@ test('the card takes a new thesis through its four rows, in the editor', async (
   await page.reload();
   await expect(page.locator('.thesis-editor')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('status-line-text')).toContainText('set up');
+});
+
+test('the title box keeps the keyboard and is filled from the first paint (ADR-0155)', async ({
+  page,
+  request,
+}) => {
+  // The Word test (2026-10-16): the chapter took the keyboard a moment after the card showed, so a
+  // title typed at once landed half in the box and half in the chapter.
+  await newThesis(page, request);
+  const box = page.getByTestId('setup-title-input');
+  await expect(box).toBeFocused();
+  await page.keyboard.type('Barriers to rooftop solar');
+  await page.waitForTimeout(2_000);
+  await page.keyboard.type(' adoption in Karnataka');
+  await expect(box).toHaveValue('Barriers to rooftop solar adoption in Karnataka');
+  await expect(box).toBeFocused();
+  await expect(page.locator('.thesis-editor')).not.toContainText('rooftop');
+
+  // A title typed before the thesis was made (the list's form) is in the box from its first
+  // paint: the box is never seen empty and then filled.
+  const created = await page.request.post(`${API_URL}/api/v1/documents`, {
+    data: { title: TITLE, entryPath: 'A_TOPIC', start: 'writing', askFirst: true, setup: true },
+  });
+  expect(created.ok()).toBe(true);
+  const { id, firstChapterId } = (await created.json()) as { id: string; firstChapterId: string };
+  await page.goto(`/app/d/${id}/write/${firstChapterId}`);
+  // Read on every frame from the moment the box exists, so an empty first paint is caught.
+  const first = await page.waitForFunction(
+    () => {
+      const box = document.querySelector<HTMLInputElement>('[data-testid="setup-title-input"]');
+      return box ? { value: box.value } : null;
+    },
+    null,
+    { polling: 'raf', timeout: 30_000 },
+  );
+  expect(await first.jsonValue()).toEqual({ value: TITLE });
+});
+
+test('a refused paper search is said, and an uncited first sentence is not called cited (ADR-0155)', async ({
+  page,
+  request,
+}) => {
+  // The Word test (2026-10-16): the month's automatic searches were used up, the search was
+  // skipped without a word, and the card said "A cited first sentence is waiting" over a sentence
+  // that cited nothing. The server's refusal is stood in for here (the switch is off on the mock
+  // stack); `auto-sources.spec.ts` proves the server says it.
+  test.setTimeout(180_000);
+  await page.route('**/api/v1/documents/*/sources/progress', (route) =>
+    route.fulfill({
+      json: { searching: false, found: 0, ready: 0, reading: 0, limitReached: true },
+    }),
+  );
+  await newThesis(page, request);
+  await page.getByTestId('setup-title-input').fill(TITLE);
+  await page.getByTestId('setup-title-next').click();
+  const limit = page.getByTestId('setup-search-limit');
+  await expect(limit).toContainText('Automatic paper search is used up for this month');
+  await expect(page.getByTestId('setup-search-limit-find')).toBeVisible();
+  await expect(page.getByTestId('library-limit')).toContainText('use Find papers');
+
+  // An empty library: the mock's first sentence cites nothing, and the card says so.
+  await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.getByTestId('setup-aim-skip').click();
+  await page.getByTestId('setup-keep').click({ timeout: 90_000 });
+  await expect(page.getByTestId('setup-row-first')).toHaveAttribute('data-state', 'open');
+  await expect(page.getByTestId('setup-card')).toContainText('It cites no paper yet');
+  await expect(page.getByTestId('setup-card')).not.toContainText('A cited first sentence');
 });
 
 test('the plan and the first sentence start at the title row, with the questions open', async ({

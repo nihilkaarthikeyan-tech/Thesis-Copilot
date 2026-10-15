@@ -53,6 +53,8 @@ function fakes(
     found?: DiscoveredWork[];
     library?: Array<{ doi: string | null; title: string | null }>;
     usedThisMonth?: number;
+    /** ADR-0155: earlier first searches logged for this thesis. */
+    priorInitial?: number;
     plan?: string;
     flag?: boolean;
     settings?: Record<string, unknown>;
@@ -80,7 +82,8 @@ function fakes(
     },
     featureFlag: { findUnique: async () => ({ enabled: options.flag ?? true }) },
     auditEvent: {
-      count: async () => options.usedThisMonth ?? 0,
+      count: async ({ where }: { where: { documentId?: string } }) =>
+        where.documentId ? (options.priorInitial ?? 0) : (options.usedThisMonth ?? 0),
       create: async ({ data }: { data: Record<string, unknown> }) => audits.push(data),
     },
     source: {
@@ -185,6 +188,24 @@ describe('find-sources', () => {
     // A paid plan has more.
     const paid = fakes({ usedThisMonth: 5, plan: 'STUDENT_MONTHLY' });
     expect((await runFindSources(JOB, paid.deps)).status).toBe('added');
+  });
+
+  it('a thesis’s first search runs even when the month’s searches are used up (ADR-0155)', async () => {
+    const used = { usedThisMonth: 5, plan: 'FREE_TRIAL' };
+    const first = fakes(used);
+    expect(await runFindSources({ ...JOB, initial: true }, first.deps)).toMatchObject({
+      status: 'added',
+    });
+    // Counted, and marked as the first, so the next one for this thesis is limited again.
+    expect(first.audits[0]?.detail).toMatchObject({ initial: true });
+    const again = fakes({ ...used, priorInitial: 1 });
+    expect((await runFindSources({ ...JOB, initial: true }, again.deps)).status).toBe('capped');
+    // A degraded first search's retry is the same search.
+    expect((await runFindSources({ ...JOB, initial: true, retry: 1 }, again.deps)).status).toBe(
+      'added',
+    );
+    // A later, non-initial search is still limited.
+    expect((await runFindSources(JOB, fakes(used).deps)).status).toBe('capped');
   });
 
   it('logs a search that found nothing, so it still counts against the month', async () => {
