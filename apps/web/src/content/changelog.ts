@@ -24,7 +24,7 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    version: null,
+    version: 'v0.1.51',
     date: '2026-10-16',
     title: 'Cleaner citations in your Word file, and a draft that asks first',
     changes: [
