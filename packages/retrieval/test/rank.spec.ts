@@ -9,6 +9,7 @@ import {
   CANDIDATE_LIMIT,
   CANDIDATE_PER_SOURCE,
   type Candidate,
+  DOMINANT_CITATIONS,
   FULL_TEXT_BOOST,
   isOffTopic,
   parsePassageId,
@@ -364,5 +365,69 @@ describe('ADR-0087: suggestions draw on several papers', () => {
       ]),
     );
     expect(citedSourceCounts(null).size).toBe(0);
+  });
+});
+
+describe('a paper the chapter leans on steps back further (ADR-0155, the Word test)', () => {
+  // The Word test's library: one Karnataka-specific paper well ahead of six on-topic others.
+  const rows: Array<[string, string, number]> = [
+    ['bagla-1', 'Bagla', 0.82],
+    ['bagla-2', 'Bagla', 0.8],
+    ['bagla-3', 'Bagla', 0.79],
+    ['sahu-1', 'Sahu', 0.64],
+    ['sahu-2', 'Sahu', 0.62],
+    ['kodali-1', 'Kodali', 0.63],
+    ['mohammed-1', 'Mohammed', 0.61],
+    ['goel-1', 'Goel', 0.6],
+    ['shri-1', 'Shrivastava', 0.6],
+  ];
+  const library = () =>
+    rerank(
+      rows.map(([chunkId, sourceId, cosine]) => candidate({ chunkId, sourceId, cosine })),
+      null,
+    );
+  const bagla = (chosen: ReturnType<typeof topK>) =>
+    chosen.filter((c) => c.sourceId === 'Bagla').length;
+
+  it('uncited, it offers two passages to a suggestion and leads', () => {
+    const chosen = topK(spreadCitations(library(), new Map()), 'ASSIST');
+    expect(bagla(chosen)).toBe(2);
+    expect(chosen[0]?.sourceId).toBe('Bagla');
+  });
+
+  it('cited three times, one passage to a suggestion and one to a draft', () => {
+    const cited = new Map([['Bagla', DOMINANT_CITATIONS]]);
+    expect(bagla(topK(spreadCitations(library(), cited), 'ASSIST', cited))).toBe(1);
+    // A draft's request holds twelve: with three passages from each of the seven papers there is
+    // enough else to fill it.
+    const more = ['Sahu', 'Kodali', 'Mohammed', 'Goel', 'Shrivastava'].flatMap((sourceId) =>
+      [0.59, 0.58].map((cosine, j) =>
+        candidate({ chunkId: `${sourceId}-x${j}`, sourceId, cosine }),
+      ),
+    );
+    const wide = rerank(
+      [
+        ...rows.map(([chunkId, sourceId, cosine]) => candidate({ chunkId, sourceId, cosine })),
+        ...more,
+      ],
+      null,
+    );
+    expect(bagla(topK(spreadCitations(wide, cited), 'DRAFT', cited))).toBe(1);
+  });
+
+  it('cited seven times or more, it no longer leads the suggestion', () => {
+    const cited = new Map([['Bagla', 7]]);
+    const chosen = topK(spreadCitations(library(), cited), 'ASSIST', cited);
+    expect(chosen[0]?.sourceId).not.toBe('Bagla');
+    expect(bagla(chosen)).toBe(1);
+  });
+
+  it('a library of that one paper still fills the request', () => {
+    const one = rerank(
+      [0.9, 0.8, 0.7].map((cosine, i) => candidate({ chunkId: `a${i}`, sourceId: 'A', cosine })),
+      null,
+    );
+    const cited = new Map([['A', 9]]);
+    expect(topK(spreadCitations(one, cited), 'ASSIST', cited)).toHaveLength(3);
   });
 });

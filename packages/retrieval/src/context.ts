@@ -250,10 +250,9 @@ export async function retrievePassages(
 
   const node = findOutlineNode(readOutline(memory?.outline), chapter.outlineNodeId);
   // ADR-0087: papers the chapter already cites step back a little, so citations spread.
-  const ranked = topK(
-    spreadCitations(rerank(candidates, node?.subTheme), citedSourceCounts(chapter.content)),
-    action,
-  );
+  // ADR-0155: and a paper it already cites three times offers one passage, not two.
+  const cited = citedSourceCounts(chapter.content);
+  const ranked = topK(spreadCitations(rerank(candidates, node?.subTheme), cited), action, cited);
 
   const sourceNumber = new Map<string, number>();
   const chunkCounter = new Map<string, number>();

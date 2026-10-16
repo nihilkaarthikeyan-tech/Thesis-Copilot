@@ -128,6 +128,7 @@ export {
   CITED_PENALTY,
   CREDIBILITY,
   credibility,
+  DOMINANT_CITATIONS,
   FULL_TEXT_BOOST,
   isOffTopic,
   parsePassageId,
