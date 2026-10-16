@@ -14,6 +14,7 @@
  */
 
 import { academicPunctuation, dropConnectiveOpeners, endsSentence } from './academic-style.js';
+import { type PassageRef, rewriteBareAuthorYear } from './author-year.js';
 import { placeCitations } from './citation-placement.js';
 import {
   filterSentences,
@@ -54,6 +55,11 @@ export type PostProcessInput = {
    * `--round6-code`) and not shipped.
    */
   dropUncitedFirst?: boolean;
+  /**
+   * ADR-0155: each passage's tag ("Bagla 2026"), so a tag the model wrote into the prose
+   * ("The study by Bagla 2026 highlights") is rewritten. Absent: nothing is rewritten.
+   */
+  passages?: readonly PassageRef[];
 };
 
 export type PostProcessResult = {
@@ -342,13 +348,17 @@ export function postProcessAssist(input: PostProcessInput): PostProcessResult {
   // cited one is dropped. Decided before `placeCitations`, whose one-paper-once rule removes a
   // marker the model did attach to the first sentence when the second cites the same paper.
   const punctuated = academicPunctuation(dropConnectiveOpeners(filtered.text, input.before));
-  const text = hasWords
+  const placed = hasWords
     ? placeCitations(
         input.dropUncitedFirst === true
           ? dropUncitedLead(punctuated, input.before, input.guided === true)
           : punctuated,
       ).trim()
     : '';
+  // ADR-0155: "The study by Bagla 2026 highlights" → "One study highlights", the marker kept.
+  const text = input.passages
+    ? rewriteBareAuthorYear(placed, input.passages, input.before).text
+    : placed;
   const empty = text.length === 0;
 
   return {

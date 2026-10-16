@@ -421,6 +421,7 @@ export class AssistService {
       const processed = postProcessAssist({
         output: text,
         passageIds: retrieved.passages.map((p) => p.id),
+        passages: retrieved.passages.map((p) => ({ id: p.id, shortRef: p.shortRef })),
         before: input.before,
         autoCite,
         // The chapter as it stands, so a sentence already in it is not offered again.
@@ -558,6 +559,7 @@ export class AssistService {
           const redone = postProcessAssist({
             output: again,
             passageIds: retrieved.passages.map((p) => p.id),
+            passages: retrieved.passages.map((p) => ({ id: p.id, shortRef: p.shortRef })),
             before: input.before,
             autoCite,
             existingText: docToText(chapter.content),

@@ -20,6 +20,7 @@ import { renderTemplate } from '../template.js';
 import type { LlmRequest, Tier } from '../types.js';
 import { academicPunctuation } from './academic-style.js';
 import type { PromptPassage } from './assist.js';
+import { rewriteBareAuthorYear } from './author-year.js';
 import { placeDraftCitations } from './citation-placement.js';
 import { displayEquationOf, tokenizeNotation } from './notation.js';
 import { nameTheSource } from './own-study.js';
@@ -285,11 +286,13 @@ export function postProcessDraft(
     ),
   );
 
-  const words = countDraftWords(cleaned);
+  // ADR-0155: an author and year written bare into the prose, where that paper is cited too.
+  const named = rewriteBareAuthorYear(cleaned, passages).text;
+  const words = countDraftWords(named);
 
   return {
     result: {
-      markdown: cleaned,
+      markdown: named,
       // Prompt ids only. `sourceId` is filled by the caller, which alone holds the map back to the
       // real ids for this request.
       citations: stripped.cited.map((key) => ({ key, sourceId: '' })),
