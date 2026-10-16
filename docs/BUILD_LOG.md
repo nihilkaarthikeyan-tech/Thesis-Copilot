@@ -6725,3 +6725,32 @@ than whether a sentence is supported. The code-only option (`dropUncitedFirst`,
 in `test/prompts.spec.ts` now pins v5's own copying lines, and the cached-block snapshot is
 updated. The final side-by-side test (`docs/research/side-by-side-final-plan.md`, Part Q) checks
 the result against Jenni.
+
+## The Word test's nine faults (2026-10-16, ADR-0155)
+
+The owner's side-by-side exported the same thesis from both tools to Word. Ours had the
+reference list and the specific findings; it also had nine faults, fixed one commit each, in the
+owner's order, each gated on lint and typecheck and proven by a test:
+
+1. A new thesis's first paper search always runs (counted, never refused for the month); any
+   refusal is said in the editor and the setup card, which no longer calls an uncited sentence
+   cited. Worker unit test, API integration test, Playwright check.
+2. Drafted sections put the citation inside the full stop (`placeDraftCitations`). Tested on
+   every stored draft and command output in `packages/ai/eval/results`. The change exposed a
+   real fault on the way: chapter build compared the examiner's sentence (markers in) with the
+   section (markers out), which a marker inside the stop would have marked "fixed" for good;
+   both sides are now stripped the same way. The mock draft also put its marker after the
+   passage's own full stop, and two worker tests had passed on the stray stop that left.
+3. "The study by Bagla 2026 highlights" → "One study highlights", in code, only where that
+   paper's marker is in the same text.
+4. "Mohammed." → "Mohammed" in `cleanAuthors` and `peopleFirst`, so stored records print right
+   without a migration.
+5. A space before every citation that follows a word, in post-processing and in the exports.
+6. Why one paper dominated: the step-back stopped at 0.15, under the paper's lead, and each
+   request still took two of its passages. From three citations in the chapter it offers one.
+7. The title box: the chapter's editor took the keyboard a moment after the card showed. It no
+   longer does while the card asks for the title.
+8. Draft a section opens a confirm with the section and its editable note.
+9. The suggestion bar's block makes room for it; checked at five widths.
+
+Run on a mock stack of its own (web :3070, API :3071, Redis db 11, Postgres `tc_a71`).

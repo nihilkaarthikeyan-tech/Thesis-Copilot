@@ -24,6 +24,19 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: null,
+    date: '2026-10-16',
+    title: 'Cleaner citations in your Word file, and a draft that asks first',
+    changes: [
+      'A new thesis always gets its first search for papers, even when this month’s automatic searches are used up; a later search that is refused for the month now says so, with Find papers, and the setup card no longer calls an uncited first sentence cited.',
+      'In drafted sections the citation now sits inside the sentence, before the full stop, as it already did in suggestions; a citation always has a space before it; an author name no longer carries a stray full stop ("Mohammed. & Maheswari").',
+      'Suggestions and drafts no longer write "The study by Bagla 2026 found…": the sentence reads "One study found…" and keeps its citation.',
+      'A paper the chapter already cites three times or more now gives way to your other papers, so one paper no longer fills the chapter.',
+      'Draft a section first shows the section and its note, which you can change, and drafts when you press Draft (Ctrl+Enter).',
+      'The suggestion bar no longer covers the next heading, and the title box of a new thesis keeps what you type.',
+    ],
+  },
+  {
     version: 'v0.1.50',
     date: '2026-10-11',
     title: 'Signing in opens your theses',
