@@ -50,6 +50,17 @@ export function personName(displayName: string): CslAuthor {
   return { family, given, ...(suffix ? { suffix } : {}) };
 }
 
+/**
+ * ADR-0155 (the Word test, 2026-10-16): "Mohammed." as a family name printed "Mohammed. &
+ * Maheswari". The stop goes from a family name of three or more letters; an initial or a short
+ * abbreviation ("A.", "St.") keeps it. Same rule as `familyWithoutStop` in @tc/citations.
+ */
+export function familyWithoutStop(family: string): string {
+  const trimmed = family.trim();
+  const bare = trimmed.replace(/\.+$/, '');
+  return bare !== trimmed && /\p{L}{3,}$/u.test(bare) ? bare : trimmed;
+}
+
 /** A word that can be a name: two or more letters, not an honorific. */
 const NAME_WORD = /^\p{L}[\p{L}'’-]+$/u;
 const HONORIFIC = /^(ms|mrs|mr|miss|dr|prof|shri|smt|sri|kum)\.?$/i;
@@ -66,7 +77,7 @@ const hasLetter = (s: string) => /\p{L}/u.test(s);
 export function cleanAuthors(authors: readonly CslAuthor[]): CslAuthor[] {
   const repaired = authors.map((a): CslAuthor => {
     if (a.literal !== undefined || a.family === undefined) return a;
-    const family = a.family.trim();
+    const family = familyWithoutStop(a.family);
     const given = (a.given ?? '').trim();
     // The whole name in the family field, nothing in given.
     if (!given && family.includes(' ')) return personName(family);

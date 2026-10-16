@@ -180,13 +180,27 @@ export function decodeEntities(text: string): string {
  * institution is dropped when people are listed. `cleanAuthors` in @tc/retrieval does the same
  * on the way in; this covers records stored before it, and keeps this package free of that one.
  */
+/**
+ * ADR-0155 (the Word test, 2026-10-16): a family name an index sent with a full stop on the end,
+ * "Mohammed.", printed "Mohammed. & Maheswari" in the text and "Mohammed., S." in the reference
+ * list. The stop goes from a family name of three or more letters; an initial or a short
+ * abbreviation ("A.", "St.") keeps it. Same rule as `cleanAuthors` in @tc/retrieval.
+ */
+export function familyWithoutStop(family: string): string {
+  const trimmed = family.trim();
+  const bare = trimmed.replace(/\.+$/, '');
+  return bare !== trimmed && /\p{L}{3,}$/u.test(bare) ? bare : trimmed;
+}
+
 export function peopleFirst(names: readonly CslName[]): CslName[] {
   const letters = (s: string) => /\p{L}/u.test(s);
   const repaired = names.map((n): CslName => {
     if (n.literal !== undefined || n.family === undefined) return n;
-    const family = n.family.trim();
+    const family = familyWithoutStop(n.family);
     const given = (n.given ?? '').trim();
-    if (letters(family) && family.replace(/\./g, '').length > 1) return n;
+    if (letters(family) && family.replace(/\./g, '').length > 1) {
+      return family === n.family ? n : { ...n, family };
+    }
     const words = given
       .split(/\s+/)
       .filter((w) => w && !/^(ms|mrs|mr|miss|dr|prof|shri|smt|sri|kum)\.?$/i.test(w));
