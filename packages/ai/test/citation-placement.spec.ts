@@ -9,7 +9,10 @@ import {
   dedupeCitationKeys,
   moveTrailingCitationsInside,
   placeCitations,
+  spaceBeforeMarkers,
 } from '../src/builder/citation-placement.js';
+import { postProcessCommand } from '../src/builder/command.js';
+import { postProcessDraft } from '../src/builder/draft.js';
 import { postProcessAssist } from '../src/builder/postprocess.js';
 
 describe('moveTrailingCitationsInside', () => {
@@ -95,5 +98,48 @@ describe('placeCitations through postProcessAssist', () => {
     });
     expect(result.text).toBe('Uptake is low in these villages {{cite:S2#c1}}.');
     expect(result.cited).toEqual(['S2#c1']);
+  });
+});
+
+describe('a space before a citation (ADR-0155, the Word test)', () => {
+  it('"challenges{{cite:…}}" gets one; after a space, a bracket or another marker it does not', () => {
+    expect(spaceBeforeMarkers('structural challenges{{cite:S1#c1}}.')).toBe(
+      'structural challenges {{cite:S1#c1}}.',
+    );
+    for (const text of [
+      'challenges {{cite:S1#c1}}.',
+      'a note (see {{cite:S1#c1}}).',
+      'two {{cite:S1#c1}}{{cite:S2#c1}}.',
+      '{{cite:S1#c1}} reports it.',
+    ]) {
+      expect(spaceBeforeMarkers(text)).toBe(text);
+    }
+  });
+
+  it('in a suggestion, a draft and an edit command', () => {
+    const passages = [{ id: 'S1#c1', shortRef: 'Mohammed 2025', page: null, text: 'p' }];
+    expect(
+      postProcessAssist({
+        output: 'Barriers include financial and structural challenges{{cite:S1#c1}}.',
+        passageIds: ['S1#c1'],
+        before: 'Adoption remains low.',
+      }).text,
+    ).toBe('Barriers include financial and structural challenges {{cite:S1#c1}}.');
+    expect(
+      postProcessDraft(
+        'Barriers include financial, regulatory and structural challenges for rural households{{cite:S1#c1}}.',
+        passages,
+        10,
+      ).result.markdown,
+    ).toBe(
+      'Barriers include financial, regulatory and structural challenges for rural households {{cite:S1#c1}}.',
+    );
+    expect(
+      postProcessCommand(
+        'Barriers include structural challenges{{cite:S1#c1}}.',
+        'Barriers are structural.',
+        ['S1#c1'],
+      ).text,
+    ).toBe('Barriers include structural challenges {{cite:S1#c1}}.');
   });
 });

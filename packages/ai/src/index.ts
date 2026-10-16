@@ -75,6 +75,7 @@ export {
   moveTrailingCitationsInside,
   placeCitations,
   placeDraftCitations,
+  spaceBeforeMarkers,
 } from './builder/citation-placement.js';
 export {
   buildCiteRequest,

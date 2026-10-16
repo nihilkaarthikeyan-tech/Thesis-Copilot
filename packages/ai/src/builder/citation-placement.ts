@@ -69,9 +69,18 @@ export function dedupeCitationKeys(text: string): string {
   return kept.replace(/[ \t]+([.,;:!?])/g, '$1').replace(/[ \t]{2,}/g, ' ');
 }
 
+/**
+ * ADR-0155 (the Word test, 2026-10-16): "challenges{{cite:S1#c1}}" printed
+ * "challenges(Mohammed…". A marker straight after a word gets a space before it. One after a
+ * space, an opening bracket or quote, a dash, a slash or another marker is left as it is.
+ */
+export function spaceBeforeMarkers(text: string): string {
+  return text.replace(/(?<=[^\s([{"“'‘/\-–—}])\{\{cite:/gu, ' {{cite:');
+}
+
 /** Both, in the order they are meant to run: placement first, so a moved marker can be deduped. */
 export function placeCitations(text: string): string {
-  return dedupeCitationKeys(moveTrailingCitationsInside(text));
+  return dedupeCitationKeys(moveTrailingCitationsInside(spaceBeforeMarkers(text)));
 }
 
 /**
@@ -88,7 +97,7 @@ export function placeDraftCitations(markdown: string): string {
     .map((part) =>
       /^\n+$/.test(part) || /^#{1,6}\s/.test(part.trimStart())
         ? part
-        : moveTrailingCitationsInside(part),
+        : moveTrailingCitationsInside(spaceBeforeMarkers(part)),
     )
     .join('');
 }

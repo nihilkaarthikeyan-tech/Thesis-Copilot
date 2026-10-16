@@ -15,7 +15,7 @@
 import { type FontStyle, formatRef, numberingMap } from '@tc/types';
 import katex from 'katex';
 import { captionOf, withCaption, withCaptionsResolved } from './captions.js';
-import { printCitation } from './clusters.js';
+import { printCitation, spaceBeforeCitation } from './clusters.js';
 import { HTML_COLOR_CSS, htmlColors } from './colors.js';
 import { footnoteText } from './footnotes.js';
 import { spanOf } from './table-grid.js';
@@ -136,6 +136,8 @@ function inline(nodes: readonly Node[], ctx: ChapterContext): string {
           out += '<strong class="missing">(source missing)</strong>';
           break;
         }
+        // ADR-0155: "challenges(Mohammed…" gets the space a bracketed citation needs.
+        if (spaceBeforeCitation(nodes, index, label)) out += ' ';
         // A cluster has one label, so it links to its first source's entry, as the .docx does.
         const sourceId = ctx.input.citeSources?.[key];
         out += sourceId
