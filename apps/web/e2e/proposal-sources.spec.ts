@@ -494,6 +494,19 @@ test.describe('Stage 4 citations', () => {
   });
 });
 
+/**
+ * ADR-0155: Ctrl+Shift+D opens the "Draft this section" confirm; Ctrl+Enter there drafts. The
+ * shortcut is pressed in the chapter, as a student does.
+ */
+async function draftFromConfirm(page: Page): Promise<void> {
+  await page.keyboard.press('Control+Shift+D');
+  const confirm = page.getByTestId('draft-confirm');
+  await expect(confirm).toBeVisible();
+  await expect(page.getByTestId('draft-confirm-go')).toBeEnabled({ timeout: 20_000 });
+  await page.getByTestId('draft-confirm-note').press('Control+Enter');
+  await expect(confirm).toHaveCount(0);
+}
+
 test.describe('Stage 4 draft mode', () => {
   test.setTimeout(240_000);
 
@@ -529,7 +542,7 @@ test.describe('Stage 4 draft mode', () => {
     await expect(panel.getByText('draw only on 2 pinned sources')).toBeVisible();
 
     await editor.locator('p').first().click();
-    await page.keyboard.press('Control+Shift+D');
+    await draftFromConfirm(page);
 
     // The draft arrives inside a marked block, not as ordinary text.
     const block = editor.locator('[data-draft="true"]');
@@ -585,7 +598,7 @@ test.describe('Stage 4 draft mode', () => {
 
     // ADR-0071: a bare "Chapter 1" names no topic, so the first refusal asks for a heading —
     // before any unit is taken.
-    await page.keyboard.press('Control+Shift+D');
+    await draftFromConfirm(page);
     const status = page.getByTestId('draft-status');
     await expect(status).toContainText('Say what this section is about', { timeout: 60_000 });
     await expect(status).toContainText('Add a heading above the cursor');
@@ -598,7 +611,7 @@ test.describe('Stage 4 draft mode', () => {
     await page.getByRole('combobox', { name: 'Text' }).selectOption('Heading');
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
-    await page.keyboard.press('Control+Shift+D');
+    await draftFromConfirm(page);
     await expect(status).toContainText('nothing to draft from', { timeout: 60_000 });
     await expect(status).toContainText('Pin at least one source');
     // Nothing was written into the chapter.

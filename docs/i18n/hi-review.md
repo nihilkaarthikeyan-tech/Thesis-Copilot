@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**837** strings are translated; **1** are deliberately
+**846** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -285,6 +285,20 @@ English. Write corrections in the last column.
 | `editor.key.fewer` | Fewer keys | कम कुंजियाँ | |
 | `editor.key.all` | Keyboard shortcuts | कीबोर्ड शॉर्टकट | |
 | `editor.draftButton` | Draft a section | एक खंड का ड्राफ़्ट | |
+
+## draft
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `draft.confirm.title` | Draft this section | इस खंड का ड्राफ़्ट | |
+| `draft.confirm.noteLabel` | What it should cover | इसमें क्या होना चाहिए | |
+| `draft.confirm.notePlaceholder` | A sentence or two on what this section should argue. The draft follows it. | एक-दो वाक्य कि यह खंड क्या तर्क दे। ड्राफ़्ट इसी के अनुसार लिखा जाएगा। | |
+| `draft.confirm.loading` | Reading the section’s note… | खंड का नोट पढ़ा जा रहा है… | |
+| `draft.confirm.hint` | Your note is kept with the section. The draft arrives as a block you accept or discard. Ctrl+Enter drafts. | आपका नोट खंड के साथ सेव रहेगा। ड्राफ़्ट एक ब्लॉक के रूप में आएगा, जिसे आप स्वीकार करें या हटाएँ। Ctrl+Enter से ड्राफ़्ट बनेगा। | |
+| `draft.confirm.chapterHint` | No heading above the cursor, so the whole chapter is drafted from its plan. Ctrl+Enter drafts. | कर्सर के ऊपर कोई शीर्षक नहीं है, इसलिए पूरे अध्याय का ड्राफ़्ट उसकी योजना से बनेगा। Ctrl+Enter से ड्राफ़्ट बनेगा। | |
+| `draft.confirm.unplannedHint` | This chapter has no plan yet, so the draft follows the heading and what you have written under it. Ctrl+Enter drafts. | इस अध्याय की अभी कोई योजना नहीं है, इसलिए ड्राफ़्ट शीर्षक और उसके नीचे लिखे आपके पाठ के अनुसार बनेगा। Ctrl+Enter से ड्राफ़्ट बनेगा। | |
+| `draft.confirm.draft` | Draft | ड्राफ़्ट बनाएँ | |
+| `draft.confirm.saveError` | The note was not saved, so nothing was drafted. Try again. | नोट सेव नहीं हुआ, इसलिए कोई ड्राफ़्ट नहीं बना। फिर से कोशिश करें। | |
 
 ## guide
 

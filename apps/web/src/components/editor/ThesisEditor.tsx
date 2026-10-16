@@ -2477,7 +2477,9 @@ function ChapterEditor({
 
       <DraftMode
         editor={editor}
+        documentId={doc.id}
         chapterId={chapter.id}
+        chapterTitle={chapter.title}
         outlineNodeId={chapter.outlineNodeId}
         onUsageChange={onUsageChange}
       />

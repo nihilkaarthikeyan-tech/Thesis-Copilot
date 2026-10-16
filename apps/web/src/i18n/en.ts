@@ -275,6 +275,20 @@ export const en = {
   'editor.key.fewer': 'Fewer keys',
   'editor.key.all': 'Keyboard shortcuts',
   'editor.draftButton': 'Draft a section',
+  // ADR-0155: what "Draft a section" will draft, before it starts.
+  'draft.confirm.title': 'Draft this section',
+  'draft.confirm.noteLabel': 'What it should cover',
+  'draft.confirm.notePlaceholder':
+    'A sentence or two on what this section should argue. The draft follows it.',
+  'draft.confirm.loading': 'Reading the section’s note…',
+  'draft.confirm.hint':
+    'Your note is kept with the section. The draft arrives as a block you accept or discard. Ctrl+Enter drafts.',
+  'draft.confirm.chapterHint':
+    'No heading above the cursor, so the whole chapter is drafted from its plan. Ctrl+Enter drafts.',
+  'draft.confirm.unplannedHint':
+    'This chapter has no plan yet, so the draft follows the heading and what you have written under it. Ctrl+Enter drafts.',
+  'draft.confirm.draft': 'Draft',
+  'draft.confirm.saveError': 'The note was not saved, so nothing was drafted. Try again.',
   'guide.howItWorks': 'How suggestions work (90 seconds)',
   'editor.tools': 'Tools',
   'editor.tab.sources': 'sources',
