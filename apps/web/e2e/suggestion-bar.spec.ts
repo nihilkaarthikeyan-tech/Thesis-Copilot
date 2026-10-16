@@ -173,3 +173,86 @@ test('a refined suggestion keeps the one before it, and ‹ brings that back', a
   await expect(bar).toHaveCount(0);
   await expect(editor).toContainText(first.slice(0, 30));
 });
+
+/**
+ * ADR-0155 item 9 (the Word test, 2026-10-16): the bar sat over the next heading. The block the
+ * suggestion is in now makes room for the bar, so at every width the bar covers no line of text:
+ * not the heading below, not the suggestion, not the paragraph above.
+ */
+for (const width of [360, 430, 768, 1024, 1440]) {
+  test.describe(`the bar covers no text at ${width}`, () => {
+    test.use({ viewport: { width, height: 800 } });
+
+    test('with a heading straight after the paragraph', async ({ page, request }) => {
+      test.setTimeout(180_000);
+      const session = await establishSession(request, freshEmail(`bar-${width}`));
+      await page
+        .context()
+        .addCookies([
+          { name: session.cookieName, value: session.cookieValue, domain: 'localhost', path: '/' },
+        ]);
+      const created = await request.post(`${API_URL}/api/v1/documents`, {
+        headers: { cookie: `${session.cookieName}=${session.cookieValue}` },
+        data: { title: `Bar over heading ${Date.now()}`, entryPath: 'A_TOPIC' },
+      });
+      const doc = (await created.json()) as { id: string; firstChapterId: string };
+      await page.goto(`/app/d/${doc.id}/write/${doc.firstChapterId}`);
+      const editor = page.locator('.thesis-editor');
+      await expect(editor).toBeVisible({ timeout: 30_000 });
+      await editor.locator('p').first().click();
+      await page.keyboard.type(
+        'Rooftop solar adoption among rural households remains low despite subsidies. ',
+      );
+      await page.keyboard.press('Enter');
+      await page.keyboard.type('Objectives and research questions');
+      await page.getByRole('combobox', { name: 'Text' }).selectOption('Heading');
+      // Back to the end of the paragraph, right above the heading.
+      await editor.locator('h2').click({ position: { x: 4, y: 6 } });
+      await page.keyboard.press('Home');
+      await page.keyboard.press('ArrowLeft');
+
+      const bar = page.getByTestId('suggestion-bar');
+      const shown = page.locator('.thesis-editor span.ghost[data-status="shown"]');
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await page.keyboard.press('Control+/');
+        try {
+          await expect(shown).toBeVisible({ timeout: 30_000 });
+          break;
+        } catch (error) {
+          if (attempt === 2) throw error;
+        }
+      }
+      await expect(bar).toBeVisible();
+      await page.waitForTimeout(300);
+
+      const covered = await page.evaluate(() => {
+        const box = document
+          .querySelector('[data-testid="suggestion-bar"]')
+          ?.getBoundingClientRect();
+        if (!box) return ['no bar'];
+        const out: string[] = [];
+        const root = document.querySelector('.thesis-editor');
+        if (!root) return ['no editor'];
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const text = node.textContent?.trim() ?? '';
+          if (!text) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          for (const r of Array.from(range.getClientRects())) {
+            const overlaps =
+              r.width > 0 &&
+              r.height > 0 &&
+              r.left < box.right &&
+              r.right > box.left &&
+              r.top < box.bottom &&
+              r.bottom > box.top;
+            if (overlaps) out.push(text.slice(0, 40));
+          }
+        }
+        return out;
+      });
+      expect(covered, `the bar covers: ${covered.join(' | ')}`).toEqual([]);
+    });
+  });
+}

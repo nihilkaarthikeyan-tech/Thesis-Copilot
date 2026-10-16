@@ -419,6 +419,20 @@ function buildDecorations(
     );
   }
 
+  // ADR-0155 (the Word test, 2026-10-16): the suggestion bar sits under the suggestion's last
+  // line, and it sat over the next heading. The block the suggestion is in now makes room for it
+  // (`.ghost-host` in the app's editor.css, the bar's own height), so the bar covers no text.
+  if (
+    ghost.anchorPos !== null &&
+    ghost.status !== 'idle' &&
+    ghost.anchorPos <= state.doc.content.size
+  ) {
+    const $pos = state.doc.resolve(ghost.anchorPos);
+    if ($pos.depth > 0 && $pos.parent.isTextblock) {
+      decorations.push(Decoration.node($pos.before(), $pos.after(), { class: 'ghost-host' }));
+    }
+  }
+
   if (ghost.fade && ghost.fade.to > ghost.fade.from) {
     decorations.push(
       Decoration.inline(ghost.fade.from, ghost.fade.to, { class: 'ghost-accepted' }),

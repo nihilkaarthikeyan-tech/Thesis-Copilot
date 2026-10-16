@@ -83,6 +83,20 @@ const CITE_MARKER = /\{\{cite:[^}]+\}\}/g;
 
 type Status = 'idle' | 'requesting' | 'streaming' | 'shown' | string;
 
+/** ADR-0155: what scrolls the editor: its nearest scrolling ancestor, else the page. */
+function scrollParent(from: HTMLElement): Element {
+  for (let el = from.parentElement; el; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el);
+    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+      return el;
+    }
+  }
+  return document.scrollingElement ?? document.documentElement;
+}
+
+/** How far `el` can still scroll down. */
+const roomBelow = (el: Element) => el.scrollHeight - el.clientHeight - el.scrollTop;
+
 type HistoryEntry = { suggestionId: string; text: string; citations: SuggestionCitation[] };
 /**
  * Earlier suggestions at the same place (2026-10-04, from the Jenni study). Jenni keeps the
@@ -214,6 +228,8 @@ export function SuggestionBar({
    * text, or upward because the window ends.
    */
   const barRef = useRef<HTMLDivElement>(null);
+  /** ADR-0155: the suggestion the window last scrolled for, so it scrolls once, not on a loop. */
+  const scrolledFor = useRef<string | null>(null);
   const [place, setPlace] = useState<{
     top: number;
     left: number;
@@ -261,8 +277,32 @@ export function SuggestionBar({
       const block = ghost?.closest('p, h1, h2, h3, h4, li, td, th, blockquote') ?? null;
       const column = (block ?? view.dom).getBoundingClientRect();
       const left = Math.max(EDGE, Math.min(column.left, vw - w - EDGE));
-      let top = last.bottom + GAP;
-      if (top + h > vh - GAP) top = first.top - GAP - h;
+      // ADR-0155: the suggestion's block makes room for the bar under it (`.ghost-host`), sized
+      // from the bar itself, so the bar covers no text there.
+      const height = `${h}px`;
+      if (view.dom.style.getPropertyValue('--tc-suggest-bar-h') !== height) {
+        view.dom.style.setProperty('--tc-suggest-bar-h', height);
+      }
+      // Under the whole block, not just the suggestion's last line: a suggestion asked for in the
+      // middle of a paragraph has the rest of that paragraph after it.
+      const content = block
+        ? block.getBoundingClientRect().bottom -
+          Number.parseFloat(getComputedStyle(block).paddingBottom || '0')
+        : last.bottom;
+      let top = Math.max(last.bottom, content) + GAP;
+      if (top + h > vh - GAP) {
+        // No room below in the window: bring the room under the suggestion into view, once per
+        // suggestion, rather than putting the bar over the lines above it.
+        const need = Math.ceil(top + h - (vh - GAP));
+        const scroller = scrollParent(view.dom);
+        const key = `${getGhostState(editor)?.suggestionId ?? ''}@${getGhostState(editor)?.anchorPos ?? ''}`;
+        if (scrolledFor.current !== key && roomBelow(scroller) >= need) {
+          scrolledFor.current = key;
+          scroller.scrollBy({ top: need });
+          return;
+        }
+        top = first.top - GAP - h;
+      }
       if (top < GAP || last.bottom < 0 || first.top > vh) {
         setPlace(null);
         return;
