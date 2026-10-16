@@ -65,7 +65,8 @@ describe('citations inside the full stop in a drafted section (ADR-0155)', () =>
       const out = postProcessDraft(raw, passagesOf(raw), 100).result.markdown;
       expect(out.match(AFTER_STOP), out.slice(0, 300)).toBeNull();
     }
-  });
+    // Every stored draft through the whole pipeline: under a second here, 8.5 s on a busy CI runner.
+  }, 60_000);
 
   it('moves markers, never adds, drops or swaps one', () => {
     for (const raw of drafts) {
@@ -97,7 +98,7 @@ describe('citations inside the full stop in a drafted section (ADR-0155)', () =>
       const out = postProcessCommand(raw, '', [...new Set(markers(raw))] as string[]).text;
       expect(out.match(/[.!?][ \t]+\{\{cite:/g), out.slice(0, 300)).toBeNull();
     }
-  });
+  }, 60_000);
 
   it('a stop already after the marker is not doubled ("percent (X)..")', () => {
     expect(placeDraftCitations('Wear fell by twelve percent. {{cite:S1#c1}}. Next.')).toBe(
