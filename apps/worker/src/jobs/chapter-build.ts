@@ -51,6 +51,7 @@ import {
   type RawIssue,
   runChecks,
   sentencesOf,
+  stripCites,
   unchangedSentencesKept,
 } from '@tc/ai';
 import {
@@ -990,7 +991,8 @@ export async function runChapterBuild(
         if (
           section?.fixed &&
           issue.sentence &&
-          !section.markdown.replace(/\{\{cite:[^}]+\}\}/g, '').includes(issue.sentence)
+          // ADR-0155: both without markers, the same way; the examiner's sentence carries them.
+          !stripCites(section.markdown).includes(stripCites(issue.sentence))
         ) {
           issue.status = 'fixed';
         }

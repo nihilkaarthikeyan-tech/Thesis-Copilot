@@ -74,10 +74,15 @@ export function wordCount(text: string): number {
 }
 
 export function stripCites(text: string): string {
-  return text
-    .replace(CITE_RE, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return (
+    text
+      .replace(CITE_RE, '')
+      // ADR-0155: a marker now sits inside its sentence's full stop, so "recorded {{cite:S1}}."
+      // reads "recorded." here, not "recorded .", in the report and the fixer's request.
+      .replace(/[ \t]+([.,;:!?])/g, '$1')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  );
 }
 
 /** A year-like number, a section or chapter number, a list marker: not a measurement. */

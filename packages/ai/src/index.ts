@@ -74,6 +74,7 @@ export {
   dedupeCitationKeys,
   moveTrailingCitationsInside,
   placeCitations,
+  placeDraftCitations,
 } from './builder/citation-placement.js';
 export {
   buildCiteRequest,

@@ -121,6 +121,7 @@ export {
   paragraphsOf,
   proseParagraphs,
   sentencesOf,
+  stripCites,
   wordCount,
 } from './text.js';
 export {

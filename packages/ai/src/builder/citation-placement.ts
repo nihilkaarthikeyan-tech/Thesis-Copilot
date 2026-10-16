@@ -30,10 +30,16 @@ const AFTER_STOP =
  * sentence; a run already inside the sentence is left alone.
  */
 export function moveTrailingCitationsInside(text: string): string {
-  return text.replace(AFTER_STOP, (_whole, stop: string, close: string, _gap, run: string) => {
-    const markers = run.match(MARKER) ?? [];
-    return ` ${markers.join('')}${close}${stop}`;
-  });
+  return text.replace(
+    AFTER_STOP,
+    (whole: string, stop: string, close: string, _gap, run: string, offset: number) => {
+      const markers = run.match(MARKER) ?? [];
+      // ADR-0155: "…percent. {{cite:X}}." already has the stop after the run; moving the first
+      // one in too printed "percent (X)..".
+      const stopFollows = /^[ \t]*[.!?]/.test(text.slice(offset + whole.length));
+      return ` ${markers.join('')}${close}${stopFollows ? '' : stop}`;
+    },
+  );
 }
 
 /** The paper a marker cites: `S3` of `{{cite:S3#c2}}`. Two chunks of one paper are one label. */
@@ -66,4 +72,23 @@ export function dedupeCitationKeys(text: string): string {
 /** Both, in the order they are meant to run: placement first, so a moved marker can be deduped. */
 export function placeCitations(text: string): string {
   return dedupeCitationKeys(moveTrailingCitationsInside(text));
+}
+
+/**
+ * ADR-0155 (the Word test, 2026-10-16): the same placement for a drafted section, which chapter
+ * build and the literature review share. "…in Karnataka. (Bagla, 2026)" was in every drafted
+ * paragraph, because only Assist ran `placeCitations`. A draft may cite one paper in several
+ * sentences, so only the placement runs, never the one-paper-once rule; and it runs paragraph by
+ * paragraph, so a marker before a blank line and a `###` heading is moved too. Headings and the
+ * blank lines between paragraphs are left as they are.
+ */
+export function placeDraftCitations(markdown: string): string {
+  return markdown
+    .split(/(\n{2,})/)
+    .map((part) =>
+      /^\n+$/.test(part) || /^#{1,6}\s/.test(part.trimStart())
+        ? part
+        : moveTrailingCitationsInside(part),
+    )
+    .join('');
 }
