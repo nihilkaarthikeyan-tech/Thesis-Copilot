@@ -3,7 +3,7 @@
 Generated from `apps/web/src/i18n/` (ADR-0061). Do not edit by hand: correct the catalogue,
 then run `UPDATE_I18N_REVIEW=1 pnpm --filter @tc/web test` to rewrite this file.
 
-**834** strings are translated; **1** are deliberately
+**837** strings are translated; **1** are deliberately
 left in English (listed at the end). The language stays marked “(बीटा)” until a native speaker
 has read every row below (docs/PENDING.md).
 
@@ -396,6 +396,8 @@ English. Write corrections in the last column.
 | `setup.chapters.foldedStandard` | standard thesis chapters | थीसिस के मानक अध्याय | |
 | `setup.chapters.foldedNone` | one chapter, no headings | एक अध्याय, कोई शीर्षक नहीं | |
 | `setup.first.waiting` | A cited first sentence is waiting under the first heading. | पहले शीर्षक के नीचे साइटेशन के साथ पहला वाक्य तैयार है। | |
+| `setup.first.waitingUncited` | A first sentence is waiting under the first heading. It cites no paper yet. | पहले शीर्षक के नीचे पहला वाक्य तैयार है। इसमें अभी किसी पेपर का साइटेशन नहीं है। | |
+| `setup.first.coming` | A first sentence is on its way under the first heading. | पहले शीर्षक के नीचे पहला वाक्य आ रहा है। | |
 | `setup.first.hint` | Accept it, or write your own first sentence. | इसे स्वीकार करें, या अपना पहला वाक्य ख़ुद लिखें। | |
 | `setup.first.suggest` | Suggest one | एक सुझाएँ | |
 | `setup.first.written` | written | लिखा गया | |
@@ -427,6 +429,12 @@ English. Write corrections in the last column.
 | `editor.filling.searching` | Finding papers on your topic… | आपके विषय पर पेपर खोजे जा रहे हैं… | |
 | `editor.filling.reading` | Found {found} papers · reading {reading}… | {found} पेपर मिले · {reading} पढ़े जा रहे हैं… | |
 | `editor.filling.ready` | {ready} papers ready — suggestions will cite them. | {ready} पेपर तैयार — सुझाव अब इन्हें साइट करेंगे। | |
+
+## sources
+
+| Key | English | हिन्दी | Correction |
+|---|---|---|---|
+| `sources.limitReached` | Automatic paper search is used up for this month — use Find papers. | इस महीने की अपने-आप पेपर खोज पूरी हो चुकी है — "पेपर खोजें" का इस्तेमाल करें। | |
 
 ## guide
 

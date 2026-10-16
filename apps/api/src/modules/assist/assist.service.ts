@@ -36,7 +36,12 @@ import { RedisService } from '../../common/redis.service.js';
 import { PROVIDERS } from '../ai/ai.module.js';
 import { CitationsService } from '../chapters/citations.service.js';
 import { refusal, UsageService } from '../usage/usage.service.js';
-import { AutoSourcesService, enoughPapersOnTopic, sourcesQuery } from './auto-sources.service.js';
+import {
+  AutoSourcesService,
+  enoughPapersOnTopic,
+  type SearchOutcome,
+  sourcesQuery,
+} from './auto-sources.service.js';
 import { ContextService } from './context.service.js';
 import { cursorBlockWords, docToText, proseWords } from './doc-text.js';
 
@@ -90,6 +95,11 @@ export type SuggestEvent =
          * written; the setup card says "No paper on Karnataka yet" with Find papers.
          */
         settingGap?: string | null;
+        /**
+         * ADR-0155: a search for papers was wanted and refused because the month's automatic
+         * searches are used up. The editor says so, with Find papers, instead of staying silent.
+         */
+        searchLimit?: boolean;
         /** ADR-0071: the suggestion reuses the wording of a passage it cites. */
         closeTo?: {
           shortRef: string;
@@ -293,11 +303,11 @@ export class AssistService {
       // it. Started now and awaited only at the end, so the suggestion is not held up by it.
       // ADR-0087: "nothing" became "fewer than three papers", and each section searches once.
       // R3: a student asking for their own papers has not asked for new ones.
-      const findingSources =
+      const searchOutcome: Promise<SearchOutcome | null> =
         input.citeMode === 'library' || enoughPapersOnTopic(retrieved.passages)
-          ? Promise.resolve(false)
+          ? Promise.resolve(null)
           : this.autoSources
-              .start({
+              .startSearch({
                 documentId: chapter.documentId,
                 userId: user.id,
                 chapterId: chapter.id,
@@ -306,8 +316,9 @@ export class AssistService {
               })
               .catch((error: unknown) => {
                 this.logger.warn({ err: error }, 'could not start a source search');
-                return false;
+                return 'off' as const;
               });
+      const findingSources = searchOutcome.then((outcome) => outcome === 'started');
       // ADR-0070: an empty library that is still filling. The model is still asked — it may
       // write a sentence that needs no source — and the editor is told the papers are on their
       // way, so an empty answer reads as "wait" and the editor asks again when one is ready.
@@ -439,17 +450,21 @@ export class AssistService {
 
       // A.1: the model named what is missing. That is a better search than the chapter's own
       // words, so it starts one if none is already running (the cooldown makes a repeat a no-op).
-      const searchStarted =
+      const secondOutcome: SearchOutcome | null =
         processed.needsSource && !(await findingSources)
-          ? this.autoSources
-              .start({
+          ? await this.autoSources
+              .startSearch({
                 documentId: chapter.documentId,
                 userId: user.id,
                 chapterId: chapter.id,
                 query: `${processed.needsSource}. ${chapter.title}`,
               })
-              .catch(() => false)
-          : findingSources;
+              .catch(() => 'off' as const)
+          : null;
+      const searchStarted = secondOutcome ? secondOutcome === 'started' : await findingSources;
+      // ADR-0155: refused for the month, and nothing else started: the editor says so.
+      const searchLimit =
+        !searchStarted && ((await searchOutcome) === 'limit' || secondOutcome === 'limit');
 
       // Each surviving key resolves to the real source and chunk it stood for in this request.
       // ADR-0150: each label in the thesis's own citation style from the first moment; the short
@@ -614,8 +629,9 @@ export class AssistService {
           citations: finalCitations,
           grounded: retrieved.passages.length > 0,
           pinned: retrieved.pinned,
-          findingSources: await searchStarted,
+          findingSources: searchStarted,
           papersLoading: await papersLoading,
+          ...(searchLimit ? { searchLimit: true } : {}),
           needsSource: processed.needsSource,
           usage,
           ttfbMs: ttfbMs ?? latencyMs,

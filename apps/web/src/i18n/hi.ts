@@ -372,6 +372,9 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'setup.chapters.foldedStandard': 'थीसिस के मानक अध्याय',
   'setup.chapters.foldedNone': 'एक अध्याय, कोई शीर्षक नहीं',
   'setup.first.waiting': 'पहले शीर्षक के नीचे साइटेशन के साथ पहला वाक्य तैयार है।',
+  'setup.first.waitingUncited':
+    'पहले शीर्षक के नीचे पहला वाक्य तैयार है। इसमें अभी किसी पेपर का साइटेशन नहीं है।',
+  'setup.first.coming': 'पहले शीर्षक के नीचे पहला वाक्य आ रहा है।',
   'setup.first.hint': 'इसे स्वीकार करें, या अपना पहला वाक्य ख़ुद लिखें।',
   'setup.first.suggest': 'एक सुझाएँ',
   'setup.first.written': 'लिखा गया',
@@ -407,6 +410,7 @@ export const hi: Partial<Record<MessageKey, string>> = {
   'editor.filling.searching': 'आपके विषय पर पेपर खोजे जा रहे हैं…',
   'editor.filling.reading': '{found} पेपर मिले · {reading} पढ़े जा रहे हैं…',
   'editor.filling.ready': '{ready} पेपर तैयार — सुझाव अब इन्हें साइट करेंगे।',
+  'sources.limitReached': 'इस महीने की अपने-आप पेपर खोज पूरी हो चुकी है — "पेपर खोजें" का इस्तेमाल करें।',
   'guide.title': 'शुरुआत',
   'guide.write': 'लिखें',
   'guide.writeDetail': 'अपने एक-दो वाक्यों से शुरू करें — यह अध्याय किस बारे में है। कच्चा लिखना भी ठीक है।',

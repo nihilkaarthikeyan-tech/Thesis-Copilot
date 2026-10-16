@@ -65,6 +65,8 @@ export type GhostEvent =
       papersLoading?: boolean;
       /** ADR-0151: the place the title names that no paper names; nothing was written. */
       settingGap?: string | null;
+      /** ADR-0155: a search for papers was refused because the month's searches are used up. */
+      searchLimit?: boolean;
       /** ADR-0071: the suggestion reuses the wording of a passage it cites. */
       closeTo?: CloseTo;
       /** ADR-0082: the first answer did, and this is the rewording asked for in its place. */
@@ -122,6 +124,10 @@ export type GhostTextOptions = {
     papersLoading: boolean;
     /** ADR-0151: no paper names the thesis's place, so no first sentence was offered. */
     settingGap: string | null;
+    /** ADR-0155: a search for papers was refused because the month's searches are used up. */
+    searchLimit: boolean;
+    /** ADR-0155: the suggestion cites at least one source. */
+    cited: boolean;
     closeTo: CloseTo | null;
     reworded: boolean;
     needsSource: string | null;
@@ -865,6 +871,8 @@ export const GhostText = Extension.create<GhostTextOptions>({
               findingSources: event.findingSources ?? false,
               papersLoading: event.papersLoading ?? false,
               settingGap: event.settingGap ?? null,
+              searchLimit: event.searchLimit ?? false,
+              cited: event.citations.length > 0,
               closeTo: event.closeTo ?? null,
               reworded: event.reworded ?? false,
               needsSource: event.needsSource ?? null,

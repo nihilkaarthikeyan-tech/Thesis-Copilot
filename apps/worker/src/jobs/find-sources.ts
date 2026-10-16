@@ -158,6 +158,28 @@ export async function autoSearchesThisMonth(
 }
 
 /**
+ * ADR-0155: whether this job is a thesis's first search, the one made when it is created or
+ * named (ADR-0087/0145). It always runs: counted against the month, never refused for it. A
+ * degraded run's retry (ADR-0149) is the same search. The API's `firstSearchOfThesis` makes the
+ * same check before queueing.
+ */
+export async function isFirstSearchOfThesis(
+  prisma: PrismaClient,
+  job: FindSourcesJob,
+): Promise<boolean> {
+  if (!job.initial) return false;
+  if ((job.retry ?? 0) > 0) return true;
+  const before = await prisma.auditEvent.count({
+    where: {
+      documentId: job.documentId,
+      kind: 'SOURCES_FOUND',
+      detail: { path: ['initial'], equals: true },
+    },
+  });
+  return before === 0;
+}
+
+/**
  * ADR-0070: this search fills a library someone is waiting on, often a brand-new one, so it
  * finishes with what the indexes have returned in a few seconds rather than waiting out the
  * slowest. The student-run search (ADR-0050) keeps the longer budget.
@@ -231,6 +253,7 @@ export async function runFindSources(
   const query = `${thesis}. ${job.query}`.slice(0, 600);
 
   if (
+    !(await isFirstSearchOfThesis(deps.prisma, job)) &&
     (await autoSearchesThisMonth(deps.prisma, job.userId, now)) >= monthlyAutoSearches(user.plan)
   ) {
     return { status: 'capped', added: 0, searched: 0 };
@@ -418,6 +441,8 @@ export async function runFindSources(
         chapterId: job.chapterId,
         query: query.slice(0, 300),
         searched: fresh.length,
+        // ADR-0155: the thesis's first search, which the month's limit never refuses.
+        ...(job.initial ? { initial: true } : {}),
         ...(degraded ? { degraded: true, retry: job.retry ?? 0 } : {}),
         added: added.map((w) => ({
           title: w.title,

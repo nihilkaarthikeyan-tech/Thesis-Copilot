@@ -381,6 +381,10 @@ export const en = {
   'setup.chapters.foldedStandard': 'standard thesis chapters',
   'setup.chapters.foldedNone': 'one chapter, no headings',
   'setup.first.waiting': 'A cited first sentence is waiting under the first heading.',
+  // ADR-0155: never "cited" for a sentence that cites nothing, nor before one is there.
+  'setup.first.waitingUncited':
+    'A first sentence is waiting under the first heading. It cites no paper yet.',
+  'setup.first.coming': 'A first sentence is on its way under the first heading.',
   'setup.first.hint': 'Accept it, or write your own first sentence.',
   'setup.first.suggest': 'Suggest one',
   'setup.first.written': 'written',
@@ -417,6 +421,8 @@ export const en = {
   'editor.filling.searching': 'Finding papers on your topic…',
   'editor.filling.reading': 'Found {found} papers · reading {reading}…',
   'editor.filling.ready': '{ready} papers ready — suggestions will cite them.',
+  // ADR-0155: a search was refused for the month; said, never silent.
+  'sources.limitReached': 'Automatic paper search is used up for this month — use Find papers.',
   'guide.title': 'Getting started',
   'guide.write': 'Write',
   'guide.writeDetail':

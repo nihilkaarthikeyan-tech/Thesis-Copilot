@@ -76,6 +76,8 @@ type SetupView = {
   title: string;
   field: string | null;
   universityId: string | null;
+  /** ADR-0155: the title search was refused for the month. */
+  searchLimit?: boolean;
 };
 
 function problem(e: unknown, fallback: string): string {
@@ -184,6 +186,8 @@ export function SetupCard({
   autoSuggest,
   placement,
   settingGap = null,
+  searchLimit = false,
+  firstCited = null,
   onFindPapers,
 }: {
   doc: SetupDoc;
@@ -203,6 +207,10 @@ export function SetupCard({
   placement: 'top' | 'line';
   /** ADR-0151: the place the title names that no paper names; the first line says so. */
   settingGap?: string | null;
+  /** ADR-0155: the month's automatic paper searches are used up; the card says so. */
+  searchLimit?: boolean;
+  /** ADR-0155: whether the first sentence on screen cites a paper; null before one came. */
+  firstCited?: boolean | null;
   /** ADR-0151: Find papers, from the first line's "no paper on … yet". */
   onFindPapers?: () => void;
 }) {
@@ -213,6 +221,16 @@ export function SetupCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const limit = useLimit();
+  /** ADR-0155: this card's own title search was refused for the month. */
+  const [refused, setRefused] = useState(false);
+  const limitShown = searchLimit || refused;
+  /** "A cited first sentence is waiting" only when it is cited (ADR-0155). */
+  const waiting =
+    firstCited === true
+      ? t('setup.first.waiting')
+      : firstCited === false
+        ? t('setup.first.waitingUncited')
+        : t('setup.first.coming');
 
   const meta = (doc.meta as Record<string, unknown> | null) ?? {};
   const [title, setTitle] = useState(doc.title === UNTITLED_THESIS ? '' : doc.title);
@@ -254,6 +272,7 @@ export function SetupCard({
         body: JSON.stringify(update),
       });
       onCard(view.setup);
+      if (view.searchLimit) setRefused(true);
       return view;
     } catch (e) {
       setError(problem(e, t('setup.error')));
@@ -846,7 +865,7 @@ export function SetupCard({
             <Row id="first" state="open" label={t('setup.row.first')}>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-ink">{t('setup.first.waiting')}</p>
+                  <p className="text-[14px] font-semibold text-ink">{waiting}</p>
                   <p className="mt-0.5 text-[12.5px] text-muted">{t('setup.first.hint')}</p>
                 </div>
                 <Button
@@ -865,11 +884,34 @@ export function SetupCard({
               id="first"
               state={state('first')}
               label={t('setup.row.first')}
-              value={card.done ? t('setup.first.written') : t('setup.first.waiting')}
+              value={card.done ? t('setup.first.written') : waiting}
             />
           )
         ) : null}
       </div>
+
+      {limitShown && !card.done ? (
+        // ADR-0155: the search this thesis wanted was refused for the month. Never silent.
+        <div
+          className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line px-4 py-2.5"
+          data-testid="setup-search-limit"
+          role="status"
+        >
+          <p className="min-w-0 flex-1 text-[13px] text-ink [overflow-wrap:anywhere]">
+            {t('sources.limitReached')}
+          </p>
+          {onFindPapers ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onFindPapers}
+              data-testid="setup-search-limit-find"
+            >
+              {t('common.findPapers')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {settingGap && !card.done ? (
         // ADR-0151: no paper names the place the title names, so no first sentence was offered.

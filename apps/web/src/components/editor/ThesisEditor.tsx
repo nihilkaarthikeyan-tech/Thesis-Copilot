@@ -512,6 +512,11 @@ function ChapterEditor({
    * suggestion callbacks, which are built once.
    */
   const [settingGap, setSettingGap] = useState<string | null>(null);
+  /**
+   * ADR-0155: whether the last suggestion shown cited a paper (null before one came), so the
+   * setup card never calls an uncited sentence "cited".
+   */
+  const [firstCited, setFirstCited] = useState<boolean | null>(null);
   const setupOnTopRef = useRef(setupOnTop);
   setupOnTopRef.current = setupOnTop;
   const [allKeys, setAllKeys] = useState(false);
@@ -716,6 +721,7 @@ function ChapterEditor({
           onDone: (info) => {
             retriedRef.current = false;
             setSettingGap(info.settingGap);
+            if (!info.empty) setFirstCited(info.cited);
             // ADR-0151: no paper on the thesis's place, so no first sentence was offered. The
             // setup card says so when it is on screen; otherwise the notice does, with Find papers.
             if (info.settingGap) {
@@ -726,6 +732,15 @@ function ChapterEditor({
                 });
               }
               return;
+            }
+            // ADR-0155: a search was wanted and the month's automatic searches are used up.
+            // Said plainly, with Find papers, never silent. The progress line keeps saying it.
+            if (info.searchLimit) {
+              window.dispatchEvent(new Event(LIBRARY_CHANGED));
+              if (!info.grounded || info.empty) {
+                setNotice({ text: tNow('sources.limitReached'), action: 'findPapers' });
+                return;
+              }
             }
             // ADR-0037: nothing in the library covers this, and a search has started. Said
             // first, because it is what will actually change the next suggestion.
@@ -959,6 +974,8 @@ function ChapterEditor({
         autoSuggest={autoSuggest}
         placement={placement}
         settingGap={settingGap}
+        searchLimit={libraryProgress?.limitReached === true}
+        firstCited={firstCited}
         onFindPapers={() => findPapersFor(doc.title)}
       />
     ) : null;
@@ -1886,6 +1903,7 @@ function ChapterEditor({
             )}
             <LibraryFilling
               documentId={doc.id}
+              onFindPapers={() => findPapersFor(doc.title)}
               onProgress={setLibraryProgress}
               onFirstReady={() => {
                 setNotice(null);

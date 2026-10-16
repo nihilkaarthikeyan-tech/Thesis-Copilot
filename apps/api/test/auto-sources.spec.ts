@@ -116,7 +116,13 @@ describe('automatic sources from autocomplete', () => {
 
     const progress = await h.api(`/documents/${created.id}/sources/progress`);
     expect(progress.status).toBe(200);
-    expect(await progress.json()).toEqual({ searching: true, found: 0, ready: 0, reading: 0 });
+    expect(await progress.json()).toEqual({
+      searching: true,
+      found: 0,
+      ready: 0,
+      reading: 0,
+      limitReached: false,
+    });
   });
 
   it('a paper whose reading finished with nothing to store is not "reading" (QA 2026-10-09)', async () => {
@@ -160,6 +166,48 @@ describe('automatic sources from autocomplete', () => {
     expect(await queue.getJob(initialSourcesJobKey(created.id))).toBeUndefined();
     const progress = await h.api(`/documents/${created.id}/sources/progress`);
     expect(await progress.json()).toMatchObject({ searching: false });
+  });
+
+  it('with the month used up, a new thesis still searches once and a refusal is said (ADR-0155)', async () => {
+    // The month's five automatic searches, used on other theses.
+    await h.prisma.auditEvent.createMany({
+      data: Array.from({ length: 5 }, () => ({
+        kind: 'SOURCES_FOUND',
+        userId: h.userId,
+        detail: { searched: 0, added: [] },
+      })),
+    });
+    const res = await h.api('/documents', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Rooftop solar adoption among rural households in Karnataka',
+        entryPath: 'A_TOPIC',
+      }),
+    });
+    const created = (await res.json()) as { id: string };
+    // The first search for the thesis runs, not refused for the month.
+    expect(await queue.getJob(initialSourcesJobKey(created.id))).toBeDefined();
+    const fresh = await h.api(`/documents/${created.id}/sources/progress`);
+    expect(await fresh.json()).toMatchObject({ searching: true, limitReached: false });
+
+    // A later search, from a suggestion in the first chapter, is refused, and the editor is told.
+    const chapter = await h.prisma.chapter.findFirstOrThrow({
+      where: { documentId: created.id },
+      select: { id: true },
+    });
+    await queue.obliterate({ force: true });
+    const before = chapterId;
+    chapterId = chapter.id;
+    try {
+      const done = await suggestDone();
+      expect(done.findingSources).toBe(false);
+      expect(done.searchLimit).toBe(true);
+    } finally {
+      chapterId = before;
+    }
+    const progress = await h.api(`/documents/${created.id}/sources/progress`);
+    expect(await progress.json()).toMatchObject({ searching: false, limitReached: true });
+    await h.prisma.auditEvent.deleteMany({ where: { userId: h.userId, kind: 'SOURCES_FOUND' } });
   });
 
   it('a student who turned it off gets no search', async () => {
