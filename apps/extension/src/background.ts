@@ -8,7 +8,7 @@
  * here, and signing out there signs the add-on out too.
  */
 
-import { anywhereGranted, chromeAnywhere, neverHere, ownHosts, syncAnywhere } from './anywhere.js';
+import { chromeScripting, neverHere, ownHosts, retireDynamicScript } from './anywhere.js';
 import { fetchPdf, makeApi } from './api.js';
 import { API_URL, WEB_URL } from './config.js';
 import { senderMay } from './hosts.js';
@@ -36,10 +36,12 @@ const LINK_PATTERNS = [
 ];
 
 chrome.runtime.onInstalled.addListener(() => {
+  // ADR-0156: 0.3.2's run-time registration is replaced by the manifest's every-site entry.
+  void retireDynamicScript(chromeScripting());
   void chrome.contextMenus.removeAll().then(() => {
     chrome.contextMenus.create({
       id: MENU_ID,
-      title: 'Add to Thesis Copilot',
+      title: 'Save to Thesis Copilot',
       contexts: ['link'],
       targetUrlPatterns: LINK_PATTERNS,
     });
@@ -69,35 +71,18 @@ chrome.contextMenus.onClicked.addListener((info) => {
 const refused = (message: string): Promise<Failure> =>
   Promise.resolve({ ok: false, status: 400, message });
 
-// ADR-0154: the every-site buttons follow the access Chrome holds — on every wake of the service
-// worker, and whenever the student grants or removes it (the popup's switch, or chrome://extensions).
 const own = ownHosts([API_URL, WEB_URL]);
-const sync = () => syncAnywhere(chromeAnywhere(), own).catch(() => false);
-void sync();
-chrome.permissions.onAdded.addListener(() => void sync());
-chrome.permissions.onRemoved.addListener(() => void sync());
+/** ADR-0156: a content script may ask from any https page but Thesis Copilot's own. */
+const anywhere = { never: (host: string) => neverHere(host, own) };
 
 chrome.runtime.onMessage.addListener((message: Request, sender, sendResponse) => {
   // Only this add-on talks to it; a web page itself cannot reach `onMessage`.
   if (sender.id !== chrome.runtime.id || !message || typeof message !== 'object') return false;
-  const ownOrigin = chrome.runtime.getURL('');
   // The popup may ask anything; a content script only what the in-page card needs (ADR-0125).
-  if (senderMay(sender, message.type, ownOrigin, INPAGE_REQUESTS)) {
-    return answer(message, sendResponse);
+  if (!senderMay(sender, message.type, chrome.runtime.getURL(''), INPAGE_REQUESTS, anywhere)) {
+    return false;
   }
-  // A content script on another site: only while the student has the every-site buttons on.
-  const anywhere = { never: (host: string) => neverHere(host, own) };
-  if (!senderMay(sender, message.type, ownOrigin, INPAGE_REQUESTS, anywhere)) return false;
-  void anywhereGranted(chromeAnywhere()).then((granted) => {
-    if (granted) answer(message, sendResponse);
-    else
-      sendResponse({
-        ok: false,
-        status: 403,
-        message: 'Save buttons on every site are turned off. Turn them on in the add-on’s window.',
-      } satisfies Failure);
-  });
-  return true;
+  return answer(message, sendResponse);
 });
 
 /** Starts the work a request asks for and answers when it is done; false for an unknown request. */
@@ -144,8 +129,8 @@ function answer(message: Request, sendResponse: (reply: unknown) => void): boole
         : refused('The add-on could not read what to save. Reload the page and try again.');
       break;
     }
-    case 'anywhere-sync':
-      work = sync().then((value) => ({ ok: true, value }));
+    case 'account':
+      work = api.account();
       break;
     default:
       return false;

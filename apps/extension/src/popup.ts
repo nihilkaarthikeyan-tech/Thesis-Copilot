@@ -1,16 +1,20 @@
 /**
  * The window that opens from the toolbar, the keyboard shortcut or the right-click item —
- * ADR-0031, ADR-0069. It works out what the tab offers (one paper, a results page, a PDF), then
- * draws the states of `state.ts`.
+ * ADR-0031, ADR-0069, redrawn in 0.4.0 (ADR-0156). It works out what the tab offers (one paper, a
+ * results page, a PDF), then draws the states of `state.ts`.
+ *
+ * Three parts, kept calm: a header (the mark, refresh, settings, close); one view — the page's
+ * paper with one "Save to Thesis Copilot" button, or the settings; and the account row (who is
+ * signed in, "Open Thesis Copilot", a "…" menu), or "Sign in".
  *
  * Everything shown comes from the page or from the API, so it is written with `textContent`,
  * never as HTML. The only markup is the static `popup.html`.
  */
 
-import { ANYWHERE_ORIGINS } from './anywhere.js';
 import { WEB_URL } from './config.js';
 import { BULK_MAX, itemsFrom, type RawListing, siteName } from './lists.js';
 import type {
+  Account,
   Collection,
   ItemResult,
   Progress,
@@ -24,6 +28,18 @@ import { collectPageMeta, collectResultList } from './page.js';
 import { isPdfUrl, type Paper, paperFrom, pdfFilename } from './paper.js';
 import { freshPending, PENDING_KEY } from './pending.js';
 import {
+  INLINE_KEY,
+  type InlineSettings,
+  inlineOn,
+  readInline,
+  readTheme,
+  siteKey,
+  THEME_KEY,
+  type Theme,
+  withAll,
+  withSite,
+} from './settings.js';
+import {
   type Event,
   initial,
   overCap,
@@ -36,6 +52,8 @@ import {
 } from './state.js';
 
 const app = document.getElementById('app') as HTMLElement;
+const settingsPanel = document.getElementById('settings') as HTMLElement;
+const accountRow = document.getElementById('account') as HTMLElement;
 
 // ---- Talking to the service worker -------------------------------------------------------------
 
@@ -47,7 +65,7 @@ function ask<T>(request: Request): Promise<Reply<T>> {
 
 // ---- What the popup remembers -------------------------------------------------------------------
 
-/** The only things the add-on stores: the thesis and collection chosen last. */
+/** The thesis and collection chosen last. */
 type Remembered = { lastDocumentId?: unknown; lastCollectionId?: unknown };
 
 const context = {
@@ -58,6 +76,14 @@ const context = {
   creating: false,
   runId: '',
   attachPdf: true,
+  /** A results page: the list is shown only after "Select several". */
+  listOpen: false,
+  /** "How it works" under "No paper found on this page". */
+  howOpen: false,
+  /** The tab's host, for "This site" in the settings; '' when it is not a website. */
+  host: '',
+  /** undefined: not known yet; null: signed out. */
+  account: undefined as Account | null | undefined,
 };
 
 let view: View = initial;
@@ -65,6 +91,7 @@ let view: View = initial;
 function dispatch(event: Event): void {
   view = reduce(view, event);
   draw();
+  drawAccount();
 }
 
 // ---- Small DOM helpers ----------------------------------------------------------------------------
@@ -106,13 +133,21 @@ function button(
   return node;
 }
 
+function linkButton(label: string, onClick: () => void, options: Options = {}): HTMLButtonElement {
+  return button(label, onClick, { ...options, className: 'link-button' });
+}
+
 /** Opens Thesis Copilot at `path` in a new tab. No `tabs` permission is needed to open one. */
 function openSite(path: string): void {
   void chrome.tabs.create({ url: `${WEB_URL}${path}` });
   window.close();
 }
 
-function siteButton(label: string, path: string, options: Options & { secondary?: boolean } = {}) {
+function siteButton(
+  label: string,
+  path: string,
+  options: Options & { secondary?: boolean; small?: boolean } = {},
+) {
   const node = button(label, () => openSite(path), { testId: 'open-site', ...options });
   node.dataset.href = `${WEB_URL}${path}`;
   return node;
@@ -123,42 +158,54 @@ const docPath = (documentId: string) => `/app/d/${encodeURIComponent(documentId)
 const sourcePath = (documentId: string, sourceId: string) =>
   `${docPath(documentId)}/sources/${encodeURIComponent(sourceId)}`;
 
-function notice(kind: 'ok' | 'warn' | 'error' | 'note', title: string, ...lines: string[]) {
-  return el(
-    'div',
-    { className: `notice ${kind === 'note' ? '' : kind}`.trim(), testId: 'message' },
-    el('strong', { text: title }),
-    ...lines.filter(Boolean).map((line) => el('p', { text: line })),
-  );
-}
-
 function spinnerLine(text: string): HTMLElement {
-  const line = el('p', { className: 'muted' });
+  const line = el('p', { className: 'muted small' });
   line.append(el('span', { className: 'spinner' }), document.createTextNode(text));
   return line;
 }
 
-// ---- The paper card --------------------------------------------------------------------------------
+/** One short line saying what went wrong, or what is worth knowing. */
+function line(kind: 'error' | 'warn' | 'note', text: string): HTMLElement {
+  return el('p', { className: `line ${kind}`, text, testId: 'message' });
+}
+
+const SVG = 'http://www.w3.org/2000/svg';
+function checkIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'tick');
+  const path = document.createElementNS(SVG, 'path');
+  path.setAttribute('d', 'M20 6 9 17l-5-5');
+  svg.append(path);
+  return svg;
+}
+
+// ---- The paper ----------------------------------------------------------------------------------------
 
 function paperCard(target: Extract<Target, { mode: 'single' }>): HTMLElement {
   const { paper } = target;
-  const eyebrow = target.fromLink ? 'From the link' : target.pdf ? 'PDF' : 'This page';
-  const details = [paper.byline, paper.year, paper.venue].filter(Boolean).join(' · ');
-  return el(
+  const people = [paper.byline, paper.year].filter(Boolean).join(' · ');
+  const eyebrow = target.fromLink ? 'From the link' : target.pdf ? 'PDF' : null;
+  const card = el(
     'section',
     { className: 'paper', testId: 'paper' },
-    el('p', { className: 'eyebrow', text: eyebrow }),
+    eyebrow ? el('p', { className: 'eyebrow', text: eyebrow }) : null,
     el('p', { className: 'title', text: paper.title || 'Untitled paper' }),
-    details ? el('p', { className: 'byline', text: details }) : null,
-    el('p', {
-      className: 'doi',
-      text: paper.doi
-        ? `DOI ${paper.doi}`
-        : target.pdf?.onlyThePdf
-          ? 'No DOI found — the PDF itself will be saved.'
-          : 'No DOI on this page — it will be matched by its title.',
-    }),
+    people ? el('p', { className: 'byline', text: people }) : null,
+    paper.venue ? el('p', { className: 'venue', text: paper.venue }) : null,
+    // A PDF that names no paper goes in as the file; worth one line, since nothing else says so.
+    target.pdf?.onlyThePdf
+      ? el('p', { className: 'small muted', text: 'No DOI found: the PDF itself will be saved.' })
+      : null,
   );
+  // The DOI read from the page is not shown (ADR-0156: a calm window), but it is the paper's
+  // identity: kept on the card for a hover and for the browser test.
+  if (paper.doi) {
+    card.dataset.doi = paper.doi;
+    card.title = `DOI ${paper.doi}`;
+  }
+  return card;
 }
 
 // ---- Thesis and collection pickers -------------------------------------------------------------------
@@ -183,12 +230,12 @@ function pickers(theses: Thesis[], locked: boolean): HTMLElement {
     void chrome.storage.local.set({ lastDocumentId: thesis.value });
     void loadCollections();
   });
-  const thesisLabel = el('label', { text: 'Save to' });
+  const thesisLabel = el('label', { text: 'Thesis' });
   thesisLabel.htmlFor = 'thesis';
 
   const collection = el('select', { testId: 'collection', fid: 'collection' });
   collection.id = 'collection';
-  const none = el('option', { text: 'No collection' });
+  const none = el('option', { text: 'None' });
   none.value = '';
   collection.append(none);
   for (const c of context.collectionsFor === context.documentId ? context.collections : []) {
@@ -210,14 +257,16 @@ function pickers(theses: Thesis[], locked: boolean): HTMLElement {
     draw();
     if (context.creating) focusFid('new-collection');
   });
-  const collectionLabel = el('label', { text: 'Collection (optional)' });
+  const collectionLabel = el('label', { text: 'Collection' });
   collectionLabel.htmlFor = 'collection';
 
   const fields = el(
     'div',
-    { className: 'fields' },
-    el('div', { className: 'field' }, thesisLabel, thesis),
-    el('div', { className: 'field' }, collectionLabel, collection),
+    { className: 'pickers' },
+    thesisLabel,
+    thesis,
+    collectionLabel,
+    collection,
   );
   if (context.creating && !locked) fields.append(newCollectionRow());
   return fields;
@@ -272,7 +321,7 @@ function newCollectionRow(): HTMLElement {
   });
   return el(
     'div',
-    { className: 'field' },
+    { className: 'new-collection' },
     el('div', { className: 'inline-new' }, input, add),
     status,
   );
@@ -333,6 +382,18 @@ chrome.runtime.onMessage.addListener((message: Progress, sender) => {
 
 // ---- The states ----------------------------------------------------------------------------------------
 
+function primaryButton(label: string, saving: boolean, testId: string, disabled = false) {
+  const node = button(label, () => void save(), {
+    testId,
+    fid: 'save',
+    disabled: saving || disabled,
+    className: 'btn big',
+  });
+  if (saving) node.prepend(el('span', { className: 'spinner' }));
+  node.setAttribute('aria-busy', String(saving));
+  return node;
+}
+
 function drawSingle(
   v: Extract<View, { kind: 'ready' }>,
   target: Extract<Target, { mode: 'single' }>,
@@ -351,74 +412,54 @@ function drawSingle(
       box.addEventListener('change', () => {
         context.attachPdf = box.checked;
       });
-      const label = el(
-        'label',
-        { className: 'check' },
-        box,
-        el('span', { text: 'Attach this PDF, so it can be read at once' }),
-      );
-      nodes.push(el('div', { className: 'fields' }, label));
+      nodes.push(el('label', { className: 'check' }, box, el('span', { text: 'Attach this PDF' })));
     }
     nodes.push(pickers(v.theses, saving));
     const failure =
       v.error ?? (result?.status === 'failed' ? (result.message ?? 'It was not saved.') : null);
-    if (failure) {
-      nodes.push(el('div', { className: 'actions' }, notice('error', 'Not saved', failure)));
-    }
-    const label = saving ? 'Saving…' : failure ? 'Try again' : 'Save to library';
-    const primary = button(label, () => void save(), {
-      testId: 'add',
-      fid: 'save',
-      disabled: saving,
-    });
-    if (saving) primary.prepend(el('span', { className: 'spinner' }));
-    primary.setAttribute('aria-busy', String(saving));
-    nodes.push(el('div', { className: 'actions' }, primary));
+    if (failure) nodes.push(line('error', `Not saved: ${failure}`));
+    const label = saving ? 'Saving…' : failure ? 'Try again' : 'Save to Thesis Copilot';
+    nodes.push(primaryButton(label, saving, 'add'));
     return nodes;
   }
 
-  const title = thesisTitle(v.theses);
-  const lines: string[] = [];
-  if (result.status === 'saved') {
-    lines.push('It is being looked up and read now, and appears in the library in a moment.');
-  }
-  const pdf = v.outcome?.pdf;
-  if (pdf?.kind === 'attached')
-    lines.push('The PDF is attached, so the paper can be read at once.');
-  if (pdf?.kind === 'already-has-file') lines.push('Its PDF was already there.');
-  const warnings: string[] = [];
-  if (pdf?.kind === 'not-fetched') {
-    warnings.push(
-      `${pdf.message} ${target.paper.doi ? 'Saved by its DOI; the free full text is fetched where there is one.' : ''}`.trim(),
-    );
-  }
-  if (pdf?.kind === 'rejected') warnings.push(`The PDF was not attached: ${pdf.message}`);
-  const collection = context.collections.find((c) => c.id === context.collectionId);
-  if (v.outcome?.collection === 'added' && collection) lines.push(`Filed in “${collection.name}”.`);
-  if (v.outcome?.collection === 'failed') warnings.push('It could not be put in the collection.');
+  // Saved, or already there: one line, and the way into Thesis Copilot.
+  const saved = result.status === 'saved';
+  const status = el(
+    'div',
+    { className: `done ${saved ? 'ok' : 'present'}`, testId: 'done' },
+    el(
+      'span',
+      { className: 'done-what' },
+      checkIcon(),
+      document.createTextNode(saved ? 'Saved' : 'In your library'),
+    ),
+    el('span', { className: 'dot', text: '·' }),
+  );
+  const openPath = result.sourceId
+    ? sourcePath(context.documentId, result.sourceId)
+    : `${docPath(context.documentId)}/sources`;
+  const open = linkButton('Open in Thesis Copilot', () => openSite(openPath), {
+    fid: 'open-source',
+    testId: 'open-source',
+  });
+  open.dataset.href = `${WEB_URL}${openPath}`;
+  status.append(open);
+  nodes.push(status);
 
+  const notes: string[] = [`In “${thesisTitle(v.theses)}”`];
+  const collection = context.collections.find((c) => c.id === context.collectionId);
+  if (v.outcome?.collection === 'added' && collection) notes.push(`filed in “${collection.name}”`);
   nodes.push(
-    result.status === 'saved'
-      ? notice('ok', `Saved to “${title}”`, ...lines)
-      : notice('note', `Already in the library of “${title}”`, ...lines),
+    el('p', { className: 'small muted', text: `${notes.join(', ')}.`, testId: 'saved-where' }),
   );
-  if (warnings.length) nodes.push(notice('warn', 'Worth knowing', ...warnings));
-  const actions = el('div', { className: 'actions' });
-  if (result.sourceId) {
-    actions.append(
-      siteButton('Open in Thesis Copilot', sourcePath(context.documentId, result.sourceId), {
-        fid: 'open-source',
-        testId: 'open-source',
-      }),
-    );
-  }
-  actions.append(
-    siteButton('Open the library', `${docPath(context.documentId)}/sources`, {
-      secondary: true,
-      fid: 'open-library',
-    }),
-  );
-  nodes.push(actions);
+  const pdf = v.outcome?.pdf;
+  if (pdf?.kind === 'attached') nodes.push(line('note', 'The PDF is attached.'));
+  if (pdf?.kind === 'not-fetched') nodes.push(line('warn', pdf.message));
+  if (pdf?.kind === 'rejected')
+    nodes.push(line('warn', `The PDF was not attached: ${pdf.message}`));
+  if (v.outcome?.collection === 'failed')
+    nodes.push(line('warn', 'It could not be put in the collection.'));
   return nodes;
 }
 
@@ -456,13 +497,33 @@ function pill(
 function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, { mode: 'list' }>) {
   const saving = v.phase === 'saving';
   const count = target.items.length;
+  const summary = `${count} paper${count === 1 ? '' : 's'} on this ${siteName(target.site)} page`;
+
+  // ADR-0156: a results page opens calm — one line, and "Select several (N)".
+  if (!context.listOpen && v.phase === 'idle') {
+    return [
+      el('p', { className: 'lead', text: summary }),
+      el(
+        'p',
+        { className: 'small muted' },
+        document.createTextNode('Press Save beside a result on the page, or '),
+        linkButton(
+          `Select several (${count})`,
+          () => {
+            context.listOpen = true;
+            draw();
+            focusFid('select-all');
+          },
+          { testId: 'select-several', fid: 'select-several' },
+        ),
+      ),
+    ];
+  }
+
   const head = el(
     'div',
     { className: 'list-head' },
-    el('p', {
-      className: 'label',
-      text: `${count} paper${count === 1 ? '' : 's'} on this ${siteName(target.site)} page`,
-    }),
+    el('p', { className: 'label', text: summary }),
     (() => {
       const all = el('button', {
         className: 'link-button',
@@ -520,7 +581,7 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
     nodes.push(
       el('p', {
         className: 'small muted',
-        text: 'Google Scholar shows few DOIs, so most of these are matched by title. Any that cannot be matched are still saved, for you to fix in the library.',
+        text: 'Scholar shows few DOIs, so most are matched by title.',
       }),
     );
   }
@@ -545,17 +606,13 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
     const t = tally(v);
     const parts = [
       t.saved ? `${t.saved} saved` : '',
-      t.present ? `${t.present} already in the library` : '',
+      t.present ? `${t.present} already in your library` : '',
       t.failed ? `${t.failed} failed` : '',
     ].filter(Boolean);
-    if (v.error) nodes.push(notice('error', 'Not saved', v.error));
-    else if (parts.length) {
-      const lines = [
-        v.outcome?.collection === 'failed' ? 'They could not be put in the collection.' : '',
-        t.failed ? '“Retry failed” sends the ones that did not go through again.' : '',
-      ];
-      nodes.push(notice(t.failed ? 'warn' : 'ok', parts.join(' · '), ...lines));
-    }
+    if (v.error) nodes.push(line('error', `Not saved: ${v.error}`));
+    else if (parts.length) nodes.push(line(t.failed ? 'warn' : 'note', parts.join(' · ')));
+    if (v.outcome?.collection === 'failed')
+      nodes.push(line('warn', 'They could not be put in the collection.'));
   }
 
   const keys = pendingKeys(v);
@@ -568,16 +625,10 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
         ? `Retry failed (${keys.length})`
         : v.error
           ? `Try again (${keys.length})`
-          : `Save (${keys.length})`;
-  const primary = button(label, () => void save(), {
-    testId: 'save-many',
-    fid: 'save',
-    disabled: saving || keys.length === 0,
-  });
-  if (saving) primary.prepend(el('span', { className: 'spinner' }));
-  const actions = el('div', { className: 'actions' }, primary);
+          : `Save ${keys.length} to Thesis Copilot`;
+  nodes.push(primaryButton(label, saving, 'save-many', keys.length === 0));
   if (overCap(v)) {
-    actions.append(
+    nodes.push(
       el('p', {
         className: 'small muted',
         text: `One save takes at most ${BULK_MAX}; the rest can go in the next.`,
@@ -585,16 +636,41 @@ function drawList(v: Extract<View, { kind: 'ready' }>, target: Extract<Target, {
     );
   }
   if (v.phase === 'done' && tally(v).saved + tally(v).present > 0) {
-    actions.append(
-      siteButton('Open the library', `${docPath(context.documentId)}/sources`, {
-        secondary: true,
-        fid: 'open-library',
-      }),
+    nodes.push(
+      linkButton(
+        'Open in Thesis Copilot',
+        () => openSite(`${docPath(context.documentId)}/sources`),
+        {
+          fid: 'open-library',
+          testId: 'open-library',
+        },
+      ),
     );
   }
-  nodes.push(actions);
   return nodes;
 }
+
+/** "No paper found on this page", and one short paragraph behind "How it works". */
+function drawEmpty(headline: string, how: string): Node[] {
+  const nodes: Node[] = [
+    el('p', { className: 'lead', text: headline, testId: 'empty' }),
+    linkButton(
+      context.howOpen ? 'Hide' : 'How it works',
+      () => {
+        context.howOpen = !context.howOpen;
+        draw();
+        focusFid('how');
+      },
+      { fid: 'how', testId: 'how' },
+    ),
+  ];
+  if (context.howOpen)
+    nodes.push(el('p', { className: 'small muted', text: how, testId: 'how-text' }));
+  return nodes;
+}
+
+const HOW =
+  'Open a paper’s own page, a page of search results or a PDF, then press refresh. On a paper’s page a “Save to Thesis Copilot” button also appears beside it. You can also right-click a DOI link.';
 
 function draw(): void {
   const v = view;
@@ -610,73 +686,49 @@ function draw(): void {
       ];
       break;
     case 'not-paper':
-      nodes = [
-        el('h1', {
-          text: v.restricted ? 'Chrome keeps this page private' : 'No paper on this page',
-        }),
-        el('p', {
-          className: 'muted',
-          testId: 'message',
-          text: v.restricted
-            ? 'Add-ons cannot read Chrome’s own pages or the Web Store. Open a paper’s page and click again.'
-            : ROBOT_CHECK.test(tabTitle)
-              ? 'The site is checking that you are not a robot. Finish the check on the page, wait for the paper to appear, and click again.'
-              : 'Open a paper’s own page — the one with its abstract — or a page of search results, and click again.',
-        }),
-        el(
-          'ul',
-          { className: 'plain small' },
-          el('li', { text: 'Journal and publisher article pages' }),
-          el('li', { text: 'PubMed, arXiv and Google Scholar results' }),
-          el('li', { text: 'A paper’s PDF' }),
-          el('li', { text: 'Right-click a DOI or arXiv link: “Add to Thesis Copilot”' }),
-        ),
-      ];
+      nodes = v.restricted
+        ? drawEmpty(
+            'Chrome keeps this page private',
+            'Add-ons cannot read Chrome’s own pages or the Web Store. Open a paper’s page, then press refresh.',
+          )
+        : ROBOT_CHECK.test(tabTitle)
+          ? drawEmpty(
+              'The site is checking you are not a robot',
+              'Finish the check on the page, wait for the paper to appear, then press refresh.',
+            )
+          : drawEmpty('No paper found on this page', HOW);
       break;
     case 'signed-out':
       nodes = [
         ...(v.target.mode === 'single' ? [paperCard(v.target)] : []),
-        notice(
-          'note',
-          'Sign in to Thesis Copilot',
-          'The add-on uses your Thesis Copilot sign-in in this browser. Sign in, then click the add-on again.',
-        ),
-        el(
-          'div',
-          { className: 'actions' },
-          siteButton('Sign in to Thesis Copilot', '/sign-in', { fid: 'sign-in' }),
-        ),
+        el('p', {
+          className: 'small muted',
+          testId: 'message',
+          text: 'Sign in to Thesis Copilot in this browser to save it.',
+        }),
       ];
       break;
     case 'no-thesis':
       nodes = [
         ...(v.target.mode === 'single' ? [paperCard(v.target)] : []),
-        notice(
-          'note',
-          'Start a thesis first',
-          'Papers are saved into a thesis library. Start one, then click the add-on again.',
-        ),
-        el(
-          'div',
-          { className: 'actions' },
-          siteButton('Start a thesis', '/app/new', { fid: 'start' }),
-        ),
+        el('p', {
+          className: 'small muted',
+          testId: 'message',
+          text: 'Papers are saved into a thesis. Start one first.',
+        }),
+        siteButton('Start a thesis', '/app/new', { fid: 'start', className: 'btn big' }),
       ];
       break;
     case 'load-failed':
       nodes = [
-        notice('error', 'Could not reach Thesis Copilot', v.message),
-        el(
-          'div',
-          { className: 'actions' },
-          button(
-            'Try again',
-            () => {
-              dispatch({ type: 'retry-load' });
-              void loadTheses();
-            },
-            { fid: 'retry-load', testId: 'retry-load' },
-          ),
+        line('error', `Could not reach Thesis Copilot. ${v.message}`),
+        button(
+          'Try again',
+          () => {
+            dispatch({ type: 'retry-load' });
+            void loadTheses();
+          },
+          { fid: 'retry-load', testId: 'retry-load', className: 'btn big' },
         ),
       ];
       break;
@@ -701,8 +753,259 @@ function draw(): void {
 }
 
 function focusFid(fid: string): void {
-  const node = app.querySelector<HTMLElement>(`[data-fid="${CSS.escape(fid)}"]`);
+  const node = document.querySelector<HTMLElement>(`[data-fid="${CSS.escape(fid)}"]`);
   if (node && !(node as HTMLButtonElement).disabled) node.focus();
+}
+
+// ---- The account row --------------------------------------------------------------------------------
+
+let menuOpen = false;
+
+function menuItem(label: string, onClick: () => void, testId: string): HTMLButtonElement {
+  const item = el('button', { className: 'menu-item', text: label, testId });
+  item.type = 'button';
+  item.setAttribute('role', 'menuitem');
+  item.addEventListener('click', onClick);
+  return item;
+}
+
+function drawAccount(): void {
+  // The theses' 401 is as good as the session route's "nobody".
+  const signedOut = context.account === null || view.kind === 'signed-out';
+  if (signedOut) {
+    accountRow.replaceChildren(
+      el('span', { className: 'who-text muted', text: 'Not signed in' }),
+      siteButton('Sign in', '/sign-in', { fid: 'sign-in', testId: 'sign-in', small: true }),
+    );
+    return;
+  }
+  const account = context.account;
+  const name = account?.name || account?.email || '';
+  const avatar = el('span', { className: 'avatar', text: (name[0] ?? '·').toUpperCase() });
+  avatar.setAttribute('aria-hidden', 'true');
+  // The name in the row; the address, which is often too long for it, heads the menu.
+  const who = el(
+    'span',
+    { className: 'who-text' },
+    el('span', { className: 'name', text: account ? account.name || account.email : '…' }),
+    el('span', { className: 'email', text: account ? 'Signed in' : '' }),
+  );
+  if (account) who.title = account.email;
+  const more = el('button', { className: 'icon', testId: 'more', fid: 'more' });
+  more.type = 'button';
+  more.setAttribute('aria-label', 'More');
+  more.setAttribute('aria-haspopup', 'menu');
+  more.setAttribute('aria-expanded', String(menuOpen));
+  more.append(dotsIcon());
+  more.addEventListener('click', (event) => {
+    event.stopPropagation();
+    menuOpen = !menuOpen;
+    drawAccount();
+    if (menuOpen) accountRow.querySelector<HTMLElement>('.menu-item')?.focus();
+  });
+  const nodes: Node[] = [
+    el('span', { className: 'who' }, avatar, who),
+    siteButton(
+      'Open Thesis Copilot',
+      context.documentId ? `${docPath(context.documentId)}/sources` : '/app',
+      { fid: 'open-app', testId: 'open-app', secondary: true, small: true },
+    ),
+    more,
+  ];
+  if (menuOpen) {
+    const menu = el(
+      'div',
+      { className: 'menu', testId: 'menu' },
+      account
+        ? el('p', { className: 'menu-who', text: account.email, testId: 'menu-email' })
+        : null,
+      // Better Auth accepts a sign-out only from the site itself, so it is done there (ADR-0156).
+      menuItem('Sign out…', () => openSite('/app'), 'menu-sign-out'),
+      menuItem('Help', () => openSite('/help'), 'menu-help'),
+      menuItem('Report a problem', () => openSite('/contact'), 'menu-report'),
+    );
+    menu.setAttribute('role', 'menu');
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        menuOpen = false;
+        drawAccount();
+        focusFid('more');
+      }
+    });
+    nodes.push(menu);
+  }
+  accountRow.replaceChildren(...nodes);
+}
+
+function dotsIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const cx of ['5', '12', '19']) {
+    const dot = document.createElementNS(SVG, 'circle');
+    dot.setAttribute('cx', cx);
+    dot.setAttribute('cy', '12');
+    dot.setAttribute('r', '1.6');
+    dot.setAttribute('class', 'fill');
+    svg.append(dot);
+  }
+  return svg;
+}
+
+document.addEventListener('click', (event) => {
+  if (menuOpen && !(event.target as Element | null)?.closest('.menu')) {
+    menuOpen = false;
+    drawAccount();
+  }
+});
+
+async function loadAccount(): Promise<void> {
+  const reply = await ask<Account | null>({ type: 'account' });
+  // An unreachable site says nothing about who is signed in; the theses' answer will.
+  context.account = reply.ok ? reply.value : undefined;
+  drawAccount();
+}
+
+// ---- Settings ---------------------------------------------------------------------------------------
+
+let inline: InlineSettings = readInline(undefined);
+let theme: Theme = 'system';
+
+function applyTheme(next: Theme): void {
+  theme = next;
+  if (next === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = next;
+}
+
+function switchRow(
+  id: string,
+  label: string,
+  on: boolean,
+  disabled: boolean,
+  onChange: (on: boolean) => void,
+  sub?: string,
+): HTMLElement {
+  const box = el('input', { testId: id, fid: id });
+  box.type = 'checkbox';
+  box.id = id;
+  box.setAttribute('role', 'switch');
+  box.checked = on;
+  box.disabled = disabled;
+  box.addEventListener('change', () => onChange(box.checked));
+  const text = el(
+    'span',
+    { className: 'switch-text' },
+    el('span', { text: label }),
+    sub ? el('span', { className: 'small muted', text: sub }) : null,
+  );
+  const row = el('label', { className: 'switch' }, text, box);
+  row.htmlFor = id;
+  return row;
+}
+
+async function saveInline(next: InlineSettings): Promise<void> {
+  inline = next;
+  drawSettings();
+  try {
+    await chrome.storage.local.set({ [INLINE_KEY]: next });
+  } catch {
+    // The switch shows what was asked; the pages keep the last stored choice.
+  }
+}
+
+let shortcut = '';
+
+function drawSettings(): void {
+  const back = linkButton('‹ Back', () => toggleSettings(false), { fid: 'settings-back' });
+  const group = (title: string, ...children: Array<Node | null>) =>
+    el('section', { className: 'group' }, el('h2', { text: title }), ...children);
+
+  const themes = el('div', { className: 'segmented', testId: 'theme' });
+  themes.setAttribute('role', 'radiogroup');
+  themes.setAttribute('aria-label', 'Theme');
+  for (const [value, label] of [
+    ['system', 'System'],
+    ['light', 'Light'],
+    ['dark', 'Dark'],
+  ] as const) {
+    const option = el('button', { text: label, fid: `theme-${value}`, testId: `theme-${value}` });
+    option.type = 'button';
+    option.setAttribute('role', 'radio');
+    option.setAttribute('aria-checked', String(theme === value));
+    option.addEventListener('click', () => {
+      applyTheme(value);
+      void chrome.storage.local.set({ [THEME_KEY]: value }).catch(() => undefined);
+      drawSettings();
+      focusFid(`theme-${value}`);
+    });
+    themes.append(option);
+  }
+
+  const site = context.host ? siteKey(context.host) : '';
+  const buttons = group(
+    'Save buttons in pages',
+    switchRow('inline-all', 'On all sites', inline.all, false, (on) => {
+      void saveInline(withAll(inline, on));
+    }),
+    switchRow(
+      'inline-site',
+      site ? `This site: ${site}` : 'This site',
+      site ? inlineOn(inline, site) : false,
+      !site || !inline.all,
+      (on) => {
+        if (site) void saveInline(withSite(inline, site, on));
+      },
+      site ? undefined : 'Not a web page',
+    ),
+  );
+
+  const keys = el('div', { className: 'setting-line' });
+  if (shortcut) keys.append(el('kbd', { text: shortcut }));
+  else keys.append(el('span', { className: 'muted', text: 'Not set' }));
+  const change = linkButton(shortcut ? 'Change' : 'Set one', () => {
+    void chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    window.close();
+  });
+  keys.append(change);
+
+  settingsPanel.replaceChildren(
+    el('div', { className: 'settings-head' }, back, el('h1', { text: 'Settings' })),
+    group('Theme', themes),
+    buttons,
+    group('Keyboard shortcut', keys),
+    group(
+      'Version',
+      el('p', { className: 'muted', text: `Version ${chrome.runtime.getManifest().version}` }),
+    ),
+  );
+}
+
+function toggleSettings(open = settingsPanel.hidden): void {
+  settingsPanel.hidden = !open;
+  app.hidden = open;
+  const gear = document.getElementById('settings-toggle') as HTMLButtonElement;
+  gear.setAttribute('aria-expanded', String(open));
+  gear.classList.toggle('on', open);
+  if (open) {
+    drawSettings();
+    focusFid('settings-back');
+  } else gear.focus();
+}
+
+async function loadSettings(): Promise<void> {
+  try {
+    const stored = await chrome.storage.local.get([INLINE_KEY, THEME_KEY]);
+    inline = readInline(stored[INLINE_KEY]);
+    applyTheme(readTheme(stored[THEME_KEY]));
+  } catch {
+    // Defaults: buttons on, the system's theme.
+  }
+  try {
+    const commands = await chrome.commands.getAll();
+    shortcut = commands.find((c) => c.name === '_execute_action')?.shortcut ?? '';
+  } catch {
+    shortcut = '';
+  }
 }
 
 // ---- Reading the tab ------------------------------------------------------------------------------------
@@ -749,6 +1052,15 @@ const ROBOT_CHECK =
   /captcha|client challenge|checking your browser|just a moment|verify you are human|are you a robot|access denied|unusual traffic/i;
 
 async function readTarget(): Promise<{ target: Target | null; restricted: boolean }> {
+  const tab = await targetTab();
+  const url = tab?.url ?? '';
+  try {
+    const parsed = new URL(url);
+    context.host = parsed.protocol === 'https:' ? parsed.hostname : '';
+  } catch {
+    context.host = '';
+  }
+
   // A right-clicked link waits in session storage for the popup it opened.
   const stored = await chrome.storage.session.get(PENDING_KEY);
   await chrome.storage.session.remove(PENDING_KEY);
@@ -767,8 +1079,6 @@ async function readTarget(): Promise<{ target: Target | null; restricted: boolea
     };
   }
 
-  const tab = await targetTab();
-  const url = tab?.url ?? '';
   tabTitle = tab?.title ?? '';
   if (!tab?.id || !url) return { target: null, restricted: true };
   if (RESTRICTED.test(url) || /^https:\/\/chrome(webstore)?\.google\.com\/webstore/i.test(url)) {
@@ -823,91 +1133,24 @@ async function loadTheses(): Promise<void> {
   dispatch({ type: 'theses', reply });
   if (view.kind === 'ready') {
     void loadCollections();
-    focusFid(view.target.mode === 'single' ? 'save' : 'select-all');
+    focusFid(view.target.mode === 'single' ? 'save' : 'select-several');
   } else if (view.kind === 'signed-out') focusFid('sign-in');
   else if (view.kind === 'no-thesis') focusFid('start');
 }
 
-async function footer(): Promise<void> {
-  (document.getElementById('version') as HTMLElement).textContent =
-    `v${chrome.runtime.getManifest().version}`;
-  const slot = document.getElementById('shortcut') as HTMLElement;
-  let shortcut = '';
-  try {
-    const commands = await chrome.commands.getAll();
-    shortcut = commands.find((c) => c.name === '_execute_action')?.shortcut ?? '';
-  } catch {
-    // No shortcut to show.
-  }
-  if (shortcut) {
-    slot.append(document.createTextNode('Open with '), el('kbd', { text: shortcut }));
-  } else {
-    const set = el('button', { className: 'link-button', text: 'Set a keyboard shortcut' });
-    set.type = 'button';
-    set.addEventListener('click', () => {
-      void chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
-      window.close();
-    });
-    slot.append(set);
-  }
-}
-
-/**
- * ADR-0154: "Show Save buttons on every site". Off until the student turns it on; turning it on
- * asks Chrome for every https site (Chrome shows its own prompt), turning it off gives that back.
- * The service worker registers or removes the buttons' script when the access changes; the
- * message here only makes sure of it while the window is open.
- */
-async function anywhereSwitch(): Promise<void> {
-  const slot = document.getElementById('anywhere');
-  if (!slot || !chrome.permissions) return;
-  const origins = [...ANYWHERE_ORIGINS];
-  const box = el('input', { testId: 'anywhere-switch' });
-  box.type = 'checkbox';
-  box.setAttribute('role', 'switch');
-  box.id = 'anywhere-switch';
-  const note = el('p', { className: 'faint small', testId: 'anywhere-note' });
-  const say = (on: boolean) => {
-    box.checked = on;
-    note.textContent = on
-      ? 'On. Reload a page to see its buttons there.'
-      : 'Off. Chrome asks you first; you can turn it off here at any time.';
-  };
-  try {
-    say(await chrome.permissions.contains({ origins }));
-  } catch {
-    return;
-  }
-  box.addEventListener('change', () => {
-    const wanted = box.checked;
-    box.disabled = true;
-    // Asked for in the press itself: Chrome shows its prompt only for a user's gesture.
-    const change = wanted
-      ? chrome.permissions.request({ origins })
-      : chrome.permissions.remove({ origins }).then((removed) => !removed);
-    void change
-      .catch(() => !wanted)
-      .then(async (on) => {
-        say(on);
-        await ask<boolean>({ type: 'anywhere-sync' });
-      })
-      .finally(() => {
-        box.disabled = false;
-      });
-  });
-  const label = el('label', { className: 'switch' });
-  label.htmlFor = 'anywhere-switch';
-  label.append(el('span', { text: 'Show Save buttons on every site' }), box);
-  slot.replaceChildren(label, note);
-  slot.hidden = false;
-}
-
 async function main(): Promise<void> {
-  (document.getElementById('open-app') as HTMLButtonElement).addEventListener('click', () =>
-    openSite(context.documentId ? `${docPath(context.documentId)}/sources` : '/app'),
+  (document.getElementById('close') as HTMLButtonElement).addEventListener('click', () =>
+    window.close(),
   );
-  void footer();
-  void anywhereSwitch();
+  (document.getElementById('refresh') as HTMLButtonElement).addEventListener('click', () =>
+    location.reload(),
+  );
+  (document.getElementById('settings-toggle') as HTMLButtonElement).addEventListener('click', () =>
+    toggleSettings(),
+  );
+  await loadSettings();
+  drawAccount();
+  void loadAccount();
   const { target, restricted } = await readTarget();
   dispatch({ type: 'read', target, restricted });
   if (view.kind === 'loading') await loadTheses();

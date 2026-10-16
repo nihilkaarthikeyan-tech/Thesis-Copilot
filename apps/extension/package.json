@@ -1,9 +1,9 @@
 {
   "name": "@tc/extension",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Thesis Copilot for Chrome: save papers to a thesis library (ADR-0031, ADR-0069, ADR-0125).",
+  "description": "Thesis Copilot for Chrome: save papers to a thesis library (ADR-0031, ADR-0069, ADR-0125, ADR-0156).",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:dev": "node scripts/build.mjs --target development --out dist-dev",

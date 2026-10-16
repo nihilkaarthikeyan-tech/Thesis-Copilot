@@ -154,7 +154,7 @@ test.describe
       await expect(page.getByTestId('tc-message')).toContainText(`Saved to “${title}”`, {
         timeout: 60_000,
       });
-      await expect(buttons(page)).toHaveText('Saved to Thesis Copilot');
+      await expect(buttons(page)).toHaveText('Saved');
       const saved = (await library(request)).filter((s) => s.doi?.toLowerCase() === MDPI_DOI);
       expect(saved).toHaveLength(1);
       await expect(page.getByTestId('tc-open-source')).toHaveAttribute(

@@ -7,6 +7,10 @@ days for Google's review. `STORE.md` has every piece of text to paste; this file
 > sections 1–5 below are how that was done. **0.3.0** (the in-page buttons, ADR-0125) is built but
 > **not submitted**: wait until 0.2.1 is approved, then follow **section 7a** to send 0.3.0 as an
 > update to the same item. Do not create a second item.
+>
+> **2026-10-16:** 0.4.0 (ADR-0156) is built and waiting on the owner's approval of
+> `docs/design/extension-0.4/extension-0.4-review.pdf`. It replaces 0.3.x; **section 7b** has its
+> steps and its review risk — the broad host permission means a longer review.
 
 ## 0. Before you start
 
@@ -100,7 +104,7 @@ The email names the policy. The common ones, and why this add-on should pass the
 
 | Reason | Where this add-on stands |
 |---|---|
-| **Permissions not justified, or broader than needed** | Five permissions, each explained in `STORE.md`; no `<all_urls>`, no `tabs`. From 0.3.0, one content script on five named scholarly sites, justified in `STORE.md`. From 0.3.2, one optional host permission (`https://*/*`), never granted at install, requested only by the "Show Save buttons on every site" switch; its own box in `STORE.md`. Expect a reviewer to ask about it, and reply quoting that box. If a reviewer queries one, reply quoting the justification. |
+| **Permissions not justified, or broader than needed** | Five permissions, each explained in `STORE.md`; no `<all_urls>`, no `tabs`. From 0.3.0, one content script on five named scholarly sites, justified in `STORE.md`. **From 0.4.0 (ADR-0156), the host permission `https://*/*` at install**, for the Save button beside papers on any journal site; its own box in `STORE.md`. This is the permission reviewers look at hardest: **expect a longer review** (an "in-depth review" notice is normal for a broad host permission) and possibly a question — reply quoting that box. If a reviewer queries any other, reply quoting its justification. |
 | **Misleading or keyword-stuffed description** | The description says only what the add-on does; no other product's name is used to attract searches. Keep it that way when you edit it. |
 | **Missing or inadequate privacy policy** | The `/privacy` page must be live and must mention the add-on, results pages and PDFs (it does from the release carrying ADR-0069). |
 | **Single purpose unclear** | "Save scholarly papers you are viewing to your Thesis Copilot library" — every feature is a way of doing that. |
@@ -156,6 +160,41 @@ privacy note changed. Everything to paste is in `STORE.md`, marked "(new in 0.3.
 If it is rejected over the content script, the fallback is to remove a site from
 `src/hosts.ts` (the build, the manifest and the service worker all read that one list), bump to
 0.3.1 and submit again.
+
+## 7b. The 0.4.0 update (buttons on every site, a simpler window, ADR-0156) — after the owner approves the review PDF
+
+0.4.0 replaces the unsubmitted 0.3.1 and 0.3.2: submit it in their place, as an update to the same
+item, once the item before it is approved.
+
+**Review risk.** 0.4.0 asks at install for **`https://*/*`**, so the Save button appears beside a
+paper on any journal site without the student switching anything on. That is the broadest host
+access an add-on can hold, and the store treats it accordingly: **plan for a longer review than
+any earlier version** (days to a few weeks), a possible "in-depth review" notice, and possibly a
+reviewer's question. The justification box in `STORE.md` is written for it: the access is used
+only to read a page's citation tags and DOI links and put a button beside them, never the page's
+other contents, and nothing is sent until the student presses a button. If it is rejected for
+breadth, the fallback is 0.3.2's design (the access optional, asked for by a switch): restore
+`optional_host_permissions` and the second content script's registration from ADR-0154, bump, and
+submit again.
+
+1. **First, the site.** The privacy page's add-on section says the buttons are on every site from
+   0.4.0 (`apps/web/src/app/privacy/page.tsx`, "From version 0.4.0…"). Release the site version
+   carrying it and check https://thesis.rademics.ai/privacy before step 4.
+2. **Build:** `pnpm --filter @tc/extension build` → `apps/extension/thesis-copilot-chrome-0.4.0.zip`.
+3. **Try it once:** Load unpacked → `apps/extension/dist`, signed in at thesis.rademics.ai. Open a
+   journal article on any site, an MDPI article and a Wikipedia article with DOIs in its
+   references: each shows "Save to Thesis Copilot" (or a small "Save") with nothing switched on.
+4. **Dashboard** → the item → **Package** → **Upload new package** → the 0.4.0 zip.
+5. **Privacy practices tab:** the host permissions now show `https://*/*` beside
+   `thesis.rademics.ai`. Paste the "Host permission `https://*/*`" box from `STORE.md`, and the
+   new single purpose, `scripting` and data-usage wording. Remove the old "Optional host
+   permission" text if it was pasted anywhere.
+6. **Store listing tab:** replace the description with 0.4.0's, and the two screenshots with the
+   redrawn ones in `apps/extension/store/` (`node apps/extension/scripts/store-assets.mjs`).
+7. **Submit for review.**
+8. **What existing users see:** Chrome turns the add-on off until they accept "Read and change
+   all your data on all websites". Worth a line on the changelog page or an email to the pilot
+   students when it goes out.
 
 ## 8. After publishing
 

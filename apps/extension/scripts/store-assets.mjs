@@ -137,8 +137,10 @@ const server = createServer((request, response) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const base = `http://127.0.0.1:${server.address().port}`;
 
+const PKG_VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
+
 // 3. The stand-in for Chrome's extension API: answers as Thesis Copilot would, per scenario.
-function fakeChrome() {
+function fakeChrome(VERSION) {
   if (!location.pathname.endsWith('/popup.html')) return;
   const scenario = new URLSearchParams(location.search).get('scenario') ?? 'ready';
   const never = () => new Promise(() => undefined);
@@ -239,6 +241,15 @@ function fakeChrome() {
 
   async function answer(request) {
     switch (request.type) {
+      // ADR-0156: the account row.
+      case 'account':
+        return {
+          ok: true,
+          value:
+            scenario === 'signed-out'
+              ? null
+              : { name: 'Asha Kumar', email: 'asha.kumar@example.edu' },
+        };
       case 'theses':
         if (scenario === 'reading-theses') return never();
         if (scenario === 'signed-out')
@@ -348,7 +359,7 @@ function fakeChrome() {
   window.chrome = {
     runtime: {
       id: 'fake',
-      getManifest: () => ({ version: '0.2.1' }),
+      getManifest: () => ({ version: VERSION }),
       sendMessage: (request) => answer(request),
       onMessage: { addListener: (listener) => listeners.push(listener) },
     },
@@ -407,8 +418,11 @@ async function act(page, action) {
     await page.getByTestId('collection').selectOption('__new__');
     await page.getByTestId('new-collection').fill('Chapter 3 · Methods');
   } else if (action === 'tick') {
+    // ADR-0156: a results page opens calm; "Select several" shows the list.
+    await page.getByTestId('select-several').click();
     for (const n of [0, 1, 3]) await page.getByTestId('result').nth(n).locator('input').check();
   } else if (action === 'save-all') {
+    await page.getByTestId('select-several').click();
     await page.getByTestId('select-all').click();
     await page.getByTestId('result').nth(5).locator('input').uncheck();
     await page.getByTestId('save-many').click();
@@ -422,7 +436,7 @@ for (const colorScheme of ['light', 'dark']) {
     deviceScaleFactor: 2,
     viewport: { width: 360, height: 700 },
   });
-  await context.addInitScript(fakeChrome);
+  await context.addInitScript(fakeChrome, PKG_VERSION);
   for (const state of STATES) {
     const page = await context.newPage();
     await page.goto(`${base}/popup.html?scenario=${state.scenario}`);
@@ -450,7 +464,7 @@ const context = await browser.newContext({
   deviceScaleFactor: 1,
   viewport: { width: 1280, height: 800 },
 });
-await context.addInitScript(fakeChrome);
+await context.addInitScript(fakeChrome, PKG_VERSION);
 for (const [path, file, frameAct] of [
   ['/store/article.html', 'screenshot-1-save-a-paper.png', 'save'],
   ['/store/results.html', 'screenshot-2-save-results.png', 'save-all'],
@@ -461,6 +475,7 @@ for (const [path, file, frameAct] of [
   const frame = page.frameLocator('iframe');
   if (frameAct === 'save') await frame.getByTestId('add').click();
   else {
+    await frame.getByTestId('select-several').click();
     await frame.getByTestId('select-all').click();
     await frame.getByTestId('result').nth(5).locator('input').uncheck();
     await frame.getByTestId('save-many').click();

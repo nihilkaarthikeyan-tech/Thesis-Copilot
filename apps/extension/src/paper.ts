@@ -53,6 +53,17 @@ export function referenceLine(parts: {
 }
 
 /** "A, B, C et al." for more than three names, as a reference writes it. */
+/**
+ * "Raman, Kavya" (how many publishers write `citation_author`) as "Kavya Raman", so a list of them
+ * does not read as four people (ADR-0156). A name with no comma, or more than one, is left alone.
+ */
+export function givenFirst(name: string): string {
+  const parts = name.split(',');
+  if (parts.length !== 2) return name;
+  const [family, given] = parts.map((part) => part.trim());
+  return family && given ? `${given} ${family}` : name;
+}
+
 export function shortByline(authors: readonly string[]): string | null {
   if (authors.length === 0) return null;
   return authors.length > 3 ? `${authors.slice(0, 3).join(', ')} et al.` : authors.join(', ');
@@ -275,7 +286,7 @@ export function paperFrom(page: PageMeta): Paper | null {
     500,
   );
 
-  const byline = shortByline(all(meta, 'citation_author').map((a) => clip(a, 120)));
+  const byline = shortByline(all(meta, 'citation_author').map((a) => givenFirst(clip(a, 120))));
   const date = first(meta, [
     'citation_publication_date',
     'citation_date',

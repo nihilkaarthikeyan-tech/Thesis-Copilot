@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 /**
- * ADR-0154, add-on 0.3.2: Save buttons on every site (opt-in), several results saved at once from
+ * ADR-0154, add-on 0.3.2: Save buttons on every site (on from install since 0.4.0), several results saved at once from
  * the in-page card. Against hand-written structural fixtures and small hand-written pages; every
  * paper, journal and DOI is invented (Crossref's test prefix 10.5555). Nothing requests a site.
  *
  * Pinned:
- * - the switch's access is an optional permission, and the buttons' script is registered only
- *   while it is held, never on the five sites (they have it already), or our own site;
- * - a content script on another site is answered only while the student has it on;
+ * - (ADR-0156) the every-site script never runs on the five sites (they have their own entry) or
+ *   our own site, and the 0.3.2 run-time registration is removed on the update;
+ * - a content script on another site is answered, for the card's requests only;
  * - on any other site a paper is found by its tags (`citation_doi`, `dc.identifier`, `prism.doi`,
  *   Highwire's `citation_title`) and by the DOI links of a reference list — one small button per
  *   reference, none beside a DOI in the body text, a hidden reference or the page's own DOI;
@@ -19,14 +19,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  ANYWHERE_ORIGINS,
-  ANYWHERE_SCRIPT_ID,
-  type AnywhereChrome,
+  ANYWHERE_MATCHES,
   anywhereExcludes,
-  anywhereScript,
   neverHere,
   ownHosts,
-  syncAnywhere,
+  RETIRED_SCRIPT_ID,
+  retireDynamicScript,
+  type ScriptingApi,
 } from '../src/anywhere.js';
 import {
   bulkDone,
@@ -76,22 +75,11 @@ afterEach(() => {
   document.documentElement.innerHTML = '<head></head><body></body>';
 });
 
-// ---- The switch's access and the script it registers ---------------------------------------------
+// ---- Every site, from install (ADR-0156) -----------------------------------------------------------
 
-describe('the every-site switch', () => {
-  it('asks for every https site, and registers the buttons’ script for it, top frame only', () => {
-    expect(ANYWHERE_ORIGINS).toEqual(['https://*/*']);
-    const script = anywhereScript(OWN);
-    expect(script).toMatchObject({
-      id: ANYWHERE_SCRIPT_ID,
-      matches: ['https://*/*'],
-      js: ['content.js'],
-      runAt: 'document_idle',
-      allFrames: false,
-    });
-  });
-
-  it('never on the five sites (they have the script) or our own site', () => {
+describe('every site', () => {
+  it('runs on every https page, never on the five sites (they have their own entry) or our own', () => {
+    expect(ANYWHERE_MATCHES).toEqual(['https://*/*']);
     const excludes = anywhereExcludes(OWN);
     for (const pattern of INPAGE_MATCHES) expect(excludes).toContain(pattern);
     expect(excludes).toContain('https://thesis.rademics.ai/*');
@@ -103,16 +91,13 @@ describe('the every-site switch', () => {
     expect(ownHosts(['https://thesis.rademics.ai', 'not a url'])).toEqual(OWN);
   });
 
-  function chromeFake(granted: boolean, present: boolean) {
+  function scriptingFake(present: boolean, fail = false) {
     const calls: string[] = [];
-    const api: AnywhereChrome = {
-      contains: async (p) => {
-        calls.push(`contains ${p.origins?.join(',')}`);
-        return granted;
-      },
-      registered: async () => (present ? [{ id: ANYWHERE_SCRIPT_ID }] : []),
-      register: async (scripts) => {
-        calls.push(`register ${scripts.map((s) => s.id).join(',')}`);
+    const api: ScriptingApi = {
+      registered: async (ids) => {
+        if (fail) throw new Error('no scripting');
+        calls.push(`registered ${ids.join(',')}`);
+        return present ? [{ id: RETIRED_SCRIPT_ID }] : [];
       },
       unregister: async (ids) => {
         calls.push(`unregister ${ids.join(',')}`);
@@ -121,28 +106,20 @@ describe('the every-site switch', () => {
     return { api, calls };
   }
 
-  it('registers the script once the access is granted, and only then', async () => {
-    const on = chromeFake(true, false);
-    expect(await syncAnywhere(on.api, OWN)).toBe(true);
-    expect(on.calls).toEqual(['contains https://*/*', `register ${ANYWHERE_SCRIPT_ID}`]);
+  it('removes the 0.3.2 run-time registration on the update, and nothing else', async () => {
+    const upgraded = scriptingFake(true);
+    expect(await retireDynamicScript(upgraded.api)).toBe(true);
+    expect(upgraded.calls).toEqual(['registered tc-anywhere', 'unregister tc-anywhere']);
 
-    const again = chromeFake(true, true);
-    await syncAnywhere(again.api, OWN);
-    expect(again.calls.filter((c) => c.startsWith('register'))).toEqual([]);
+    const fresh = scriptingFake(false);
+    expect(await retireDynamicScript(fresh.api)).toBe(false);
+    expect(fresh.calls).toEqual(['registered tc-anywhere']);
 
-    const never = chromeFake(false, false);
-    expect(await syncAnywhere(never.api, OWN)).toBe(false);
-    expect(never.calls.filter((c) => !c.startsWith('contains'))).toEqual([]);
-  });
-
-  it('unregisters it when the access is taken away (the switch, or chrome://extensions)', async () => {
-    const off = chromeFake(false, true);
-    expect(await syncAnywhere(off.api, OWN)).toBe(false);
-    expect(off.calls).toContain(`unregister ${ANYWHERE_SCRIPT_ID}`);
+    expect(await retireDynamicScript(scriptingFake(false, true).api)).toBe(false);
   });
 });
 
-describe('who the service worker answers, with the switch on', () => {
+describe('who the service worker answers', () => {
   const ownOrigin = 'chrome-extension://abc/';
   const anywhere = { never: (host: string) => neverHere(host, OWN) };
   const wiki = { tab: {}, url: 'https://en.wikipedia.org/wiki/Rooftop_solar' };
@@ -151,11 +128,11 @@ describe('who the service worker answers, with the switch on', () => {
     expect(senderMay(wiki, 'save-many', ownOrigin, INPAGE_REQUESTS, anywhere)).toBe(true);
     expect(senderMay(wiki, 'lookup', ownOrigin, INPAGE_REQUESTS, anywhere)).toBe(true);
     expect(senderMay(wiki, 'save', ownOrigin, INPAGE_REQUESTS, anywhere)).toBe(false);
-    expect(senderMay(wiki, 'anywhere-sync', ownOrigin, INPAGE_REQUESTS, anywhere)).toBe(false);
+    // Who is signed in is the popup's to ask, never a page's.
+    expect(senderMay(wiki, 'account', ownOrigin, INPAGE_REQUESTS, anywhere)).toBe(false);
   });
 
-  it('not with the switch off, not over http, not from our own site', () => {
-    expect(senderMay(wiki, 'lookup', ownOrigin, INPAGE_REQUESTS)).toBe(false);
+  it('not over http, not from our own site', () => {
     const from = (url: string) =>
       senderMay({ tab: {}, url }, 'lookup', ownOrigin, INPAGE_REQUESTS, anywhere);
     expect(from('http://en.wikipedia.org/wiki/X')).toBe(false);
@@ -210,7 +187,7 @@ describe('a reference list (Wikipedia’s structure)', () => {
     const button = shadowOf(first)?.querySelector('button');
     expect(button?.textContent).toBe('Save');
     expect(button?.getAttribute('aria-label')).toBe(
-      'Add to Thesis Copilot: Credit and rooftop solar uptake in rural districts',
+      'Save to Thesis Copilot: Credit and rooftop solar uptake in rural districts',
     );
     run.stop();
   });

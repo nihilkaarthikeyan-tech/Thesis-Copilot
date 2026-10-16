@@ -260,9 +260,9 @@ describe('the button', () => {
     const control = mountButton(spot, () => undefined);
     expect(control.host.shadowRoot).toBeNull();
     expect(spot.anchor.nextElementSibling).toBe(control.host);
-    expect(control.button.textContent).toBe('Add to Thesis Copilot');
+    expect(control.button.textContent).toBe('Save to Thesis Copilot');
     expect(control.button.getAttribute('aria-label')).toBe(
-      'Add to Thesis Copilot: Groundwater Recharge in Hard-Rock Aquifers of South India',
+      'Save to Thesis Copilot: Groundwater Recharge in Hard-Rock Aquifers of South India',
     );
     expect(control.host.style.getPropertyValue('display')).toBe('inline-block');
     expect(control.host.style.getPropertyPriority('display')).toBe('important');
@@ -340,7 +340,7 @@ describe('the card', () => {
     expect(open.href).toBe(`${WEB}/app/d/${DOC}/sources/${SOURCE}`);
     expect(open.target).toBe('_blank');
     expect(open.rel).toBe('noopener noreferrer');
-    expect(control.button.textContent).toBe('Saved to Thesis Copilot');
+    expect(control.button.textContent).toBe('Saved');
   });
 
   it('tries the next identifier when the first has no record, and saves by the one found', async () => {

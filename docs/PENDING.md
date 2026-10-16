@@ -385,6 +385,15 @@ where "fileKey" is not null and "rawReference" is null and "doi" is null and sta
       After the site release with the MDPI fetch, save one MDPI paper and check it reaches "Full
       text" — the file host answered every request from the build machine, never tried from the
       VPS.
+      **Now 0.4.0 (ADR-0156, 2026-10-16) replaces 0.3.2**: first approve (or mark up)
+      `docs/design/extension-0.4/extension-0.4-review.pdf`. Then try it: `chrome://extensions` →
+      Reload on Thesis Copilot (or Load unpacked → `apps/extension/dist`), accept Chrome's wider
+      access, and with nothing switched on open a journal article, an MDPI article and a Wikipedia
+      article with DOIs in its references — each shows "Save to Thesis Copilot" / "Save"; open the
+      window on a paper, save it, check "Saved · Open in Thesis Copilot", the account row and
+      Settings (turn "This site" off and the buttons leave the page). Submitting is
+      `PUBLISHING.md` §7b, after the site release with /privacy's "From version 0.4.0…" paragraph;
+      expect a longer review for the `https://*/*` access.
 - [ ] **Word citations with several sources (R40, ADR-0117)** — open a "Word citations" .docx whose
       field holds two sources in Microsoft Word (Windows, Mac, web), change the style in
       References and update fields. No Word on the build machine.

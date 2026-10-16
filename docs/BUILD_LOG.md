@@ -6725,3 +6725,22 @@ than whether a sentence is supported. The code-only option (`dropUncitedFirst`,
 in `test/prompts.spec.ts` now pins v5's own copying lines, and the cached-block snapshot is
 updated. The final side-by-side test (`docs/research/side-by-side-final-plan.md`, Part Q) checks
 the result against Jenni.
+
+## Add-on 0.4.0: buttons on every site from install, a simple popup (2026-10-16, ADR-0156)
+
+The owner put 0.3.2 beside a competitor's importer: theirs showed its inline button on every site
+by default and a calm popup; ours showed buttons on five sites only (every other site behind an
+opt-in switch and Chrome's prompt) and opened on a long "No paper on this page" list. 0.4.0
+takes `https://*/*` at install and runs the content script on every https page from a second
+manifest entry (never our own site; the manifest is now `src/manifest.ts`, tested), with the off
+switches as settings in `chrome.storage.local` (all sites, this site) that a page follows live.
+The popup is a header (refresh, settings, close), the paper with one "Save to Thesis Copilot",
+"Saved · Open in Thesis Copilot", one line when there is no paper, and the account row from
+Better Auth's `get-session`; settings hold theme, buttons, shortcut and version. Authors from
+"Family, Given" tags now read given name first (one pinned expectation changed, on purpose).
+Tests: extension 172 (16 files; `settings.spec.ts` and `manifest.spec.ts` new). Real Chromium
+(`apps/extension/scripts/review.mjs`): every popup state light and dark, the button on Scholar,
+PubMed, MDPI (and "Saved") and Wikipedia, no sideways scroll, and the fresh-install check — the
+production build in a new profile, nothing pressed: buttons on MDPI (1), a journal on no list (1)
+and Wikipedia (3), none on a page with no paper or on our own site. Review PDF:
+`docs/design/extension-0.4/extension-0.4-review.pdf`. Not shipped or submitted (PENDING).

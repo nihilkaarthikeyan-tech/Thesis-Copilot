@@ -7,7 +7,7 @@
  * asked for by saving it.
  */
 
-import type { Collection, Preview, Reply, Thesis } from './messages.js';
+import type { Account, Collection, Preview, Reply, Thesis } from './messages.js';
 import { cleanDoi, clip, shortByline } from './paper.js';
 
 /** What the library list gives back that the add-on uses. */
@@ -31,6 +31,8 @@ const TOO_SLOW = 'Thesis Copilot took too long to answer. Try again in a moment.
  */
 export const LOOKUP_TIMEOUT_MS = 25_000;
 export const IMPORT_TIMEOUT_MS = 45_000;
+/** The popup's account row: a session read, which should be quick. */
+export const ACCOUNT_TIMEOUT_MS = 10_000;
 
 /** A name from the lookup's CSL author: "Asha Kumar", or the group's literal name. */
 function authorName(value: unknown): string {
@@ -128,6 +130,24 @@ export function makeApi(base: string, fetcher: typeof fetch = fetch) {
         });
 
   return {
+    /**
+     * Who is signed in, for the popup's account row (ADR-0156): Better Auth's own session route,
+     * the one the website reads. It answers `null` when nobody is; so does a 401.
+     */
+    async account(): Promise<Reply<Account | null>> {
+      const reply = await call<{ user?: { name?: unknown; email?: unknown } } | null>(
+        '/auth/get-session',
+        {},
+        ACCOUNT_TIMEOUT_MS,
+      );
+      if (!reply.ok) return reply.status === 401 ? { ok: true, value: null } : reply;
+      const user = reply.value?.user;
+      const email = typeof user?.email === 'string' ? user.email.trim().slice(0, 200) : '';
+      if (!email) return { ok: true, value: null };
+      const name = typeof user?.name === 'string' ? user.name.trim().slice(0, 120) : '';
+      return { ok: true, value: { name, email } };
+    },
+
     async theses(): Promise<Reply<Thesis[]>> {
       const reply = await call<Array<{ id: unknown; title: unknown }>>('/documents');
       if (!reply.ok) return reply;

@@ -392,11 +392,7 @@ describe('what this browser saved', () => {
     const labels = Array.from(document.querySelectorAll('[data-tc-addon="button"]')).map(
       (host) => shadowOf(host)?.querySelector('button')?.textContent,
     );
-    expect(labels).toEqual([
-      'Add to Thesis Copilot',
-      'Saved to Thesis Copilot',
-      'Add to Thesis Copilot',
-    ]);
+    expect(labels).toEqual(['Save to Thesis Copilot', 'Saved', 'Save to Thesis Copilot']);
     run.stop();
   });
 
