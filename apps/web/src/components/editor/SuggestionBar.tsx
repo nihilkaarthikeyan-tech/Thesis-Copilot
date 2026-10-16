@@ -241,6 +241,14 @@ export function SuggestionBar({
       setPlace(null);
       return;
     }
+    /** A pointer is pressed somewhere on the page: nothing scrolls under it. */
+    let pressing = false;
+    const press = () => {
+      pressing = true;
+    };
+    const release = () => {
+      pressing = false;
+    };
     const measure = () => {
       const bar = barRef.current;
       if (!bar || editor.isDestroyed) return;
@@ -296,7 +304,16 @@ export function SuggestionBar({
         const need = Math.ceil(top + h - (vh - GAP));
         const scroller = scrollParent(view.dom);
         const key = `${getGhostState(editor)?.suggestionId ?? ''}@${getGhostState(editor)?.anchorPos ?? ''}`;
-        if (scrolledFor.current !== key && roomBelow(scroller) >= need) {
+        // Only while the student is in the editor, and never mid-press. The measure also runs on
+        // the transaction a blur makes, so a press on anything above the text (the setup card's
+        // Skip, 2026-10-16) scrolled the page between its mousedown and mouseup and the click
+        // was lost: the page must never move under a pointer that is pressing.
+        if (
+          scrolledFor.current !== key &&
+          view.hasFocus() &&
+          !pressing &&
+          roomBelow(scroller) >= need
+        ) {
           scrolledFor.current = key;
           scroller.scrollBy({ top: need });
           return;
@@ -328,11 +345,17 @@ export function SuggestionBar({
     if (observer && barRef.current) observer.observe(barRef.current);
     window.addEventListener('scroll', measure, true);
     window.addEventListener('resize', measure);
+    window.addEventListener('pointerdown', press, true);
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
     editor.on('transaction', measure);
     return () => {
       observer?.disconnect();
       window.removeEventListener('scroll', measure, true);
       window.removeEventListener('resize', measure);
+      window.removeEventListener('pointerdown', press, true);
+      window.removeEventListener('pointerup', release, true);
+      window.removeEventListener('pointercancel', release, true);
       editor.off('transaction', measure);
     };
   }, [editor, status]);
