@@ -126,6 +126,8 @@ const manifest = buildManifest({
   extraHosts: values['extra-host'],
 });
 writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+// Build-time only: nothing in the add-on imports it, so it is not shipped.
+rmSync(join(out, 'manifest.js'));
 
 // 4. The page, its styles, the fonts and the icons (the SVG is the source of the PNGs, not shipped).
 cpSync(join(root, 'static'), out, { recursive: true, filter: (src) => !src.endsWith('.svg') });

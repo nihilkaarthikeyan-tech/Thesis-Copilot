@@ -1,5 +1,25 @@
 # Changelog — Thesis Copilot for Chrome
 
+## 0.4.0 — 2026-10-16 (ADR-0156) — for the owner's review; not submitted to the store
+
+- **Save buttons everywhere, from the start.** A "Save to Thesis Copilot" button appears beside
+  a paper on any journal site — found by the page's citation tags — and a small "Save" beside
+  each DOI in a reference list, as soon as the add-on is installed; nothing to switch on.
+  Never on Thesis Copilot itself. Chrome now asks, at install, for access to all sites (it is
+  used only to read a page's citation tags and DOIs).
+- **Turn them off when you like.** Settings → "Save buttons in pages": "On all sites", and "This
+  site" for the site you are on. The buttons leave the open page at once, and come back the
+  same way.
+- **A simpler window.** A header with refresh, settings and close; the paper on the page with
+  one "Save to Thesis Copilot" button and the thesis and collection beside it; after saving,
+  "Saved · Open in Thesis Copilot". With no paper on the page, one line and "How it works". At
+  the bottom, who is signed in, "Open Thesis Copilot" and a menu (sign out, help, report a
+  problem) — or "Sign in". On a results page, "Select several" opens the ticked list as before.
+- **Settings:** theme (system, light or dark — for the window and the buttons in pages), the
+  buttons, the keyboard shortcut and the version.
+- **Authors read properly:** "Raman, Kavya" from a page's tags is shown as "Kavya Raman".
+- 0.4.0 replaces 0.3.2, which was never submitted.
+
 ## 0.3.2 — 2026-10-10 (ADR-0154) — not yet submitted to the store
 
 The three things the side-by-side left for a decision, approved by the owner the same day.

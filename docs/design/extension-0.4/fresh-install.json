@@ -1,0 +1,13 @@
+{
+  "version": "0.4.0",
+  "storedSettings": {},
+  "everySiteGranted": true,
+  "buttons": {
+    "MDPI article (one of the five sites)": 1,
+    "A journal on no list (its citation tags)": 1,
+    "Wikipedia references": 3,
+    "A page with no paper": 0,
+    "Thesis Copilot itself": 0
+  },
+  "passed": true
+}

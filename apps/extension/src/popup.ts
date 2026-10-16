@@ -770,12 +770,14 @@ function drawAccount(): void {
   const name = account?.name || account?.email || '';
   const avatar = el('span', { className: 'avatar', text: (name[0] ?? '·').toUpperCase() });
   avatar.setAttribute('aria-hidden', 'true');
+  // The name in the row; the address, which is often too long for it, heads the menu.
   const who = el(
     'span',
     { className: 'who-text' },
     el('span', { className: 'name', text: account ? account.name || account.email : '…' }),
-    account?.name ? el('span', { className: 'email', text: account.email }) : null,
+    el('span', { className: 'email', text: account ? 'Signed in' : '' }),
   );
+  if (account) who.title = account.email;
   const more = el('button', { className: 'icon', testId: 'more', fid: 'more' });
   more.type = 'button';
   more.setAttribute('aria-label', 'More');
@@ -801,6 +803,9 @@ function drawAccount(): void {
     const menu = el(
       'div',
       { className: 'menu', testId: 'menu' },
+      account
+        ? el('p', { className: 'menu-who', text: account.email, testId: 'menu-email' })
+        : null,
       // Better Auth accepts a sign-out only from the site itself, so it is done there (ADR-0156).
       menuItem('Sign out…', () => openSite('/app'), 'menu-sign-out'),
       menuItem('Help', () => openSite('/help'), 'menu-help'),

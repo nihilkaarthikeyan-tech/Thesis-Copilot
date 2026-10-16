@@ -14,6 +14,7 @@ import {
   cleanPmid,
   clip,
   doiFromUrl,
+  givenFirst,
   isDoi,
   isPdfUrl,
   type PageMeta,
@@ -130,8 +131,9 @@ describe('a journal article page', () => {
       title: 'Deep learning',
       doi: '10.1038/nature14539',
       reference:
-        'LeCun, Yann, Bengio, Yoshua, Hinton, Geoffrey (2015). Deep learning. Nature. https://doi.org/10.1038/nature14539',
-      byline: 'LeCun, Yann, Bengio, Yoshua, Hinton, Geoffrey',
+        'Yann LeCun, Yoshua Bengio, Geoffrey Hinton (2015). Deep learning. Nature. https://doi.org/10.1038/nature14539',
+      // ADR-0156: "Family, Given" tags are written given name first, so three people read as three.
+      byline: 'Yann LeCun, Yoshua Bengio, Geoffrey Hinton',
       year: '2015',
       venue: 'Nature',
     });
@@ -248,5 +250,14 @@ describe('pages that are not a paper', () => {
       year: '2019',
       venue: null,
     });
+  });
+});
+
+describe('author names (ADR-0156)', () => {
+  it('writes "Family, Given" given name first, and leaves anything else alone', () => {
+    expect(givenFirst('Raman, Kavya')).toBe('Kavya Raman');
+    expect(givenFirst('Kavya Raman')).toBe('Kavya Raman');
+    expect(givenFirst('Smith, J., Jr.')).toBe('Smith, J., Jr.');
+    expect(givenFirst('World Health Organization,')).toBe('World Health Organization,');
   });
 });

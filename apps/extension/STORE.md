@@ -1,6 +1,15 @@
-# Chrome Web Store listing — drafted for the owner to submit (version 0.3.2)
+# Chrome Web Store listing — drafted for the owner to submit (version 0.4.0)
 
-0.3.2 (2026-10-10, ADR-0154) replaces 0.3.1 before either is submitted: the same install-time
+0.4.0 (2026-10-16, ADR-0156) replaces 0.3.2 and 0.3.1 before any of them is submitted: the Save
+buttons are on every site from install, so the host permission `https://*/*` is now requested at
+install (no longer optional), and the window is simpler. Submit
+`thesis-copilot-chrome-0.4.0.zip`. What changed from 0.3.2 is marked **(new in 0.4.0)** below;
+the "Optional host permission" box of 0.3.2 is replaced by the "Host permission `https://*/*`"
+box. The privacy page's "From version 0.4.0…" paragraph must be live before 0.4.0 is submitted,
+and `PUBLISHING.md` §7b has the steps and the review risk. Wait for the owner's approval of
+`docs/design/extension-0.4/extension-0.4-review.pdf` first.
+
+0.3.2 (2026-10-10, ADR-0154) replaced 0.3.1 before either is submitted: the same install-time
 permissions, plus one **optional** host permission (`https://*/*`) that is asked for only when the
 user turns on "Show Save buttons on every site" in the add-on's window. The install warning does
 not change. Submit `thesis-copilot-chrome-0.3.2.zip` wherever this file or `PUBLISHING.md` says
@@ -26,7 +35,7 @@ Review the wording — it is your product's public description.
 pnpm --filter @tc/extension build
 ```
 
-This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.3.2.zip`** — the
+This writes `apps/extension/dist/` and **`apps/extension/thesis-copilot-chrome-0.4.0.zip`** — the
 contents of `dist/` and nothing else. Upload that zip. (It is not committed; build it fresh.)
 
 ## Store listing tab
@@ -44,10 +53,11 @@ fills it in from the zip) **(new in 0.3.0)**:
 > library — looked up, its free full text fetched where there is one, and ready to cite, read and
 > chat with. Then open it in Thesis Copilot in one more click.
 >
-> • Right on the page: on Google Scholar, PubMed, arXiv and MDPI, press "Add to Thesis Copilot" on
->   any result or beside the article's DOI. A small card shows the paper as Thesis Copilot finds
->   it — with "Cited by", open access and "PDF found" when they are known — and saves it in one
->   more click.
+> • Right on the page, on any journal site: press "Save to Thesis Copilot" beside the article's
+>   DOI, on any Google Scholar, PubMed, arXiv or MDPI result, or the small "Save" beside a DOI in
+>   a reference list (a Wikipedia article's, say). A small card shows the paper as Thesis Copilot
+>   finds it — with "Cited by", open access and "PDF found" when they are known — and saves it in
+>   one more click. Turn the buttons off for every site, or for one, in the add-on's settings.
 > • Journal article pages, PubMed and arXiv: it reads the paper's DOI and details the way Google
 >   Scholar does.
 > • A page of results: on PubMed, arXiv and Google Scholar results, tick the papers you want and
@@ -56,26 +66,22 @@ fills it in from the zip) **(new in 0.3.0)**:
 > • Several at once on the page: on a results page or a reference list, "Select several" in the
 >   card, tick the ones you want, and save them in one go — each one says whether it was saved,
 >   was already in your library, or why it was not.
-> • Anywhere, if you want it: switch on "Show Save buttons on every site" and article pages on
->   any site get the button, and each DOI in a reference list (a Wikipedia article's, say) a small
->   "Save". Off until you turn it on; Chrome asks you first.
 > • A PDF open in your browser: attach it, so the paper can be read straight away.
 > • Choose the thesis and, if you like, a collection — or make a new collection on the spot. The
 >   add-on remembers your last choice.
-> • Right-click a DOI or arXiv link: "Add to Thesis Copilot".
+> • Right-click a DOI or arXiv link: "Save to Thesis Copilot".
 > • Keyboard: Alt+Shift+S opens it (change it at chrome://extensions/shortcuts).
-> • Light and dark, following your system.
+> • Light and dark, following your system or your choice in the settings.
 > • Uses your existing Thesis Copilot sign-in — nothing new to set up, no password stored.
 >
-> Privacy: on most sites the add-on looks at a page only when you click its button (or choose it
-> from the right-click menu), and then only at the page's address, the tags that describe the
-> article, and on a results page the titles and identifiers of the results shown. On Google
-> Scholar, PubMed, arXiv and MDPI it reads the same things as the page loads, to put its buttons
-> in, and sends nothing until you press one. If you switch on "Show Save buttons on every site",
-> it reads those same things on every page you open, for the same purpose, until you switch it
-> off. It never reads other tabs or your browsing history,
-> never contacts those sites itself, and sends nothing anywhere but your own Thesis Copilot
-> account.
+> Privacy: to put its Save buttons beside papers, the add-on reads, as a page loads, only the
+> tags that describe an article (its DOI, title, authors, journal and year), the DOI links in the
+> page's reference list, and on Google Scholar, PubMed, arXiv and MDPI results the titles and
+> identifiers of the results shown — inside your browser, nothing else from the page. It sends
+> nothing until you press a button or open its window, and then only that paper's identifier or
+> details, to your own Thesis Copilot account. You can turn the buttons off for every site, or
+> for one, in its settings. It never reads other tabs or your browsing history, never contacts
+> the sites you read itself, and sends nothing anywhere else.
 >
 > You need a Thesis Copilot account: https://thesis.rademics.ai
 
@@ -120,14 +126,16 @@ host permissions):
   what lets the add-on download the PDF open in that tab when the user chooses "Attach this PDF".
   Nothing is read from any other tab, or without the click.
 - **`scripting`** — To run the one function that collects those identifiers in the tab the user
-  clicked on. Apart from the content script on the five sites below, no script runs on any page
+  clicked on. Apart from the content script described below, no script runs on any page
   otherwise.
 - **`storage`** — To remember which of the user's theses, and which collection, they saved to
   last; for at most two minutes and in memory only, a link the user right-clicked, so the
   window that opens can show that paper; and (new in 0.3.1), on the user's computer only, the
   identifiers (DOI, arXiv id or PubMed id) of the papers the in-page buttons saved, so a button on
-  a page the user comes back to says "Saved to Thesis Copilot". That list is never sent anywhere.
-- **`contextMenus`** — To add "Add to Thesis Copilot" to the right-click menu of links that point at
+  a page the user comes back to says "Saved". That list is never sent anywhere. **(new in
+  0.4.0)** Also the user's two settings: whether the Save buttons are on (for every site, and the
+  sites the user turned them off for) and the theme. Kept on the user's computer only.
+- **`contextMenus`** — To add "Save to Thesis Copilot" to the right-click menu of links that point at
   a paper (a DOI link, a publisher's /doi/ page or an arXiv abstract or PDF). It appears on no other
   links.
 - **Host permission `https://thesis.rademics.ai/*`** — The add-on's own service: to list the user's
@@ -135,25 +143,27 @@ host permissions):
   the sign-in they already have on that site.
 - **Content script on `scholar.google.com/scholar*`, `scholar.google.co.in/scholar*`,
   `pubmed.ncbi.nlm.nih.gov`, `arxiv.org/abs|list|search` and `www.mdpi.com`** **(new in 0.3.0)** —
-  To put an "Add to Thesis Copilot" button beside each search result and beside an article's DOI
+  To put a "Save to Thesis Copilot" button beside each search result and beside an article's DOI
   on these scholarly sites, the ones students search most. The script reads only the tags that
   describe the article and, on a results page, each result's title, authors and identifier, as the
   page shows them. It makes no request to these sites and sends nothing until the user presses a
   button; then it sends the paper's identifier (DOI, arXiv id or PubMed id) to the user's own
-  Thesis Copilot account. It runs on no other site; elsewhere the user clicks the toolbar button.
+  Thesis Copilot account. On every other https site, the same script runs under the host
+  permission below.
 
-- **Optional host permission `https://*/*`** **(new in 0.3.2)** — Not granted at install, and
-  never requested on its own. It is requested only when the user turns on "Show Save buttons on
-  every site" in the add-on's window, with Chrome's own prompt; turning the switch off removes it
-  (`chrome.permissions.remove`). While the user has granted it, the add-on registers its content
-  script (the same one the five sites above have) on https pages, in the top frame only, to put a
-  "Save" button beside a scholarly article's DOI (read from the page's `citation_doi`,
-  `dc.identifier` or `prism.doi` tags, or its `citation_title` tag) and beside each DOI link in
-  the page's reference list. It reads only those tags and links, makes no request to the site,
-  and sends nothing until the user presses a button; then it sends that paper's DOI or details
-  (or, for several ticked at once, theirs) to the user's own Thesis Copilot account. Students
-  read papers on thousands of publishers' and reference sites, so no list of hosts could cover
-  them; the switch keeps it the user's choice.
+- **Host permission `https://*/*`** **(new in 0.4.0)** — Needed to show a "Save to Thesis
+  Copilot" button beside papers on any journal site. Students read papers on thousands of
+  publishers', universities' and reference sites (Wikipedia's references among them), so no list
+  of hosts could cover them. On every https page, in the top frame only and never on
+  thesis.rademics.ai, the add-on's content script reads **only** the page's citation tags
+  (`citation_doi`, `dc.identifier`, `prism.doi`, or `citation_title` with an author, date or
+  journal) and the DOI links inside the page's reference list — **never the page's contents
+  beyond that**: not its text, its forms, or anything the user types. A page that names no
+  article and lists no DOI gets nothing. The script makes no request to the site, and sends
+  nothing anywhere until the user presses a button; then it sends that paper's DOI or details
+  (or, for several ticked at once, theirs) to the user's own Thesis Copilot account. The same
+  access lets the add-on attach the PDF open in the tab when the user asks. The user can turn the
+  buttons off for every site, or for one site, in the add-on's settings.
 
 Paste the content-script box into the host-permission justification as well if the dashboard has
 only one box for hosts. If the dashboard lists a permission or a site not named here, stop: the
@@ -172,8 +182,11 @@ content security policy is `script-src 'self'`.)
   chooses it.
 - **Authentication information** — no. The add-on stores no token or password; the browser sends
   the site's own session cookie to the site.
-- Personally identifiable information, health, financial, personal communications, location, web
-  history, user activity — **no**.
+- **Personally identifiable information** **(new in 0.4.0)** — tick it, to be safe: the window's
+  account row shows the signed-in user's name and email address, which the add-on reads from the
+  user's own Thesis Copilot session (`/api/v1/auth/get-session`). It is shown in the window only;
+  it is not stored, and not sent anywhere.
+- Health, financial, personal communications, location, web history, user activity — **no**.
 
 Tick the three certifications: the data is not sold or transferred to third parties (outside the
 approved use), not used or transferred for purposes unrelated to the item's single purpose, and not
@@ -181,7 +194,8 @@ used or transferred to determine creditworthiness or for lending.
 
 **Privacy policy URL:** https://thesis.rademics.ai/privacy (its section "The Chrome add-on" covers
 version 0.2.0 — results pages and the PDF — and, from the site release carrying ADR-0125, the
-0.3.0 in-page buttons. That release must be live before 0.3.0 is submitted).
+0.3.0 in-page buttons; from the release carrying ADR-0156, the 0.4.0 buttons on every site. That
+release must be live before 0.4.0 is submitted).
 
 ## Distribution tab
 
