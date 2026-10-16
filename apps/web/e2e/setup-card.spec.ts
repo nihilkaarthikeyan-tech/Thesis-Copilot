@@ -199,6 +199,39 @@ test('the title box keeps the keyboard and is filled from the first paint (ADR-0
   expect(await first.jsonValue()).toEqual({ value: TITLE });
 });
 
+test('a refused paper search is said, and an uncited first sentence is not called cited (ADR-0155)', async ({
+  page,
+  request,
+}) => {
+  // The Word test (2026-10-16): the month's automatic searches were used up, the search was
+  // skipped without a word, and the card said "A cited first sentence is waiting" over a sentence
+  // that cited nothing. The server's refusal is stood in for here (the switch is off on the mock
+  // stack); `auto-sources.spec.ts` proves the server says it.
+  test.setTimeout(180_000);
+  await page.route('**/api/v1/documents/*/sources/progress', (route) =>
+    route.fulfill({
+      json: { searching: false, found: 0, ready: 0, reading: 0, limitReached: true },
+    }),
+  );
+  await newThesis(page, request);
+  await page.getByTestId('setup-title-input').fill(TITLE);
+  await page.getByTestId('setup-title-next').click();
+  const limit = page.getByTestId('setup-search-limit');
+  await expect(limit).toContainText('Automatic paper search is used up for this month');
+  await expect(page.getByTestId('setup-search-limit-find')).toBeVisible();
+  await expect(page.getByTestId('library-limit')).toContainText('use Find papers');
+
+  // An empty library: the mock's first sentence cites nothing, and the card says so.
+  await expect(page.locator('.thesis-editor span.ghost[data-status="shown"]')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.getByTestId('setup-aim-skip').click();
+  await page.getByTestId('setup-keep').click({ timeout: 90_000 });
+  await expect(page.getByTestId('setup-row-first')).toHaveAttribute('data-state', 'open');
+  await expect(page.getByTestId('setup-card')).toContainText('It cites no paper yet');
+  await expect(page.getByTestId('setup-card')).not.toContainText('A cited first sentence');
+});
+
 test('the plan and the first sentence start at the title row, with the questions open', async ({
   page,
   request,
