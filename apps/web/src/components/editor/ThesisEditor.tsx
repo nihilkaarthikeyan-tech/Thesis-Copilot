@@ -519,6 +519,13 @@ function ChapterEditor({
   const [firstCited, setFirstCited] = useState<boolean | null>(null);
   const setupOnTopRef = useRef(setupOnTop);
   setupOnTopRef.current = setupOnTop;
+  /**
+   * ADR-0155 (the Word test, 2026-10-16): the setup card is asking for the title. The editor does
+   * not take the keyboard then: it used to, a moment after the card showed, so a student typing
+   * the title at once had half of it land in the chapter.
+   */
+  const holdOpenerRef = useRef(holdOpener);
+  holdOpenerRef.current = holdOpener;
   const [allKeys, setAllKeys] = useState(false);
   /** The comment being read in the review tab; clicking its passage in the text selects it too. */
   const [activeComment, setActiveComment] = useState<string | null>(null);
@@ -1266,6 +1273,7 @@ function ChapterEditor({
     // cursor then would take it from wherever the student had put it.
     if (
       focusedChapterRef.current !== chapter.id &&
+      !holdOpenerRef.current &&
       editor.state.doc.childCount <= 2 &&
       editor.state.doc.textContent.trim().length < 80
     ) {
