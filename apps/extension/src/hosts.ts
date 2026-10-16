@@ -10,9 +10,9 @@
  * - arXiv: abstract pages, listings and search results.
  * - MDPI: its article pages (an MDPI issue or journal page gets no button: it names no article).
  *
- * Every other article page keeps the toolbar button (`activeTab`), which reads the same tags
- * when the student clicks — unless the student turns on "Show Save buttons on every site"
- * (ADR-0154, `anywhere.ts`), an optional permission asked for on their press.
+ * Every other https page has the same script from a second manifest entry since 0.4.0 (ADR-0156,
+ * `anywhere.ts`), which puts a button only beside an article its tags name or a DOI in its
+ * reference list.
  */
 
 export const INPAGE_MATCHES = [
@@ -41,8 +41,8 @@ export function senderMay(
   ownOrigin: string,
   allowed: readonly string[],
   /**
-   * ADR-0154: the student turned on "Show Save buttons on every site", so a content script may
-   * ask from any https tab — never from one of `never` (this add-on's own site).
+   * ADR-0154/0156: a content script may also ask from any other https tab — never from one of
+   * `never` (this add-on's own site). Null: the five sites only.
    */
   anywhere: { never: (hostname: string) => boolean } | null = null,
 ): boolean {

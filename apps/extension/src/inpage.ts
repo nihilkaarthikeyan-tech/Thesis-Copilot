@@ -1,5 +1,5 @@
 /**
- * "Add to Thesis Copilot" inside the page — ADR-0125, ADR-0153. The content script (`content.ts`)
+ * "Save to Thesis Copilot" inside the page — ADR-0125, ADR-0153, ADR-0156. The content script (`content.ts`)
  * runs this on the hosts in `hosts.ts` only: Google Scholar and PubMed results, PubMed and arXiv
  * article pages, arXiv listings and searches, MDPI articles and MDPI search results.
  *
@@ -20,8 +20,9 @@
  *   Everything is written with `textContent`.
  * - **What it remembers.** The identifiers of the papers its buttons saved, per thesis, in
  *   `chrome.storage.local` only (`memory.ts`), so a page visited again marks them "Saved".
- * - **Elsewhere (ADR-0154).** Only when the student turned on "Show Save buttons on every site":
- *   an article page's button by its tags, and a small "Save" beside each DOI in a reference list.
+ * - **Elsewhere (ADR-0154, on from install since ADR-0156).** An article page's button by its
+ *   tags, and a small "Save" beside each DOI in a reference list. The student can turn the
+ *   buttons off everywhere or for one site (`settings.ts`); `removeInpage` takes them out.
  *   On a page with several buttons the card offers "Select several" (`bulk.ts`).
  */
 
@@ -476,7 +477,10 @@ const BUTTON_CSS = `
   border-radius: 999px; background: var(--accent-soft); color: var(--accent-hover);
   font: 500 12px/18px var(--font); white-space: nowrap; vertical-align: middle; cursor: pointer;
 }
-@media (prefers-color-scheme: dark) { .tc-add {${DARK_TOKENS} color: var(--accent); } }
+@media (prefers-color-scheme: dark) {
+  :host(:not([data-theme="light"])) .tc-add {${DARK_TOKENS} color: var(--accent); }
+}
+:host([data-theme="dark"]) .tc-add {${DARK_TOKENS} color: var(--accent); }
 .tc-add:hover { border-color: var(--accent); }
 .tc-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tc-add[data-state="saved"], .tc-add[data-state="present"] {
@@ -498,7 +502,8 @@ const CARD_CSS = `
   border: 1px solid var(--line-strong); border-radius: 14px;
   box-shadow: 0 16px 40px rgba(15, 23, 36, 0.22); font: 400 13px/1.5 var(--font);
 }
-@media (prefers-color-scheme: dark) { .panel {${DARK_TOKENS}} }
+@media (prefers-color-scheme: dark) { :host(:not([data-theme="light"])) .panel {${DARK_TOKENS}} }
+:host([data-theme="dark"]) .panel {${DARK_TOKENS}}
 .panel *, .panel *::before, .panel *::after { box-sizing: border-box; }
 .top { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 14px;
   border-bottom: 1px solid var(--line); }
@@ -555,7 +560,8 @@ select { width: 100%; min-width: 0; height: 32px; padding: 0 8px; border: 1px so
 .link:hover { text-decoration: underline; }
 .link:disabled { opacity: 0.55; cursor: default; }
 .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
-@media (prefers-color-scheme: dark) { .link { color: var(--accent); } }
+@media (prefers-color-scheme: dark) { :host(:not([data-theme="light"])) .link { color: var(--accent); } }
+:host([data-theme="dark"]) .link { color: var(--accent); }
 .rows { list-style: none; margin: 0; padding: 0; max-height: 40vh; max-height: 40dvh;
   overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 10px; }
 .rows li + li { border-top: 1px solid var(--line); }
@@ -641,9 +647,10 @@ function spinnerLine(text: string): HTMLElement {
 
 export type ButtonState = 'idle' | 'saved' | 'present';
 
+/** ADR-0156: one wording everywhere — the popup's button says the same. */
 const LABELS: Record<ButtonState, string> = {
-  idle: 'Add to Thesis Copilot',
-  saved: 'Saved to Thesis Copilot',
+  idle: 'Save to Thesis Copilot',
+  saved: 'Saved',
   present: 'In your library',
 };
 
@@ -668,6 +675,7 @@ export function mountButton(
 ): ButtonControl {
   const host = document.createElement('span');
   host.setAttribute(MARK, 'button');
+  host.setAttribute('data-theme', currentTheme);
   pin(host, {
     all: 'initial',
     display: 'inline-block',
@@ -854,6 +862,7 @@ export function createCard(deps: CardDeps, rows: () => Row[] = () => []): Card {
     if (host) return;
     host = document.createElement('div');
     host.setAttribute(MARK, 'card');
+    host.setAttribute('data-theme', currentTheme);
     pin(host, {
       all: 'initial',
       position: 'fixed',
@@ -879,7 +888,7 @@ export function createCard(deps: CardDeps, rows: () => Row[] = () => []): Card {
       body,
     );
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'Add to Thesis Copilot');
+    panel.setAttribute('aria-label', 'Save to Thesis Copilot');
     for (const type of ['keydown', 'keyup', 'keypress'] as const) {
       panel.addEventListener(type, (event) => {
         if (type === 'keydown' && (event as KeyboardEvent).key === 'Escape') {
@@ -1211,7 +1220,7 @@ export function createCard(deps: CardDeps, rows: () => Row[] = () => []): Card {
     const nodes: Node[] = [pickers(v.theses, saving)];
     if (failed) nodes.push(notice('error', 'Not saved', failed));
     const looking = v.lookup.state === 'looking';
-    const label = saving ? 'Saving…' : failed ? 'Try again' : 'Save to library';
+    const label = saving ? 'Saving…' : failed ? 'Try again' : 'Save to Thesis Copilot';
     const primary = el('button', { className: 'btn', text: label, testId: 'tc-save', fid: 'save' });
     primary.type = 'button';
     primary.disabled = saving || looking;
@@ -1568,6 +1577,22 @@ async function markSaved(
       control.setState('saved');
     }
   }
+}
+
+// ---- The theme, and turning the buttons off (ADR-0156) ----------------------------------------------
+
+/** The student's theme setting; `system` follows the computer, as before. */
+let currentTheme: 'system' | 'light' | 'dark' = 'system';
+
+/** Applies the theme to every button and the card already in the page, and to those to come. */
+export function setInpageTheme(theme: 'system' | 'light' | 'dark'): void {
+  currentTheme = theme;
+  for (const host of document.querySelectorAll(`[${MARK}]`)) host.setAttribute('data-theme', theme);
+}
+
+/** Takes every button and the card out of the page: the student turned the buttons off. */
+export function removeInpage(): void {
+  for (const host of document.querySelectorAll(`[${MARK}]`)) host.remove();
 }
 
 // ---- Running on the page ---------------------------------------------------------------------------

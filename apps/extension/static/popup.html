@@ -7,27 +7,34 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
+    <!-- ADR-0156: a header, one view (the page's paper, or settings), and the account row. -->
     <header class="top">
       <!-- The product's mark (apps/web/src/components/LogoMark.tsx), colours from popup.css. -->
-      <svg class="mark" width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <svg class="mark" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
         <rect width="64" height="64" rx="15" class="mark-tile" />
         <path d="M11 15h30v7.5H29.8V50h-7.6V22.5H11z" class="mark-glyph" />
         <circle cx="48" cy="19" r="6" class="mark-dot" />
       </svg>
       <span class="wordmark">Thesis Copilot</span>
-      <button type="button" class="link-button" id="open-app" data-testid="open-app">Open app</button>
+      <div class="tools">
+        <button type="button" class="icon" id="refresh" data-testid="refresh" aria-label="Look at this page again" title="Refresh">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v5h-5" /></svg>
+        </button>
+        <button type="button" class="icon" id="settings-toggle" data-testid="settings-toggle" aria-label="Settings" title="Settings" aria-expanded="false" aria-controls="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+        </button>
+        <button type="button" class="icon" id="close" data-testid="close" aria-label="Close" title="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+        </button>
+      </div>
     </header>
     <main id="app" aria-live="polite" aria-busy="true">
       <div class="state">
         <p class="muted"><span class="spinner" aria-hidden="true"></span>Reading this page…</p>
       </div>
     </main>
-    <!-- ADR-0154: "Show Save buttons on every site", off until the student turns it on. -->
-    <section class="anywhere" id="anywhere" data-testid="anywhere" hidden></section>
-    <footer class="foot">
-      <span id="shortcut" data-testid="shortcut"></span>
-      <span id="version" class="faint"></span>
-    </footer>
+    <section class="settings" id="settings" data-testid="settings" aria-label="Settings" hidden></section>
+    <footer class="account" id="account" data-testid="account"></footer>
     <script type="module" src="popup.js"></script>
   </body>
 </html>

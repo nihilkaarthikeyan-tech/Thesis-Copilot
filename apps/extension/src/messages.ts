@@ -117,8 +117,11 @@ export type Request =
   | { type: 'save-one'; job: SaveOneJob }
   /** The in-page card's "Save selected": results keyed `r0`, `r1`… in the order sent. */
   | { type: 'save-many'; job: SaveManyJob }
-  /** The popup: bring the every-site buttons in step with the access Chrome holds (ADR-0154). */
-  | { type: 'anywhere-sync' };
+  /** The popup's account row: who is signed in, or null (ADR-0156). Never a content script's. */
+  | { type: 'account' };
+
+/** The signed-in student, as the popup's account row shows them. */
+export type Account = { name: string; email: string };
 
 /** What a content script may ask. Everything else is for the add-on's own pages. */
 export const INPAGE_REQUESTS: ReadonlyArray<Request['type']> = [
