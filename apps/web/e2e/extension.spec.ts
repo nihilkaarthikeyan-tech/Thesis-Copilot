@@ -188,14 +188,16 @@ test.describe
       const popup = await openPopupFor(ARTICLE);
       const paper = popup.getByTestId('paper');
       await expect(paper).toContainText('Deep learning');
-      // The article's own DOI, not the one in its reference list or its text.
-      await expect(paper).toContainText(`DOI ${DOI}`);
+      // The article's own DOI, not the one in its reference list or its text. Since 0.4.0
+      // (ADR-0156) the card keeps it as an attribute rather than a line.
+      await expect(paper).toHaveAttribute('data-doi', DOI);
       await popup.getByTestId('thesis').selectOption(target.id);
       await expect(popup.getByTestId('collection')).toContainText('Chapter 2');
       await popup.getByTestId('collection').selectOption(collectionId);
       await popup.getByTestId('add').click();
-      await expect(popup.getByTestId('message')).toContainText(`Saved to “${titles[0]}”`);
-      await expect(popup.getByTestId('message')).toContainText('Filed in “Chapter 2”');
+      await expect(popup.getByTestId('done')).toContainText('Saved');
+      await expect(popup.getByTestId('saved-where')).toContainText(`In “${titles[0]}”`);
+      await expect(popup.getByTestId('saved-where')).toContainText('filed in “Chapter 2”');
 
       const sources = (await library(request, target.id)).filter(
         (s) => s.doi?.toLowerCase() === DOI,
@@ -214,9 +216,8 @@ test.describe
       await expect(again.getByTestId('thesis')).toHaveValue(target.id);
       await expect(again.getByTestId('collection')).toHaveValue(collectionId);
       await again.getByTestId('add').click();
-      await expect(again.getByTestId('message')).toContainText(
-        `Already in the library of “${titles[0]}”`,
-      );
+      await expect(again.getByTestId('done')).toContainText('In your library');
+      await expect(again.getByTestId('saved-where')).toContainText(`In “${titles[0]}”`);
       await expect(again.getByTestId('open-source')).toHaveAttribute(
         'data-href',
         `${WEB_URL}/app/d/${target.id}/sources/${saved.id}`,
@@ -229,11 +230,13 @@ test.describe
     test('saves the ticked papers of a results page, each once', async ({ request }) => {
       const target = created[1] as { id: string };
       const popup = await openPopupFor(ARXIV_LIST);
+      // ADR-0156: a results page opens on one line; "Select several" shows the list.
+      await popup.getByTestId('select-several').click();
       await expect(popup.getByTestId('result')).toHaveCount(3);
       await popup.getByTestId('thesis').selectOption(target.id);
       await expect(popup.getByTestId('save-many')).toBeDisabled();
       await popup.getByTestId('select-all').click();
-      await expect(popup.getByTestId('save-many')).toHaveText('Save (3)');
+      await expect(popup.getByTestId('save-many')).toHaveText('Save 3 to Thesis Copilot');
       await popup.getByTestId('save-many').click();
       await expect(popup.getByTestId('message')).toContainText('3 saved');
       await expect(popup.getByTestId('result').filter({ hasText: 'Saved' })).toHaveCount(3);
@@ -243,10 +246,11 @@ test.describe
 
       // The same page again: every paper is already there.
       const again = await openPopupFor(ARXIV_LIST);
+      await again.getByTestId('select-several').click();
       await again.getByTestId('thesis').selectOption(target.id);
       await again.getByTestId('select-all').click();
       await again.getByTestId('save-many').click();
-      await expect(again.getByTestId('message')).toContainText('3 already in the library');
+      await expect(again.getByTestId('message')).toContainText('3 already in your library');
       expect(await library(request, target.id)).toHaveLength(3);
     });
 
@@ -257,7 +261,8 @@ test.describe
       await expect(popup.getByTestId('paper')).toContainText('the PDF itself will be saved');
       await popup.getByTestId('thesis').selectOption(target.id);
       await popup.getByTestId('add').click();
-      await expect(popup.getByTestId('message')).toContainText(`Saved to “${titles[1]}”`);
+      await expect(popup.getByTestId('done')).toContainText('Saved');
+      await expect(popup.getByTestId('saved-where')).toContainText(`In “${titles[1]}”`);
       await expect(popup.getByTestId('message')).toContainText('The PDF is attached');
       const after = await library(request, target.id);
       expect(after).toHaveLength(before + 1);
@@ -267,13 +272,12 @@ test.describe
 
 test('says so when the page is not a paper, or the student is signed out', async () => {
   const news = await openPopupFor(NEWS);
-  await expect(news.getByTestId('message')).toContainText('Open a paper’s own page');
+  await expect(news.getByTestId('empty')).toHaveText('No paper found on this page');
+  await news.getByTestId('how').click();
+  await expect(news.getByTestId('how-text')).toContainText('Open a paper’s own page');
 
   await context.clearCookies();
   const signedOut = await openPopupFor(ARTICLE);
   await expect(signedOut.getByTestId('message')).toContainText('Sign in to Thesis Copilot');
-  await expect(signedOut.getByTestId('open-site')).toHaveAttribute(
-    'data-href',
-    `${WEB_URL}/sign-in`,
-  );
+  await expect(signedOut.getByTestId('sign-in')).toHaveAttribute('data-href', `${WEB_URL}/sign-in`);
 });

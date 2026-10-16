@@ -187,14 +187,25 @@ function paperCard(target: Extract<Target, { mode: 'single' }>): HTMLElement {
   const { paper } = target;
   const people = [paper.byline, paper.year].filter(Boolean).join(' · ');
   const eyebrow = target.fromLink ? 'From the link' : target.pdf ? 'PDF' : null;
-  return el(
+  const card = el(
     'section',
     { className: 'paper', testId: 'paper' },
     eyebrow ? el('p', { className: 'eyebrow', text: eyebrow }) : null,
     el('p', { className: 'title', text: paper.title || 'Untitled paper' }),
     people ? el('p', { className: 'byline', text: people }) : null,
     paper.venue ? el('p', { className: 'venue', text: paper.venue }) : null,
+    // A PDF that names no paper goes in as the file; worth one line, since nothing else says so.
+    target.pdf?.onlyThePdf
+      ? el('p', { className: 'small muted', text: 'No DOI found: the PDF itself will be saved.' })
+      : null,
   );
+  // The DOI read from the page is not shown (ADR-0156: a calm window), but it is the paper's
+  // identity: kept on the card for a hover and for the browser test.
+  if (paper.doi) {
+    card.dataset.doi = paper.doi;
+    card.title = `DOI ${paper.doi}`;
+  }
+  return card;
 }
 
 // ---- Thesis and collection pickers -------------------------------------------------------------------
@@ -439,7 +450,9 @@ function drawSingle(
   const notes: string[] = [`In “${thesisTitle(v.theses)}”`];
   const collection = context.collections.find((c) => c.id === context.collectionId);
   if (v.outcome?.collection === 'added' && collection) notes.push(`filed in “${collection.name}”`);
-  nodes.push(el('p', { className: 'small muted', text: `${notes.join(', ')}.` }));
+  nodes.push(
+    el('p', { className: 'small muted', text: `${notes.join(', ')}.`, testId: 'saved-where' }),
+  );
   const pdf = v.outcome?.pdf;
   if (pdf?.kind === 'attached') nodes.push(line('note', 'The PDF is attached.'));
   if (pdf?.kind === 'not-fetched') nodes.push(line('warn', pdf.message));
